@@ -480,7 +480,7 @@ def main():
             # 8b) createsuperuser (non-interactive)
             env = os.environ.copy()
             env.setdefault('DJANGO_SUPERUSER_USERNAME', 'tlamatini')
-            env.setdefault('DJANGO_SUPERUSER_EMAIL', 'tlamatini@xaiht.com)
+            env.setdefault('DJANGO_SUPERUSER_EMAIL', 'tlamatini@xaiht.com')
             env.setdefault('DJANGO_SUPERUSER_PASSWORD', 'tlamatini')
             res = run_cmd(["createsuperuser", "--noinput"], env=env)
             if res.returncode != 0:
