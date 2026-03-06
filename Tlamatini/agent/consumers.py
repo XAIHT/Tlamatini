@@ -376,7 +376,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 
                 if self.rag_chain is None:
                     print("!!! Contextual RAG chain setup failed. Please check the config.json file and Ollama is running.")
-                    not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
+                    not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
                         {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
@@ -392,7 +392,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     print(f"--- Contextual RAG chain stored in global_state for user {user_id}")
                     
                     if isinstance(self.rag_chain, BasicPromptOnlyChain):
-                        fallback_llm_response = "There was a problem, so the agent fallback to a Basic Prompt Only Chain (No context is used)."
+                        fallback_llm_response = "There was a problem, so the agent fell back to a Basic Prompt Only Chain (No context will be used)."
                         await self.channel_layer.group_send(   # type: ignore
                             self.room_group_name,
                             {'type': 'agent_message', 'message': fallback_llm_response, 'username': 'LLM_Bot'}
@@ -405,7 +405,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                         )
                     if isinstance(self.rag_chain, OptimizedHistoryAwareRAGChain):
                         if self.rag_chain.getDetectedOversizedDocs():
-                            detected_oversized_docs_warning = "Your agent is ready. But some documents are too large, be aware the LLM might not be able to load them completely."
+                            detected_oversized_docs_warning = "Your agent is ready. However, some documents are too large; please be aware that the LLM might not be able to load them completely."
                             await self.channel_layer.group_send(   # type: ignore
                                 self.room_group_name,
                                 {'type': 'agent_message', 'message': detected_oversized_docs_warning, 'username': 'LLM_Bot'}
@@ -415,7 +415,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             except Exception as e:
                 print(f"!!! ERROR during Contextual RAG chain setup: {e}")
                 self.rag_chain = None
-                not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
+                not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
                     {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
@@ -513,7 +513,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             print(f"!!! ERROR in queue_llm_retrieval method: {e}")
             if global_state.get_state('cancel_generation'):
                 return
-            not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
+            not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
                 {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
