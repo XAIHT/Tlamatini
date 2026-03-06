@@ -494,97 +494,7 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
 15. For nested config objects (like `llm`, `smtp`, `email`, `target`, `sql_connection`, etc.), include them as nested objects in the JSON.
 16. For Stopper, use `output_agents` (NOT `target_agents`) for downstream canvas connections.
 
-**Example** — A flow that monitors a log file, sends an email on error, and includes a Cleaner for post-termination cleanup:
-```json
-[
-  {
-    "agent_type": "starter",
-    "config": {
-      "target_agents": ["monitor_log_1", "raiser_1"],
-      "exit_after_start": true
-    }
-  },
-  {
-    "agent_type": "monitor_log",
-    "config": {
-      "llm": {
-        "base_url": "http://localhost:11434",
-        "model": "gpt-oss:120b-cloud",
-        "temperature": 0.0
-      },
-      "target": {
-        "logfile_path": "/var/log/syslog",
-        "poll_interval": 5,
-        "recursion_limit": 2000,
-        "keywords": "ERROR, EXCEPTION, FATAL",
-        "outcome_word": "EVENT DETECTED",
-        "max_read_bytes": 32768,
-        "context_lines": 2
-      },
-      "system_prompt": ""
-    }
-  },
-  {
-    "agent_type": "raiser",
-    "config": {
-      "pattern": "EVENT DETECTED",
-      "source_agents": ["monitor_log_1"],
-      "target_agents": ["emailer_1"],
-      "poll_interval": 5
-    }
-  },
-  {
-    "agent_type": "emailer",
-    "config": {
-      "source_agents": ["raiser_1"],
-      "pattern": "EVENT DETECTED",
-      "poll_interval": 5,
-      "smtp": {
-        "host": "smtp.gmail.com",
-        "port": 587,
-        "username": "",
-        "password": "",
-        "use_tls": true,
-        "use_ssl": false
-      },
-      "email": {
-        "from_address": "",
-        "to_addresses": [],
-        "cc_addresses": [],
-        "bcc_addresses": [],
-        "subject": "[ALERT] Error detected in log file",
-        "body": "An error was detected.\n\nSource: {source_agent}\nMatched: {matched_line}\nTime: {timestamp}",
-        "attach_log": false
-      }
-    }
-  },
-  {
-    "agent_type": "ender",
-    "config": {
-      "source_agents": ["starter_1", "monitor_log_1", "raiser_1", "emailer_1"],
-      "output_agents": ["cleaner_1"]
-    }
-  },
-  {
-    "agent_type": "cleaner",
-    "config": {
-      "agents_to_clean": ["starter_1", "monitor_log_1", "raiser_1", "emailer_1", "ender_1"]
-    }
-  }
-]
-```
-
-**Flow lifecycle**: Starter launches Monitor Log AND Raiser → Monitor Log watches the log file and detects keywords, writing "EVENT DETECTED" to its own log → Raiser polls Monitor Log's log, sees "EVENT DETECTED", and starts Emailer → Emailer monitors Raiser's log for "EVENT DETECTED" and sends the alert email. When the user clicks Stop, the Ender terminates all agents in its `source_agents` (all agents except itself and Cleaner). The Ender then auto-discovers the Cleaner in the pool and launches it. The Cleaner deletes .log and .pid files for all agents in `agents_to_clean`, preparing the flow for a clean restart.
-
-**Visual connection summary for this example**:
-- Starter → Monitor Log (Starter starts Monitor Log)
-- Starter → Raiser (Starter starts Raiser)
-- Raiser → Emailer (Raiser starts Emailer on pattern match)
-- Monitor Log → Ender (Monitor Log is a leaf agent — no outgoing targets)
-- Emailer → Ender (Emailer is a leaf agent — no outgoing targets)
-- Ender → Cleaner (Ender launches Cleaner via output_agents)
-
-**Example 2** — A loop that continuously copies a remote file via SCP, checks its content, loops back if unchanged, and alerts + stops if the content changes:
+**Example 1** — A loop that continuously copies a remote file via SCP, checks its content, loops back if unchanged, and alerts + stops if the content changes:
 ```json
 [
   {
@@ -671,6 +581,226 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 - Default path uses direct `target_agents` chaining, NOT a Raiser
 - Notifier is triggered by Raiser, NOT launched by Starter
 - Starter only starts Scper (the first step), NOT all agents
+
+**Example 2** — Normas DRM Super Deployer: A flow that sequentially cleans up old log files and deployed applications, restarts the domain, copies a new WAR file, and monitors the deployment log to notify the user upon success.
+```json
+[
+  {
+    "agent_type": "starter",
+    "config": {
+      "target_agents": ["executer_1"],
+      "exit_after_start": true
+    }
+  },
+  {
+    "agent_type": "executer",
+    "config": {
+      "script": "SET JAVA_HOME=D:\\devenv\\Sun\\GlassFish706\\JDK17.0.6_10\nSET CLASSPATH=%JAVA_HOME%\\lib;\nSET PATH=%JAVA_HOME%\\bin\n\nD:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\bin\\asadmin.bat stop-domain\n",
+      "non_blocking": false,
+      "execute_forked_window": false,
+      "source_agents": ["starter_1"],
+      "target_agents": ["deleter_1"]
+    }
+  },
+  {
+    "agent_type": "deleter",
+    "config": {
+      "trigger_mode": "immediate",
+      "files_to_delete": ["D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\logs\\*log*"],
+      "source_agents": ["executer_1"],
+      "target_agents": ["deleter_2"],
+      "trigger_event_string": "EVENT DETECTED",
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "deleter",
+    "config": {
+      "trigger_mode": "immediate",
+      "files_to_delete": ["F:\\log_apps"],
+      "source_agents": ["deleter_1"],
+      "target_agents": ["deleter_3"],
+      "trigger_event_string": "EVENT DETECTED",
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "deleter",
+    "config": {
+      "trigger_mode": "immediate",
+      "files_to_delete": ["D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\applications\\NormasDRM"],
+      "source_agents": ["deleter_2"],
+      "target_agents": ["deleter_4"],
+      "trigger_event_string": "EVENT DETECTED",
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "deleter",
+    "config": {
+      "trigger_mode": "immediate",
+      "files_to_delete": ["D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\autodeploy\\NormasDRM.*"],
+      "source_agents": ["deleter_3"],
+      "target_agents": ["deleter_5"],
+      "trigger_event_string": "EVENT DETECTED",
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "deleter",
+    "config": {
+      "trigger_mode": "immediate",
+      "files_to_delete": ["D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\autodeploy\\.autodeploystatus\\NormasDRM.*"],
+      "source_agents": ["deleter_4"],
+      "target_agents": ["executer_2"],
+      "trigger_event_string": "EVENT DETECTED",
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "executer",
+    "config": {
+      "script": "SET JAVA_HOME=D:\\devenv\\Sun\\GlassFish706\\JDK17.0.6_10\nSET CLASSPATH=%JAVA_HOME%\\lib;\nSET PATH=%JAVA_HOME%\\bin\n\nD:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\bin\\asadmin.bat start-domain\n",
+      "non_blocking": true,
+      "source_agents": ["deleter_5"],
+      "target_agents": ["mover_1"]
+    }
+  },
+  {
+    "agent_type": "mover",
+    "config": {
+      "trigger_mode": "immediate",
+      "operation": "copy",
+      "source_files": ["D:\\Proyectos\\WorkspaceNormasDRM\\NormasDRM\\normasdrm-webapp-war\\target\\NormasDRM.war"],
+      "destination_folder": "D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\autodeploy\\",
+      "source_agents": ["executer_2"],
+      "target_agents": ["monitor_log_1", "notifier_1", "whatsapper_1"],
+      "trigger_event_string": "EVENT DETECTED",
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "monitor_log",
+    "config": {
+      "llm": {
+        "base_url": "http://localhost:11434",
+        "model": "gpt-oss:120b-cloud",
+        "temperature": 0
+      },
+      "target": {
+        "logfile_path": "D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\logs\\server.log",
+        "poll_interval": 5,
+        "recursion_limit": 2000,
+        "keywords": "No",
+        "outcome_word": "NormasDRM was successfully deployed"
+      },
+      "system_prompt": "You are a Log Monitoring Agent. Your job is to analyze new lines from a server log file.\n\nTarget Log File: {filepath}\nTarget Keywords: {keywords}\nOutcome word: {outcome_word}\n\nInstructions:\n1. Call the tool 'check_log_file' to read new log entries.\n2. The tool will return ONLY the new lines added since the last check.\n3. Analyze the returned text. Look for the target keywords or stack traces.\n4. If you see NO new lines or NO keywords found, say \"No events found.\"\n5. **If you find an error of type {keywords}: output the phrase \"{outcome_word}: \" followed by the type of error and a summary of the error.**\n"
+    }
+  },
+  {
+    "agent_type": "notifier",
+    "config": {
+      "llm": {
+        "base_url": "http://localhost:11434",
+        "model": "gpt-oss:120b-cloud",
+        "temperature": 0.1
+      },
+      "target": {
+        "search_strings": "NormasDRM was successfully deployed",
+        "sound_enabled": true,
+        "shutdown_on_match": true,
+        "poll_interval": 2,
+        "recursion_limit": 1000
+      },
+      "source_agents": ["monitor_log_1"],
+      "target_agents": ["telegramer_1"]
+    }
+  },
+  {
+    "agent_type": "whatsapper",
+    "config": {
+      "source_agents": ["monitor_log_1"],
+      "target_agents": [],
+      "keywords": "NormasDRM was successfully deployed",
+      "system_prompt": "You are a Log Analysis Agent for WhatsApp notifications.\nAnalyze the provided log entry.\nIf it contains any of the target keywords ({keywords}), summarize the issue in a short message suitable for WhatsApp.\n\nFormat:\n\"🚨 Alert from {source_agent}: <Short Summary>\"\n\nKeep it under 200 characters if possible.\n",
+      "llm": {
+        "base_url": "http://localhost:11434",
+        "model": "gpt-oss:120b-cloud",
+        "temperature": 0.1
+      },
+      "textmebot": {
+        "phone": "+525559648601",
+        "apikey": "y2jPNN3hNqBu"
+      },
+      "poll_interval": 5,
+      "recursion_limit": 1000
+    }
+  },
+  {
+    "agent_type": "telegramer",
+    "config": {
+      "source_agents": ["notifier_1"],
+      "target_agents": [],
+      "telegram": {
+        "api_id": 36367295,
+        "api_hash": "9854952a0bd1cf028341b5d591305d32",
+        "chat_id": "me",
+        "message": "NormasDRM Deployed!!!"
+      },
+      "poll_interval": 5
+    }
+  },
+  {
+    "agent_type": "ender",
+    "config": {
+      "source_agents": [
+        "starter_1",
+        "executer_1",
+        "deleter_1",
+        "deleter_2",
+        "deleter_3",
+        "deleter_4",
+        "deleter_5",
+        "executer_2",
+        "mover_1",
+        "monitor_log_1",
+        "notifier_1",
+        "whatsapper_1",
+        "telegramer_1"
+      ],
+      "output_agents": ["cleaner_1"]
+    }
+  },
+  {
+    "agent_type": "cleaner",
+    "config": {
+      "agents_to_clean": [
+        "starter_1",
+        "executer_1",
+        "deleter_1",
+        "deleter_2",
+        "deleter_3",
+        "deleter_4",
+        "deleter_5",
+        "executer_2",
+        "mover_1",
+        "monitor_log_1",
+        "notifier_1",
+        "whatsapper_1",
+        "telegramer_1"
+      ]
+    }
+  }
+]
+```
+
+**Flow lifecycle**: Starter → Executer (stops domain) → sequence of 5 Deleters (clean up logs and applications) → Executer (starts domain) → Mover (copies new WAR to autodeploy) → Mover triggers downstream polling log agents (Monitor Log, Notifier, and Whatsapper).
+- **Monitoring/Alert path**: Monitor Log watches `server.log` for the success keyword "NormasDRM was successfully deployed". Notifier and Whatsapper concurrently poll the Monitor Log's output log directly. Upon seeing the success keyword, Notifier displays a GUI alert and launches Telegramer. Whatsapper concurrently sends a message via TextMeBot.
+- **Termination**: Ender is wired with `source_agents` containing all active and monitoring agents. When stopped, it terminates them and launches Cleaner to clean up logs and PIDs.
+
+**Key design decisions in this example**:
+- Pure sequential chaining for standard linear deployment steps (Starter → Executer → Deleter → ... → Mover).
+- `ender` includes all active and monitoring agents in its `source_agents` to ensure complete termination, while Cleaner uses `agents_to_clean` with proper pool names (`pool_name_n`).
 
 ---
 
