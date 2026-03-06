@@ -504,9 +504,11 @@ def main():
             # 8e) Copy support scripts, samples and icon
             support_files = [
                 "register_flw.ps1",
+                "unregister_flw.ps1",
                 "Tlamatini.ps1",
                 "Tlamatini.ico",
                 "CreateShortcut.ps1",
+                "RemoveShortcut.ps1",
                 "CreateShortcut.json",
                 "Tlamatini/cat_art.py",
                 "Tlamatini/chainer.py"
