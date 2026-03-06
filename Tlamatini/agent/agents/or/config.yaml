@@ -1,0 +1,16 @@
+# OR Agent Configuration
+# This agent acts as an OR gate: triggers target_agents if Pattern 1 is found in Source 1 OR Pattern 2 is found in Source 2.
+
+# Source Agent 1 (Input 1)
+source_agent_1: ""  # e.g., "monitor_log_1"
+pattern_1: "EVENT DETECTED"
+
+# Source Agent 2 (Input 2)
+source_agent_2: ""  # e.g., "monitor_netstat_1"
+pattern_2: "EVENT DETECTED"
+
+# Target Agents to start when either pattern is detected
+target_agents: []   # e.g., ["raiser_2"]
+
+# Polling interval in seconds
+poll_interval: 5

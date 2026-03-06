@@ -1,0 +1,25 @@
+# Starter Agent Configuration
+# This is a deterministic agent (no LLM) that starts all agents connected to its output.
+#
+# DEPLOYMENT NOTES:
+# When deployed via agentic_control_panel, this agent is copied to the pool
+# directory with a cardinal suffix (e.g., starter_1, starter_2).
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents is automatically populated when you make connections on the canvas:
+#   - Connect this Starter's OUTPUT to an agent's INPUT -> adds to target_agents
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Start all agents listed in target_agents
+# 2. Log the startup results
+# 3. Exit after completing startup (or stay running for manual trigger)
+
+# Agents to start (auto-populated via canvas connections)
+# Examples:
+#   - monitor_log_1   -> pool/monitor_log_1/monitor_log.py
+#   - raiser_1        -> pool/raiser_1/raiser.py
+target_agents: []
+
+# Whether to exit after starting agents (true) or stay running for manual triggers (false)
+exit_after_start: true

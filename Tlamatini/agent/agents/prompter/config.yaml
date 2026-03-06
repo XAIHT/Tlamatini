@@ -1,0 +1,29 @@
+# Prompter Agent Configuration
+# This agent sends a configured prompt to an Ollama LLM and logs the response.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Read the 'prompt' text from this configuration
+# 2. Connect to the Ollama LLM specified in the 'llm' section
+# 3. Send the prompt and wait for the response
+# 4. Log the response in a structured format
+# 5. Trigger any configured downstream agents
+# 6. Exit
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents and source_agents are automatically populated
+# when you make connections on the canvas.
+
+# Multi-line prompt text to send to the LLM
+prompt: ""
+
+# LLM connection settings (Ollama)
+llm:
+  host: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+
+# Agents to start after LLM response (auto-populated via canvas connections)
+target_agents: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

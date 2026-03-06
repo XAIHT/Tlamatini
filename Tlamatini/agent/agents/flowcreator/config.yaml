@@ -1,0 +1,27 @@
+# FlowCreator Agent Configuration
+# This agent uses an LLM to automatically design and create agent flows on the canvas.
+#
+# BEHAVIOR:
+# When the user clicks Save in the configuration dialog, this agent will:
+# 1. Clean the canvas and pool directory (except itself)
+# 2. Send the prompt + agentic_skill.md to the configured LLM
+# 3. Parse the LLM response into a flow creation script
+# 4. Write flow_creation_script.txt with the intermediate plan
+# 5. Write flow_result.json for the frontend to render on the canvas
+# 6. The frontend automatically deploys and connects all agents
+#
+# NO INPUTS / NO OUTPUTS:
+# This agent is standalone. It does not connect to or from other agents.
+# It appears on the canvas with no connection triangles.
+
+# Name of the flow file to create (e.g., "my_flow.flw")
+flow_filename: ""
+
+# Prompt describing the objective of the flow to create
+# Example: "Create a flow that monitors a log file for errors and sends an email alert"
+prompt: ""
+
+# LLM connection settings (Ollama)
+llm:
+  host: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"

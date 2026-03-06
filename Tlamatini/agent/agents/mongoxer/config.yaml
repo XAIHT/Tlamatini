@@ -1,0 +1,18 @@
+
+mongo_connection:
+  connection_string: "mongodb://localhost:27017/"
+  database: "mydatabase"
+  login: ""
+  password: ""
+
+script: |
+  # Sample script to be executed
+  # The 'db' object is an instance of a pymongo database client.
+  # The 'logging' object can be used to log messages.
+  logging.info("Starting script execution...")
+  collection = db["mycollection"]
+  collection.insert_one({"name": "test", "value": 123})
+  logging.info("Script execution finished.")
+
+source_agents: []
+target_agents: []

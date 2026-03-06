@@ -1,0 +1,27 @@
+# Gitter Agent Configuration
+# Executes Git commands on a local repository.
+
+# Path to the local git repository
+repo_path: ""
+
+# Git command to execute
+# Options: clone, pull, push, commit, checkout, branch, diff, log, status, custom
+command: "status"
+
+# Branch name (used with checkout)
+branch: "main"
+
+# Commit message (used with commit)
+commit_message: ""
+
+# Remote URL (used with clone)
+remote: ""
+
+# Custom raw git command (used when command is "custom")
+custom_command: ""
+
+# Agents to start after successful execution (auto-populated via canvas)
+target_agents: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

@@ -1,0 +1,22 @@
+# Ender Agent Configuration
+# This is a deterministic agent (no LLM) that terminates all agents in its connected graph.
+#
+# DEPLOYMENT NOTES:
+# When deployed via agentic_control_panel, this agent is copied to the pool
+# directory with a cardinal suffix (e.g., ender_1, ender_2).
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents is automatically populated when you make connections on the canvas:
+#   - Connect an agent's OUTPUT to this Ender's INPUT -> adds to source_agents
+#
+# BEHAVIOR:
+# When executed (via Stop button), this agent will immediately:
+# 1. Terminate all agents listed in source_agents (using SIGTERM/SIGKILL)
+# 2. Log the termination results
+# 3. Exit after completing termination
+
+# Agents to terminate (auto-populated via canvas connections)
+# Examples:
+#   - raiser_1        -> pool/raiser_1/raiser.py
+#   - monitor_log_1   -> pool/monitor_log_1/monitor_log.py
+source_agents: []

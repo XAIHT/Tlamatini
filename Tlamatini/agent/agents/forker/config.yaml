@@ -1,0 +1,42 @@
+# Forker Agent Configuration
+# This is a deterministic agent (no LLM) that monitors source agent log files
+# for configurable patterns and automatically routes to Path A or Path B.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Monitor log files of all source agents
+# 2. When pattern_a is detected -> start agents in target_agents_a (Path A)
+# 3. When pattern_b is detected -> start agents in target_agents_b (Path B)
+# 4. Continue monitoring (persistent polling loop)
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents_a, target_agents_b, and source_agents are automatically
+# populated when you make connections on the canvas:
+#   - Connect an agent's OUTPUT to this Forker's INPUT -> adds to source_agents
+#   - Connect this Forker's OUTPUT A to an agent's INPUT -> adds to target_agents_a
+#   - Connect this Forker's OUTPUT B to an agent's INPUT -> adds to target_agents_b
+
+# =============================================================================
+# PATTERN CONFIGURATION
+# =============================================================================
+# Patterns to detect in source agent logs for Path A
+# Supports multiple patterns separated by commas (OR logic)
+# Examples: "EXECUTION SUCCESS", "Task completed, Job done"
+pattern_a: "PATH_A_DETECTED"
+
+# Patterns to detect in source agent logs for Path B
+# Supports multiple patterns separated by commas (OR logic)
+# Examples: "EXECUTION FAILED", "Error occurred, Task failed"
+pattern_b: "PATH_B_DETECTED"
+
+# Agents to start if pattern_a is detected (auto-populated via canvas connections)
+target_agents_a: []
+
+# Agents to start if pattern_b is detected (auto-populated via canvas connections)
+target_agents_b: []
+
+# Source agents to monitor (auto-populated via canvas connections)
+source_agents: []
+
+# Polling interval in seconds
+poll_interval: 5

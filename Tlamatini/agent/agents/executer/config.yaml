@@ -1,0 +1,37 @@
+# Executer Agent Configuration
+# This is a deterministic agent (no LLM) that executes a command.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Run the specified command
+# 2. Log "EXECUTION SUCCESS" if exit code is 0
+# 3. Log "EXECUTION FAILED" if command fails or returns non-zero
+# 4. Trigger all downstream agents regardless of success/failure
+
+# Script to execute (will be saved to a temporary file and executed)
+# Examples:
+#   - Windows:
+#       echo Hello World
+#       dir
+#   - Linux:
+#       echo "Hello World"
+#       ls -la
+script: "echo Hello World"
+
+# Non-blocking mode (fire-and-forget)
+# When true, the script is launched as a detached process and the agent
+# continues immediately without waiting for the script to finish.
+# Use this for long-running services like GlassFish, databases, etc.
+non_blocking: false
+
+# Execute in a forked window
+# When true, the script is executed in a new visible console window so
+# that stdout and stderr are shown in real time.
+# Works with both blocking and non_blocking modes:
+#   - blocking: the agent waits for the window to be dismissed
+#   - non_blocking: the window stays open independently (survives flow stop)
+execute_forked_window: false
+
+# Agents triggered after execution (auto-populated via canvas connections)
+source_agents: []
+target_agents: []

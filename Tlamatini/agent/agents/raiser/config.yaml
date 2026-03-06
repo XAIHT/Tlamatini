@@ -1,0 +1,45 @@
+# Raiser Agent Configuration
+# This agent monitors source agents for a configurable pattern and starts target
+# agents when the pattern is detected.
+#
+# DEPLOYMENT NOTES:
+# When deployed via agentic_control_panel, this agent is copied to the pool
+# directory with a cardinal suffix (e.g., raiser_1, raiser_2).
+#
+# Agent names with cardinals (e.g., monitor_log_1, raiser_2) are looked up
+# in the pool directory. Agent names without cardinals (e.g., monitor_log)
+# are looked up in the template agents directory.
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents and target_agents are automatically populated when you make
+# connections on the canvas:
+#   - Connect an agent's OUTPUT to this Raiser's INPUT -> adds to source_agents
+#   - Connect this Raiser's OUTPUT to another agent's INPUT -> adds to target_agents
+
+# =============================================================================
+# PATTERN CONFIGURATION
+# =============================================================================
+# Pattern string to detect in source agent logs
+# When this pattern is found, the target agents will be started
+# 
+# Examples:
+#   - "EVENT DETECTED"     -> Default event marker
+#   - "STARTUP COMPLETE"   -> Triggered when an agent starts
+#   - "ERROR"              -> Triggered on any error
+#   - "Task completed"     -> Custom completion message
+pattern: "EVENT DETECTED"
+
+# Source agents to monitor (auto-populated via canvas connections)
+# Examples:
+#   - monitor_log_1      -> pool/monitor_log_1/monitor_log.log
+#   - monitor_netstat_2  -> pool/monitor_netstat_2/monitor_netstat.log
+source_agents: []
+
+# Target agents to start when pattern is detected (auto-populated via canvas connections)
+# Examples:
+#   - opus_client_1  -> pool/opus_client_1/opus_client.py
+#   - raiser_2      -> pool/raiser_2/raiser.py
+target_agents: []
+
+# Polling interval in seconds
+poll_interval: 5

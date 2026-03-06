@@ -1,0 +1,216 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="html-general">
+
+<head>
+  <title>Tlamatini</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% load django_bootstrap5 %}
+  {% bootstrap_css %}
+  {% bootstrap_javascript %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="{% static 'agent/css/agent_page.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/kotlin.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ini.min.js"></script>
+</head>
+
+<body>
+  <nav id="navbar-container" class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div id="navbar-content" class="container-fluid align-items-center">
+      <a class="navbar-brand navbar-margin" href="#">Tlamatini</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu"
+        aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div id="contextInfo" class="d-none d-lg-flex align-items-center flex-grow-1 mx-2 context-info-invisible">
+        <span class="me-2">Context:</span>
+        <span id="contextData" class="context-ellipsis" title=""></span>
+      </div>
+      <div class="collapse navbar-collapse justify-content-end" id="navbarMenu">
+        <ul class="navbar-nav align-items-lg-center" id="menu-editor">
+          <li class="nav-item"><a class="nav-link" href="#" id="open-button">Open</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" id="save-as-button">Save</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="context-menu-button" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">Context</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="context-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="set-dir-context">Set directory as context</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="set-file-context">Set file as context</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="view-context-dir-in-canvas">View context directory in
+                  canvas</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="clear-context">Clear context</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="set-omissions"
+                  onclick="OpenOmissionsDialog(event);">Set filetypes omission</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mcps-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">MCPs</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="mcps-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="enable-mcps" onclick="OpenMcpsDialog(event);">
+                  Configure MCPs</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="agents-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Agents</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="agents-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="enable-agents" onclick="OpenAgentsDialog(event);">
+                  Configure Agents</a></li>
+              <li><a class="dropdown-item menu-entry" href="{% url 'agentic_control_panel' %}"
+                  id="agentic-control-panel" target="_blank" rel="noopener">Agentic Control Panel</a></li>
+            </ul>
+          </li>
+          {% if request.user.is_staff %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="admin-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Admin</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="admin-menu-button">
+              <li><a class="dropdown-item menu-entry" href="{% url 'admin:index' %}" id="open-admin" target="_blank"
+                  rel="noopener">Open Admin page</a></li>
+            </ul>
+          </li>
+          {% endif %}
+          <li class="nav-item"><a class="nav-link" href="#" id="re-connect-button"
+              onclick="Reconnect(event);">Reconnect</a></li>
+          <li class="nav-item"><a id="logout-button" class="nav-link" href="#" param="{% url 'logout' %}"
+              onclick="CancelAllAndLogout(event);">Logout</a></li>
+          <li class="nav-item d-lg-none">
+            <a class="nav-link small text-truncate" href="#" id="contextMobile" data-bs-toggle="tooltip"
+              data-bs-placement="bottom" title="">Context</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="row" id="chat-container">
+    <div id="main-chat-container" class="col-4 px-0">
+      <div id="subchat-container">
+        <div id="chat-log"></div>
+        <div id="vertical-drag-divider" tabindex="0"></div>
+        <div id="tools-chat-form-container">
+          <div id="tools-div">
+            <div id="tools-left">
+              <button type="button" id="prompts-catalog">Catalog of prompts</button>
+              <button type="button" id="clean-history">Clean history</button>
+            </div>
+            <div id="tools-right">
+              <input id="internetEnabled" type="checkbox" />
+              <label for="internetEnabled">Add internet context</label>
+            </div>
+          </div>
+          <form id="chat-form">
+            {% csrf_token %}
+            <textarea id="chat-message-input" autocomplete="off" placeholder="Send a message..."
+              spellcheck="false"></textarea>
+            <button type="submit" id="chat-message-submit">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="drag-divider" tabindex="0"></div>
+
+    <div class="col-8 px-0" id="canvas-container">
+      <div id="filename-div" class="row">
+        <div class="col-6" id="filename-div-left">
+          <span id="filename">&lt;&lt;...&gt;&gt;</span>
+        </div>
+
+        <div class="col-6" id="filename-div-right">
+          <button id="copy-canvas-button">Copy</button>
+          <button id="reopen-canvas-button">Reopen</button>
+          <button id="clean-canvas-button">Clean canvas</button>
+          <button id="context-button">Use as context</button>
+        </div>
+      </div>
+      <div id="editor-container">
+        <textarea id="line-numbers" placeholder="...."></textarea>
+        <div id="text-editor">
+          <pre><code></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="confirmation-dialog-message" title="" style="display: none;">
+    <h2 id="confirmation-primary-dialog-legend"></h2>
+    <p id="confirmation-secondary-dialog-legend"></p>
+  </div>
+  <div id="omissions-dialog-message" title="" style="display: none;">
+    <h5 id="omissions-primary-dialog-legend"></h5>
+    <p id="omissions-secondary-dialog-legend"></p>
+    <input id="fileTypeOmissions" type="text" value="" placeholder="File extensions separated by coma (,)"
+      spellcheck="false" size="57">
+  </div>
+  <div id="mcps-dialog-message" title="" style="display: none;">
+    <h5 id="mcps-primary-dialog-legend"></h5>
+    <p id="mcps-secondary-dialog-legend"></p>
+    <div>
+      <ul id="rag-mcps-list">
+        <li><input id="mcp-1" type="checkbox">
+          <label id="label-mcp-1" for="mcp-1">System-Metrics</label>
+        </li>
+        <li><input id="mcp-2" type="checkbox">
+          <label id="label-mcp-2" for="mcp-2">Files-Search</label>
+        </li>
+      </ul>
+    </div>
+    <br>
+    <p id="mcps-thirdtiary-dialog-legend"></p>
+    <div>
+      <ul id="tool-mcps-list"></ul>
+    </div>
+  </div>
+  <div id="agents-dialog-message" title="" style="display: none;">
+    <h5 id="agents-primary-dialog-legend"></h5>
+    <p id="agents-secondary-dialog-legend"></p>
+    <div>
+      <ul id="agents-list"></ul>
+    </div>
+  </div>
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 id="modal-header-title">Prestablished prompts...</h4>
+      </div>
+      <div id="tools-body" class="modal-body"></div>
+      <div class="modal-footer">
+      </div>
+    </div>
+  </div>
+  {{ request.user.username|json_script:"user_username" }}
+  {{ initial_messages|json_script:"initial_messages" }}
+  {{ ollama_base_url|json_script:"ollama_config" }}
+  <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_ui.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_context.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_chat.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_layout.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+</body>
+
+</html>

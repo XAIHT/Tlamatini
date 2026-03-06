@@ -1,0 +1,23 @@
+# Telegramer Agent Configuration
+# Sends a pre-configured Telegram message immediately upon start,
+# then triggers downstream agents (whether send succeeded or failed).
+#
+# DEPLOYMENT NOTES:
+# When deployed via agentic_control_panel, this agent is copied to the pool
+# directory with a cardinal suffix (e.g., telegramer_1, telegramer_2).
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []
+
+# Target agents (auto-populated via canvas connections)
+target_agents: []
+
+# Telegram Configuration
+telegram:
+  api_id:                 # Replace with your actual Telegram API ID
+  api_hash: ""             # Replace with your actual Telegram API Hash
+  chat_id: "me"            # Target chat ID or username ("me" = Saved Messages)
+  message: "Hello from Telegramer agent!"  # Message to send
+
+# Polling configuration
+poll_interval: 5

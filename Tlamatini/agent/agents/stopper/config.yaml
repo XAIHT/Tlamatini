@@ -1,0 +1,53 @@
+# Stopper Agent Configuration
+# This agent monitors source agents for configurable patterns and terminates
+# those agents when their patterns are detected.
+#
+# DEPLOYMENT NOTES:
+# When deployed via agentic_control_panel, this agent is copied to the pool
+# directory with a cardinal suffix (e.g., stopper_1, stopper_2).
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents is automatically populated when you make connections on the canvas:
+#   - Connect an agent's OUTPUT to this Stopper's INPUT -> adds to source_agents
+#   - Connect this Stopper's OUTPUT to another agent's INPUT -> adds to output_agents
+#
+# MULTI-INPUT SUPPORT:
+# This agent supports 1-256 source agents. Each source agent gets:
+#   - Its own monitoring thread (parallel, independent)
+#   - Its own pattern to detect
+#   - Its own .pos file for tracking log position
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Start one monitoring thread per source agent
+# 2. Continuously monitor each source agent's log file for its pattern
+# 3. Terminate the source agent when its pattern is detected
+# 4. Continue monitoring (agent may restart and need to be stopped again)
+# 5. Clean up all .pos files when stopped
+
+# =============================================================================
+# PATTERN CONFIGURATION
+# =============================================================================
+# Patterns to detect in source agent logs (one per source agent)
+# IMPORTANT: Number of patterns MUST match number of source_agents
+#
+# Examples:
+#   - "SHUTDOWN"           -> Agent signaling shutdown
+#   - "ERROR"              -> Error occurred
+#   - "Task completed"     -> Work finished
+#   - "STOP REQUESTED"     -> Explicit stop signal
+patterns: []
+
+# Source agents to monitor AND terminate (auto-populated via canvas connections)
+# Each source agent is monitored by its own dedicated thread
+# Examples:
+#   - monitor_log_1      -> pool/monitor_log_1/monitor_log.log
+#   - executer_2         -> pool/executer_2/executer.log
+source_agents: []
+
+# Output agents (for downstream autoconfiguration - NOT started by Stopper)
+# These agents can auto-detect their connection to Stopper for configuration
+output_agents: []
+
+# Polling interval in seconds (how often to check each log file)
+poll_interval: 5

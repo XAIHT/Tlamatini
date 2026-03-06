@@ -1,0 +1,6 @@
+telegram:
+  api_id: 36367295  # Replace with your actual api_id
+  api_hash: "9854952a0bd1cf028341b5d591305d32" # Replace with your actual api_hash
+
+ollama:
+  model: "gpt-oss:120b-cloud"  # Replace with the model you have installed in Ollama
