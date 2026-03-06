@@ -273,7 +273,6 @@ Tlamatini/
 ├── Tlamatini/                      # Django project root
 │   ├── manage.py                    # Django CLI utility
 │   ├── db.sqlite3                   # SQLite database
-│   ├── trigger_jenkins.py           # Jenkins build trigger utility
 │   │
 │   ├── tlamatini/                 # Django project configuration
 │   │   ├── settings.py             # Django settings (Channels, WhiteNoise)
