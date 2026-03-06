@@ -1,0 +1,26 @@
+# Asker Agent Configuration
+# This is a deterministic agent (no LLM) that asks the user to choose
+# between two output paths (A or B) and starts the corresponding agents.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Write ASKER_CHOICE_NEEDED to its log
+# 2. Wait for the user to pick Path A or Path B via the browser dialog
+# 3. Start the agents in the chosen path (target_agents_a or target_agents_b)
+# 4. Exit after triggering
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents_a, target_agents_b, and source_agents are automatically
+# populated when you make connections on the canvas:
+#   - Connect an agent's OUTPUT to this Asker's INPUT -> adds to source_agents
+#   - Connect this Asker's OUTPUT A to an agent's INPUT -> adds to target_agents_a
+#   - Connect this Asker's OUTPUT B to an agent's INPUT -> adds to target_agents_b
+
+# Agents to start if user picks Path A (auto-populated via canvas connections)
+target_agents_a: []
+
+# Agents to start if user picks Path B (auto-populated via canvas connections)
+target_agents_b: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

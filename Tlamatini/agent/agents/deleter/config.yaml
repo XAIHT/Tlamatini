@@ -1,0 +1,7 @@
+trigger_mode: "immediate" # Options: "immediate", "event"
+files_to_delete:
+  - "C:/Temp/*.tmp"
+source_agents: [] # List of connected agent names (e.g., ["monitor_log_1"])
+target_agents: [] # List of downstream agents to trigger
+trigger_event_string: "EVENT DETECTED"
+poll_interval: 5

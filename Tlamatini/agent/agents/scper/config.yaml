@@ -1,0 +1,27 @@
+# Scper Agent Configuration
+# SCP file transfer to/from a remote host.
+#
+# IMPORTANT: You must preconfigure SSH keys to allow passwordless
+# authentication to the remote endpoint before using this agent.
+#
+# BEHAVIOR:
+# - On SUCCESS (exit code 0): Triggers downstream agents
+# - On FAILURE (non-zero exit): Logs failure detail, does NOT trigger downstream
+
+# SSH login/user for the remote host
+user: "user"
+
+# Remote host IP or hostname
+ip: "[IP_ADDRESS]"
+
+# File path to send or receive
+# - For 'send': use a Windows-like path (e.g. C:\Users\angel\file.txt)
+# - For 'receive': use a Linux-like path (e.g. /home/user/file.txt)
+file: ""
+
+# Direction of transfer: 'send' (local -> remote) or 'receive' (remote -> local)
+direction: "send"
+
+# Agents connected (auto-populated via canvas connections)
+source_agents: []
+target_agents: []

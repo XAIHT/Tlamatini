@@ -1,0 +1,2626 @@
+const userUsername = JSON.parse(document.getElementById('user_username').textContent);
+const chatLog = document.getElementById('chat-log');
+
+const chatSocket = new WebSocket(
+    'ws://' + window.location.host + '/ws/agent/'
+);
+
+let contextButtonClicked = false;
+let canvasSettedAsContext = false;
+let confirmationByUser = false; // eslint-disable-line no-unused-vars
+let inLongOperation = false;
+let canvasLoaded = false;
+const loadCatalogOfPrompts = null; // eslint-disable-line no-unused-vars
+let openEnabled = true;
+let reConnectEnabled = true;
+let contextEnabled = true;
+let cleanCanvasEnabled = true;
+let actualContextDir = null;
+let lapseLoadingContext = false;
+let clearContextEnabled = false;
+let cleanHistoryEnabled = true;
+let fileTypeOmissions = "";
+let textEditorCode = document.querySelector('#text-editor code');
+const textEditorPre = document.querySelector('#text-editor pre');
+const lineNumbers = document.getElementById('line-numbers');
+const openButton = document.getElementById('open-button');
+const saveAsButton = document.getElementById('save-as-button');
+const contextButton = document.getElementById('context-button');
+const cleanCanvasButton = document.getElementById('clean-canvas-button');
+const chatInput = document.getElementById('chat-message-input');
+const chatSubmitButton = document.getElementById('chat-message-submit');
+const logoutButton = document.getElementById('logout-button');
+const reopenOpenCanvasButton = document.getElementById('reopen-canvas-button');
+const copyCanvasButton = document.getElementById('copy-canvas-button');
+const confirmationDialogMessage = document.getElementById('confirmation-dialog-message');
+const confirmationPrimaryDialogLegend = document.getElementById('confirmation-primary-dialog-legend');
+const confirmationSecondaryDialogLegend = document.getElementById('confirmation-secondary-dialog-legend');
+const reConnectButton = document.getElementById('re-connect-button');
+const cleanHistoryButton = document.getElementById('clean-history');
+const contextMenuButton = document.getElementById('context-menu-button');
+const mcpsMenuButton = document.getElementById('mcps-menu-button');
+const agentsMenuButton = document.getElementById('agents-menu-button');
+const filenameDivRight = document.getElementById('filename-div-right'); // eslint-disable-line no-unused-vars
+const filenameDivLeft = document.getElementById('filename-div-left'); // eslint-disable-line no-unused-vars
+const filenameSpan = document.getElementById('filename'); // eslint-disable-line no-redeclare
+const setDirContextMenu = document.getElementById('set-dir-context');
+const setFileContextMenu = document.getElementById('set-file-context');
+const viewContextDirInCanvasMenu = document.getElementById('view-context-dir-in-canvas');
+const contextInfoDiv = document.getElementById('contextInfo');
+const contextDataSpan = document.getElementById('contextData');
+const contextMobile = document.getElementById("contextMobile");
+const clearContextButton = document.getElementById('clear-context');
+const omissionsDialogMessage = document.getElementById('omissions-dialog-message');
+const omissionsPrimaryDialogLegend = document.getElementById('omissions-primary-dialog-legend');
+const omissionsSecondaryDialogLegend = document.getElementById('omissions-secondary-dialog-legend');
+const omissionContentInput = document.getElementById("fileTypeOmissions");
+const mcpsDialogMessage = document.getElementById('mcps-dialog-message');
+const mcpsPrimaryDialogLegend = document.getElementById('mcps-primary-dialog-legend');
+const mcpsSecondaryDialogLegend = document.getElementById('mcps-secondary-dialog-legend');
+const mcpsThirdtiaryDialogLegend = document.getElementById('mcps-thirdtiary-dialog-legend');
+const agentsDialogMessage = document.getElementById('agents-dialog-message');
+const agentsPrimaryDialogLegend = document.getElementById('agents-primary-dialog-legend');
+const agentsSecondaryDialogLegend = document.getElementById('agents-secondary-dialog-legend');
+const mcp1 = document.getElementById('mcp-1'); // eslint-disable-line no-unused-vars
+const mcp2 = document.getElementById('mcp-2'); // eslint-disable-line no-unused-vars
+const label_mcp1 = document.getElementById('label-mcp-1');
+const label_mcp2 = document.getElementById('label-mcp-2');
+const toolMcpsList = document.getElementById('tool-mcps-list');
+const agentsList = document.getElementById('agents-list');
+const spinnerId = 'wait-spinner';
+const maximalTheoricTokens = 12500;
+const MAX_MCPS = 32;
+const MAX_TOOLS = 32;
+const MAX_AGENTS = 32;
+let chatHistory = [];
+let historyIndex = 0;
+let tempInput = '';
+let buildingInitial = false; // eslint-disable-line no-unused-vars
+let titleBusyPrefix = ""; // eslint-disable-line no-redeclare
+let mcp1_enabled = false;
+let mcp2_enabled = false;
+let tools = [];
+let agents = [];
+contextButton.disabled = true;
+contextButton.style.backgroundColor = "#808080";
+contextButton.textContent = "Use as context";
+
+// ========================================
+// BEFOREUNLOAD: Prevent accidental close during long operations
+// ========================================
+window.addEventListener('beforeunload', (event) => {
+    if (inLongOperation) {
+        // Show browser "Leave site?" warning
+        event.preventDefault();
+        event.returnValue = '';
+
+        // Send cancel-all via beacon for reliable delivery during page unload
+        const cancelPayload = JSON.stringify({
+            type: 'cancel-all',
+            message: 'cancel'
+        });
+        navigator.sendBeacon('/agent/clear_session_state/', cancelPayload);
+        console.log('--- Page closing during long operation: Sent cancel request via beacon');
+    }
+});
+// ========================================
+// END BEFOREUNLOAD
+// ========================================
+
+
+function setContextText(txt) {
+    const full = txt || "";
+
+    if (contextDataSpan) {
+        contextDataSpan.textContent = full;
+        contextDataSpan.title = full;
+    }
+    if (contextMobile) {
+        contextMobile.title = full;
+        if (window.bootstrap) {
+            const tip = bootstrap.Tooltip.getInstance(contextMobile);
+            if (tip) tip.dispose();
+            new bootstrap.Tooltip(contextMobile);
+        }
+    }
+}
+
+function updateViewContextDirMenuState() {
+    if (viewContextDirInCanvasMenu) {
+        if (actualContextDir !== null && actualContextDir !== '') {
+            viewContextDirInCanvasMenu.parentElement.style.display = 'block';
+        } else {
+            viewContextDirInCanvasMenu.parentElement.style.display = 'none';
+        }
+    }
+}
+
+function setTitleBusy(isBusy) {
+    titleBusyPrefix = isBusy ? "⏳ " : "";
+}
+
+function isBusyMessageRequest(message) {
+    if (!message) return false;
+    const m = String(message);
+    return (
+        m.includes("Your request is being processed by the LLM.")
+    );
+}
+
+function isBusyMessageContext(message) {
+    if (!message) return false;
+    const m = String(message);
+    return (
+        m.includes("Your agent is loading the context.")
+    );
+}
+
+
+function debounce(func, wait = 250) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => { func.apply(this, args); }, wait);
+    };
+}
+
+function genericTokenCounting(text) {
+    return text.length / 4;
+}
+
+function appendChatMessage(username, message, addedContent = null) {
+    const messageDiv = document.createElement('div');
+    const messageContentDiv = document.createElement('div');
+    const usernameDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageContentDiv.classList.add('message-content');
+    usernameDiv.classList.add('username');
+
+    if (isBusyMessageRequest(message)) {
+        setTitleBusy(true);
+        chatInput.readOnly = true;
+        chatInput.style.backgroundColor = 'gray';
+        if (!document.getElementById(spinnerId)) {
+            const waitWidget = document.createElement('img');
+            waitWidget.id = spinnerId;
+            waitWidget.src = '/static/agent/img/spinner.svg';
+            waitWidget.style.width = '100px';
+            waitWidget.style.height = '100px';
+            waitWidget.style.position = 'absolute';
+            waitWidget.style.top = '50%';
+            waitWidget.style.left = '50%';
+            waitWidget.style.transform = 'translate(-50%, -50%)';
+            waitWidget.style.zIndex = '1000';
+            chatLog.appendChild(waitWidget);
+        }
+        contextButton.disabled = true;
+        openEnabled = false;
+        contextEnabled = false;
+        cleanCanvasEnabled = false;
+        reConnectEnabled = false;
+        reConnectButton.disabled = true;
+        cleanHistoryButton.disabled = true;
+        cleanHistoryButton.style.backgroundColor = "#808080";
+        cleanHistoryEnabled = false;
+        contextMenuButton.setAttribute('disabled', 'disabled');
+        contextMenuButton.removeAttribute('data-bs-toggle');
+        mcpsMenuButton.setAttribute('disabled', 'disabled');
+        mcpsMenuButton.removeAttribute('data-bs-toggle');
+        // Keep agentsMenuButton enabled so "Agentic Control Panel" remains accessible
+        // Only disable the "Configure Agents" entry
+        const configureAgentsItem = document.getElementById('enable-agents');
+        if (configureAgentsItem) {
+            configureAgentsItem.classList.add('disabled');
+            configureAgentsItem.style.pointerEvents = 'none';
+            configureAgentsItem.style.opacity = '0.5';
+        }
+        chatSubmitButton.textContent = 'Cancel';
+        cleanCanvasButton.style.backgroundColor = "#808080";
+        cleanCanvasButton.disabled = true;
+        reopenOpenCanvasButton.style.backgroundColor = "#808080";
+        reopenOpenCanvasButton.disabled = true;
+        copyCanvasButton.style.backgroundColor = "#808080";
+        copyCanvasButton.disabled = true;
+        contextButton.style.backgroundColor = "#808080";
+        contextButton.disabled = true;
+        inLongOperation = true;
+    } else if (isBusyMessageContext(message)) {
+        setTitleBusy(true);
+        chatInput.readOnly = true;
+        chatInput.style.backgroundColor = 'gray';
+        if (!document.getElementById(spinnerId)) {
+            const waitWidget = document.createElement('img');
+            waitWidget.id = spinnerId;
+            waitWidget.src = '/static/agent/img/spinner.svg';
+            waitWidget.style.width = '100px';
+            waitWidget.style.height = '100px';
+            waitWidget.style.position = 'absolute';
+            waitWidget.style.top = '50%';
+            waitWidget.style.left = '50%';
+            waitWidget.style.transform = 'translate(-50%, -50%)';
+            waitWidget.style.zIndex = '1000';
+            chatLog.appendChild(waitWidget);
+        }
+        contextButton.disabled = true;
+        openEnabled = false;
+        contextEnabled = false;
+        cleanCanvasEnabled = false;
+        reConnectEnabled = false;
+        reConnectButton.disabled = true;
+        cleanHistoryButton.disabled = true;
+        cleanHistoryButton.style.backgroundColor = "#808080";
+        cleanHistoryEnabled = false;
+        contextMenuButton.setAttribute('disabled', 'disabled');
+        contextMenuButton.removeAttribute('data-bs-toggle');
+        mcpsMenuButton.setAttribute('disabled', 'disabled');
+        mcpsMenuButton.removeAttribute('data-bs-toggle');
+        // Keep agentsMenuButton enabled so "Agentic Control Panel" remains accessible
+        // Only disable the "Configure Agents" entry
+        const configureAgentsItem2 = document.getElementById('enable-agents');
+        if (configureAgentsItem2) {
+            configureAgentsItem2.classList.add('disabled');
+            configureAgentsItem2.style.pointerEvents = 'none';
+            configureAgentsItem2.style.opacity = '0.5';
+        }
+
+        chatSubmitButton.textContent = 'Cancel';
+        cleanCanvasButton.style.backgroundColor = "#808080";
+        cleanCanvasButton.disabled = true;
+        reopenOpenCanvasButton.style.backgroundColor = "#808080";
+        reopenOpenCanvasButton.disabled = true;
+        copyCanvasButton.style.backgroundColor = "#808080";
+        copyCanvasButton.disabled = true;
+        contextButton.style.backgroundColor = "#808080";
+        contextButton.disabled = true;
+        inLongOperation = true;
+        lapseLoadingContext = true;
+    } else if (message.toLowerCase().includes("out of the root directory") || message.toLowerCase().includes("outside the application root")) {
+        console.log("--- Selected directory is outside the application root path and is not allowed. message received: " + message);
+        lapseLoadingContext = false;
+        clearContextEnabled = false;
+        clearContextButton.setAttribute("style", "display: none !important;");
+        setContextText("<<<" + "..." + ">>>  ");
+        contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+        lapseLoadingContext = false;
+
+        if (actualContextDir !== null && actualContextDir !== '') {
+            actualContextDir = null;
+            updateViewContextDirMenuState();
+        }
+        clearContextEnabled = false;
+        clearContextButton.setAttribute("style", "display: none !important;");
+        setTitleBusy(false);
+        contextEnabled = true;
+        contextButton.style.backgroundColor = "darkgreen";
+        contextButton.disabled = false;
+        contextButtonClicked = false;
+        contextButton.textContent = "Use as context";
+        chatInput.readOnly = false;
+        chatInput.style.backgroundColor = '#40414F';
+        const existingSpinner = document.getElementById(spinnerId);
+
+        if (existingSpinner && existingSpinner.parentNode) {
+            existingSpinner.parentNode.removeChild(existingSpinner);
+        }
+
+        if (canvasSettedAsContext) {
+            contextButton.textContent = "Used as context";
+            contextButton.style.backgroundColor = "#808080";
+        } else {
+            if (canvasLoaded) {
+                contextButton.textContent = "Use as context";
+                contextButton.style.backgroundColor = "darkgreen";
+            } else {
+                contextButton.textContent = "Use as context";
+                contextButton.style.backgroundColor = "#808080";
+            }
+        }
+
+        openEnabled = true;
+        reConnectEnabled = true;
+        contextEnabled = true;
+        cleanCanvasEnabled = true;
+        reConnectButton.disabled = false;
+        cleanHistoryButton.disabled = false;
+        cleanHistoryButton.style.backgroundColor = "darkgreen";
+        cleanHistoryEnabled = true;
+        contextMenuButton.removeAttribute('disabled', 'disabled');
+        contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        mcpsMenuButton.removeAttribute('disabled', 'disabled');
+        mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        // Re-enable the "Configure Agents" entry
+        const configureAgentsItemRestore1 = document.getElementById('enable-agents');
+        if (configureAgentsItemRestore1) {
+            configureAgentsItemRestore1.classList.remove('disabled');
+            configureAgentsItemRestore1.style.pointerEvents = '';
+            configureAgentsItemRestore1.style.opacity = '';
+        }
+
+        if (canvasLoaded === true) {
+            cleanCanvasButton.style.backgroundColor = "darkgreen";
+            cleanCanvasButton.disabled = false;
+            reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+            reopenOpenCanvasButton.disabled = false;
+            copyCanvasButton.style.backgroundColor = "darkgreen";
+            copyCanvasButton.disabled = false;
+            contextButton.disabled = false;
+        } else {
+            cleanCanvasButton.style.backgroundColor = "#808080";
+            cleanCanvasButton.disabled = true;
+            reopenOpenCanvasButton.style.backgroundColor = "#808080";
+            reopenOpenCanvasButton.disabled = true;
+            copyCanvasButton.style.backgroundColor = "#808080";
+            copyCanvasButton.disabled = true;
+            contextButton.disabled = true;
+        }
+
+        chatSubmitButton.textContent = 'Send';
+        inLongOperation = false;
+        lapseLoadingContext = false;
+    } else if (message.toLowerCase().includes("referenced rephrase:")) {
+        setTitleBusy(true);
+        console.log("--- Referenced Rephrase: message received: " + message);
+    } else {
+        setTitleBusy(false);
+        contextEnabled = true;
+        contextButton.style.backgroundColor = "darkgreen";
+        contextButton.disabled = false;
+        contextButtonClicked = false;
+        contextButton.textContent = "Use as context";
+        chatInput.readOnly = false;
+        chatInput.style.backgroundColor = '#40414F';
+        const existingSpinner = document.getElementById(spinnerId);
+
+        if (existingSpinner && existingSpinner.parentNode) {
+            existingSpinner.parentNode.removeChild(existingSpinner);
+        }
+
+        if (canvasSettedAsContext) {
+            contextButton.textContent = "Used as context";
+            contextButton.style.backgroundColor = "#808080";
+        } else {
+            if (canvasLoaded) {
+                contextButton.textContent = "Use as context";
+                contextButton.style.backgroundColor = "darkgreen";
+            } else {
+                contextButton.textContent = "Use as context";
+                contextButton.style.backgroundColor = "#808080";
+            }
+        }
+
+        openEnabled = true;
+        reConnectEnabled = true;
+        contextEnabled = true;
+        cleanCanvasEnabled = true;
+        reConnectButton.disabled = false;
+        cleanHistoryButton.disabled = false;
+        cleanHistoryButton.style.backgroundColor = "darkgreen";
+        cleanHistoryEnabled = true;
+        contextMenuButton.removeAttribute('disabled', 'disabled');
+        contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        mcpsMenuButton.removeAttribute('disabled', 'disabled');
+        mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        // Re-enable the "Configure Agents" entry
+        const configureAgentsItemRestore2 = document.getElementById('enable-agents');
+        if (configureAgentsItemRestore2) {
+            configureAgentsItemRestore2.classList.remove('disabled');
+            configureAgentsItemRestore2.style.pointerEvents = '';
+            configureAgentsItemRestore2.style.opacity = '';
+        }
+
+        if (canvasLoaded === true) {
+            cleanCanvasButton.style.backgroundColor = "darkgreen";
+            cleanCanvasButton.disabled = false;
+            reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+            reopenOpenCanvasButton.disabled = false;
+            copyCanvasButton.style.backgroundColor = "darkgreen";
+            copyCanvasButton.disabled = false;
+            contextButton.disabled = false;
+        } else {
+            cleanCanvasButton.style.backgroundColor = "#808080";
+            cleanCanvasButton.disabled = true;
+            reopenOpenCanvasButton.style.backgroundColor = "#808080";
+            reopenOpenCanvasButton.disabled = true;
+            copyCanvasButton.style.backgroundColor = "#808080";
+            copyCanvasButton.disabled = true;
+            contextButton.disabled = true;
+        }
+
+        chatSubmitButton.textContent = 'Send';
+        inLongOperation = false;
+        lapseLoadingContext = false;  // Reset so normal Send works
+    }
+
+    if (username === 'LLM_Bot') {
+        messageDiv.classList.add('bot-message');
+        usernameDiv.style.color = '#55BBAA';
+        const formatted = String(message);
+        messageContentDiv.innerHTML = '<div class="automated-message">' + formatted + '</div>';
+        if (addedContent != null) {
+            $(addedContent).off('click').on('click', function (e) {
+                e.preventDefault();
+                console.log("wwwwwwwwwwwwwwwwww");
+                console.log($(this).data('files'));
+                send2SaveFiles($(this).data('files'));
+                console.log("wwwwwwwwwwwwwwwwww");
+                $(this).off('click');
+                $(this).remove();
+            });
+            messageContentDiv.firstChild.appendChild(document.createElement('br'));
+            messageContentDiv.firstChild.appendChild(addedContent);
+            console.log("xxxxxxxxxxxxxxxxxx");
+            console.log(addedContent.data);
+            console.log("xxxxxxxxxxxxxxxxxx");
+        }
+    } else {
+        messageDiv.classList.add('user-message');
+        usernameDiv.style.color = '#A893F3';
+        messageContentDiv.innerText = message;
+    }
+
+    usernameDiv.textContent = username;
+    messageContentDiv.prepend(usernameDiv);
+    messageDiv.appendChild(messageContentDiv);
+    chatLog.appendChild(messageDiv);
+}
+
+function renderInitialMessages(messages) {
+    if (!Array.isArray(messages)) return;
+    chatLog.innerHTML = '';
+    buildingInitial = true;
+    for (const msg of messages) {
+        if (!msg) continue;
+        appendChatMessage(msg.username, msg.message);
+    }
+    buildingInitial = false;
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function loadCanvas(filename) { // eslint-disable-line no-unused-vars
+    if (contextEnabled === false) {
+        console.error("Lading canvas is not allowed while the LLM is processing a request, function will return false...");
+        return false;
+    }
+
+    if (canvasSettedAsContext === true) {
+        console.log("Detected context was active, so send the message to clean the context and rebuild the RAG...");
+        const codeRegex = /<<< (.+?) >>>/s;
+        const result = filenameSpan.textContent.match(codeRegex);
+        const type = "unset-canvas-as-context";
+        if (result && result[1] && result[1].length > 0 && result[1].includes('...') === false) {
+            const filename = result[1];
+            chatSocket.send(JSON.stringify({
+                'type': type,
+                'message': filename
+            }));
+        }
+        console.log("...Rebuild rag action sent.");
+    }
+
+    fetch(`/agent/load_canvas/${filename}/`)
+        .then(response => response.text())
+        .then(content => {
+            const newTextEditorCode = document.createElement('code');
+            const extension = filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2);
+            if (extension.includes('py')) {
+                newTextEditorCode.classList.add('language-python');
+            } else if (extension.includes('java')) {
+                newTextEditorCode.classList.add('language-java');
+            } else if (extension.includes('js') || extension.includes('jsx') || extension.includes('astro')) {
+                newTextEditorCode.classList.add('language-javascript');
+            } else if (extension.includes('css')) {
+                newTextEditorCode.classList.add('language-css');
+            } else if (extension.includes('cpp') || extension.includes('hpp')) {
+                newTextEditorCode.classList.add('language-cpp');
+            } else if (extension.includes('cu')) {
+                newTextEditorCode.classList.add('language-cpp');
+            } else if (extension.includes('c') || extension.includes('h')) {
+                newTextEditorCode.classList.add('language-c');
+            } else if (extension.includes('sql')) {
+                newTextEditorCode.classList.add('language-sql');
+            } else if (extension.includes('jsp') || extension.includes('xml') || extension.includes('html') || extension.includes('xhtml') || extension.includes('vue')) {
+                newTextEditorCode.classList.add('language-xml');
+            } else if (extension.includes('yaml')) {
+                newTextEditorCode.classList.add('language-yaml');
+            } else if (extension.includes('bash')) {
+                newTextEditorCode.classList.add('language-bash');
+            } else if (extension.includes('ts') || extension.includes('tsx')) {
+                newTextEditorCode.classList.add('language-typescript');
+            } else if (extension.includes('kt')) {
+                newTextEditorCode.classList.add('language-kotlin');
+            } else if (extension.includes('toml')) {
+                newTextEditorCode.classList.add('language-toml');
+            } else if (extension.includes('rs')) {
+                newTextEditorCode.classList.add('language-rust');
+            } else {
+                newTextEditorCode.classList.add('language-text');
+            }
+            newTextEditorCode.textContent = content;
+            textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
+            textEditorCode = newTextEditorCode;
+            hljs.highlightElement(textEditorCode);
+            updateLineNumbers();
+            filenameSpan.textContent = `<<< ${filename} >>>`;
+            canvasLoaded = true;
+
+            cleanCanvasButton.style.backgroundColor = "darkgreen";
+            cleanCanvasButton.disabled = false;
+            reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+            reopenOpenCanvasButton.disabled = false;
+            copyCanvasButton.style.backgroundColor = "darkgreen";
+            copyCanvasButton.disabled = false;
+            contextButton.style.backgroundColor = "darkgreen";
+            contextButton.disabled = false;
+
+            canvasSettedAsContext = false;
+            contextButtonClicked = false;
+            contextButton.textContent = "Use as context";
+        })
+        .catch(error => console.error('Error loading canvas:', error));
+}
+
+async function loadCanvasFromFileInContentGenerated(filename) { // eslint-disable-line no-unused-vars
+    if (contextEnabled === false) {
+        console.error("Loading canvas is not allowed while the LLM is processing a request, function will return false...");
+        return false;
+    }
+
+    alert(`Please select the file: ${filename}\n\nIt should be located in the 'content_generated' directory.`);
+
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.txt,.py,.js,.java,.cpp,.c,.html,.css,.json,.xml,*';
+        input.style.display = 'none';
+
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                console.error("No file selected");
+                document.body.removeChild(input);
+                return false;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = event.target.result;
+                const actualFilename = file.name;
+                const extension = actualFilename.slice((actualFilename.lastIndexOf(".") - 1 >>> 0) + 2);
+
+                const newTextEditorCode = document.createElement('code');
+
+                if (extension.includes('py')) {
+                    newTextEditorCode.classList.add('language-python');
+                } else if (extension.includes('java')) {
+                    newTextEditorCode.classList.add('language-java');
+                } else if (extension.includes('js') || extension.includes('jsx') || extension.includes('astro')) {
+                    newTextEditorCode.classList.add('language-javascript');
+                } else if (extension.includes('css')) {
+                    newTextEditorCode.classList.add('language-css');
+                } else if (extension.includes('cpp') || extension.includes('hpp')) {
+                    newTextEditorCode.classList.add('language-cpp');
+                } else if (extension.includes('cu')) {
+                    newTextEditorCode.classList.add('language-cpp');
+                } else if (extension.includes('c') || extension.includes('h')) {
+                    newTextEditorCode.classList.add('language-c');
+                } else if (extension.includes('sql')) {
+                    newTextEditorCode.classList.add('language-sql');
+                } else if (extension.includes('jsp') || extension.includes('xml') || extension.includes('html') || extension.includes('xhtml') || extension.includes('vue')) {
+                    newTextEditorCode.classList.add('language-xml');
+                } else if (extension.includes('yaml')) {
+                    newTextEditorCode.classList.add('language-yaml');
+                } else if (extension.includes('bash')) {
+                    newTextEditorCode.classList.add('language-bash');
+                } else if (extension.includes('ts') || extension.includes('tsx')) {
+                    newTextEditorCode.classList.add('language-typescript');
+                } else if (extension.includes('kt')) {
+                    newTextEditorCode.classList.add('language-kotlin');
+                } else if (extension.includes('toml')) {
+                    newTextEditorCode.classList.add('language-toml');
+                } else if (extension.includes('rs')) {
+                    newTextEditorCode.classList.add('language-rust');
+                } else {
+                    newTextEditorCode.classList.add('language-text');
+                }
+
+                newTextEditorCode.textContent = content;
+                textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
+                textEditorCode = newTextEditorCode;
+                hljs.highlightElement(textEditorCode);
+                updateLineNumbers();
+                filenameSpan.textContent = `<<< ${actualFilename} >>>`;
+                canvasLoaded = true;
+
+                cleanCanvasButton.style.backgroundColor = "darkgreen";
+                cleanCanvasButton.disabled = false;
+                reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+                reopenOpenCanvasButton.disabled = false;
+                copyCanvasButton.style.backgroundColor = "darkgreen";
+                copyCanvasButton.disabled = false;
+                contextButton.style.backgroundColor = "darkgreen";
+                contextButton.disabled = false;
+                canvasSettedAsContext = false;
+                contextButtonClicked = false;
+                contextButton.textContent = "Use as context";
+                console.log("Successfully loaded file from content_generated: " + actualFilename);
+                document.body.removeChild(input);
+            };
+            reader.readAsText(file);
+        };
+        document.body.appendChild(input);
+        input.click();
+    } catch (error) {
+        console.error('Error loading canvas from content_generated:', error);
+        alert('Error loading file: ' + filename);
+    }
+}
+
+function loadCanvasWithThisContent(content) {
+    console.log("loadCanvasWithThisContent()...");
+    const newTextEditorCode = document.createElement('code');
+    newTextEditorCode.classList.add('language-text');
+    newTextEditorCode.textContent = content;
+    textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
+    textEditorCode = newTextEditorCode;
+    hljs.highlightElement(textEditorCode);
+    updateLineNumbers();
+    filenameSpan.textContent = `<<< Context, tree of content. >>>`;
+    canvasLoaded = true;
+    cleanCanvasButton.style.backgroundColor = "darkgreen";
+    cleanCanvasButton.disabled = false;
+    reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+    reopenOpenCanvasButton.disabled = false;
+    copyCanvasButton.style.backgroundColor = "darkgreen";
+    copyCanvasButton.disabled = false;
+    contextButton.style.backgroundColor = "darkgreen";
+    contextButton.disabled = false;
+    canvasSettedAsContext = false;
+    contextButtonClicked = false;
+    contextButton.textContent = "Use as context";
+    console.log("Successfully loaded file from parameter content.");
+    console.log("...loadCanvasWithThisContent()");
+}
+
+function openCanvas() {
+    if (openEnabled === false) {
+        console.log("Open canvas is not allowed at this moment...");
+        return;
+    }
+    loadFileContent();
+    console.log("Canvas opened.");
+}
+
+function reopenCanvas() {
+    console.log("Reopening canvas with file...");
+
+    const callback2Rag = () => {
+        const type = "set-canvas-as-context";
+        const codeRegex = /<<< (.+?) >>>/s;
+        const result = filenameSpan.textContent.match(codeRegex);
+        const content = textEditorCode.textContent;
+        const tokensNumber = genericTokenCounting(content);
+        console.log("--- The number of tokens in file is: " + tokensNumber);
+        if (tokensNumber > maximalTheoricTokens) {
+            console.log("--- The number of tokens in file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+        }
+        console.log("--- The content is: " + content);
+        if (result) {
+            const filename = result[1];
+            chatSocket.send(JSON.stringify({
+                'type': type,
+                'message': filename,
+                'content': content
+            }));
+        }
+        console.log("...Rebuild rag action sent.")
+    }
+    loadFileContent(canvasSettedAsContext, callback2Rag);
+    console.log("Canvas reopened.");
+}
+
+function cleanCanvas() {
+    const codeRegex = /<<<\s*(.+?)\s*>>>/s;
+    const result1 = filenameSpan.textContent.match(codeRegex);
+    const spanContextString = contextDataSpan.innerText;
+    const result2 = spanContextString.match(codeRegex);
+    if (canvasSettedAsContext === true && result1 && result2 && result1[1] === result2[1]) {
+        console.log("Detected context was active, so send the message to clean the context and rebuild the RAG...");
+        const codeRegex = /<<< (.+?) >>>/s;
+        const result = filenameSpan.textContent.match(codeRegex);
+        const type = "unset-canvas-as-context";
+        if (result && result[1] && result[1].length > 0 && result[1].includes('...') === false) {
+            const filename = result[1];
+            chatSocket.send(JSON.stringify({
+                'type': type,
+                'message': filename
+            }));
+        }
+        clearContextEnabled = false;
+        clearContextButton.setAttribute("style", "display: none !important;");
+        contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
+        contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+        console.log("...Rebuild rag action sent.");
+    } else {
+        console.log("Not Detected context active, message to rebuild RAG not sent.");
+    }
+    const newTextEditorCode = document.createElement('code');
+    newTextEditorCode.classList.add('language-python');
+    newTextEditorCode.textContent = "";
+    textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
+    textEditorCode = newTextEditorCode;
+    lineNumbers.value = "...";
+    filenameSpan.textContent = `<<<...>>>`;
+    canvasLoaded = false;
+
+    cleanCanvasButton.style.backgroundColor = "#808080";
+    cleanCanvasButton.disabled = true;
+    reopenOpenCanvasButton.style.backgroundColor = "#808080";
+    reopenOpenCanvasButton.disabled = true;
+    copyCanvasButton.style.backgroundColor = "#808080";
+    copyCanvasButton.disabled = true;
+    contextButton.style.backgroundColor = "#808080";
+    contextButton.disabled = true;
+
+    canvasSettedAsContext = false;
+    contextButtonClicked = false;
+    contextButton.textContent = "Use as context";
+}
+
+/**
+ * Copy the canvas content to clipboard
+ */
+function copyCanvasToClipboard() {
+    if (!canvasLoaded || !textEditorCode) {
+        console.log("Cannot copy: canvas not loaded or no content");
+        return;
+    }
+
+    const content = textEditorCode.textContent;
+    if (!content || content.trim() === '') {
+        console.log("Cannot copy: canvas content is empty");
+        return;
+    }
+
+    navigator.clipboard.writeText(content).then(() => {
+        console.log("--- Canvas content copied to clipboard");
+        // Visual feedback: temporarily change button text
+        const originalText = copyCanvasButton.textContent;
+        copyCanvasButton.textContent = "Copied!";
+        copyCanvasButton.style.backgroundColor = "#55BBAA";
+        setTimeout(() => {
+            copyCanvasButton.textContent = originalText;
+            if (canvasLoaded) {
+                copyCanvasButton.style.backgroundColor = "darkgreen";
+            } else {
+                copyCanvasButton.style.backgroundColor = "#808080";
+            }
+        }, 1500);
+    }).catch(err => {
+        console.error("Failed to copy canvas content:", err);
+        alert("Failed to copy to clipboard");
+    });
+}
+
+// Copy canvas button click handler
+if (copyCanvasButton) {
+    copyCanvasButton.addEventListener('click', copyCanvasToClipboard);
+    // Initially disabled
+    copyCanvasButton.disabled = true;
+    copyCanvasButton.style.backgroundColor = "#808080";
+}
+
+function parseToFindFiles(data) {
+    let someFileExtracted = false;
+    console.log("----------------");
+    console.log(data);
+    console.log("----------------");
+    const stream = data.message;
+    let stringFileNames = "";
+    if (stream) {
+        console.log("Trying to find files into: " + stream + "...");
+        const loadCanvasPattern = /loadCanvas\("([^"]+)"\)/g;
+        const extractedStrings = [];
+        let match;
+        console.log(">>>>>>>>>>>>>>>>>>messsage: " + data.message);
+
+        match = "1";
+        while (match !== null) {
+            match = loadCanvasPattern.exec(data.message)
+            if (!match) break;
+            extractedStrings.push(match[1]);
+            stringFileNames += match[1] + "|";
+            someFileExtracted = true;
+        }
+
+        if (someFileExtracted === false) {
+            console.log("No files found in message...");
+            return null;
+        }
+        stringFileNames = stringFileNames.slice(0, -1);
+        const link2BeAppended = document.createElement('a');
+        $(link2BeAppended).data('files', stringFileNames);
+        link2BeAppended.href = '#';
+        link2BeAppended.className = 'save-files-anchor';
+        link2BeAppended.innerText = 'Save all files received';
+        console.log('Extracted loadCanvas strings (files in message):', extractedStrings);
+        console.log("Link generated: ");
+        console.log("+++++++++++++++++++++");
+        const textLink2BeAppended = link2BeAppended.outerHTML;
+        console.log(textLink2BeAppended);
+        console.log("+++++++++++++++++++++");
+        return link2BeAppended;
+    }
+    console.error("No files found in message...");
+    return null;
+}
+
+function send2SaveFiles(files) {
+    if (!files) return;
+    chatSocket.send(JSON.stringify({
+        'type': 'save-files-from-db',
+        'message': files,
+        'content': ''
+    }));
+}
+
+chatSocket.onmessage = function (e) {
+    const data = JSON.parse(e.data);
+
+    if (data && data.username === 'LLM_Bot' && !isBusyMessageRequest(data.message)) {
+        setTitleBusy(false);
+    }
+    if (data && data.username === 'LLM_Bot' && !isBusyMessageContext(data.message)) {
+        setTitleBusy(false);
+    }
+    if (data.username === 'ping') {
+        console.log('--- Received heartbeat message from server');
+        return;
+    }
+    // Handle session-restored: Context was restored from saved session
+    if (data.type === 'session-restored') {
+        console.log('--- Session restored from server:', data);
+        if (data.context_path) {
+            setContextText('<<< ' + data.context_path + ' >>>');
+            contextInfoDiv.classList.remove('context-info-invisible');
+            contextInfoDiv.classList.add('context-info-visible');
+            actualContextDir = data.context_path;
+            clearContextEnabled = true;
+            clearContextButton.removeAttribute('style');
+            updateViewContextDirMenuState();
+            console.log('--- Context UI restored: ' + data.context_path);
+        }
+        return;
+    }
+    if (data.username === 'system' && data.type === 'mcp') {
+        console.log('--- Received system message from server, message: ' + data.message);
+        const values = data.message.split('|');
+        const mcpName = values[0];
+        const mcpContent = values[2];
+        if (mcpName === 'mcp-1') {
+            mcp1_enabled = (mcpContent === 'true') ? true : false;
+            console.log("MCP-1: Enabled?: " + mcp1_enabled);
+        }
+        if (mcpName === 'mcp-2') {
+            mcp2_enabled = (mcpContent === 'true') ? true : false;
+            console.log("MCP-2: Enabled?: " + mcp2_enabled);
+        }
+        tools = [];
+        return;
+    }
+    if (data.username === 'system' && data.type === 'tool') {
+        console.log('--- Received system message from server, message: ' + data.message);
+        const values = data.message.split('|');
+        const toolName = values[0];
+        const toolDescription = values[1];
+        const toolContent = values[2];
+        tools.push({
+            name: toolName,
+            description: toolDescription,
+            content: toolContent
+        });
+        console.log("--- Tool added: " + toolName + " - " + toolDescription + " - " + toolContent);
+        return;
+    }
+    if (data.username === 'system' && data.type === 'agent') {
+        console.log('--- Received system message from server, message: ' + data.message);
+        const values = data.message.split('|');
+        const agentName = values[0];
+        const agentDescription = values[1];
+        const agentContent = values[2];
+        // Check if agent already exists to prevent duplicates
+        const existingAgentIndex = agents.findIndex(a => a.name === agentName);
+        if (existingAgentIndex !== -1) {
+            agents[existingAgentIndex].description = agentDescription;
+            agents[existingAgentIndex].content = agentContent;
+            console.log("--- Agent updated: " + agentName + " - " + agentDescription + " - " + agentContent);
+        } else {
+            agents.push({
+                name: agentName,
+                description: agentDescription,
+                content: agentContent
+            });
+            console.log("--- Agent added: " + agentName + " - " + agentDescription + " - " + agentContent);
+        }
+        return;
+    }
+    if (data && data.username === 'LLM_Bot' && data.message.startsWith('_tree_:') === true) {
+        console.log("--- Received tree_view content message from server.");
+        console.log("--- The message(tree_view content) is: " + data.message);
+        const finalContent = data.message.substring(7);
+        loadCanvasWithThisContent(finalContent);
+        return;
+    }
+
+    const filesAnchorElement = parseToFindFiles(data);
+    if (filesAnchorElement) {
+        console.log("<<<<<<<<<<<<<<<<<");
+        console.log(filesAnchorElement.outerHTML);
+        console.log(">>>>>>>>>>>>>>>>>");
+    }
+    appendChatMessage(data.username, data.message, filesAnchorElement);
+    chatLog.scrollTop = chatLog.scrollHeight;
+};
+
+chatSocket.onclose = function (_e) {
+    console.error('Chat socket closed unexpectedly');
+};
+
+function setContextButton() {
+    contextButton.style.backgroundColor = "gray";
+    contextButton.disabled = false;
+    canvasSettedAsContext = true;
+    contextButtonClicked = true;
+    contextButton.textContent = "Used as context";
+}
+
+function unsetContextButton() {
+    contextButton.style.backgroundColor = "darkgreen";
+    contextButton.disabled = false;
+    canvasSettedAsContext = false;
+    contextButtonClicked = false;
+    contextButton.textContent = "Use as context";
+}
+
+function Reconnect(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (reConnectEnabled === false) {
+        console.log("Reconnect is not allowed at this moment...");
+        return;
+    }
+    reConnectEnabled = true;
+    reConnectButton.disabled = true;
+
+    setTitleBusy(false);
+    contextEnabled = true;
+    contextButton.style.backgroundColor = "darkgreen";
+    contextButton.disabled = false;
+    contextButtonClicked = false;
+    contextButton.textContent = "Use as context";
+    chatInput.readOnly = false;
+    chatInput.style.backgroundColor = '#40414F';
+    const existingSpinner = document.getElementById(spinnerId);
+
+    if (existingSpinner && existingSpinner.parentNode) {
+        existingSpinner.parentNode.removeChild(existingSpinner);
+    }
+
+    agents = [];
+    tools = [];
+    openEnabled = true;
+    reConnectEnabled = true;
+    contextEnabled = true;
+    cleanCanvasEnabled = true;
+    contextButtonClicked = false;
+    canvasSettedAsContext = false;
+    reConnectButton.disabled = false;
+    contextMenuButton.removeAttribute('disabled', 'disabled');
+    contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    mcpsMenuButton.removeAttribute('disabled', 'disabled');
+    mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    agentsMenuButton.removeAttribute('disabled', 'disabled');
+    agentsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+
+    contextButton.textContent = "Use as context";
+    contextButton.disabled = false;
+    contextButton.style.backgroundColor = "darkgreen";
+
+    if (canvasLoaded === true) {
+        cleanCanvasButton.style.backgroundColor = "darkgreen";
+        cleanCanvasButton.disabled = false;
+        reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+        reopenOpenCanvasButton.disabled = false;
+        copyCanvasButton.style.backgroundColor = "darkgreen";
+        copyCanvasButton.disabled = false;
+    } else {
+        cleanCanvasButton.style.backgroundColor = "#808080";
+        cleanCanvasButton.disabled = true;
+        reopenOpenCanvasButton.style.backgroundColor = "#808080";
+        reopenOpenCanvasButton.disabled = true;
+        copyCanvasButton.style.backgroundColor = "#808080";
+        copyCanvasButton.disabled = true;
+    }
+
+    chatSubmitButton.textContent = 'Send';
+    inLongOperation = false;
+    actualContextDir = null;
+    updateViewContextDirMenuState();
+    console.log("--- actualContextDir reset to null on reconnect.");
+    chatSocket.send(JSON.stringify({
+        'type': 'reconnect-llm-agent',
+        'message': 'reconnect'
+    }));
+    clearContextEnabled = false;
+    clearContextButton.setAttribute("style", "display: none !important;");
+    contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
+    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+    console.log("--- Reconnect message sent to server.");
+}
+
+function CleanHistory(e) {
+    e.preventDefault();
+    if (cleanHistoryEnabled === false) {
+        console.log("Clean history is not allowed at this moment...");
+        return;
+    }
+
+    const callbackOnCont = () => {
+        // Clear chat log UI
+        chatLog.innerHTML = '';
+
+        // Clear arrow up/down history variables
+        chatHistory = [];
+        historyIndex = 0;
+        tempInput = '';
+        sessionStorage.removeItem('chatHistory');
+
+        // Reset UI state similar to Reconnect
+        setTitleBusy(false);
+        agents = [];
+        tools = [];
+        openEnabled = true;
+        reConnectEnabled = true;
+        contextEnabled = true;
+        cleanCanvasEnabled = true;
+        cleanHistoryEnabled = true;
+        contextButtonClicked = false;
+        canvasSettedAsContext = false;
+        reConnectButton.disabled = false;
+        cleanHistoryButton.disabled = false;
+        cleanHistoryButton.style.backgroundColor = "darkgreen";
+        contextMenuButton.removeAttribute('disabled', 'disabled');
+        contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        mcpsMenuButton.removeAttribute('disabled', 'disabled');
+        mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        agentsMenuButton.removeAttribute('disabled', 'disabled');
+        agentsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+
+        contextButton.textContent = "Use as context";
+        contextButton.disabled = false;
+        contextButton.style.backgroundColor = "darkgreen";
+
+        if (canvasLoaded === true) {
+            cleanCanvasButton.style.backgroundColor = "darkgreen";
+            cleanCanvasButton.disabled = false;
+            reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+            reopenOpenCanvasButton.disabled = false;
+            copyCanvasButton.style.backgroundColor = "darkgreen";
+            copyCanvasButton.disabled = false;
+        } else {
+            cleanCanvasButton.style.backgroundColor = "#808080";
+            cleanCanvasButton.disabled = true;
+            reopenOpenCanvasButton.style.backgroundColor = "#808080";
+            reopenOpenCanvasButton.disabled = true;
+            copyCanvasButton.style.backgroundColor = "#808080";
+            copyCanvasButton.disabled = true;
+        }
+
+        chatSubmitButton.textContent = 'Send';
+        inLongOperation = false;
+        actualContextDir = null;
+        updateViewContextDirMenuState();
+        clearContextEnabled = false;
+        clearContextButton.setAttribute("style", "display: none !important;");
+        contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
+        contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+
+        // Send message to backend to clear DB messages and reconnect
+        chatSocket.send(JSON.stringify({
+            'type': 'clean-history-and-reconnect',
+            'message': 'clean-history'
+        }));
+        console.log("--- Clean history message sent to server.");
+        return true;
+    }
+
+    const callbackOnCanc = () => {
+        confirmationByUser = false;
+        console.log("Clean history was dismissed...");
+        return false;
+    }
+
+    confirmationByUser = false;
+    preRenderConfirmationDialog('Confirmation...', 'Are you sure you want to clean the history?', 'This will clear the current context followed by the LLM and reset the conversation.', callbackOnCont, callbackOnCanc);
+    renderConfirmationDialog();
+}
+
+function ClearContext(e) {
+    e.preventDefault();
+    if (clearContextEnabled === false) {
+        console.log("Clear context is not allowed at this moment...");
+        return;
+    }
+
+    if (canvasLoaded === true) {
+        contextButton.style.backgroundColor = "darkgreen";
+        contextButton.disabled = false;
+        contextButtonClicked = false;
+        contextButton.textContent = "Use as context";
+
+        cleanCanvasButton.style.backgroundColor = "darkgreen";
+        cleanCanvasButton.disabled = false;
+        reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+        reopenOpenCanvasButton.disabled = false;
+        copyCanvasButton.style.backgroundColor = "darkgreen";
+        copyCanvasButton.disabled = false;
+    } else {
+        contextButton.style.backgroundColor = "gray";
+        contextButton.disabled = true;
+        contextButtonClicked = false;
+        contextButton.textContent = "Use as context";
+
+        cleanCanvasButton.style.backgroundColor = "#808080";
+        cleanCanvasButton.disabled = true;
+        reopenOpenCanvasButton.style.backgroundColor = "#808080";
+        reopenOpenCanvasButton.disabled = true;
+        copyCanvasButton.style.backgroundColor = "#808080";
+        copyCanvasButton.disabled = true;
+    }
+
+    actualContextDir = null;
+    updateViewContextDirMenuState();
+    console.log("--- actualContextDir reset to null on clear context.");
+
+    chatSocket.send(JSON.stringify({
+        'type': 'clear-context',
+        'message': '...'
+    }));
+    clearContextEnabled = false;
+    clearContextButton.setAttribute("style", "display: none !important;");
+    setContextText("<<<" + "..." + ">>>  ");
+    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+    console.log("--- Clear context message sent to server.");
+}
+
+function CancelAllAndLogout(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+
+    const callbackOnCont = () => {
+        try {
+            chatSocket.send(JSON.stringify({
+                'type': 'cancel-all',
+                'message': 'cancel'
+            }));
+            confirmationByUser = true;
+            console.log("--- Cancel all message sent to server.");
+        } catch (err) {
+            console.error('Failed to send cancel message:', err);
+        } finally {
+            const addr = logoutButton.getAttribute('param');
+            const debouncedFunction = debounce(() => { window.top.location.href = addr; });
+            debouncedFunction();
+        }
+        return true;
+    }
+
+    const callbackOnCanc = () => {
+        confirmationByUser = false;
+        console.log("Cancel and Logout was dismissed...")
+        return false;
+    }
+
+    if (inLongOperation === true) {
+        confirmationByUser = false;
+        preRenderConfirmationDialog('Confirmation...', 'Are you sure you want to cancel now?', 'Cancel will break the actual operation and drop the actual context', callbackOnCont, callbackOnCanc);
+        renderConfirmationDialog();
+    } else {
+        const logoutButton = document.getElementById('logout-button');
+        const addr = logoutButton.getAttribute('param');
+        const debouncedFunction = debounce(() => { window.top.location.href = addr; });
+        debouncedFunction();
+    }
+}
+
+function OpenOmissionsDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+
+    if (inLongOperation === true) {
+        console.log("Dialog omissions can't be opened during a long operation...");
+        return;
+    }
+
+    const callbackOnCont = () => {
+        try {
+            fileTypeOmissions = omissionContentInput.value;
+            chatSocket.send(JSON.stringify({
+                'type': 'set-file-omissions',
+                'message': fileTypeOmissions
+            }));
+            console.log("--- Sent set-file-omissions message sent to server.");
+        } catch (err) {
+            console.error('--- Failed to send omissions message:', err);
+        }
+
+        return true;
+    }
+
+    const callbackOnCanc = () => {
+        console.log("--- Omissions dialog was dismissed...")
+        return false;
+    }
+
+    preRenderOmissionsDialog("Omissions...", "Specify extensions or filenames to be omitted, separated by coma", "File omission will completely ignore this files in the retrieval process.", callbackOnCont, callbackOnCanc);
+    renderOmissionsDialog();
+}
+
+function OpenMcpsDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+
+    if (inLongOperation === true) {
+        console.log("Dialog mcps can't be opened during a long operation...");
+        return;
+    }
+
+    const callbackOnCont = () => {
+        try {
+            const mcp1Checked = $("#mcp-1").is(":checked");
+            const mcp2Checked = $("#mcp-2").is(":checked");
+            const message2send = JSON.stringify({
+                'type': 'set-mcps',
+                'message': '1=' + label_mcp1.innerText + "=" + mcp1Checked + "," + '2=' + label_mcp2.innerText + "=" + mcp2Checked
+            });
+            chatSocket.send(message2send);
+            console.log("Message sent to socket: ", message2send);
+            console.log("--- Sent set-mcps message sent to server.");
+        } catch (err) {
+            console.error('--- Failed to send mcps message:', err);
+        }
+
+        console.log("--->>> tools: ", tools);
+        if (tools.length > 0) {
+            let completeTools = "";
+            for (let i = 0; i < tools.length; i++) {
+                const checked = $("#tool-" + (i + 1)).is(":checked");
+                completeTools = completeTools + (i + 1) + "=" + tools[i].description + "=" + checked + ",";
+            }
+            console.log("--->>> complete tools: ", completeTools);
+            chatSocket.send(JSON.stringify({
+                'type': 'set-tools',
+                'message': completeTools
+            }));
+            console.log("--- Sent set-tools message sent to server, complete tools: ", completeTools);
+        }
+        return true;
+    }
+
+    const callbackOnCanc = () => {
+        console.log("--- Mcps dialog was dismissed...")
+        return false;
+    }
+
+    preRenderMcpsDialog("Configure Mcps...", "MCPs will be used to provide additional information to the LLM.", "Specify the Rag-MCPs to be used:", "Specify the Tool-MCPs to be used:", callbackOnCont, callbackOnCanc);
+    renderMcpsDialog();
+}
+
+function OpenAgentsDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+
+    if (inLongOperation === true) {
+        console.log("Dialog Agents can't be opened during a long operation...");
+        return;
+    }
+
+    const callbackOnCont = () => {
+        console.log("--->>> agents: ", agents);
+        if (agents.length > 0) {
+            let completeAgents = "";
+            for (let i = 0; i < agents.length; i++) {
+                const checked = $("#agent-" + (i + 1)).is(":checked");
+                completeAgents = completeAgents + (i + 1) + "=" + agents[i].description + "=" + checked + ",";
+            }
+            console.log("--->>> complete agents: ", completeAgents);
+            chatSocket.send(JSON.stringify({
+                'type': 'set-agents',
+                'message': completeAgents
+            }));
+            console.log("--- Sent set-agents message sent to server, complete agents: ", completeAgents);
+        }
+        return true;
+    }
+
+    const callbackOnCanc = () => {
+        console.log("--- Agents dialog was dismissed...")
+        return false;
+    }
+
+    preRenderAgentsDialog("Configure Agents...", "Agents will be used to provide additional information to the LLM.", "Specify the Rag-Agents to be used:", callbackOnCont, callbackOnCanc);
+    renderAgentsDialog();
+}
+
+document.getElementById('chat-form').onsubmit = function (e) {
+    e.preventDefault();
+
+    const callbackOnCont = () => {
+        // User confirmed cancellation - always execute, don't check UI state
+        console.log("--- Cancel confirmed by user, sending cancel-current message...");
+        console.log("--- WebSocket readyState:", chatSocket.readyState, "(1=OPEN)");
+
+        if (chatSocket.readyState !== WebSocket.OPEN) {
+            console.error("!!! WebSocket is NOT OPEN. Cannot send cancel message. State:", chatSocket.readyState);
+            alert("Cannot cancel: WebSocket is not connected. Please refresh the page.");
+            return;
+        }
+
+        try {
+            const cancelMsg = JSON.stringify({
+                'type': 'cancel-current',
+                'message': 'cancel'
+            });
+            console.log("--- Sending cancel message:", cancelMsg);
+            chatSocket.send(cancelMsg);
+            console.log("--- cancel-current message sent to server successfully");
+        } catch (err) {
+            console.error('Failed to send cancel message:', err);
+            alert("Failed to send cancel message: " + err);
+        } finally {
+            const debouncedFunction = debounce(unsetContextButton);
+            debouncedFunction();
+        }
+        // Reset UI state after cancellation
+        chatInput.readOnly = false;
+        chatInput.style.backgroundColor = '#40414F';
+        if (chatSubmitButton) chatSubmitButton.textContent = 'Send';
+        chatSubmitButton.disabled = false;
+        inLongOperation = false;
+        lapseLoadingContext = false;  // Reset context loading flag
+        const spinner = document.getElementById('wait-spinner');
+        if (spinner && spinner.parentNode) spinner.parentNode.removeChild(spinner);
+        contextEnabled = true;
+        contextMenuButton.removeAttribute('disabled');
+        contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        mcpsMenuButton.removeAttribute('disabled', 'disabled');
+        mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        agentsMenuButton.removeAttribute('disabled', 'disabled');
+        agentsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        cleanCanvasButton.style.backgroundColor = "darkgreen";
+        cleanCanvasButton.disabled = false;
+        cleanCanvasEnabled = true;
+        reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+        reopenOpenCanvasButton.disabled = false;
+        copyCanvasButton.style.backgroundColor = "darkgreen";
+        copyCanvasButton.disabled = false;
+        clearContextEnabled = false;
+        clearContextButton.setAttribute("style", "display: none !important;");
+        setContextText("<<<" + "..." + ">>>  ");
+        contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+        // Clear context directory state so "View context directory in canvas" menu is hidden
+        actualContextDir = null;
+        updateViewContextDirMenuState();
+        console.log("--- actualContextDir reset to null on cancel.");
+
+    }
+
+    const callbackOnCanc = () => {
+        console.log("Cancel was dismissed...")
+        return false;
+    }
+
+    // Show cancel dialog if in long operation OR if context is being loaded
+    if ((inLongOperation === true && (chatSubmitButton && chatSubmitButton.textContent === 'Cancel')) || lapseLoadingContext === true) {
+        console.log("--- Cancel dialog triggered. inLongOperation: " + inLongOperation + ", lapseLoadingContext: " + lapseLoadingContext);
+        confirmationByUser = false;
+        preRenderConfirmationDialog('Confirmation...', 'Are you sure you want to cancel now?', 'Cancel will break the actual operation and drop the actual context', callbackOnCont, callbackOnCanc);
+        renderConfirmationDialog();
+    } else {
+        const rawMessage = chatInput.value;
+        const message = rawMessage;
+        console.log("message: " + message);
+        if (rawMessage.trim() === '') return;
+        chatHistory.push(rawMessage);
+        historyIndex = chatHistory.length;
+        tempInput = '';
+        try {
+            sessionStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            sessionStorage.setItem('historyIndex', String(historyIndex));
+        } catch (err) {
+            console.error("Catched error in onsubmit(): " + err);
+        }
+        chatSocket.send(JSON.stringify({
+            'message': rawMessage
+        }));
+        chatInput.value = '';
+    }
+};
+
+window.onload = () => {
+    chatLog.scrollTop = chatLog.scrollHeight;
+    updateViewContextDirMenuState();
+    if (openButton) {
+        openButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            openCanvas();
+        });
+    }
+    if (reopenOpenCanvasButton) {
+        reopenOpenCanvasButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (openEnabled === false) {
+                console.log("Reopen canvas is not allowed at this moment...");
+                return;
+            }
+            reopenCanvas();
+        });
+    }
+    if (setDirContextMenu) {
+        setDirContextMenu.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (contextEnabled === false) {
+                return;
+            }
+            if (window && 'showDirectoryPicker' in window) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker();
+                    const dirName = (dirHandle && dirHandle.name) ? dirHandle.name : 'selected_directory';
+                    chatSocket.send(JSON.stringify({
+                        'type': 'set-directory-as-context',
+                        'message': dirName
+                    }));
+                    actualContextDir = dirName;
+                    updateViewContextDirMenuState();
+                    clearContextEnabled = true;
+                    clearContextButton.setAttribute("style", "display: block !important;");
+                    setContextText("<<<" + actualContextDir + ">>>  ");
+                    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+                    console.log("--- The actual context directory is: " + actualContextDir);
+
+                } catch (err) {
+                    console.error("Catched error in listener of setDirContextMenu: " + err);
+                }
+            }
+        });
+    }
+    if (setFileContextMenu) {
+        setFileContextMenu.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (contextEnabled === false) {
+                return;
+            }
+
+            const callback2SetFileAsContext = () => {
+                const type = "set-canvas-as-context";
+                const codeRegex = /<<< ([\w.-]+) >>>/s;
+                const result = filenameSpan.textContent.match(codeRegex);
+                const content = textEditorCode.textContent;
+                const tokensNumber = genericTokenCounting(content);
+                console.log("--- The number of tokens in file is: " + tokensNumber);
+                if (tokensNumber > maximalTheoricTokens) {
+                    console.log("--- The number of tokens in file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+                    alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+                }
+                console.log("--- The content is: " + content);
+                if (result) {
+                    const filename = result[1];
+                    chatSocket.send(JSON.stringify({
+                        'type': type,
+                        'message': filename,
+                        'content': content
+                    }));
+                    clearContextEnabled = true;
+                    clearContextButton.setAttribute("style", "display: block !important;");
+                    setContextText("<<<" + filename + ">>>  ");
+                    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+                    console.log("--- The actual context file is: " + filename);
+                }
+                setContextButton();
+                console.log("...Rebuild rag action sent.")
+            }
+            loadFileContent(true, callback2SetFileAsContext);
+        });
+    }
+    if (viewContextDirInCanvasMenu) {
+        viewContextDirInCanvasMenu.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (contextEnabled === false) {
+                return;
+            }
+            if (actualContextDir === null || actualContextDir === '') {
+                console.log("--- actualContextDir is null or empty, menu action ignored.");
+                return;
+            }
+            if (window && 'showDirectoryPicker' in window && actualContextDir !== null) {
+                try {
+                    chatSocket.send(JSON.stringify({
+                        'type': 'view-context-dir-in-canvas',
+                        'message': actualContextDir
+                    }));
+                    console.log("--- actualContextDir is: " + actualContextDir + ", message 'view-context-dir-in-canvas' has been sent.");
+                    return;
+                } catch (err) {
+                    console.error("--- Catched error in listener of viewContextDirInCanvasMenu: " + err);
+                }
+            }
+            if (actualContextDir == null)
+                console.log("--- actualContextDir is null, message 'view-context-dir-in-canvas' not sent.");
+        });
+    }
+    if (clearContextButton) {
+        clearContextButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            ClearContext(e);
+        });
+    }
+    if (cleanCanvasButton) {
+        cleanCanvasButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (cleanCanvasEnabled === false) {
+                return;
+            }
+            cleanCanvas();
+        });
+    }
+    if (cleanHistoryButton) {
+        cleanHistoryButton.addEventListener('click', (e) => {
+            CleanHistory(e);
+        });
+    }
+    const initialDataScript = document.getElementById('initial_messages');
+    if (initialDataScript && initialDataScript.textContent) {
+        try {
+            const initialMessages = JSON.parse(initialDataScript.textContent);
+            renderInitialMessages(initialMessages);
+            if (Array.isArray(initialMessages)) {
+                chatHistory = initialMessages
+                    .filter(m => m && m.username === userUsername && typeof m.message === 'string' && m.message.trim() !== '')
+                    .map(m => m.message);
+                historyIndex = chatHistory.length;
+            }
+            try {
+                const stored = sessionStorage.getItem('chatHistory');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        chatHistory = parsed;
+                        const storedIndex = parseInt(sessionStorage.getItem('historyIndex') || String(parsed.length), 10);
+                        historyIndex = isNaN(storedIndex) ? parsed.length : storedIndex;
+                    }
+                }
+            } catch (err) {
+                console.error("Catched error at getItem of ChatHistory: " + err);
+            }
+        } catch (e) {
+            console.error('Failed to parse initial messages JSON:', e);
+        }
+    }
+    rotateTitle();
+
+    $('#internetEnabled').click(function () {
+        const isChecked = this.checked;
+        console.log('InternetEnabled is:', isChecked);
+        if (isChecked) {
+            chatSocket.send(JSON.stringify({
+                'type': 'enable-llm-internet-access',
+                'message': ''
+            }));
+        } else {
+            chatSocket.send(JSON.stringify({
+                'type': 'disable-llm-internet-access',
+                'message': ''
+            }));
+        }
+    });
+    clearContextEnabled = false;
+    clearContextButton.setAttribute("style", "display: none !important;");
+};
+
+contextButton.style.backgroundColor = "gray";
+contextButton.disabled = true;
+
+const updateLineNumbers = () => {
+    const lines = textEditorCode.textContent.split('\n');
+    lineNumbers.value = lines.map((_, i) => i + 1).join('\n');
+};
+
+contextButton.addEventListener('click', (event) => {
+    if (contextEnabled === false) {
+        event.preventDefault();
+        return;
+    }
+    if (!contextButtonClicked) {
+        event.preventDefault();
+        contextButtonClicked = true;
+        contextButton.textContent = "Used as context";
+        contextButton.style.backgroundColor = "gray";
+        canvasSettedAsContext = true;
+        const type = "set-canvas-as-context";
+        const codeRegex = /<<< (.+?) >>>/s;
+        const result = filenameSpan.textContent.match(codeRegex);
+        const content = textEditorCode.textContent;
+        const tokensNumber = genericTokenCounting(content);
+        console.log("--- The number of tokens in file is: " + tokensNumber);
+        if (tokensNumber > maximalTheoricTokens) {
+            console.log("--- The number of tokens in file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+        }
+        console.log("--- The content is: " + content);
+        if (result) {
+            const filename = result[1];
+            chatSocket.send(JSON.stringify({
+                'type': type,
+                'message': filename,
+                'content': content
+            }));
+            contextButton.disabled = true;
+            contextButton.style.backgroundColor = "gray";
+            contextButton.textContent = "Used as context";
+            openEnabled = false;
+            contextEnabled = false;
+            clearContextEnabled = true;
+            clearContextButton.setAttribute("style", "display: block !important;");
+            setContextText("<<<" + filename + ">>>  ");
+            contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+        }
+    } else {
+        contextButtonClicked = false;
+        contextButton.textContent = "Use as context";
+        contextButton.style.backgroundColor = "darkgreen";
+        canvasSettedAsContext = false;
+        const codeRegex = /<<< ([\w.-]+) >>>/s;
+        const result = filenameSpan.textContent.match(codeRegex);
+        const type = "unset-canvas-as-context";
+        if (result) {
+            const filename = result[1];
+            chatSocket.send(JSON.stringify({
+                'type': type,
+                'message': filename
+            }));
+        }
+        clearContextEnabled = false;
+        clearContextButton.setAttribute("style", "display: none !important;");
+        setContextText("<<<...>>>  ");
+        contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+    }
+});
+
+const handleHistoryKeydown = (e) => {
+    if (chatInput.disabled) {
+        e.preventDefault();
+        return;
+    }
+    const key = e.key || '';
+    const code = e.keyCode || e.which || 0;
+    const isUp = key === 'ArrowUp' || code === 38;
+    const isDown = key === 'ArrowDown' || code === 40;
+    if (key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        return;
+    }
+    if (isUp && chatInput.selectionStart === 0) {
+        e.preventDefault();
+        if (historyIndex === chatHistory.length) {
+            tempInput = chatInput.value;
+        }
+        if (historyIndex > 0) {
+            historyIndex -= 1;
+            chatInput.value = chatHistory[historyIndex] || '';
+            const end = chatInput.value.length;
+            chatInput.setSelectionRange(end, end);
+        }
+    } else if (isDown && chatInput.selectionEnd === chatInput.value.length) {
+        e.preventDefault();
+        if (historyIndex < chatHistory.length) {
+            historyIndex += 1;
+            if (historyIndex === chatHistory.length) {
+                chatInput.value = tempInput;
+            } else {
+                chatInput.value = chatHistory[historyIndex] || '';
+            }
+            const end = chatInput.value.length;
+            chatInput.setSelectionRange(end, end);
+        }
+    }
+};
+
+chatInput.addEventListener('keydown', handleHistoryKeydown);
+
+textEditorCode.addEventListener('input', updateLineNumbers);
+textEditorPre.addEventListener('scroll', () => {
+    lineNumbers.scrollTop = textEditorPre.scrollTop;
+});
+
+const loadFileContent = (reOpened = false, callback = null) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (file == null) {
+            console.error("No file selected, so load file content is not allowed, function will return false...");
+            return false;
+        }
+
+        // Check for .flw extension - redirect to Agentic Control Panel
+        if (file.name.toLowerCase().endsWith('.flw')) {
+            const flwReader = new FileReader();
+            flwReader.onload = flwEvent => {
+                try {
+                    const flwData = JSON.parse(flwEvent.target.result);
+                    localStorage.setItem('pendingFlwData', JSON.stringify(flwData));
+                    localStorage.setItem('pendingFlwFilename', file.name);
+                    window.open('/agent/agentic_control_panel/', '_blank');
+                    console.log('--- Opened .flw file in Agentic Control Panel: ' + file.name);
+                } catch (err) {
+                    console.error('Failed to parse .flw file:', err);
+                    alert('Invalid .flw file format. The file could not be parsed as JSON.');
+                }
+            };
+            flwReader.readAsText(file);
+            return;
+        }
+
+        const reader = new FileReader();
+        const filename = file.name;
+        const extension = filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2);
+        reader.onload = event => {
+            const newTextEditorCode = document.createElement('code');
+            if (extension.includes('py')) {
+                newTextEditorCode.classList.add('language-python');
+            } else if (extension.includes('java')) {
+                newTextEditorCode.classList.add('language-java');
+            } else if (extension.includes('js') || extension.includes('jsx') || extension.includes('astro')) {
+                newTextEditorCode.classList.add('language-javascript');
+            } else if (extension.includes('css')) {
+                newTextEditorCode.classList.add('language-css');
+            } else if (extension.includes('cpp') || extension.includes('hpp')) {
+                newTextEditorCode.classList.add('language-cpp');
+            } else if (extension.includes('cu')) {
+                newTextEditorCode.classList.add('language-cpp');
+            } else if (extension.includes('c') || extension.includes('h')) {
+                newTextEditorCode.classList.add('language-c');
+            } else if (extension.includes('sql')) {
+                newTextEditorCode.classList.add('language-sql');
+            } else if (extension.includes('jsp') || extension.includes('xml') || extension.includes('html') || extension.includes('xhtml') || extension.includes('vue')) {
+                newTextEditorCode.classList.add('language-xml');
+            } else if (extension.includes('yaml')) {
+                newTextEditorCode.classList.add('language-yaml');
+            } else if (extension.includes('bash')) {
+                newTextEditorCode.classList.add('language-bash');
+            } else if (extension.includes('ts') || extension.includes('tsx')) {
+                newTextEditorCode.classList.add('language-typescript');
+            } else if (extension.includes('kt')) {
+                newTextEditorCode.classList.add('language-kotlin');
+            } else if (extension.includes('toml')) {
+                newTextEditorCode.classList.add('language-toml');
+            } else if (extension.includes('rs')) {
+                newTextEditorCode.classList.add('language-rust');
+            } else {
+                newTextEditorCode.classList.add('language-text');
+            }
+            newTextEditorCode.textContent = event.target.result;
+            textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
+            textEditorCode = newTextEditorCode;
+            hljs.highlightElement(textEditorCode);
+            updateLineNumbers();
+            filenameSpan.textContent = "<<< " + filename + " >>>";
+            canvasLoaded = true;
+
+            cleanCanvasButton.style.backgroundColor = "darkgreen";
+            cleanCanvasButton.disabled = false;
+            reopenOpenCanvasButton.style.backgroundColor = "darkgreen";
+            reopenOpenCanvasButton.disabled = false;
+            copyCanvasButton.style.backgroundColor = "darkgreen";
+            copyCanvasButton.disabled = false;
+
+            console.log("loaded file: " + filename + " !!!");
+            if (reOpened === false) {
+                contextButton.style.backgroundColor = "darkgreen";
+                contextButton.disabled = false;
+                canvasSettedAsContext = false;
+                contextButtonClicked = false;
+                contextButton.textContent = "Use as context";
+            } else {
+                if (callback != null) {
+                    callback();
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+};
+
+saveAsButton.addEventListener('click', () => {
+    const text = textEditorCode.textContent;
+    if (!text || text.trim().length === 0) {
+        console.log("Save As ignored: canvas is empty.");
+        return;
+    }
+    const fileName = prompt("Save as...", "");
+    if (fileName === null) return;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const anchor = document.createElement('a');
+    anchor.download = fileName;
+    anchor.href = window.URL.createObjectURL(blob);
+    anchor.target = '_blank';
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+});
+
+(function () {
+    const container = document.getElementById('chat-container');
+    const canvas = document.getElementById('canvas-container');
+    const chat = document.getElementById('main-chat-container');
+    const divider = document.getElementById('drag-divider');
+    if (!container || !canvas || !chat || !divider) return;
+
+    let isDragging = false;
+    let seamPct;
+
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const rect = () => container.getBoundingClientRect();
+    const isCanvasOnLeft = () => {
+        const cr = canvas.getBoundingClientRect();
+        const hr = chat.getBoundingClientRect();
+        const cCenter = cr.left + cr.width / 2;
+        const hCenter = hr.left + hr.width / 2;
+        return cCenter < hCenter;
+    };
+
+    const pctFromXToSeam = (clientX) => {
+        const r = rect();
+        const x = clamp(clientX, r.left, r.right);
+        return ((x - r.left) / r.width) * 100;
+    };
+
+    const apply = (pSeam) => {
+        const left = isCanvasOnLeft();
+        const minSeam = left ? 30 : 15;
+        const maxSeam = left ? 85 : 70;
+        seamPct = clamp(pSeam, minSeam, maxSeam);
+        const canvasWidth = left ? seamPct : (100 - seamPct);
+        const chatWidth = 100 - canvasWidth;
+        canvas.style.width = canvasWidth + '%';
+        chat.style.width = chatWidth + '%';
+        divider.style.left = seamPct + '%';
+    };
+
+    (function init() {
+        const r = rect();
+        const cr = canvas.getBoundingClientRect();
+        const hr = chat.getBoundingClientRect();
+        const left = isCanvasOnLeft();
+        const seamX = left ? cr.right : hr.right;
+        const pct = clamp(((seamX - r.left) / r.width) * 100, 0, 100);
+        apply(pct || 66.6667);
+    })();
+
+    divider.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        document.body.classList.add('resizing');
+        e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        apply(pctFromXToSeam(e.clientX));
+    });
+    window.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.classList.remove('resizing');
+    });
+
+    divider.addEventListener('touchstart', () => {
+        isDragging = true;
+        document.body.classList.add('resizing');
+    }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const t = e.touches && e.touches[0];
+        if (t) apply(pctFromXToSeam(t.clientX));
+    }, { passive: true });
+    window.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.classList.remove('resizing');
+    });
+
+    divider.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') { apply(seamPct - 1); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { apply(seamPct + 1); e.preventDefault(); }
+    });
+
+    window.addEventListener('resize', () => apply(seamPct));
+})();
+
+(function () {
+    const subchatContainer = document.getElementById('subchat-container');
+    const chatLog = document.getElementById('chat-log');
+    const toolsContainer = document.getElementById('tools-chat-form-container');
+    const verticalDivider = document.getElementById('vertical-drag-divider');
+
+    if (!subchatContainer || !chatLog || !toolsContainer || !verticalDivider) return;
+
+    let isDraggingVertical = false;
+    let dividerPct;
+
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const rect = () => subchatContainer.getBoundingClientRect();
+
+    const pctFromYToDivider = (clientY) => {
+        const r = rect();
+        const y = clamp(clientY, r.top, r.bottom);
+        return ((y - r.top) / r.height) * 100;
+    };
+
+    const applyVertical = (pDivider) => {
+        const minDivider = 20;
+        const maxDivider = 90;
+        dividerPct = clamp(pDivider, minDivider, maxDivider);
+        const chatLogHeight = dividerPct;
+        const toolsHeight = 100 - dividerPct;
+        chatLog.style.height = chatLogHeight + '%';
+        toolsContainer.style.height = toolsHeight + '%';
+    };
+
+    (function initVertical() {
+        applyVertical(90);
+    })();
+
+    verticalDivider.addEventListener('mousedown', (e) => {
+        isDraggingVertical = true;
+        document.body.classList.add('resizing-vertical');
+        e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDraggingVertical) return;
+        applyVertical(pctFromYToDivider(e.clientY));
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!isDraggingVertical) return;
+        isDraggingVertical = false;
+        document.body.classList.remove('resizing-vertical');
+    });
+
+    verticalDivider.addEventListener('touchstart', () => {
+        isDraggingVertical = true;
+        document.body.classList.add('resizing-vertical');
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDraggingVertical) return;
+        const t = e.touches && e.touches[0];
+        if (t) applyVertical(pctFromYToDivider(t.clientY));
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+        if (!isDraggingVertical) return;
+        isDraggingVertical = false;
+        document.body.classList.remove('resizing-vertical');
+    });
+
+    verticalDivider.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+            applyVertical(dividerPct - 1);
+            e.preventDefault();
+        }
+        if (e.key === 'ArrowDown') {
+            applyVertical(dividerPct + 1);
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener('resize', () => applyVertical(dividerPct));
+})();
+
+function rotateTitle() {
+    const baseTitle = " Tlamatini";
+    let charIndex = 0;
+
+    const rotate = () => {
+        document.title = titleBusyPrefix + (baseTitle.slice(charIndex) + baseTitle.slice(0, charIndex));
+        charIndex = (charIndex + 1) % baseTitle.length;
+    }
+    setInterval(rotate, 100);
+}
+
+function preRenderConfirmationDialog(message, primaryDialogText, secondaryDialogText, callbackOnContinue = null, callbackOnCancel = null) {
+    console.log("--- preRenderConfirmationDialog called with callbacks:", callbackOnContinue != null, callbackOnCancel != null);
+    confirmationDialogMessage.title = message;
+    confirmationPrimaryDialogLegend.innerText = primaryDialogText;
+    confirmationSecondaryDialogLegend.innerText = secondaryDialogText;
+
+    // Destroy existing dialog to ensure new callbacks are used
+    try {
+        if ($("#confirmation-dialog-message").hasClass('ui-dialog-content')) {
+            $("#confirmation-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("Dialog destroy ignored:", e);
+    }
+
+    $("#confirmation-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 450,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+
+        open: function () {
+            document.body.style.overflow = 'hidden';
+        },
+        close: function () {
+            document.body.style.overflow = '';
+        },
+
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+        },
+        buttons: [
+            {
+                text: "Continue",
+                click: function () {
+                    console.log("Continue canceling...");
+                    confirmationByUser = true;
+                    $(this).dialog("close");
+                    if (callbackOnContinue != null) {
+                        callbackOnContinue();
+                    }
+                }
+            },
+            {
+                text: "Cancel",
+                click: function () {
+                    console.log("Cancel...");
+                    confirmationByUser = false;
+                    $(this).dialog("close");
+                    if (callbackOnCancel != null) {
+                        callbackOnCancel();
+                    }
+                }
+            }
+        ]
+    });
+}
+
+function renderConfirmationDialog() {
+    confirmationByUser = false;
+    $('.ui-dialog-buttonpane button:contains("Continue")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $('.ui-dialog-buttonpane button:contains("Cancel")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $("#confirmation-dialog-message").dialog("open");
+}
+
+function preRenderOmissionsDialog(message, primaryDialogText, secondaryDialogText, callbackOnContinue = null, callbackOnCancel = null) {
+    omissionsDialogMessage.title = message;
+    omissionsPrimaryDialogLegend.innerText = primaryDialogText;
+    omissionsSecondaryDialogLegend.innerText = secondaryDialogText;
+
+    $("#omissions-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 450,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+
+        open: function () {
+            document.body.style.overflow = 'hidden';
+        },
+        close: function () {
+            document.body.style.overflow = '';
+        },
+
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+        },
+        buttons: [
+            {
+                text: "Continue",
+                click: function () {
+                    console.log("Continue...");
+                    confirmationByUser = true;
+                    $(this).dialog("close");
+                    if (callbackOnContinue != null) {
+                        callbackOnContinue();
+                    }
+                }
+            },
+            {
+                text: "Cancel",
+                click: function () {
+                    console.log("Cancel...");
+                    confirmationByUser = false;
+                    $(this).dialog("close");
+                    if (callbackOnCancel != null) {
+                        callbackOnCancel();
+                    }
+                }
+            }
+        ]
+    });
+    loadOmission('omission-1');
+}
+
+async function loadOmission(omissionName) {
+    try {
+        const response = await fetch(`/agent/load_omissions/${omissionName}/`);
+
+        if (response.status === 404) {
+            console.error('404 Error: Omission not found - ' + omissionName);
+            return true;
+        }
+        if (!response.ok) {
+            console.error('HTTP Error: ' + response.status + ' - ' + response.statusText);
+            return true;
+        }
+
+        const content = await response.text();
+        if (content === 'Omission not found in database') {
+            console.error('Omission not found in database: ' + omissionName);
+            return true;
+        }
+
+        fileTypeOmissions = content;
+        omissionContentInput.value = content;
+        return false;
+    } catch (error) {
+        console.error('Error loading omission:', error);
+        return true;
+    }
+}
+
+function renderOmissionsDialog() {
+    confirmationByUser = false;
+    $('.ui-dialog-buttonpane button:contains("Continue")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $('.ui-dialog-buttonpane button:contains("Cancel")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $("#omissions-dialog-message").dialog("open");
+}
+
+async function loadMcp(mcpName) {
+    try {
+        const response = await fetch(`/agent/load_mcp/${mcpName}/`);
+
+        if (response.status === 404) {
+            console.error('404 Error: Mcp not found - ' + mcpName);
+            return true;
+        }
+        if (!response.ok) {
+            console.error('HTTP Error: ' + response.status + ' - ' + response.statusText);
+            return true;
+        }
+
+        const content = await response.text();
+        if (content === 'Mcp not found in database') {
+            console.error('Mcp not found in database: ' + mcpName);
+            return true;
+        }
+
+        const mcpEnabled = (content === 'true') ? true : false;
+        if (mcpEnabled === true)
+            $('#' + mcpName).prop('checked', true);
+        else
+            $('#' + mcpName).prop('checked', false);
+        return false;
+    } catch (error) {
+        console.error('Error loading omission:', error);
+        return true;
+    }
+}
+
+async function loadTool(toolName) {
+    try {
+        const response = await fetch(`/agent/load_tool/${toolName}/`);
+
+        if (response.status === 404) {
+            console.error('404 Error: Tool not found - ' + toolName);
+            return true;
+        }
+        if (!response.ok) {
+            console.error('HTTP Error: ' + response.status + ' - ' + response.statusText);
+            return true;
+        }
+
+        const content = await response.text();
+        if (content === 'Tool not found in database') {
+            console.error('Tool not found in database: ' + toolName);
+            return true;
+        }
+
+        const toolEnabled = (content === 'true') ? true : false;
+        if (toolEnabled === true)
+            $('#' + toolName).prop('checked', true);
+        else
+            $('#' + toolName).prop('checked', false);
+        return false;
+    } catch (error) {
+        console.error('Error loading tool:', error);
+        return true;
+    }
+}
+
+async function loadAgent(agentName) {
+    try {
+        const response = await fetch(`/agent/load_agent/${agentName}/`);
+
+        if (response.status === 404) {
+            console.error('404 Error: Agent not found - ' + agentName);
+            return true;
+        }
+        if (!response.ok) {
+            console.error('HTTP Error: ' + response.status + ' - ' + response.statusText);
+            return true;
+        }
+
+        const content = await response.text();
+        if (content === 'Agent not found in database') {
+            console.error('Agent not found in database: ' + agentName);
+            return true;
+        }
+
+        const agentEnabled = (content === 'true') ? true : false;
+        if (agentEnabled === true)
+            $('#' + agentName).prop('checked', true);
+        else
+            $('#' + agentName).prop('checked', false);
+        return false;
+    } catch (error) {
+        console.error('Error loading agent:', error);
+        return true;
+    }
+}
+
+async function loadMcps() {
+    try {
+        for (let i = 1; i < MAX_MCPS; i++) {
+            const mcpNameIterator = "mcp-" + i.toString();
+            const errorDetected = await loadMcp(mcpNameIterator);
+            if (errorDetected === true) {
+                break;
+            }
+        }
+    } catch (error) {
+        console.error('Error in loadMcps:', error);
+    }
+}
+
+async function loadTools() {
+    try {
+        for (let i = 1; i < MAX_TOOLS; i++) {
+            const toolNameIterator = "tool-" + i.toString();
+            const errorDetected = await loadTool(toolNameIterator);
+            if (errorDetected === true) {
+                break;
+            }
+        }
+    } catch (error) {
+        console.error('Error in loadTools:', error);
+    }
+}
+
+async function loadAgents() {
+    try {
+        for (let i = 1; i < MAX_AGENTS; i++) {
+            const agentNameIterator = "agent-" + i.toString();
+            const errorDetected = await loadAgent(agentNameIterator);
+            if (errorDetected === true) {
+                break;
+            }
+        }
+    } catch (error) {
+        console.error('Error in loadAgents:', error);
+    }
+}
+
+function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, thirtiaryDialogText, callbackOnContinue = null, callbackOnCancel = null) {
+    mcpsDialogMessage.title = message;
+    mcpsPrimaryDialogLegend.innerText = primaryDialogText;
+    mcpsSecondaryDialogLegend.innerText = secondaryDialogText;
+    mcpsThirdtiaryDialogLegend.innerText = thirtiaryDialogText;
+
+    $("#mcps-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 450,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+
+        open: function () {
+            document.body.style.overflow = 'hidden';
+            // Clear and rebuild the tool MCPs list each time the dialog opens
+            toolMcpsList.innerHTML = '';
+            for (const tool of tools) {
+                const listElement = document.createElement('li');
+                const checkbox = document.createElement('input');
+                const label = document.createElement('label');
+                checkbox.type = 'checkbox';
+                checkbox.id = tool.name;
+                label.htmlFor = tool.name;
+                label.innerText = tool.description;
+                label.setAttribute('id', 'label-' + tool.name);
+                listElement.appendChild(checkbox);
+                listElement.appendChild(label);
+                if (tool.enabled === true) {
+                    checkbox.checked = true;
+                }
+                toolMcpsList.appendChild(listElement);
+            }
+            // Load tool states after rebuilding the list
+            loadTools();
+        },
+        close: function () {
+            document.body.style.overflow = '';
+        },
+
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+            $('.ui-dialog-buttonpane button:contains("Cancel")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+        },
+        buttons: [
+            {
+                text: "Continue",
+                click: function () {
+                    console.log("Continue...");
+                    confirmationByUser = true;
+                    $(this).dialog("close");
+                    if (callbackOnContinue != null) {
+                        callbackOnContinue();
+                    }
+                }
+            },
+            {
+                text: "Cancel",
+                click: function () {
+                    console.log("Cancel...");
+                    confirmationByUser = false;
+                    $(this).dialog("close");
+                    if (callbackOnCancel != null) {
+                        callbackOnCancel();
+                    }
+                }
+            }
+        ]
+    });
+    loadMcps();
+}
+
+function renderMcpsDialog() {
+    confirmationByUser = false;
+    $('.ui-dialog-buttonpane button:contains("Continue")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $('.ui-dialog-buttonpane button:contains("Cancel")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $("#mcps-dialog-message").dialog("open");
+}
+
+function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, callbackOnContinue = null, callbackOnCancel = null) {
+    agentsDialogMessage.title = message;
+    agentsPrimaryDialogLegend.innerText = primaryDialogText;
+    agentsSecondaryDialogLegend.innerText = secondaryDialogText;
+
+    $("#agents-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 450,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+
+        open: function () {
+            document.body.style.overflow = 'hidden';
+            // Clear and rebuild the agents list each time the dialog opens
+            agentsList.innerHTML = '';
+            for (const agent of agents) {
+                const listElement = document.createElement('li');
+                const checkbox = document.createElement('input');
+                const label = document.createElement('label');
+                checkbox.type = 'checkbox';
+                checkbox.id = agent.name;
+                label.htmlFor = agent.name;
+                label.innerText = agent.description;
+                label.setAttribute('id', 'label-' + agent.name);
+                listElement.appendChild(checkbox);
+                listElement.appendChild(label);
+                if (agent.enabled === true) {
+                    checkbox.checked = true;
+                }
+                agentsList.appendChild(listElement);
+            }
+            // Load agent states after rebuilding the list
+            loadAgents();
+        },
+        close: function () {
+            document.body.style.overflow = '';
+        },
+
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+            $('.ui-dialog-buttonpane button:contains("Cancel")')
+                .css({
+                    'background-color': '#55BBAA',
+                    'color': 'white',
+                    'border-radius': '8px',
+                    'font-size': '1em',
+                    'height': '4vh'
+                });
+        },
+        buttons: [
+            {
+                text: "Continue",
+                click: function () {
+                    console.log("Continue...");
+                    confirmationByUser = true;
+                    $(this).dialog("close");
+                    if (callbackOnContinue != null) {
+                        callbackOnContinue();
+                    }
+                }
+            },
+            {
+                text: "Cancel",
+                click: function () {
+                    console.log("Cancel...");
+                    confirmationByUser = false;
+                    $(this).dialog("close");
+                    if (callbackOnCancel != null) {
+                        callbackOnCancel();
+                    }
+                }
+            }
+        ]
+    });
+}
+
+function renderAgentsDialog() {
+    confirmationByUser = false;
+    $('.ui-dialog-buttonpane button:contains("Continue")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $('.ui-dialog-buttonpane button:contains("Cancel")')
+        .css({
+            'background-color': '#55BBAA',
+            'color': 'white',
+            'border-radius': '8px',
+            'font-size': '1em',
+            'height': '4vh'
+        });
+    $("#agents-dialog-message").dialog("open");
+}
+
+function listOllamaModels() { // eslint-disable-line no-unused-vars
+    const ollamaConfigScript = document.getElementById('ollama_config');
+    let ollamaBaseUrl = 'http://localhost:11434';
+
+    if (ollamaConfigScript && ollamaConfigScript.textContent) {
+        try {
+            ollamaBaseUrl = JSON.parse(ollamaConfigScript.textContent);
+        } catch (e) {
+            console.error('Error parsing ollama_base_url from config:', e);
+        }
+    }
+
+    fetch(`${ollamaBaseUrl}/api/tags`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Available Ollama models:');
+            if (data.models && Array.isArray(data.models)) {
+                data.models.forEach(model => {
+                    if (model.name) {
+                        console.log(" - " + model.name);
+                    }
+                });
+            } else {
+                console.warn('No models found in response');
+            }
+        })
+        .catch(error => console.error('Error fetching Ollama models:', error));
+}

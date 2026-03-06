@@ -1,0 +1,17 @@
+# AND Agent Configuration
+# This agent acts as an AND gate: triggers target_agents ONLY if Pattern 1 is found in Source 1 AND Pattern 2 is found in Source 2.
+# Use this to correlate two distinct events.
+
+# Source Agent 1 (Input 1)
+source_agent_1: ""  # e.g., "monitor_log_1"
+pattern_1: "EVENT DETECTED"
+
+# Source Agent 2 (Input 2)
+source_agent_2: ""  # e.g., "monitor_netstat_1"
+pattern_2: "EVENT DETECTED"
+
+# Target Agents to start when BOTH patterns are detected
+target_agents: []   # e.g., ["raiser_2"]
+
+# Poll interval in seconds
+poll_interval: 5

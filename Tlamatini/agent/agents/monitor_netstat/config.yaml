@@ -1,0 +1,41 @@
+llm:
+  base_url: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+  temperature: 0.0
+
+target:
+  port: "8080"
+  poll_interval: 5
+  recursion_limit: 2000
+  keywords: "LISTENING"
+  outcome_word: "PORT EVENT DETECTED"
+
+system_prompt: |
+  You are a Netstat Monitoring Agent. Your job is to analyze ports and their states.
+  
+  Target Port: {port}
+  Target Keywords: {keywords}
+  Outcome words: {outcome_word}
+  
+  Instructions:
+  1. Call the tool 'execute_netstat' to read ports and their states.
+  2. If you see NO entries for port {port}, say "No port {port} found as active."
+  3. **If you find an entry for port {port} in state {keywords}: output the phrase "{outcome_word}: " followed by the STATE of the port.**
+  
+  CRITICAL — Keyword Matching Rules:
+  - **Case-insensitive**: Keywords may appear in ANY combination of upper/lower case
+    (e.g., "listening", "Listening", "LISTENING" all match the keyword "LISTENING").
+    Always perform case-insensitive comparisons when looking for keywords.
+  - **Semantic synonym matching**: If a keyword or keyword phrase conveys a specific
+    meaning, you MUST also detect entries that express the SAME meaning using
+    different words or phrasing. For example:
+      • "LISTENING" also matches: "Open", "Accepting connections",
+        "Bound and waiting", "Awaiting connection".
+      • "ESTABLISHED" also matches: "Connected", "Active connection",
+        "Session active", "Link established".
+      • "CLOSE_WAIT" also matches: "Closing", "Pending close",
+        "Waiting to close", "Half-closed".
+      • "TIME_WAIT" also matches: "Timed wait", "Waiting timeout",
+        "Lingering connection".
+    Apply this semantic matching to ALL keywords — if the port state carries the
+    same meaning as the keyword, treat it as a match regardless of the exact wording.

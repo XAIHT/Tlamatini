@@ -1,0 +1,155 @@
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+}
+
+.catalog-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    z-index: 100;
+}
+
+/* Modal styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; 
+    z-index: 200;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    transition: background-color 0.3s ease-in-out;
+}
+
+.modal.show {
+    display: block; /* Show when 'show' class is added */
+}
+
+.modal-content {
+    background-color: #747474;
+    border-radius: 15px;
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: fixed; /* Position relative to the viewport */
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    
+    /* NEW: Animation properties */
+    opacity: 0;
+    transform: scale(0);
+    transform-origin: bottom left; /* Crucial: Animate from the bottom-left corner */
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* NEW: Active state for the modal content */
+.modal.show .modal-content {
+    opacity: 1;
+    transform: scale(1);
+}
+
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: white;
+    text-decoration: none;
+}
+
+.modal-header {
+    padding-bottom: 15px;
+    border-bottom: 1px solid #555;
+    margin-bottom: 15px;
+}
+
+.modal-header p {
+    margin: 5px 0;
+    color: #bbb;
+}
+
+.modal-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.text-box {
+    background-color: #343644;
+    border-radius: 10px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    color: #eee;
+    font-size: 14px;
+}
+
+.text-box a {
+    color: #8cafff;
+    text-decoration: none;
+}
+
+.text-box a:hover {
+    text-decoration: underline;
+}
+
+.modal-footer {
+    padding-top: 15px;
+    border-top: 1px solid #555;
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.message-input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #666;
+    background-color: #666;
+    color: white;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+.message-input::placeholder {
+    color: #bbb;
+}
+
+.cancel-button {
+    background-color: #dc3545;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#modal-header-title {
+    color: antiquewhite
+}
+
+.tool-box-entry {
+    cursor: pointer;
+}

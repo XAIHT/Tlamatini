@@ -1,0 +1,132 @@
+# Emailer Agent Configuration
+# This is a deterministic agent (no LLM) that monitors source agents for a 
+# configurable pattern and sends email notifications when detected.
+#
+# DEPLOYMENT NOTES:
+# When deployed via agentic_control_panel, this agent is copied to the pool
+# directory with a cardinal suffix (e.g., emailer_1, emailer_2).
+#
+# Agent names with cardinals (e.g., monitor_log_1, raiser_2) are looked up
+# in the pool directory. Agent names without cardinals (e.g., monitor_log)
+# are looked up in the template agents directory.
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents is automatically populated when you make connections on the canvas:
+#   - Connect an agent's OUTPUT to this Emailer's INPUT -> adds to source_agents
+
+# Source agents to monitor (auto-populated via canvas connections)
+# Examples:
+#   - monitor_log_1      -> pool/monitor_log_1/monitor_log.log
+#   - monitor_netstat_2  -> pool/monitor_netstat_2/monitor_netstat.log
+source_agents: []
+
+# Pattern string to detect in source agent logs
+# When this pattern is found, an email notification will be sent
+pattern: "EVENT DETECTED"
+
+# Polling interval in seconds
+poll_interval: 5
+
+# =============================================================================
+# SMTP SERVER CONFIGURATION (Required for sending emails)
+# =============================================================================
+# ⚠️ NOTE: Microsoft/Outlook has DISABLED basic authentication for personal
+#    accounts. Use Gmail instead, which still supports App Passwords.
+#
+smtp:
+  # SMTP server hostname
+  # Gmail: smtp.gmail.com | Outlook: smtp.office365.com (work accounts only)
+  host: "smtp.gmail.com"
+  
+  # SMTP server port (587 for STARTTLS, 465 for direct SSL)
+  port: 587
+  
+  # ==========================================================================
+  # SMTP AUTHENTICATION CREDENTIALS
+  # ==========================================================================
+  # ⚠️ If you have MFA (Multi-Factor Authentication) enabled, you MUST use
+  #    an App Password instead of your regular password!
+  #
+  # FOR GMAIL (with 2-Step Verification):
+  #   1. Go to: https://myaccount.google.com/apppasswords
+  #   2. Select "Mail" and your device
+  #   3. Click "Generate" and copy the 16-character password
+  #
+  # FOR MICROSOFT/OUTLOOK/HOTMAIL (with MFA):
+  #   1. Go to: https://account.microsoft.com/security
+  #   2. Click "Advanced security options"
+  #   3. Scroll to "App passwords" → "Create a new app password"
+  #   4. Copy the 16-character password (remove spaces)
+  #
+  # App passwords look like: "abcd efgh ijkl mnop" → use "abcdefghijklmnop"
+  # ==========================================================================
+  username: ""
+  password: ""  # Use App Password if MFA is enabled!
+  
+  # ==========================================================================
+  # SECURITY SETTINGS - IMPORTANT!
+  # ==========================================================================
+  # ⚠️ WRONG SETTINGS CAUSE "SSL: WRONG_VERSION_NUMBER" ERROR!
+  #
+  # Use this table to configure correctly:
+  # ┌──────────┬────────────┬────────────┬─────────────────────────────────┐
+  # │ Port     │ use_tls    │ use_ssl    │ Provider Examples               │
+  # ├──────────┼────────────┼────────────┼─────────────────────────────────┤
+  # │ 587      │ true       │ false      │ Gmail, Outlook, Office365       │
+  # │ 465      │ false      │ true       │ Gmail (legacy), some providers  │
+  # │ 25       │ false      │ false      │ Unencrypted (not recommended)   │
+  # └──────────┴────────────┴────────────┴─────────────────────────────────┘
+  #
+  # Port 587 (STARTTLS): Starts unencrypted, upgrades to TLS
+  # Port 465 (SMTPS): Direct SSL/TLS connection from the start
+  #
+  # For Outlook/Hotmail/Office365 on port 587, use these settings:
+  use_tls: true    # ✅ Required for port 587 (STARTTLS)
+  use_ssl: false   # ✅ Must be false for port 587
+
+# =============================================================================
+# EMAIL CONFIGURATION
+# =============================================================================
+email:
+  # Sender email address (defaults to smtp.username if not specified)
+  from_address: ""
+  
+  # Primary recipients (required - at least one address)
+  to_addresses:
+    - ""
+  
+  # CC recipients (optional)
+  cc_addresses: []
+  
+  # BCC recipients (optional)
+  bcc_addresses: []
+  
+  # Email subject template
+  # Available placeholders: {source_agent}, {timestamp}
+  subject: "[EMAILER ALERT] Pattern detected from {source_agent}"
+  
+  # Email body template
+  # Available placeholders: {source_agent}, {matched_line}, {timestamp}, {log_file}
+  body: |
+    ============================================================
+    EMAILER AGENT - PATTERN DETECTION ALERT
+    ============================================================
+    
+    A pattern match was detected in a monitored agent's log file.
+    
+    DETAILS:
+    --------
+    Source Agent: {source_agent}
+    Timestamp: {timestamp}
+    Log File: {log_file}
+    
+    MATCHED LINE:
+    -------------
+    {matched_line}
+    
+    ============================================================
+    This is an automated notification from the Emailer Agent.
+    ============================================================
+  
+  # Whether to attach the source agent's log file to the email
+  attach_log: false

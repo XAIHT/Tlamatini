@@ -1,0 +1,33 @@
+// filesearch.proto
+// filesearch.proto
+syntax = "proto3";
+
+package filesearch;
+
+// The service definition.
+service FileSearcher {
+  // The RPC function
+  rpc SearchFiles (SearchRequest) returns (SearchResponse) {}
+  rpc ListAllowedDirs (ListDirsRequest) returns (ListDirsResponse) {}
+}
+
+// The request message
+message SearchRequest {
+  // A key for a *specific* path. If not provided, searches all allowed paths.
+  optional string base_path_key = 1; 
+  string file_pattern = 2;   // The wildcard pattern (e.g., "*.py", "report.*")
+  bool include_hidden = 3;   // Whether to search hidden files/folders
+}
+
+// The response message
+message SearchResponse {
+  repeated string found_files = 1; // A list of file paths found
+  string error_message = 2;      // An error, if any
+}
+
+message ListDirsRequest {}
+
+message ListDirsResponse {
+  map<string, string> allowed_dirs = 1; // Key -> Path
+  string error_message = 2;             // An error, if any
+}

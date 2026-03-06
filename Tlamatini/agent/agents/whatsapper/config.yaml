@@ -1,0 +1,37 @@
+# Whatsapper Agent Configuration
+# Monitors source agents in parallel and sends WhatsApp notifications via TextMeBot.
+
+# Source agents to monitor (auto-populated via canvas connections)
+source_agents: []
+
+# Target agents (reference only, not auto-started)
+target_agents: []
+
+# Keywords to detect (comma-separated string)
+keywords: "error, critical, exception, fatal"
+
+# System Prompt for LLM Analysis
+system_prompt: |
+  You are a Log Analysis Agent for WhatsApp notifications.
+  Analyze the provided log entry.
+  If it contains any of the target keywords ({keywords}), summarize the issue in a short message suitable for WhatsApp.
+  
+  Format:
+  "🚨 Alert from {source_agent}: <Short Summary>"
+  
+  Keep it under 200 characters if possible.
+
+# LLM Configuration
+llm:
+  base_url: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+  temperature: 0.1
+
+# TextMeBot Configuration (Get API Key from textmebot.com)
+textmebot:
+  phone: ""  # Your phone number with country code (e.g., +1234567890)
+  apikey: "" # Your TextMeBot API Key
+
+# Polling configuration
+poll_interval: 5
+recursion_limit: 1000

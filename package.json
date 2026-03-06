@@ -1,0 +1,28 @@
+{
+  "name": "tlamatini",
+  "version": "1.0.0",
+  "description": "A sophisticated, locally-run AI developer assistant featuring an advanced Retrieval-Augmented Generation (RAG) system, real-time web interface, visual agentic workflow designer, and multi-model LLM support.",
+  "private": true,
+  "scripts": {
+    "lint": "eslint Tlamatini/agent/static/agent/js/",
+    "lint:fix": "eslint --fix Tlamatini/agent/static/agent/js/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angelahack1/Tlamatini.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/angelahack1/Tlamatini/issues"
+  },
+  "homepage": "https://github.com/angelahack1/Tlamatini#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.0",
+    "globals": "^17.3.0"
+  }
+}

@@ -1,0 +1,20 @@
+sql_connection:
+  driver: "{ODBC Driver 17 for SQL Server}"
+  server: "localhost"
+  database: "mydatabase"
+  username: "sa"
+  password: "YourStrongPassword"
+
+script: |
+  # Sample script to be executed
+  # The 'cursor' object is an instance of a pyodbc cursor.
+  # The 'logging' object can be used to log messages.
+  logging.info("Starting script execution...")
+  # Example:
+  # cursor.execute("SELECT 1 AS test")
+  # for row in cursor:
+  #     logging.info(f"Row: {row}")
+  logging.info("Script execution finished.")
+
+source_agents: []
+target_agents: []

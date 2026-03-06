@@ -1,0 +1,22 @@
+# Ssher Agent Configuration
+# SSH into a remote host and execute a script/command.
+#
+# IMPORTANT: You must preconfigure SSH keys to allow passwordless
+# authentication to the remote endpoint before using this agent.
+#
+# BEHAVIOR:
+# - On SUCCESS (exit code 0): Triggers downstream agents
+# - On FAILURE (non-zero exit): Logs failure detail, does NOT trigger downstream
+
+# SSH login/user for the remote host
+user: "user"
+
+# Remote host IP or hostname
+ip: "[IP_ADDRESS]"
+
+# Script/command to execute on the remote host
+script: "echo Hello from remote"
+
+# Agents connected (auto-populated via canvas connections)
+source_agents: []
+target_agents: []

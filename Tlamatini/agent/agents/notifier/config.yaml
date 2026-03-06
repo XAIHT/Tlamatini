@@ -1,0 +1,17 @@
+llm:
+  base_url: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+  temperature: 0.1
+
+target:
+  search_strings: "ERROR, EXCEPTION, FATAL" # Default strings to detect
+  sound_enabled: false
+  shutdown_on_match: false
+  poll_interval: 2
+  recursion_limit: 1000
+
+# Input agents (source of logs)
+source_agents: []
+
+# Output agents (to start on match)
+target_agents: []

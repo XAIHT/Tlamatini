@@ -1,0 +1,9 @@
+trigger_mode: "immediate" # Options: "immediate", "event"
+operation: "copy" # Options: "move", "copy"
+source_files:
+  - "C:/Temp/Source/*.txt"
+destination_folder: "C:/Temp/MoverDest"
+source_agents: [] # List of connected agent names (e.g., ["monitor_log_1"])
+target_agents: [] # List of downstream agents to trigger
+trigger_event_string: "EVENT DETECTED"
+poll_interval: 5
