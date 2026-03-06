@@ -703,6 +703,13 @@ async function _executeFlowCreator(agentId) {
 
         // 4. Poll for flow_result.json
         _updateFlowCreatorProgress(progressDialog, 'Waiting for LLM response... This may take a minute...');
+
+        // Show hourglass while waiting
+        if (typeof isFlowCreatorWaiting !== 'undefined') {
+            isFlowCreatorWaiting = true;
+            titleBusyPrefix = "⏳ ";
+        }
+
         const flowResult = await _pollFlowCreatorResult(agentId, progressDialog);
 
         if (!flowResult || flowResult.status === 'error') {
@@ -724,6 +731,17 @@ async function _executeFlowCreator(agentId) {
         console.error('FlowCreator execution error:', error);
         _closeFlowCreatorProgress(progressDialog);
         showDeploymentResultDialog(false, agentId, 'FlowCreator error: ' + error.message);
+    } finally {
+        if (typeof isFlowCreatorWaiting !== 'undefined') {
+            isFlowCreatorWaiting = false;
+            // Force title update if polling is not running
+            titleBusyPrefix = "";
+            if (typeof globalRunningState !== 'undefined' && typeof GLOBAL_STATE !== 'undefined' && globalRunningState === GLOBAL_STATE.RUNNING) {
+                if (typeof pollAgentStatus === 'function') {
+                    pollAgentStatus();
+                }
+            }
+        }
     }
 }
 

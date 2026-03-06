@@ -139,8 +139,12 @@ async function pollAgentStatus() {
         const canvasItems = document.querySelectorAll('#submonitor-container .canvas-item');
         const anyRunning = Array.from(canvasItems).some(item => runningAgents[item.id] === true);
 
-        // Update title hourglass based on running state
-        titleBusyPrefix = anyRunning ? "⏳ " : "";
+        // Update title hourglass based on running state or if FlowCreator is waiting for LLM
+        if (typeof isFlowCreatorWaiting !== 'undefined' && isFlowCreatorWaiting) {
+            titleBusyPrefix = "⏳ ";
+        } else {
+            titleBusyPrefix = anyRunning ? "⏳ " : "";
+        }
 
         // Update LED indicators
         updateAllLedIndicators(runningAgents);
