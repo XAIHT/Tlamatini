@@ -99,7 +99,7 @@
   },
   "_section_misc": "Miscellaneous Settings",
   "load_hidden": true,
-  "ssl_verify": false,
+  "ssl_verify": true,
   "disable_proxies": false,
   "max_input_tokens": 5000,
   "keep_last_turns": 3,
