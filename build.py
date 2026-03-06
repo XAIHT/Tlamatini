@@ -510,8 +510,7 @@ def main():
                 "CreateShortcut.ps1",
                 "RemoveShortcut.ps1",
                 "CreateShortcut.json",
-                "Tlamatini/cat_art.py",
-                "Tlamatini/chainer.py"
+                "Tlamatini/cat_art.py"
             ]
             for fname in support_files:
                 try:
