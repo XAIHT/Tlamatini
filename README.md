@@ -22,7 +22,15 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [MCP Services](#mcp-services)
   - [Advanced Options](#advanced-options)
 - [Running the Application](#running-the-application)
-- [Building the Executable](#building-the-executable)
+- [Building & Release Process](#building--release-process)
+  - [Overview](#release-overview)
+  - [Prerequisites](#release-prerequisites)
+  - [Step 1: Build the Application (build.py)](#step-1-build-the-application-buildpy)
+  - [Step 2: Build the Uninstaller (build_uninstaller.py)](#step-2-build-the-uninstaller-build_uninstallerpy)
+  - [Step 3: Build the Installer (build_installer.py)](#step-3-build-the-installer-build_installerpy)
+  - [Release Distribution](#release-distribution)
+  - [What the Installer Does](#what-the-installer-does)
+  - [What the Uninstaller Does](#what-the-uninstaller-does)
 - [Core Components](#core-components)
   - [RAG System](#rag-system)
   - [RAG Chain Types](#rag-chain-types)
@@ -760,15 +768,40 @@ python Tlamatini/agent/mcp_files_search_server.py
 
 ---
 
-## Building the Executable
+## Building & Release Process
 
-To create a standalone executable:
+### Release Overview
+
+A complete Tlamatini release is produced by running three build scripts **in order**. Each step depends on artifacts produced by the previous one:
+
+```
+build.py  ──►  build_uninstaller.py  ──►  build_installer.py
+   │                   │                         │
+   ▼                   ▼                         ▼
+pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
+(app bundle)     (at project root)        ├─ Installer.exe
+                                          ├─ Uninstaller.exe
+                                          ├─ pkg.zip
+                                          └─ _internal/
+```
+
+The final distributable is the `dist/Tlamatini_Release/` folder, which you zip and share with end users.
+
+### Release Prerequisites
+
+- **Python 3.10+** with `pip` available
+- **PyInstaller** (`pip install pyinstaller`)
+- All project dependencies from `requirements.txt`
+- Windows environment (the installer/uninstaller are Windows-specific)
+
+### Step 1: Build the Application (`build.py`)
 
 ```bash
 python build.py
 ```
 
-This script performs:
+This is the main application build. It:
+
 1. Installs dependencies from `requirements.txt`
 2. Runs Django `collectstatic`
 3. Executes PyInstaller with all necessary configurations
@@ -777,8 +810,81 @@ This script performs:
 6. Creates a default superuser
 7. Renames the executable to `Tlamatini.exe`
 8. Copies agent templates
+9. Bundles support scripts into `dist/manage/`:
+   - `register_flw.ps1` / `unregister_flw.ps1` — `.flw` file association
+   - `CreateShortcut.ps1` / `RemoveShortcut.ps1` — desktop & local shortcuts
+   - `Tlamatini.ps1` — PowerShell launcher
+   - `CreateShortcut.json`, `Tlamatini.ico`
+10. Generates **`pkg.zip`** from the `dist/manage/` directory
 
-The final executable is located at `dist/manage/Tlamatini.exe`
+**Output:** `pkg.zip` at the project root (contains the entire packaged application).
+
+### Step 2: Build the Uninstaller (`build_uninstaller.py`)
+
+```bash
+python build_uninstaller.py
+```
+
+This builds `uninstall.py` into a single-file executable using PyInstaller `--onefile` mode. It:
+
+1. Gathers Tcl/Tk libraries and system DLLs required by the Tkinter GUI
+2. Runs PyInstaller with `--onefile --windowed` to produce a single portable `.exe`
+3. Copies the resulting `Uninstaller.exe` to the **project root**
+4. Cleans up all intermediate build artifacts (`build/`, `dist/`, `.spec`)
+
+**Output:** `Uninstaller.exe` at the project root.
+
+> **Why `--onefile`?** The Uninstaller is built as a single file (unlike the Installer which uses `--onedir`) so it can sit alongside `Installer.exe` without conflicting `_internal/` directories.
+
+### Step 3: Build the Installer (`build_installer.py`)
+
+```bash
+python build_installer.py
+```
+
+**Requires:** `pkg.zip` (from Step 1) and `Uninstaller.exe` (from Step 2) at the project root.
+
+This builds `install.py` into the Installer executable. It:
+
+1. Generates a splash screen image (shown immediately on double-click)
+2. Runs PyInstaller with `--onedir --windowed` and splash support
+3. Copies `pkg.zip` into `dist/Installer/` (with SHA-256 verification)
+4. Copies `Uninstaller.exe` into `dist/Installer/`
+5. Assembles the final release folder at `dist/Tlamatini_Release/`
+6. Verifies the integrity of `pkg.zip` inside the release folder
+
+**Output:** `dist/Tlamatini_Release/` — the complete distributable release.
+
+### Release Distribution
+
+After all three steps complete:
+
+1. Navigate to `dist/Tlamatini_Release/`
+2. Zip the **entire folder** contents
+3. Distribute the zip to end users
+
+Users extract the zip and double-click `Installer.exe` to install. No admin privileges are required.
+
+### What the Installer Does
+
+When an end user runs `Installer.exe`, it:
+
+1. Presents a Tkinter GUI to choose the installation directory
+2. Extracts `pkg.zip` into `<install_path>/Tlamatini/`
+3. Secures agent virtual environments (locks permissions)
+4. Writes `config.json` with installation settings
+5. Copies `Uninstaller.exe` into the installed directory
+6. Creates desktop and local shortcuts (`Tlamatini.lnk`)
+7. Registers the `.flw` file extension to open with Tlamatini
+
+### What the Uninstaller Does
+
+When an end user runs `Uninstaller.exe` from the installed directory, it:
+
+1. Removes desktop and local shortcuts (with Explorer restart for immediate effect)
+2. Unregisters the `.flw` file association and clears cached shell state
+3. Deletes all application files **except** `<install_path>/Tlamatini/agents/*` (preserving user-created agents and their data)
+4. Removes the installation directory if empty after cleanup
 
 ---
 
