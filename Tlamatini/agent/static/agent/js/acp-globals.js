@@ -35,6 +35,9 @@ const pausedProcessesOnPause = {};
 // Title hourglass prefix - updated by polling logic
 let titleBusyPrefix = "";
 
+// FlowCreator waiting flag to show hourglass even if not polling
+let isFlowCreatorWaiting = false;
+
 // Busy flag to prevent double-clicks while processing
 let isBusyProcessing = false;
 
