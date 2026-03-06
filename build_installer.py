@@ -254,6 +254,14 @@ def main():
         sys.exit(1)
     print("Found install.py")
 
+    uninstaller_exe_src = root / "Uninstaller.exe"
+    if uninstaller_exe_src.exists():
+        un_mb = uninstaller_exe_src.stat().st_size / (1024 * 1024)
+        print(f"Found Uninstaller.exe ({un_mb:.1f} MB)")
+    else:
+        print("WARNING: Uninstaller.exe not found at project root.")
+        print("         Run build_uninstaller.py first to include it in the release.")
+
     # ── 1) Clean previous Installer build artifacts ───────────────────
     run_step("Cleaning previous Installer build artifacts", lambda: [
         clean_directory(root / "build" / "Installer"),
@@ -387,6 +395,14 @@ def main():
     # We use verified copy with SHA-256 hash + size check and retry.
     print("\n--- Copying pkg.zip to dist/Installer ---")
     _verified_copy(pkg_zip, installer_dir / "pkg.zip")
+
+    # ── 7b) Copy Uninstaller.exe into dist/Installer (next to the .exe) ──
+    if uninstaller_exe_src.exists():
+        print("\n--- Copying Uninstaller.exe to dist/Installer ---")
+        dst_uninstaller = installer_dir / "Uninstaller.exe"
+        shutil.copy2(uninstaller_exe_src, dst_uninstaller)
+        un_mb = dst_uninstaller.stat().st_size / (1024 * 1024)
+        print(f"Copied Uninstaller.exe ({un_mb:.1f} MB)")
 
     # ── 8) Setup Release Folder ──────────────────────────────────────
     # Copy the entire --onedir output (which now includes pkg.zip from

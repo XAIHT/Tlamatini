@@ -39,9 +39,10 @@ class FancyInstaller:
     # ── weighted installation steps ──────────────────────────────────
     STEPS = [
         ("Preparing installation directory…",  0.05),
-        ("Extracting files…",                  0.70),
+        ("Extracting files…",                  0.65),
         ("Securing agent environments…",       0.05),
         ("Writing configuration…",             0.05),
+        ("Copying uninstaller…",               0.05),
         ("Creating shortcuts…",                0.075),
         ("Registering .flw file association…", 0.075),
     ]
@@ -381,8 +382,17 @@ class FancyInstaller:
             self._set_progress(cumulative)
             self._mark_step(step_idx)
 
-            # ── Step 4: run CreateShortcut.ps1 ───────────────────────
+            # ── Step 4: copy Uninstaller.exe into install dir ─────────
             step_idx = 4
+            self._activate_step(step_idx)
+            self._set_progress(cumulative, "Copying uninstaller…")
+            self._copy_uninstaller(target)
+            cumulative += self.STEPS[step_idx][1]
+            self._set_progress(cumulative)
+            self._mark_step(step_idx)
+
+            # ── Step 5: run CreateShortcut.ps1 ───────────────────────
+            step_idx = 5
             self._activate_step(step_idx)
             self._set_progress(cumulative, "Creating shortcuts…")
             self._run_ps1("CreateShortcut.ps1", target)
@@ -390,8 +400,8 @@ class FancyInstaller:
             self._set_progress(cumulative)
             self._mark_step(step_idx)
 
-            # ── Step 5: run register_flw.ps1 ─────────────────────────
-            step_idx = 5
+            # ── Step 6: run register_flw.ps1 ─────────────────────────
+            step_idx = 6
             self._activate_step(step_idx)
             self._set_progress(cumulative, "Registering .flw file association…")
             self._run_ps1("register_flw.ps1", target)
@@ -420,6 +430,24 @@ class FancyInstaller:
         if result.returncode != 0:
             detail = result.stderr.strip() or result.stdout.strip()
             raise RuntimeError(f"{filename} failed (exit {result.returncode}):\n{detail}")
+
+    # ─── Uninstaller copy helper ─────────────────────────────────────
+    @staticmethod
+    def _copy_uninstaller(target_dir: str):
+        """Copy Uninstaller.exe from next to the installer into the install dir."""
+        import shutil
+        if getattr(sys, 'frozen', False):
+            base = os.path.dirname(sys.executable)
+        else:
+            base = os.path.abspath(os.path.dirname(__file__))
+
+        src = os.path.join(base, "Uninstaller.exe")
+        if os.path.isfile(src):
+            dst = os.path.join(target_dir, "Uninstaller.exe")
+            shutil.copy2(src, dst)
+        else:
+            # Non-fatal: older release packages may not include it
+            print(f"WARNING: Uninstaller.exe not found at {src} — skipping copy.")
 
     # ─── Environment Patching helper ──────────────────────────────────
     def _patch_agent_environments(self, tlamatini_dir: str):
