@@ -131,7 +131,7 @@ try {
     Write-Host "You can now:" -ForegroundColor Cyan
     Write-Host "  1. Double-click the shortcut on your desktop" -ForegroundColor White
     Write-Host "  2. Double-click 'Tlamatini.lnk' in $installDir" -ForegroundColor White
-    Write-Host "  3. Pin the shortcut to taskbar or start menu" -ForegroundColor White
+    Write-Host "  3. Pin the shortcut to the taskbar or Start menu" -ForegroundColor White
 
 } catch {
     Write-Host "Error creating shortcuts: $_" -ForegroundColor Red

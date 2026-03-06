@@ -60,7 +60,7 @@
                   canvas</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="clear-context">Clear context</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="set-omissions"
-                  onclick="OpenOmissionsDialog(event);">Set filetypes omission</a></li>
+                  onclick="OpenOmissionsDialog(event);">Set file type omissions</a></li>
             </ul>
           </li>
           <li class="nav-item dropdown">
@@ -113,7 +113,7 @@
           <div id="tools-div">
             <div id="tools-left">
               <button type="button" id="prompts-catalog">Catalog of prompts</button>
-              <button type="button" id="clean-history">Clean history</button>
+              <button type="button" id="clean-history">Clear history</button>
             </div>
             <div id="tools-right">
               <input id="internetEnabled" type="checkbox" />
@@ -141,7 +141,7 @@
         <div class="col-6" id="filename-div-right">
           <button id="copy-canvas-button">Copy</button>
           <button id="reopen-canvas-button">Reopen</button>
-          <button id="clean-canvas-button">Clean canvas</button>
+          <button id="clean-canvas-button">Clear canvas</button>
           <button id="context-button">Use as context</button>
         </div>
       </div>
@@ -160,7 +160,7 @@
   <div id="omissions-dialog-message" title="" style="display: none;">
     <h5 id="omissions-primary-dialog-legend"></h5>
     <p id="omissions-secondary-dialog-legend"></p>
-    <input id="fileTypeOmissions" type="text" value="" placeholder="File extensions separated by coma (,)"
+    <input id="fileTypeOmissions" type="text" value="" placeholder="File extensions separated by commas (,)"
       spellcheck="false" size="57">
   </div>
   <div id="mcps-dialog-message" title="" style="display: none;">
@@ -192,7 +192,7 @@
   <div id="modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 id="modal-header-title">Prestablished prompts...</h4>
+        <h4 id="modal-header-title">Pre-established prompts...</h4>
       </div>
       <div id="tools-body" class="modal-body"></div>
       <div class="modal-footer">
