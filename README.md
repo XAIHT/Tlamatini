@@ -118,7 +118,7 @@ python manage.py collectstatic --noinput
 ### 4. Run the Application
 
 ```bash
-python manage.py runserver
+python manage.py runserver --noreload
 ```
 
 ### 5. Access the Interface
@@ -714,7 +714,7 @@ The context budget allocates token space to different document types:
 ### Development Server
 
 ```bash
-python Tlamatini/manage.py runserver
+python Tlamatini/manage.py runserver --noreload
 ```
 
 Access the application at `http://127.0.0.1:8000/`
