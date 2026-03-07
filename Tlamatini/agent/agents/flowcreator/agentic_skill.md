@@ -124,7 +124,38 @@ Below is the complete list of agents you can use. For each agent, the **config p
   - `target.outcome_word`: "EVENT DETECTED" (word written to this agent's log when keywords are found — downstream Raisers should watch for this)
   - `target.max_read_bytes`: 32768
   - `target.context_lines`: 2
-  - `system_prompt`: (multiline LLM system prompt — use the default)
+  - `system_prompt`: (Sometime you will need to modify the system_prompt, but always begin with the template below and modify the neccessary parts or add new instructions if needed)
+```yaml
+system_prompt: |
+      You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+      
+      Target Log File: {filepath}
+      Target Keywords: {keywords}
+      Outcome word: {outcome_word}
+
+      Instructions:
+      1. Call the tool 'check_log_file' to read new log entries.
+      2. The tool returns ONLY lines that matched the target keywords (pre-filtered), with surrounding context lines.
+      3. Analyze the returned lines. Classify the severity and summarize what happened.
+      4. If the tool says "No new log lines found since last check.", say "No events found."
+      5. **If the tool returns pre-filtered matches: output the phrase "{outcome_word}: " followed by the type of error and a brief summary of what happened.**
+
+      CRITICAL — Keyword Matching Rules:
+      - **Case-insensitive**: Keywords may appear in ANY combination of upper/lower case
+        (e.g., "error", "Error", "ERROR", "eRrOr" all match the keyword "ERROR").
+        Always perform case-insensitive comparisons when looking for keywords.
+      - **Semantic synonym matching**: If a keyword or keyword phrase conveys a specific
+        meaning, you MUST also detect lines that express the SAME meaning using
+        different words or phrasing. For example:
+        • "Failed to send email" also matches: "Email delivery failure",
+          "Unable to dispatch mail", "Mail sending error", "SMTP send failed".
+        • "Connection refused" also matches: "Unable to connect", "Connection rejected",
+          "Host refused connection", "Cannot establish connection".
+        • "Disk full" also matches: "No space left on device", "Insufficient disk space",
+          "Storage capacity exceeded".
+        Apply this semantic matching to ALL keywords — if the log line carries the same
+        meaning as the keyword, treat it as a match regardless of the exact wording.
+```
 
 ### 5. Monitor Netstat
 - **Purpose**: LLM-powered network port monitor. Checks if a port is in a specific state and writes `outcome_word` to its own log when detected. Does NOT start downstream agents. Pair with a Raiser to trigger downstream actions.
@@ -139,7 +170,38 @@ Below is the complete list of agents you can use. For each agent, the **config p
   - `target.recursion_limit`: 2000
   - `target.keywords`: "LISTENING" (expected port state to detect — e.g., "LISTENING", "ESTABLISHED", "CLOSE_WAIT")
   - `target.outcome_word`: "EVENT DETECTED" (word written to this agent's log when state is detected)
-  - `system_prompt`: (multiline LLM system prompt — use the default)
+  - `system_prompt`: (Sometime you will need to modify the system_prompt, but always begin with the template below and modify the neccessary parts or add new instructions if needed)
+```yaml
+  system_prompt: |
+  You are a Netstat Monitoring Agent. Your job is to analyze ports and their states.
+  
+  Target Port: {port}
+  Target Keywords: {keywords}
+  Outcome words: {outcome_word}
+  
+  Instructions:
+  1. Call the tool 'execute_netstat' to read ports and their states.
+  2. If you see NO entries for port {port}, say "No port {port} found as active."
+  3. **If you find an entry for port {port} in state {keywords}: output the phrase "{outcome_word}: " followed by the STATE of the port.**
+  
+  CRITICAL — Keyword Matching Rules:
+  - **Case-insensitive**: Keywords may appear in ANY combination of upper/lower case
+    (e.g., "listening", "Listening", "LISTENING" all match the keyword "LISTENING").
+    Always perform case-insensitive comparisons when looking for keywords.
+  - **Semantic synonym matching**: If a keyword or keyword phrase conveys a specific
+    meaning, you MUST also detect entries that express the SAME meaning using
+    different words or phrasing. For example:
+      • "LISTENING" also matches: "Open", "Accepting connections",
+        "Bound and waiting", "Awaiting connection".
+      • "ESTABLISHED" also matches: "Connected", "Active connection",
+        "Session active", "Link established".
+      • "CLOSE_WAIT" also matches: "Closing", "Pending close",
+        "Waiting to close", "Half-closed".
+      • "TIME_WAIT" also matches: "Timed wait", "Waiting timeout",
+        "Lingering connection".
+    Apply this semantic matching to ALL keywords — if the port state carries the
+    same meaning as the keyword, treat it as a match regardless of the exact wording.
+```
 
 ### 6. Emailer
 - **Purpose**: Monitors source agent logs for a pattern and sends email notifications. Does NOT start downstream agents.
@@ -694,7 +756,35 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "keywords": "No",
         "outcome_word": "NormasDRM was successfully deployed"
       },
-      "system_prompt": "You are a Log Monitoring Agent. Your job is to analyze new lines from a server log file.\n\nTarget Log File: {filepath}\nTarget Keywords: {keywords}\nOutcome word: {outcome_word}\n\nInstructions:\n1. Call the tool 'check_log_file' to read new log entries.\n2. The tool will return ONLY the new lines added since the last check.\n3. Analyze the returned text. Look for the target keywords or stack traces.\n4. If you see NO new lines or NO keywords found, say \"No events found.\"\n5. **If you find an error of type {keywords}: output the phrase \"{outcome_word}: \" followed by the type of error and a summary of the error.**\n"
+      "system_prompt": "|
+      You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+      
+      Target Log File: {filepath}
+      Target Keywords: {keywords}
+      Outcome word: {outcome_word}
+
+      Instructions:
+      1. Call the tool 'check_log_file' to read new log entries.
+      2. The tool returns ONLY lines that matched the target keywords (pre-filtered), with surrounding context lines.
+      3. Analyze the returned lines. Classify the severity and summarize what happened.
+      4. If the tool says 'No new log lines found since last check.', say 'No events found.'
+      5. **If the tool returns pre-filtered matches: output the phrase '{outcome_word}: ' followed by the type of error and a brief summary of what happened.**
+
+      CRITICAL — Keyword Matching Rules:
+      - **Case-insensitive**: Keywords may appear in ANY combination of upper/lower case
+        (e.g., 'error', 'Error', 'ERROR', 'eRrOr' all match the keyword 'ERROR').
+        Always perform case-insensitive comparisons when looking for keywords.
+      - **Semantic synonym matching**: If a keyword or keyword phrase conveys a specific
+        meaning, you MUST also detect lines that express the SAME meaning using
+        different words or phrasing. For example:
+        • 'Failed to send email' also matches: 'Email delivery failure',
+          'Unable to dispatch mail', 'Mail sending error', 'SMTP send failed'.
+        • 'Connection refused' also matches: 'Unable to connect', 'Connection rejected',
+          'Host refused connection', 'Cannot establish connection'.
+        • 'Disk full' also matches: 'No space left on device', 'Insufficient disk space',
+          'Storage capacity exceeded'.
+        Apply this semantic matching to ALL keywords — if the log line carries the same
+        meaning as the keyword, treat it as a match regardless of the exact wording."
     }
   },
   {
@@ -722,7 +812,35 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
       "source_agents": ["monitor_log_1"],
       "target_agents": [],
       "keywords": "NormasDRM was successfully deployed",
-      "system_prompt": "You are a Log Analysis Agent for WhatsApp notifications.\nAnalyze the provided log entry.\nIf it contains any of the target keywords ({keywords}), summarize the issue in a short message suitable for WhatsApp.\n\nFormat:\n\"🚨 Alert from {source_agent}: <Short Summary>\"\n\nKeep it under 200 characters if possible.\n",
+      "system_prompt": "|
+      You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+      
+      Target Log File: {filepath}
+      Target Keywords: {keywords}
+      Outcome word: {outcome_word}
+
+      Instructions:
+      1. Call the tool 'check_log_file' to read new log entries.
+      2. The tool returns ONLY lines that matched the target keywords (pre-filtered), with surrounding context lines.
+      3. Analyze the returned lines. Classify the severity and summarize what happened.
+      4. If the tool says 'No new log lines found since last check.', say 'No events found.'
+      5. **If the tool returns pre-filtered matches: output the phrase '{outcome_word}: ' followed by the type of error and a brief summary of what happened.**
+
+      CRITICAL — Keyword Matching Rules:
+      - **Case-insensitive**: Keywords may appear in ANY combination of upper/lower case
+        (e.g., 'error', 'Error', 'ERROR', 'eRrOr' all match the keyword 'ERROR').
+        Always perform case-insensitive comparisons when looking for keywords.
+      - **Semantic synonym matching**: If a keyword or keyword phrase conveys a specific
+        meaning, you MUST also detect lines that express the SAME meaning using
+        different words or phrasing. For example:
+        • 'Failed to send email' also matches: 'Email delivery failure',
+          'Unable to dispatch mail', 'Mail sending error', 'SMTP send failed'.
+        • 'Connection refused' also matches: 'Unable to connect', 'Connection rejected',
+          'Host refused connection', 'Cannot establish connection'.
+        • 'Disk full' also matches: 'No space left on device', 'Insufficient disk space',
+          'Storage capacity exceeded'.
+        Apply this semantic matching to ALL keywords — if the log line carries the same
+        meaning as the keyword, treat it as a match regardless of the exact wording.",
       "llm": {
         "base_url": "http://localhost:11434",
         "model": "gpt-oss:120b-cloud",
@@ -804,6 +922,24 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 ---
 
+## Recommended Patterns (WHAT TO DO)
+
+1. **Exclusively use Raiser agent to trigger under certain configured condition monitored by it.** You should prefer to use Starter agent to unconditionally start other agents, and Raiser agent to trigger under certain configured condition monitored by it. 
+
+2. **If you need to make loops make sure the the last agent within the loop must be with capability of starting agents.** For example, if you need to make a loop that checks a file every 10 seconds, the last agent in the loop must be an agent that can start other agents, such as Telegrammer, Pythonxer, Scper, etc. and connect its output to the first agent in the loop.
+
+3. **Always prefer to use the capability of the agents to start other agents instead of using Raiser agent** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
+    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+              |
+              -->Emailer (1)->X.
+
+4. **Always use Ender agent to terminate the flow.** Ender agent is used to terminate the flow and clean up the logs and PIDs of the agents.
+
+5. **In cases where the flow can be solved with an infinite loop the ender can be placed disconnected from the flow.** For example, if the flow can be solved with an infinite loop that checks a file every 10 seconds, the ender can be placed disconnected from the flow and can be triggered manually.
+
+6. **Cleaner agent must always be connected in its source to Ender agent.** Ender agent must be connected to Cleaner agent in its source, and Cleaner agent must be connected to Ender agent in its output.
+
+
 ## Anti-Patterns (DO NOT DO)
 
 1. **❌ Fan-out from Starter to many agents.** Don't make Starter launch 4+ agents. Start only the first agent in the chain.
@@ -822,11 +958,3 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
    - Wrong: Pythonxer with `target_agents: []` and two Raisers polling its log
    - Right: Pythonxer with `target_agents: ["sleeper_1", "raiser_1"]`
 
-5. **Exclusively use Raiser agent to trigger under certain configured condition monitored by it.** You should prefer to use Starter agent to unconditionally start other agents, and Raiser agent to trigger under certain configured condition monitored by it. 
-
-6. **If you need to make loops make sure the the last agent within the loop must be with capability of starting agents.** For example, if you need to make a loop that checks a file every 10 seconds, the last agent in the loop must be an agent that can start other agents, such as Telegrammer, Pythonxer, Scper, etc. and connect its output to the first agent in the loop.
-
-7. **Always prefer to use the capability of the agents to start other agents instead of using Raiser agent** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
-    Starter -->Agent1->Agent4->Agent5->...Ender.
-            |
-            -->Agent2->Agent3->X.
