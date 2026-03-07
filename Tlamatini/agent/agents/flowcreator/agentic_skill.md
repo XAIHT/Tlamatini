@@ -821,3 +821,12 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 4. **❌ Leaving `target_agents` empty on an active agent.** If an active agent like Pythonxer has `target_agents: []`, it becomes a dead-end and nothing happens after it runs. Always connect active agents to downstream targets.
    - Wrong: Pythonxer with `target_agents: []` and two Raisers polling its log
    - Right: Pythonxer with `target_agents: ["sleeper_1", "raiser_1"]`
+
+5. **Exclusively use Raiser agent to trigger under certain configured condition monitored by it.** You should prefer to use Starter agent to unconditionally start other agents, and Raiser agent to trigger under certain configured condition monitored by it. 
+
+6. **If you need to make loops make sure the the last agent within the loop must be with capability of starting agents.** For example, if you need to make a loop that checks a file every 10 seconds, the last agent in the loop must be an agent that can start other agents, such as Telegrammer, Pythonxer, Scper, etc. and connect its output to the first agent in the loop.
+
+7. **Always prefer to use the capability of the agents to start other agents instead of using Raiser agent** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
+    Starter -->Agent1->Agent4->Agent5->...Ender.
+            |
+            -->Agent2->Agent3->X.
