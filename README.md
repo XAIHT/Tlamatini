@@ -1,5 +1,7 @@
 # Tlamatini
 
+![Project Logo](Tlamatini.jpg)
+
 A sophisticated, locally-run AI developer assistant featuring an advanced Retrieval-Augmented Generation (RAG) system, real-time web interface, visual agentic workflow designer, and multi-model LLM support.
 
 ## Table of Contents
