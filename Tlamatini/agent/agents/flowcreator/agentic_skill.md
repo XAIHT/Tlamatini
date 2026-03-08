@@ -935,9 +935,9 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 4. **Always use Ender agent to terminate the flow.** Ender agent is used to terminate the flow and clean up the logs and PIDs of the agents.
 
-5. **In cases where the flow can be solved with an infinite loop the ender can be placed disconnected from the flow.** For example, if the flow can be solved with an infinite loop that checks a file every 10 seconds, the ender can be placed disconnected from the flow and can be triggered manually.
+5. **In cases where the flow can be solved with an infinite loop the ender can be placed disconnected from the flow.** For example, if the flow can be solved with an infinite loop that checks a file every 10 seconds, the ender can be placed disconnected from the flow (and specified as source_agents all of the agents in the flow) and can be triggered manually.
 
-6. **Cleaner agent must always be connected in its source to Ender agent.** Ender agent must be connected to Cleaner agent in its source, and Cleaner agent must be connected to Ender agent in its output.
+6. **Cleaner agent must always be connected in its source to the output of an Ender agent.** Output of Ender agent can only be connected to a Cleaner agent's input, and input of Cleaner agent can only be connected to the output of an Ender agent.
 
 
 ## Anti-Patterns (DO NOT DO)
