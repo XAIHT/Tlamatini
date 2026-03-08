@@ -8,6 +8,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+- [Default Login Credentials](#default-login-credentials)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
@@ -85,7 +86,7 @@ Get Tlamatini running in 5 minutes:
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/your-repo/Tlamatini.git
+git clone https://github.com/XAIHT/Tlamatini.git
 cd Tlamatini
 python -m venv venv
 
@@ -133,6 +134,27 @@ python manage.py runserver --noreload
 - Ask questions about your code: "How does the authentication work?"
 - Try generating code: "Write a Python function to validate email addresses"
 - Access the workflow designer at `/agentic_control_panel/`
+
+---
+
+## Default Login Credentials
+
+When Tlamatini is built and installed using the installer (or via `build.py`), a default user account is automatically created during the build process:
+
+| Field | Value |
+|-------|-------|
+| **Username** | `user` |
+| **Password** | `user` |
+| **Email** | `user@xaiht.com` |
+
+Use these credentials to log in at `http://127.0.0.1:8000/` after installation.
+
+> **Security Note:** It is strongly recommended to change the default password after your first login, especially if the application is accessible on a network. You can change the password via the Django admin panel at `/admin/` or by running:
+> ```bash
+> python Tlamatini/manage.py changepassword user
+> ```
+
+If you are setting up from source (manual setup), you will create your own superuser account via `python manage.py createsuperuser` instead, and the default `user` account will not exist.
 
 ---
 
@@ -432,7 +454,7 @@ Tlamatini/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-repo/Tlamatini.git
+   git clone https://github.com/XAIHT/Tlamatini.git
    cd Tlamatini
    ```
 
@@ -1075,7 +1097,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **30 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **31 agent types** total.
 
 ### Agent Architecture
 
@@ -1090,7 +1112,7 @@ All workflow agents follow a common structural pattern:
 7. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `telegramer`, `telegramrx`, `and`, `or`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `telegramer`, `telegramrx`, `and`, `or`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design)
 
 ### Control Agents
@@ -1141,6 +1163,7 @@ Agents are classified as:
 | **scper** | SCP file transfer to/from remote host | `user`: SSH username<br>`ip`: Remote host<br>`file`: Path to transfer<br>`direction`: send / receive<br>`target_agents`: Triggered on success |
 | **mongoxer** | Execute Python scripts against MongoDB using pre-connected `db` object | `mongo_connection`: Connection config map<br>`script`: Python script using `db`<br>`target_agents`: Success agents |
 | **prompter** | Sends configured prompt to Ollama LLM and logs response | `prompt`: Prompt text<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
+| **gitter** | Execute Git operations on a local repository (clone, pull, push, commit, checkout, branch, diff, log, status, or custom commands) | `repo_path`: Local repo path<br>`command`: Git command to run<br>`branch`: Branch name<br>`commit_message`: Commit message<br>`remote`: Remote URL<br>`custom_command`: Raw git command<br>`target_agents`: Downstream agents |
 
 ### Logic Gates
 
@@ -1756,6 +1779,7 @@ Enable verbose logging in config.json:
 | **Recmailer** | LangGraph agent that monitors IMAP email inbox with LLM-based keyword analysis |
 | **Whatsapper** | Agent that sends WhatsApp notifications via TextMeBot API with LLM summarization |
 | **Forker** | Deterministic agent that routes workflows to Path A or B based on log patterns |
+| **Gitter** | Deterministic agent that executes Git operations (clone, pull, push, commit, etc.) on local repositories |
 | **Asker** | Deterministic agent that pauses workflow for interactive user A/B choice |
 | **Workflow** | Connected sequence of agents performing automated tasks |
 | **Canvas** | UI area for displaying and editing generated code |
