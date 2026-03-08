@@ -479,9 +479,9 @@ def main():
 
             # 8b) createsuperuser (non-interactive)
             env = os.environ.copy()
-            env.setdefault('DJANGO_SUPERUSER_USERNAME', 'tlamatini')
-            env.setdefault('DJANGO_SUPERUSER_EMAIL', 'tlamatini@xaiht.com')
-            env.setdefault('DJANGO_SUPERUSER_PASSWORD', 'tlamatini')
+            env.setdefault('DJANGO_SUPERUSER_USERNAME', 'user')
+            env.setdefault('DJANGO_SUPERUSER_EMAIL', 'user@xaiht.com')
+            env.setdefault('DJANGO_SUPERUSER_PASSWORD', 'user')
             res = run_cmd(["createsuperuser", "--noinput"], env=env)
             if res.returncode != 0:
                 print("WARNING: 'createsuperuser' failed or user may already exist.")
