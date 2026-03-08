@@ -282,6 +282,7 @@ export default [
                 updateTelegramrxConnection: "readonly",
                 updateTelegramerConnection: "readonly",
                 updateGitterConnection: "readonly",
+                updateDockererConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
                 applyAgentTypeClass: "readonly",

@@ -5318,6 +5318,81 @@ def update_gitter_connection_view(request, agent_name):
         return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 
+@csrf_exempt
+@require_POST
+def update_dockerer_connection_view(request, agent_name):
+    """
+    Update a Dockerer agent's config.yaml when connections are made/removed.
+    Handles 'source' (input) and 'target' (output) connections.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        connected_agent = data.get('connected_agent')
+        action = data.get('action')
+        connection_type = data.get('connection_type', 'source')
+
+        if not connected_agent or not action:
+            return HttpResponse(json.dumps({'error': 'Missing required fields'}), content_type='application/json', status=400)
+
+        # Transform agent names to pool folder names
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        conn_parts = connected_agent.split('-')
+        conn_cardinal = None
+        if conn_parts[-1].isdigit():
+            conn_cardinal = conn_parts.pop()
+        conn_base = "_".join(conn_parts)
+        conn_pool_name = f"{conn_base}_{conn_cardinal}" if conn_cardinal else conn_base
+
+        # Path setup
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({'error': f'Dockerer config not found: {config_path}'}), content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        if connection_type == 'target':
+            target_agents = config.get('target_agents', [])
+            if not isinstance(target_agents, list):
+                target_agents = []
+            if action == 'add':
+                if conn_pool_name not in target_agents:
+                    target_agents.append(conn_pool_name)
+            elif action == 'remove':
+                if conn_pool_name in target_agents:
+                    target_agents.remove(conn_pool_name)
+            config['target_agents'] = target_agents
+            msg = f'Updated target_agents: {target_agents}'
+        else:  # source
+            source_agents = config.get('source_agents', [])
+            if not isinstance(source_agents, list):
+                source_agents = []
+            if action == 'add':
+                if conn_pool_name not in source_agents:
+                    source_agents.append(conn_pool_name)
+            elif action == 'remove':
+                if conn_pool_name in source_agents:
+                    source_agents.remove(conn_pool_name)
+            config['source_agents'] = source_agents
+            msg = f'Updated source_agents: {source_agents}'
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
+    except Exception as e:
+        print(f"Error updating Dockerer connection: {e}")
+        return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
+
+
 
 @csrf_exempt
 def execute_flowcreator_view(request, agent_name):

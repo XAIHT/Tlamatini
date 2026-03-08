@@ -519,6 +519,23 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start on success)
 
+### 31. Dockerer
+- **Purpose**: Manages Docker containers and docker-compose operations (build, up, down, restart, stop, start, exec, logs, ps, pull), then starts downstream agents regardless of success or failure.
+- **Pool name pattern**: `dockerer_<n>`
+- **Starts other agents**: YES (always, regardless of exit code)
+- **Config parameters**:
+  - `command`: "ps" (docker command: build, up, down, restart, stop, start, exec, logs, ps, pull, custom)
+  - `compose_file`: "" (path to docker-compose file)
+  - `service_name`: "" (service name for compose commands)
+  - `container_name`: "" (container name for direct docker commands)
+  - `build_context`: "." (build context path)
+  - `dockerfile`: "" (Dockerfile path, relative to build_context)
+  - `image_tag`: "" (image name/tag for build or pull)
+  - `extra_args`: "" (additional arguments to pass to the command)
+  - `custom_command`: "" (raw docker command when command is "custom")
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
 ---
 
 ## Output Format

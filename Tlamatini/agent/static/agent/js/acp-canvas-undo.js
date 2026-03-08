@@ -226,6 +226,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'gitter') {
                 await updateGitterConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'dockerer') {
+                await updateDockererConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'dockerer') {
+                await updateDockererConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -367,6 +373,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'gitter') {
         await updateGitterConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'dockerer') {
+        await updateDockererConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'dockerer') {
+        await updateDockererConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

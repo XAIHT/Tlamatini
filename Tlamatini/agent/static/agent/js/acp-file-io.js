@@ -361,6 +361,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'or': await updateOrAgentConnection(sourceId, 'target', targetId, 'add'); break;
                 case 'and': await updateAndAgentConnection(sourceId, 'target', targetId, 'add'); break;
                 case 'gitter': await updateGitterConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'dockerer': await updateDockererConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -402,6 +403,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'ssher': await updateSsherConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'scper': await updateScperConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gitter': await updateGitterConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'dockerer': await updateDockererConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 
