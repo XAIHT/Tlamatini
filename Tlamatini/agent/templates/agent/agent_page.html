@@ -93,6 +93,8 @@
           {% endif %}
           <li class="nav-item"><a class="nav-link" href="#" id="re-connect-button"
               onclick="Reconnect(event);">Reconnect</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" id="about-button"
+              onclick="OpenAboutDialog(event);">About</a></li>
           <li class="nav-item"><a id="logout-button" class="nav-link" href="#" param="{% url 'logout' %}"
               onclick="CancelAllAndLogout(event);">Logout</a></li>
           <li class="nav-item d-lg-none">
@@ -196,6 +198,21 @@
       </div>
       <div id="tools-body" class="modal-body"></div>
       <div class="modal-footer">
+      </div>
+    </div>
+  </div>
+  <div id="about-overlay" class="about-overlay" style="display: none;" onclick="CloseAboutDialog(event);">
+    <div class="about-window" onclick="event.stopPropagation();">
+      <button class="about-close-btn" onclick="CloseAboutDialog(event);">&times;</button>
+      <div class="about-video-container">
+        <video id="about-video" autoplay loop muted playsinline>
+          <source src="{% static 'agent/video/XAIHT-Tlamatini.mp4' %}" type="video/mp4">
+        </video>
+      </div>
+      <div class="about-text">
+        <p class="about-company-name">XAIHT: eXtended Artificial Intelligence Humanly Tempered (Mexican company)</p>
+        <p class="about-version">Tlamatini v1.0.0</p>
+        <p class="about-owner">A&amp;A's company.</p>
       </div>
     </div>
   </div>

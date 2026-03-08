@@ -399,3 +399,24 @@ async function loadAgents() {
         console.error('Error in loadAgents:', error);
     }
 }
+
+// ============================================================
+// About dialog
+// ============================================================
+
+function OpenAboutDialog(event) {
+    event.preventDefault();
+    const overlay = document.getElementById('about-overlay');
+    const video = document.getElementById('about-video');
+    overlay.style.display = 'flex';
+    video.currentTime = 0;
+    video.play();
+}
+
+function CloseAboutDialog(event) {
+    event.preventDefault();
+    const overlay = document.getElementById('about-overlay');
+    const video = document.getElementById('about-video');
+    overlay.style.display = 'none';
+    video.pause();
+}
