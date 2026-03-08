@@ -1365,6 +1365,18 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
 }
 
+/* Dockerer Agent Styles - Docker Container Manager (Blue to White gradient) */
+.canvas-item.dockerer-agent {
+    background-color: #2496ED;
+    color: white;
+    background: linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%);
+}
+
+.canvas-item.dockerer-agent:hover {
+    background: linear-gradient(135deg, #4AABE8 0%, #FFFFFF 100%);
+    box-shadow: 0 6px 15px rgba(36, 150, 237, 0.5);
+}
+
 /* Gitter agent icon in sidebar */
 .agent-tool-item[data-content="Gitter"] .agent-tool-icon {
     background: linear-gradient(135deg, #FFFFFF 0%, #000000 100%);

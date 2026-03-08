@@ -653,3 +653,22 @@ async function updateGitterConnection(agentId, connectedAgentId, action, connect
         console.error(`--- Error updating Gitter ${agentId}:`, error);
     }
 }
+
+async function updateDockererConnection(agentId, connectedAgentId, action, connectionType = 'source') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_dockerer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Dockerer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Dockerer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Dockerer ${agentId}:`, error);
+    }
+}
