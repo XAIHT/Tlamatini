@@ -178,6 +178,8 @@ export default [
                 OpenOmissionsDialog: "readonly",
                 OpenMcpsDialog: "readonly",
                 OpenAgentsDialog: "readonly",
+                OpenAboutDialog: "readonly",
+                CloseAboutDialog: "readonly",
                 listOllamaModels: "readonly",
 
                 // Cross-file globals: variables (globals.js)
@@ -243,10 +245,12 @@ export default [
 
                 // Cross-file globals: acp-globals.js
                 ACP: "writable",
+                isFlowCreatorWaiting: "writable",
                 updateFilenameDisplay: "readonly",
 
                 // Cross-file globals: acp-running-state.js
                 setGlobalRunningState: "readonly",
+                pollAgentStatus: "readonly",
 
                 // Cross-file globals: acp-agent-connectors.js
                 registerItem: "readonly",
@@ -277,6 +281,7 @@ export default [
                 updatePrompterConnection: "readonly",
                 updateTelegramrxConnection: "readonly",
                 updateTelegramerConnection: "readonly",
+                updateGitterConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
                 applyAgentTypeClass: "readonly",
