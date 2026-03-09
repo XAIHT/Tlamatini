@@ -61,6 +61,7 @@ function applyAgentTypeClass(el, agentName) {
         'flowcreator': 'flowcreator-agent',
         'gitter': 'gitter-agent',
         'dockerer': 'dockerer-agent',
+        'pser': 'pser-agent',
     };
     const cls = classMap[agentName];
     if (cls) el.classList.add(cls);
@@ -596,6 +597,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'gitter') updateGitterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'dockerer') updateDockererConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'dockerer') updateDockererConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'telegramrx') updateTelegramrxConnection(targetId, sourceId, 'remove', 'source');
         if (targetAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(sourceId, targetId, 'remove', 'target');
@@ -651,6 +654,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'gitter' && !sourceBeingDeleted) updateGitterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'dockerer' && !targetBeingDeleted) updateDockererConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'dockerer' && !sourceBeingDeleted) updateDockererConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'pser' && !targetBeingDeleted) updatePserConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'pser' && !sourceBeingDeleted) updatePserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'telegramrx' && !targetBeingDeleted) updateTelegramrxConnection(targetId, sourceId, 'remove', 'source');
         if (targetAgentName.toLowerCase() === 'telegramer' && !targetBeingDeleted) updateTelegramerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'telegramer' && !sourceBeingDeleted) updateTelegramerConnection(sourceId, targetId, 'remove', 'target');
@@ -743,6 +748,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #C62828 50%, #2E7D32 100%)';
         else if (lowerDesc === 'gitter') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #000000 100%)';
         else if (lowerDesc === 'dockerer') iconDiv.style.background = 'linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%)';
+        else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #E91E63 0%, #4CAF50 100%)';
         // Default blue (#7289da) is set in CSS for other agents
 
         const span = document.createElement('span');
@@ -1057,6 +1063,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'gitter') updateGitterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'dockerer') updateDockererConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'dockerer') updateDockererConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

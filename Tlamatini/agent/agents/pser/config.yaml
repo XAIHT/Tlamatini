@@ -1,0 +1,31 @@
+# Pser Agent Configuration
+# This agent searches for a running process by a "likely" name,
+# using an LLM to intelligently match the best candidate process.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Run a 'ps' / tasklist command (no admin rights needed)
+# 2. Send the process list + likely_process_name to an Ollama LLM
+# 3. The LLM picks the single best-matching process
+# 4. Log the result in the format:
+#    PROCESS FOUND: <name>, <pid>, <cpu>, <memory>, <user>
+# 5. Trigger any configured downstream agents
+# 6. Exit
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents and source_agents are automatically populated
+# when you make connections on the canvas.
+
+# The process name to search for (fuzzy / semantic matching via LLM)
+likely_process_name: "Paint"
+
+# LLM connection settings (Ollama)
+llm:
+  host: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+
+# Agents to start after process lookup (auto-populated via canvas connections)
+target_agents: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

@@ -107,6 +107,8 @@ def get_agent_env() -> dict:
             path_parts = [p for p in path_parts if os.path.normpath(p) != os.path.normpath(meipass)]
             env['PATH'] = os.pathsep.join(path_parts)
             
+    env['PYTHONIOENCODING'] = 'utf-8'
+    
     python_home = get_user_python_home()
     if not python_home:
         return env
@@ -196,6 +198,8 @@ def validate_with_ruff(script_path: str) -> bool:
             ['ruff', 'check', script_path],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             timeout=30
         )
 
@@ -262,6 +266,8 @@ def execute_python_script(script_content: str, execute_forked_window: bool = Fal
             cmd,
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             cwd=os.getcwd(),
             timeout=300  # 5 minute timeout
         )
