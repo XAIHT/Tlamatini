@@ -72,5 +72,6 @@ urlpatterns = [
     path('execute_flowcreator/<str:agent_name>/', views.execute_flowcreator_view, name='execute_flowcreator'),
     path('check_flowcreator_result/<str:agent_name>/', views.check_flowcreator_result_view, name='check_flowcreator_result'),
     path('clean_pool_except/<str:agent_name>/', views.clean_pool_except_view, name='clean_pool_except'),
+    path('update_kuberneter_connection/<str:agent_name>/', views.update_kuberneter_connection_view, name='update_kuberneter_connection'),
 ]
 

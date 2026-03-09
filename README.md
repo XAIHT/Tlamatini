@@ -186,7 +186,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 33 pre-built agent types for diverse automation tasks
+- 34 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -394,6 +394,7 @@ Tlamatini/
 │   │   │   ├── prompter/          # LLM prompt execution agent
 │   │   │   ├── gitter/            # Git operations agent
 │   │   │   ├── dockerer/          # Docker container management agent
+│   │   │   ├── kuberneter/        # Kubernetes command executor agent
 │   │   │   ├── pser/             # LLM-powered process finder agent
 │   │   │   ├── asker/             # Interactive A/B path chooser (user dialog)
 │   │   │   ├── forker/            # Automatic A/B path router (pattern-based)
@@ -1099,7 +1100,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **32 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **33 agent types** total.
 
 ### Agent Architecture
 
@@ -1114,7 +1115,7 @@ All workflow agents follow a common structural pattern:
 7. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder)
 
 ### Control Agents
@@ -1167,6 +1168,7 @@ Agents are classified as:
 | **prompter** | Sends configured prompt to Ollama LLM and logs response | `prompt`: Prompt text<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 | **gitter** | Execute Git operations on a local repository (clone, pull, push, commit, checkout, branch, diff, log, status, or custom commands) | `repo_path`: Local repo path<br>`command`: Git command to run<br>`branch`: Branch name<br>`commit_message`: Commit message<br>`remote`: Remote URL<br>`custom_command`: Raw git command<br>`target_agents`: Downstream agents |
 | **dockerer** | Docker container management (build, up, down, restart, stop, logs, ps, pull) | `command`: Docker operation<br>`compose_file`: docker-compose path<br>`target_agents`: Downstream agents |
+| **kuberneter** | Kubernetes command executor (kubectl commands like get, apply, logs, exec) | `command`: kubectl operation<br>`namespace`: target namespace<br>`extra_args`: Additional arguments<br>`custom_command`: Custom kubectl command<br>`target_agents`: Downstream agents |
 | **pser** | LLM-powered process finder — searches running processes by likely name using semantic matching | `likely_process_name`: Process to find<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 
 ### Logic Gates

@@ -883,6 +883,23 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #000000 0%, #FFFFFF 100%);
 }
 
+/* Kuberneter Agent Styles - Kubernetes executor (Black-to-DarkBlue gradient) */
+.canvas-item.kuberneter-agent {
+    background-color: #000000;
+    color: white;
+    background: linear-gradient(135deg, #000000 0%, #00008B 100%);
+}
+
+.canvas-item.kuberneter-agent:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 139, 0.5);
+    background: linear-gradient(135deg, #111111 0%, #00008B 100%);
+}
+
+/* Kuberneter agent icon in sidebar */
+.agent-tool-item[data-content="Kuberneter"] .agent-tool-icon {
+    background: linear-gradient(135deg, #000000 0%, #00008B 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

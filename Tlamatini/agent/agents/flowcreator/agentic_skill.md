@@ -45,7 +45,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -548,6 +548,18 @@ system_prompt: |
   - `llm.model`: "gpt-oss:120b-cloud" (LLM model to use for fuzzy matching)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after process lookup)
+
+### 33. Kuberneter
+- **Purpose**: Executes `kubectl` commands and logs the execution status, then starts downstream agents regardless of success or failure.
+- **Pool name pattern**: `kuberneter_<n>`
+- **Starts other agents**: YES (always, regardless of exit code)
+- **Config parameters**:
+  - `command`: "get" (kubectl command: apply, get, describe, delete, logs, exec, port-forward, apply-f, custom)
+  - `namespace`: "default" (kubernetes namespace to apply the command)
+  - `extra_args`: "pods" (additional arguments to pass to the command, e.g., 'pods', '-f deployment.yaml')
+  - `custom_command`: "" (raw command when command is "custom" — MUST include 'kubectl' at the beginning, e.g., "kubectl get nodes")
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
 
 ---
 
