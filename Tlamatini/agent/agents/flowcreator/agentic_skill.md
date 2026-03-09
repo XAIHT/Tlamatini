@@ -561,6 +561,20 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+### 34. Apirer
+- **Purpose**: Makes HTTP/REST API requests (GET/POST/PUT/DELETE) to any URL, logs response status, body, and latency, then starts downstream agents regardless of success or failure.
+- **Pool name pattern**: `apirer_<n>`
+- **Starts other agents**: YES (always, regardless of HTTP response status)
+- **Config parameters**:
+  - `url`: "https://httpbin.org/get" (the URL to call)
+  - `method`: "GET" (HTTP method: GET, POST, PUT, DELETE, PATCH)
+  - `headers`: {} (map of HTTP headers to send, e.g., {"Authorization": "Bearer token"})
+  - `body`: "" (request body for POST/PUT/PATCH — string or JSON object)
+  - `expected_status`: 200 (expected HTTP status code — logs a warning if mismatch)
+  - `timeout`: 30 (request timeout in seconds)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
 ---
 
 ## Output Format
