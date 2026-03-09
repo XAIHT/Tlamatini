@@ -691,3 +691,22 @@ async function updatePserConnection(agentId, connectedAgentId, action, connectio
         console.error(`--- Error updating Pser ${agentId}:`, error);
     }
 }
+
+async function updateKuberneterConnection(agentId, connectedAgentId, action, connectionType = 'target') {
+    try {
+        const response = await fetch(`/agent/update_kuberneter_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Kuberneter ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Kuberneter ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Kuberneter ${agentId}:`, error);
+    }
+}

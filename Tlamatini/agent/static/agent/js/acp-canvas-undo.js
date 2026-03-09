@@ -238,6 +238,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'pser') {
                 await updatePserConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'kuberneter') {
+                await updateKuberneterConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'kuberneter') {
+                await updateKuberneterConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -391,6 +397,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'pser') {
         await updatePserConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'kuberneter') {
+        await updateKuberneterConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'kuberneter') {
+        await updateKuberneterConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

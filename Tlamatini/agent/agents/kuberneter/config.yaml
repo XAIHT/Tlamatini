@@ -1,0 +1,17 @@
+# Kuberneter Agent Configuration
+
+# Custom parameters for this agent
+# The primary kubectl command to run (e.g., 'get', 'apply', 'delete', 'describe')
+command: "get"
+
+# The namespace to operate in (optional)
+namespace: ""
+
+# Any extra arguments to pass to kubectl execution (e.g., '-o yaml' or '--all-namespaces')
+extra_args: ""
+
+# If command is 'custom', this exact string will be executed using kubectl (e.g., 'apply -f deployment.yaml')
+custom_command: ""
+
+# Downstream target agents to trigger sequentially after kubectl command execution evaluates
+target_agents: []
