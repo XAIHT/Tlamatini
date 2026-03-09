@@ -729,3 +729,22 @@ async function updateApirerConnection(agentId, connectedAgentId, action, connect
         console.error(`--- Error updating Apirer ${agentId}:`, error);
     }
 }
+
+async function updateJenkinserConnection(agentId, connectedAgentId, action, connectionType = 'target') {
+    try {
+        const response = await fetch(`/agent/update_jenkinser_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Jenkinser ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Jenkinser ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Jenkinser ${agentId}:`, error);
+    }
+}
