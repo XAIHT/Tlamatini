@@ -188,8 +188,8 @@ def start_agent(agent_name: str) -> bool:
         return False
 
 
-def build_docker_command(config: Dict) -> list:
-    """Build the docker/docker-compose command from config parameters."""
+def build_docker_commands_to_try(config: Dict) -> list:
+    """Build a list of docker/docker-compose commands to try sequentially."""
     command = config.get('command', 'ps')
     compose_file = config.get('compose_file', '')
     service_name = config.get('service_name', '')
@@ -200,17 +200,62 @@ def build_docker_command(config: Dict) -> list:
     extra_args = config.get('extra_args', '')
     custom_command = config.get('custom_command', '')
 
-    # Custom raw command
+    commands_to_try = []
+
+    # Helper to add extra args
+    def add_args(cmd):
+        if extra_args:
+            cmd.extend(extra_args.split())
+        return cmd
+
+    # Custom raw command fallback logic
     if command == 'custom' and custom_command:
-        return custom_command.split()
+        parts = custom_command.split()
+        if not parts:
+            return [['docker', 'ps']] # Extreme fallback
+            
+        primary = parts[:]
+        commands_to_try.append(primary)
+        
+        # If the user forgot 'docker', add it as a fallback
+        if parts[0] not in ('docker', 'docker-compose'):
+            commands_to_try.append(['docker'] + parts)
+            
+        # If they used docker-compose, provide a raw docker fallback
+        if parts[0] == 'docker-compose':
+            fb = ['docker'] + parts[1:]
+            # basic clean up of compose-specific flags
+            if '-f' in fb:
+                idx = fb.index('-f')
+                if len(fb) > idx + 1:
+                    del fb[idx:idx+2]
+            commands_to_try.append(fb)
+            
+        return commands_to_try
 
-    # Compose-based commands
-    compose_commands = ['up', 'down', 'build', 'restart', 'stop', 'start', 'logs', 'ps', 'pull']
+    # Compose-based inherently commands
+    compose_commands = ['up', 'down']
+    
+    # Are we using compose?
+    using_compose = bool(compose_file) or command in compose_commands
 
-    if compose_file and command in compose_commands:
-        cmd = ['docker-compose', '-f', compose_file, command]
-    elif command in compose_commands:
-        cmd = ['docker-compose', command]
+    if using_compose:
+        cmd1 = ['docker-compose']
+        if compose_file:
+            cmd1.extend(['-f', compose_file])
+        cmd1.append(command)
+        if service_name:
+            cmd1.append(service_name)
+        commands_to_try.append(add_args(cmd1))
+        
+        # Add fallback to raw docker if compose fails (unless it's 'up'/'down' which have no direct equivalent)
+        if command not in compose_commands:
+            cmd2 = ['docker', command]
+            if container_name:
+                cmd2.append(container_name)
+            elif service_name:
+                 cmd2.append(service_name)
+            commands_to_try.append(add_args(cmd2))
     else:
         # Direct docker commands
         cmd = ['docker']
@@ -237,16 +282,10 @@ def build_docker_command(config: Dict) -> list:
                 cmd.append(image_tag)
         else:
             cmd.append(command)
+            
+        commands_to_try.append(add_args(cmd))
 
-    # Add service name for compose commands
-    if service_name and command in compose_commands:
-        cmd.append(service_name)
-
-    # Add extra arguments
-    if extra_args:
-        cmd.extend(extra_args.split())
-
-    return cmd
+    return commands_to_try
 
 
 # PID Management
@@ -285,46 +324,63 @@ def main():
 
         logging.info("🐳 DOCKERER AGENT STARTED")
 
-        # Build docker command
-        cmd = build_docker_command(config)
-        logging.info(f"🔧 Command: {' '.join(cmd)}")
+        # Build docker commands
+        commands_to_try = build_docker_commands_to_try(config)
         logging.info(f"🎯 Targets: {target_agents}")
 
-        # Execute docker command
+        # Execute docker commands sequentially
         exit_code = 1
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            exit_code = result.returncode
+        success = False
 
-            # Log stdout
-            if result.stdout:
-                for line in result.stdout.strip().split('\n'):
-                    logging.info(f"📋 {line}")
+        for attempt, cmd in enumerate(commands_to_try, 1):
+            logging.info(f"🔧 Attempt {attempt}/{len(commands_to_try)} Command: {' '.join(cmd)}")
+            
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                exit_code = result.returncode
 
-            # Log stderr
-            if result.stderr:
-                for line in result.stderr.strip().split('\n'):
-                    if exit_code == 0:
+                # Log stdout
+                if result.stdout:
+                    for line in result.stdout.strip().split('\n'):
                         logging.info(f"📋 {line}")
-                    else:
-                        logging.error(f"⚠️ {line}")
 
-            if exit_code == 0:
-                logging.info(f"✅ Docker command completed successfully (exit code: {exit_code})")
-            else:
-                logging.error(f"❌ Docker command failed (exit code: {exit_code})")
+                # Log stderr
+                if result.stderr:
+                    for line in result.stderr.strip().split('\n'):
+                        if exit_code == 0:
+                            logging.info(f"📋 {line}")
+                        else:
+                            logging.warning(f"⚠️ {line}")
 
-        except subprocess.TimeoutExpired:
-            logging.error("❌ Docker command timed out after 300 seconds")
-        except FileNotFoundError:
-            logging.error("❌ Docker/docker-compose not found. Is Docker installed and on PATH?")
-        except Exception as e:
-            logging.error(f"❌ Docker command execution failed: {e}")
+                if exit_code == 0:
+                    logging.info(f"✅ Command successful (exit code: {exit_code})")
+                    success = True
+                    break  # Success! Break out of retry loop
+                else:
+                    logging.error(f"❌ Command failed with exit code: {exit_code}")
+                    if attempt < len(commands_to_try):
+                        logging.info("🔄 Falling back to next command...")
+
+            except subprocess.TimeoutExpired:
+                logging.error("❌ Command timed out after 300 seconds")
+                if attempt < len(commands_to_try):
+                    logging.info("🔄 Falling back to next command...")
+            except FileNotFoundError:
+                logging.error(f"❌ Executable '{cmd[0]}' not found. Is it installed and on PATH?")
+                if attempt < len(commands_to_try):
+                    logging.info("🔄 Falling back to next command...")
+            except Exception as e:
+                logging.error(f"❌ Command execution failed: {e}")
+                if attempt < len(commands_to_try):
+                    logging.info("🔄 Falling back to next command...")
+
+        if not success:
+            logging.error("🚨 All command attempts failed.")
 
         # Trigger downstream agents regardless of success or failure
         total_triggered = 0
