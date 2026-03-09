@@ -161,9 +161,9 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
                 // Set the dialog width dynamically
                 $(this).dialog("option", "width", dialogWidth);
             } else {
-                $(this).dialog("option", "width", 450);
+                $(this).dialog("option", "width", dialogWidth);
             }
-            
+
             // Apply Grid Layout to the list container
             toolMcpsList.style.display = 'grid';
             toolMcpsList.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
@@ -264,9 +264,9 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
                 
                 $(this).dialog("option", "width", dialogWidth);
             } else {
-                $(this).dialog("option", "width", 450);
+                $(this).dialog("option", "width", dialogWidth);
             }
-            
+
             // Apply Grid Layout
             agentsList.style.display = 'grid';
             agentsList.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
