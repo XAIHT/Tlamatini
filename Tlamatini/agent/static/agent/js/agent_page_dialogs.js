@@ -142,26 +142,77 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
         closeText: "",
         open: function () {
             document.body.style.overflow = 'hidden';
+            
+            // Layout Calculation
+            const itemCount = tools.length;
+            let cols = 1;
+            let dialogWidth = 450;
+            
+            if (itemCount > 10) {
+                // Golden ratio approximation for columns ~ sqrt(N / 1.618) or sqrt(N * 1.618)
+                // We want wider than tall, so cols > rows. 
+                // cols * rows >= N -> cols * (cols / 1.618) = N -> cols^2 = N * 1.618
+                cols = Math.ceil(Math.sqrt(itemCount * 1.618));
+                // Ensure cols is at least 2 if > 10
+                cols = Math.max(2, cols);
+                // Calculate appropriate width (e.g., ~220px per column minimum)
+                dialogWidth = Math.max(450, cols * 220);
+                
+                // Set the dialog width dynamically
+                $(this).dialog("option", "width", dialogWidth);
+            } else {
+                $(this).dialog("option", "width", 450);
+            }
+            
+            // Apply Grid Layout to the list container
+            toolMcpsList.style.display = 'grid';
+            toolMcpsList.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            toolMcpsList.style.gap = '8px 15px'; // row gap, column gap
+            toolMcpsList.style.listStyleType = 'none'; // Remove bullets
+            toolMcpsList.style.padding = '0';
+            toolMcpsList.style.margin = '15px 0';
+            toolMcpsList.style.maxHeight = '60vh'; // Prevent it from getting too tall before scrolling
+            toolMcpsList.style.overflowY = 'auto'; // allow scroll if needed
+            toolMcpsList.style.overflowX = 'hidden';
+
             // Clear and rebuild the tool MCPs list each time the dialog opens
             toolMcpsList.innerHTML = '';
             for (const tool of tools) {
                 const listElement = document.createElement('li');
                 const checkbox = document.createElement('input');
                 const label = document.createElement('label');
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.marginBottom = '4px';
+
                 checkbox.type = 'checkbox';
                 checkbox.id = tool.name;
+                checkbox.style.marginRight = '8px';
+                checkbox.style.accentColor = '#55BBAA';
+                
                 label.htmlFor = tool.name;
                 label.innerText = tool.description;
                 label.setAttribute('id', 'label-' + tool.name);
-                listElement.appendChild(checkbox);
-                listElement.appendChild(label);
+                label.style.color = '#fff';
+                label.style.cursor = 'pointer';
+                label.style.margin = '0';
+                label.style.fontSize = '0.95em';
+                
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(label);
+                listElement.appendChild(wrapper);
+                
                 if (tool.enabled === true) {
                     checkbox.checked = true;
                 }
                 toolMcpsList.appendChild(listElement);
             }
             // Load tool states after rebuilding the list
-            loadTools();
+            loadTools().then(() => {
+                 // Re-center after content loads
+                 $(this).dialog("option", "position", { my: "center", at: "center", of: window });
+            });
         },
         close: function () { document.body.style.overflow = ''; },
         create: function () {
@@ -177,6 +228,8 @@ function renderMcpsDialog() {
     confirmationByUser = false;
     styleDialogButtons();
     $("#mcps-dialog-message").dialog("open");
+    // Ensure centering whenever rendered
+    $("#mcps-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
 }
 
 // ----------------------------------------------------------------
@@ -197,26 +250,73 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
         closeText: "",
         open: function () {
             document.body.style.overflow = 'hidden';
+            
+            // Layout Calculation
+            const itemCount = agents.length;
+            let cols = 1;
+            let dialogWidth = 450;
+            
+            if (itemCount > 10) {
+                // Golden ratio approximation for columns ~ sqrt(N * 1.618)
+                cols = Math.ceil(Math.sqrt(itemCount * 1.618));
+                cols = Math.max(2, cols);
+                dialogWidth = Math.max(450, cols * 220); // Give enough room per column
+                
+                $(this).dialog("option", "width", dialogWidth);
+            } else {
+                $(this).dialog("option", "width", 450);
+            }
+            
+            // Apply Grid Layout
+            agentsList.style.display = 'grid';
+            agentsList.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            agentsList.style.gap = '8px 15px';
+            agentsList.style.listStyleType = 'none';
+            agentsList.style.padding = '0';
+            agentsList.style.margin = '15px 0';
+            agentsList.style.maxHeight = '60vh'; 
+            agentsList.style.overflowY = 'auto';
+            agentsList.style.overflowX = 'hidden';
+
             // Clear and rebuild the agents list each time the dialog opens
             agentsList.innerHTML = '';
             for (const agent of agents) {
                 const listElement = document.createElement('li');
                 const checkbox = document.createElement('input');
                 const label = document.createElement('label');
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.marginBottom = '4px';
+
                 checkbox.type = 'checkbox';
                 checkbox.id = agent.name;
+                checkbox.style.marginRight = '8px';
+                checkbox.style.accentColor = '#55BBAA';
+                
                 label.htmlFor = agent.name;
-                label.innerText = agent.description;
+                // Use description if available, fallback to upper-cased name
+                label.innerText = agent.description || (agent.name.charAt(0).toUpperCase() + agent.name.slice(1));
                 label.setAttribute('id', 'label-' + agent.name);
-                listElement.appendChild(checkbox);
-                listElement.appendChild(label);
+                label.style.color = '#fff';
+                label.style.cursor = 'pointer';
+                label.style.margin = '0';
+                label.style.fontSize = '0.95em';
+                
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(label);
+                listElement.appendChild(wrapper);
+                
                 if (agent.enabled === true) {
                     checkbox.checked = true;
                 }
                 agentsList.appendChild(listElement);
             }
             // Load agent states after rebuilding the list
-            loadAgents();
+            loadAgents().then(() => {
+                // Re-center after content loads
+                $(this).dialog("option", "position", { my: "center", at: "center", of: window });
+            });
         },
         close: function () { document.body.style.overflow = ''; },
         create: function () {
@@ -231,6 +331,8 @@ function renderAgentsDialog() {
     confirmationByUser = false;
     styleDialogButtons();
     $("#agents-dialog-message").dialog("open");
+    // Ensure centering whenever rendered
+    $("#agents-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
 }
 
 // ----------------------------------------------------------------
