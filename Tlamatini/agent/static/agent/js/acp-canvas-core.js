@@ -151,6 +151,14 @@ function appendLedIndicator(el) {
  * Deploys the agent template to the pool directory.
  */
 async function createCanvasItem(clientX, clientY, textContent) {
+    if (textContent.toLowerCase() === 'flowcreator') {
+        const existingFlowCreators = document.querySelectorAll('.flowcreator-agent');
+        if (existingFlowCreators.length > 0) {
+            alert('Only one FlowCreator agent is allowed per flow.');
+            return;
+        }
+    }
+
     const rect = submonitor.getBoundingClientRect();
     let x = clientX - rect.left;
     let y = clientY - rect.top;
@@ -158,10 +166,17 @@ async function createCanvasItem(clientX, clientY, textContent) {
     const newItem = document.createElement('div');
     newItem.classList.add('canvas-item');
 
-    const registration = registerItem(textContent);
-    newItem.textContent = `${textContent} (${registration.count})`;
-    newItem.id = registration.id;
-    newItem.dataset.agentName = textContent;
+    // Special handling for FlowCreator: No cardinal numbers
+    if (textContent.toLowerCase() === 'flowcreator') {
+        newItem.textContent = textContent;
+        newItem.id = 'flowcreator';
+        newItem.dataset.agentName = textContent;
+    } else {
+        const registration = registerItem(textContent);
+        newItem.textContent = `${textContent} (${registration.count})`;
+        newItem.id = registration.id;
+        newItem.dataset.agentName = textContent;
+    }
 
     const lowerName = textContent.toLowerCase();
     applyAgentTypeClass(newItem, lowerName);
@@ -223,14 +238,25 @@ async function createCanvasItem(clientX, clientY, textContent) {
  */
 function cloneAndRegister(originalItem) {
     const agentName = originalItem.dataset.agentName || originalItem.textContent.split(' (')[0];
-    const registration = registerItem(agentName);
     const lowerName = agentName.toLowerCase();
+
+    if (lowerName === 'flowcreator') {
+        alert('Only one FlowCreator agent is allowed per flow.');
+        return null;
+    }
 
     const newItem = document.createElement('div');
     newItem.classList.add('canvas-item');
-    newItem.textContent = `${agentName} (${registration.count})`;
-    newItem.id = registration.id;
-    newItem.dataset.agentName = agentName;
+    if (lowerName === 'flowcreator') {
+        newItem.textContent = agentName;
+        newItem.id = 'flowcreator';
+        newItem.dataset.agentName = agentName;
+    } else {
+        const registration = registerItem(agentName);
+        newItem.textContent = `${agentName} (${registration.count})`;
+        newItem.id = registration.id;
+        newItem.dataset.agentName = agentName;
+    }
     newItem.style.left = originalItem.style.left;
     newItem.style.top = originalItem.style.top;
 
@@ -300,10 +326,12 @@ function makeDraggable(el) {
             ACP.selectedItems.forEach(original => {
                 if (original.classList && original.classList.contains('canvas-item')) {
                     const clone = cloneAndRegister(original);
-                    newSelection.add(clone);
-                    originalToClone.set(original, clone);
-                    const origPos = initialPositions.get(original);
-                    if (origPos) newInitialPositions.set(clone, origPos);
+                    if (clone) {
+                        newSelection.add(clone);
+                        originalToClone.set(original, clone);
+                        const origPos = initialPositions.get(original);
+                        if (origPos) newInitialPositions.set(clone, origPos);
+                    }
                 }
             });
 

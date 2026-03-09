@@ -7,41 +7,70 @@
 
 import os
 import sys
+import traceback
 
-# FIX: Disable Intel Fortran runtime Ctrl+C handler
-os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+# -----------------------------------------------------------------------------
+# EARLY INITIALIZATION & ERROR CATCHING
+# -----------------------------------------------------------------------------
+# Provide a fallback global just in case path parsing fails completely
+CURRENT_DIR_NAME = "flowcreator_unknown"
+LOG_FILE_PATH = "flowcreator.log"
 
-import re
-import time
-import yaml
-import json
-import logging
-import urllib.request
-import urllib.error
-from typing import Dict, List, Any
-
-# Set working directory to script location
 try:
+    # FIX: Disable Intel Fortran runtime Ctrl+C handler
+    os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+
+    # Set working directory to script location
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
-except Exception as e:
-    sys.stderr.write(f"Critical Error: Failed to set working directory: {e}\n")
 
-# Use directory name for log file
-CURRENT_DIR_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
-logging.basicConfig(
-    filename=LOG_FILE_PATH,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    encoding='utf-8'
-)
+    # Use directory name for log file
+    CURRENT_DIR_NAME = os.path.basename(os.path.abspath(script_dir))
+    LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
 
-# Also log to console
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logging.getLogger().addHandler(console_handler)
+    # Immediately ensure log file exists so we can write to it even if imports fail
+    with open(LOG_FILE_PATH, "a", encoding="utf-8") as f:
+        f.write(f"--- FlowCreator Initialization Started in {script_dir} ---\n")
+
+    # Redirect stderr to the log file so any unhandled exceptions are caught
+    sys.stderr = open(LOG_FILE_PATH, "a", encoding="utf-8")
+
+except Exception:
+    # Absolute last resort fallback
+    with open("flowcreator_early_startup_error.log", "a", encoding="utf-8") as f:
+        f.write(f"FATAL EARLY STARTUP ERROR:\n{traceback.format_exc()}\n")
+
+# Now it is safer to import complex modules
+try:
+    import re
+    import time
+    import yaml
+    import json
+    import logging
+    import urllib.request
+    import urllib.error
+    from typing import Dict, List, Any
+
+    # Configure the standard logger to be VERBOSE (DEBUG level)
+    logging.basicConfig(
+        filename=LOG_FILE_PATH,
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        encoding='utf-8'
+    )
+
+    # Also log to console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logging.getLogger().addHandler(console_handler)
+
+    logging.debug("All modules successfully imported. Standard logging initialized.")
+except Exception:
+    # If an import fails, it prints to sys.stderr which is now our log file
+    sys.stderr.write(f"FATAL IMPORT ERROR:\n{traceback.format_exc()}\n")
+    sys.stderr.flush()
+    sys.exit(1)
 
 
 def load_config(path: str = "config.yaml") -> Dict[str, Any]:
@@ -51,8 +80,8 @@ def load_config(path: str = "config.yaml") -> Dict[str, Any]:
     except FileNotFoundError:
         logging.error(f"Error: {path} not found.")
         sys.exit(1)
-    except Exception as e:
-        logging.error(f"Error parsing {path}: {e}")
+    except Exception:
+        logging.error(f"Error parsing {path}:\n{traceback.format_exc()}")
         sys.exit(1)
 
 
@@ -466,10 +495,18 @@ def remove_pid_file() -> None:
 
 
 def main() -> None:
-    config = load_config()
+    try:
+        logging.debug("Loading config from config.yaml...")
+        config = load_config()
+        logging.debug(f"Loaded config: {config}")
 
-    # Write PID file immediately
-    write_pid_file()
+        # Write PID file immediately
+        logging.debug("Writing PID file...")
+        write_pid_file()
+    except Exception:
+        sys.stderr.write(f"FATAL EARLY MAIN ERROR:\n{traceback.format_exc()}\n")
+        sys.stderr.flush()
+        sys.exit(1)
 
     try:
         prompt_text = config.get('prompt', '')

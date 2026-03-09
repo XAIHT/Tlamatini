@@ -34,6 +34,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 - First Raiser instance: `raiser_1`
 
 **Important**: In `target_agents`, `output_agents`, and `source_agents` lists, always use the full pool name with cardinal (e.g., `starter_1`, `monitor_log_1`, `raiser_1`).
+**Exception**: The `FlowCreator` agent is a singleton per flow and never receives a cardinal number. Its ID is strictly `flowcreator`.
 
 ### Connection Rules
 - A **Starter** agent has NO inputs and one or more outputs. It is the entry point of a flow.
@@ -532,7 +533,7 @@ system_prompt: |
   - `dockerfile`: "" (Dockerfile path, relative to build_context)
   - `image_tag`: "" (image name/tag for build or pull)
   - `extra_args`: "" (additional arguments to pass to the command)
-  - `custom_command`: "" (raw docker command when command is "custom")
+  - `custom_command`: "" (raw command when command is "custom" — MUST include 'docker' or 'docker-compose' at the beginning, e.g., "docker images" or "docker-compose up -d")
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 

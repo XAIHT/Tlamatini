@@ -329,7 +329,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const legend = document.createElement('p');
-        legend.innerHTML = '<strong>&#9889; FlowCreator</strong> — Design an agent flow using AI. Enter a prompt describing your flow objective, configure the LLM, and click <strong>Save</strong> to generate the flow automatically.';
+        legend.innerHTML = '<strong>&#9889; FlowCreator</strong> — Design an agent flow using AI. Enter a prompt describing your flow objective, configure the LLM, and click <strong>Go!</strong> to generate the flow automatically.';
         legend.style.color = '#4FC3F7';
         legend.style.marginBottom = '12px';
         legend.style.padding = '8px';
@@ -385,7 +385,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 "padding": "10px 20px"
             });
 
-            buttonPane.find('button:contains("Save")')
+            buttonPane.find('button:contains("Save"), button:contains("Go!")')
                 .css({
                     'background-color': '#55BBAA',
                     'color': 'white',
@@ -412,14 +412,14 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
             dialogEl.off('keydown.enterSave').on('keydown.enterSave', function (e) {
                 if (e.key === 'Enter' && !$(e.target).is('textarea')) {
                     e.preventDefault();
-                    // Find and click the Save button
-                    dialogEl.parent().find('.ui-dialog-buttonpane button:contains("Save")').click();
+                    // Find and click the Save/Go! button
+                    dialogEl.parent().find('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")').click();
                 }
             });
         },
         buttons: [
             {
-                text: "Save",
+                text: isFlowCreatorDialog ? "Go!" : "Save",
                 click: async function () {
                     console.log("Saving item properties...");
                     const inputs = canvasItemList.querySelectorAll('input, textarea');
@@ -533,7 +533,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 }
 
 function renderCanvasItemDialog() {
-    $('.ui-dialog-buttonpane button:contains("Save")')
+    $('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")')
         .css({
             'background-color': '#55BBAA',
             'color': 'white',
