@@ -43,7 +43,7 @@ const spinnerId = 'wait-spinner';
 const maximalTheoricTokens = 12500;
 const MAX_MCPS = 32;
 const MAX_TOOLS = 32;
-const MAX_AGENTS = 32;
+const MAX_AGENTS = 50;
 
 // --- Static DOM references ---
 const textEditorPre = document.querySelector('#text-editor pre');
