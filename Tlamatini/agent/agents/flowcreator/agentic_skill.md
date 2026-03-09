@@ -521,12 +521,13 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start on success)
 
 ### 31. Dockerer
-- **Purpose**: Manages Docker containers and docker-compose operations (build, up, down, restart, stop, start, exec, logs, ps, pull), then starts downstream agents regardless of success or failure.
+- **Purpose**: Manages Docker containers and docker-compose operations, then starts downstream agents regardless of success or failure.
+  - **Important Fallback Mechanism**: Dockerer is bulletproof. If `docker-compose` is attempted but fails (e.g. missing compose file), it will automatically try the raw `docker` equivalent (e.g. `docker-compose ps` -> `docker ps`). If a `custom_command` is provided without the `docker` prefix, it will automatically prepend `docker` as a fallback.
 - **Pool name pattern**: `dockerer_<n>`
 - **Starts other agents**: YES (always, regardless of exit code)
 - **Config parameters**:
   - `command`: "ps" (docker command: build, up, down, restart, stop, start, exec, logs, ps, pull, custom)
-  - `compose_file`: "" (path to docker-compose file)
+  - `compose_file`: "" (absolute path to docker-compose file; leave empty to run standard `docker` commands)
   - `service_name`: "" (service name for compose commands)
   - `container_name`: "" (container name for direct docker commands)
   - `build_context`: "." (build context path)
