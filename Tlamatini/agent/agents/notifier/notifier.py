@@ -265,8 +265,9 @@ def tool_node(state: NotifierState):
                 if new_content:
                     # Check for matches
                     matches = []
+                    new_content_lower = new_content.lower()
                     for s in search_strings:
-                        if s in new_content:
+                        if s.lower() in new_content_lower:
                             matches.append(s)
                     
                     if matches:
