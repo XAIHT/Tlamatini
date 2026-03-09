@@ -55,8 +55,9 @@ class FancyUninstaller:
     STEPS = [
         ("Removing shortcuts…",                  0.10),
         ("Unregistering .flw file association…", 0.15),
-        ("Removing application files…",          0.70),
+        ("Removing application files…",          0.65),
         ("Cleaning up…",                         0.05),
+        ("Refreshing Windows Desktop…",          0.05),
     ]
 
     def __init__(self, root: tk.Tk):
@@ -419,6 +420,15 @@ class FancyUninstaller:
             self._set_progress(cumulative, "Cleaning up…")
             self._cleanup_install_dir(target)
             cumulative += self.STEPS[step_idx][1]
+            self._set_progress(cumulative)
+            self._mark_step(step_idx)
+
+            # ── Step 4: restart explorer ─────────────────────────────
+            step_idx = 4
+            self._activate_step(step_idx)
+            self._set_progress(cumulative, "Refreshing Windows Desktop…")
+            self._restart_explorer()
+            cumulative += self.STEPS[step_idx][1]
             self._set_progress(1.0, "Uninstallation complete!")
             self._mark_step(step_idx)
 
@@ -512,6 +522,43 @@ class FancyUninstaller:
             except Exception:
                 pass
         # If only agents/ (or other items) remain, leave the directory
+
+    # ─── Explorer restart robust helper ──────────────────────────────
+    @staticmethod
+    def _restart_explorer():
+        import time
+        # Stop Explorer
+        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
+        time.sleep(0.5)
+
+        # Clear icon cache (best-effort)
+        try:
+            local_appdata = os.environ.get("LOCALAPPDATA", "")
+            if local_appdata:
+                icon_db = os.path.join(local_appdata, "IconCache.db")
+                if os.path.exists(icon_db):
+                    os.remove(icon_db)
+                explorer_cache = os.path.join(local_appdata, "Microsoft", "Windows", "Explorer")
+                if os.path.exists(explorer_cache):
+                    for f in os.listdir(explorer_cache):
+                        if f.startswith("iconcache"):
+                            try:
+                                os.remove(os.path.join(explorer_cache, f))
+                            except Exception:
+                                pass
+        except Exception:
+            pass
+
+        # Start Explorer and ensure it is running
+        retries = 5
+        while retries > 0:
+            subprocess.Popen(["explorer.exe"])
+            time.sleep(1.5)
+            # Verify if it started
+            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True)
+            if "explorer.exe" in res.stdout:
+                break
+            retries -= 1
 
     # ─── Completion dialogs ──────────────────────────────────────────
     def _show_success(self, target: str):

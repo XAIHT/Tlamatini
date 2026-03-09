@@ -39,12 +39,13 @@ class FancyInstaller:
     # ── weighted installation steps ──────────────────────────────────
     STEPS = [
         ("Preparing installation directory…",  0.05),
-        ("Extracting files…",                  0.65),
+        ("Extracting files…",                  0.60),
         ("Securing agent environments…",       0.05),
         ("Writing configuration…",             0.05),
         ("Copying uninstaller…",               0.05),
         ("Creating shortcuts…",                0.075),
         ("Registering .flw file association…", 0.075),
+        ("Refreshing Windows Desktop…",        0.05),
     ]
 
     def __init__(self, root: tk.Tk):
@@ -406,6 +407,15 @@ class FancyInstaller:
             self._set_progress(cumulative, "Registering .flw file association…")
             self._run_ps1("register_flw.ps1", target)
             cumulative += self.STEPS[step_idx][1]
+            self._set_progress(cumulative)
+            self._mark_step(step_idx)
+
+            # ── Step 7: Restart Explorer ──────────────────────────────
+            step_idx = 7
+            self._activate_step(step_idx)
+            self._set_progress(cumulative, "Refreshing Windows Desktop…")
+            self._restart_explorer()
+            cumulative += self.STEPS[step_idx][1]
             self._set_progress(1.0, "Installation complete!")
             self._mark_step(step_idx)
 
@@ -448,6 +458,43 @@ class FancyInstaller:
         else:
             # Non-fatal: older release packages may not include it
             print(f"WARNING: Uninstaller.exe not found at {src} — skipping copy.")
+
+    # ─── Explorer restart robust helper ──────────────────────────────
+    @staticmethod
+    def _restart_explorer():
+        import time
+        # Stop Explorer
+        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
+        time.sleep(0.5)
+
+        # Clear icon cache (best-effort)
+        try:
+            local_appdata = os.environ.get("LOCALAPPDATA", "")
+            if local_appdata:
+                icon_db = os.path.join(local_appdata, "IconCache.db")
+                if os.path.exists(icon_db):
+                    os.remove(icon_db)
+                explorer_cache = os.path.join(local_appdata, "Microsoft", "Windows", "Explorer")
+                if os.path.exists(explorer_cache):
+                    for f in os.listdir(explorer_cache):
+                        if f.startswith("iconcache"):
+                            try:
+                                os.remove(os.path.join(explorer_cache, f))
+                            except Exception:
+                                pass
+        except Exception:
+            pass
+
+        # Start Explorer and ensure it is running
+        retries = 5
+        while retries > 0:
+            subprocess.Popen(["explorer.exe"])
+            time.sleep(1.5)
+            # Verify if it started
+            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True)
+            if "explorer.exe" in res.stdout:
+                break
+            retries -= 1
 
     # ─── Environment Patching helper ──────────────────────────────────
     def _patch_agent_environments(self, tlamatini_dir: str):

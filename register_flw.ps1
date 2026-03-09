@@ -198,17 +198,7 @@ try {
         & ie4uinit.exe -ClearIconCache 2>$null
         & ie4uinit.exe -show 2>$null
         $iconCacheDb = Join-Path $env:LOCALAPPDATA "IconCache.db"
-        $explorerCache = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Explorer"
-        # Stop Explorer to release icon cache files
-        & taskkill.exe /f /im explorer.exe 2>$null | Out-Null
-        Start-Sleep -Milliseconds 500
-        # Delete icon cache files
         if (Test-Path $iconCacheDb) { Remove-Item $iconCacheDb -Force -ErrorAction SilentlyContinue }
-        Get-ChildItem -Path $explorerCache -Filter "iconcache*" -ErrorAction SilentlyContinue |
-        Remove-Item -Force -ErrorAction SilentlyContinue
-        # Restart Explorer
-        Start-Process explorer.exe
-        Write-Host "  [OK] Icon cache rebuilt and Explorer restarted" -ForegroundColor Green
     }
     catch {
         Write-Host "  [INFO] Could not rebuild icon cache - you may need to log off/on to see icon changes" -ForegroundColor Yellow
