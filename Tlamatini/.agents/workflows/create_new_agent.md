@@ -4,7 +4,7 @@ description: How to create a new Tlamatini agent
 
 # Creating a New Agent in Tlamatini
 
-This is a step-by-step guide for creating a new workflow agent. Follow ALL 7 steps in order. Each step includes exact code templates — adapt them by replacing `<agent_name>` (lowercase, underscore-separated, e.g. `shoter`) and `<AgentName>` (PascalCase, e.g. `Shoter`) with your agent's name.
+This is a step-by-step guide for creating a new workflow agent. Follow ALL 8 steps in order. Each step includes exact code templates — adapt them by replacing `<agent_name>` (lowercase, underscore-separated, e.g. `shoter`) and `<AgentName>` (PascalCase, e.g. `Shoter`) with your agent's name.
 
 > **Reference implementations**: Study these files before starting:
 > - Simple agent with outputs: `agent/agents/shoter/shoter.py` + `config.yaml`
@@ -442,6 +442,32 @@ Add a row to the **Connection Updates** API table:
 
 ---
 
+## Step 8 · Quality: Lint and Fix All Modified Files
+
+After completing all previous steps, run the linting tools to ensure code quality.
+
+### 8a. Python linting with Ruff
+
+Run the Ruff linter against the project:
+
+```bash
+python -m ruff check
+```
+
+Review the output and **fix all reported issues** (unused imports, formatting errors, style violations, etc.). Re-run the command until no issues remain.
+
+### 8b. JavaScript/CSS linting with ESLint
+
+Run the JavaScript/CSS linter:
+
+```bash
+npm run lint
+```
+
+Review the output and **fix only the errors** (ignore warnings). Re-run the command until no errors remain.
+
+---
+
 ## Summary Checklist
 
 ```
@@ -456,4 +482,7 @@ Add a row to the **Connection Updates** API table:
     [ ] 5d: Add .flw load case in acp-file-io.js
 [ ] Step 6: Add agent entry in agentic_skill.md (for FlowCreator AI)
 [ ] Step 7: Update README.md (count, structure, tables, glossary, changelog, API)
+[ ] Step 8: Lint and fix:
+    [ ] 8a: Run `python -m ruff check` and fix all issues
+    [ ] 8b: Run `npm run lint` and fix only errors
 ```
