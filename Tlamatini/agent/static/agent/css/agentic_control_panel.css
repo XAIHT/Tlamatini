@@ -900,6 +900,23 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #000000 0%, #00008B 100%);
 }
 
+/* Apirer Agent Styles - HTTP/REST API agent (DarkPurple-to-LightGreen gradient) */
+.canvas-item.apirer-agent {
+    background-color: #3B0764;
+    color: white;
+    background: linear-gradient(135deg, #3B0764 0%, #86EFAC 100%);
+}
+
+.canvas-item.apirer-agent:hover {
+    box-shadow: 0 6px 15px rgba(134, 239, 172, 0.5);
+    background: linear-gradient(135deg, #4C1D95 0%, #A7F3D0 100%);
+}
+
+/* Apirer agent icon in sidebar */
+.agent-tool-item[data-content="Apirer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #3B0764 0%, #86EFAC 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

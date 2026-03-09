@@ -385,6 +385,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'dockerer': await updateDockererConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'pser': await updatePserConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kuberneter': await updateKuberneterConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'apirer': await updateApirerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -429,6 +430,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'dockerer': await updateDockererConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'pser': await updatePserConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kuberneter': await updateKuberneterConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'apirer': await updateApirerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 
