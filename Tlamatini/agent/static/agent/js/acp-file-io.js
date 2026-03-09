@@ -171,15 +171,36 @@ async function loadDiagram(data) {
 
     if (data.nodes && Array.isArray(data.nodes)) {
         for (const nodeData of data.nodes) {
+            const lowerName = nodeData.text.toLowerCase();
+
+            // Enforce single FlowCreator rule during file load
+            if (lowerName === 'flowcreator') {
+                const existing = loadedNodes.find(n => (n.dataset.agentName || '').toLowerCase() === 'flowcreator');
+                if (existing) {
+                    console.warn(`[Load] Skipping extra FlowCreator agent: ${nodeData.text}`);
+                    alert('Only one FlowCreator agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
+                    continue;
+                }
+            }
+
             const newItem = document.createElement('div');
             newItem.classList.add('canvas-item');
 
-            const registration = registerItem(nodeData.text);
-            newItem.textContent = `${nodeData.text} (${registration.count})`;
-            newItem.id = registration.id;
-            newItem.dataset.agentName = nodeData.text;
+            let agentText = nodeData.text;
 
-            const lowerName = nodeData.text.toLowerCase();
+            // Clean up old Flowcreator (1) saved data
+            if (lowerName === 'flowcreator') {
+                agentText = 'Flowcreator';
+                newItem.textContent = agentText;
+                newItem.id = 'flowcreator';
+                newItem.dataset.agentName = agentText;
+            } else {
+                const registration = registerItem(agentText);
+                newItem.textContent = `${agentText} (${registration.count})`;
+                newItem.id = registration.id;
+                newItem.dataset.agentName = agentText;
+            }
+
             applyAgentTypeClass(newItem, lowerName);
             appendInputTriangles(newItem, lowerName);
             appendOutputTriangles(newItem, lowerName);

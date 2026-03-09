@@ -2866,7 +2866,13 @@ def read_agent_log_view(request, agent_name):
             }), content_type='application/json', status=404)
         
         # Log file path: pool/{folder}/{folder}.log
-        log_file_path = os.path.join(pool_base_path, pool_folder_name, f"{pool_folder_name}.log")
+        if base_folder_name == 'flowcreator':
+            # FlowCreator always writes to flowcreator.log in its dynamically named directory
+            log_file_name = "flowcreator.log"
+        else:
+            log_file_name = f"{pool_folder_name}.log"
+            
+        log_file_path = os.path.join(pool_base_path, pool_folder_name, log_file_name)
         
         if not os.path.exists(log_file_path):
             return HttpResponse(json.dumps({
