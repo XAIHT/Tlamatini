@@ -64,6 +64,7 @@ function applyAgentTypeClass(el, agentName) {
         'pser': 'pser-agent',
         'kuberneter': 'kuberneter-agent',
         'apirer': 'apirer-agent',
+        'jenkinser': 'jenkinser-agent',
     };
     const cls = classMap[agentName];
     if (cls) el.classList.add(cls);
@@ -608,6 +609,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'apirer') updateApirerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
 
         conn.path.remove();
         ACP.connections.splice(idx, 1);
@@ -669,6 +672,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'kuberneter' && !sourceBeingDeleted) updateKuberneterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'apirer' && !targetBeingDeleted) updateApirerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'apirer' && !sourceBeingDeleted) updateApirerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'jenkinser' && !targetBeingDeleted) updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'jenkinser' && !sourceBeingDeleted) updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -761,6 +766,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #E91E63 0%, #4CAF50 100%)';
         else if (lowerDesc === 'kuberneter') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #00008B 100%)';
         else if (lowerDesc === 'apirer') iconDiv.style.background = 'linear-gradient(135deg, #3B0764 0%, #86EFAC 100%)';
+        else if (lowerDesc === 'jenkinser') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%)';
         // Default blue (#7289da) is set in CSS for other agents
 
         const span = document.createElement('span');
@@ -1059,6 +1065,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'apirer') updateApirerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'pythonxer') updatePythonxerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'pythonxer') updatePythonxerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'asker') updateAskerConnection(targetId, 'source', sourceId, 'add');

@@ -286,6 +286,7 @@ export default [
                 updatePserConnection: "readonly",
                 updateKuberneterConnection: "readonly",
                 updateApirerConnection: "readonly",
+                updateJenkinserConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
                 applyAgentTypeClass: "readonly",

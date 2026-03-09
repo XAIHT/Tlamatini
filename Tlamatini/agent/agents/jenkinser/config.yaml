@@ -1,0 +1,21 @@
+# Jenkinser Agent Configuration - CI/CD Pipeline Trigger
+
+# Jenkins server URL (e.g., http://localhost:8080)
+jenkins_url: "http://localhost:8080"
+
+# Jenkins job name to trigger
+job_name: ""
+
+# Authentication credentials
+user: ""
+api_token: ""
+
+# Build parameters (map of key-value pairs, leave empty for parameterless builds)
+parameters: {}
+
+# Whether to use /buildWithParameters instead of /build (auto-detected if parameters is non-empty)
+use_parameters: false
+
+# Connection fields
+source_agents: []
+target_agents: []

@@ -917,6 +917,23 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #3B0764 0%, #86EFAC 100%);
 }
 
+/* Jenkinser Agent Styles - CI/CD Pipeline Trigger (White-to-Blue gradient) */
+.canvas-item.jenkinser-agent {
+    background-color: #FFFFFF;
+    color: #1565C0;
+    background: linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%);
+}
+
+.canvas-item.jenkinser-agent:hover {
+    box-shadow: 0 6px 15px rgba(30, 136, 229, 0.5);
+    background: linear-gradient(135deg, #F5F5F5 0%, #42A5F5 100%);
+}
+
+/* Jenkinser agent icon in sidebar */
+.agent-tool-item[data-content="Jenkinser"] .agent-tool-icon {
+    background: linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

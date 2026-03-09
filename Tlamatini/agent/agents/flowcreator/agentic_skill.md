@@ -45,7 +45,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -572,6 +572,20 @@ system_prompt: |
   - `body`: "" (request body for POST/PUT/PATCH — string or JSON object)
   - `expected_status`: 200 (expected HTTP status code — logs a warning if mismatch)
   - `timeout`: 30 (request timeout in seconds)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
+### 35. Jenkinser
+- **Purpose**: Triggers Jenkins CI/CD pipeline builds and logs the trigger result, then starts downstream agents regardless of whether the trigger succeeded or failed.
+- **Pool name pattern**: `jenkinser_<n>`
+- **Starts other agents**: YES (always, regardless of build trigger status)
+- **Config parameters**:
+  - `jenkins_url`: "http://localhost:8080" (Jenkins server URL)
+  - `job_name`: "" (Jenkins job name to trigger)
+  - `user`: "" (Jenkins username for authentication)
+  - `api_token`: "" (Jenkins API token — leave empty, user fills in later)
+  - `parameters`: {} (map of build parameters for parameterized builds)
+  - `use_parameters`: false (force /buildWithParameters endpoint)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
