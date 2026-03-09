@@ -3,7 +3,10 @@
 # HTTP request settings
 url: "https://httpbin.org/get"
 method: "GET"
-headers: {}
+headers: {
+  "Content-Type": "application/json",
+  "Authorization": ""
+}
 body: ""
 expected_status: 200
 timeout: 30
