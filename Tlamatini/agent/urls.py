@@ -68,6 +68,7 @@ urlpatterns = [
     path('update_prompter_connection/<str:agent_name>/', views.update_prompter_connection_view, name='update_prompter_connection'),
     path('update_gitter_connection/<str:agent_name>/', views.update_gitter_connection_view, name='update_gitter_connection'),
     path('update_dockerer_connection/<str:agent_name>/', views.update_dockerer_connection_view, name='update_dockerer_connection'),
+    path('update_pser_connection/<str:agent_name>/', views.update_pser_connection_view, name='update_pser_connection'),
     path('execute_flowcreator/<str:agent_name>/', views.execute_flowcreator_view, name='execute_flowcreator'),
     path('check_flowcreator_result/<str:agent_name>/', views.check_flowcreator_result_view, name='check_flowcreator_result'),
     path('clean_pool_except/<str:agent_name>/', views.clean_pool_except_view, name='clean_pool_except'),

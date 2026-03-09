@@ -45,7 +45,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -538,6 +538,17 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+### 32. Pser
+- **Purpose**: Searches for a running process by a likely name using LLM-powered fuzzy matching, then logs the best match and starts downstream agents.
+- **Pool name pattern**: `pser_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `likely_process_name`: "Paint" (the process name to search for — the LLM will semantically match it to the actual executable, e.g. "Paint" -> "mspaint.exe")
+  - `llm.host`: "http://localhost:11434" (Ollama API endpoint)
+  - `llm.model`: "gpt-oss:120b-cloud" (LLM model to use for fuzzy matching)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after process lookup)
+
 ---
 
 ## Output Format
@@ -969,11 +980,15 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
    - Wrong: Raiser_1 watches for STATE_ZERO, Raiser_2 watches for STATE_CHANGED
    - Right: `target_agents` handles the loop (default); one Raiser watches for STATE_CHANGED (exception)
 
-3. **❌ Starting terminal agents from Starter.** Notifier, Emailer, and Whatsapper should NEVER be started by Starter. They should be the last step in a chain, triggered only after the event they report is detected.
+3. **❌ Never use a Pythonxer agent to parse logs in order to execute downstream agents.** Don't use Pythonxer agent to parse logs in order to execute downstream agents, instead use Raiser agent to watch for a keyword in the log and execute downstream agents.
+   - Wrong: Pythonxer_1 parses logs and executes downstream agents
+   - Right: Raiser_1 watches for a keyword in the log and executes downstream agents
+
+4. **❌ Starting terminal agents from Starter.** Notifier, Emailer, and Whatsapper should NEVER be started by Starter. They should be the last step in a chain, triggered only after the event they report is detected.
    - Wrong: `Starter → Notifier` (Notifier starts polling immediately, before anything happens)
    - Right: `Raiser → Notifier` (Notifier starts only when the alert condition is met)
 
-4. **❌ Leaving `target_agents` empty on an active agent.** If an active agent like Pythonxer has `target_agents: []`, it becomes a dead-end and nothing happens after it runs. Always connect active agents to downstream targets.
+5. **❌ Leaving `target_agents` empty on an active agent.** If an active agent like Pythonxer has `target_agents: []`, it becomes a dead-end and nothing happens after it runs. Always connect active agents to downstream targets.
    - Wrong: Pythonxer with `target_agents: []` and two Raisers polling its log
    - Right: Pythonxer with `target_agents: ["sleeper_1", "raiser_1"]`
 

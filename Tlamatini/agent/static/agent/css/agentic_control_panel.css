@@ -1377,6 +1377,18 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(36, 150, 237, 0.5);
 }
 
+/* Pser Agent Styles - Process Finder (Pink to Green gradient) */
+.canvas-item.pser-agent {
+    background-color: #E91E63;
+    color: white;
+    background: linear-gradient(135deg, #E91E63 0%, #4CAF50 100%);
+}
+
+.canvas-item.pser-agent:hover {
+    background: linear-gradient(135deg, #F06292 0%, #66BB6A 100%);
+    box-shadow: 0 6px 15px rgba(233, 30, 99, 0.5);
+}
+
 /* Gitter agent icon in sidebar */
 .agent-tool-item[data-content="Gitter"] .agent-tool-icon {
     background: linear-gradient(135deg, #FFFFFF 0%, #000000 100%);
