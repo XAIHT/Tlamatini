@@ -61,7 +61,7 @@ if (btnStart) {
         console.log('--- [Start Sequence] 1. Killing session processes...');
         try {
             const killResponse = await fetch('/agent/kill_session_processes/', {
-                method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
             });
             const killResult = await killResponse.json();
             console.log(`--- [Start Sequence] Killed ${killResult.killed_count} process(es)`);
@@ -75,7 +75,7 @@ if (btnStart) {
         const deployPromises = Array.from(allCanvasItems).map(async (item) => {
             try {
                 const response = await fetch(`/agent/ensure_agent_exists/${item.id}/`, {
-                    method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                    method: 'POST', headers: getHeaders(), credentials: 'same-origin'
                 });
                 if (response.ok) {
                     const result = await response.json();
@@ -97,7 +97,7 @@ if (btnStart) {
         console.log('--- [Start Sequence] 3. Clearing all agent log files...');
         try {
             const clearResponse = await fetch('/agent/clear_agent_logs/', {
-                method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
             });
             const clearResult = await clearResponse.json();
             if (clearResult.status === 'success') {
@@ -114,7 +114,7 @@ if (btnStart) {
         const executionPromises = starterInfo.map(async ({ id }) => {
             try {
                 const response = await fetch(`/agent/execute_starter_agent/${id}/`, {
-                    method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                    method: 'POST', headers: getHeaders(), credentials: 'same-origin'
                 });
                 const result = await response.json();
                 return { agentId: id, success: result.success, pid: result.pid, message: result.message };
@@ -358,7 +358,7 @@ if (btnStop) {
         const executionPromises = enderInfo.map(async ({ id }) => {
             try {
                 const response = await fetch(`/agent/execute_ender_agent/${id}/`, {
-                    method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                    method: 'POST', headers: getHeaders(), credentials: 'same-origin'
                 });
                 const result = await response.json();
                 return { agentId: id, success: result.success, pid: result.pid, message: result.message };
@@ -501,7 +501,7 @@ function showEnderResult(success, failedAgentNames, dialog) {
         // Clear .pos (reanimation position) files
         try {
             fetch('/agent/clear_pos_files/', {
-                method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
             }).then(response => response.json())
                 .then(result => {
                     if (result.success) {
@@ -577,7 +577,7 @@ function showEnderAlreadyDownDialog(_enderInfo) {
     // Clear .pos files
     try {
         fetch('/agent/clear_pos_files/', {
-            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+            method: 'POST', headers: getHeaders(), credentials: 'same-origin'
         }).then(response => response.json())
             .then(result => {
                 if (result.success) {
@@ -688,7 +688,7 @@ async function pauseExecution() {
 
         console.log('--- Killing all session processes...');
         const killResponse = await fetch('/agent/kill_session_processes/', {
-            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+            method: 'POST', headers: getHeaders(), credentials: 'same-origin'
         });
         const killResult = await killResponse.json();
 
@@ -813,7 +813,7 @@ if (btnClear) {
 
         try {
             const response = await fetch('/agent/clear_pool/', {
-                method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
             });
             const result = await response.json();
             if (result.status === 'success') {
@@ -843,3 +843,9 @@ if (btnClear) {
         }
     });
 }
+
+
+
+
+
+

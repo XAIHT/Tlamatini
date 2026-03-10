@@ -6,7 +6,6 @@ import json
 import asyncio
 import re
 import sys
-import ssl
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import User
 from .models import AgentMessage, LLMProgram, LLMSnippet, Omission, Mcp, Tool, Agent, AgentProcess, SessionState
@@ -29,12 +28,6 @@ from .services import (
 from .global_state import global_state
 from . import constants
 
-try:
-    _create_unverified_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
-else:
-    ssl._create_default_https_context = _create_unverified_https_context
 
 class AgentConsumer(AsyncWebsocketConsumer):
     groups = []
@@ -48,11 +41,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
         self.tools = []
         self.agents = None
         self.rag_chain = None  # Initialize to None, will be set by setup_rag_chain()
+        self.room_name = None
+        self.room_group_name = None
+        self.heartbeat_task = None
 
     async def connect(self):
         print("--- WebSocket connect initiated.")
+        user = self.scope.get('user')
+        if user is None or not user.is_authenticated:
+            print("!!! Rejecting anonymous WebSocket connection.")
+            await self.close(code=4401)
+            return
+
         try:
-            self.room_name = 'llm_chat'
+            self.room_name = f'user_{user.id}'
             self.room_group_name = f'chat_{self.room_name}'
             print(f"--- Joining room: {self.room_group_name}")
 
@@ -70,8 +72,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
         self.heartbeat_task = asyncio.create_task(self.heartbeat())
         
         # Check for existing RAG chain in global_state (persists across WebSocket reconnections)
-        user = self.scope.get('user')
-        user_id = user.id if user and user.is_authenticated else 'anonymous'
+        user_id = user.id
         
         # Key for storing RAG chain per user
         rag_chain_key = f'rag_chain_{user_id}'
@@ -489,10 +490,15 @@ class AgentConsumer(AsyncWebsocketConsumer):
             
     async def disconnect(self, close_code):   # type: ignore
         print("--- WebSocket disconnected.")
-        await self.channel_layer.group_discard(   # type: ignore
-            self.room_group_name,
-            self.channel_name
-        )
+        if self.heartbeat_task is not None:
+            self.heartbeat_task.cancel()
+            self.heartbeat_task = None
+
+        if self.room_group_name:
+            await self.channel_layer.group_discard(   # type: ignore
+                self.room_group_name,
+                self.channel_name
+            )
 
     async def queue_llm_retrieval(self, message):
         try:
@@ -751,9 +757,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'clean-history-and-reconnect':
                 print("--- Received clean-history-and-reconnect message from client.")
                 try:
-                    # Delete all AgentMessage records
-                    await self.delete_all_messages()
-                    print("--- All AgentMessage records deleted.")
+                    # Delete only the requesting user's chat history.
+                    await self.delete_messages_for_user(user)
+                    print(f"--- AgentMessage records deleted for user {user.id}.")
                     
                     # Clear global_state cache to force new RAG chain creation
                     user_id = user.id if user and user.is_authenticated else 'anonymous'
@@ -997,8 +1003,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
         AgentMessage.objects.create(user=user, message=message)
 
     @database_sync_to_async
-    def delete_all_messages(self):
-        AgentMessage.objects.all().delete()
+    def delete_messages_for_user(self, user):
+        AgentMessage.objects.filter(user=user).delete()
 
     @database_sync_to_async
     def save_program(self, programName, programLanguage, programContent):
@@ -1106,3 +1112,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_or_create_bot_user(self):
         return User.objects.get_or_create(username='LLM_Bot')
+
+
+

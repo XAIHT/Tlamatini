@@ -102,7 +102,7 @@ if (fileCloseBtn) {
 
         try {
             const response = await fetch('/agent/clear_pool/', {
-                method: 'GET',
+                method: 'POST',
                 headers: getHeaders(),
                 credentials: 'same-origin'
             });
@@ -149,7 +149,7 @@ async function loadDiagram(data) {
     // 4. Clear pool directory before deploying new agents
     try {
         const clearResponse = await fetch('/agent/clear_pool/', {
-            method: 'GET',
+            method: 'POST',
             headers: getHeaders(),
             credentials: 'same-origin'
         });
@@ -245,7 +245,7 @@ async function loadDiagram(data) {
                     }
                 } else {
                     const response = await fetch(`/agent/deploy_agent_template/${newItem.id}/`, {
-                        method: 'GET',
+                        method: 'POST',
                         headers: getHeaders(),
                         credentials: 'same-origin'
                     });
@@ -509,3 +509,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     }
 });
+

@@ -5,12 +5,40 @@
 // --- Parsed page data ---
 const userUsername = JSON.parse(document.getElementById('user_username').textContent);
 
+function getCookie(name) {
+    const cookieValue = `; ${document.cookie}`;
+    const parts = cookieValue.split(`; ${name}=`);
+    if (parts.length === 2) {
+        return parts.pop().split(';').shift() || '';
+    }
+    return '';
+}
+
+function getCsrfToken() {
+    return getCookie('csrftoken');
+}
+
+function sendPostBeacon(url, fields = {}) {
+    const formData = new FormData();
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+        formData.append('csrfmiddlewaretoken', csrfToken);
+    }
+
+    Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+            formData.append(key, value);
+        }
+    });
+
+    return navigator.sendBeacon(url, formData);
+}
+
 // --- Core DOM references ---
 const chatLog = document.getElementById('chat-log');
 const chatSocket = new WebSocket(
     'ws://' + window.location.host + '/ws/agent/'
 );
-
 // --- Mutable UI flags ---
 let contextButtonClicked = false;
 let canvasSettedAsContext = false;
@@ -97,3 +125,5 @@ const agentsList = document.getElementById('agents-list');
 contextButton.disabled = true;
 contextButton.style.backgroundColor = "#808080";
 contextButton.textContent = "Use as context";
+
+

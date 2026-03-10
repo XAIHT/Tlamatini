@@ -83,7 +83,7 @@ async function recreateCanvasItem(state) {
 
     try {
         const response = await fetch(`/agent/deploy_agent_template/${state.id}/`, {
-            method: 'GET',
+            method: 'POST',
             headers: getHeaders(),
             credentials: 'same-origin'
         });
@@ -123,7 +123,7 @@ async function deleteCanvasItemWithoutUndo(itemId) {
 
     try {
         await fetch(`/agent/delete_agent_pool_dir/${itemId}/`, {
-            method: 'GET',
+            method: 'POST',
             headers: getHeaders(),
             credentials: 'same-origin'
         });
@@ -569,7 +569,7 @@ window.addEventListener('keydown', async (e) => {
             if (item.id) {
                 try {
                     const response = await fetch(`/agent/delete_agent_pool_dir/${item.id}/`, {
-                        method: 'GET',
+                        method: 'POST',
                         headers: getHeaders(),
                         credentials: 'same-origin'
                     });
@@ -635,3 +635,4 @@ window.addEventListener('keydown', async (e) => {
         markDirty();
     }
 });
+
