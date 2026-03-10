@@ -680,7 +680,7 @@ async function _executeFlowCreator(agentId) {
         _updateFlowCreatorProgress(progressDialog, 'Cleaning pool directory...');
         try {
             await fetch(`/agent/clean_pool_except/${agentId}/`, {
-                method: 'GET',
+                method: 'POST',
                 headers: getHeaders(),
                 credentials: 'same-origin'
             });
@@ -835,7 +835,7 @@ async function _renderFlowCreatorResult(flowResult, flowCreatorId, flowCreatorIt
                 }
             } else {
                 const deployResp = await fetch(`/agent/deploy_agent_template/${newItem.id}/`, {
-                    method: 'GET',
+                    method: 'POST',
                     headers: getHeaders(),
                     credentials: 'same-origin'
                 });
@@ -938,3 +938,9 @@ function _closeFlowCreatorProgress(overlay) {
         overlay.parentNode.removeChild(overlay);
     }
 }
+
+
+
+
+
+

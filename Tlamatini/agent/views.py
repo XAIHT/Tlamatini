@@ -53,7 +53,7 @@ def logout_view(request):
 
 @login_required
 def agent_page(request):
-    messages = AgentMessage.objects.order_by('timestamp').all()
+    messages = AgentMessage.objects.filter(user=request.user).order_by('timestamp')
     initial_messages = [
         {
             'username': m.user.username,
@@ -5883,3 +5883,4 @@ def update_jenkinser_connection_view(request, agent_name):
     except Exception as e:
         print(f"Error updating Jenkinser connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+

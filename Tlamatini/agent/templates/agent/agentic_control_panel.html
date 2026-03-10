@@ -196,6 +196,9 @@
             </div>
         </div>
     </div>
+    <form id="csrf-bootstrap-form" style="display: none;">
+        {% csrf_token %}
+    </form>
     {{ ollama_base_url|json_script:"ollama_config" }}
     {% if flw_data %}
     {{ flw_data|json_script:"server-flw-data" }}

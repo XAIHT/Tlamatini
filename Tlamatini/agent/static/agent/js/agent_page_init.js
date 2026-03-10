@@ -7,12 +7,8 @@ window.addEventListener('beforeunload', (event) => {
     if (inLongOperation) {
         event.preventDefault();
         event.returnValue = '';
-        const cancelPayload = JSON.stringify({
-            type: 'cancel-all',
-            message: 'cancel'
-        });
-        navigator.sendBeacon('/agent/clear_session_state/', cancelPayload);
-        console.log('--- Page closing during long operation: Sent cancel request via beacon');
+        sendPostBeacon('/agent/clear_session_state/'); // eslint-disable-line no-undef
+        console.log('--- Page closing during long operation: Sent session cleanup via beacon');
     }
 });
 
@@ -621,3 +617,4 @@ function listOllamaModels() { // eslint-disable-line no-unused-vars
         })
         .catch(error => console.error('Error fetching Ollama models:', error));
 }
+

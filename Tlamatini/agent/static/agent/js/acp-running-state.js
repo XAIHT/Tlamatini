@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('--- Page loaded: Clearing pool directory for fresh start...');
     try {
         const response = await fetch('/agent/clear_pool/', {
-            method: 'GET',
+            method: 'POST',
             headers: getHeaders(),
             credentials: 'same-origin'
         });
@@ -393,3 +393,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('--- Error clearing pool on load:', error);
     }
 });
+
+
+
+

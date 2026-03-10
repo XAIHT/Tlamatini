@@ -210,7 +210,7 @@ async function createCanvasItem(clientX, clientY, textContent) {
     // Deploy agent template to pool directory
     try {
         const response = await fetch(`/agent/deploy_agent_template/${newItem.id}/`, {
-            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+            method: 'POST', headers: getHeaders(), credentials: 'same-origin'
         });
         if (response.ok) {
             const result = await response.json();
@@ -342,7 +342,7 @@ function makeDraggable(el) {
             // Deploy pool directories for cloned items (async, fire-and-forget)
             originalToClone.forEach((clone, _original) => {
                 fetch(`/agent/deploy_agent_template/${clone.id}/`, {
-                    method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+                    method: 'POST', headers: getHeaders(), credentials: 'same-origin'
                 }).then(response => {
                     if (response.ok) console.log(`[Clone] Deployed pool directory for ${clone.id}`);
                     else console.error(`[Clone] Failed to deploy pool for ${clone.id}:`, response.statusText);
@@ -1137,3 +1137,4 @@ window.clearAllCanvasItems = function () {
     markClean();
     console.log('--- All canvas items, connections and counters cleared');
 };
+
