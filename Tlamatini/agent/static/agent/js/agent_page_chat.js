@@ -439,12 +439,12 @@ chatSocket.onopen = function () {
 
 chatSocket.onerror = function (_e) {
     console.error('Chat socket reported an error');
-    applyDisconnectedSocketUi('Live connection problem. Use Reconnect or refresh before sending more source code.');
+    applyDisconnectedSocketUi('Live connection problem. Use Reconnect or refresh before continue.');
 };
 
 chatSocket.onclose = function (_e) {
     console.error('Chat socket closed unexpectedly');
-    applyDisconnectedSocketUi('Live connection lost. Use Reconnect or refresh before sending more source code.');
+    applyDisconnectedSocketUi('Live connection lost. Use Reconnect or refresh before continue.');
 };
 
 // --- Chat input history (arrow up/down) ---

@@ -80,7 +80,7 @@ function applyDisconnectedSocketUi(message) {
         chatInput.disabled = true;
         chatInput.readOnly = true;
         chatInput.style.backgroundColor = 'gray';
-        chatInput.placeholder = 'Connection lost. Use Reconnect or refresh before sending more source code.';
+        chatInput.placeholder = 'Connection lost. Use Reconnect or refresh before continue.';
     }
 
     if (chatSubmitButton) {
@@ -119,7 +119,7 @@ function isChatSocketOpen() {
     return !!chatSocket && chatSocket.readyState === WebSocket.OPEN;
 }
 
-function sendChatSocketMessage(payload, disconnectedMessage = 'Live connection lost. Use Reconnect or refresh before sending more source code.') {
+function sendChatSocketMessage(payload, disconnectedMessage = 'Live connection lost. Use Reconnect or refresh before continue.') {
     if (!isChatSocketOpen()) {
         console.error('WebSocket is not connected. Message not sent.', payload);
         applyDisconnectedSocketUi(disconnectedMessage);
