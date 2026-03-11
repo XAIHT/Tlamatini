@@ -166,8 +166,13 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
         setTitleBusy(true);
         disableControlsDuringOperation();
         lapseLoadingContext = true;
-    } else if (message.toLowerCase().includes("out of the root directory") || message.toLowerCase().includes("outside the application root")) {
-        console.log("--- Selected directory is outside the application root path and is not allowed. message received: " + message);
+    } else if (
+        message.toLowerCase().includes("out of the root directory")
+        || message.toLowerCase().includes("outside the application root")
+        || message.toLowerCase().includes("not a valid directory")
+        || (message.toLowerCase().includes("directory") && message.toLowerCase().includes("does not exist"))
+    ) {
+        console.log("--- Context directory selection failed. message received: " + message);
         lapseLoadingContext = false;
         clearContextEnabled = false;
         clearContextButton.setAttribute("style", "display: none !important;");
@@ -308,7 +313,7 @@ function parseToFindFiles(data) {
 
 function send2SaveFiles(files) {
     if (!files) return;
-    chatSocket.send(JSON.stringify({
+    sendChatSocketMessage(JSON.stringify({
         'type': 'save-files-from-db',
         'message': files,
         'content': ''
@@ -336,7 +341,7 @@ chatSocket.onmessage = function (e) {
             setContextText('<<< ' + data.context_path + ' >>>');
             contextInfoDiv.classList.remove('context-info-invisible');
             contextInfoDiv.classList.add('context-info-visible');
-            actualContextDir = data.context_path;
+            actualContextDir = data.context_type === 'directory' ? data.context_path : null;
             clearContextEnabled = true;
             clearContextButton.removeAttribute('style');
             updateViewContextDirMenuState();
@@ -346,9 +351,15 @@ chatSocket.onmessage = function (e) {
     }
     // Handle context-path-set: Server confirms full context path after set operation
     if (data.type === 'context-path-set') {
-        console.log('--- Context path set by server:', data.context_path);
+        console.log('--- Context path set by server:', data.context_path, 'type:', data.context_type);
         if (data.context_path) {
             setContextText('<<< ' + data.context_path + ' >>>');
+            contextInfoDiv.classList.remove('context-info-invisible');
+            contextInfoDiv.classList.add('context-info-visible');
+            clearContextEnabled = true;
+            clearContextButton.removeAttribute('style');
+            actualContextDir = data.context_type === 'directory' ? data.context_path : null;
+            updateViewContextDirMenuState();
         }
         return;
     }
@@ -421,8 +432,19 @@ chatSocket.onmessage = function (e) {
     chatLog.scrollTop = chatLog.scrollHeight;
 };
 
+chatSocket.onopen = function () {
+    console.log('--- Chat socket connected');
+    restoreConnectedSocketUi();
+};
+
+chatSocket.onerror = function (_e) {
+    console.error('Chat socket reported an error');
+    applyDisconnectedSocketUi('Live connection problem. Use Reconnect or refresh before sending more source code.');
+};
+
 chatSocket.onclose = function (_e) {
     console.error('Chat socket closed unexpectedly');
+    applyDisconnectedSocketUi('Live connection lost. Use Reconnect or refresh before sending more source code.');
 };
 
 // --- Chat input history (arrow up/down) ---

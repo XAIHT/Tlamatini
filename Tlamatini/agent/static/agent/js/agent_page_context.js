@@ -18,10 +18,26 @@ function unsetContextButton() {
     contextButton.textContent = "Use as context";
 }
 
+function showPendingContextSelection(label) {
+    clearContextEnabled = false;
+    clearContextButton.setAttribute("style", "display: none !important;");
+    actualContextDir = null;
+    updateViewContextDirMenuState();
+    setContextText("<<< pending context: " + label + " >>>");
+    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+}
+
 function ClearContext(e) {
     e.preventDefault();
     if (clearContextEnabled === false) {
         console.log("Clear context is not allowed at this moment...");
+        return;
+    }
+
+    if (!sendChatSocketMessage({
+        'type': 'clear-context',
+        'message': '...'
+    })) {
         return;
     }
 
@@ -43,10 +59,6 @@ function ClearContext(e) {
     updateViewContextDirMenuState();
     console.log("--- actualContextDir reset to null on clear context.");
 
-    chatSocket.send(JSON.stringify({
-        'type': 'clear-context',
-        'message': '...'
-    }));
     clearContextEnabled = false;
     clearContextButton.setAttribute("style", "display: none !important;");
     setContextText("<<<" + "..." + ">>>  ");
@@ -60,13 +72,10 @@ contextButton.addEventListener('click', (event) => {
         event.preventDefault();
         return;
     }
+
+    event.preventDefault();
+
     if (!contextButtonClicked) {
-        event.preventDefault();
-        contextButtonClicked = true;
-        contextButton.textContent = "Used as context";
-        contextButton.style.backgroundColor = "gray";
-        canvasSettedAsContext = true;
-        const type = "set-canvas-as-context";
         const codeRegex = /<<< (.+?) >>>/s;
         const result = filenameSpan.textContent.match(codeRegex);
         const content = textEditorCode.textContent;
@@ -77,41 +86,50 @@ contextButton.addEventListener('click', (event) => {
             alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
         }
         console.log("--- The content is: " + content);
-        if (result) {
-            const filename = result[1];
-            chatSocket.send(JSON.stringify({
-                'type': type,
-                'message': filename,
-                'content': content
-            }));
-            contextButton.disabled = true;
-            contextButton.style.backgroundColor = "gray";
-            contextButton.textContent = "Used as context";
-            openEnabled = false;
-            contextEnabled = false;
-            clearContextEnabled = true;
-            clearContextButton.setAttribute("style", "display: block !important;");
-            setContextText("<<<" + filename + ">>>  ");
-            contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+        if (!result) {
+            return;
         }
-    } else {
-        contextButtonClicked = false;
-        contextButton.textContent = "Use as context";
-        contextButton.style.backgroundColor = "darkgreen";
-        canvasSettedAsContext = false;
-        const codeRegex = /<<< ([\w.-]+) >>>/s;
-        const result = filenameSpan.textContent.match(codeRegex);
-        const type = "unset-canvas-as-context";
-        if (result) {
-            const filename = result[1];
-            chatSocket.send(JSON.stringify({
-                'type': type,
-                'message': filename
-            }));
+
+        const filename = result[1];
+        const sent = sendChatSocketMessage({
+            'type': 'set-canvas-as-context',
+            'message': filename,
+            'content': content
+        });
+        if (!sent) {
+            unsetContextButton();
+            return;
         }
-        clearContextEnabled = false;
-        clearContextButton.setAttribute("style", "display: none !important;");
-        setContextText("<<<...>>>  ");
-        contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+
+        setContextButton();
+        contextButton.disabled = true;
+        contextButton.style.backgroundColor = "gray";
+        openEnabled = false;
+        contextEnabled = false;
+        showPendingContextSelection(filename);
+        return;
     }
+
+    const codeRegex = /<<< ([\w.-]+) >>>/s;
+    const result = filenameSpan.textContent.match(codeRegex);
+    if (!result) {
+        return;
+    }
+
+    const filename = result[1];
+    const sent = sendChatSocketMessage({
+        'type': 'unset-canvas-as-context',
+        'message': filename
+    });
+    if (!sent) {
+        return;
+    }
+
+    unsetContextButton();
+    clearContextEnabled = false;
+    clearContextButton.setAttribute("style", "display: none !important;");
+    actualContextDir = null;
+    updateViewContextDirMenuState();
+    setContextText("<<<...>>>  ");
+    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
 });

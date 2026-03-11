@@ -36,9 +36,108 @@ function sendPostBeacon(url, fields = {}) {
 
 // --- Core DOM references ---
 const chatLog = document.getElementById('chat-log');
-const chatSocket = new WebSocket(
-    'ws://' + window.location.host + '/ws/agent/'
-);
+const connectionStatusBar = document.getElementById('connection-status');
+const defaultChatInputPlaceholder = 'Send a message...';
+
+function buildAgentSocketUrl() {
+    const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${socketProtocol}//${window.location.host}/ws/agent/`;
+}
+
+const chatSocket = new WebSocket(buildAgentSocketUrl());
+
+function setConnectionStatus(message, tone = 'warning') {
+    if (!connectionStatusBar) {
+        return;
+    }
+
+    connectionStatusBar.textContent = message || '';
+    connectionStatusBar.classList.remove('connection-status-hidden', 'connection-status-warning', 'connection-status-ok');
+    connectionStatusBar.classList.add(`connection-status-${tone}`);
+}
+
+function clearConnectionStatus() {
+    if (!connectionStatusBar) {
+        return;
+    }
+
+    connectionStatusBar.textContent = '';
+    connectionStatusBar.classList.add('connection-status-hidden');
+    connectionStatusBar.classList.remove('connection-status-warning', 'connection-status-ok');
+}
+
+function applyDisconnectedSocketUi(message) {
+    if (typeof setTitleBusy === 'function') {
+        setTitleBusy(false);
+    }
+
+    const existingSpinner = document.getElementById(spinnerId);
+    if (existingSpinner && existingSpinner.parentNode) {
+        existingSpinner.parentNode.removeChild(existingSpinner);
+    }
+
+    if (chatInput) {
+        chatInput.disabled = true;
+        chatInput.readOnly = true;
+        chatInput.style.backgroundColor = 'gray';
+        chatInput.placeholder = 'Connection lost. Use Reconnect or refresh before sending more source code.';
+    }
+
+    if (chatSubmitButton) {
+        chatSubmitButton.disabled = true;
+        chatSubmitButton.textContent = 'Disconnected';
+    }
+
+    if (reConnectButton) {
+        reConnectButton.disabled = false;
+    }
+
+    inLongOperation = false;
+    lapseLoadingContext = false;
+    setConnectionStatus(message || 'Live connection lost. Use Reconnect or refresh before continuing.', 'warning');
+}
+
+function restoreConnectedSocketUi() {
+    clearConnectionStatus();
+
+    if (!chatInput || !chatSubmitButton) {
+        return;
+    }
+
+    chatInput.disabled = false;
+    chatInput.placeholder = defaultChatInputPlaceholder;
+
+    if (!inLongOperation) {
+        chatInput.readOnly = false;
+        chatInput.style.backgroundColor = '#40414F';
+        chatSubmitButton.disabled = false;
+        chatSubmitButton.textContent = 'Send';
+    }
+}
+
+function isChatSocketOpen() {
+    return !!chatSocket && chatSocket.readyState === WebSocket.OPEN;
+}
+
+function sendChatSocketMessage(payload, disconnectedMessage = 'Live connection lost. Use Reconnect or refresh before sending more source code.') {
+    if (!isChatSocketOpen()) {
+        console.error('WebSocket is not connected. Message not sent.', payload);
+        applyDisconnectedSocketUi(disconnectedMessage);
+        return false;
+    }
+
+    try {
+        const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        chatSocket.send(message);
+        clearConnectionStatus();
+        return true;
+    } catch (err) {
+        console.error('Failed to send WebSocket message:', err);
+        applyDisconnectedSocketUi(disconnectedMessage);
+        return false;
+    }
+}
+
 // --- Mutable UI flags ---
 let contextButtonClicked = false;
 let canvasSettedAsContext = false;

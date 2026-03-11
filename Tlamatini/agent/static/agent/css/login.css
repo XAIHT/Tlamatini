@@ -8,3 +8,6 @@ body { background-color: #343541; color: #ececf1; }
 .big-white-text { font-weight: 800; color: white; }
 .white-text { color: white; }
 .big-white-text-button { font-weight: 600; color: white; font-size: 1.2rem; }
+
+.login-error-panel { margin-bottom: 1rem; padding: .85rem 1rem; border-radius: .75rem; background-color: rgba(220, 53, 69, 0.18); border: 1px solid rgba(220, 53, 69, 0.45); color: #ffd7dc; }
+.login-error-line + .login-error-line { margin-top: .35rem; }

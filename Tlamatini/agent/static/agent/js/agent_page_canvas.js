@@ -57,7 +57,7 @@ function loadCanvas(filename) { // eslint-disable-line no-unused-vars
         const type = "unset-canvas-as-context";
         if (result && result[1] && result[1].length > 0 && result[1].includes('...') === false) {
             const filename = result[1];
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': type,
                 'message': filename
             }));
@@ -166,7 +166,7 @@ function reopenCanvas() {
         console.log("--- The content is: " + content);
         if (result) {
             const filename = result[1];
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': type,
                 'message': filename,
                 'content': content
@@ -190,7 +190,7 @@ function cleanCanvas() {
         const type = "unset-canvas-as-context";
         if (result && result[1] && result[1].length > 0 && result[1].includes('...') === false) {
             const filename = result[1];
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': type,
                 'message': filename
             }));

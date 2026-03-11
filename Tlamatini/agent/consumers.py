@@ -614,7 +614,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print(f"--- Session state saved: file - {target_context_file}")
                 await self.send(text_data=json.dumps({
                     'type': 'context-path-set',
-                    'context_path': target_context_file
+                    'context_path': target_context_file,
+                    'context_type': 'file',
+                    'context_filename': safe_filename
                 }))
                 asyncio.create_task(self.setup_contextual_rag_chain(context_files_path, safe_filename))
                 return
@@ -656,7 +658,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print(f"--- Session state saved: directory - {context_path}")
                 await self.send(text_data=json.dumps({
                     'type': 'context-path-set',
-                    'context_path': context_path
+                    'context_path': context_path,
+                    'context_type': 'directory',
+                    'context_filename': None
                 }))
                 asyncio.create_task(self.setup_contextual_rag_chain(context_path))
                 return
@@ -687,6 +691,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 global_state.set_state('chat_hist_summarizer_counter', 0)
                 await self.save_session_state(user, application_path, 'file', safe_filename)
                 print(f"--- Session state saved: file - {target_context_file}")
+                await self.send(text_data=json.dumps({
+                    'type': 'context-path-set',
+                    'context_path': target_context_file,
+                    'context_type': 'file',
+                    'context_filename': safe_filename
+                }))
                 asyncio.create_task(self.setup_contextual_rag_chain(application_path, safe_filename))
                 return            
 
