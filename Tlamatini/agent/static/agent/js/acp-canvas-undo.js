@@ -262,6 +262,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'crawler') {
                 await updateCrawlerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'summarizer') {
+                await updateSummarizerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'summarizer') {
+                await updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -439,6 +445,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'crawler') {
         await updateCrawlerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'summarizer') {
+        await updateSummarizerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'summarizer') {
+        await updateSummarizerConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);
