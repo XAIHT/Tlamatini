@@ -66,6 +66,7 @@ function applyAgentTypeClass(el, agentName) {
         'apirer': 'apirer-agent',
         'jenkinser': 'jenkinser-agent',
         'crawler': 'crawler-agent',
+        'summarizer': 'summarizer-agent',
     };
     const cls = classMap[agentName];
     if (cls) el.classList.add(cls);
@@ -614,6 +615,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
 
         conn.path.remove();
         ACP.connections.splice(idx, 1);
@@ -679,6 +682,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'jenkinser' && !sourceBeingDeleted) updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'crawler' && !targetBeingDeleted) updateCrawlerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'crawler' && !sourceBeingDeleted) updateCrawlerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'summarizer' && !targetBeingDeleted) updateSummarizerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'summarizer' && !sourceBeingDeleted) updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -773,6 +778,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'apirer') iconDiv.style.background = 'linear-gradient(135deg, #3B0764 0%, #86EFAC 100%)';
         else if (lowerDesc === 'jenkinser') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%)';
         else if (lowerDesc === 'crawler') iconDiv.style.background = 'linear-gradient(135deg, #00BCD4 0%, #E91E63 100%)';
+        else if (lowerDesc === 'summarizer') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 100%)';
         // Default blue (#7289da) is set in CSS for other agents
 
         const span = document.createElement('span');
@@ -1097,6 +1103,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

@@ -602,6 +602,18 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+### 37. Summarizer
+- **Purpose**: Continuously polls log files from source agents and sends their content to an LLM with a configurable system prompt to detect events. When the LLM response contains [EVENT_TRIGGERED], starts all configured downstream target agents.
+- **Pool name pattern**: `summarizer_<n>`
+- **Starts other agents**: YES (when a positive event is detected in any source agent log)
+- **Config parameters**:
+  - `source_agents`: [] (upstream agents whose log files will be monitored)
+  - `system_prompt`: "" (multi-line prompt instructing the LLM what to look for in logs)
+  - `llm.host`: "http://localhost:11434" (Ollama server URL)
+  - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
+  - `poll_interval`: 5 (seconds between log file polling cycles)
+  - `target_agents`: [] (downstream agents to start when an event is triggered)
+
 ---
 
 ## Output Format
