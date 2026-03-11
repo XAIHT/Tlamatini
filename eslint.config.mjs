@@ -32,6 +32,10 @@ export default [
                 Sortable: "readonly",
 
                 // Cross-file globals: agent_page_state.js
+                sendChatSocketMessage: "readonly",
+                isChatSocketOpen: "readonly",
+                restoreConnectedSocketUi: "readonly",
+                applyDisconnectedSocketUi: "readonly",
                 userUsername: "readonly",
                 chatLog: "readonly",
                 chatSocket: "readonly",
