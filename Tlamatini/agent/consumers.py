@@ -26,7 +26,25 @@ from .services import (
     process_llm_response
 )
 from .global_state import global_state
+from .path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
 from . import constants
+
+
+def _sanitize_context_filename(filename):
+    if not isinstance(filename, str):
+        return None
+
+    candidate = filename.strip()
+    if not candidate or candidate in {'.', '..'}:
+        return None
+
+    if os.path.basename(candidate) != candidate:
+        return None
+
+    if re.search(r'[\/\x00-\x1F<>:"|?*]', candidate):
+        return None
+
+    return candidate
 
 
 class AgentConsumer(AsyncWebsocketConsumer):
@@ -565,25 +583,40 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'set-canvas-as-context':
                 print("--- Received set-canvas-as-context message from client.")
                 print(f"--- The message(filename) is: {message}")
-                if getattr(sys, 'frozen', False):
-                    application_path = os.path.dirname(sys.executable)
-                else:
-                    application_path = os.path.dirname(os.path.abspath(__file__))
-                context_files_path = os.path.join(application_path, 'context_files')
+                safe_filename = _sanitize_context_filename(message)
+                context_files_path = safe_join_under(get_runtime_agent_root(), 'context_files')
+
+                if safe_filename is None or context_files_path is None:
+                    error_message = "Invalid canvas filename received."
+                    await self.channel_layer.group_send(   # type: ignore
+                        self.room_group_name,
+                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                    )
+                    return
+
+                os.makedirs(context_files_path, exist_ok=True)
+                target_context_file = safe_join_under(context_files_path, safe_filename)
+                if target_context_file is None:
+                    error_message = "Invalid canvas filename received."
+                    await self.channel_layer.group_send(   # type: ignore
+                        self.room_group_name,
+                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                    )
+                    return
+
                 print(f"--- The context_files_path is: {context_files_path}")
                 content = text_data_json['content']
-                with open(os.path.join(context_files_path, message), 'w', encoding='utf-8') as f:
+                with open(target_context_file, 'w', encoding='utf-8') as f:
                     f.write(content)
                 print("--- Rebuilding contextual RAG chain....")
                 global_state.set_state('chat_hist_summarizer_counter', 0)
-                full_context_path = os.path.join(context_files_path, message)
-                await self.save_session_state(user, context_files_path, 'file', message)
-                print(f"--- Session state saved: file - {full_context_path}")
+                await self.save_session_state(user, context_files_path, 'file', safe_filename)
+                print(f"--- Session state saved: file - {target_context_file}")
                 await self.send(text_data=json.dumps({
                     'type': 'context-path-set',
-                    'context_path': full_context_path
+                    'context_path': target_context_file
                 }))
-                asyncio.create_task(self.setup_contextual_rag_chain(context_files_path, message))
+                asyncio.create_task(self.setup_contextual_rag_chain(context_files_path, safe_filename))
                 return
             if type == 'unset-canvas-as-context':
                 print("--- Received unset-canvas-as-context message from client.")
@@ -593,17 +626,19 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'set-directory-as-context':
                 print("--- Received set-directory-as-context message from client.")
                 print(f"--- The message(directory) is: {message}")
-                if getattr(sys, 'frozen', False):
-                    application_path = os.path.dirname(sys.executable)
-                else:
-                    application_path = os.path.dirname(os.path.abspath(__file__))
+                context_path = resolve_runtime_agent_path(message)
 
-                selected_path = os.path.join(application_path, message)
-                print(f"--- The selected_path is: {selected_path}")
-                print(f"--- The application_path is: {application_path}")
-                print(f"--- The os.path.commonpath([application_path, selected_path]) is: {os.path.commonpath([application_path, selected_path])}")
-                if not os.path.commonpath([application_path, selected_path]) == application_path:
+                print(f"--- The resolved context_path is: {context_path}")
+                if context_path is None:
                     error_message = "Selected directory is outside the application root path and is not allowed."
+                    await self.channel_layer.group_send(   # type: ignore
+                        self.room_group_name,
+                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                    )
+                    return
+
+                if os.path.exists(context_path) and not os.path.isdir(context_path):
+                    error_message = "Selected directory is not a valid directory."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
                         {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
@@ -617,8 +652,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("--- Bot message broadcast to room.")
                 print("--- Rebuilding contextual RAG chain....")
                 global_state.set_state('chat_hist_summarizer_counter', 0)
-                # Save session state for persistence
-                context_path = application_path + '/' + message
                 await self.save_session_state(user, context_path, 'directory', None)
                 print(f"--- Session state saved: directory - {context_path}")
                 await self.send(text_data=json.dumps({
@@ -631,21 +664,30 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'set-file-as-context':
                 print("--- Received set-file-as-context message from client.")
                 print(f"--- The message(filename) is: {message}")
+                safe_filename = _sanitize_context_filename(message)
                 if getattr(sys, 'frozen', False):
-                    application_path = os.path.dirname(sys.executable) + '/applications/'
+                    application_path = safe_join_under(get_runtime_agent_root(), 'applications')
                 else:
-                    application_path = os.path.dirname(os.path.abspath(__file__))
-                    
+                    application_path = get_runtime_agent_root()
+
+                target_context_file = safe_join_under(application_path, safe_filename) if application_path and safe_filename else None
+                if target_context_file is None:
+                    error_message = "Selected file is outside the application root path and is not allowed."
+                    await self.channel_layer.group_send(   # type: ignore
+                        self.room_group_name,
+                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                    )
+                    return
+
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
                     {'type': 'agent_message', 'message': "Your request is being processed by the LLM. Please wait a moment.", 'username': 'LLM_Bot'}
                 )
                 print("--- Bot message broadcast to room.")
                 global_state.set_state('chat_hist_summarizer_counter', 0)
-                # Save session state for persistence
-                await self.save_session_state(user, application_path, 'file', message)
-                print(f"--- Session state saved: file - {application_path}/{message}")
-                asyncio.create_task(self.setup_contextual_rag_chain(application_path, message))
+                await self.save_session_state(user, application_path, 'file', safe_filename)
+                print(f"--- Session state saved: file - {target_context_file}")
+                asyncio.create_task(self.setup_contextual_rag_chain(application_path, safe_filename))
                 return            
 
             if type == 'cancel-current':
@@ -841,8 +883,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
             if type == 'view-context-dir-in-canvas':
                 print("--- Received view-context-dir-in-canvas message from client.")
-                directory_name = message
-                tree_view_content = generate_tree_view_content(directory_name)
+                resolved_directory = resolve_runtime_agent_path(message)
+                if resolved_directory is None:
+                    tree_view_content = "Error: Directory is outside the allowed paths."
+                else:
+                    tree_view_content = generate_tree_view_content(resolved_directory)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
                     {'type': 'agent_message', 'message': "_tree_:"+tree_view_content, 'username': 'LLM_Bot'}
