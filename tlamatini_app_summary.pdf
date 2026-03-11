@@ -1,0 +1,712 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>
+endobj
+4 0 obj
+<< /Type /Pages /Count 10 /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R] >>
+endobj
+5 0 obj
+<< /Length 4521 >>
+stream
+q
+0.059 0.090 0.157 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 821.89 595.28 20.00 re
+f
+Q
+q
+1.1 w
+0.220 0.350 0.430 RG
+28.00 28.00 539.28 785.89 re
+S
+Q
+BT 0.480 0.910 1.000 rg /F2 10.00 Tf 1 0 0 1 48.00 775.89 Tm (APPLICATION SUMMARY DOSSIER) Tj ET
+BT 1.000 1.000 1.000 rg /F3 34.00 Tf 1 0 0 1 48.00 733.89 Tm (Tlamatini) Tj ET
+BT 0.860 0.920 0.970 rg /F1 13.00 Tf 1 0 0 1 48.00 703.89 Tm (A locally deployed AI developer assistant that) Tj ET
+BT 0.860 0.920 0.970 rg /F1 13.00 Tf 1 0 0 1 48.00 686.89 Tm (combines real-time chat, code-aware retrieval,) Tj ET
+BT 0.860 0.920 0.970 rg /F1 13.00 Tf 1 0 0 1 48.00 669.89 Tm (tool-enabled LLM workflows, and a visual automation) Tj ET
+BT 0.860 0.920 0.970 rg /F1 13.00 Tf 1 0 0 1 48.00 652.89 Tm (canvas in one Django application.) Tj ET
+BT 0.780 0.850 0.900 rg /F1 10.20 Tf 1 0 0 1 48.00 621.89 Tm (Built from README.md and the current source snapshot on 2026-03-11.) Tj ET
+BT 0.780 0.850 0.900 rg /F1 10.20 Tf 1 0 0 1 48.00 607.89 Tm (The report focuses on code-visible behavior, architecture, and) Tj ET
+BT 0.780 0.850 0.900 rg /F1 10.20 Tf 1 0 0 1 48.00 593.89 Tm (packaging rather than marketing copy.) Tj ET
+q
+0.090 0.141 0.235 rg
+0.8 w
+0.200 0.350 0.450 RG
+48.00 527.89 145.00 64.00 re
+B
+Q
+BT 1.000 1.000 1.000 rg /F3 20.00 Tf 1 0 0 1 58.00 571.89 Tm (138) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 58.00 557.89 Tm (Python source files in the) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 58.00 546.89 Tm (scanned app tree) Tj ET
+q
+0.090 0.141 0.235 rg
+0.8 w
+0.200 0.350 0.450 RG
+208.00 527.89 145.00 64.00 re
+B
+Q
+BT 1.000 1.000 1.000 rg /F3 20.00 Tf 1 0 0 1 218.00 571.89 Tm (29,644) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 218.00 557.89 Tm (Python lines across the) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 218.00 546.89 Tm (source set) Tj ET
+q
+0.090 0.141 0.235 rg
+0.8 w
+0.200 0.350 0.450 RG
+368.00 527.89 145.00 64.00 re
+B
+Q
+BT 1.000 1.000 1.000 rg /F3 20.00 Tf 1 0 0 1 378.00 571.89 Tm (22) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 378.00 557.89 Tm (Frontend JavaScript modules) Tj ET
+q
+0.090 0.141 0.235 rg
+0.8 w
+0.200 0.350 0.450 RG
+48.00 449.89 145.00 64.00 re
+B
+Q
+BT 1.000 1.000 1.000 rg /F3 20.00 Tf 1 0 0 1 58.00 493.89 Tm (72) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 58.00 479.89 Tm (HTTP route declarations in) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 58.00 468.89 Tm (agent/urls.py) Tj ET
+q
+0.090 0.141 0.235 rg
+0.8 w
+0.200 0.350 0.450 RG
+208.00 449.89 145.00 64.00 re
+B
+Q
+BT 1.000 1.000 1.000 rg /F3 20.00 Tf 1 0 0 1 218.00 493.89 Tm (1) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 218.00 479.89 Tm (Primary WebSocket endpoint) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 218.00 468.89 Tm (at /ws/agent/) Tj ET
+q
+0.090 0.141 0.235 rg
+0.8 w
+0.200 0.350 0.450 RG
+368.00 449.89 145.00 64.00 re
+B
+Q
+BT 1.000 1.000 1.000 rg /F3 20.00 Tf 1 0 0 1 378.00 493.89 Tm (36) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 378.00 479.89 Tm (Workflow agent directories) Tj ET
+BT 0.830 0.910 0.960 rg /F1 8.70 Tf 1 0 0 1 378.00 468.89 Tm (plus shared pools area) Tj ET
+BT 0.480 0.910 1.000 rg /F2 13.00 Tf 1 0 0 1 48.00 411.89 Tm (What this report covers) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.40 Tf 1 0 0 1 48.00 393.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 393.89 Tm (Product surfaces: login, welcome, chat page, code canvas, and the agentic control panel.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.40 Tf 1 0 0 1 48.00 378.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 378.89 Tm (Runtime architecture: Django, Channels, RAG chains, MCP sidecars, tool calling, and) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 365.89 Tm (SQLite persistence.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.40 Tf 1 0 0 1 48.00 350.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 350.89 Tm (Workflow system: source-backed agent catalog, canvas modules, and Windows) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 337.89 Tm (file-association behavior.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.40 Tf 1 0 0 1 48.00 322.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 322.89 Tm (Packaging story: build.py, installer, uninstaller, and the frozen desktop deployment) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.40 Tf 1 0 0 1 60.00 309.89 Tm (path.) Tj ET
+BT 0.730 0.820 0.890 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.730 0.820 0.890 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (1) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4675 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (What the App Actually Delivers) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (Product shape, visible pages, and the role the source code assigns to each surface.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (2) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Product summary) Tj ET
+BT 0.063 0.141 0.243 rg /F1 11.00 Tf 1 0 0 1 48.00 739.89 Tm (Tlamatini is not just a chat wrapper. The codebase implements a local platform with) Tj ET
+BT 0.063 0.141 0.243 rg /F1 11.00 Tf 1 0 0 1 48.00 725.89 Tm (four user-facing layers: authentication, interactive chat, a code canvas backed by) Tj ET
+BT 0.063 0.141 0.243 rg /F1 11.00 Tf 1 0 0 1 48.00 711.89 Tm (database records, and a visual workflow designer for automation.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 689.89 Tm (Visible application pages) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 673.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 673.89 Tm (login.html is the authentication entry point and the root URL target.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 658.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 658.89 Tm (welcome.html acts as the post-login landing page.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 643.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 643.89 Tm (agent_page.html is the main live chat, context, and code-canvas interface.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 628.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 628.89 Tm (agentic_control_panel.html is the workflow designer for .flw graphs, agent) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 615.89 Tm (configuration, execution, and monitoring.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 594.89 Tm (Primary user journeys) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 578.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 578.89 Tm (Open /agent/agent/ and chat with the assistant over a persistent WebSocket session.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 563.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 563.89 Tm (Set a file or directory as context so the RAG layer answers from local source code.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 548.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 548.89 Tm (Inspect generated programs and snippets through the canvas records stored as) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 535.89 Tm (LLMProgram and LLMSnippet rows.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 520.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 520.89 Tm (Open /agent/agentic_control_panel/ to design, save, load, and execute agent workflows.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 505.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 505.89 Tm (Install the app as a Windows package with shortcuts, .flw association, and an) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 492.89 Tm (uninstaller.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 471.89 Tm (Repository slices behind the product) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 455.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 455.89 Tm (Tlamatini/tlamatini/ - Django configuration and ASGI entrypoints.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 440.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 440.89 Tm (Tlamatini/agent/ - runtime logic for chat, views, models, tools, and services.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 425.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 425.89 Tm (Tlamatini/agent/rag/ - retrieval and chain construction.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 410.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 410.89 Tm (Tlamatini/agent/agents/ - workflow agent implementations and YAML configs.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 395.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 395.89 Tm (build.py, install.py, uninstall.py - packaging and desktop deployment.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4629 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Architecture and Request Flow) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (Runtime layering derived from settings.py, asgi.py, routing.py, consumers.py, and the README architecture notes.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (3) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Layered architecture) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (Browser pages communicate through HTTP plus one authenticated WebSocket endpoint at) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 726.89 Tm (/ws/agent/.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 711.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 711.89 Tm (The ASGI app routes HTTP through Django and WebSocket traffic through AgentConsumer) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 698.89 Tm (using Channels and Daphne.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 683.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (AgentConsumer fans requests into the RAG pipeline, the unified agent and tool layer,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (plus MCP-backed system and file-search services.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 655.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 655.89 Tm (The runtime persists messages, prompts, tools, agents, and session state in SQLite) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 642.89 Tm (while WhiteNoise serves static assets.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 619.89 Tm (Chat request lifecycle) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 603.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 603.89 Tm (Anonymous WebSocket connections are rejected before acceptance.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 588.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 588.89 Tm (Authenticated users are assigned a room keyed by user ID.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 573.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 573.89 Tm (The consumer restores an existing RAG chain from global_state when possible; otherwise) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 560.89 Tm (it rebuilds from session state and configuration.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 545.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 545.89 Tm (MCPs, tools, and workflow-agent records are broadcast back to the browser so the menus) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 532.89 Tm (can be repopulated.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 517.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 517.89 Tm (Long-running chain setup is moved into a background thread to avoid blocking the event) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 504.89 Tm (loop.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 489.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 489.89 Tm (Responses stream back while reconnect and cancellation controls remain available in) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 476.89 Tm (the frontend.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 453.89 Tm (Current runtime defaults visible in code) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 437.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 437.89 Tm (DEBUG = True and ALLOWED_HOSTS = ["*"] in settings.py.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 422.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 422.89 Tm (The channel layer is InMemoryChannelLayer, not Redis-based.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 407.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 407.89 Tm (The default database is db.sqlite3 in the app root.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 392.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 392.89 Tm (Timezone is America/Mexico_City.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4213 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (How Tlamatini Builds Code-Aware Answers) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (RAG behavior grounded in agent/rag/, rag_enhancements.py, and the active config.json.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (4) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Why the RAG layer is notable) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (extract_code_metadata\(\) parses classes, functions, imports, decorators, annotations,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 726.89 Tm (HTML ids, CSS selectors, JSON package fields, and markdown headings.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 711.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 711.89 Tm (classify_file_role\(\) labels files as configuration, controller, service layer, data) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 698.89 Tm (model, frontend, middleware, build/deploy, test, documentation, or utility.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 683.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (extract_dependencies\(\) maps imports and related files, then trims the result to avoid) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (context bloat.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 655.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 655.89 Tm (create_hierarchical_context\(\) intentionally budgets architecture overview, key) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 642.89 Tm (components, and detailed snippets.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 619.89 Tm (Retrieval strategy in the checked-in code) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 603.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 603.89 Tm (Vector search uses FAISS over Ollama embeddings.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 588.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 588.89 Tm (Keyword search uses BM25 when available.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 573.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 573.89 Tm (Candidate fusion uses Reciprocal Rank Fusion in rag/retrieval.py.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 558.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 558.89 Tm (Source diversification limits too many chunks from the same file.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 543.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 543.89 Tm (Optional multi-stage retrieval exists, but config.json currently disables it.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 520.89 Tm (Active tuning in config.json) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 504.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 504.89 Tm (chunk_size = 3000 and chunk_overlap = 800 for code-friendly context windows.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 489.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 489.89 Tm (k_vector = 100, k_bm25 = 100, and k_fused = 150 for deep recall.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 474.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 474.89 Tm (max_doc_chars = 150000 and max_context_chars = 250000 for very large source context.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 459.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 459.89 Tm (history_summary_enable = true so older chat can be summarized when token pressure) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 446.89 Tm (rises.) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 4148 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Unified Agent, MCP Services, and Internet Search) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (Tool execution and external-context behavior from mcp_agent.py, tools.py, the MCP servers, and web search helpers.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (5) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Unified agent behavior) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (create_unified_agent\(\) upgrades the base Ollama LLM into a tool-calling chat model) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 726.89 Tm (when possible.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 711.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 711.89 Tm (The system prompt injects tool descriptions and tells the model to treat tool output) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 698.89 Tm (as the source of truth.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 683.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (The executor caps iteration count at 10 and falls back to direct LLM prompting if the) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (tool-enabled path fails.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 647.89 Tm (Representative tool capabilities) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 631.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 631.89 Tm (Current time lookup, Python file execution, shell command execution, and netstat) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 618.89 Tm (inspection.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 603.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 603.89 Tm (Start, stop, and inspect workflow-agent subprocesses.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 588.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 588.89 Tm (Image analysis, ZIP extraction, and Java decompilation helpers described in the README) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 575.89 Tm (and tool layer.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 552.89 Tm (MCP and internet integration) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 536.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 536.89 Tm (mcp_system_server.py exposes CPU, memory, disk, and system time over WebSocket.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 521.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 521.89 Tm (mcp_files_search_server.py exposes file search over gRPC and limits results to allowed) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 508.89 Tm (locations from config.json.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 493.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 493.89 Tm (path_guard.py centralizes allowed-path validation and traversal rejection for) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 480.89 Tm (LLM-exposed tools.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 465.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 465.89 Tm (inet_determiner.py combines LLM classification with heuristics for deciding when) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 452.89 Tm (internet data is needed.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 437.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 437.89 Tm (web_search_llm.py uses DuckDuckGo plus an Ollama-based summarizer to build compact) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 424.89 Tm (external context.) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 3692 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Agentic Control Panel and Workflow Catalog) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (Evidence from agent/agents/, the ACP templates, and the dedicated workflow JavaScript modules.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (6) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (What the workflow subsystem really is) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (A second application inside Tlamatini, not a small add-on.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 724.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 724.89 Tm (The source includes canvas layout, connectors, undo, running-state tracking, file I/O,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 711.89 Tm (sessions, and many per-agent backend endpoints.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 696.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 696.89 Tm (The frontend is split across ACP modules such as acp-canvas-core.js,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (acp-agent-connectors.js, acp-running-state.js, acp-file-io.js, and) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (acp-undo-manager.js.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 647.89 Tm (Support footprint in the source tree) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 631.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 631.89 Tm (72 HTTP route declarations in agent/urls.py.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 616.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 616.89 Tm (22 frontend JavaScript modules in static/agent/js.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 601.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 601.89 Tm (37 YAML files, mostly workflow-agent configuration.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 586.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 586.89 Tm (4 HTML templates covering login, welcome, chat, and the control panel.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 563.89 Tm (Agent catalog snapshot) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 547.89 Tm (Current source directories include and, apirer, asker, cleaner, croner, deleter,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 534.89 Tm (dockerer, emailer, ender, executer, flowcreator, forker, gitter, jenkinser, kuberneter,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 521.89 Tm (mongoxer, monitor_log, monitor_netstat, mover, notifier, or, prompter, pser, pythonxer,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 508.89 Tm (raiser, recmailer, scper, shoter, sleeper, sqler, ssher, starter, stopper, telegramer,) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 495.89 Tm (telegramrx, and whatsapper.) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 474.89 Tm (There is also a shared pools directory for workflow workspace data. The README mentions) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.50 Tf 1 0 0 1 48.00 461.89 Tm (35 pre-built agents; the current source tree contains 36 executable agent directories.) Tj ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 3888 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Browser UX, Session Recovery, and Canvas Behavior) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (Frontend and session behavior grounded in the agent_page modules, templates, models, and consumer logic.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (7) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Frontend composition) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (The chat page is split into modules for initialization, live chat transport, context) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 726.89 Tm (management, dialogs, canvas behavior, layout, and UI state.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 711.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 711.89 Tm (agent_page_init.js handles reconnect, clean-history, cancel-and-logout, omission) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 698.89 Tm (dialogs, MCP dialog state, and beforeunload cleanup beacons.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 683.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (The ACP uses its own module family for canvas core, connectors, file I/O, undo, and) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (runtime state polling.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 655.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 655.89 Tm (The CSS footprint is compact but dedicated: chat page, control panel, login, tools) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 642.89 Tm (dialog, and welcome page each have a stylesheet.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 619.89 Tm (Session model) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 603.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 603.89 Tm (SessionState persists context path, context type, selected filename, and last activity) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 590.89 Tm (per user.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 575.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 575.89 Tm (SessionState.is_expired\(\) applies a 24-hour inactivity threshold.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 560.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 560.89 Tm (global_state stores the active RAG chain and context pointer in memory keyed by user) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 547.89 Tm (ID.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 532.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 532.89 Tm (On reconnect, the consumer can restore the chain without rebuilding the full context) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 519.89 Tm (index.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 496.89 Tm (.flw integration) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 480.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 480.89 Tm (In frozen builds, login and control-panel views inspect SYSTEMAGENT_FLW_FILE.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 465.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 465.89 Tm (If present, the app loads the JSON flow file, redirects into the control panel, and) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 452.89 Tm (pre-populates the canvas.) Tj ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 4562 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Data Model, State Storage, and Security Signals) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (Findings from models.py, secure route wrappers, path_guard.py, and the hardening tests.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (8) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Core models) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (AgentMessage stores user-scoped chat history.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 724.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 724.89 Tm (LLMProgram and LLMSnippet store generated code artifacts for the canvas.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 709.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 709.89 Tm (Prompt, Omission, Mcp, Tool, Agent, and Asset persist configurable runtime records.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 694.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 694.89 Tm (AgentProcess tracks launched subprocess PIDs.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 679.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 679.89 Tm (SessionState stores per-user context restoration metadata.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 656.89 Tm (Access control patterns) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 640.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 640.89 Tm (Routes are wrapped with login_required through helper decorators.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 625.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 625.89 Tm (Mutable workflow endpoints use both require_POST and csrf_protect.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 610.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 610.89 Tm (Anonymous WebSocket entry is rejected before the connection is accepted.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 595.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 595.89 Tm (Filesystem tool access is filtered through normalized allowed-path checks.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 572.89 Tm (Hardening tests present in agent/tests.py) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 556.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 556.89 Tm (User message isolation on the chat page.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 541.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 541.89 Tm (Login requirement for canvas loading.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 526.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 526.89 Tm (POST-only and CSRF enforcement for sensitive endpoints.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 511.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 511.89 Tm (Scoped deletion of user messages.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 496.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 496.89 Tm (Filename sanitation and path traversal rejection.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 473.89 Tm (Operational caveats visible in defaults) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 457.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 457.89 Tm (DEBUG remains enabled in the checked-in settings.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 442.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 442.89 Tm (ALLOWED_HOSTS is permissive.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 427.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 427.89 Tm (The channel layer is in-memory, so it will not share state across multiple workers.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 412.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 412.89 Tm (The build flow creates a default account with username user and password user.) Tj ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 19 0 R >>
+endobj
+21 0 obj
+<< /Length 3709 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Build, Installer, and Uninstaller Pipeline) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (The desktop deployment story is grounded in build.py, build_uninstaller.py, build_installer.py, install.py, and uninstall.py.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (9) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Release pipeline) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (build.py cleans prior artifacts, installs Python dependencies, runs migrate, creates) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 726.89 Tm (the default superuser, collects static files, and assembles the frozen app into) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 713.89 Tm (dist/manage plus pkg.zip.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 698.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 698.89 Tm (build_uninstaller.py packages the Tkinter uninstaller into Uninstaller.exe.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 683.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (build_installer.py validates prerequisites and packages the installer together with) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (pkg.zip and the generated uninstaller.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 647.89 Tm (Installer behavior) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 631.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 631.89 Tm (Dark-themed Tkinter wizard with weighted progress steps.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 616.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 616.89 Tm (Extracts pkg.zip into the selected target.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 601.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 601.89 Tm (Writes CreateShortcut.json with the install path.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 586.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 586.89 Tm (Copies Uninstaller.exe into the install directory.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 571.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 571.89 Tm (Runs CreateShortcut.ps1 and register_flw.ps1, then refreshes the Windows desktop.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 548.89 Tm (Uninstaller behavior) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 532.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 532.89 Tm (Auto-detects the installation directory from CreateShortcut.json or the registry.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 517.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 517.89 Tm (Removes shortcuts and unregisters the .flw association.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 502.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 502.89 Tm (Deletes installed files while preserving the agents/ directory.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 487.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 487.89 Tm (Reuses the same dark visual theme as the installer.) Tj ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 21 0 R >>
+endobj
+23 0 obj
+<< /Length 4729 >>
+stream
+q
+0.964 0.949 0.910 rg
+0.00 0.00 595.28 841.89 re
+f
+Q
+q
+0.000 0.655 0.769 rg
+0.00 823.89 595.28 18.00 re
+f
+Q
+BT 0.059 0.090 0.157 rg /F3 24.00 Tf 1 0 0 1 48.00 801.89 Tm (Assessment and Key Files to Read First) Tj ET
+BT 0.290 0.384 0.498 rg /F1 10.50 Tf 1 0 0 1 48.00 783.89 Tm (A concise implementation-level judgment plus a practical source map.) Tj ET
+BT 0.431 0.478 0.537 rg /F1 8.50 Tf 1 0 0 1 48.00 28.00 Tm (Tlamatini summary report) Tj ET
+BT 0.431 0.478 0.537 rg /F2 8.50 Tf 1 0 0 1 537.28 28.00 Tm (10) Tj ET
+q
+0.812 0.847 0.890 rg
+48.00 35.20 499.28 0.80 re
+f
+Q
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 755.89 Tm (Where the implementation is strong) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 739.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 739.89 Tm (The app has real architectural depth: RAG, live chat, tool calling, MCP services, and) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 726.89 Tm (automation workflows coexist coherently.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 711.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 711.89 Tm (The retrieval layer is richer than average and clearly tuned for source-code) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 698.89 Tm (understanding.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 683.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 683.89 Tm (The workflow designer is substantial, not ornamental, and is backed by a large agent) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 670.89 Tm (library and route surface.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 655.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 655.89 Tm (The Windows packaging story is unusually complete for a Django-based internal tool.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 632.89 Tm (Constraints visible in the current code) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 616.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 616.89 Tm (Operational defaults still look local-dev oriented rather than production-hardened.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 601.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 601.89 Tm (The app depends on many moving parts: models, frozen packaging, shell scripts, sidecar) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 588.89 Tm (services, and agent subprocesses.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 573.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 573.89 Tm (The workflow surface area is broad, which raises maintenance and configuration) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 560.89 Tm (complexity.) Tj ET
+BT 0.051 0.357 0.463 rg /F2 13.00 Tf 1 0 0 1 48.00 537.89 Tm (Key files to open first) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 521.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 521.89 Tm (README.md) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 506.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 506.89 Tm (Tlamatini/tlamatini/settings.py and asgi.py) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 491.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 491.89 Tm (Tlamatini/agent/consumers.py and models.py) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 476.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 476.89 Tm (Tlamatini/agent/rag/factory.py, rag/retrieval.py, and rag_enhancements.py) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 461.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 461.89 Tm (Tlamatini/agent/mcp_agent.py and path_guard.py) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 446.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 446.89 Tm (Tlamatini/agent/urls.py and Tlamatini/agent/static/agent/js/) Tj ET
+BT 0.051 0.357 0.463 rg /F2 10.60 Tf 1 0 0 1 48.00 431.89 Tm (-) Tj ET
+BT 0.063 0.141 0.243 rg /F1 10.60 Tf 1 0 0 1 60.00 431.89 Tm (build.py, install.py, and uninstall.py) Tj ET
+BT 0.051 0.357 0.463 rg /F2 11.00 Tf 1 0 0 1 48.00 408.89 Tm (Bottom line: Tlamatini is best understood as a local AI operations console for) Tj ET
+BT 0.051 0.357 0.463 rg /F2 11.00 Tf 1 0 0 1 48.00 394.89 Tm (developers and technical operators. It combines a code-aware assistant, a) Tj ET
+BT 0.051 0.357 0.463 rg /F2 11.00 Tf 1 0 0 1 48.00 380.89 Tm (desktop-deployable LLM application, and a workflow automation system in one source) Tj ET
+BT 0.051 0.357 0.463 rg /F2 11.00 Tf 1 0 0 1 48.00 366.89 Tm (tree.) Tj ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 23 0 R >>
+endobj
+25 0 obj
+<< /Type /Catalog /Pages 4 0 R >>
+endobj
+xref
+0 26
+0000000000 65535 f 
+0000000015 00000 n 
+0000000085 00000 n 
+0000000160 00000 n 
+0000000231 00000 n 
+0000000351 00000 n 
+0000004924 00000 n 
+0000005076 00000 n 
+0000009803 00000 n 
+0000009955 00000 n 
+0000014636 00000 n 
+0000014789 00000 n 
+0000019055 00000 n 
+0000019209 00000 n 
+0000023410 00000 n 
+0000023564 00000 n 
+0000027309 00000 n 
+0000027463 00000 n 
+0000031404 00000 n 
+0000031558 00000 n 
+0000036173 00000 n 
+0000036327 00000 n 
+0000040089 00000 n 
+0000040243 00000 n 
+0000045025 00000 n 
+0000045179 00000 n 
+trailer
+<< /Size 26 /Root 25 0 R >>
+startxref
+45229
+%%EOF
