@@ -45,7 +45,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -586,6 +586,19 @@ system_prompt: |
   - `api_token`: "" (Jenkins API token — leave empty, user fills in later)
   - `parameters`: {} (map of build parameters for parameterized builds)
   - `use_parameters`: false (force /buildWithParameters endpoint)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
+### 36. Crawler
+- **Purpose**: Crawls web pages via HTTP GET, strips all HTML markup, saves plain text to local files, then processes each page's content with an LLM using a configurable system prompt. Supports three crawl modes: small-range (single URL), medium-range (same-domain links), and large-range (all links).
+- **Pool name pattern**: `crawler_<n>`
+- **Starts other agents**: YES (after all crawling and LLM processing completes)
+- **Config parameters**:
+  - `url`: "" (URL to crawl)
+  - `system_prompt`: "" (multi-line prompt to send to the LLM along with the crawled content)
+  - `crawl_type`: "small-range" (one of: small-range, medium-range, large-range)
+  - `llm.host`: "http://localhost:11434" (Ollama server URL)
+  - `llm.model`: "llama3.1:8b" (Ollama model name)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 

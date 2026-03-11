@@ -279,7 +279,7 @@ def main():
             return
 
         # Log the response in the required format
-        logging.info(f"--------------------LLM Response (model: {model})------------------ INI_RESPONSE")
+        logging.info(f"--------------------LLM Response (model: {model})------------------ INI_RESPONSE<<<")
         logging.info(response_text)
         logging.info(">>>END_RESPONSE")
 
