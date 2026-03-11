@@ -20,9 +20,21 @@
                         <h2 class="card-title text-center mb-4 big-white-text">Tlamatini Login</h2>
                         <form method="post">
                             {% csrf_token %}
+                            {% if form.errors %}
+                            <div class="login-error-panel" role="alert">
+                                {% for error in form.non_field_errors %}
+                                <div class="login-error-line">{{ error }}</div>
+                                {% endfor %}
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                <div class="login-error-line">{{ field.label }}: {{ error }}</div>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             <div class="mb-3">
                                 <label for="id_username" class="form-label white-text">Username</label>
-                                <input type="text" name="username" class="form-control" placeholder="Enter your username" required id="id_username">
+                                <input type="text" name="username" class="form-control" placeholder="Enter your username" required id="id_username" value="{{ form.username.value|default_if_none:'' }}">
                             </div>
                             <div class="mb-3">
                                 <label for="id_password" class="form-label white-text">Password</label>

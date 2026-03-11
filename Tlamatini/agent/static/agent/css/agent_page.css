@@ -713,3 +713,7 @@ body.resizing-vertical {
     font-size: 13px;
     font-weight: 700;
 }
+.connection-status { min-height: 2.5rem; padding: .55rem 1rem; font-size: .95rem; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.connection-status-hidden { display: none; }
+.connection-status-warning { display: block; background-color: #5c2b29; color: #ffe0de; }
+.connection-status-ok { display: block; background-color: #21413d; color: #d8fffa; }

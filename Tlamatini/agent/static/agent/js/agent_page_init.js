@@ -22,6 +22,11 @@ function Reconnect(e) { // eslint-disable-line no-unused-vars
         console.log("Reconnect is not allowed at this moment...");
         return;
     }
+    if (!isChatSocketOpen()) {
+        console.log("--- WebSocket is closed, reloading page to rebuild the live session.");
+        window.location.reload();
+        return;
+    }
     reConnectEnabled = true;
     reConnectButton.disabled = true;
 
@@ -70,10 +75,12 @@ function Reconnect(e) { // eslint-disable-line no-unused-vars
     actualContextDir = null;
     updateViewContextDirMenuState();
     console.log("--- actualContextDir reset to null on reconnect.");
-    chatSocket.send(JSON.stringify({
+    if (!sendChatSocketMessage(JSON.stringify({
         'type': 'reconnect-llm-agent',
         'message': 'reconnect'
-    }));
+    }))) {
+        return;
+    }
     clearContextEnabled = false;
     clearContextButton.setAttribute("style", "display: none !important;");
     contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
@@ -89,6 +96,14 @@ function CleanHistory(e) {
     }
 
     const callbackOnCont = () => {
+        const cleanHistorySent = sendChatSocketMessage(JSON.stringify({
+            'type': 'clean-history-and-reconnect',
+            'message': 'clean-history'
+        }));
+        if (!cleanHistorySent) {
+            return false;
+        }
+
         chatLog.innerHTML = '';
         chatHistory = [];
         historyIndex = 0;
@@ -134,10 +149,6 @@ function CleanHistory(e) {
         contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
         contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
 
-        chatSocket.send(JSON.stringify({
-            'type': 'clean-history-and-reconnect',
-            'message': 'clean-history'
-        }));
         console.log("--- Clean history message sent to server.");
         return true;
     };
@@ -158,7 +169,7 @@ function CancelAllAndLogout(e) { // eslint-disable-line no-unused-vars
 
     const callbackOnCont = () => {
         try {
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': 'cancel-all',
                 'message': 'cancel'
             }));
@@ -203,7 +214,7 @@ function OpenOmissionsDialog(e) { // eslint-disable-line no-unused-vars
     const callbackOnCont = () => {
         try {
             fileTypeOmissions = omissionContentInput.value;
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': 'set-file-omissions',
                 'message': fileTypeOmissions
             }));
@@ -239,7 +250,7 @@ function OpenMcpsDialog(e) { // eslint-disable-line no-unused-vars
                 'type': 'set-mcps',
                 'message': '1=' + label_mcp1.innerText + "=" + mcp1Checked + "," + '2=' + label_mcp2.innerText + "=" + mcp2Checked
             });
-            chatSocket.send(message2send);
+            sendChatSocketMessage(message2send);
             console.log("Message sent to socket: ", message2send);
             console.log("--- Sent set-mcps message sent to server.");
         } catch (err) {
@@ -254,7 +265,7 @@ function OpenMcpsDialog(e) { // eslint-disable-line no-unused-vars
                 completeTools = completeTools + (i + 1) + "=" + tools[i].description + "=" + checked + ",";
             }
             console.log("--->>> complete tools: ", completeTools);
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': 'set-tools',
                 'message': completeTools
             }));
@@ -289,7 +300,7 @@ function OpenAgentsDialog(e) { // eslint-disable-line no-unused-vars
                 completeAgents = completeAgents + (i + 1) + "=" + agents[i].description + "=" + checked + ",";
             }
             console.log("--->>> complete agents: ", completeAgents);
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': 'set-agents',
                 'message': completeAgents
             }));
@@ -316,29 +327,18 @@ document.getElementById('chat-form').onsubmit = function (e) {
 
     const callbackOnCont = () => {
         console.log("--- Cancel confirmed by user, sending cancel-current message...");
-        console.log("--- WebSocket readyState:", chatSocket.readyState, "(1=OPEN)");
 
-        if (chatSocket.readyState !== WebSocket.OPEN) {
-            console.error("!!! WebSocket is NOT OPEN. Cannot send cancel message. State:", chatSocket.readyState);
-            alert("Cannot cancel: WebSocket is not connected. Please refresh the page.");
+        const cancelMsg = JSON.stringify({
+            'type': 'cancel-current',
+            'message': 'cancel'
+        });
+        console.log("--- Sending cancel message:", cancelMsg);
+        if (!sendChatSocketMessage(cancelMsg, 'Live connection lost. Use Reconnect or refresh before cancelling the current request.')) {
             return;
         }
-
-        try {
-            const cancelMsg = JSON.stringify({
-                'type': 'cancel-current',
-                'message': 'cancel'
-            });
-            console.log("--- Sending cancel message:", cancelMsg);
-            chatSocket.send(cancelMsg);
-            console.log("--- cancel-current message sent to server successfully");
-        } catch (err) {
-            console.error('Failed to send cancel message:', err);
-            alert("Failed to send cancel message: " + err);
-        } finally {
-            const debouncedFunction = debounce(unsetContextButton);
-            debouncedFunction();
-        }
+        console.log("--- cancel-current message sent to server successfully");
+        const debouncedFunction = debounce(unsetContextButton);
+        debouncedFunction();
         // Reset UI state after cancellation
         chatInput.readOnly = false;
         chatInput.style.backgroundColor = '#40414F';
@@ -386,6 +386,12 @@ document.getElementById('chat-form').onsubmit = function (e) {
         const message = rawMessage;
         console.log("message: " + message);
         if (rawMessage.trim() === '') return;
+        const messageSent = sendChatSocketMessage(JSON.stringify({
+            'message': rawMessage
+        }));
+        if (!messageSent) {
+            return;
+        }
         chatHistory.push(rawMessage);
         historyIndex = chatHistory.length;
         tempInput = '';
@@ -395,9 +401,6 @@ document.getElementById('chat-form').onsubmit = function (e) {
         } catch (err) {
             console.error("Catched error in onsubmit(): " + err);
         }
-        chatSocket.send(JSON.stringify({
-            'message': rawMessage
-        }));
         chatInput.value = '';
     }
 };
@@ -435,17 +438,20 @@ window.onload = () => {
                 try {
                     const dirHandle = await window.showDirectoryPicker();
                     const dirName = (dirHandle && dirHandle.name) ? dirHandle.name : 'selected_directory';
-                    chatSocket.send(JSON.stringify({
+                    const sent = sendChatSocketMessage(JSON.stringify({
                         'type': 'set-directory-as-context',
                         'message': dirName
                     }));
-                    actualContextDir = dirName;
+                    if (!sent) {
+                        return;
+                    }
+                    actualContextDir = null;
                     updateViewContextDirMenuState();
-                    clearContextEnabled = true;
-                    clearContextButton.setAttribute("style", "display: block !important;");
-                    setContextText("<<<" + actualContextDir + ">>>  ");
+                    clearContextEnabled = false;
+                    clearContextButton.setAttribute("style", "display: none !important;");
+                    setContextText("<<< pending directory context: " + dirName + " >>>");
                     contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
-                    console.log("--- The actual context directory is: " + actualContextDir);
+                    console.log("--- Waiting for server confirmation of directory context: " + dirName);
                 } catch (err) {
                     console.error("Catched error in listener of setDirContextMenu: " + err);
                 }
@@ -473,19 +479,24 @@ window.onload = () => {
                 console.log("--- The content is: " + content);
                 if (result) {
                     const filename = result[1];
-                    chatSocket.send(JSON.stringify({
+                    const sent = sendChatSocketMessage(JSON.stringify({
                         'type': type,
                         'message': filename,
                         'content': content
                     }));
-                    clearContextEnabled = true;
-                    clearContextButton.setAttribute("style", "display: block !important;");
-                    setContextText("<<<" + filename + ">>>  ");
+                    if (!sent) {
+                        return;
+                    }
+                    clearContextEnabled = false;
+                    clearContextButton.setAttribute("style", "display: none !important;");
+                    actualContextDir = null;
+                    updateViewContextDirMenuState();
+                    setContextText("<<< pending context: " + filename + " >>>");
                     contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
-                    console.log("--- The actual context file is: " + filename);
+                    setContextButton();
+                    console.log("--- Waiting for server confirmation of file context: " + filename);
+                    console.log("...Rebuild rag action sent.");
                 }
-                setContextButton();
-                console.log("...Rebuild rag action sent.");
             };
             loadFileContent(true, callback2SetFileAsContext);
         });
@@ -500,12 +511,15 @@ window.onload = () => {
                 console.log("--- actualContextDir is null or empty, menu action ignored.");
                 return;
             }
-            if (window && 'showDirectoryPicker' in window && actualContextDir !== null) {
+            if (actualContextDir !== null) {
                 try {
-                    chatSocket.send(JSON.stringify({
+                    const sent = sendChatSocketMessage(JSON.stringify({
                         'type': 'view-context-dir-in-canvas',
                         'message': actualContextDir
                     }));
+                    if (!sent) {
+                        return;
+                    }
                     console.log("--- actualContextDir is: " + actualContextDir + ", message 'view-context-dir-in-canvas' has been sent.");
                     return;
                 } catch (err) {
@@ -570,12 +584,12 @@ window.onload = () => {
         const isChecked = this.checked;
         console.log('InternetEnabled is:', isChecked);
         if (isChecked) {
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': 'enable-llm-internet-access',
                 'message': ''
             }));
         } else {
-            chatSocket.send(JSON.stringify({
+            sendChatSocketMessage(JSON.stringify({
                 'type': 'disable-llm-internet-access',
                 'message': ''
             }));

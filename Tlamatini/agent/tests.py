@@ -64,6 +64,16 @@ class P0HardeningTests(TestCase):
         connected, _subprotocol = async_to_sync(communicator.connect)()
         self.assertFalse(connected)
 
+    def test_login_invalid_credentials_render_inline_feedback(self):
+        response = self.client.post(
+            reverse('home'),
+            {'username': self.user.username, 'password': 'wrong-password'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'login-error-panel')
+        self.assertContains(response, self.user.username)
+
 
 class P1HardeningTests(TestCase):
     def test_sanitize_context_filename_rejects_path_escapes(self):
