@@ -30,7 +30,7 @@ crawl_type: "small-range"
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "llama3.1:8b"
+  model: "gpt-oss:120b-cloud"
 
 # Agents to start after crawling completes (auto-populated via canvas connections)
 target_agents: []
