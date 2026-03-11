@@ -75,8 +75,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 fieldset.appendChild(legend);
                 renderFields(fieldset, val, fieldKey);
                 container.appendChild(fieldset);
-            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction') {
-                // Custom rendering for trigger_mode and operation - Radio Buttons
+            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type') {
+                // Custom rendering for trigger_mode, operation, direction, crawl_type - Radio Buttons
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
                 label.style.fontWeight = "bold";
@@ -97,6 +97,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     options = ['copy', 'move'];
                 } else if (key === 'direction') {
                     options = ['send', 'receive'];
+                } else if (key === 'crawl_type') {
+                    options = ['small-range', 'medium-range', 'large-range'];
                 }
 
                 options.forEach(opt => {
@@ -175,7 +177,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 label.style.color = "#ddd";
 
                 let input;
-                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt')) {
+                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt')) {
                     input = document.createElement('textarea');
                     input.rows = 4;
                 } else {
