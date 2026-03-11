@@ -1,11 +1,16 @@
+import os
+import tempfile
+
 from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from agent.consumers import AgentConsumer
+from agent.consumers import AgentConsumer, _sanitize_context_filename
 from agent.models import AgentMessage
+from agent.path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
+from agent.services.filesystem import generate_tree_view_content
 from tlamatini.asgi import application
 
 
@@ -58,3 +63,44 @@ class P0HardeningTests(TestCase):
         communicator = WebsocketCommunicator(application, '/ws/agent/')
         connected, _subprotocol = async_to_sync(communicator.connect)()
         self.assertFalse(connected)
+
+
+class P1HardeningTests(TestCase):
+    def test_sanitize_context_filename_rejects_path_escapes(self):
+        self.assertEqual(_sanitize_context_filename('safe_file.py'), 'safe_file.py')
+        self.assertIsNone(_sanitize_context_filename('../secret.py'))
+        self.assertIsNone(_sanitize_context_filename('nested\\secret.py'))
+        self.assertIsNone(_sanitize_context_filename('..'))
+        self.assertIsNone(_sanitize_context_filename('bad:name.py'))
+
+    def test_safe_join_under_rejects_parent_traversal(self):
+        runtime_root = get_runtime_agent_root()
+        self.assertIsNone(safe_join_under(runtime_root, '..'))
+        self.assertIsNotNone(safe_join_under(runtime_root, 'context_files'))
+
+    def test_resolve_runtime_agent_path_accepts_runtime_child_directory(self):
+        runtime_root = get_runtime_agent_root()
+        with tempfile.TemporaryDirectory(dir=runtime_root) as temp_dir:
+            relative_name = os.path.basename(temp_dir)
+            resolved = resolve_runtime_agent_path(relative_name)
+            self.assertEqual(os.path.realpath(resolved), os.path.realpath(temp_dir))
+
+    def test_resolve_runtime_agent_path_rejects_parent_traversal(self):
+        self.assertIsNone(resolve_runtime_agent_path('..'))
+        self.assertIsNone(resolve_runtime_agent_path('..\\outside'))
+
+    def test_generate_tree_view_content_rejects_outside_directory(self):
+        result = generate_tree_view_content('..')
+        self.assertIn('outside the allowed paths', result)
+
+    def test_generate_tree_view_content_accepts_runtime_directory(self):
+        runtime_root = get_runtime_agent_root()
+        with tempfile.TemporaryDirectory(dir=runtime_root) as temp_dir:
+            sample_file = os.path.join(temp_dir, 'example.txt')
+            with open(sample_file, 'w', encoding='utf-8') as handle:
+                handle.write('hello world')
+
+            result = generate_tree_view_content(os.path.basename(temp_dir))
+
+            self.assertIn('example.txt', result)
+            self.assertIn('Total files: 1', result)

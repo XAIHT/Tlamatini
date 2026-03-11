@@ -2,6 +2,150 @@
 // agent_page_chat.js  –  Chat messaging, WebSocket & form submit
 // ============================================================
 
+const HTML_ENTITY_MAP = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&#x27;': "'",
+};
+
+function decodeHtmlEntities(text) {
+    return String(text ?? '').replace(/&(amp|lt|gt|quot|#39|#x27);/g, (match) => HTML_ENTITY_MAP[match] || match);
+}
+
+function isSafeLoadCanvasFilename(filename) {
+    return typeof filename === 'string'
+        && filename.length > 0
+        && !filename.split('').some(ch => ch.charCodeAt(0) <= 0x1F || '\\/><:"|?*'.includes(ch));
+}
+
+function appendPlainBotText(targetNode, text) {
+    if (!text) {
+        return;
+    }
+
+    targetNode.appendChild(document.createTextNode(decodeHtmlEntities(text)));
+}
+
+function buildSafeLoadCanvasLink(anchorHtml) {
+    const match = String(anchorHtml).match(/<a\b[^>]*\bonclick=['"]loadCanvas\("([^"]+)"\);?['"][^>]*>([\s\S]*?)<\/a>/i);
+    if (!match) {
+        return null;
+    }
+
+    const filename = decodeHtmlEntities(match[1]);
+    if (!isSafeLoadCanvasFilename(filename)) {
+        return null;
+    }
+
+    const safeAnchor = document.createElement('a');
+    const anchorLabel = decodeHtmlEntities(match[2].replace(/<[^>]*>/g, ''));
+
+    safeAnchor.href = '#';
+    safeAnchor.classList.add('chat-load-canvas-link');
+    safeAnchor.style.fontWeight = '600';
+    safeAnchor.style.color = 'white';
+    safeAnchor.textContent = anchorLabel || `---Load in canvas: ${filename}---`;
+    safeAnchor.addEventListener('click', (event) => {
+        event.preventDefault();
+        loadCanvas(filename);
+    });
+    return safeAnchor;
+}
+
+function appendFormattedBotContent(targetNode, message) {
+    const source = String(message ?? '');
+    let index = 0;
+
+    while (index < source.length) {
+        const nextTagIndex = source.indexOf('<', index);
+        if (nextTagIndex === -1) {
+            appendPlainBotText(targetNode, source.slice(index));
+            return;
+        }
+
+        if (nextTagIndex > index) {
+            appendPlainBotText(targetNode, source.slice(index, nextTagIndex));
+        }
+
+        const remaining = source.slice(nextTagIndex);
+        const brMatch = remaining.match(/^<br\s*\/?>/i);
+        if (brMatch) {
+            targetNode.appendChild(document.createElement('br'));
+            index = nextTagIndex + brMatch[0].length;
+            continue;
+        }
+
+        if (remaining.startsWith('<strong>')) {
+            const closeIndex = source.indexOf('</strong>', nextTagIndex + '<strong>'.length);
+            if (closeIndex !== -1) {
+                const strong = document.createElement('strong');
+                appendFormattedBotContent(strong, source.slice(nextTagIndex + '<strong>'.length, closeIndex));
+                targetNode.appendChild(strong);
+                index = closeIndex + '</strong>'.length;
+                continue;
+            }
+        }
+
+        if (remaining.startsWith('<code>')) {
+            const closeIndex = source.indexOf('</code>', nextTagIndex + '<code>'.length);
+            if (closeIndex !== -1) {
+                const code = document.createElement('code');
+                code.textContent = decodeHtmlEntities(source.slice(nextTagIndex + '<code>'.length, closeIndex));
+                targetNode.appendChild(code);
+                index = closeIndex + '</code>'.length;
+                continue;
+            }
+        }
+
+        if (/^<a\b/i.test(remaining)) {
+            const closeIndex = source.indexOf('</a>', nextTagIndex);
+            if (closeIndex !== -1) {
+                const anchorHtml = source.slice(nextTagIndex, closeIndex + '</a>'.length);
+                const safeAnchor = buildSafeLoadCanvasLink(anchorHtml);
+                if (safeAnchor) {
+                    targetNode.appendChild(safeAnchor);
+                } else {
+                    appendPlainBotText(targetNode, anchorHtml);
+                }
+                index = closeIndex + '</a>'.length;
+                continue;
+            }
+        }
+
+        appendPlainBotText(targetNode, '<');
+        index = nextTagIndex + 1;
+    }
+}
+
+function buildAutomatedMessageElement(message, addedContent = null) {
+    const automatedMessage = document.createElement('div');
+
+    automatedMessage.classList.add('automated-message');
+    appendFormattedBotContent(automatedMessage, message);
+
+    if (addedContent != null) {
+        $(addedContent).off('click').on('click', function (e) {
+            e.preventDefault();
+            console.log("wwwwwwwwwwwwwwwwww");
+            console.log($(this).data('files'));
+            send2SaveFiles($(this).data('files'));
+            console.log("wwwwwwwwwwwwwwwwww");
+            $(this).off('click');
+            $(this).remove();
+        });
+        automatedMessage.appendChild(document.createElement('br'));
+        automatedMessage.appendChild(addedContent);
+        console.log("xxxxxxxxxxxxxxxxxx");
+        console.log(addedContent.data);
+        console.log("xxxxxxxxxxxxxxxxxx");
+    }
+
+    return automatedMessage;
+}
+
 function appendChatMessage(username, message, addedContent = null, timestampStr = null) {
     const messageDiv = document.createElement('div');
     const messageContentDiv = document.createElement('div');
@@ -48,24 +192,7 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     if (username === 'LLM_Bot') {
         messageDiv.classList.add('bot-message');
         usernameDiv.style.color = '#55BBAA';
-        const formatted = String(message);
-        messageContentDiv.innerHTML = '<div class="automated-message">' + formatted + '</div>';
-        if (addedContent != null) {
-            $(addedContent).off('click').on('click', function (e) {
-                e.preventDefault();
-                console.log("wwwwwwwwwwwwwwwwww");
-                console.log($(this).data('files'));
-                send2SaveFiles($(this).data('files'));
-                console.log("wwwwwwwwwwwwwwwwww");
-                $(this).off('click');
-                $(this).remove();
-            });
-            messageContentDiv.firstChild.appendChild(document.createElement('br'));
-            messageContentDiv.firstChild.appendChild(addedContent);
-            console.log("xxxxxxxxxxxxxxxxxx");
-            console.log(addedContent.data);
-            console.log("xxxxxxxxxxxxxxxxxx");
-        }
+        messageContentDiv.appendChild(buildAutomatedMessageElement(message, addedContent));
     } else {
         messageDiv.classList.add('user-message');
         usernameDiv.style.color = '#A893F3';

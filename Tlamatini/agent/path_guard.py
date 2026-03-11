@@ -55,6 +55,75 @@ def _get_application_root() -> str:
     return os.path.dirname(os.path.dirname(script_dir))
 
 
+def _normalize_path(path: str) -> str:
+    return os.path.normcase(os.path.realpath(os.path.abspath(path)))
+
+
+def is_path_within_base(base_path: str, candidate_path: str) -> bool:
+    """Return ``True`` when *candidate_path* resolves inside *base_path*."""
+    if not base_path or not candidate_path:
+        return False
+    try:
+        normalized_base = _normalize_path(base_path)
+        normalized_candidate = _normalize_path(candidate_path)
+        common = os.path.commonpath([normalized_base, normalized_candidate])
+        return common == normalized_base
+    except Exception:
+        return False
+
+
+def get_runtime_agent_root() -> str:
+    """Resolve the runtime root used by chat/context filesystem operations."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def safe_join_under(base_path: str, *parts: str) -> str | None:
+    """Safely join path parts under a base directory, rejecting traversal."""
+    if not base_path:
+        return None
+    try:
+        candidate = os.path.join(base_path, *parts)
+        if not is_path_within_base(base_path, candidate):
+            return None
+        return os.path.realpath(os.path.abspath(candidate))
+    except Exception:
+        return None
+
+
+def resolve_runtime_agent_path(path: str, *, must_exist: bool = False, expect_dir: bool = False, expect_file: bool = False) -> str | None:
+    """
+    Resolve a user-supplied path for chat/context operations.
+
+    Relative paths are resolved under the runtime agent root.
+    Absolute paths are only allowed when they stay under the runtime root
+    or are explicitly allowed by ``allowed_paths``.
+    """
+    if not path or not path.strip():
+        return None
+
+    runtime_root = get_runtime_agent_root()
+    raw_path = path.strip()
+
+    if os.path.isabs(raw_path):
+        candidate = os.path.realpath(os.path.abspath(raw_path))
+        if not is_path_within_base(runtime_root, candidate) and not is_path_allowed(candidate):
+            return None
+    else:
+        candidate = safe_join_under(runtime_root, raw_path)
+        if candidate is None:
+            return None
+
+    if must_exist and not os.path.exists(candidate):
+        return None
+    if expect_dir and not os.path.isdir(candidate):
+        return None
+    if expect_file and not os.path.isfile(candidate):
+        return None
+    return candidate
+
+
 # ── Config loading ───────────────────────────────────────────────────────────
 def _find_config_path() -> str | None:
     """Locate config.json (same search order as other modules)."""
