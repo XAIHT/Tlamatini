@@ -209,6 +209,9 @@ export default [
                 btnStop: "readonly",
                 btnPause: "readonly",
                 btnClear: "readonly",
+                btnValidate: "readonly",
+                VALIDATION_STATE: "readonly",
+                flowValidationStatus: "writable",
                 pausedProcessesOnPause: "readonly",
                 connections: "writable",
                 itemCounters: "writable",
@@ -255,6 +258,11 @@ export default [
                 // Cross-file globals: acp-running-state.js
                 setGlobalRunningState: "readonly",
                 pollAgentStatus: "readonly",
+
+                // Cross-file globals: acp-validate.js
+                updateValidateButtonState: "readonly",
+                showStartValidationCheckDialog: "readonly",
+                resetFlowValidation: "readonly",
 
                 // Cross-file globals: acp-agent-connectors.js
                 registerItem: "readonly",
