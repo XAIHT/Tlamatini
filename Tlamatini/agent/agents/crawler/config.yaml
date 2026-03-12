@@ -1,0 +1,39 @@
+# Crawler Agent Configuration
+# This agent crawls web pages, strips HTML markup, saves content to local files,
+# and processes it with an LLM using a configurable system prompt.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Fetch the page at 'url' via HTTP GET and strip all HTML markup
+# 2. Save the plain text to a timestamped file in the agent directory
+# 3. Depending on 'crawl_type':
+#    - small-range: Process only the given URL with the LLM
+#    - medium-range: Follow all same-domain links and process each
+#    - large-range: Follow ALL links and process each
+# 4. Log the LLM response in a structured format
+# 5. Trigger any configured downstream agents
+# 6. Exit
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents and source_agents are automatically populated
+# when you make connections on the canvas.
+
+# URL to crawl
+url: ""
+
+# Multi-line system prompt to send to the LLM along with the crawled content
+system_prompt: ""
+
+# Crawl type: small-range | medium-range | large-range
+crawl_type: "small-range"
+
+# LLM connection settings (Ollama)
+llm:
+  host: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+
+# Agents to start after crawling completes (auto-populated via canvas connections)
+target_agents: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

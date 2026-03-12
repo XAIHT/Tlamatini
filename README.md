@@ -73,7 +73,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 35 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 37 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -186,7 +186,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 35 pre-built agent types for diverse automation tasks
+- 37 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -397,6 +397,8 @@ Tlamatini/
 │   │   │   ├── kuberneter/        # Kubernetes command executor agent
 │   │   │   ├── apirer/           # HTTP/REST API request agent
 │   │   │   ├── jenkinser/        # CI/CD pipeline trigger agent
+│   │   │   ├── crawler/          # Web page crawler with LLM analysis
+│   │   │   ├── summarizer/       # Log monitoring with LLM event detection
 │   │   │   ├── pser/             # LLM-powered process finder agent
 │   │   │   ├── asker/             # Interactive A/B path chooser (user dialog)
 │   │   │   ├── forker/            # Automatic A/B path router (pattern-based)
@@ -1102,7 +1104,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **35 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **37 agent types** total.
 
 ### Agent Architecture
 
@@ -1118,7 +1120,7 @@ All workflow agents follow a common structural pattern:
 
 Agents are classified as:
 - **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
-- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder)
+- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection)
 
 ### Control Agents
 
@@ -1174,6 +1176,8 @@ Agents are classified as:
 | **apirer** | HTTP/REST API agent — makes GET/POST/PUT/DELETE requests, logs response status and latency, triggers downstream agents regardless of outcome | `url`: Target URL<br>`method`: HTTP method<br>`headers`: Request headers map<br>`body`: Request body<br>`expected_status`: Expected HTTP status<br>`timeout`: Timeout in seconds<br>`target_agents`: Downstream agents |
 | **pser** | LLM-powered process finder — searches running processes by likely name using semantic matching | `likely_process_name`: Process to find<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 | **jenkinser** | CI/CD pipeline trigger — triggers Jenkins builds with CSRF crumb support, logs trigger result, and starts downstream agents regardless of outcome | `jenkins_url`: Jenkins server URL<br>`job_name`: Job to trigger<br>`user`: Jenkins username<br>`api_token`: API token<br>`parameters`: Build parameters map<br>`target_agents`: Downstream agents |
+| **crawler** | Web page crawler with LLM analysis — fetches URLs via HTTP GET, strips HTML markup, saves plain text to local files, and processes content with an LLM. Supports three modes: small-range (single URL), medium-range (same-domain links), large-range (all links) | `url`: Target URL<br>`system_prompt`: LLM prompt<br>`crawl_type`: small-range / medium-range / large-range<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
+| **summarizer** | Log monitoring with LLM event detection — continuously polls source agent log files and sends content to an LLM with a configurable system prompt. When the LLM detects a positive event ([EVENT_TRIGGERED]), starts all configured downstream target agents | `source_agents`: Agents to monitor<br>`system_prompt`: LLM analysis prompt<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`poll_interval`: Seconds between polls<br>`target_agents`: Downstream agents |
 
 ### Logic Gates
 
@@ -1563,6 +1567,8 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_kuberneter_connection/<agent_name>/` | POST | Update kuberneter connections |
 | `/update_apirer_connection/<agent_name>/` | POST | Update apirer connections |
 | `/update_jenkinser_connection/<agent_name>/` | POST | Update jenkinser connections |
+| `/update_crawler_connection/<agent_name>/` | POST | Update crawler connections |
+| `/update_summarizer_connection/<agent_name>/` | POST | Update summarizer connections |
 
 #### Session & Pool Management
 
@@ -1799,6 +1805,8 @@ Enable verbose logging in config.json:
 | **Pser** | LLM-powered agent that finds running processes by fuzzy name matching and logs the best match |
 | **Apirer** | HTTP/REST API agent that makes HTTP requests to any URL and starts downstream agents regardless of outcome |
 | **Jenkinser** | CI/CD pipeline trigger agent that triggers Jenkins builds and starts downstream agents regardless of trigger result |
+| **Crawler** | LLM-powered web crawler agent that fetches pages, strips HTML, and processes content with an LLM in three range modes (small/medium/large) |
+| **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
 | **Asker** | Deterministic agent that pauses workflow for interactive user A/B choice |
 | **Workflow** | Connected sequence of agents performing automated tasks |
 | **Canvas** | UI area for displaying and editing generated code |
@@ -1854,6 +1862,8 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Summarizer Agent** - LLM-powered log monitoring agent that continuously polls source agent log files, sends content to an LLM with a configurable system prompt for event detection, and triggers downstream agents when positive events are found
+- **Added Crawler Agent** - LLM-powered web page crawler that fetches URLs, strips HTML markup, saves plain text to local files, and processes content with a configurable LLM prompt across three crawl modes (small-range, medium-range, large-range)
 - **Added Jenkinser Agent** - CI/CD pipeline trigger agent that triggers Jenkins builds with CSRF crumb and authentication support, and starts downstream agents regardless of trigger outcome
 - **Added Apirer Agent** - HTTP/REST API agent that makes GET/POST/PUT/DELETE requests, logs response details, and triggers downstream agents regardless of success or failure
 - **Added Pser Agent** - LLM-powered process finder that semantically matches running processes by likely name and logs detailed process info

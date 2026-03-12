@@ -45,7 +45,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -589,6 +589,31 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+### 36. Crawler
+- **Purpose**: Crawls web pages via HTTP GET, strips all HTML markup, saves plain text to local files, then processes each page's content with an LLM using a configurable system prompt. Supports three crawl modes: small-range (single URL), medium-range (same-domain links), and large-range (all links).
+- **Pool name pattern**: `crawler_<n>`
+- **Starts other agents**: YES (after all crawling and LLM processing completes)
+- **Config parameters**:
+  - `url`: "" (URL to crawl)
+  - `system_prompt`: "" (multi-line prompt to send to the LLM along with the crawled content)
+  - `crawl_type`: "small-range" (one of: small-range, medium-range, large-range)
+  - `llm.host`: "http://localhost:11434" (Ollama server URL)
+  - `llm.model`: "llama3.1:8b" (Ollama model name)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
+### 37. Summarizer
+- **Purpose**: Continuously polls log files from source agents and sends their content to an LLM with a configurable system prompt to detect events. When the LLM response contains [EVENT_TRIGGERED], starts all configured downstream target agents.
+- **Pool name pattern**: `summarizer_<n>`
+- **Starts other agents**: YES (when a positive event is detected in any source agent log)
+- **Config parameters**:
+  - `source_agents`: [] (upstream agents whose log files will be monitored)
+  - `system_prompt`: "" (multi-line prompt instructing the LLM what to look for in logs)
+  - `llm.host`: "http://localhost:11434" (Ollama server URL)
+  - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
+  - `poll_interval`: 5 (seconds between log file polling cycles)
+  - `target_agents`: [] (downstream agents to start when an event is triggered)
+
 ---
 
 ## Output Format
@@ -1009,6 +1034,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 6. **Cleaner agent must always be connected in its source to the output of an Ender agent.** Output of Ender agent can only be connected to a Cleaner agent's input, and input of Cleaner agent can only be connected to the output of an Ender agent.
 
+7. **Preffer to use Summarizer agent to summarize logs instead of using Pythonxer agent to parse logs or Monitor Log agent to monitor logs if you need the flow to be less complex and more efficient respect to the avoidance of to many agents: DUE TO ITS CAPABILITY OF STARTING OTHER AGENTS.** Summarizer agent is more adequate for keeping the flow simple and efficient when after the log summary there is needed to start other agents.
 
 ## Anti-Patterns (DO NOT DO)
 
@@ -1031,4 +1057,9 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 5. **❌ Leaving `target_agents` empty on an active agent.** If an active agent like Pythonxer has `target_agents: []`, it becomes a dead-end and nothing happens after it runs. Always connect active agents to downstream targets.
    - Wrong: Pythonxer with `target_agents: []` and two Raisers polling its log
    - Right: Pythonxer with `target_agents: ["sleeper_1", "raiser_1"]`
+
+6. **❌ Using Raiser agent to start other agents when according to the flow there is only the need to start agents in a linear chain.** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
+    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+              |
+              -->Emailer (1)->X.
 

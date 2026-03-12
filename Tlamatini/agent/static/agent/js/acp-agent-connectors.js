@@ -748,3 +748,41 @@ async function updateJenkinserConnection(agentId, connectedAgentId, action, conn
         console.error(`--- Error updating Jenkinser ${agentId}:`, error);
     }
 }
+
+async function updateCrawlerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
+    try {
+        const response = await fetch(`/agent/update_crawler_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Crawler ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Crawler ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Crawler ${agentId}:`, error);
+    }
+}
+
+async function updateSummarizerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
+    try {
+        const response = await fetch(`/agent/update_summarizer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Summarizer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Summarizer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Summarizer ${agentId}:`, error);
+    }
+}

@@ -5884,3 +5884,169 @@ def update_jenkinser_connection_view(request, agent_name):
         print(f"Error updating Jenkinser connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
+
+@csrf_exempt
+@require_POST
+def update_crawler_connection_view(request, agent_name):
+    """
+    Update a Crawler agent's config.yaml when connections are made/removed.
+    Handles 'source' (input) and 'target' (output) connections.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        connected_agent = data.get('connected_agent') or data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target') if 'type' in data else data.get('connection_type', 'target')
+
+        if not connected_agent:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Missing connected_agent"
+            }), content_type='application/json', status=400)
+
+        # Parse agent_name to pool folder name: 'crawler-1' -> 'crawler_1'
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        # Security check
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Invalid agent name"
+            }), content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"Crawler config not found: {config_path}"
+            }), content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        # Parse connected_agent to pool folder name
+        target_parts = connected_agent.split('-')
+        target_cardinal = None
+        if target_parts[-1].isdigit():
+            target_cardinal = target_parts.pop()
+
+        target_base = "_".join(target_parts)
+        connected_pool_name = f"{target_base}_{target_cardinal}" if target_cardinal else target_base
+
+        # Determine which list to update
+        list_key = 'source_agents' if connection_type == 'source' else 'target_agents'
+
+        if list_key not in config or not isinstance(config[list_key], list):
+            config[list_key] = []
+
+        if action == 'add':
+            if connected_pool_name not in config[list_key]:
+                config[list_key].append(connected_pool_name)
+            message = f"Added {connected_pool_name} to {list_key}"
+        elif action == 'remove':
+            if connected_pool_name in config[list_key]:
+                config[list_key].remove(connected_pool_name)
+            message = f"Removed {connected_pool_name} from {list_key}"
+        else:
+            message = f"Unknown action: {action}"
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error updating Crawler connection: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
+def update_summarizer_connection_view(request, agent_name):
+    """
+    Update a Summarizer agent's config.yaml when connections are made/removed.
+    Handles 'source' (input) and 'target' (output) connections.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        connected_agent = data.get('connected_agent') or data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target') if 'type' in data else data.get('connection_type', 'target')
+
+        if not connected_agent:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Missing connected_agent"
+            }), content_type='application/json', status=400)
+
+        # Parse agent_name to pool folder name: 'summarizer-1' -> 'summarizer_1'
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        # Security check
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Invalid agent name"
+            }), content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"Summarizer config not found: {config_path}"
+            }), content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        # Parse connected_agent to pool folder name
+        target_parts = connected_agent.split('-')
+        target_cardinal = None
+        if target_parts[-1].isdigit():
+            target_cardinal = target_parts.pop()
+
+        target_base = "_".join(target_parts)
+        connected_pool_name = f"{target_base}_{target_cardinal}" if target_cardinal else target_base
+
+        # Determine which list to update
+        list_key = 'source_agents' if connection_type == 'source' else 'target_agents'
+
+        if list_key not in config or not isinstance(config[list_key], list):
+            config[list_key] = []
+
+        if action == 'add':
+            if connected_pool_name not in config[list_key]:
+                config[list_key].append(connected_pool_name)
+            message = f"Added {connected_pool_name} to {list_key}"
+        elif action == 'remove':
+            if connected_pool_name in config[list_key]:
+                config[list_key].remove(connected_pool_name)
+            message = f"Removed {connected_pool_name} from {list_key}"
+        else:
+            message = f"Unknown action: {action}"
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error updating Summarizer connection: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
