@@ -170,6 +170,23 @@ body.resizing {
     flex-shrink: 0;
 }
 
+/* Validate button - yellow when active, grey when disabled */
+.control-btn-validate {
+    background-color: #EAB308;
+    color: #1a1a1a;
+}
+
+.control-btn-validate:hover:not(:disabled) {
+    background-color: #FACC15;
+}
+
+.control-btn-validate:disabled {
+    background-color: #808080;
+    color: antiquewhite;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
 #monitor-container {
     display: flex;
     flex: 0 0 auto;

@@ -6050,3 +6050,63 @@ def update_summarizer_connection_view(request, agent_name):
         print(f"Error updating Summarizer connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
+
+def validate_flow_view(request):
+    """
+    List all agents in the session pool and return their config.yaml data.
+    Excludes FlowCreator agents. Used by the Validate button to build
+    the NxN adjacency matrix on the frontend.
+
+    Returns JSON: { agents: [ { folder_name, agent_type, config }, ... ] }
+    """
+    pool_path = get_pool_path(request)
+    if not pool_path or not os.path.exists(pool_path):
+        return HttpResponse(json.dumps({
+            'agents': [],
+            'message': 'Pool directory not found or empty'
+        }), content_type='application/json')
+
+    agents = []
+    try:
+        for folder_name in sorted(os.listdir(pool_path)):
+            folder_path = os.path.join(pool_path, folder_name)
+            if not os.path.isdir(folder_path):
+                continue
+
+            # Determine agent type from folder name (strip cardinal suffix)
+            # e.g., starter_1 -> starter, monitor_log_2 -> monitor_log
+            parts = folder_name.rsplit('_', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                agent_type = parts[0]
+            else:
+                agent_type = folder_name
+
+            # Skip FlowCreator agents
+            if agent_type.lower() == 'flowcreator':
+                continue
+
+            # Read config.yaml
+            config_path = os.path.join(folder_path, 'config.yaml')
+            config = {}
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config = yaml.safe_load(f) or {}
+                except Exception as e:
+                    print(f"[VALIDATE] Warning: Could not read config for {folder_name}: {e}")
+
+            agents.append({
+                'folder_name': folder_name,
+                'agent_type': agent_type,
+                'config': config
+            })
+
+    except Exception as e:
+        print(f"[VALIDATE] Error listing pool agents: {e}")
+        return HttpResponse(json.dumps({
+            'agents': [],
+            'error': str(e)
+        }), content_type='application/json', status=500)
+
+    return HttpResponse(json.dumps({'agents': agents}), content_type='application/json')
+
