@@ -124,7 +124,7 @@ function buildAutomatedMessageElement(message, addedContent = null) {
     const automatedMessage = document.createElement('div');
 
     automatedMessage.classList.add('automated-message');
-    appendFormattedBotContent(automatedMessage, message);
+    automatedMessage.innerHTML = String(message ?? '');
 
     if (addedContent != null) {
         $(addedContent).off('click').on('click', function (e) {
