@@ -598,7 +598,7 @@ system_prompt: |
   - `system_prompt`: "" (multi-line prompt to send to the LLM along with the crawled content)
   - `crawl_type`: "small-range" (one of: small-range, medium-range, large-range)
   - `llm.host`: "http://localhost:11434" (Ollama server URL)
-  - `llm.model`: "llama3.1:8b" (Ollama model name)
+  - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
