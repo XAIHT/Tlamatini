@@ -1,5 +1,6 @@
-# Prompter Agent - Sends a configured prompt to an Ollama LLM and logs the response
-# Action: Triggered by upstream -> Read prompt from config -> Query Ollama LLM -> Log response -> Trigger downstream
+# Summarizer Agent - Log file monitoring and LLM-powered event detection
+# Action: Started -> Continuously poll source agent logs -> Query LLM with system_prompt
+#         -> Detect [EVENT_TRIGGERED] -> Start/restart target agents
 
 import os
 import sys
@@ -7,6 +8,7 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+import re
 import time
 import yaml
 import json
@@ -14,7 +16,7 @@ import logging
 import subprocess
 import urllib.request
 import urllib.error
-from typing import Dict
+from typing import Dict, List
 
 # Set working directory to script location
 try:
@@ -45,10 +47,10 @@ def load_config(path: str = "config.yaml") -> Dict:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
     except FileNotFoundError:
-        logging.error(f"❌ Error: {path} not found.")
+        logging.error(f"Error: {path} not found.")
         sys.exit(1)
     except Exception as e:
-        logging.error(f"❌ Error parsing {path}: {e}")
+        logging.error(f"Error parsing {path}: {e}")
         sys.exit(1)
 
 
@@ -78,7 +80,6 @@ def get_python_command() -> list:
     return ['python3']
 
 
-
 def get_user_python_home() -> str:
     """Read PYTHON_HOME exclusively from USER environment variables (Windows registry)."""
     if not sys.platform.startswith('win'):
@@ -95,7 +96,7 @@ def get_user_python_home() -> str:
 def get_agent_env() -> dict:
     """Build environment for child processes with PYTHON_HOME from USER env vars on PATH."""
     env = os.environ.copy()
-    
+
     # Reset PyInstaller's DLL search path alteration on Windows
     if sys.platform.startswith('win'):
         try:
@@ -112,16 +113,17 @@ def get_agent_env() -> dict:
             path_parts = env.get('PATH', '').split(os.pathsep)
             path_parts = [p for p in path_parts if os.path.normpath(p) != os.path.normpath(meipass)]
             env['PATH'] = os.pathsep.join(path_parts)
-            
+
     python_home = get_user_python_home()
     if not python_home:
         return env
-        
+
     env['PYTHON_HOME'] = python_home
     scripts_dir = os.path.join(python_home, 'Scripts')
     current_path = env.get('PATH', '')
     env['PATH'] = f"{python_home};{scripts_dir};{current_path}"
     return env
+
 
 def get_pool_path() -> str:
     """Get the pool directory path where deployed agents reside."""
@@ -163,7 +165,7 @@ def start_agent(agent_name: str) -> bool:
     script_path = get_agent_script_path(agent_name)
 
     if not os.path.exists(script_path):
-        logging.error(f"❌ Agent script not found: {script_path}")
+        logging.error(f"Agent script not found: {script_path}")
         return False
 
     try:
@@ -182,12 +184,12 @@ def start_agent(agent_name: str) -> bool:
             with open(pid_path, "w") as f:
                 f.write(str(process.pid))
         except Exception as pid_err:
-            logging.error(f"⚠️ Failed to write PID file for target {agent_name}: {pid_err}")
+            logging.error(f"Failed to write PID file for target {agent_name}: {pid_err}")
 
-        logging.info(f"✅ Started agent '{agent_name}' with PID: {process.pid}")
+        logging.info(f"Started agent '{agent_name}' with PID: {process.pid}")
         return True
     except Exception as e:
-        logging.error(f"❌ Failed to start agent '{agent_name}': {e}")
+        logging.error(f"Failed to start agent '{agent_name}': {e}")
         return False
 
 
@@ -200,11 +202,11 @@ def write_pid_file():
         with open(PID_FILE, "w") as f:
             f.write(str(os.getpid()))
     except Exception as e:
-        logging.error(f"❌ Failed to write PID file: {e}")
+        logging.error(f"Failed to write PID file: {e}")
 
 
 def remove_pid_file():
-    for attempt in range(5):
+    for _attempt in range(5):
         try:
             if os.path.exists(PID_FILE):
                 os.remove(PID_FILE)
@@ -212,19 +214,25 @@ def remove_pid_file():
         except PermissionError:
             time.sleep(0.1)
         except Exception as e:
-            logging.error(f"❌ Failed to remove PID file: {e}")
+            logging.error(f"Failed to remove PID file: {e}")
             return
 
 
-def query_ollama(host: str, model: str, prompt: str) -> str:
+# ============================================================
+# LLM Query
+# ============================================================
+
+def query_ollama(host: str, model: str, system_prompt: str, context: str) -> str:
     """
-    Send a prompt to an Ollama LLM and return the full response text.
-    Uses urllib (stdlib) so no external dependencies are needed.
+    Send a prompt to an Ollama LLM with a system prompt and log content context,
+    and return the full response text.
     """
     url = f"{host.rstrip('/')}/api/generate"
+    full_prompt = f"{system_prompt}\n\n--- BEGIN LOG CONTENT ---\n{context}\n--- END LOG CONTENT ---"
+
     payload = json.dumps({
         "model": model,
-        "prompt": prompt,
+        "prompt": full_prompt,
         "stream": False
     }).encode("utf-8")
 
@@ -246,6 +254,106 @@ def query_ollama(host: str, model: str, prompt: str) -> str:
         raise RuntimeError(f"Cannot reach Ollama at {host}: {e.reason}") from e
 
 
+# ============================================================
+# Log File Reading
+# ============================================================
+
+def get_source_log_path(source_agent: str) -> str:
+    """Get the log file path for a source agent."""
+    agent_dir = get_agent_directory(source_agent)
+    # Log file name matches the directory name
+    return os.path.join(agent_dir, f"{source_agent}.log")
+
+
+def read_log_file(log_path: str) -> str:
+    """Read the contents of a log file. Returns empty string if not found."""
+    try:
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                return f.read()
+    except Exception as e:
+        logging.error(f"Failed to read log file {log_path}: {e}")
+    return ""
+
+
+# ============================================================
+# Event Detection
+# ============================================================
+
+EVENT_TRIGGERED_PATTERN = re.compile(r'\[EVENT_TRIGGERED\]', re.IGNORECASE)
+
+
+def detect_event_triggered(llm_response: str) -> bool:
+    """
+    Check if the LLM response contains [EVENT_TRIGGERED].
+    The system_prompt instructs the LLM to output outcome_word:[EVENT_TRIGGERED]
+    when a positive event is detected, or outcome_word:[NONE] otherwise.
+    We do NOT hardcode the outcome_word — only the bracket tag matters.
+    """
+    return bool(EVENT_TRIGGERED_PATTERN.search(llm_response))
+
+
+# ============================================================
+# Core Polling Logic
+# ============================================================
+
+def poll_source_agents(source_agents: List[str], system_prompt: str,
+                       host: str, model: str, poll_interval: int) -> bool:
+    """
+    Continuously poll all source agent log files until at least one triggers
+    a positive event via the LLM analysis.
+    Returns True if any event was triggered.
+    """
+    # Track which source agents have already been fully checked with content
+    checked_with_content = set()
+    event_triggered = False
+
+    logging.info(f"Polling {len(source_agents)} source agent(s) every {poll_interval}s...")
+
+    while not event_triggered and len(checked_with_content) < len(source_agents):
+        for source in source_agents:
+            if source in checked_with_content:
+                continue
+
+            log_path = get_source_log_path(source)
+            log_content = read_log_file(log_path)
+
+            if not log_content.strip():
+                logging.info(f"  [{source}] Log empty or not found, will retry...")
+                continue
+
+            logging.info(f"  [{source}] Log has {len(log_content)} chars, querying LLM...")
+
+            try:
+                llm_response = query_ollama(host, model, system_prompt, log_content)
+            except RuntimeError as e:
+                logging.error(f"  [{source}] LLM query failed: {e}")
+                continue
+
+            logging.info(
+                f"INI_RESPONSE_SUMMARIZER<<<\n"
+                f"--------------------LLM Response (model: {model}, "
+                f"source: {source})------------------"
+                f" {{\n{llm_response}\n}}\n"
+                f">>>END_RESPONSE_SUMMARIZER"
+            )
+
+            checked_with_content.add(source)
+
+            if detect_event_triggered(llm_response):
+                logging.info(f"  [{source}] [EVENT_TRIGGERED] detected!")
+                event_triggered = True
+                break
+            else:
+                logging.info(f"  [{source}] No event triggered ([NONE] or no match).")
+
+        if not event_triggered and len(checked_with_content) < len(source_agents):
+            logging.info(f"  Waiting {poll_interval}s before next poll cycle...")
+            time.sleep(poll_interval)
+
+    return event_triggered
+
+
 def main():
     config = load_config()
 
@@ -253,50 +361,49 @@ def main():
     write_pid_file()
 
     try:
-        prompt_text = config.get('prompt', '')
+        source_agents = config.get('source_agents', [])
+        system_prompt = config.get('system_prompt', '')
         llm_config = config.get('llm', {})
         host = llm_config.get('host', 'http://localhost:11434')
-        model = llm_config.get('model', 'llama3')
+        model = llm_config.get('model', 'llama3.1:8b')
+        poll_interval = config.get('poll_interval', 5)
         target_agents = config.get('target_agents', [])
 
-        logging.info("💬 PROMPTER AGENT STARTED")
-        logging.info(f"🤖 Model: {model} @ {host}")
-        logging.info(f"🎯 Targets: {target_agents}")
+        logging.info("SUMMARIZER AGENT STARTED")
+        logging.info(f"Source agents: {source_agents}")
+        logging.info(f"Model: {model} @ {host}")
+        logging.info(f"Poll interval: {poll_interval}s")
+        logging.info(f"Targets: {target_agents}")
         logging.info("=" * 60)
 
-        if not prompt_text.strip():
-            logging.error("❌ No prompt configured. Set the 'prompt' field in config.yaml.")
+        if not source_agents:
+            logging.error("No source_agents configured. Connect source agents on the canvas.")
             return
 
-        # Log the prompt being sent
-        logging.info(f"📝 Sending prompt ({len(prompt_text)} chars) to {model}...")
-
-        # Query Ollama
-        try:
-            response_text = query_ollama(host, model, prompt_text)
-        except RuntimeError as e:
-            logging.error(f"❌ LLM query failed: {e}")
+        if not system_prompt.strip():
+            logging.error("No system_prompt configured. Set the 'system_prompt' field in config.yaml.")
             return
 
-        # Log the response in the required format
-        logging.info(f"--------------------LLM Response (model: {model})------------------ INI_RESPONSE<<<")
-        logging.info(response_text)
-        logging.info(">>>END_RESPONSE")
+        # Poll source agent logs and detect events via LLM
+        event_triggered = poll_source_agents(
+            source_agents, system_prompt, host, model, poll_interval
+        )
 
-        logging.info(f"✅ LLM response received ({len(response_text)} chars)")
-
-        # Trigger downstream agents
-        total_triggered = 0
-        if target_agents:
-            logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
-            for target in target_agents:
-                if start_agent(target):
-                    total_triggered += 1
-
-        logging.info(f"🏁 Prompter agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
+        if event_triggered:
+            logging.info("[EVENT_TRIGGERED] detected — starting target agents...")
+            total_triggered = 0
+            if target_agents:
+                logging.info(f"Triggering {len(target_agents)} downstream agents...")
+                for target in target_agents:
+                    if start_agent(target):
+                        total_triggered += 1
+            logging.info(f"Summarizer agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
+        else:
+            logging.info("All source agents checked. No events triggered.")
+            logging.info("Summarizer agent finished. No downstream agents started.")
 
     except Exception as e:
-        logging.error(f"❌ Prompter agent error: {e}")
+        logging.error(f"Summarizer agent error: {e}")
     finally:
         # Keep LED green briefly for visual feedback
         time.sleep(0.4)

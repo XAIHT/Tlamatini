@@ -934,6 +934,40 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%);
 }
 
+/* Crawler Agent Styles - Web Crawler with LLM Analysis (Cyan-to-Magenta gradient) */
+.canvas-item.crawler-agent {
+    background-color: #00BCD4;
+    color: white;
+    background: linear-gradient(135deg, #00BCD4 0%, #E91E63 100%);
+}
+
+.canvas-item.crawler-agent:hover {
+    box-shadow: 0 6px 15px rgba(233, 30, 99, 0.5);
+    background: linear-gradient(135deg, #26C6DA 0%, #F06292 100%);
+}
+
+/* Crawler agent icon in sidebar */
+.agent-tool-item[data-content="Crawler"] .agent-tool-icon {
+    background: linear-gradient(135deg, #00BCD4 0%, #E91E63 100%);
+}
+
+/* Summarizer Agent Styles - Log monitoring with LLM event detection (Yellow-to-Magenta gradient) */
+.canvas-item.summarizer-agent {
+    background-color: #FFD600;
+    color: white;
+    background: linear-gradient(135deg, #FFD600 0%, #E91E63 100%);
+}
+
+.canvas-item.summarizer-agent:hover {
+    box-shadow: 0 6px 15px rgba(233, 30, 99, 0.5);
+    background: linear-gradient(135deg, #FFEA00 0%, #F06292 100%);
+}
+
+/* Summarizer agent icon in sidebar */
+.agent-tool-item[data-content="Summarizer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #FFD600 0%, #E91E63 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */
