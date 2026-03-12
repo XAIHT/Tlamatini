@@ -1034,6 +1034,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 6. **Cleaner agent must always be connected in its source to the output of an Ender agent.** Output of Ender agent can only be connected to a Cleaner agent's input, and input of Cleaner agent can only be connected to the output of an Ender agent.
 
+7. **Preffer to use Summarizer agent to summarize logs instead of using Pythonxer agent to parse logs or Monitor Log agent to monitor logs if you need the flow to be less complex and more efficient respect to the avoidance of to many agents: DUE TO ITS CAPABILITY OF STARTING OTHER AGENTS.** Summarizer agent is more adequate for keeping the flow simple and efficient when after the log summary there is needed to start other agents.
 
 ## Anti-Patterns (DO NOT DO)
 
@@ -1056,4 +1057,9 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 5. **❌ Leaving `target_agents` empty on an active agent.** If an active agent like Pythonxer has `target_agents: []`, it becomes a dead-end and nothing happens after it runs. Always connect active agents to downstream targets.
    - Wrong: Pythonxer with `target_agents: []` and two Raisers polling its log
    - Right: Pythonxer with `target_agents: ["sleeper_1", "raiser_1"]`
+
+6. **❌ Using Raiser agent to start other agents when according to the flow there is only the need to start agents in a linear chain.** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
+    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+              |
+              -->Emailer (1)->X.
 
