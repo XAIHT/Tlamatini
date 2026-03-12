@@ -391,8 +391,87 @@ def _validate_accesses_in_prompt(question: str):
             print("--- _validate_accesses_in_prompt: prompt references loaded context → proceed")
             return None
 
+        # System-metrics or time queries → tool-routed, not file access.
+        _SYSTEM_QUERY = re.compile(
+            r'\b(?:cpu\s*usage|memory\s*usage|disk\s*(?:space|usage)'
+            r'|current\s*time|time\s*now)\b',
+            re.IGNORECASE
+        )
+        if _SYSTEM_QUERY.search(question):
+            print("--- _validate_accesses_in_prompt: system/time query → proceed")
+            return None
+
+        # Command execution requests (ping, netstat, ipconfig …) → tool-routed.
+        _RUN_COMMAND = re.compile(
+            r'\b(?:run|execute)\s+(?:command|cmd)\b',
+            re.IGNORECASE
+        )
+        if _RUN_COMMAND.search(question):
+            print("--- _validate_accesses_in_prompt: command execution → proceed")
+            return None
+
+        # Image description via a model (Qwen, Opus) → tool-routed.
+        _IMAGE_DESCRIBE = re.compile(
+            r'\b(?:describe|analyze|analyse)\s+with\s+(?:qwen|opus)\b',
+            re.IGNORECASE
+        )
+        if _IMAGE_DESCRIBE.search(question):
+            print("--- _validate_accesses_in_prompt: image description via model → proceed")
+            return None
+
+        # Code / web-page / documentation generation → creative output, not
+        # file access.
+        _CODE_GEN = re.compile(
+            r'\b(?:create|generate|write|build|implement)\s+'
+            r'(?:a\s+|an\s+|the\s+|a\s+new\s+)?'
+            r'(?:implementation|web\s*page|version|program|code|script'
+            r'|application|app|document|documentation)\b',
+            re.IGNORECASE
+        )
+        if _CODE_GEN.search(question):
+            print("--- _validate_accesses_in_prompt: code/content generation → proceed")
+            return None
+
+        # Listing available/configured directories → informational.
+        _LIST_DIRS = re.compile(
+            r'\blist\s+(?:available|configured|allowed)\s+'
+            r'(?:director(?:y|ies)|folder|folders)\b',
+            re.IGNORECASE
+        )
+        if _LIST_DIRS.search(question):
+            print("--- _validate_accesses_in_prompt: listing available dirs → proceed")
+            return None
+
+        # Decompilation requests → tool-routed.
+        _DECOMPILE = re.compile(
+            r'\b(?:decompile|disassemble)\s+(?:file|class|jar|binary)\b',
+            re.IGNORECASE
+        )
+        if _DECOMPILE.search(question):
+            print("--- _validate_accesses_in_prompt: decompile request → proceed")
+            return None
+
+        # Execute / run a named script file → tool-routed
+        # (e.g. "Execute cat_art.py, located in the root of this application.")
+        _EXEC_SCRIPT = re.compile(
+            r'\b(?:execute|run)\s+[\w\-]+\.(?:py|sh|bat|ps1|js|rb|pl)\b',
+            re.IGNORECASE
+        )
+        if _EXEC_SCRIPT.search(question):
+            print("--- _validate_accesses_in_prompt: script execution → proceed")
+            return None
+
+        # View / search image in allowed locations → tool-routed.
+        _VIEW_IMAGE = re.compile(
+            r'\b(?:view|show|display|open)\s+image\b',
+            re.IGNORECASE
+        )
+        if _VIEW_IMAGE.search(question):
+            print("--- _validate_accesses_in_prompt: image view request → proceed")
+            return None
+
         # No explicit paths and no "allowed" reference — check for indirect access
-        # (e.g. "Execute cat_art.py located in the root of this app").
+        # (e.g. "Open the config file in the downloads folder").
         if _indirect_file_access_prompt(question):
             return (
                 "In order to implement any actions to files or routes within "
