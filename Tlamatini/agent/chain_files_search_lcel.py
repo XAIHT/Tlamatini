@@ -11,12 +11,14 @@ from typing import Optional, Dict, Any
 try:
     from . import filesearch_pb2
     from . import filesearch_pb2_grpc
+    from .path_guard import is_path_allowed, REJECTION_MESSAGE
 except ImportError:
     # If relative import fails, try importing from the same directory
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
         import filesearch_pb2
         import filesearch_pb2_grpc
+        from path_guard import is_path_allowed, REJECTION_MESSAGE
     except ImportError:
         print("ERROR: Could not find 'filesearch_pb2.py' or 'filesearch_pb2_grpc.py'.")
         print("Please ensure they are in the same directory as this script.")
@@ -318,7 +320,8 @@ User Query: {query}
 
         Robust behavior:
         - If the original question contains an explicit Windows path and filename,
-          resolve that file directly (bypassing gRPC/tool planning) and return its content.
+          resolve that file directly only when it stays inside allowed paths.
+          Otherwise, reject immediately.
         - Otherwise, fall back to the LLM-generated plan (search/show/answer/clarify).
         """
         files_context = ""
@@ -337,7 +340,10 @@ User Query: {query}
                     dir_part = path_match.group(0).strip().strip("'\"")
                     filename = fname_match.group(0).strip().strip("'\"")
                     dir_part = os.path.normpath(dir_part)
-                    candidate_path = os.path.join(dir_part, filename)
+                    candidate_path = os.path.realpath(os.path.abspath(os.path.join(dir_part, filename)))
+
+                if candidate_path and not is_path_allowed(candidate_path):
+                    return REJECTION_MESSAGE
 
                 # If we can resolve a real file on disk from the question, use it directly.
                 if candidate_path and os.path.isfile(candidate_path):
@@ -421,6 +427,14 @@ User Query: {query}
                     hidden=include_hidden
                 )
 
+                validated_files_list = []
+                for found_path in files_list:
+                    resolved_found_path = os.path.realpath(os.path.abspath(found_path))
+                    if not is_path_allowed(resolved_found_path):
+                        return REJECTION_MESSAGE
+                    validated_files_list.append(resolved_found_path)
+                files_list = validated_files_list
+
                 # Format context
                 if not files_list:
                     files_context = f"No files found matching '{file_pattern}'."
@@ -455,6 +469,9 @@ User Query: {query}
                                     break
 
                         if target_path:
+                            target_path = os.path.realpath(os.path.abspath(target_path))
+                            if not is_path_allowed(target_path):
+                                return REJECTION_MESSAGE
                             try:
                                 mime, _ = mimetypes.guess_type(target_path)
                                 ext = os.path.splitext(target_path)[1].lower()

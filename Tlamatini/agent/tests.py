@@ -1,5 +1,7 @@
 import os
+import shutil
 import tempfile
+from unittest.mock import AsyncMock
 
 from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
@@ -9,9 +11,20 @@ from django.urls import reverse
 
 from agent.consumers import AgentConsumer, _sanitize_context_filename
 from agent.models import AgentMessage
-from agent.path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
+from agent.path_guard import (
+    REJECTION_MESSAGE,
+    get_runtime_agent_root,
+    is_path_allowed,
+    resolve_runtime_agent_path,
+    safe_join_under,
+)
 from agent.services.filesystem import generate_tree_view_content
 from tlamatini.asgi import application
+
+try:
+    from agent.chain_files_search_lcel import FileSearchRAGChain
+except Exception:  # pragma: no cover - optional dependency path
+    FileSearchRAGChain = None
 
 
 class P0HardeningTests(TestCase):
@@ -114,3 +127,63 @@ class P1HardeningTests(TestCase):
 
             self.assertIn('example.txt', result)
             self.assertIn('Total files: 1', result)
+
+
+class PromptPathHardeningTests(TestCase):
+    def _build_chain_without_init(self):
+        if FileSearchRAGChain is None:
+            self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
+        return FileSearchRAGChain.__new__(FileSearchRAGChain)
+
+    def test_file_search_direct_path_rejects_disallowed_absolute_path(self):
+        chain = self._build_chain_without_init()
+        outside_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(outside_dir, ignore_errors=True))
+        if is_path_allowed(outside_dir):
+            self.skipTest('Temporary directory unexpectedly falls inside allowed paths.')
+
+        outside_file = os.path.join(outside_dir, 'secret.txt')
+        with open(outside_file, 'w', encoding='utf-8') as handle:
+            handle.write('top secret')
+
+        prompt = f"show secret.txt in {outside_dir}"
+        result = async_to_sync(chain.fetch_files_context)({"__question": prompt})
+
+        self.assertEqual(result, REJECTION_MESSAGE)
+
+    def test_file_search_direct_path_allows_allowed_absolute_path(self):
+        chain = self._build_chain_without_init()
+        runtime_root = get_runtime_agent_root()
+        with tempfile.TemporaryDirectory(dir=runtime_root) as temp_dir:
+            if not is_path_allowed(temp_dir):
+                self.skipTest('Runtime temporary directory unexpectedly falls outside allowed paths.')
+
+            sample_file = os.path.join(temp_dir, 'allowed.txt')
+            with open(sample_file, 'w', encoding='utf-8') as handle:
+                handle.write('allowed content')
+
+            prompt = f"show allowed.txt in {temp_dir}"
+            result = async_to_sync(chain.fetch_files_context)({"__question": prompt})
+
+            self.assertIn('<FILE_CONTENT_START>', result)
+            self.assertIn('allowed content', result)
+
+    def test_file_search_rejects_outside_grpc_result_path(self):
+        chain = self._build_chain_without_init()
+        outside_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(outside_dir, ignore_errors=True))
+        if is_path_allowed(outside_dir):
+            self.skipTest('Temporary directory unexpectedly falls inside allowed paths.')
+
+        outside_file = os.path.join(outside_dir, 'secret.txt')
+        with open(outside_file, 'w', encoding='utf-8') as handle:
+            handle.write('top secret')
+
+        chain.async_call_grpc_server = AsyncMock(return_value=[outside_file])
+        result = async_to_sync(chain.fetch_files_context)({
+            "action": "show",
+            "show": {"file_name": "secret.txt", "base_path_key": None, "include_hidden": False},
+            "__question": "show secret.txt",
+        })
+
+        self.assertEqual(result, REJECTION_MESSAGE)
