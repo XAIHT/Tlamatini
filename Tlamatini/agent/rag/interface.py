@@ -188,6 +188,104 @@ _RELATIVE_PATH_PATTERN = re.compile(
     r'(?:^|\s)(?:\.\.?[\\/_]|[a-zA-Z0-9_.\-]+[\\/_][a-zA-Z0-9_.\-]+)'
 )
 
+_ALLOWED_SYNONYMS = re.compile(
+    r'\b(?:allowed|permitted|configured|authorized|approved|valid|designated)\b'
+    r'[\s\-]*'
+    r'\b(?:path|paths|location|locations|directory|directories|folder|folders|route|routes|area|areas)\b',
+    re.IGNORECASE
+)
+
+_CONTEXT_REFS = re.compile(
+    r'\b(?:provided|loaded|given|attached|uploaded|current|above|this)\b'
+    r'[\s\-]*'
+    r'\b(?:context|document|documents|content|code|source\s*code|codebase|project|files|data|information|text)\b',
+    re.IGNORECASE
+)
+
+_SYSTEM_QUERY = re.compile(
+    r'\b(?:cpu\s*usage|memory\s*usage|disk\s*(?:space|usage)'
+    r'|current\s*time|time\s*now)\b',
+    re.IGNORECASE
+)
+
+_RUN_COMMAND = re.compile(
+    r'\b(?:run|execute)\s+(?:command|cmd)\b',
+    re.IGNORECASE
+)
+
+_IMAGE_DESCRIBE = re.compile(
+    r'\b(?:describe|analyze|analyse)\s+with\s+(?:qwen|opus)\b',
+    re.IGNORECASE
+)
+
+_CODE_GEN = re.compile(
+    r'\b(?:create|generate|write|build|implement)\s+'
+    r'(?:a\s+|an\s+|the\s+|a\s+new\s+)?'
+    r'(?:implementation|web\s*page|version|program|code|script'
+    r'|application|app|document|documentation)\b',
+    re.IGNORECASE
+)
+
+_LIST_DIRS = re.compile(
+    r'\blist\s+(?:available|configured|allowed)\s+'
+    r'(?:director(?:y|ies)|folder|folders)\b',
+    re.IGNORECASE
+)
+
+_DECOMPILE = re.compile(
+    r'\b(?:decompile|disassemble)\s+(?:file|class|jar|binary)\b',
+    re.IGNORECASE
+)
+
+_EXEC_SCRIPT = re.compile(
+    r'\b(?:execute|run)\s+[\w\-]+\.(?:py|sh|bat|ps1|js|rb|pl)\b',
+    re.IGNORECASE
+)
+
+_VIEW_IMAGE = re.compile(
+    r'\b(?:view|show|display|open)\s+image\b',
+    re.IGNORECASE
+)
+
+_CONCEPTUAL_PROMPT_START = re.compile(
+    r'^\s*(?:what|why|how|explain|describe|summarize|analyse|analyze|review|discuss|compare)\b',
+    re.IGNORECASE
+)
+
+_DIRECT_FILESYSTEM_ACTION = re.compile(
+    r'^\s*(?:please\s+)?'
+    r'(?:(?:can|could|would)\s+you\s+|help\s+me(?:\s+to)?\s+)?'
+    r'(?:open|show|read|view|display|execute|run|list|search|find|locate'
+    r'|delete|remove|move|copy|decompile|disassemble|unzip|extract|load'
+    r'|save|edit|modify)\b',
+    re.IGNORECASE
+)
+
+
+def _has_deterministic_filesystem_intent(question: str) -> bool:
+    """
+    Detect high-confidence filesystem-action intent without asking an LLM.
+
+    This stays intentionally conservative: it only returns True for prompts
+    that read like top-level action requests. Ambiguous or conceptual prompts
+    keep flowing to the existing classifier fallback.
+    """
+    normalized = " ".join((question or "").split())
+    if not normalized:
+        return False
+    if _CONCEPTUAL_PROMPT_START.search(normalized):
+        return False
+    return bool(_DIRECT_FILESYSTEM_ACTION.search(normalized))
+
+
+def _relative_path_rejection_message() -> str:
+    return (
+        "The actions to routes or files must exclusively be in absolute "
+        "format (not relative routes/paths are allowed) and within the "
+        "allowed paths previously configured, so you must re-formulate "
+        "your prompt."
+    )
+
 
 def _acces_aimed_prompt(question: str) -> bool:
     """
@@ -367,108 +465,65 @@ def _validate_accesses_in_prompt(question: str):
     # 1) Extract all path-like tokens from the prompt
     found_paths = _PATH_PATTERN.findall(question)
     if not found_paths:
+        deterministic_intent = _has_deterministic_filesystem_intent(question)
+
         # If the prompt references "allowed paths/locations" (or synonyms),
         # it is a valid way to indicate scope → skip indirect access check.
-        _ALLOWED_SYNONYMS = re.compile(
-            r'\b(?:allowed|permitted|configured|authorized|approved|valid|designated)\b'
-            r'[\s\-]*'
-            r'\b(?:path|paths|location|locations|directory|directories|folder|folders|route|routes|area|areas)\b',
-            re.IGNORECASE
-        )
         if _ALLOWED_SYNONYMS.search(question):
             print("--- _validate_accesses_in_prompt: prompt references allowed paths/locations → proceed")
             return None
 
         # If the prompt refers to already-loaded context / documents,
         # it is NOT an indirect file access — the user is querying the RAG context.
-        _CONTEXT_REFS = re.compile(
-            r'\b(?:provided|loaded|given|attached|uploaded|current|above|this)\b'
-            r'[\s\-]*'
-            r'\b(?:context|document|documents|content|code|source\s*code|codebase|project|files|data|information|text)\b',
-            re.IGNORECASE
-        )
         if _CONTEXT_REFS.search(question):
             print("--- _validate_accesses_in_prompt: prompt references loaded context → proceed")
             return None
 
         # System-metrics or time queries → tool-routed, not file access.
-        _SYSTEM_QUERY = re.compile(
-            r'\b(?:cpu\s*usage|memory\s*usage|disk\s*(?:space|usage)'
-            r'|current\s*time|time\s*now)\b',
-            re.IGNORECASE
-        )
         if _SYSTEM_QUERY.search(question):
             print("--- _validate_accesses_in_prompt: system/time query → proceed")
             return None
 
         # Command execution requests (ping, netstat, ipconfig …) → tool-routed.
-        _RUN_COMMAND = re.compile(
-            r'\b(?:run|execute)\s+(?:command|cmd)\b',
-            re.IGNORECASE
-        )
         if _RUN_COMMAND.search(question):
             print("--- _validate_accesses_in_prompt: command execution → proceed")
             return None
 
         # Image description via a model (Qwen, Opus) → tool-routed.
-        _IMAGE_DESCRIBE = re.compile(
-            r'\b(?:describe|analyze|analyse)\s+with\s+(?:qwen|opus)\b',
-            re.IGNORECASE
-        )
         if _IMAGE_DESCRIBE.search(question):
             print("--- _validate_accesses_in_prompt: image description via model → proceed")
             return None
 
         # Code / web-page / documentation generation → creative output, not
         # file access.
-        _CODE_GEN = re.compile(
-            r'\b(?:create|generate|write|build|implement)\s+'
-            r'(?:a\s+|an\s+|the\s+|a\s+new\s+)?'
-            r'(?:implementation|web\s*page|version|program|code|script'
-            r'|application|app|document|documentation)\b',
-            re.IGNORECASE
-        )
         if _CODE_GEN.search(question):
             print("--- _validate_accesses_in_prompt: code/content generation → proceed")
             return None
 
         # Listing available/configured directories → informational.
-        _LIST_DIRS = re.compile(
-            r'\blist\s+(?:available|configured|allowed)\s+'
-            r'(?:director(?:y|ies)|folder|folders)\b',
-            re.IGNORECASE
-        )
         if _LIST_DIRS.search(question):
             print("--- _validate_accesses_in_prompt: listing available dirs → proceed")
             return None
 
         # Decompilation requests → tool-routed.
-        _DECOMPILE = re.compile(
-            r'\b(?:decompile|disassemble)\s+(?:file|class|jar|binary)\b',
-            re.IGNORECASE
-        )
         if _DECOMPILE.search(question):
             print("--- _validate_accesses_in_prompt: decompile request → proceed")
             return None
 
         # Execute / run a named script file → tool-routed
         # (e.g. "Execute cat_art.py, located in the root of this application.")
-        _EXEC_SCRIPT = re.compile(
-            r'\b(?:execute|run)\s+[\w\-]+\.(?:py|sh|bat|ps1|js|rb|pl)\b',
-            re.IGNORECASE
-        )
         if _EXEC_SCRIPT.search(question):
             print("--- _validate_accesses_in_prompt: script execution → proceed")
             return None
 
         # View / search image in allowed locations → tool-routed.
-        _VIEW_IMAGE = re.compile(
-            r'\b(?:view|show|display|open)\s+image\b',
-            re.IGNORECASE
-        )
         if _VIEW_IMAGE.search(question):
             print("--- _validate_accesses_in_prompt: image view request → proceed")
             return None
+
+        if bool(_RELATIVE_PATH_PATTERN.search(question)) and deterministic_intent:
+            print("--- _validate_accesses_in_prompt: deterministic relative-path access request → reject")
+            return _relative_path_rejection_message()
 
         # No explicit paths and no "allowed" reference — check for indirect access
         # (e.g. "Open the config file in the downloads folder").
@@ -490,6 +545,11 @@ def _validate_accesses_in_prompt(question: str):
 
     print(f"--- _validate_accesses_in_prompt: paths outside allowed: {outside_paths}")
 
+    deterministic_intent = _has_deterministic_filesystem_intent(question)
+    if deterministic_intent:
+        print("--- _validate_accesses_in_prompt: deterministic outside-path access intent detected → reject")
+        return REJECTION_MESSAGE
+
     # 3) Some paths are outside allowed → ask the LLM to classify intent
     is_intent = _acces_aimed_prompt(question)
     print(f"--- _validate_accesses_in_prompt: LLM intent classification: {is_intent}")
@@ -504,12 +564,7 @@ def _validate_accesses_in_prompt(question: str):
 
     if has_relative and not absolute_outside:
         # Only relative paths detected
-        return (
-            "The actions to routes or files must exclusively be in absolute "
-            "format (not relative routes/paths are allowed) and within the "
-            "allowed paths previously configured, so you must re-formulate "
-            "your prompt."
-        )
+        return _relative_path_rejection_message()
 
     # Absolute paths outside allowed_paths
     return REJECTION_MESSAGE

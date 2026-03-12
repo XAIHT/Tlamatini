@@ -1,7 +1,8 @@
+import ast
 import os
 import shutil
 import tempfile
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
@@ -18,6 +19,7 @@ from agent.path_guard import (
     resolve_runtime_agent_path,
     safe_join_under,
 )
+from agent.rag.interface import _validate_accesses_in_prompt
 from agent.services.filesystem import generate_tree_view_content
 from tlamatini.asgi import application
 
@@ -25,6 +27,35 @@ try:
     from agent.chain_files_search_lcel import FileSearchRAGChain
 except Exception:  # pragma: no cover - optional dependency path
     FileSearchRAGChain = None
+
+
+def _load_seeded_prompt_contents():
+    migration_path = os.path.join(
+        os.path.dirname(__file__),
+        'migrations',
+        '0002_populate_db.py',
+    )
+    with open(migration_path, 'r', encoding='utf-8') as handle:
+        tree = ast.parse(handle.read(), filename=migration_path)
+
+    prompt_contents = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != 'get_or_create':
+            continue
+        for keyword in node.keywords:
+            if keyword.arg != 'defaults' or not isinstance(keyword.value, ast.Dict):
+                continue
+            for key_node, value_node in zip(keyword.value.keys, keyword.value.values):
+                if (
+                    isinstance(key_node, ast.Constant)
+                    and key_node.value == 'promptContent'
+                    and isinstance(value_node, ast.Constant)
+                    and isinstance(value_node.value, str)
+                ):
+                    prompt_contents.append(value_node.value)
+    return prompt_contents
 
 
 class P0HardeningTests(TestCase):
@@ -187,3 +218,50 @@ class PromptPathHardeningTests(TestCase):
         })
 
         self.assertEqual(result, REJECTION_MESSAGE)
+
+
+class PromptValidationDecisionTests(TestCase):
+    def test_seeded_prompts_use_deterministic_validation_only(self):
+        seeded_prompts = _load_seeded_prompt_contents()
+        self.assertGreater(len(seeded_prompts), 0)
+
+        with patch('agent.rag.interface._acces_aimed_prompt', side_effect=AssertionError('LLM path classifier should not run for seeded prompts.')), \
+             patch('agent.rag.interface._indirect_file_access_prompt', side_effect=AssertionError('LLM indirect classifier should not run for seeded prompts.')):
+            for prompt in seeded_prompts:
+                result = _validate_accesses_in_prompt(prompt)
+                self.assertIsNone(result, msg=prompt)
+
+    def test_explicit_outside_absolute_path_is_rejected_deterministically(self):
+        outside_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(outside_dir, ignore_errors=True))
+        if is_path_allowed(outside_dir):
+            self.skipTest('Temporary directory unexpectedly falls inside allowed paths.')
+
+        outside_file = os.path.join(outside_dir, 'secret.txt')
+        prompt = f"Open {outside_file}, please."
+
+        with patch('agent.rag.interface._acces_aimed_prompt', side_effect=AssertionError('Deterministic rejection should happen before LLM fallback.')):
+            result = _validate_accesses_in_prompt(prompt)
+
+        self.assertEqual(result, REJECTION_MESSAGE)
+
+    def test_relative_path_access_is_rejected_deterministically(self):
+        with patch('agent.rag.interface._indirect_file_access_prompt', side_effect=AssertionError('Deterministic relative-path rejection should happen before LLM fallback.')):
+            result = _validate_accesses_in_prompt('Open ..\\secret.txt, please.')
+
+        self.assertIn('not relative routes/paths are allowed', result)
+
+    def test_informational_prompt_with_outside_path_can_use_llm_fallback(self):
+        outside_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(outside_dir, ignore_errors=True))
+        if is_path_allowed(outside_dir):
+            self.skipTest('Temporary directory unexpectedly falls inside allowed paths.')
+
+        outside_file = os.path.join(outside_dir, 'secret.txt')
+        prompt = f'Explain why the code hardcodes "{outside_file}" and why that is risky.'
+
+        with patch('agent.rag.interface._acces_aimed_prompt', return_value=False) as mock_classifier:
+            result = _validate_accesses_in_prompt(prompt)
+
+        self.assertIsNone(result)
+        mock_classifier.assert_called_once()
