@@ -1,0 +1,449 @@
+// Agentic Control Panel - Flow Validation Logic
+// LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-control-buttons.js
+
+// ========================================
+// VALIDATE BUTTON STATE MANAGEMENT
+// ========================================
+
+/**
+ * Update the Validate button enabled/disabled state.
+ * Enabled only when: flow is STOPPED and at least one non-FlowCreator agent is on canvas.
+ */
+function updateValidateButtonState() {
+    if (!btnValidate) return;
+
+    const isStopped = globalRunningState === GLOBAL_STATE.STOPPED;
+    const canvasItems = document.querySelectorAll('#submonitor-container .canvas-item');
+    const hasNonFlowCreator = Array.from(canvasItems).some(item => {
+        const agentName = (item.getAttribute('data-agent-name') || item.id || '').toLowerCase();
+        return !agentName.startsWith('flowcreator');
+    });
+
+    const shouldEnable = isStopped && hasNonFlowCreator;
+
+    btnValidate.disabled = !shouldEnable;
+    if (shouldEnable) {
+        btnValidate.style.opacity = '';
+        btnValidate.style.cursor = '';
+    } else {
+        btnValidate.style.opacity = '0.5';
+        btnValidate.style.cursor = 'not-allowed';
+    }
+}
+
+// ========================================
+// ADJACENCY MATRIX CONSTRUCTION & VALIDATION
+// ========================================
+
+/**
+ * Extract all output connections (target agent names) from an agent's config.
+ * Handles: target_agents, target_agents_a, target_agents_b, output_agents.
+ * @param {Object} config - The agent's config.yaml data
+ * @returns {string[]} - Array of connected agent folder names
+ */
+function extractOutputConnections(config) {
+    const connections = [];
+
+    // Standard target_agents
+    if (Array.isArray(config.target_agents)) {
+        connections.push(...config.target_agents);
+    }
+
+    // Asker/Forker dual outputs
+    if (Array.isArray(config.target_agents_a)) {
+        connections.push(...config.target_agents_a);
+    }
+    if (Array.isArray(config.target_agents_b)) {
+        connections.push(...config.target_agents_b);
+    }
+
+    // Ender/Stopper/Cleaner output_agents
+    if (Array.isArray(config.output_agents)) {
+        connections.push(...config.output_agents);
+    }
+
+    return connections;
+}
+
+/**
+ * Run the full flow validation process.
+ * Steps A-D as specified in the requirements.
+ */
+async function runFlowValidation() {
+    console.log('--- [Validate] Starting flow validation...');
+
+    // Step A: List all agents in the pool
+    let agentsData;
+    try {
+        const response = await fetch('/agent/validate_flow/', {
+            method: 'GET',
+            headers: getHeaders(),
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        agentsData = result.agents || [];
+    } catch (error) {
+        console.error('--- [Validate] Error fetching pool agents:', error);
+        showValidationResultDialog(false, ['Failed to read agent configurations: ' + error.message]);
+        return;
+    }
+
+    if (agentsData.length === 0) {
+        showValidationResultDialog(false, ['No agents found in the pool directory. Deploy agents to the canvas first.']);
+        return;
+    }
+
+    console.log(`--- [Validate] Found ${agentsData.length} agent(s) in pool (excluding FlowCreator)`);
+
+    // Step B: Configs are already loaded by the backend (FlowCreator excluded)
+
+    // Step C: Build NxN adjacency matrix
+    const N = agentsData.length;
+    const agentNames = agentsData.map(a => a.folder_name);
+    const agentTypes = agentsData.map(a => a.agent_type.toLowerCase());
+    const nameToIndex = {};
+    agentNames.forEach((name, idx) => { nameToIndex[name] = idx; });
+
+    // Initialize NxN matrix with zeros
+    const matrix = [];
+    for (let i = 0; i < N; i++) {
+        matrix.push(new Array(N).fill(0));
+    }
+
+    // Fill matrix: row = source agent outputs, col = target agent
+    for (let i = 0; i < N; i++) {
+        const config = agentsData[i].config;
+        const outputs = extractOutputConnections(config);
+
+        for (const targetName of outputs) {
+            const j = nameToIndex[targetName];
+            if (j !== undefined) {
+                matrix[i][j] = 1;
+            }
+        }
+    }
+
+    console.log('--- [Validate] Adjacency matrix built:', matrix);
+    console.log('--- [Validate] Agent order:', agentNames.map((n, i) => `${i}:${n}(${agentTypes[i]})`));
+
+    // Step D: Run verification checks
+    const errors = [];
+
+    // i) Verify Starter columns have only zeros (no incoming connections)
+    const starterErrors = [];
+    for (let col = 0; col < N; col++) {
+        if (agentTypes[col] !== 'starter') continue;
+        for (let row = 0; row < N; row++) {
+            if (matrix[row][col] === 1) {
+                starterErrors.push(agentNames[col]);
+                break;
+            }
+        }
+    }
+    if (starterErrors.length > 0) {
+        errors.push({
+            message: 'Starter agents must only have target_agents',
+            agents: starterErrors
+        });
+    }
+
+    // ii) Verify Ender rows have only 1s in Cleaner columns
+    const enderOutputErrors = [];
+    for (let row = 0; row < N; row++) {
+        if (agentTypes[row] !== 'ender') continue;
+        for (let col = 0; col < N; col++) {
+            if (matrix[row][col] === 1 && agentTypes[col] !== 'cleaner') {
+                enderOutputErrors.push(agentNames[row]);
+                break;
+            }
+        }
+    }
+    if (enderOutputErrors.length > 0) {
+        errors.push({
+            message: 'Ender agents can only be connected to target_agents of type Cleaner',
+            agents: enderOutputErrors
+        });
+    }
+
+    // iii) Verify Cleaner columns have only 1s from Ender rows
+    const cleanerInputErrors = [];
+    for (let col = 0; col < N; col++) {
+        if (agentTypes[col] !== 'cleaner') continue;
+        for (let row = 0; row < N; row++) {
+            if (matrix[row][col] === 1 && agentTypes[row] !== 'ender') {
+                cleanerInputErrors.push(agentNames[col]);
+                break;
+            }
+        }
+    }
+    if (cleanerInputErrors.length > 0) {
+        errors.push({
+            message: 'Cleaner agents can only be connected from source_agents of type Ender',
+            agents: cleanerInputErrors
+        });
+    }
+
+    // iv) Verify main diagonal is all zeros (no self-connections)
+    const selfLoopErrors = [];
+    for (let i = 0; i < N; i++) {
+        if (matrix[i][i] === 1) {
+            selfLoopErrors.push(agentNames[i]);
+        }
+    }
+    if (selfLoopErrors.length > 0) {
+        errors.push({
+            message: "All of the agent's outputs must not connect to itself",
+            agents: selfLoopErrors
+        });
+    }
+
+    // v) Verify all non-Starter columns have at least one incoming connection
+    const noInputErrors = [];
+    for (let col = 0; col < N; col++) {
+        if (agentTypes[col] === 'starter') continue;
+        let hasInput = false;
+        for (let row = 0; row < N; row++) {
+            if (matrix[row][col] === 1) {
+                hasInput = true;
+                break;
+            }
+        }
+        if (!hasInput) {
+            noInputErrors.push(agentNames[col]);
+        }
+    }
+    if (noInputErrors.length > 0) {
+        errors.push({
+            message: 'Some agents have no connections to its input',
+            agents: noInputErrors
+        });
+    }
+
+    // Set validation status and show result
+    if (errors.length === 0) {
+        flowValidationStatus = VALIDATION_STATE.VALID;
+        console.log('--- [Validate] Flow is VALID');
+        showValidationResultDialog(true, []);
+    } else {
+        flowValidationStatus = VALIDATION_STATE.INVALID;
+        console.log('--- [Validate] Flow is INVALID, errors:', errors);
+        showValidationResultDialog(false, errors);
+    }
+}
+
+// ========================================
+// VALIDATION RESULT DIALOG
+// ========================================
+
+/**
+ * Show the validation result in a jQuery UI dialog.
+ * @param {boolean} isValid - Whether validation passed
+ * @param {Array} errors - Array of { message, agents } objects (or string[] for simple errors)
+ */
+function showValidationResultDialog(isValid, errors) {
+    const dialogDiv = document.getElementById('validation-result-dialog');
+    if (!dialogDiv) {
+        console.error('--- [Validate] validation-result-dialog element not found');
+        return;
+    }
+
+    const contentEl = document.getElementById('validation-result-content');
+
+    if (isValid) {
+        contentEl.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+            <h4 style="color: #10B981; margin-bottom: 10px;">Flow is Valid</h4>
+            <p style="color: #ccc;">All verification checks passed successfully. The flow structure is correct.</p>
+        `;
+    } else {
+        let errorHtml = '';
+        for (const err of errors) {
+            if (typeof err === 'string') {
+                errorHtml += `<div style="margin-bottom: 10px; padding: 8px; background: #3a1a1a; border-left: 3px solid #e74c3c; border-radius: 4px;">
+                    <p style="color: #f87171; margin: 0;">${err}</p>
+                </div>`;
+            } else {
+                errorHtml += `<div style="margin-bottom: 10px; padding: 8px; background: #3a1a1a; border-left: 3px solid #e74c3c; border-radius: 4px;">
+                    <p style="color: #f87171; font-weight: bold; margin: 0 0 5px 0;">⚠️ ${err.message}</p>
+                    <p style="color: #ccc; margin: 0; font-size: 0.9em;">Agents: ${err.agents.join(', ')}</p>
+                </div>`;
+            }
+        }
+
+        contentEl.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+            <h4 style="color: #e74c3c; margin-bottom: 10px;">Validation Failed</h4>
+            <div style="text-align: left; max-height: 300px; overflow-y: auto; margin-top: 10px;">
+                ${errorHtml}
+            </div>
+        `;
+    }
+
+    const $dialog = $(dialogDiv);
+    $dialog.dialog({
+        title: isValid ? 'Flow Validation: Passed ✅' : 'Flow Validation: Failed ❌',
+        autoOpen: true,
+        modal: true,
+        width: 520,
+        resizable: false,
+        draggable: true,
+        closeOnEscape: true,
+        closeText: "",
+        dialogClass: "validation-result-dialog-wrapper",
+        open: function () {
+            document.body.style.overflow = 'hidden';
+        },
+        close: function () {
+            document.body.style.overflow = '';
+        },
+        buttons: [{
+            text: "Continue!",
+            click: function () { $(this).dialog("close"); }
+        }]
+    });
+
+    // Style the Continue button
+    const buttonPane = $dialog.parent().find('.ui-dialog-buttonpane');
+    buttonPane.find('button:contains("Continue")').css({
+        'background-color': isValid ? '#10B981' : '#e74c3c',
+        'color': 'white', 'border': 'none', 'border-radius': '6px',
+        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
+    });
+}
+
+// ========================================
+// START BUTTON VALIDATION CHECK DIALOGS
+// ========================================
+
+/**
+ * Show a dialog when user clicks Start and flow is INVALID or NOT-VALIDATED.
+ * @param {string} status - VALIDATION_STATE.INVALID or VALIDATION_STATE.NOT_VALIDATED
+ * @param {Function} proceedCallback - Function to call when user clicks "Run"
+ */
+function showStartValidationCheckDialog(status, proceedCallback) {
+    const dialogDiv = document.getElementById('start-validation-check-dialog');
+    if (!dialogDiv) {
+        console.error('--- [Validate] start-validation-check-dialog element not found');
+        proceedCallback();
+        return;
+    }
+
+    const contentEl = document.getElementById('start-validation-check-content');
+
+    if (status === VALIDATION_STATE.INVALID) {
+        contentEl.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
+            <h4 style="color: #F59E0B; margin-bottom: 10px;">Validation Errors Found</h4>
+            <p style="color: #ccc;">Some errors were found during flow validation. Are you sure you want to start running it?</p>
+        `;
+    } else {
+        contentEl.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px;">ℹ️</div>
+            <h4 style="color: #3B82F6; margin-bottom: 10px;">Flow Not Validated</h4>
+            <p style="color: #ccc;">No validation has been executed for the present flow. Would you like to verify it or start running without verification?</p>
+        `;
+    }
+
+    const $dialog = $(dialogDiv);
+    $dialog.dialog({
+        title: status === VALIDATION_STATE.INVALID ? '⚠️ Validation Errors Found' : 'ℹ️ Flow Not Validated',
+        autoOpen: true,
+        modal: true,
+        width: 500,
+        resizable: false,
+        draggable: true,
+        closeOnEscape: true,
+        closeText: "",
+        dialogClass: "start-validation-check-dialog-wrapper",
+        open: function () {
+            document.body.style.overflow = 'hidden';
+        },
+        close: function () {
+            document.body.style.overflow = '';
+        },
+        buttons: [
+            {
+                text: "Run",
+                click: function () {
+                    $(this).dialog("close");
+                    proceedCallback();
+                }
+            },
+            {
+                text: "Verify",
+                click: function () {
+                    $(this).dialog("close");
+                    // Trigger the Validate process
+                    runFlowValidation();
+                }
+            }
+        ]
+    });
+
+    // Style the buttons
+    const buttonPane = $dialog.parent().find('.ui-dialog-buttonpane');
+    buttonPane.find('button:contains("Run")').css({
+        'background-color': status === VALIDATION_STATE.INVALID ? '#e74c3c' : '#3B82F6',
+        'color': 'white', 'border': 'none', 'border-radius': '6px',
+        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '100px'
+    });
+    buttonPane.find('button:contains("Verify")').css({
+        'background-color': '#EAB308',
+        'color': 'white', 'border': 'none', 'border-radius': '6px',
+        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '100px'
+    });
+}
+
+// ========================================
+// VALIDATE BUTTON CLICK HANDLER
+// ========================================
+if (btnValidate) {
+    btnValidate.addEventListener('click', async (e) => {
+        e.preventDefault();
+        console.log('--- Validate button clicked');
+
+        if (btnValidate.disabled) {
+            console.log('--- Validate button is disabled, ignoring');
+            return;
+        }
+
+        btnValidate.disabled = true;
+        btnValidate.style.opacity = '0.5';
+
+        try {
+            await runFlowValidation();
+        } finally {
+            updateValidateButtonState();
+        }
+    });
+}
+
+// ========================================
+// CANVAS CHANGE OBSERVER — Reset validation on changes
+// ========================================
+
+/**
+ * Reset validation status when the canvas content changes.
+ * This is called from acp-canvas-core.js when agents/connections are added/removed.
+ */
+function resetFlowValidation() {
+    if (flowValidationStatus !== VALIDATION_STATE.NOT_VALIDATED) {
+        console.log('--- [Validate] Canvas changed, resetting validation status to NOT-VALIDATED');
+        flowValidationStatus = VALIDATION_STATE.NOT_VALIDATED;
+    }
+    updateValidateButtonState();
+}
+
+// Hook into MutationObserver for canvas changes
+document.addEventListener('DOMContentLoaded', () => {
+    const submonitorEl = document.getElementById('submonitor-container');
+    if (submonitorEl) {
+        const observer = new MutationObserver(() => {
+            resetFlowValidation();
+        });
+        observer.observe(submonitorEl, { childList: true, subtree: false });
+    }
+
+    // Initial state
+    updateValidateButtonState();
+});

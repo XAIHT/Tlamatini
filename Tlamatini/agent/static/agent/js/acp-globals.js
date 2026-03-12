@@ -13,10 +13,11 @@ const saveBtn      = document.getElementById('save-as-button');
 const filenameSpan = document.getElementById('filename');
 
 // Control Panel Buttons
-const btnStart = document.getElementById('btn-start');
-const btnStop  = document.getElementById('btn-stop');
-const btnPause = document.getElementById('btn-pause');
-const btnClear = document.getElementById('btn-clear');
+const btnStart    = document.getElementById('btn-start');
+const btnStop     = document.getElementById('btn-stop');
+const btnPause    = document.getElementById('btn-pause');
+const btnClear    = document.getElementById('btn-clear');
+const btnValidate = document.getElementById('btn-validate');
 
 // ========================================
 // GLOBAL RUNNING STATE MANAGEMENT
@@ -27,6 +28,14 @@ const GLOBAL_STATE = {
     PAUSED:  'PAUSED'
 };
 let globalRunningState = GLOBAL_STATE.STOPPED;
+
+// Flow validation state
+const VALIDATION_STATE = {
+    VALID: 'VALID',
+    INVALID: 'INVALID',
+    NOT_VALIDATED: 'NOT-VALIDATED'
+};
+let flowValidationStatus = VALIDATION_STATE.NOT_VALIDATED;
 
 // Multi-array to store paused processes per session (keyed by session ID)
 // Structure: { [sessionId]: [{ canvas_id, folder_name, script_name, pid, cmdline }, ...] }

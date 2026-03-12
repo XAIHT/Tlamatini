@@ -49,6 +49,11 @@ function setGlobalRunningState(newState) {
         titleBusyPrefix = "";
         updateAllLedIndicators({});
     }
+
+    // Update Validate button state on every state transition
+    if (typeof updateValidateButtonState === 'function') {
+        updateValidateButtonState();
+    }
 }
 
 /**
