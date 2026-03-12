@@ -73,7 +73,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 37 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 38 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -186,7 +186,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 37 pre-built agent types for diverse automation tasks
+- 38 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -308,7 +308,7 @@ Tlamatini/
 │   ├── agent/                       # Core application
 │   │   ├── apps.py                  # App config (MCP startup, signal handlers, cleanup)
 │   │   ├── admin.py                 # Django admin model registration
-│   │   ├── views.py                # HTTP request handlers (60+ endpoints)
+│   │   ├── views.py                # HTTP request handlers (65+ endpoints)
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
 │   │   ├── models.py               # Database models (12 models)
 │   │   ├── urls.py                 # URL routing definitions
@@ -341,9 +341,11 @@ Tlamatini/
 │   │   ├── web_search_llm.py       # Internet search integration
 │   │   ├── inet_determiner.py      # Search requirement classifier
 │   │   │
+│   │   ├── path_guard.py           # Centralized path validation and traversal prevention
+│   │   ├── tests.py                # Security hardening test suite (P0/P1/P2)
 │   │   ├── chat_history_loader.py  # Chat history management
 │   │   ├── chain_system_lcel.py    # System metrics chain
-│   │   ├── chain_files_search_lcel.py # File search chain
+│   │   ├── chain_files_search_lcel.py # File search chain (with path-safe lookups)
 │   │   ├── mcp_system_server.py    # MCP WebSocket server
 │   │   ├── mcp_system_client.py    # MCP system metrics client
 │   │   ├── mcp_files_search_server.py # gRPC file search server
@@ -368,7 +370,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (32 types)
+│   │   ├── agents/                 # Workflow agent templates (38 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -438,7 +440,11 @@ Tlamatini/
 │   └── staticfiles/                # Collected static files (WhiteNoise)
 │
 ├── build.py                         # PyInstaller build script
+├── build_installer.py               # NSIS-based installer builder
+├── build_uninstaller.py             # Uninstaller builder (--onefile)
 ├── install.py                       # Tkinter GUI installer
+├── uninstall.py                     # Tkinter GUI uninstaller
+├── eslint.config.mjs                # ESLint configuration for frontend JS
 ├── requirements.txt                 # Python dependencies
 ├── LICENSE                          # GPL-3.0 License
 └── README.md                        # This file
@@ -1104,7 +1110,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **37 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **38 agent types** total.
 
 ### Agent Architecture
 
@@ -1629,6 +1635,26 @@ When reconnecting:
 - Django user authentication required for all pages
 - WebSocket connections authenticated via Django Channels middleware
 - Session-based multi-user isolation
+- CSRF protection on all state-changing endpoints
+
+### Tiered Security Hardening (Test Suite)
+
+The project includes a dedicated security test suite (`agent/tests.py`) with three hardening levels:
+
+| Level | Class | What It Covers |
+|-------|-------|----------------|
+| **P0 (Critical)** | `P0HardeningTests` | User message isolation (users cannot see other users' messages), login requirement enforcement on all views, CSRF protection verification, WebSocket authentication |
+| **P1 (High)** | `P1HardeningTests` | Path traversal prevention (`../` sequences, encoded escapes), `safe_join_under()` validation, runtime agent path resolution safety |
+| **P2 (Prompt)** | `PromptPathHardeningTests` | Prompt injection defense — rejects absolute paths outside allowed directories, validates gRPC results against path escaping attempts |
+
+### Path Guard (`path_guard.py`)
+
+A centralized path validation module that protects all file operations:
+
+- Resolves Windows known folders (Documents, Downloads, Desktop, etc.) via `win32com.shell`
+- Validates every file path against `allowed_paths` from `config.json`
+- Prevents directory traversal attacks (`../`, absolute paths, symlink escapes)
+- Used by `chain_files_search_lcel.py`, `@tool` functions, and `consumers.py`
 
 ### Secret Redaction
 
@@ -1660,7 +1686,8 @@ Add patterns in the `Omission` model via Django admin:
 ### File Access
 
 - Context loading respects OS permissions
-- Strict guardrails enforce local access routes/paths, restricting operations to explicitly configured safe directories in `config.json`
+- Centralized path validation via `path_guard.py`, restricting all file operations to explicitly configured safe directories in `config.json`
+- Prompt-level path validation — the RAG interface detects and rejects indirect file access attempts via LLM analysis
 - No automatic execution of uploaded files
 - Sandbox-style tool execution (configurable)
 
@@ -1862,6 +1889,15 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **P0/P1/P2 Security Hardening** - Comprehensive, tiered security test suite covering user isolation, CSRF, login enforcement (P0), path traversal prevention and safe path joining (P1), and prompt injection defense with indirect file access detection (P2)
+- **Added Path Guard Module** (`path_guard.py`) - Centralized path validation layer that resolves Windows known folders, enforces `allowed_paths` from config, and prevents directory traversal across all file operations
+- **Improved File Search Chain** - `chain_files_search_lcel.py` now integrates with `path_guard.py` for secure path validation, supports non-explicit lookup crawling, and validates all gRPC results against path escaping
+- **Expanded Security Tests** - `tests.py` now includes three test classes (`P0HardeningTests`, `P1HardeningTests`, `PromptPathHardeningTests`) covering critical to prompt-level hardening scenarios
+- **Enhanced RAG Interface Security** - `rag/interface.py` now performs LLM-based indirect file access detection and prompt-level path validation before file operations
+- **Improved Crawler Agent** - Better non-explicit lookup support and updated source LLM model configuration
+- **FlowCreator Skill Improvements** - Updated `agentic_skill.md` with refined agent descriptions and flow design guidance
+- **UI Refinements** - MCP/agents dialog improved with golden-ratio styled columns for better readability
+- **ESLint Configuration** - Added `eslint.config.mjs` for frontend JavaScript quality assurance
 - **Added Summarizer Agent** - LLM-powered log monitoring agent that continuously polls source agent log files, sends content to an LLM with a configurable system prompt for event detection, and triggers downstream agents when positive events are found
 - **Added Crawler Agent** - LLM-powered web page crawler that fetches URLs, strips HTML markup, saves plain text to local files, and processes content with a configurable LLM prompt across three crawl modes (small-range, medium-range, large-range)
 - **Added Jenkinser Agent** - CI/CD pipeline trigger agent that triggers Jenkins builds with CSRF crumb and authentication support, and starts downstream agents regardless of trigger outcome
@@ -1869,7 +1905,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Added Pser Agent** - LLM-powered process finder that semantically matches running processes by likely name and logs detailed process info
 - **Added Dockerer Agent** - Docker container and docker-compose management with automatic downstream agent triggering
 - **Added Telegramer & Telegramrx Agents** - New agents for bidirectional Telegram interactions and rule-based notifications
-- **Enhanced Security Guardrails** - Local file system access is now strictly limited manually configured, explicitly allowed paths in `config.json`
+- **Enhanced Security Guardrails** - Local file system access is now strictly limited to explicitly allowed paths in `config.json`
 - **Smart Prompts Improvement** - Enhanced LLM lookup prompts for Monitor-Log and Monitor-Netstat for better accuracy
 - **Interpreter Path Improvements** - Avoided hardcoded Python interpreter path execution dependencies within workflows
 
