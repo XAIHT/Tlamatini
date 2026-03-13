@@ -880,9 +880,14 @@ if (btnClear) {
 // ========================================
 // FLOWHYPERVISOR LIFECYCLE & POLLING
 // ========================================
-let flowHypervisorMonitorInterval = null;
+// Uses a serial setTimeout chain (never setInterval) so that each poll
+// completes fully before the next one starts — no concurrent invocations.
+let flowHypervisorPollingActive = false;
+let flowHypervisorPollBusy = false;
+let flowHypervisorAgentId = null;
 
 async function startSystemManagedFlowHypervisor(agentId) {
+    flowHypervisorAgentId = agentId;
     try {
         const response = await fetch(`/agent/execute_flowhypervisor/${agentId}/`, {
             method: 'POST', headers: getHeaders(), credentials: 'same-origin'
@@ -897,43 +902,44 @@ async function startSystemManagedFlowHypervisor(agentId) {
         console.error('--- Error starting FlowHypervisor:', error);
     }
 
-    // Always start polling, it will reanimate if it failed
-    if (flowHypervisorMonitorInterval) clearInterval(flowHypervisorMonitorInterval);
-    flowHypervisorMonitorInterval = setInterval(() => {
-        if (globalRunningState !== GLOBAL_STATE.RUNNING) return;
-        pollFlowHypervisorAlert(agentId);
-        pollFlowHypervisorReanimation(agentId);
-    }, 5000); // Check every 5 seconds
+    // Start serial polling loop (only alerts, no reanimation)
+    flowHypervisorPollingActive = true;
+    scheduleNextFlowHypervisorPoll();
 }
 
 function stopSystemManagedFlowHypervisor() {
-    if (flowHypervisorMonitorInterval) {
-        clearInterval(flowHypervisorMonitorInterval);
-        flowHypervisorMonitorInterval = null;
-    }
+    // Stop the polling loop
+    flowHypervisorPollingActive = false;
+    flowHypervisorPollBusy = false;
+
+    // Actually kill the FlowHypervisor process via kill_session_processes
+    fetch('/agent/kill_session_processes/', {
+        method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+    }).then(r => r.json()).then(result => {
+        console.log(`--- FlowHypervisor stop: killed ${result.killed_count} process(es)`);
+    }).catch(err => {
+        console.warn('--- Error killing FlowHypervisor process:', err);
+    });
 }
 
-async function pollFlowHypervisorReanimation(agentId) {
-    // Check if running
-    try {
-        const response = await fetch(`/agent/check_agents_running/${agentId}/`, {
-            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
-        });
-        const result = await response.json();
-        if (result.all_down) {
-            console.warn(`--- FlowHypervisor (${agentId}) crashed or stopped natively. Reanimating...`);
-            fetch(`/agent/execute_flowhypervisor/${agentId}/`, {
-                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
-            });
-        }
-    } catch (err) {
-        // ignore
-    }
+function scheduleNextFlowHypervisorPoll() {
+    if (!flowHypervisorPollingActive) return;
+    setTimeout(() => pollFlowHypervisorAlertSerial(), 5000);
 }
 
-async function pollFlowHypervisorAlert(agentId) {
+async function pollFlowHypervisorAlertSerial() {
+    // Guard: skip if polling was stopped or previous poll still running
+    if (!flowHypervisorPollingActive) return;
+    if (flowHypervisorPollBusy) return;
+    if (globalRunningState !== GLOBAL_STATE.RUNNING) {
+        // Flow no longer running, stop polling
+        flowHypervisorPollingActive = false;
+        return;
+    }
+
+    flowHypervisorPollBusy = true;
     try {
-        const response = await fetch(`/agent/check_flowhypervisor_alert/${agentId}/`, {
+        const response = await fetch(`/agent/check_flowhypervisor_alert/${flowHypervisorAgentId}/`, {
             method: 'GET', headers: getHeaders(), credentials: 'same-origin'
         });
         const result = await response.json();
@@ -941,7 +947,11 @@ async function pollFlowHypervisorAlert(agentId) {
             showHypervisorAlertDialog(result.message);
         }
     } catch (err) {
-        // ignore
+        // ignore network errors
+    } finally {
+        flowHypervisorPollBusy = false;
+        // Schedule next poll AFTER this one completes (serial, never concurrent)
+        scheduleNextFlowHypervisorPoll();
     }
 }
 

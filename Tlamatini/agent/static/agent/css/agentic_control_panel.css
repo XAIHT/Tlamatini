@@ -599,7 +599,7 @@ body.resizing-vertical {
 /* Optional: Ender agent icon in assets list */
 .agent-tool-item[data-content="Ender"] .agent-tool-icon,
 .agent-tool-item:has(span:contains("Ender")) .agent-tool-icon {
-    background-color: #8B5CF6;
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
 }
 
 /* Starter Agent Styles - Initiator node (output only, green color) */
@@ -617,12 +617,12 @@ body.resizing-vertical {
 /* Optional: Starter agent icon in assets list */
 .agent-tool-item[data-content="Starter"] .agent-tool-icon,
 .agent-tool-item:has(span:contains("Starter")) .agent-tool-icon {
-    background-color: #10B981;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
 }
 
 .agent-tool-item[data-content="Croner"] .agent-tool-icon,
 .agent-tool-item:has(span:contains("Croner")) .agent-tool-icon {
-    background-color: #F87171;
+    background: linear-gradient(135deg, #F87171 0%, #EF4444 100%);
 }
 
 /* OR Agent Styles - Processing node (orange color) */
@@ -705,7 +705,7 @@ body.resizing-vertical {
 
 /* Notifier agent icon in sidebar */
 .agent-tool-item[data-content="Notifier"] .agent-tool-icon {
-    background-color: #F472B6;
+    background: linear-gradient(135deg, #F472B6 0%, #DB2777 100%);
 }
 
 .canvas-item.deleter-agent:hover {
@@ -739,24 +739,25 @@ body.resizing-vertical {
 
 /* Stopper agent icon in sidebar */
 .agent-tool-item[data-content="Stopper"] .agent-tool-icon {
-    background-color: #6B7280;
+    background: linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%);
 }
 
-/* Recmailer Agent Styles - Email Monitor (Cyan color) */
+/* Recmailer Agent Styles - Email Monitor (Sky Blue color) */
 .canvas-item.recmailer-agent {
-    background-color: #06b6d4;
-    /* Cyan */
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    background-color: #38BDF8;
+    /* Sky Blue */
+    background: linear-gradient(135deg, #38BDF8 0%, #0284C7 100%);
 }
 
 .canvas-item.recmailer-agent:hover {
-    background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
-    box-shadow: 0 6px 15px rgba(6, 182, 212, 0.5);
+    background: linear-gradient(135deg, #7DD3FC 0%, #38BDF8 100%);
+    box-shadow: 0 6px 15px rgba(56, 189, 248, 0.5);
 }
 
 /* Recmailer agent icon in sidebar */
-.agent-tool-item[data-content="Recmailer"] .agent-tool-icon {
-    background-color: #06b6d4;
+.agent-tool-item[data-content="Recmailer"] .agent-tool-icon,
+.agent-tool-item[data-content="RecMailer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #38BDF8 0%, #0284C7 100%);
 }
 
 /* Cleaner Agent Styles */
@@ -809,7 +810,7 @@ body.resizing-vertical {
 
 /* Whatsapper agent icon in sidebar */
 .agent-tool-item[data-content="Whatsapper"] .agent-tool-icon {
-    background-color: #006400;
+    background: linear-gradient(135deg, #006400 0%, #008000 100%);
 }
 
 /* Telegramrx Agent Styles - Telegram Receiver (Dark-Blue to Black gradient) */
@@ -826,7 +827,7 @@ body.resizing-vertical {
 
 /* Telegramrx agent icon in sidebar */
 .agent-tool-item[data-content="Telegramrx"] .agent-tool-icon {
-    background-color: #1a237e;
+    background: linear-gradient(135deg, #1a237e 0%, #000000 100%);
 }
 
 /* Telegramer Agent Styles - Telegram Sender (Dark-Blue to Green gradient) */
@@ -863,7 +864,7 @@ body.resizing-vertical {
 
 /* Pythonxer agent icon in sidebar */
 .agent-tool-item[data-content="Pythonxer"] .agent-tool-icon {
-    background-color: #306998;
+    background: linear-gradient(135deg, #306998 0%, #FFD43B 100%);
 }
 
 /* Asker Agent Styles - Decision node (Red-to-Blue gradient) */
@@ -989,7 +990,8 @@ body.resizing-vertical {
 .canvas-item.flowhypervisor-agent {
     background-color: #E91E63;
     color: white;
-    background: linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%);
+    background: linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%) !important;
+    font-size: 12.8px !important;
 }
 
 .canvas-item.flowhypervisor-agent:hover {
@@ -1413,7 +1415,7 @@ body.resizing-vertical {
 
 /* Shoter agent icon in sidebar */
 .agent-tool-item[data-content="Shoter"] .agent-tool-icon {
-    background-color: #06b6d4;
+    background: linear-gradient(135deg, #06b6d4 0%, #d946ef 100%);
 }
 
 /* Ssher Agent Styles - SSH remote execution (Dark Blue to Red gradient) */
@@ -1450,9 +1452,9 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(121, 85, 72, 0.5);
 }
 
-/* Prompter agent icon in sidebar */
+/* Prompter agent icon in sidebar - matches canvas (brown to dark blue) */
 .agent-tool-item[data-content="Prompter"] .agent-tool-icon {
-    background: linear-gradient(135deg, #795548 0%, #1a237e 100%);
+    background: linear-gradient(135deg, #795548 0%, #1a237e 100%) !important;
 }
 
 /* FlowCreator Agent Styles - LLM Flow Designer (Blue to Red to Green gradient) */
@@ -1511,4 +1513,144 @@ body.resizing-vertical {
 /* Gitter agent icon in sidebar */
 .agent-tool-item[data-content="Gitter"] .agent-tool-icon {
     background: linear-gradient(135deg, #FFFFFF 0%, #000000 100%);
+}
+
+/* Mongoxer Agent Styles - MongoDB Operations (Olive Green) */
+.canvas-item.mongoxer-agent {
+    background-color: #558B2F;
+    color: white;
+    background: linear-gradient(135deg, #558B2F 0%, #33691E 100%);
+}
+
+.canvas-item.mongoxer-agent:hover {
+    background: linear-gradient(135deg, #689F38 0%, #558B2F 100%);
+    box-shadow: 0 6px 15px rgba(85, 139, 47, 0.5);
+}
+
+/* Mongoxer agent icon in sidebar */
+.agent-tool-item[data-content="Mongoxer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #558B2F 0%, #33691E 100%);
+}
+
+/* Monitor Log Agent Styles - Log Monitoring (Deep Orange) */
+.canvas-item.monitor-log-agent {
+    background-color: #FF6F00;
+    color: white;
+    background: linear-gradient(135deg, #FF6F00 0%, #E65100 100%);
+}
+
+.canvas-item.monitor-log-agent:hover {
+    background: linear-gradient(135deg, #FF8F00 0%, #FF6F00 100%);
+    box-shadow: 0 6px 15px rgba(255, 111, 0, 0.5);
+}
+
+/* Monitor Log agent icon in sidebar */
+.agent-tool-item[data-content="Monitor Log"] .agent-tool-icon {
+    background: linear-gradient(135deg, #FF6F00 0%, #E65100 100%);
+}
+
+/* Monitor Netstat Agent Styles - Network Monitoring (Teal) */
+.canvas-item.monitor-netstat-agent {
+    background-color: #00897B;
+    color: white;
+    background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
+}
+
+.canvas-item.monitor-netstat-agent:hover {
+    background: linear-gradient(135deg, #00BFA5 0%, #00897B 100%);
+    box-shadow: 0 6px 15px rgba(0, 137, 123, 0.5);
+}
+
+/* Monitor Netstat agent icon in sidebar */
+.agent-tool-item[data-content="Monitor Netstat"] .agent-tool-icon {
+    background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
+}
+
+/* Raiser Agent Styles - Error/Exception Raiser (Dark Raspberry) */
+.canvas-item.raiser-agent {
+    background-color: #AD1457;
+    color: white;
+    background: linear-gradient(135deg, #AD1457 0%, #880E4F 100%);
+}
+
+.canvas-item.raiser-agent:hover {
+    background: linear-gradient(135deg, #C2185B 0%, #AD1457 100%);
+    box-shadow: 0 6px 15px rgba(173, 20, 87, 0.5);
+}
+
+/* Raiser agent icon in sidebar */
+.agent-tool-item[data-content="Raiser"] .agent-tool-icon {
+    background: linear-gradient(135deg, #AD1457 0%, #880E4F 100%);
+}
+
+/* Emailer Agent Styles - Email Sender (Indigo) */
+.canvas-item.emailer-agent {
+    background-color: #5C6BC0;
+    color: white;
+    background: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%);
+}
+
+.canvas-item.emailer-agent:hover {
+    background: linear-gradient(135deg, #7986CB 0%, #5C6BC0 100%);
+    box-shadow: 0 6px 15px rgba(92, 107, 192, 0.5);
+}
+
+/* Emailer agent icon in sidebar */
+.agent-tool-item[data-content="Emailer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%);
+}
+
+/* Dockerer agent icon in sidebar */
+.agent-tool-item[data-content="Dockerer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%);
+}
+
+/* Pser agent icon in sidebar */
+.agent-tool-item[data-content="Pser"] .agent-tool-icon {
+    background: linear-gradient(135deg, #E91E63 0%, #4CAF50 100%);
+}
+
+/* Ssher agent icon in sidebar */
+.agent-tool-item[data-content="Ssher"] .agent-tool-icon {
+    background: linear-gradient(135deg, #1a237e 0%, #e53935 100%);
+}
+
+/* Scper agent icon in sidebar */
+.agent-tool-item[data-content="Scper"] .agent-tool-icon {
+    background: linear-gradient(135deg, #424242 0%, #e53935 100%);
+}
+
+/* Cleaner agent icon in sidebar */
+.agent-tool-item[data-content="Cleaner"] .agent-tool-icon {
+    background-color: #00008B;
+}
+
+/* Executer agent icon in sidebar */
+.agent-tool-item[data-content="Executer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #FDE047 0%, #EAB308 100%);
+}
+
+/* Mover agent icon in sidebar */
+.agent-tool-item[data-content="Mover"] .agent-tool-icon {
+    background: linear-gradient(135deg, #8D6E63 0%, #5D4037 100%);
+}
+
+/* Sleeper agent icon in sidebar */
+.agent-tool-item[data-content="Sleeper"] .agent-tool-icon {
+    background: linear-gradient(135deg, #78909c 0%, #455a64 100%);
+}
+
+/* Deleter agent icon in sidebar */
+.agent-tool-item[data-content="Deleter"] .agent-tool-icon {
+    background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+}
+
+/* AND agent icon in sidebar */
+.agent-tool-item[data-content="AND"] .agent-tool-icon {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+/* OR agent icon in sidebar */
+.agent-tool-item[data-content="OR"] .agent-tool-icon {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
 }

@@ -670,11 +670,13 @@ def main():
 
             except RuntimeError as e:
                 logging.error(f"   ❌ LLM query failed: {e}")
+                write_alert_file(f"LLM query failed: {e}")
                 logging.info(
                     "   ⏩ Continuing monitoring despite LLM failure..."
                 )
             except Exception as e:
                 logging.error(f"   ❌ Unexpected error in LLM query: {e}")
+                write_alert_file(f"Unexpected error in LLM query: {e}")
 
             # Wait for next poll
             logging.info(f"   ⏳ Sleeping {poll_time}s...")

@@ -29,6 +29,8 @@ function registerItem(text) {
  * @param {string} agentName - Lowercase agent name
  */
 function applyAgentTypeClass(el, agentName) {
+    // Normalize spaces to hyphens so "monitor log" matches "monitor-log"
+    const normalizedName = agentName.replace(/\s+/g, '-');
     const classMap = {
         'ender': 'ender-agent',
         'starter': 'starter-agent',
@@ -52,6 +54,7 @@ function applyAgentTypeClass(el, agentName) {
         'forker': 'forker-agent',
         'raiser': 'raiser-agent',
         'emailer': 'emailer-agent',
+        'mongoxer': 'mongoxer-agent',
         'monitor-log': 'monitor-log-agent',
         'monitor-netstat': 'monitor-netstat-agent',
         'ssher': 'ssher-agent',
@@ -69,7 +72,7 @@ function applyAgentTypeClass(el, agentName) {
         'summarizer': 'summarizer-agent',
         'flowhypervisor': 'flowhypervisor-agent',
     };
-    const cls = classMap[agentName];
+    const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
 }
 
@@ -179,10 +182,10 @@ async function createCanvasItem(clientX, clientY, textContent) {
     const newItem = document.createElement('div');
     newItem.classList.add('canvas-item');
 
-    // Special handling for FlowCreator: No cardinal numbers
-    if (textContent.toLowerCase() === 'flowcreator') {
+    // Special handling for FlowCreator and FlowHypervisor: No cardinal numbers
+    if (textContent.toLowerCase() === 'flowcreator' || textContent.toLowerCase() === 'flowhypervisor') {
         newItem.textContent = textContent;
-        newItem.id = 'flowcreator';
+        newItem.id = textContent.toLowerCase();
         newItem.dataset.agentName = textContent;
     } else {
         const registration = registerItem(textContent);
@@ -762,20 +765,31 @@ async function populateAgentsList() {
         const iconDiv = document.createElement('div');
         iconDiv.classList.add('agent-tool-icon');
 
-        // Set icon color based on agent type
+        // Set icon color based on agent type — must match canvas CSS exactly
         const lowerDesc = description.toLowerCase();
-        if (lowerDesc === 'ender') iconDiv.style.backgroundColor = '#8B5CF6';
-        else if (lowerDesc === 'starter') iconDiv.style.backgroundColor = '#10B981';
-        else if (lowerDesc === 'or') iconDiv.style.backgroundColor = '#F59E0B';
+        // Solid-color agents
+        if (lowerDesc === 'ender') iconDiv.style.background = 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)';
+        else if (lowerDesc === 'starter') iconDiv.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
+        else if (lowerDesc === 'or') iconDiv.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
         else if (lowerDesc === 'cleaner') iconDiv.style.backgroundColor = '#00008B';
-        else if (lowerDesc === 'and') iconDiv.style.backgroundColor = '#06b6d4';
-        else if (lowerDesc === 'croner') iconDiv.style.backgroundColor = '#F87171';
-        else if (lowerDesc === 'mover') iconDiv.style.backgroundColor = '#795548';
-        else if (lowerDesc === 'sleeper') iconDiv.style.backgroundColor = '#607d8b';
-        else if (lowerDesc === 'deleter') iconDiv.style.backgroundColor = '#DC2626';
-        else if (lowerDesc === 'recmailer') iconDiv.style.backgroundColor = '#06b6d4';
-        else if (lowerDesc === 'executer') iconDiv.style.backgroundColor = '#FACC15';
-        else if (lowerDesc === 'pythonxer') iconDiv.style.backgroundColor = '#306998';
+        else if (lowerDesc === 'and') iconDiv.style.background = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)';
+        else if (lowerDesc === 'croner') iconDiv.style.background = 'linear-gradient(135deg, #F87171 0%, #EF4444 100%)';
+        else if (lowerDesc === 'mover') iconDiv.style.background = 'linear-gradient(135deg, #8D6E63 0%, #5D4037 100%)';
+        else if (lowerDesc === 'sleeper') iconDiv.style.background = 'linear-gradient(135deg, #78909c 0%, #455a64 100%)';
+        else if (lowerDesc === 'deleter') iconDiv.style.background = 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)';
+        else if (lowerDesc === 'recmailer') iconDiv.style.background = 'linear-gradient(135deg, #38BDF8 0%, #0284C7 100%)';
+        else if (lowerDesc === 'executer') iconDiv.style.background = 'linear-gradient(135deg, #FDE047 0%, #EAB308 100%)';
+        else if (lowerDesc === 'notifier') iconDiv.style.background = 'linear-gradient(135deg, #F472B6 0%, #DB2777 100%)';
+        else if (lowerDesc === 'stopper') iconDiv.style.background = 'linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%)';
+        else if (lowerDesc === 'whatsapper') iconDiv.style.background = 'linear-gradient(135deg, #006400 0%, #008000 100%)';
+        else if (lowerDesc === 'mongoxer') iconDiv.style.background = 'linear-gradient(135deg, #558B2F 0%, #33691E 100%)';
+        else if (lowerDesc === 'monitor log') iconDiv.style.background = 'linear-gradient(135deg, #FF6F00 0%, #E65100 100%)';
+        else if (lowerDesc === 'monitor netstat') iconDiv.style.background = 'linear-gradient(135deg, #00897B 0%, #00695C 100%)';
+        else if (lowerDesc === 'raiser') iconDiv.style.background = 'linear-gradient(135deg, #AD1457 0%, #880E4F 100%)';
+        else if (lowerDesc === 'emailer') iconDiv.style.background = 'linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%)';
+        // Two-color gradient agents
+        else if (lowerDesc === 'pythonxer') iconDiv.style.background = 'linear-gradient(135deg, #306998 0%, #FFD43B 100%)';
+        else if (lowerDesc === 'shoter') iconDiv.style.background = 'linear-gradient(135deg, #06b6d4 0%, #d946ef 100%)';
         else if (lowerDesc === 'asker') iconDiv.style.background = 'linear-gradient(135deg, #EF4444 0%, #3B82F6 100%)';
         else if (lowerDesc === 'forker') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #FFFFFF 100%)';
         else if (lowerDesc === 'ssher') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #e53935 100%)';
@@ -783,18 +797,19 @@ async function populateAgentsList() {
         else if (lowerDesc === 'sqler') iconDiv.style.background = 'linear-gradient(135deg, #f97316 0%, #10b981 100%)';
         else if (lowerDesc === 'telegramrx') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #000000 100%)';
         else if (lowerDesc === 'telegramer') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #10B981 100%)';
-        else if (lowerDesc === 'prompter') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #00BCD4 100%)';
-        else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #FF69B4 0%, #9370DB 100%)';
-        else if (lowerDesc === 'gitter') iconDiv.style.background = 'linear-gradient(135deg, #f1502f 0%, #10b981 100%)';
-        else if (lowerDesc === 'dockerer') iconDiv.style.background = 'linear-gradient(135deg, #0db7ed 0%, #10b981 100%)';
-        else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #001f3f 0%, #10b981 100%)';
+        else if (lowerDesc === 'prompter') iconDiv.style.background = 'linear-gradient(135deg, #795548 0%, #1a237e 100%)';
+        else if (lowerDesc === 'gitter') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #000000 100%)';
+        else if (lowerDesc === 'dockerer') iconDiv.style.background = 'linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%)';
+        else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #E91E63 0%, #4CAF50 100%)';
         else if (lowerDesc === 'kuberneter') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #00008B 100%)';
         else if (lowerDesc === 'apirer') iconDiv.style.background = 'linear-gradient(135deg, #3B0764 0%, #86EFAC 100%)';
         else if (lowerDesc === 'jenkinser') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%)';
         else if (lowerDesc === 'crawler') iconDiv.style.background = 'linear-gradient(135deg, #00BCD4 0%, #E91E63 100%)';
         else if (lowerDesc === 'summarizer') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 100%)';
+        // Three-color gradient agents (DO NOT MODIFY these gradients)
         else if (lowerDesc === 'flowhypervisor') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%)';
-        else iconDiv.style.backgroundColor = '#ccc'; // Default colorue (#7289da) is set in CSS for other agents
+        else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #C62828 50%, #2E7D32 100%)';
+        else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
         const span = document.createElement('span');
         span.textContent = description;

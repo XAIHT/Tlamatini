@@ -352,6 +352,32 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 
         renderFields(canvasItemList, dataObj);
 
+    } else if (agentName.startsWith('flowhypervisor')) {
+        // FlowHypervisor custom dialog
+        canvasItemList.innerHTML = '';
+
+        const hvLegend = document.createElement('p');
+        hvLegend.innerHTML = '<strong>&#128737; FlowHypervisor</strong> — LLM-powered flow monitoring. Configure the LLM and monitoring interval, then click <strong>Start Monitoring</strong> to begin.';
+        hvLegend.style.color = '#AB47BC';
+        hvLegend.style.marginBottom = '12px';
+        hvLegend.style.padding = '8px';
+        hvLegend.style.border = '1px solid #AB47BC';
+        hvLegend.style.borderRadius = '5px';
+        hvLegend.style.backgroundColor = 'rgba(171, 71, 188, 0.1)';
+        canvasItemList.appendChild(hvLegend);
+
+        const hvWarning = document.createElement('p');
+        hvWarning.innerHTML = '<strong>&#9888; Note:</strong> This agent monitors all other agents in the flow and alerts when anomalies are detected.';
+        hvWarning.style.color = '#f0ad4e';
+        hvWarning.style.marginBottom = '12px';
+        hvWarning.style.padding = '8px';
+        hvWarning.style.border = '1px solid #f0ad4e';
+        hvWarning.style.borderRadius = '5px';
+        hvWarning.style.backgroundColor = 'rgba(240, 173, 78, 0.1)';
+        canvasItemList.appendChild(hvWarning);
+
+        renderFields(canvasItemList, dataObj);
+
     } else {
         // Standard Behavior
         renderFields(canvasItemList, dataObj);
@@ -364,8 +390,9 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         }
     }
 
-    // Track if this is a FlowCreator dialog for custom save behavior
+    // Track if this is a FlowCreator or FlowHypervisor dialog for custom save behavior
     const isFlowCreatorDialog = agentName.startsWith('flowcreator');
+    const isFlowHypervisorDialog = agentName.startsWith('flowhypervisor');
 
     $("#canvas-item-dialog-message").dialog({
         title: "Properties: " + (itemInfo.id || "Unknown"),
@@ -387,7 +414,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 "padding": "10px 20px"
             });
 
-            buttonPane.find('button:contains("Save"), button:contains("Go!")')
+            buttonPane.find('button:contains("Save"), button:contains("Go!"), button:contains("Start Monitoring")')
                 .css({
                     'background-color': '#55BBAA',
                     'color': 'white',
@@ -415,13 +442,13 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 if (e.key === 'Enter' && !$(e.target).is('textarea')) {
                     e.preventDefault();
                     // Find and click the Save/Go! button
-                    dialogEl.parent().find('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")').click();
+                    dialogEl.parent().find('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!"), .ui-dialog-buttonpane button:contains("Start Monitoring")').click();
                 }
             });
         },
         buttons: [
             {
-                text: isFlowCreatorDialog ? "Go!" : "Save",
+                text: isFlowCreatorDialog ? "Go!" : isFlowHypervisorDialog ? "Start Monitoring" : "Save",
                 click: async function () {
                     console.log("Saving item properties...");
                     const inputs = canvasItemList.querySelectorAll('input, textarea');
@@ -501,6 +528,9 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                             if (isFlowCreatorDialog) {
                                 // FlowCreator: clean canvas, clean pool, start agent, poll for result
                                 await _executeFlowCreator(agentId);
+                            } else if (isFlowHypervisorDialog) {
+                                // FlowHypervisor: start monitoring agent
+                                await _executeFlowHypervisor(agentId);
                             } else {
                                 showDeploymentResultDialog(true, agentId, result.path);
                             }
@@ -535,7 +565,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 }
 
 function renderCanvasItemDialog() {
-    $('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")')
+    $('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!"), .ui-dialog-buttonpane button:contains("Start Monitoring")')
         .css({
             'background-color': '#55BBAA',
             'color': 'white',
@@ -744,6 +774,37 @@ async function _executeFlowCreator(agentId) {
                 }
             }
         }
+    }
+}
+
+// ========================================
+// FLOWHYPERVISOR EXECUTION
+// ========================================
+
+/**
+ * Execute the FlowHypervisor agent: start monitoring, show success dialog.
+ * Unlike FlowCreator, this does NOT clean the canvas or pool.
+ * @param {string} agentId - The FlowHypervisor agent ID (e.g., 'flowhypervisor')
+ */
+async function _executeFlowHypervisor(agentId) {
+    try {
+        const execResponse = await fetch(`/agent/execute_flowhypervisor/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin'
+        });
+
+        if (!execResponse.ok) {
+            const errData = await execResponse.json();
+            throw new Error(errData.message || 'Failed to start FlowHypervisor agent');
+        }
+
+        const result = await execResponse.json();
+        showDeploymentResultDialog(true, agentId,
+            `FlowHypervisor started successfully (PID: ${result.pid}). Monitoring is now active.`);
+    } catch (error) {
+        console.error('FlowHypervisor execution error:', error);
+        showDeploymentResultDialog(false, agentId, 'FlowHypervisor error: ' + error.message);
     }
 }
 
