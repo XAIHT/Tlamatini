@@ -1,7 +1,6 @@
 import pyautogui
 import time
 import random
-import math
 
 # Optional: Add a fail-safe (moving your mouse to any of the 4 corners of the screen will raise an exception and stop the script)
 pyautogui.FAILSAFE = True

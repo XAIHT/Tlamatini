@@ -1,6 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
+/* global updateMouserConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
