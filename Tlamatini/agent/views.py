@@ -6164,6 +6164,22 @@ def execute_flowhypervisor_view(request, agent_name):
             return HttpResponse(json.dumps({"success": False, "message": f"Agent script not found: {base_folder_name}.py"}),
                                 content_type='application/json', status=404)
 
+        # Guard: prevent concurrent instances — only one FlowHypervisor at a time
+        pid_file = os.path.join(agent_dir, "agent.pid")
+        if os.path.exists(pid_file):
+            try:
+                with open(pid_file, "r") as pf:
+                    existing_pid = int(pf.read().strip())
+                if psutil.pid_exists(existing_pid):
+                    print(f"[FLOWHYPERVISOR] Already running with PID {existing_pid}, skipping launch")
+                    return HttpResponse(json.dumps({
+                        "success": True,
+                        "message": f"Already running as PID {existing_pid}",
+                        "pid": existing_pid
+                    }), content_type='application/json')
+            except (ValueError, OSError):
+                pass  # stale PID file, proceed to launch
+
         python_cmd = get_python_command()
         agent_env = get_agent_env()
 
