@@ -235,11 +235,10 @@ def make_http_request(config: dict) -> dict:
         logging.info(f"✅ Response: {status_code} ({elapsed}ms)")
         logging.info(f"📄 Body length: {len(response_body)} chars")
 
-        # Log first 500 chars of response body
-        preview = response_body[:500]
-        if len(response_body) > 500:
-            preview += "... (truncated)"
-        logging.info(f"📄 Response preview: {preview}")
+        # Print the complete response in structured format
+        print(f"<{url}> RESPONSE {{")
+        print(response_body)
+        print("}")
 
         return {
             'success': True,
@@ -258,9 +257,11 @@ def make_http_request(config: dict) -> dict:
             pass
 
         logging.warning(f"⚠️ HTTP Error: {e.code} {e.reason} ({elapsed}ms)")
-        if error_body:
-            preview = error_body[:500]
-            logging.warning(f"📄 Error body: {preview}")
+
+        # Print the complete error response in structured format
+        print(f"<{url}> RESPONSE {{")
+        print(error_body if error_body else f"HTTP {e.code}: {e.reason}")
+        print("}")
 
         return {
             'success': False,
@@ -273,6 +274,12 @@ def make_http_request(config: dict) -> dict:
     except urllib.error.URLError as e:
         elapsed = round((time.time() - start_time) * 1000, 2)
         logging.error(f"❌ URL Error: {e.reason} ({elapsed}ms)")
+
+        # Print the error in structured format
+        print(f"<{url}> RESPONSE {{")
+        print(f"URL Error: {e.reason}")
+        print("}")
+
         return {
             'success': False,
             'status_code': 0,
@@ -284,6 +291,12 @@ def make_http_request(config: dict) -> dict:
     except Exception as e:
         elapsed = round((time.time() - start_time) * 1000, 2)
         logging.error(f"❌ Request failed: {e} ({elapsed}ms)")
+
+        # Print the error in structured format
+        print(f"<{url}> RESPONSE {{")
+        print(str(e))
+        print("}")
+
         return {
             'success': False,
             'status_code': 0,
