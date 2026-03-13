@@ -331,6 +331,19 @@ def main():
                 else:
                     logging.error(f"   {line}")
 
+        # Print the complete response in structured format
+        full_output = ""
+        if result.stdout:
+            full_output += result.stdout
+        if result.stderr:
+            if full_output:
+                full_output += "\n"
+            full_output += result.stderr
+
+        print(f"<git {command}> RESPONSE {{")
+        print(full_output if full_output else "(no output)")
+        print("}")
+
         if result.returncode != 0:
             logging.error(f"❌ Git command failed with exit code {result.returncode}")
             sys.exit(1)
