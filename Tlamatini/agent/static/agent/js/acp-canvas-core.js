@@ -67,6 +67,7 @@ function applyAgentTypeClass(el, agentName) {
         'jenkinser': 'jenkinser-agent',
         'crawler': 'crawler-agent',
         'summarizer': 'summarizer-agent',
+        'flowhypervisor': 'flowhypervisor-agent',
     };
     const cls = classMap[agentName];
     if (cls) el.classList.add(cls);
@@ -77,7 +78,7 @@ function applyAgentTypeClass(el, agentName) {
  * Starter agents get no input. OR/AND agents get two inputs. Others get one.
  */
 function appendInputTriangles(el, agentName) {
-    if (agentName === 'starter' || agentName === 'flowcreator') return;
+    if (agentName === 'starter' || agentName === 'flowcreator' || agentName === 'flowhypervisor') return;
     if (agentName === 'or' || agentName === 'and') {
         const inputTri1 = document.createElement('div');
         inputTri1.classList.add('input-triangle', 'input-1');
@@ -103,11 +104,11 @@ const AGENTS_NEVER_START_OTHERS = [
     'cleaner', 'emailer', 'monitor log', 'monitor-log',
     'monitor netstat', 'monitor-netstat',
     'recmailer', 'stopper', 'whatsapper', 'telegramrx',
-    'flowcreator'
+    'flowcreator', 'flowhypervisor'
 ];
 
 function appendOutputTriangles(el, agentName) {
-    if (agentName === 'flowcreator') return; // FlowCreator has no outputs
+    if (agentName === 'flowcreator' || agentName === 'flowhypervisor') return; // FlowCreator/FlowHypervisor have no outputs
     const neverStarts = AGENTS_NEVER_START_OTHERS.includes(agentName);
 
     if (agentName === 'asker' || agentName === 'forker') {
@@ -161,6 +162,12 @@ async function createCanvasItem(clientX, clientY, textContent) {
         const existingFlowCreators = document.querySelectorAll('.flowcreator-agent');
         if (existingFlowCreators.length > 0) {
             alert('Only one FlowCreator agent is allowed per flow.');
+            return;
+        }
+    } else if (textContent.toLowerCase() === 'flowhypervisor') {
+        const existingFlowHypervisors = document.querySelectorAll('.flowhypervisor-agent');
+        if (existingFlowHypervisors.length > 0) {
+            alert('Only one FlowHypervisor agent is allowed per flow.');
             return;
         }
     }
@@ -247,15 +254,22 @@ function cloneAndRegister(originalItem) {
     const lowerName = agentName.toLowerCase();
 
     if (lowerName === 'flowcreator') {
-        alert('Only one FlowCreator agent is allowed per flow.');
-        return null;
+        alert('FlowCreator agents cannot be cloned. Only one allowed per flow.');
+        return null; // Return null intentionally to fail the copy
     }
-
+    if (lowerName === 'flowhypervisor') {
+        alert('FlowHypervisor agents cannot be cloned. Only one allowed per flow.');
+        return null; // Return null intentionally to fail the copy
+    }
     const newItem = document.createElement('div');
     newItem.classList.add('canvas-item');
-    if (lowerName === 'flowcreator') {
+    if (lowerName === 'flowcreator') { // This block is for creating the item, not preventing clone.
         newItem.textContent = agentName;
         newItem.id = 'flowcreator';
+        newItem.dataset.agentName = agentName;
+    } else if (lowerName === 'flowhypervisor') {
+        newItem.textContent = agentName;
+        newItem.id = 'flowhypervisor';
         newItem.dataset.agentName = agentName;
     } else {
         const registration = registerItem(agentName);
@@ -769,17 +783,18 @@ async function populateAgentsList() {
         else if (lowerDesc === 'sqler') iconDiv.style.background = 'linear-gradient(135deg, #f97316 0%, #10b981 100%)';
         else if (lowerDesc === 'telegramrx') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #000000 100%)';
         else if (lowerDesc === 'telegramer') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #10B981 100%)';
-        else if (lowerDesc === 'prompter') iconDiv.style.background = 'linear-gradient(135deg, #795548 0%, #1a237e 100%)';
-        else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #C62828 50%, #2E7D32 100%)';
-        else if (lowerDesc === 'gitter') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #000000 100%)';
-        else if (lowerDesc === 'dockerer') iconDiv.style.background = 'linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%)';
-        else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #E91E63 0%, #4CAF50 100%)';
+        else if (lowerDesc === 'prompter') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #00BCD4 100%)';
+        else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #FF69B4 0%, #9370DB 100%)';
+        else if (lowerDesc === 'gitter') iconDiv.style.background = 'linear-gradient(135deg, #f1502f 0%, #10b981 100%)';
+        else if (lowerDesc === 'dockerer') iconDiv.style.background = 'linear-gradient(135deg, #0db7ed 0%, #10b981 100%)';
+        else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #001f3f 0%, #10b981 100%)';
         else if (lowerDesc === 'kuberneter') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #00008B 100%)';
         else if (lowerDesc === 'apirer') iconDiv.style.background = 'linear-gradient(135deg, #3B0764 0%, #86EFAC 100%)';
         else if (lowerDesc === 'jenkinser') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%)';
         else if (lowerDesc === 'crawler') iconDiv.style.background = 'linear-gradient(135deg, #00BCD4 0%, #E91E63 100%)';
         else if (lowerDesc === 'summarizer') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 100%)';
-        // Default blue (#7289da) is set in CSS for other agents
+        else if (lowerDesc === 'flowhypervisor') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%)';
+        else iconDiv.style.backgroundColor = '#ccc'; // Default colorue (#7289da) is set in CSS for other agents
 
         const span = document.createElement('span');
         span.textContent = description;

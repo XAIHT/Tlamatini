@@ -45,9 +45,9 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer.
 
-**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
+**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
 ### Key Concepts
 
@@ -613,6 +613,16 @@ system_prompt: |
   - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
   - `poll_interval`: 5 (seconds between log file polling cycles)
   - `target_agents`: [] (downstream agents to start when an event is triggered)
+
+### 38. FlowHypervisor
+- **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system.
+- **Pool name pattern**: `flowhypervisor` (Note: Only one instance allowed per flow, no cardinal number).
+- **Starts other agents**: NO (System managed).
+- **Config parameters**:
+  - `llm.host`: "http://localhost:11434"
+  - `llm.model`: "llama3.1:8b"
+  - `llm.temperature`: 0.0
+  - `monitoring_poll_time`: 10
 
 ---
 

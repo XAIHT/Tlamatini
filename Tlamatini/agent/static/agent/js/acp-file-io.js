@@ -173,12 +173,19 @@ async function loadDiagram(data) {
         for (const nodeData of data.nodes) {
             const lowerName = nodeData.text.toLowerCase();
 
-            // Enforce single FlowCreator rule during file load
+            // Enforce single FlowCreator/FlowHypervisor rule during file load
             if (lowerName === 'flowcreator') {
                 const existing = loadedNodes.find(n => (n.dataset.agentName || '').toLowerCase() === 'flowcreator');
                 if (existing) {
                     console.warn(`[Load] Skipping extra FlowCreator agent: ${nodeData.text}`);
                     alert('Only one FlowCreator agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
+                    continue;
+                }
+            } else if (lowerName === 'flowhypervisor') {
+                const existing = loadedNodes.find(n => (n.dataset.agentName || '').toLowerCase() === 'flowhypervisor');
+                if (existing) {
+                    console.warn(`[Load] Skipping extra FlowHypervisor agent: ${nodeData.text}`);
+                    alert('Only one FlowHypervisor agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
                     continue;
                 }
             }
@@ -188,11 +195,16 @@ async function loadDiagram(data) {
 
             let agentText = nodeData.text;
 
-            // Clean up old Flowcreator (1) saved data
+            // Clean up old saved data
             if (lowerName === 'flowcreator') {
                 agentText = 'Flowcreator';
                 newItem.textContent = agentText;
                 newItem.id = 'flowcreator';
+                newItem.dataset.agentName = agentText;
+            } else if (lowerName === 'flowhypervisor') {
+                agentText = 'FlowHypervisor';
+                newItem.textContent = agentText;
+                newItem.id = 'flowhypervisor';
                 newItem.dataset.agentName = agentText;
             } else {
                 const registration = registerItem(agentText);
