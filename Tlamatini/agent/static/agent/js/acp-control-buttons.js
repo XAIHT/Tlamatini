@@ -125,6 +125,13 @@ async function executeStartSequence() {
         console.log('--- All execution requests sent:', results);
     });
 
+    // Step 5: Start FlowHypervisor if present on canvas
+    const flowHypervisor = document.querySelector('#submonitor-container .canvas-item.flowhypervisor-agent');
+    if (flowHypervisor) {
+        console.log('--- [Start Sequence] 5. Executing FlowHypervisor...');
+        startSystemManagedFlowHypervisor(flowHypervisor.id);
+    }
+
     // Note: Button re-enabling happens in showStarterResult() after polling completes
 }
 
@@ -520,6 +527,7 @@ function showEnderResult(success, failedAgentNames, dialog) {
         failedListEl.innerHTML = '';
 
         setGlobalRunningState(GLOBAL_STATE.STOPPED);
+        stopSystemManagedFlowHypervisor();
 
         // Clear .pos (reanimation position) files
         try {
@@ -596,6 +604,7 @@ function showEnderAlreadyDownDialog(_enderInfo) {
     messageEl.className = 'info';
 
     setGlobalRunningState(GLOBAL_STATE.STOPPED);
+    stopSystemManagedFlowHypervisor();
 
     // Clear .pos files
     try {
@@ -854,6 +863,7 @@ if (btnClear) {
             updateFilenameDisplay(null);
             titleBusyPrefix = "";
             setGlobalRunningState(GLOBAL_STATE.STOPPED);
+            stopSystemManagedFlowHypervisor();
             console.log('--- Canvas and pool cleared successfully');
 
         } catch (error) {
@@ -867,8 +877,165 @@ if (btnClear) {
     });
 }
 
+// ========================================
+// FLOWHYPERVISOR LIFECYCLE & POLLING
+// ========================================
+let flowHypervisorMonitorInterval = null;
 
+async function startSystemManagedFlowHypervisor(agentId) {
+    try {
+        const response = await fetch(`/agent/execute_flowhypervisor/${agentId}/`, {
+            method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (result.success) {
+            console.log(`--- FlowHypervisor started with PID ${result.pid}`);
+        } else {
+            console.warn('--- FlowHypervisor failed to start:', result.message);
+        }
+    } catch (error) {
+        console.error('--- Error starting FlowHypervisor:', error);
+    }
 
+    // Always start polling, it will reanimate if it failed
+    if (flowHypervisorMonitorInterval) clearInterval(flowHypervisorMonitorInterval);
+    flowHypervisorMonitorInterval = setInterval(() => {
+        if (globalRunningState !== GLOBAL_STATE.RUNNING) return;
+        pollFlowHypervisorAlert(agentId);
+        pollFlowHypervisorReanimation(agentId);
+    }, 5000); // Check every 5 seconds
+}
 
+function stopSystemManagedFlowHypervisor() {
+    if (flowHypervisorMonitorInterval) {
+        clearInterval(flowHypervisorMonitorInterval);
+        flowHypervisorMonitorInterval = null;
+    }
+}
 
+async function pollFlowHypervisorReanimation(agentId) {
+    // Check if running
+    try {
+        const response = await fetch(`/agent/check_agents_running/${agentId}/`, {
+            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (result.all_down) {
+            console.warn(`--- FlowHypervisor (${agentId}) crashed or stopped natively. Reanimating...`);
+            fetch(`/agent/execute_flowhypervisor/${agentId}/`, {
+                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+            });
+        }
+    } catch (err) {
+        // ignore
+    }
+}
 
+async function pollFlowHypervisorAlert(agentId) {
+    try {
+        const response = await fetch(`/agent/check_flowhypervisor_alert/${agentId}/`, {
+            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (result.has_alert) {
+            showHypervisorAlertDialog(result.message);
+        }
+    } catch (err) {
+        // ignore
+    }
+}
+
+function showHypervisorAlertDialog(message) {
+    // Determine if dialog already exists
+    let dialogDiv = document.getElementById('hypervisor-alert-dialog');
+    if (!dialogDiv) {
+        dialogDiv = document.createElement('div');
+        dialogDiv.id = 'hypervisor-alert-dialog';
+        dialogDiv.title = 'FlowHypervisor Alert';
+        dialogDiv.style.display = 'none';
+        
+        const iconDiv = document.createElement('div');
+        iconDiv.innerHTML = '🚨';
+        iconDiv.style.fontSize = '3em';
+        iconDiv.style.textAlign = 'center';
+        iconDiv.style.marginBottom = '15px';
+        
+        const titleDiv = document.createElement('div');
+        titleDiv.textContent = 'ATTENTION NEEDED';
+        titleDiv.style.fontSize = '1.3em';
+        titleDiv.style.fontWeight = 'bold';
+        titleDiv.style.textAlign = 'center';
+        titleDiv.style.color = '#e74c3c';
+        titleDiv.style.marginBottom = '20px';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'hypervisor-alert-message';
+        messageDiv.style.fontSize = '1.1em';
+        messageDiv.style.lineHeight = '1.5';
+        messageDiv.style.textAlign = 'left';
+        messageDiv.style.wordBreak = 'break-word';
+        messageDiv.style.padding = '10px';
+        messageDiv.style.backgroundColor = '#2c2c2c';
+        messageDiv.style.borderLeft = '4px solid #F59E0B';
+        messageDiv.style.borderRadius = '4px';
+
+        dialogDiv.appendChild(iconDiv);
+        dialogDiv.appendChild(titleDiv);
+        dialogDiv.appendChild(messageDiv);
+        document.body.appendChild(dialogDiv);
+    }
+
+    document.getElementById('hypervisor-alert-message').textContent = message;
+
+    if ($(dialogDiv).hasClass('ui-dialog-content') && $(dialogDiv).dialog('isOpen')) {
+        // Already open, just updated message
+        return;
+    }
+
+    $(dialogDiv).dialog({
+        autoOpen: true,
+        modal: false,
+        width: 500,
+        height: 'auto',
+        resizable: true,
+        dialogClass: 'hypervisor-dialog-class',
+        buttons: [
+            {
+                text: "Stop Flow",
+                click: function () { 
+                    $(this).dialog("close"); 
+                    if (btnStop && !btnStop.disabled) {
+                        btnStop.click();
+                    } else if (globalRunningState === GLOBAL_STATE.RUNNING) {
+                        // Directly force kill if stop button is disabled or missing
+                        fetch('/agent/kill_session_processes/', {
+                            method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+                        }).then(() => {
+                            setGlobalRunningState(GLOBAL_STATE.STOPPED);
+                            stopSystemManagedFlowHypervisor();
+                        });
+                    }
+                }
+            },
+            {
+                text: "Dismiss",
+                click: function () { $(this).dialog("close"); }
+            }
+        ],
+        open: function() {
+            const buttonPane = $(this).parent().find('.ui-dialog-buttonpane');
+            buttonPane.find('button:contains("Stop Flow")').css({
+                'background-color': '#e74c3c',
+                'color': 'white', 'border': 'none', 'border-radius': '6px',
+                'padding': '8px 20px', 'margin-right': '10px'
+            });
+            buttonPane.find('button:contains("Dismiss")').css({
+                'background-color': '#555',
+                'color': 'white', 'border': 'none', 'border-radius': '6px',
+                'padding': '8px 20px'
+            });
+            // Bring to top
+            $(this).parent().css('z-index', 9999);
+        }
+    });
+}

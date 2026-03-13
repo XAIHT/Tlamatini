@@ -985,6 +985,23 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #FFD600 0%, #E91E63 100%);
 }
 
+/* FlowHypervisor Agent Styles - LLM-powered flow monitoring (Yellow-to-Magenta-to-Cyan gradient) */
+.canvas-item.flowhypervisor-agent {
+    background-color: #E91E63;
+    color: white;
+    background: linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%);
+}
+
+.canvas-item.flowhypervisor-agent:hover {
+    box-shadow: 0 6px 15px rgba(233, 30, 99, 0.5);
+    background: linear-gradient(135deg, #FFEA00 0%, #F06292 50%, #26C6DA 100%);
+}
+
+/* FlowHypervisor agent icon in sidebar */
+.agent-tool-item[data-content="FlowHypervisor"] .agent-tool-icon {
+    background: linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

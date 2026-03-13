@@ -73,7 +73,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 38 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 39 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -401,6 +401,7 @@ Tlamatini/
 │   │   │   ├── jenkinser/        # CI/CD pipeline trigger agent
 │   │   │   ├── crawler/          # Web page crawler with LLM analysis
 │   │   │   ├── summarizer/       # Log monitoring with LLM event detection
+│   │   │   ├── flowhypervisor/   # System-managed LLM anomaly detector
 │   │   │   ├── pser/             # LLM-powered process finder agent
 │   │   │   ├── asker/             # Interactive A/B path chooser (user dialog)
 │   │   │   ├── forker/            # Automatic A/B path router (pattern-based)
@@ -1110,7 +1111,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **38 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **39 agent types** total.
 
 ### Agent Architecture
 
@@ -1126,7 +1127,7 @@ All workflow agents follow a common structural pattern:
 
 Agents are classified as:
 - **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
-- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection)
+- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection)
 
 ### Control Agents
 
@@ -1142,6 +1143,7 @@ Agents are classified as:
 |-------|---------|-------------------|
 | **monitor_log** | LLM-based log file monitoring | `logfile_path`: Log to watch<br>`keywords`: ERROR, FATAL, WARN, etc.<br>`outcome_word`: TARGET_FOUND<br>`poll_interval`: Check frequency |
 | **monitor_netstat** | Network connection monitoring | Similar to monitor_log |
+| **flowhypervisor** | System-managed LLM anomaly detector | `llm.model`: Ollama model<br>`monitoring_poll_time`: Check frequency |
 
 ### Notification Agents
 
@@ -1542,6 +1544,8 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/restart_agent/<agent_name>/` | POST | Restart a specific agent |
 | `/restart_agents/` | POST | Restart multiple agents |
 | `/asker_choice/<agent_name>/` | POST | Submit user choice for Asker agent |
+| `/execute_flowhypervisor/` | POST | Start the FlowHypervisor agent |
+| `/check_flowhypervisor_alert/` | GET | Check for FlowHypervisor alerts |
 
 #### Connection Updates (Canvas Auto-Configuration)
 
@@ -1575,6 +1579,7 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_jenkinser_connection/<agent_name>/` | POST | Update jenkinser connections |
 | `/update_crawler_connection/<agent_name>/` | POST | Update crawler connections |
 | `/update_summarizer_connection/<agent_name>/` | POST | Update summarizer connections |
+| `/update_flowhypervisor_connection/<agent_name>/` | POST | Update flowhypervisor connections |
 
 #### Session & Pool Management
 
@@ -1834,6 +1839,7 @@ Enable verbose logging in config.json:
 | **Jenkinser** | CI/CD pipeline trigger agent that triggers Jenkins builds and starts downstream agents regardless of trigger result |
 | **Crawler** | LLM-powered web crawler agent that fetches pages, strips HTML, and processes content with an LLM in three range modes (small/medium/large) |
 | **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
+| **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, alerting the user to anomalies |
 | **Asker** | Deterministic agent that pauses workflow for interactive user A/B choice |
 | **Workflow** | Connected sequence of agents performing automated tasks |
 | **Canvas** | UI area for displaying and editing generated code |
@@ -1899,6 +1905,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **UI Refinements** - MCP/agents dialog improved with golden-ratio styled columns for better readability
 - **ESLint Configuration** - Added `eslint.config.mjs` for frontend JavaScript quality assurance
 - **Added Summarizer Agent** - LLM-powered log monitoring agent that continuously polls source agent log files, sends content to an LLM with a configurable system prompt for event detection, and triggers downstream agents when positive events are found
+- **Added FlowHypervisor Agent** - System-managed LLM anomaly detector that watches all running agents' processes and log files, builds a connection matrix, and alerts the user to anomalies via an interactive UI dialog
 - **Added Crawler Agent** - LLM-powered web page crawler that fetches URLs, strips HTML markup, saves plain text to local files, and processes content with a configurable LLM prompt across three crawl modes (small-range, medium-range, large-range)
 - **Added Jenkinser Agent** - CI/CD pipeline trigger agent that triggers Jenkins builds with CSRF crumb and authentication support, and starts downstream agents regardless of trigger outcome
 - **Added Apirer Agent** - HTTP/REST API agent that makes GET/POST/PUT/DELETE requests, logs response details, and triggers downstream agents regardless of success or failure

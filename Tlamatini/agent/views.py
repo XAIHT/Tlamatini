@@ -6051,6 +6051,187 @@ def update_summarizer_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
+@csrf_exempt
+@require_POST
+def update_flowhypervisor_connection_view(request, agent_name):
+    """
+    Update a FlowHypervisor agent's config.yaml when connections are made/removed.
+    Note: FlowHypervisor has no inputs/outputs, but this view exists for framework consistency.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        connected_agent = data.get('connected_agent') or data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target') if 'type' in data else data.get('connection_type', 'target')
+
+        if not connected_agent:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Missing connected_agent"
+            }), content_type='application/json', status=400)
+
+        # Parse agent_name to pool folder name: 'flowhypervisor-1' -> 'flowhypervisor_1'
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        # Security check
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Invalid agent name"
+            }), content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"FlowHypervisor config not found: {config_path}"
+            }), content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        # Parse connected_agent to pool folder name
+        target_parts = connected_agent.split('-')
+        target_cardinal = None
+        if target_parts[-1].isdigit():
+            target_cardinal = target_parts.pop()
+
+        target_base = "_".join(target_parts)
+        connected_pool_name = f"{target_base}_{target_cardinal}" if target_cardinal else target_base
+
+        # Determine which list to update
+        list_key = 'source_agents' if connection_type == 'source' else 'target_agents'
+
+        if list_key not in config or not isinstance(config[list_key], list):
+            config[list_key] = []
+
+        if action == 'add':
+            if connected_pool_name not in config[list_key]:
+                config[list_key].append(connected_pool_name)
+            message = f"Added {connected_pool_name} to {list_key}"
+        elif action == 'remove':
+            if connected_pool_name in config[list_key]:
+                config[list_key].remove(connected_pool_name)
+            message = f"Removed {connected_pool_name} from {list_key}"
+        else:
+            message = f"Unknown action: {action}"
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error updating FlowHypervisor connection: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+def execute_flowhypervisor_view(request, agent_name):
+    """
+    Execute a FlowHypervisor agent by running its Python script.
+    Called by the frontend when the flow starts.
+    """
+    try:
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        agent_dir = os.path.join(pool_base_path, pool_folder_name)
+
+        if not os.path.exists(agent_dir):
+            return HttpResponse(json.dumps({"success": False, "message": f"Agent directory not found: {pool_folder_name}"}),
+                                content_type='application/json', status=404)
+
+        script_path = os.path.join(agent_dir, f"{base_folder_name}.py")
+        if not os.path.exists(script_path):
+            return HttpResponse(json.dumps({"success": False, "message": f"Agent script not found: {base_folder_name}.py"}),
+                                content_type='application/json', status=404)
+
+        python_cmd = get_python_command()
+        agent_env = get_agent_env()
+
+        if sys.platform.startswith('win'):
+            process = subprocess.Popen(
+                python_cmd + [script_path],
+                cwd=agent_dir,
+                env=agent_env,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+        else:
+            process = subprocess.Popen(
+                python_cmd + [script_path],
+                cwd=agent_dir,
+                env=agent_env,
+                start_new_session=True
+            )
+
+        _write_pid_file(agent_dir, process.pid)
+        print(f"[FLOWHYPERVISOR] Started {pool_folder_name} with PID: {process.pid}")
+
+        return HttpResponse(json.dumps({"success": True, "message": f"Started {pool_folder_name}", "pid": process.pid}),
+                            content_type='application/json')
+    except Exception as e:
+        print(f"Error executing flowhypervisor agent: {e}")
+        traceback.print_exc()
+        return HttpResponse(json.dumps({"success": False, "message": str(e)}),
+                            content_type='application/json', status=500)
+
+
+def check_flowhypervisor_alert_view(request, agent_name):
+    """
+    Check if the FlowHypervisor has written an alert file.
+    Returns the alert data if found, or empty response if no alert.
+    The frontend polls this endpoint to detect ATTENTION NEEDED alerts.
+    """
+    try:
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        pool_base_path = get_pool_path(request)
+        alert_path = os.path.join(pool_base_path, pool_folder_name, "hypervisor_alert.json")
+
+        if not os.path.exists(alert_path):
+            return HttpResponse(json.dumps({"has_alert": False}), content_type='application/json')
+
+        with open(alert_path, 'r', encoding='utf-8') as f:
+            alert_data = json.load(f)
+
+        # Remove the alert file after reading (consumed)
+        try:
+            os.remove(alert_path)
+        except Exception:
+            pass
+
+        alert_data["has_alert"] = True
+        return HttpResponse(json.dumps(alert_data), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error checking flowhypervisor alert: {e}")
+        return HttpResponse(json.dumps({"has_alert": False, "error": str(e)}),
+                            content_type='application/json', status=500)
+
+
 def validate_flow_view(request):
     """
     List all agents in the session pool and return their config.yaml data.
@@ -6081,8 +6262,8 @@ def validate_flow_view(request):
             else:
                 agent_type = folder_name
 
-            # Skip FlowCreator agents
-            if agent_type.lower() == 'flowcreator':
+            # Skip FlowCreator and FlowHypervisor agents
+            if agent_type.lower() in ('flowcreator', 'flowhypervisor'):
                 continue
 
             # Read config.yaml

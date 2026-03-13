@@ -1,0 +1,11 @@
+# FlowHypervisor Agent Configuration
+# LLM-powered flow monitoring agent that watches all running agents
+
+# LLM connection settings
+llm:
+  host: "http://127.0.0.1:11434"
+  model: "llama3.1:8b"
+  temperature: 0.0
+
+# Monitoring poll interval (seconds)
+monitoring_poll_time: 10
