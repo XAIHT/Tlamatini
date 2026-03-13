@@ -45,7 +45,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -623,6 +623,20 @@ system_prompt: |
   - `llm.model`: "llama3.1:8b"
   - `llm.temperature`: 0.0
   - `monitoring_poll_time`: 10
+
+### 39. Mouser
+- **Purpose**: Moves the mouse pointer either randomly for a specified duration or from one screen position to another. Useful for keeping sessions alive or simulating user activity.
+- **Pool name pattern**: `mouser_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `movement_type`: "random" (either "random" or "localized")
+  - `actual_position`: true (use current mouse position as start for localized mode)
+  - `ini_posx`: 0 (initial X position, used when actual_position is false)
+  - `ini_posy`: 0 (initial Y position, used when actual_position is false)
+  - `end_posx`: 500 (final X position for localized mode)
+  - `end_posy`: 500 (final Y position for localized mode)
+  - `total_time`: 30 (duration in seconds for random movement)
+  - `target_agents`: [] (downstream agents to start after execution)
 
 ---
 

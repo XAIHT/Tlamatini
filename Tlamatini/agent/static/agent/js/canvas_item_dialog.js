@@ -75,8 +75,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 fieldset.appendChild(legend);
                 renderFields(fieldset, val, fieldKey);
                 container.appendChild(fieldset);
-            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type') {
-                // Custom rendering for trigger_mode, operation, direction, crawl_type - Radio Buttons
+            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type') {
+                // Custom rendering for trigger_mode, operation, direction, crawl_type, movement_type - Radio Buttons
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
                 label.style.fontWeight = "bold";
@@ -99,6 +99,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     options = ['send', 'receive'];
                 } else if (key === 'crawl_type') {
                     options = ['small-range', 'medium-range', 'large-range'];
+                } else if (key === 'movement_type') {
+                    options = ['random', 'localized'];
                 }
 
                 options.forEach(opt => {
@@ -351,6 +353,62 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.appendChild(warningNote);
 
         renderFields(canvasItemList, dataObj);
+
+    } else if (agentName.startsWith('mouser')) {
+        // Mouser custom dialog with conditional field visibility
+        canvasItemList.innerHTML = '';
+
+        const mouserLegend = document.createElement('p');
+        mouserLegend.innerHTML = '<strong>&#128433; Mouser</strong> — Move the mouse pointer randomly or to a specific screen position. <b>Random</b>: moves randomly for a duration. <b>Localized</b>: moves from one position to another.';
+        mouserLegend.style.color = '#7C4DFF';
+        mouserLegend.style.marginBottom = '12px';
+        mouserLegend.style.padding = '8px';
+        mouserLegend.style.border = '1px solid #7C4DFF';
+        mouserLegend.style.borderRadius = '5px';
+        mouserLegend.style.backgroundColor = 'rgba(124, 77, 255, 0.1)';
+        canvasItemList.appendChild(mouserLegend);
+
+        renderFields(canvasItemList, dataObj);
+
+        // Wire up conditional enable/disable logic after fields are rendered
+        setTimeout(() => {
+            const radioRandom = document.getElementById('prop-movement_type-random');
+            const radioLocalized = document.getElementById('prop-movement_type-localized');
+            const checkActualPos = document.getElementById('prop-actual_position');
+            const inputIniX = document.getElementById('prop-ini_posx');
+            const inputIniY = document.getElementById('prop-ini_posy');
+            const inputEndX = document.getElementById('prop-end_posx');
+            const inputEndY = document.getElementById('prop-end_posy');
+            const inputTotalTime = document.getElementById('prop-total_time');
+
+            function applyMouserState() {
+                const isLocalized = radioLocalized && radioLocalized.checked;
+                const isActualPos = checkActualPos && checkActualPos.checked;
+
+                // total_time: disabled when localized is selected
+                if (inputTotalTime) {
+                    inputTotalTime.disabled = isLocalized;
+                    inputTotalTime.style.opacity = isLocalized ? '0.4' : '1';
+                }
+
+                // Initial/Final position fields: enabled only when localized
+                if (inputEndX) { inputEndX.disabled = !isLocalized; inputEndX.style.opacity = isLocalized ? '1' : '0.4'; }
+                if (inputEndY) { inputEndY.disabled = !isLocalized; inputEndY.style.opacity = isLocalized ? '1' : '0.4'; }
+                if (checkActualPos) { checkActualPos.disabled = !isLocalized; checkActualPos.style.opacity = isLocalized ? '1' : '0.4'; }
+
+                // ini_posx/ini_posy: disabled when NOT localized OR when actual_position is checked
+                const disableIni = !isLocalized || isActualPos;
+                if (inputIniX) { inputIniX.disabled = disableIni; inputIniX.style.opacity = disableIni ? '0.4' : '1'; }
+                if (inputIniY) { inputIniY.disabled = disableIni; inputIniY.style.opacity = disableIni ? '0.4' : '1'; }
+            }
+
+            if (radioRandom) radioRandom.addEventListener('change', applyMouserState);
+            if (radioLocalized) radioLocalized.addEventListener('change', applyMouserState);
+            if (checkActualPos) checkActualPos.addEventListener('change', applyMouserState);
+
+            // Apply initial state
+            applyMouserState();
+        }, 50);
 
     } else if (agentName.startsWith('flowhypervisor')) {
         // FlowHypervisor custom dialog
