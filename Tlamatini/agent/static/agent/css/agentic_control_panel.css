@@ -1004,6 +1004,17 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%);
 }
 
+/* Mouser Agent */
+.canvas-item.mouser-agent {
+    background-color: #FF1744;
+    background: linear-gradient(135deg, #FF1744 0%, #651FFF 50%, #00E676 100%);
+    color: white;
+}
+.canvas-item.mouser-agent:hover {
+    background: linear-gradient(135deg, #FF5252 0%, #7C4DFF 50%, #69F0AE 100%);
+    box-shadow: 0 6px 15px rgba(101, 31, 255, 0.5);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

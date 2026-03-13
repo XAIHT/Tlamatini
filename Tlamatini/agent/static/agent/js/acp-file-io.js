@@ -401,6 +401,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'jenkinser': await updateJenkinserConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'crawler': await updateCrawlerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'summarizer': await updateSummarizerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'mouser': await updateMouserConnection(sourceId, targetId, 'add'); break;
             }
         }
 

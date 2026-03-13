@@ -268,6 +268,9 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'summarizer') {
                 await updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (sourceAgentName.toLowerCase() === 'mouser') {
+                await updateMouserConnection(sourceId, targetId, 'remove');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -451,6 +454,9 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'summarizer') {
         await updateSummarizerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (sourceAgentName === 'mouser') {
+        await updateMouserConnection(sourceId, targetId, 'add');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

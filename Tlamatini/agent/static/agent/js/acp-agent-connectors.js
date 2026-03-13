@@ -786,3 +786,22 @@ async function updateSummarizerConnection(agentId, connectedAgentId, action, con
         console.error(`--- Error updating Summarizer ${agentId}:`, error);
     }
 }
+
+async function updateMouserConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_mouser_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Mouser ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Mouser ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Mouser ${agentId}:`, error);
+    }
+}

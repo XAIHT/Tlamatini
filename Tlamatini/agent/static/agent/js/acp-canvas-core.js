@@ -71,6 +71,7 @@ function applyAgentTypeClass(el, agentName) {
         'crawler': 'crawler-agent',
         'summarizer': 'summarizer-agent',
         'flowhypervisor': 'flowhypervisor-agent',
+        'mouser': 'mouser-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -634,6 +635,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
+        if (sourceAgentName.toLowerCase() === 'mouser') updateMouserConnection(sourceId, targetId, 'remove');
 
         conn.path.remove();
         ACP.connections.splice(idx, 1);
@@ -701,6 +703,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'crawler' && !sourceBeingDeleted) updateCrawlerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'summarizer' && !targetBeingDeleted) updateSummarizerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'summarizer' && !sourceBeingDeleted) updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
+        if (sourceAgentName.toLowerCase() === 'mouser' && !sourceBeingDeleted) updateMouserConnection(sourceId, targetId, 'remove');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -809,6 +812,7 @@ async function populateAgentsList() {
         // Three-color gradient agents (DO NOT MODIFY these gradients)
         else if (lowerDesc === 'flowhypervisor') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%)';
         else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #C62828 50%, #2E7D32 100%)';
+        else if (lowerDesc === 'mouser') iconDiv.style.background = 'linear-gradient(135deg, #FF1744 0%, #651FFF 50%, #00E676 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
         const span = document.createElement('span');
@@ -1135,6 +1139,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(sourceId, targetId, 'add', 'target');
+                    if (sourceAgentName.toLowerCase() === 'mouser') updateMouserConnection(sourceId, targetId, 'add');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

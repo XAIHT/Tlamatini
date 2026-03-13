@@ -73,7 +73,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 39 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 40 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -186,7 +186,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 38 pre-built agent types for diverse automation tasks
+- 39 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -370,7 +370,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (38 types)
+│   │   ├── agents/                 # Workflow agent templates (39 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -380,6 +380,7 @@ Tlamatini/
 │   │   │   ├── pythonxer/         # Python script executor with Ruff validation
 │   │   │   ├── sqler/             # SQL Server query execution agent
 │   │   │   ├── mongoxer/          # MongoDB script execution agent
+│   │   │   ├── mouser/            # Mouse pointer movement agent
 │   │   │   ├── deleter/           # File deletion agent
 │   │   │   ├── mover/             # File move/copy agent
 │   │   │   ├── shoter/            # Screenshot capture agent
@@ -1126,7 +1127,7 @@ All workflow agents follow a common structural pattern:
 7. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection)
 
 ### Control Agents
@@ -1174,6 +1175,7 @@ Agents are classified as:
 | **deleter** | Delete files by pattern | `files_to_delete`: List of patterns (supports wildcards)<br>`trigger_mode`: immediate / event<br>`source_agents`: For event mode |
 | **mover** | Move or copy files | `operation`: move / copy<br>`sources_list`: File patterns<br>`destination_folder`: Target directory |
 | **shoter** | Takes screenshots and saves to output directory | `output_dir`: Screenshot destination<br>`target_agents`: Downstream agents |
+| **mouser** | Moves the mouse pointer randomly for a duration or to a specific screen position. Starts downstream agents after completion | `movement_type`: "random"/"localized"<br>`actual_position`: true<br>`ini_posx`/`ini_posy`: Start coords<br>`end_posx`/`end_posy`: End coords<br>`total_time`: Duration (seconds)<br>`target_agents`: Downstream agents |
 | **ssher** | SSH remote command execution. Requires pre-configured SSH keys. | `user`: SSH username<br>`ip`: Remote host<br>`script`: Command to execute<br>`target_agents`: Triggered on success |
 | **scper** | SCP file transfer to/from remote host | `user`: SSH username<br>`ip`: Remote host<br>`file`: Path to transfer<br>`direction`: send / receive<br>`target_agents`: Triggered on success |
 | **mongoxer** | Execute Python scripts against MongoDB using pre-connected `db` object | `mongo_connection`: Connection config map<br>`script`: Python script using `db`<br>`target_agents`: Success agents |
@@ -1567,6 +1569,7 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_and_agent_connection/<agent_name>/` | POST | Update AND gate connections |
 | `/update_croner_connection/<agent_name>/` | POST | Update croner connections |
 | `/update_mover_connection/<agent_name>/` | POST | Update mover connections |
+| `/update_mouser_connection/<agent_name>/` | POST | Update mouser connections |
 | `/update_sleeper_connection/<agent_name>/` | POST | Update sleeper connections |
 | `/update_cleaner_connection/<agent_name>/` | POST | Update cleaner connections |
 | `/update_deleter_connection/<agent_name>/` | POST | Update deleter connections |
@@ -1833,6 +1836,7 @@ Enable verbose logging in config.json:
 | **Whatsapper** | Agent that sends WhatsApp notifications via TextMeBot API with LLM summarization |
 | **Forker** | Deterministic agent that routes workflows to Path A or B based on log patterns |
 | **Gitter** | Deterministic agent that executes Git operations (clone, pull, push, commit, etc.) on local repositories |
+| **Mouser** | Deterministic agent that moves the mouse pointer randomly or to a specific position, then triggers downstream agents |
 | **Dockerer** | Manages Docker containers and docker-compose operations, starting downstream agents after execution |
 | **Pser** | LLM-powered agent that finds running processes by fuzzy name matching and logs the best match |
 | **Apirer** | HTTP/REST API agent that makes HTTP requests to any URL and starts downstream agents regardless of outcome |
@@ -1895,6 +1899,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Mouser Agent** - Mouse pointer movement agent supporting random and localized movement modes
 - **P0/P1/P2 Security Hardening** - Comprehensive, tiered security test suite covering user isolation, CSRF, login enforcement (P0), path traversal prevention and safe path joining (P1), and prompt injection defense with indirect file access detection (P2)
 - **Added Path Guard Module** (`path_guard.py`) - Centralized path validation layer that resolves Windows known folders, enforces `allowed_paths` from config, and prevents directory traversal across all file operations
 - **Improved File Search Chain** - `chain_files_search_lcel.py` now integrates with `path_guard.py` for secure path validation, supports non-explicit lookup crawling, and validates all gRPC results against path escaping

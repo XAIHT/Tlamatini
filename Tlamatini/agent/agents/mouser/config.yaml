@@ -1,0 +1,21 @@
+# Mouser Agent Configuration
+
+# Movement type: "random" or "localized"
+movement_type: "random"
+
+# Whether to use current mouse position as starting point (only for "localized")
+actual_position: true
+
+# Initial position (used only when movement_type is "localized" and actual_position is false)
+ini_posx: 0
+ini_posy: 0
+
+# Final position (used only when movement_type is "localized")
+end_posx: 500
+end_posy: 500
+
+# Total time in seconds for random mouse movement
+total_time: 30
+
+# Downstream agents to start after execution
+target_agents: []
