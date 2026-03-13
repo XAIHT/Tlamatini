@@ -225,13 +225,20 @@ def move_mouse_random(total_time: float):
             break
         duration = min(duration, remaining)
 
-        pyautogui.moveTo(
-            target_x,
-            target_y,
-            duration=duration,
-            tween=pyautogui.easeInOutQuad
-        )
-        logging.info(f"Moved mouse to ({target_x}, {target_y})")
+        try:
+            pyautogui.moveTo(
+                target_x,
+                target_y,
+                duration=duration,
+                tween=pyautogui.easeInOutQuad
+            )
+            logging.info(f"Moved mouse to ({target_x}, {target_y})")
+        except pyautogui.FailSafeException:
+            logging.warning(f"Fail-safe triggered moving to ({target_x}, {target_y}), skipping this movement.")
+            continue
+        except Exception as e:
+            logging.warning(f"Mouse movement to ({target_x}, {target_y}) failed: {e}, skipping.")
+            continue
 
         remaining = total_time - (time.time() - start_time)
         if remaining <= 0:
@@ -250,22 +257,27 @@ def move_mouse_localized(ini_posx: int, ini_posy: int, end_posx: int, end_posy: 
         logging.error("pyautogui is not installed. Cannot move mouse.")
         return
 
-    if not use_actual_position:
-        logging.info(f"Moving mouse to initial position ({ini_posx}, {ini_posy})...")
-        pyautogui.moveTo(ini_posx, ini_posy, duration=0.5, tween=pyautogui.easeInOutQuad)
-    else:
-        current_x, current_y = pyautogui.position()
-        logging.info(f"Using actual mouse position ({current_x}, {current_y}) as start.")
+    try:
+        if not use_actual_position:
+            logging.info(f"Moving mouse to initial position ({ini_posx}, {ini_posy})...")
+            pyautogui.moveTo(ini_posx, ini_posy, duration=0.5, tween=pyautogui.easeInOutQuad)
+        else:
+            current_x, current_y = pyautogui.position()
+            logging.info(f"Using actual mouse position ({current_x}, {current_y}) as start.")
 
-    duration = random.uniform(0.8, 2.0)
-    logging.info(f"Moving mouse to final position ({end_posx}, {end_posy})...")
-    pyautogui.moveTo(
-        end_posx,
-        end_posy,
-        duration=duration,
-        tween=pyautogui.easeInOutQuad
-    )
-    logging.info(f"Mouse moved to ({end_posx}, {end_posy}).")
+        duration = random.uniform(0.8, 2.0)
+        logging.info(f"Moving mouse to final position ({end_posx}, {end_posy})...")
+        pyautogui.moveTo(
+            end_posx,
+            end_posy,
+            duration=duration,
+            tween=pyautogui.easeInOutQuad
+        )
+        logging.info(f"Mouse moved to ({end_posx}, {end_posy}).")
+    except pyautogui.FailSafeException:
+        logging.warning(f"Fail-safe triggered during localized movement, skipping movement.")
+    except Exception as e:
+        logging.warning(f"Localized mouse movement error: {e}, skipping movement.")
 
 
 def main():
@@ -288,8 +300,7 @@ def main():
             try:
                 move_mouse_random(float(total_time))
             except Exception as e:
-                logging.error(f"Random mouse movement failed: {e}")
-                sys.exit(1)
+                logging.warning(f"Random mouse movement failed: {e}")
 
         elif movement_type == 'localized':
             use_actual_position = config.get('actual_position', True)
@@ -310,8 +321,7 @@ def main():
                     bool(use_actual_position)
                 )
             except Exception as e:
-                logging.error(f"Localized mouse movement failed: {e}")
-                sys.exit(1)
+                logging.warning(f"Localized mouse movement failed: {e}")
         else:
             logging.error(f"Unknown movement_type: {movement_type}")
             sys.exit(1)
