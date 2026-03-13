@@ -1,6 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
+/* global updateMouserConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
