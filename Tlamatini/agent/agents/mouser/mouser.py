@@ -275,7 +275,7 @@ def move_mouse_localized(ini_posx: int, ini_posy: int, end_posx: int, end_posy: 
         )
         logging.info(f"Mouse moved to ({end_posx}, {end_posy}).")
     except pyautogui.FailSafeException:
-        logging.warning(f"Fail-safe triggered during localized movement, skipping movement.")
+        logging.warning("Fail-safe triggered during localized movement, skipping movement.")
     except Exception as e:
         logging.warning(f"Localized mouse movement error: {e}, skipping movement.")
 
