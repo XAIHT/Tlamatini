@@ -1158,7 +1158,7 @@ Agents are classified as:
 | Agent | Purpose | Key Configuration |
 |-------|---------|-------------------|
 | **starter** | Initiates workflow execution | `target_agents`: List of agents to start<br>`exit_after_start`: Boolean |
-| **ender** | Terminates all connected agents, then launches Cleaners | `source_agents`: Agents to TERMINATE<br>`output_agents`: Agents to LAUNCH after termination (typically Cleaners). Also auto-discovers Cleaners in pool. |
+| **ender** | Terminates all agents in target_agents, then launches Cleaners | `target_agents`: Agents to KILL<br>`source_agents`: Graphical input connections only (never killed/started)<br>`output_agents`: Agents to LAUNCH after termination (typically Cleaners). Also auto-discovers Cleaners in pool. |
 | **stopper** | Multi-threaded pattern-based agent terminator. Monitors source agent logs and kills agents when patterns are detected. One thread per source agent. Does NOT start downstream agents. | `source_agents`: Agents to monitor and terminate<br>`patterns`: One pattern per source agent<br>`poll_interval`: Check frequency<br>`output_agents`: Canvas wiring only (not used for starting agents) |
 
 ### Monitoring Agents
@@ -1876,7 +1876,7 @@ Enable verbose logging in config.json:
 | **Canvas** | UI area for displaying and editing generated code |
 | **Session State** | Persisted user context and preferences |
 | **Pool** | Directory where deployed agent instances are stored |
-| **output_agents** | Config field used by Ender, Stopper, and Cleaner for downstream canvas wiring. Ender uses `source_agents` for its termination list, while most other agents use `target_agents` for starting downstream agents |
+| **output_agents** | Config field used by Ender, Stopper, and Cleaner for downstream canvas wiring. Ender uses `target_agents` for its kill list and `output_agents` for Cleaners to launch, while most other agents use `target_agents` for starting downstream agents |
 | **FlowCreator** | AI-powered agent that generates complete flow configurations from natural language using an LLM and the `agentic_skill.md` schema |
 | **Cardinal** | Numeric suffix added to deployed agents (e.g., `_1`, `_2`) to support multiple instances |
 | **Reanimation Offset** | Saved position in log file to handle restarts and log rotation |

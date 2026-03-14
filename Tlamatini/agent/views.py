@@ -1603,18 +1603,18 @@ def update_and_agent_connection_view(request, agent_name):
 def update_ender_connection_view(request, agent_name):
     """
     Update an Ender agent's config.yaml when connections are made/removed.
-    
+
     Expected POST body (JSON):
     {
-        "source_agent": "agent-id",  # e.g., "raiser-1"
-        "action": "add" | "remove"
+        "source_agent": "agent-id",       # e.g., "raiser-1"
+        "action": "add" | "remove",
+        "connection_type": "input" | "target" | "output"
     }
 
-    When action is "add":
-      - Appends source_agent to source_agents list
-
-    When action is "remove":
-      - Removes source_agent from source_agents list
+    connection_type determines which config list is modified:
+      - "input"  -> source_agents (graphical connections only, never killed/started)
+      - "target" -> target_agents (agents to KILL)
+      - "output" -> output_agents (agents to LAUNCH, e.g. Cleaners)
     """
     try:
         # Parse request body
@@ -1678,9 +1678,14 @@ def update_ender_connection_view(request, agent_name):
             connected_pool_name = source_base
             
         # Determine list name based on connection type
+        # 'input' -> source_agents (graphical connections only)
+        # 'target' -> target_agents (agents to kill)
+        # 'output' -> output_agents (agents to launch, e.g. Cleaners)
         list_name = 'source_agents'
         if connection_type == 'output':
-             list_name = 'output_agents'
+            list_name = 'output_agents'
+        elif connection_type == 'target':
+            list_name = 'target_agents'
         
         # Ensure list exists
         if list_name not in config:
@@ -1717,6 +1722,7 @@ def update_ender_connection_view(request, agent_name):
         return HttpResponse(json.dumps({
             "success": True,
             "message": message,
+            "target_agents": config.get('target_agents', []),
             "source_agents": config.get('source_agents', []),
             "output_agents": config.get('output_agents', [])
         }), content_type='application/json')

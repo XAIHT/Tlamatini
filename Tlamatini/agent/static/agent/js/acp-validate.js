@@ -38,15 +38,24 @@ function updateValidateButtonState() {
 /**
  * Extract all output connections (target agent names) from an agent's config.
  * Handles: target_agents, target_agents_a, target_agents_b, output_agents.
+ *
+ * For Ender agents, target_agents are KILL targets (not flow connections),
+ * so only output_agents are returned as actual flow outputs.
+ *
  * @param {Object} config - The agent's config.yaml data
+ * @param {string} [agentType] - The agent type (e.g. 'ender', 'starter')
  * @returns {string[]} - Array of connected agent folder names
  */
-function extractOutputConnections(config) {
+function extractOutputConnections(config, agentType) {
     const connections = [];
 
-    // Standard target_agents
-    if (Array.isArray(config.target_agents)) {
-        connections.push(...config.target_agents);
+    // For Ender agents, target_agents are kill targets — NOT flow output connections.
+    // Only output_agents (Cleaners to launch) are real flow outputs for Ender.
+    if (agentType !== 'ender') {
+        // Standard target_agents
+        if (Array.isArray(config.target_agents)) {
+            connections.push(...config.target_agents);
+        }
     }
 
     // Asker/Forker dual outputs
@@ -128,7 +137,7 @@ async function runFlowValidation() {
         const config = agentsData[i].config;
         
         // Forward connections (this agent -> target agent)
-        const outputs = extractOutputConnections(config);
+        const outputs = extractOutputConnections(config, agentTypes[i]);
         for (const targetName of outputs) {
             const j = nameToIndex[targetName];
             if (j !== undefined) {
@@ -183,7 +192,7 @@ async function runFlowValidation() {
     }
     if (enderOutputErrors.length > 0) {
         errors.push({
-            message: 'Ender agents can only be connected to target_agents of type Cleaner',
+            message: 'Ender agents can only have output_agents of type Cleaner',
             agents: enderOutputErrors
         });
     }
@@ -253,13 +262,24 @@ async function runFlowValidation() {
         const config = agentsData[i].config;
 
         // Check target_agents, target_agents_a, target_agents_b, output_agents
-        const outputs = extractOutputConnections(config);
+        const outputs = extractOutputConnections(config, agentTypes[i]);
         for (const targetName of outputs) {
             const j = nameToIndex[targetName];
             if (j === undefined) {
                 missingTargetErrors.push(`${agentNames[i]} references target "${targetName}" which is not present in the flow`);
             } else if (TYPES_WITHOUT_INPUT.includes(agentTypes[j])) {
                 noInputTriErrors.push(`${agentNames[i]} references target "${targetName}" which is a ${agentTypes[j]} agent (no input)`);
+            }
+        }
+
+        // For Ender agents: validate kill targets (target_agents) exist in the flow.
+        // Ender CAN target any agent type including Starters (to kill them), so no input-triangle check.
+        if (agentTypes[i] === 'ender' && Array.isArray(config.target_agents)) {
+            for (const targetName of config.target_agents) {
+                const j = nameToIndex[targetName];
+                if (j === undefined) {
+                    missingTargetErrors.push(`${agentNames[i]} references kill target "${targetName}" which is not present in the flow`);
+                }
             }
         }
 

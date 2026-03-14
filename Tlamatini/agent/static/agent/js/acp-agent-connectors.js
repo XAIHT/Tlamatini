@@ -167,8 +167,17 @@ async function updateStarterConnection(starterAgentId, targetAgentId, action) {
 
 /**
  * Update Ender agent's config.yaml when connections are made/removed.
- * When connecting TO Ender (Input), traverses upstream and adds ALL connected agents.
- * When connecting FROM Ender (Output), adds the target agent directly.
+ *
+ * Ender has three connection lists:
+ *   - source_agents:  graphical input connections only (never killed, never started)
+ *   - target_agents:  ALL upstream agents to KILL (populated via BFS traversal)
+ *   - output_agents:  agents to LAUNCH after killing (typically Cleaners)
+ *
+ * When connecting TO Ender (Input):
+ *   1. Adds the directly connected agent to source_agents (graphical metadata)
+ *   2. Traverses ALL upstream agents and adds each to target_agents (kill list)
+ * When connecting FROM Ender (Output):
+ *   Adds the target agent to output_agents
  *
  * @param {string} enderAgentId - The ender agent's ID (e.g., 'ender-1')
  * @param {HTMLElement} connectedNode - The node connected to Ender
@@ -176,39 +185,54 @@ async function updateStarterConnection(starterAgentId, targetAgentId, action) {
  * @param {string} connectionType - 'input' or 'output' (default: 'input')
  */
 async function updateEnderConnection(enderAgentId, connectedNode, action, connectionType = 'input') {
-    let agentsToUpdate;
     if (connectionType === 'output') {
-        agentsToUpdate = [connectedNode];
+        // Output connection: add the cleaner to output_agents
         console.log(`--- Ender ${enderAgentId}: Updating output connection to ${connectedNode.id}`);
+        await _sendEnderUpdate(enderAgentId, connectedNode.id, action, 'output');
     } else {
-        agentsToUpdate = getAllUpstreamAgents(connectedNode);
-        console.log(`--- Ender ${enderAgentId}: Found ${agentsToUpdate.length} upstream agent(s):`, agentsToUpdate.map(n => n.id));
-    }
+        // Input connection:
+        // 1. Add the directly connected agent to source_agents (graphical only)
+        console.log(`--- Ender ${enderAgentId}: Adding ${connectedNode.id} to source_agents (graphical)`);
+        await _sendEnderUpdate(enderAgentId, connectedNode.id, action, 'input');
 
-    for (const agentNode of agentsToUpdate) {
-        const agentId = agentNode.id;
-        const agentName = agentNode.dataset.agentName || '';
-        if (agentName.toLowerCase() === 'cleaner' && connectionType !== 'output') {
-            console.warn(`--- Ender ${enderAgentId}: SKIPPING Cleaner ${agentId} for input list (Cleaners must be outputs logic).`);
-            continue;
-        }
+        // 2. Traverse ALL upstream agents and add each to target_agents (kill list)
+        const upstreamAgents = getAllUpstreamAgents(connectedNode);
+        console.log(`--- Ender ${enderAgentId}: Found ${upstreamAgents.length} upstream agent(s) for kill list:`, upstreamAgents.map(n => n.id));
 
-        try {
-            const response = await fetch(`/agent/update_ender_connection/${enderAgentId}/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getHeaders() },
-                credentials: 'same-origin',
-                body: JSON.stringify({ source_agent: agentId, action: action, connection_type: connectionType })
-            });
-            if (response.ok) {
-                const result = await response.json();
-                console.log(`--- Ender ${enderAgentId} config updated:`, result.message);
-            } else {
-                console.error(`--- Failed to update ender ${enderAgentId}:`, response.statusText);
+        for (const agentNode of upstreamAgents) {
+            const agentName = agentNode.dataset.agentName || '';
+            if (agentName.toLowerCase() === 'cleaner') {
+                console.warn(`--- Ender ${enderAgentId}: SKIPPING Cleaner ${agentNode.id} for kill list.`);
+                continue;
             }
-        } catch (error) {
-            console.error(`--- Error updating ender ${enderAgentId}:`, error);
+            await _sendEnderUpdate(enderAgentId, agentNode.id, action, 'target');
         }
+    }
+}
+
+/**
+ * Send a single ender connection update to the backend.
+ * @param {string} enderAgentId - The ender agent's ID
+ * @param {string} agentId - The connected agent's ID
+ * @param {string} action - 'add' or 'remove'
+ * @param {string} connectionType - 'input', 'target', or 'output'
+ */
+async function _sendEnderUpdate(enderAgentId, agentId, action, connectionType) {
+    try {
+        const response = await fetch(`/agent/update_ender_connection/${enderAgentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ source_agent: agentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Ender ${enderAgentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update ender ${enderAgentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating ender ${enderAgentId}:`, error);
     }
 }
 

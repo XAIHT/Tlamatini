@@ -43,7 +43,7 @@ target_agents: []       # If this agent starts downstream agents
 - If the agent **starts downstream agents** → use `target_agents: []`
 - If the agent **monitors upstream logs** → use `source_agents: []`
 - If the agent is like Stopper/Cleaner (does NOT start downstream) → use `output_agents: []` instead of `target_agents`
-- The **Ender** agent is special: it uses `source_agents: []` (agents to terminate) and `output_agents: []` (Cleaners to launch)
+- The **Ender** agent is special: it uses `target_agents: []` (agents to KILL), `output_agents: []` (Cleaners to launch after killing), and `source_agents: []` (graphical input connections only — never killed, never started)
 - OR/AND gates use `source_agent_1`, `source_agent_2` (not a list)
 - Asker/Forker use `target_agents_a`, `target_agents_b` (not `target_agents`)
 

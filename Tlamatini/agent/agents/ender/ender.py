@@ -1,9 +1,11 @@
 # Ender Agent - No LLM, deterministic agent terminator
-# This agent terminates all agents in its connected graph when triggered.
+# This agent terminates all agents listed in target_agents when triggered.
 #
 # Deployment: When deployed via agentic_control_panel, this agent is copied to
 # the pool directory with a cardinal suffix (e.g., ender_1, ender_2).
-# Source agents (agents to terminate) should be referenced with their cardinal numbers.
+# Target agents (agents to kill) should be referenced with their cardinal numbers.
+# source_agents are graphical connections only (never killed, never started).
+# output_agents are agents to launch after killing (typically Cleaners).
 
 import os
 import sys
@@ -372,28 +374,30 @@ def main():
     write_pid_file()
     
     try:
-        source_agents: List[str] = config.get('source_agents', [])
-        # Backward compatibility: support legacy 'target_agents' key from older .flw files
-        if not source_agents:
-            source_agents = config.get('target_agents', [])
-            if source_agents:
-                logging.warning("⚠️ Using legacy 'target_agents' key. Please update your flow file to use 'source_agents'.")
+        # target_agents = agents to KILL; output_agents = agents to START (Cleaners)
+        # source_agents = graphical connections only (never killed, never started)
+        kill_agents: List[str] = config.get('target_agents', [])
+        # Backward compatibility: support legacy flows where source_agents was the kill list
+        if not kill_agents:
+            kill_agents = config.get('source_agents', [])
+            if kill_agents:
+                logging.warning("⚠️ Using legacy 'source_agents' as kill list. Please update your flow to use 'target_agents'.")
         output_agents: List[str] = config.get('output_agents', [])
 
-        if not source_agents and not output_agents:
-            logging.error("❌ No source or output agents configured.")
+        if not kill_agents and not output_agents:
+            logging.error("❌ No target or output agents configured.")
             logging.info("💡 Connect agents to Ender on the canvas.")
             return  # Will trigger finally block
 
         # --- AUTO-CORRECTION & DISCOVERY ---
-        # 1. Fix potential configuration errors (remove Cleaner from sources)
-        corrected_sources = []
-        for agent in source_agents:
+        # 1. Fix potential configuration errors (remove Cleaner from kill targets)
+        corrected_kills = []
+        for agent in kill_agents:
             if 'cleaner' in agent.lower():
-                logging.warning(f"⚠️ Auto-correcting: Removing '{agent}' from Sources.")
+                logging.warning(f"⚠️ Auto-correcting: Removing '{agent}' from kill targets.")
             else:
-                corrected_sources.append(agent)
-        source_agents = corrected_sources
+                corrected_kills.append(agent)
+        kill_agents = corrected_kills
 
         # 2. Auto-Discover all Cleaner agents in the pool
         # Ender should always launch any Cleaner present in the current session.
@@ -415,20 +419,20 @@ def main():
         
         logging.info("💀 ENDER AGENT STARTED")
         logging.info(f"📁 Pool path: {get_pool_path()}")
-        if source_agents:
-            logging.info(f"🎯 Source agents to terminate: {source_agents}")
+        if kill_agents:
+            logging.info(f"🎯 Target agents to terminate: {kill_agents}")
         if output_agents:
             logging.info(f"📋 Output agents to trigger: {output_agents}")
 
         logging.info("=" * 60)
 
-        # 1. Terminate source agents
-        if source_agents:
+        # 1. Terminate target agents (kill list)
+        if kill_agents:
             logging.info("💀 INITIATING IMMEDIATE TERMINATION SEQUENCE...")
             terminated_count = 0
             skipped_count = 0
 
-            for agent in source_agents:
+            for agent in kill_agents:
                 logging.info(f"\n🎯 Processing: {agent}")
                 if terminate_agent(agent):
                     terminated_count += 1
