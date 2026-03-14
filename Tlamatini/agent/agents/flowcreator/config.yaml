@@ -24,4 +24,4 @@ prompt: ""
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
+  model: "qwen3.5:397b-cloud"

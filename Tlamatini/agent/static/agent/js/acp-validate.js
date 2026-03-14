@@ -66,6 +66,19 @@ function extractOutputConnections(config) {
 }
 
 /**
+ * Extract all source connections (source agent names) from an agent's config.
+ * Handles: source_agents.
+ * @param {Object} config - The agent's config.yaml data
+ * @returns {string[]} - Array of source agent folder names
+ */
+function extractSourceConnections(config) {
+    if (Array.isArray(config.source_agents)) {
+        return [...config.source_agents];
+    }
+    return [];
+}
+
+/**
  * Run the full flow validation process.
  * Steps A-D as specified in the requirements.
  */
@@ -113,12 +126,22 @@ async function runFlowValidation() {
     // Fill matrix: row = source agent outputs, col = target agent
     for (let i = 0; i < N; i++) {
         const config = agentsData[i].config;
+        
+        // Forward connections (this agent -> target agent)
         const outputs = extractOutputConnections(config);
-
         for (const targetName of outputs) {
             const j = nameToIndex[targetName];
             if (j !== undefined) {
                 matrix[i][j] = 1;
+            }
+        }
+
+        // Backward connections (source agent -> this agent)
+        const sources = extractSourceConnections(config);
+        for (const sourceName of sources) {
+            const j = nameToIndex[sourceName];
+            if (j !== undefined) {
+                matrix[j][i] = 1; // j is source, i is this agent
             }
         }
     }
@@ -216,6 +239,54 @@ async function runFlowValidation() {
         errors.push({
             message: 'Some agents have no connections to its input',
             agents: noInputErrors
+        });
+    }
+
+    // vi) Verify all referenced agents (target_agents, output_agents, source_agents)
+    //     exist in the flow. Target/output agents must also have an input triangle.
+    // Agent types without input triangles: starter (flowcreator/flowhypervisor are already excluded)
+    const TYPES_WITHOUT_INPUT = ['starter'];
+    const missingTargetErrors = [];
+    const noInputTriErrors = [];
+    const missingSourceErrors = [];
+    for (let i = 0; i < N; i++) {
+        const config = agentsData[i].config;
+
+        // Check target_agents, target_agents_a, target_agents_b, output_agents
+        const outputs = extractOutputConnections(config);
+        for (const targetName of outputs) {
+            const j = nameToIndex[targetName];
+            if (j === undefined) {
+                missingTargetErrors.push(`${agentNames[i]} references target "${targetName}" which is not present in the flow`);
+            } else if (TYPES_WITHOUT_INPUT.includes(agentTypes[j])) {
+                noInputTriErrors.push(`${agentNames[i]} references target "${targetName}" which is a ${agentTypes[j]} agent (no input)`);
+            }
+        }
+
+        // Check source_agents
+        const sources = extractSourceConnections(config);
+        for (const sourceName of sources) {
+            if (nameToIndex[sourceName] === undefined) {
+                missingSourceErrors.push(`${agentNames[i]} references source "${sourceName}" which is not present in the flow`);
+            }
+        }
+    }
+    if (missingTargetErrors.length > 0) {
+        errors.push({
+            message: 'Some agents reference target agents that are not present in the flow',
+            agents: missingTargetErrors
+        });
+    }
+    if (noInputTriErrors.length > 0) {
+        errors.push({
+            message: 'Some agents reference target agents that do not have an input (e.g. Starter agents cannot be targets)',
+            agents: noInputTriErrors
+        });
+    }
+    if (missingSourceErrors.length > 0) {
+        errors.push({
+            message: 'Some agents reference source agents that are not present in the flow',
+            agents: missingSourceErrors
         });
     }
 

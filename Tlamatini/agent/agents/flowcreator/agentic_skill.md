@@ -1041,6 +1041,59 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 ---
 
+## Validation Rules
+
+**MANDATORY SELF-CHECK BEFORE ANSWERING**: After you design a flow but BEFORE you present your answer to the user, you MUST validate your proposed flow using the procedure below. If validation fails, fix the errors and re-validate. You may repeat this fix-and-revalidate cycle at most 2 times. After 2 consecutive failures, present the best corrected version you have and explicitly warn the user about any remaining issues.
+
+### How to validate (step by step)
+
+**Step 1 — Build the agent list.**
+List every agent in your proposed flow. For each agent, note:
+- Its pool name (e.g., `starter_1`, `raiser_1`, `monitor_log_1`).
+- Its agent type (e.g., starter, raiser, monitor_log, ender, cleaner, etc.).
+- All its output connections: every agent name that appears in its `target_agents`, `target_agents_a`, `target_agents_b`, or `output_agents`.
+- All its input connections: every agent name that appears in its `source_agents`.
+
+**Step 2 — Build a mental adjacency matrix.**
+For every pair of agents (A, B), determine whether there is a directed connection A→B. A connection A→B exists if:
+- Agent A lists agent B in any of its output fields (`target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`), OR
+- Agent B lists agent A in its `source_agents`.
+
+**Step 3 — Run ALL six checks below. Every check must pass.**
+
+#### Check 1: Starter agents must have ZERO incoming connections
+For every agent of type `starter`: confirm that NO other agent connects to it (no agent lists this starter in its `target_agents`/`output_agents`, and the starter itself has no `source_agents`).
+- **If violated**: Remove the incoming connection or change the target agent type. A Starter is always the entry point; nothing should point to it.
+
+#### Check 2: Ender agents can ONLY connect their output to Cleaner agents
+For every agent of type `ender`: confirm that every agent it connects to (via `output_agents`) is of type `cleaner`, and ONLY of type `cleaner`.
+- **If violated**: Remove any non-Cleaner agent from the Ender's outputs. Ender terminates the flow; it should only trigger cleanup.
+
+#### Check 3: Cleaner agents can ONLY receive input from Ender agents
+For every agent of type `cleaner`: confirm that every agent connecting to it (the agents that list this cleaner in their outputs, or the cleaner's own `source_agents`) is of type `ender`.
+- **If violated**: Remove any non-Ender input to the Cleaner. Cleaner is exclusively triggered by Ender.
+
+#### Check 4: No agent may connect to itself (no self-loops)
+For every agent: confirm it does NOT list its own pool name in any of its `target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`, or `source_agents`.
+- **If violated**: Remove the self-reference. If you need a loop, route through a different intermediate agent.
+
+#### Check 5: Every non-Starter agent must have at least one incoming connection
+For every agent that is NOT a `starter`: confirm that at least one other agent connects to it (either by listing it as a target/output, or by being listed in this agent's `source_agents`).
+- **If violated**: The agent is unreachable and will never execute. Connect it to an upstream agent or remove it from the flow.
+
+#### Check 6: All referenced agent names must exist in the flow and be valid targets
+For every agent name referenced in any `target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`, or `source_agents` field:
+- (a) That agent name must correspond to an actual agent in the flow. If not, you are referencing a non-existent agent — add it or fix the reference.
+- (b) Agents referenced as targets (in `target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`) must NOT be of type `starter`, because Starter agents cannot receive input. If violated, change the target or the agent type.
+- (c) Agents referenced in `source_agents` must also exist in the flow.
+
+### Validation result
+
+- **ALL 6 checks pass** → Your flow is valid. Proceed to present your answer.
+- **Any check fails** → Fix every error found, then go back to Step 1 and re-validate the corrected flow. You may do this at most 2 times total. If after 2 re-validation attempts errors still remain, present the best version and explicitly list the remaining issues as warnings to the user.
+
+**REMEMBER**: Do NOT present your flow to the user until you have run this validation procedure at least once and it has passed (or you have exhausted the 2 retry attempts).
+
 ## Recommended Patterns (WHAT TO DO)
 
 1. **Exclusively use Raiser agent to trigger under certain configured condition monitored by it.** You should prefer to use Starter agent to unconditionally start other agents, and Raiser agent to trigger under certain configured condition monitored by it. 
