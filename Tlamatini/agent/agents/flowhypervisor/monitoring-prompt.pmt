@@ -11,9 +11,9 @@ Agents communicate by writing to their own log files; downstream agents are star
 AGENT LIFECYCLE SEQUENCE (normal):
 1. The user clicks "Start" — all Starter agents execute first.
 2. Each Starter agent logs "🚀 STARTER AGENT STARTED", starts its target agents, then logs "🚀 STARTUP COMPLETE: N started, M restarted" and exits.
-3. Each downstream agent logs its own startup marker (e.g., "🚀 EXECUTER AGENT STARTED", "📸 SHOTER AGENT STARTED", etc.) and runs its task.
+3. Each downstream agent logs its own startup marker (e.g., "🔥 EXECUTER AGENT STARTED (SCRIPT MODE)", "📸 SHOTER AGENT STARTED", etc.) and runs its task.
 4. When an agent finishes its work, it logs "🏁 <AgentType> agent finished" and exits (PID disappears).
-5. Eventually an Ender agent is triggered. It logs "💀 ENDER AGENT STARTED", terminates all its source agents, logs "💀 TERMINATION COMPLETE", then optionally launches Cleaner agents and exits.
+5. Eventually an Ender agent is triggered. It logs "💀 ENDER AGENT STARTED", terminates all agents in its target_agents kill list, logs "💀 TERMINATION COMPLETE", then optionally launches Cleaner agents via output_agents and exits.
 6. Cleaner agents delete log/pid files for specified agents, then exit.
 7. Once all agents finish, the flow is considered STOPPED.
 
@@ -27,7 +27,7 @@ SECTION 2 — KNOWN LOG PATTERNS TO UNDERSTAND
 • "🚀 STARTER AGENT STARTED"
 • "💀 ENDER AGENT STARTED"
 • "🛑 STOPPER AGENT STARTED"
-• "🔥 EXECUTER AGENT STARTED" / "🔥 EXECUTER AGENT STARTED (SCRIPT MODE)"
+• "🔥 EXECUTER AGENT STARTED (SCRIPT MODE)"
 • "🐍 PYTHONXER AGENT STARTED"
 • "📸 SHOTER AGENT STARTED"
 • "🔥 RAISER AGENT STARTED"
@@ -35,32 +35,45 @@ SECTION 2 — KNOWN LOG PATTERNS TO UNDERSTAND
 • "🔥 MOVER AGENT STARTED"
 • "🔥 SLEEPER AGENT STARTED"
 • "🔥 OR AGENT STARTED"
+• "🔥 AND AGENT STARTED (Cyan)"
 • "🔥 NOTIFIER AGENT STARTED"
 • "🔗 SSHER AGENT STARTED"
 • "📋 SCPER AGENT STARTED"
 • "📧 EMAILER AGENT STARTED"
 • "🚀 RECMAILER AGENT STARTED"
-• "📱 WHATSAPPER AGENT STARTED"
-• "📨 TELEGRAMER AGENT STARTED"
-• "TELEGRAMXR AGENT STARTED"
+• "📱 WHATSAPPER AGENT STARTED (Dark Green)"
+• "📨 TELEGRAMER AGENT STARTED (Dark-Blue to Green)"
+• "TELEGRAMXR AGENT STARTED (Dark-Blue to Black)"
 • "💬 PROMPTER AGENT STARTED"
 • "🔧 GITTER AGENT STARTED"
 • "🐳 DOCKERER AGENT STARTED"
 • "🔍 PSER AGENT STARTED"
 • "🚀 KUBERNETER AGENT STARTED"
 • "🔧 JENKINSER AGENT STARTED"
+• "🌐 APIRER AGENT STARTED"
+• "🤔 ASKER AGENT STARTED"
+• "🧼 CLEANER AGENT STARTED"
+• "CRAWLER AGENT STARTED"
+• "MOUSER AGENT STARTED"
 • "SUMMARIZER AGENT STARTED"
 • "FLOWCREATOR AGENT STARTED"
 • "🔀 FORKER AGENT STARTED"
-• "🔥 CRONER AGENT STARTED"
-• "FLOWHYPERVISOR AGENT STARTED"
+• "🕰️ CRONER AGENT STARTED (Time-Based Trigger)"
+• "🛡️ FLOWHYPERVISOR AGENT STARTED"
+• "🔥 LOG MONITOR STARTED | File: {target_log}" (Monitor Log — includes target file path)
+• "🔥 NETSTAT MONITOR STARTED" (Monitor Netstat)
+
+NOTE: Sqler and Mongoxer agents run in a separate console window (NEW_CONSOLE). Their startup markers
+use non-standard format ("🚀 Sqler Agent started with PID: ..." / "Agent started with PID: ...") and
+their logs may not be visible to the FlowHypervisor. Treat missing logs from these agents as expected.
 
 2b. COMPLETION MARKERS (INFO level):
-• "🏁 <AgentType> agent finished" (most agents)
+• "🏁 <AgentType> agent finished" (most agents — may include extra details like trigger counts or results)
 • "🚀 STARTUP COMPLETE: N started, M restarted" (Starter)
 • "💀 TERMINATION COMPLETE: N terminated, M already stopped" (Ender)
 • "👋 Starter agent exiting after startup sequence."
 • "👋 Ender agent exiting."
+• "🏁 Sequence Complete. Croner agent entering idle state." (Croner — after time trigger fires)
 
 2c. ERROR PATTERNS (ERROR level) — always prefixed "❌":
 • "❌ Error: config.yaml not found." — agent cannot find its configuration
@@ -109,19 +122,27 @@ SECTION 3 — AGENT CATEGORIES AND EXPECTED BEHAVIOR
 ═══════════════════════════════════════
 
 SHORT-LIVED agents (start, do work, exit):
-  Starter, Ender, Shoter, Executer, Pythonxer, Emailer, Telegramer, Ssher, Scper,
-  Sleeper, Deleter, Mover, Gitter, Dockerer, Kuberneter, Apirer, Jenkinser,
-  Prompter, Pser, Cleaner, Crawler, FlowCreator
+  Starter, Ender, Shoter, Executer, Pythonxer, Telegramer, Ssher, Scper,
+  Sleeper, Gitter, Dockerer, Kuberneter, Apirer, Jenkinser,
+  Prompter, Pser, Cleaner, Crawler, FlowCreator, Asker, Summarizer, Mouser
 
 LONG-RUNNING agents (start, poll continuously, exit only when stopped or pattern matched):
   Monitor_log, Monitor_netstat, Notifier, Raiser, Forker, Croner, OR, AND,
-  Whatsapper, RecMailer, Summarizer, TelegramRX, Stopper, Asker
+  Emailer, Whatsapper, RecMailer, TelegramRX, Stopper
+
+MIXED-MODE agents (short-lived in immediate mode, long-running in event-triggered mode with source_agents):
+  Deleter, Mover
+
+NOTE: Sqler and Mongoxer run in a separate console window (NEW_CONSOLE) and may not produce standard log files
+visible to the FlowHypervisor. Their absence from logs is normal behavior, not an error.
 
 KEY BEHAVIORAL RULES:
 • Short-lived agents SHOULD finish within a reasonable time (typically seconds to a few minutes).
   If a short-lived agent has been running for over 5 minutes with no new log output, it is likely STUCK.
 • Long-running agents are expected to keep running and producing periodic log output.
   If a long-running agent shows no log growth for many poll cycles (e.g., 3+ cycles), it may be HUNG.
+• Mixed-mode agents: When configured with source_agents, they behave as long-running (polling for events).
+  When configured without source_agents, they execute immediately and exit like short-lived agents.
 • If no agents at all have PIDs and no agents have recent log activity, the flow may have CRASHED.
 
 ═══════════════════════════════════════

@@ -38,7 +38,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Connection Rules
 - A **Starter** agent has NO inputs and one or more outputs. It is the entry point of a flow.
-- An **Ender** agent has one or more inputs and does NOT start downstream agents. It auto-discovers Cleaner agents in the pool. Do NOT put Cleaner agents in the Ender's `source_agents`; they are auto-discovered. **Important**: The Ender's `source_agents` are agents it will TERMINATE — they represent INCOMING connections (arrows FROM those agents TO the Ender), not outgoing connections. No other agent should list `ender_<n>` in its own `target_agents`.
+- An **Ender** agent has one or more inputs and does NOT start downstream agents (except Cleaners via `output_agents`). It auto-discovers Cleaner agents in the pool. **Important**: The Ender's `target_agents` are agents it will KILL. The Ender's `source_agents` are graphical input connections only — they are never killed and never started. The Ender's `output_agents` are agents to LAUNCH after killing (typically Cleaners). No other agent should list `ender_<n>` in its own `target_agents`.
 - **OR/AND** agents have exactly TWO inputs (source_agent_1, source_agent_2) and one output.
 - **Asker/Forker** agents have one input and TWO outputs (target_agents_a, target_agents_b).
 - Most other agents have one input and one output (source_agents, target_agents).
@@ -52,7 +52,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 ### Key Concepts
 
 - **`target_agents`**: Agents to start AFTER this agent finishes. Used by active agents to chain execution.
-- **`output_agents`**: Used by Stopper and Ender for downstream canvas autoconfiguration. NOT used for starting agents. Ender also uses `source_agents` for the list of agents to terminate.
+- **`output_agents`**: Used by Stopper and Ender for downstream canvas autoconfiguration. For Ender, `output_agents` contains agents to LAUNCH after killing (typically Cleaners). Ender uses `target_agents` for agents to KILL, and `source_agents` for graphical input connections only (never killed, never started).
 - **`source_agents`**: Agents whose log files this agent monitors. Used by Raiser, Emailer, Forker, Stopper, Notifier, etc.
 - **`pattern`/`patterns`**: Text strings to search for in source agent logs. When detected, they trigger an action (e.g., start downstream, send email, terminate). Choose patterns that match what the upstream agent writes to its log.
 - **`outcome_word`**: A word that the monitoring agent writes to its OWN log when it detects a match. Downstream agents (like Raiser) then watch for this outcome_word in the monitor's log.
@@ -92,12 +92,13 @@ Below is the complete list of agents you can use. For each agent, the **config p
   - `exit_after_start`: true (exit after starting agents; set to true)
 
 ### 2. Ender
-- **Purpose**: Terminates all agents listed in `source_agents` when the Stop button is pressed. Then launches agents in `output_agents` (typically Cleaners). Also auto-discovers any Cleaner agents in the pool.
+- **Purpose**: Terminates all agents listed in `target_agents` when the Stop button is pressed. Then launches agents in `output_agents` (typically Cleaners). Also auto-discovers any Cleaner agents in the pool.
 - **Pool name pattern**: `ender_<n>`
 - **Starts other agents**: NO (terminates agents; then launches output_agents like Cleaners)
 - **Visual connections**: Arrows point FROM other agents TO the Ender (input connections). The Ender's only outgoing connections go to Cleaner agents via `output_agents`. No agent should list `ender_<n>` in its own `target_agents`.
 - **Config parameters**:
-  - `source_agents`: [] (agents to TERMINATE — list ALL agents in the flow except the Ender itself and any Cleaner. These are INPUT connections to the Ender.)
+  - `target_agents`: [] (agents to KILL — list ALL agents in the flow except the Ender itself and any Cleaner. The Ender is the only agent allowed to have a Starter in its target_agents.)
+  - `source_agents`: [] (graphical input connections only — these agents are visually connected to Ender's input on the canvas but are NEVER killed or started by the Ender.)
   - `output_agents`: [] (agents to LAUNCH after termination — typically Cleaner agents. These are the only OUTPUT connections from Ender.)
 
 ### 3. Raiser
@@ -328,7 +329,7 @@ system_prompt: |
   - `poll_interval`: 2
 
 ### 16. Cleaner
-- **Purpose**: Cleans up agent logs and PID files after an Ender terminates agents. Only accepts input from Ender. Do NOT manually connect Cleaner to Ender's source_agents — the Ender auto-discovers Cleaners.
+- **Purpose**: Cleans up agent logs and PID files after an Ender terminates agents. Only accepts input from Ender. Do NOT manually connect Cleaner to Ender's target_agents — the Ender auto-discovers Cleaners via output_agents.
 - **Pool name pattern**: `cleaner_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -662,8 +663,8 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
 2. The `config` object must contain ALL parameters for that agent type, with appropriate values for the user's objective.
 3. For `target_agents`, `output_agents`, and `source_agents`, use the pool name format: `<agent_type>_<n>` where `<n>` is the sequential instance number (starting from 1) for that agent type.
 4. Every flow MUST start with a `starter` agent.
-5. Every flow SHOULD end with an `ender` agent (to allow stopping the flow). The Ender's `source_agents` should list ALL other agents in the flow except itself and Cleaners (so it can terminate them all). Note: Ender uses `source_agents` (not `target_agents`) because these agents are inputs to the Ender.
-6. Connections are implicit: if agent A has `target_agents: ["raiser_1"]`, it means A connects to Raiser instance 1. The Ender is special: it uses `source_agents` for agents to terminate (incoming connections), and `output_agents` for Cleaners (outgoing connections).
+5. Every flow SHOULD end with an `ender` agent (to allow stopping the flow). The Ender's `target_agents` should list ALL other agents in the flow except itself and Cleaners (so it can terminate them all). The Ender's `source_agents` are graphical connections only (never killed, never started).
+6. Connections are implicit: if agent A has `target_agents: ["raiser_1"]`, it means A connects to Raiser instance 1. The Ender is special: it uses `target_agents` for agents to KILL, `source_agents` for graphical input connections (never killed/started), and `output_agents` for Cleaners to launch.
 7. No agent should list `ender_<n>` in its own `target_agents` or `source_agents`. The Ender receives connections visually from leaf agents (agents with no further downstream targets).
 8. For agents that monitor logs (Raiser, Emailer, Forker, Stopper), set the `source_agents` to the agents whose logs they should watch.
 9. For OR/AND agents, use `source_agent_1` and `source_agent_2` (not source_agents list).
@@ -744,7 +745,8 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
   {
     "agent_type": "ender",
     "config": {
-      "source_agents": ["starter_1", "scper_1", "pythonxer_1", "raiser_1", "notifier_1", "sleeper_1"],
+      "target_agents": ["starter_1", "scper_1", "pythonxer_1", "raiser_1", "notifier_1", "sleeper_1"],
+      "source_agents": ["notifier_1"],
       "output_agents": []
     }
   }
@@ -990,7 +992,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
   {
     "agent_type": "ender",
     "config": {
-      "source_agents": [
+      "target_agents": [
         "starter_1",
         "executer_1",
         "deleter_1",
@@ -1005,6 +1007,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "whatsapper_1",
         "telegramer_1"
       ],
+      "source_agents": ["notifier_1", "whatsapper_1", "telegramer_1"],
       "output_agents": ["cleaner_1"]
     }
   },
@@ -1033,11 +1036,11 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 **Flow lifecycle**: Starter → Executer (stops domain) → sequence of 5 Deleters (clean up logs and applications) → Executer (starts domain) → Mover (copies new WAR to autodeploy) → Mover triggers downstream polling log agents (Monitor Log, Notifier, and Whatsapper).
 - **Monitoring/Alert path**: Monitor Log watches `server.log` for the success keyword "NormasDRM was successfully deployed". Notifier and Whatsapper concurrently poll the Monitor Log's output log directly. Upon seeing the success keyword, Notifier displays a GUI alert and launches Telegramer. Whatsapper concurrently sends a message via TextMeBot.
-- **Termination**: Ender is wired with `source_agents` containing all active and monitoring agents. When stopped, it terminates them and launches Cleaner to clean up logs and PIDs.
+- **Termination**: Ender is wired with `target_agents` containing all active and monitoring agents (the kill list). When stopped, it terminates them and launches Cleaner to clean up logs and PIDs. The `source_agents` are only the graphical connections to Ender's input.
 
 **Key design decisions in this example**:
 - Pure sequential chaining for standard linear deployment steps (Starter → Executer → Deleter → ... → Mover).
-- `ender` includes all active and monitoring agents in its `source_agents` to ensure complete termination, while Cleaner uses `agents_to_clean` with proper pool names (`pool_name_n`).
+- `ender` includes all active and monitoring agents in its `target_agents` to ensure complete termination, while Cleaner uses `agents_to_clean` with proper pool names (`pool_name_n`).
 
 ---
 
@@ -1066,8 +1069,8 @@ For every agent of type `starter`: confirm that NO other agent connects to it (n
 - **If violated**: Remove the incoming connection or change the target agent type. A Starter is always the entry point; nothing should point to it.
 
 #### Check 2: Ender agents can ONLY connect their output to Cleaner agents
-For every agent of type `ender`: confirm that every agent it connects to (via `output_agents`) is of type `cleaner`, and ONLY of type `cleaner`.
-- **If violated**: Remove any non-Cleaner agent from the Ender's outputs. Ender terminates the flow; it should only trigger cleanup.
+For every agent of type `ender`: confirm that every agent in its `output_agents` is of type `cleaner`, and ONLY of type `cleaner`. Note: the Ender's `target_agents` (kill list) can contain ANY agent type including Starters — this is correct because target_agents are agents to KILL, not agents to start.
+- **If violated**: Remove any non-Cleaner agent from the Ender's `output_agents`. Ender terminates the flow; it should only trigger cleanup via Cleaners.
 
 #### Check 3: Cleaner agents can ONLY receive input from Ender agents
 For every agent of type `cleaner`: confirm that every agent connecting to it (the agents that list this cleaner in their outputs, or the cleaner's own `source_agents`) is of type `ender`.
@@ -1107,7 +1110,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 
 4. **Always use Ender agent to terminate the flow.** Ender agent is used to terminate the flow and clean up the logs and PIDs of the agents.
 
-5. **In cases where the flow can be solved with an infinite loop the ender can be placed disconnected from the flow.** For example, if the flow can be solved with an infinite loop that checks a file every 10 seconds, the ender can be placed disconnected from the flow (and specified as source_agents all of the agents in the flow) and can be triggered manually.
+5. **In cases where the flow can be solved with an infinite loop the ender can be placed disconnected from the flow.** For example, if the flow can be solved with an infinite loop that checks a file every 10 seconds, the ender can be placed disconnected from the flow (with `target_agents` listing all agents to kill) and can be triggered manually.
 
 6. **Cleaner agent must always be connected in its source to the output of an Ender agent.** Output of Ender agent can only be connected to a Cleaner agent's input, and input of Cleaner agent can only be connected to the output of an Ender agent.
 

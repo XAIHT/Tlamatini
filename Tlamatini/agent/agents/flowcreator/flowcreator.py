@@ -258,7 +258,7 @@ def build_flow_result(agents: List[Dict[str, Any]]) -> Dict[str, Any]:
         agent_type = agent_def.get("agent_type", "").lower().strip()
 
         # Handle target_agents connections
-        # For Ender: SKIP — Ender uses source_agents (agents to TERMINATE), not target_agents.
+        # For Ender: SKIP — Ender's target_agents are kill targets, NOT flow connections.
         # Visual connections to the Ender are built separately below (leaf agents → Ender).
         if agent_type != "ender":
             target_agents = config_data.get("target_agents", [])
@@ -342,8 +342,9 @@ def build_flow_result(agents: List[Dict[str, Any]]) -> Dict[str, Any]:
     # Leaf agents = agents that have no outgoing connections (they are the terminal
     # nodes of each execution chain). Visually, arrows go FROM leaf agents TO the
     # Ender's input, mirroring how a user manually connects agents to the Ender.
-    # The Ender's config already has ALL agents in source_agents (for termination);
-    # the frontend auto-discovers upstream agents when it receives input connections.
+    # The Ender's config has ALL agents in target_agents (the kill list);
+    # source_agents are only graphical connections. The frontend auto-populates
+    # target_agents via upstream traversal when it receives input connections.
     if ender_indices:
         agents_with_outgoing = {conn["sourceIndex"] for conn in connections}
         for ender_idx in ender_indices:
