@@ -428,6 +428,7 @@ def main():
         dir_copies = {
             Path("Tlamatini") / "agent" / "images": dist_manage / "images",
             Path("Tlamatini") / "agent" / "agents": dist_manage / "agents",
+            Path("Tlamatini") / "jd-cli": dist_manage / "jd-cli",
         }
         for src_dir, dst_dir in dir_copies.items():
             if src_dir.exists():
