@@ -35,8 +35,6 @@ class DBChatHistoryLoader:
         try:
             out = []
             invokes_counter = global_state.get_state('chat_hist_summarizer_counter', 0)
-            if invokes_counter == 0:
-                return out
             
             if invokes_counter > 0 and (limit is None or invokes_counter < limit):
                 limit = invokes_counter
