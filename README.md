@@ -186,13 +186,14 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 39 pre-built agent types for diverse automation tasks
+- 40 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
 - Undo/Redo support (1024 actions)
 - Workflow save/load as `.flw` files
 - Canvas auto-configuration of agent connections
+- Flow validation with 6-point structural verification before execution
 
 ### Multi-Model Support
 - **Ollama**: Local LLM inference (default)
@@ -279,7 +280,7 @@ If you are setting up from source (manual setup), you will create your own super
 |----------|--------------|
 | **Backend** | Python 3.12+, Django 5.2.4, Django Channels 4.1, Daphne (ASGI) |
 | **Frontend** | HTML5, Bootstrap 5, JavaScript (modular), jQuery, jQuery UI |
-| **AI/ML** | LangChain 0.3.27, LangGraph 0.2.74, Ollama (ollama 0.5.3), FAISS, rank-bm25, NumPy 2.3.4 |
+| **AI/ML** | LangChain 0.3.27, LangGraph 0.2.74, Ollama (ollama 0.5.3), FAISS, rank-bm25, NumPy 2.3.4, PyAutoGUI 0.9.54 |
 | **LLM APIs** | Anthropic Claude (anthropic 0.74.1), Ollama REST API, MCP 1.25.0 |
 | **Database** | SQLite (default) |
 | **Communication** | WebSockets, gRPC (grpcio 1.76.0), MCP 1.25.0 |
@@ -370,7 +371,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (39 types)
+│   │   ├── agents/                 # Workflow agent templates (40 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -436,8 +437,13 @@ Tlamatini/
 │   │           ├── agent_page_ui.js       # General UI utilities
 │   │           ├── agentic_control_panel.js # Flow designer
 │   │           ├── canvas_item_dialog.js  # Agent config dialog on canvas
+│   │           ├── acp-validate.js         # Flow validation engine (6-point check)
 │   │           ├── contextual_menus.js    # Right-click menus
 │   │           └── tools_dialog.js        # Tool enable/disable dialog
+│   │
+│   ├── jd-cli/                      # Java decompiler CLI tool
+│   │   ├── jd-cli.bat               # Batch wrapper for JAR/WAR decompilation
+│   │   └── jd-cli.jar               # Java Decompiler engine
 │   │
 │   └── staticfiles/                # Collected static files (WhiteNoise)
 │
@@ -843,16 +849,17 @@ This is the main application build. It:
 2. Runs Django `collectstatic`
 3. Executes PyInstaller with all necessary configurations
 4. Creates required directories (`application`, `applications`, `content_generated`, etc.)
-5. Runs database migrations
-6. Creates a default superuser
-7. Renames the executable to `Tlamatini.exe`
-8. Copies agent templates
-9. Bundles support scripts into `dist/manage/`:
+5. Copies the `jd-cli/` directory (Java decompiler) into the distribution
+6. Runs database migrations
+7. Creates a default superuser
+8. Renames the executable to `Tlamatini.exe`
+9. Copies agent templates
+10. Bundles support scripts into `dist/manage/`:
    - `register_flw.ps1` / `unregister_flw.ps1` — `.flw` file association
    - `CreateShortcut.ps1` / `RemoveShortcut.ps1` — desktop & local shortcuts
    - `Tlamatini.ps1` — PowerShell launcher
    - `CreateShortcut.json`, `Tlamatini.ico`
-10. Generates **`pkg.zip`** from the `dist/manage/` directory
+11. Generates **`pkg.zip`** from the `dist/manage/` directory
 
 **Output:** `pkg.zip` at the project root (contains the entire packaged application).
 
@@ -999,6 +1006,22 @@ Access via `/agentic_control_panel/` URL. Features:
 - Agent restart and process management
 - Session-scoped pool directories
 - Canvas auto-configuration (connections auto-populate agent configs)
+- Flow validation with detailed error reporting
+
+#### Flow Validation
+
+Before executing a workflow, the Validate button performs a comprehensive 6-point structural verification by building an NxN adjacency matrix from all agent connections and checking:
+
+| Check | Rule | Example Violation |
+|-------|------|-------------------|
+| **V1** | Starter agents have no incoming connections | Another agent targeting a Starter |
+| **V2** | Ender agents only connect to Cleaner agents | Ender targeting an Executer |
+| **V3** | Cleaner agents only receive input from Ender agents | Cleaner connected to a Monitor |
+| **V4** | No self-connections (diagonal must be zero) | Agent targeting itself |
+| **V5** | All non-Starter agents have at least one input | Orphaned agent with no upstream |
+| **V6** | Referenced agents exist and accept input connections | Dangling reference or targeting a Starter |
+
+The validation endpoint (`/validate_flow/`) lists all deployed agents in the session pool, loads their configurations, builds the connection matrix, and runs all six checks. Results are displayed in a dialog with per-agent error details and suggestions.
 
 ### MCP Integration
 
@@ -1112,7 +1135,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **39 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **40 agent types** total.
 
 ### Agent Architecture
 
@@ -1144,7 +1167,7 @@ Agents are classified as:
 |-------|---------|-------------------|
 | **monitor_log** | LLM-based log file monitoring | `logfile_path`: Log to watch<br>`keywords`: ERROR, FATAL, WARN, etc.<br>`outcome_word`: TARGET_FOUND<br>`poll_interval`: Check frequency |
 | **monitor_netstat** | Network connection monitoring | Similar to monitor_log |
-| **flowhypervisor** | System-managed LLM anomaly detector | `llm.model`: Ollama model<br>`monitoring_poll_time`: Check frequency |
+| **flowhypervisor** | System-managed LLM anomaly detector with reanimation support, incremental log reading, NxN connection matrix analysis, and smart exit (stops after 3 cycles with no running agents) | `llm.model`: Ollama model<br>`llm.host`: Ollama URL<br>`llm.temperature`: LLM temperature<br>`monitoring_poll_time`: Check frequency (default: 10s) |
 
 ### Notification Agents
 
@@ -1180,10 +1203,10 @@ Agents are classified as:
 | **scper** | SCP file transfer to/from remote host | `user`: SSH username<br>`ip`: Remote host<br>`file`: Path to transfer<br>`direction`: send / receive<br>`target_agents`: Triggered on success |
 | **mongoxer** | Execute Python scripts against MongoDB using pre-connected `db` object | `mongo_connection`: Connection config map<br>`script`: Python script using `db`<br>`target_agents`: Success agents |
 | **prompter** | Sends configured prompt to Ollama LLM and logs response | `prompt`: Prompt text<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
-| **gitter** | Execute Git operations on a local repository (clone, pull, push, commit, checkout, branch, diff, log, status, or custom commands) | `repo_path`: Local repo path<br>`command`: Git command to run<br>`branch`: Branch name<br>`commit_message`: Commit message<br>`remote`: Remote URL<br>`custom_command`: Raw git command<br>`target_agents`: Downstream agents |
+| **gitter** | Execute Git operations on a local repository (clone, pull, push, commit, checkout, branch, diff, log, status, or custom commands). Produces structured content reports: `<git {command}> RESPONSE { ... }` with stdout/stderr capture | `repo_path`: Local repo path<br>`command`: Git command to run<br>`branch`: Branch name<br>`commit_message`: Commit message<br>`remote`: Remote URL<br>`custom_command`: Raw git command<br>`target_agents`: Downstream agents |
 | **dockerer** | Docker container management (build, up, down, restart, stop, logs, ps, pull) | `command`: Docker operation<br>`compose_file`: docker-compose path<br>`target_agents`: Downstream agents |
 | **kuberneter** | Kubernetes command executor (kubectl commands like get, apply, logs, exec) | `command`: kubectl operation<br>`namespace`: target namespace<br>`extra_args`: Additional arguments<br>`custom_command`: Custom kubectl command<br>`target_agents`: Downstream agents |
-| **apirer** | HTTP/REST API agent — makes GET/POST/PUT/DELETE requests, logs response status and latency, triggers downstream agents regardless of outcome | `url`: Target URL<br>`method`: HTTP method<br>`headers`: Request headers map<br>`body`: Request body<br>`expected_status`: Expected HTTP status<br>`timeout`: Timeout in seconds<br>`target_agents`: Downstream agents |
+| **apirer** | HTTP/REST API agent — makes GET/POST/PUT/DELETE requests, logs response status and latency, triggers downstream agents regardless of outcome. Produces structured content reports: `<{url}> RESPONSE { ... }` with timing in milliseconds and Authorization header masking for security | `url`: Target URL<br>`method`: HTTP method<br>`headers`: Request headers map<br>`body`: Request body<br>`expected_status`: Expected HTTP status<br>`timeout`: Timeout in seconds<br>`target_agents`: Downstream agents |
 | **pser** | LLM-powered process finder — searches running processes by likely name using semantic matching | `likely_process_name`: Process to find<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 | **jenkinser** | CI/CD pipeline trigger — triggers Jenkins builds with CSRF crumb support, logs trigger result, and starts downstream agents regardless of outcome | `jenkins_url`: Jenkins server URL<br>`job_name`: Job to trigger<br>`user`: Jenkins username<br>`api_token`: API token<br>`parameters`: Build parameters map<br>`target_agents`: Downstream agents |
 | **crawler** | Web page crawler with LLM analysis — fetches URLs via HTTP GET, strips HTML markup, saves plain text to local files, and processes content with an LLM. Supports three modes: small-range (single URL), medium-range (same-domain links), large-range (all links) | `url`: Target URL<br>`system_prompt`: LLM prompt<br>`crawl_type`: small-range / medium-range / large-range<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
@@ -1546,8 +1569,9 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/restart_agent/<agent_name>/` | POST | Restart a specific agent |
 | `/restart_agents/` | POST | Restart multiple agents |
 | `/asker_choice/<agent_name>/` | POST | Submit user choice for Asker agent |
-| `/execute_flowhypervisor/` | POST | Start the FlowHypervisor agent |
-| `/check_flowhypervisor_alert/` | GET | Check for FlowHypervisor alerts |
+| `/execute_flowhypervisor/<agent_name>/` | POST | Start the FlowHypervisor agent |
+| `/check_flowhypervisor_alert/<agent_name>/` | GET | Check for FlowHypervisor alerts |
+| `/validate_flow/` | GET | Run 6-point flow structure validation |
 
 #### Connection Updates (Canvas Auto-Configuration)
 
@@ -1843,7 +1867,10 @@ Enable verbose logging in config.json:
 | **Jenkinser** | CI/CD pipeline trigger agent that triggers Jenkins builds and starts downstream agents regardless of trigger result |
 | **Crawler** | LLM-powered web crawler agent that fetches pages, strips HTML, and processes content with an LLM in three range modes (small/medium/large) |
 | **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
-| **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, alerting the user to anomalies |
+| **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery |
+| **Flow Validation** | Pre-execution 6-point structural verification that builds an NxN adjacency matrix from agent connections and validates topology rules (Starter inputs, Ender outputs, self-connections, orphaned agents, dangling references) |
+| **jd-cli** | Java Decompiler CLI tool bundled with the application for decompiling JAR/WAR files to source code |
+| **PyAutoGUI** | Python library for programmatic mouse and keyboard control, used by the Mouser agent |
 | **Asker** | Deterministic agent that pauses workflow for interactive user A/B choice |
 | **Workflow** | Connected sequence of agents performing automated tasks |
 | **Canvas** | UI area for displaying and editing generated code |
@@ -1892,6 +1919,8 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - [Bootstrap](https://getbootstrap.com/) - Frontend framework
 - [TextMeBot](https://textmebot.com/) - WhatsApp messaging API
 - [Ruff](https://github.com/astral-sh/ruff) - Python linter
+- [PyAutoGUI](https://github.com/asweigart/pyautogui) - Mouse/keyboard automation
+- [JD-CLI](https://github.com/intoolswetrust/jd-cli) - Java decompiler CLI
 
 ---
 
@@ -1899,14 +1928,21 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
-- **Added Mouser Agent** - Mouse pointer movement agent supporting random and localized movement modes
+- **Added Flow Validation System** - Comprehensive 6-point structural verification engine (`acp-validate.js`) that builds an NxN adjacency matrix from agent connections and validates: no inputs to Starters, Ender-only connections to Cleaners, Cleaner-only inputs from Enders, no self-connections, all non-Starters have inputs, and all referenced agents exist with appropriate input types. Results shown with per-agent error details and suggestions
+- **Added FlowHypervisor Agent** - System-managed LLM-powered anomaly detector that monitors all running agents in a flow. Features include: reanimation support via `reanim.json` for crash recovery, incremental log reading (only processes new content), NxN connection matrix analysis, `hypervisor_alert.json` generation for frontend alerts, and smart exit logic (stops after 3 consecutive cycles with no running agents)
+- **Added Mouser Agent** - Mouse pointer movement agent using PyAutoGUI, supporting two modes: random (moves across screen for configurable duration) and localized (smooth easing movement from initial to final coordinates). Includes fail-safe exception handling and downstream agent triggering
+- **Improved Gitter Agent Content Reporting** - Now produces structured response format: `<git {command}> RESPONSE { ... }` with stdout/stderr capture and per-line logging
+- **Improved Apirer Agent Content Reporting** - Now produces structured response format: `<{url}> RESPONSE { ... }` with timing in milliseconds, body size reporting, and Authorization header masking for security
+- **jd-cli Bundled in Installation** - The Java decompiler CLI tool (`jd-cli/`) is now included in `pkg.zip` during the build process, available at the application root alongside `agents/`, `application/`, etc.
+- **FlowCreator Skill Enhancements** - Updated `agentic_skill.md` with Mouser agent documentation, improved validation instructions for agent connection rules, and enhanced button behavior for the Validate flow action
+- **Added PyAutoGUI Dependency** - `PyAutoGUI==0.9.54` added to `requirements.txt` for Mouser agent mouse control
+- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), and `/update_mouser_connection/<agent_name>/` (POST)
 - **P0/P1/P2 Security Hardening** - Comprehensive, tiered security test suite covering user isolation, CSRF, login enforcement (P0), path traversal prevention and safe path joining (P1), and prompt injection defense with indirect file access detection (P2)
 - **Added Path Guard Module** (`path_guard.py`) - Centralized path validation layer that resolves Windows known folders, enforces `allowed_paths` from config, and prevents directory traversal across all file operations
 - **Improved File Search Chain** - `chain_files_search_lcel.py` now integrates with `path_guard.py` for secure path validation, supports non-explicit lookup crawling, and validates all gRPC results against path escaping
 - **Expanded Security Tests** - `tests.py` now includes three test classes (`P0HardeningTests`, `P1HardeningTests`, `PromptPathHardeningTests`) covering critical to prompt-level hardening scenarios
 - **Enhanced RAG Interface Security** - `rag/interface.py` now performs LLM-based indirect file access detection and prompt-level path validation before file operations
 - **Improved Crawler Agent** - Better non-explicit lookup support and updated source LLM model configuration
-- **FlowCreator Skill Improvements** - Updated `agentic_skill.md` with refined agent descriptions and flow design guidance
 - **UI Refinements** - MCP/agents dialog improved with golden-ratio styled columns for better readability
 - **ESLint Configuration** - Added `eslint.config.mjs` for frontend JavaScript quality assurance
 - **Added Summarizer Agent** - LLM-powered log monitoring agent that continuously polls source agent log files, sends content to an LLM with a configurable system prompt for event detection, and triggers downstream agents when positive events are found
