@@ -64,8 +64,8 @@ class P0HardeningTests(TestCase):
         self.other_user = User.objects.create_user(username='bob', password='secret123')
 
     def test_agent_page_only_shows_current_users_messages(self):
-        AgentMessage.objects.create(user=self.user, message='visible to alice')
-        AgentMessage.objects.create(user=self.other_user, message='must stay private')
+        AgentMessage.objects.create(user=self.user, conversation_user=self.user, message='visible to alice')
+        AgentMessage.objects.create(user=self.other_user, conversation_user=self.other_user, message='must stay private')
 
         self.client.force_login(self.user)
         response = self.client.get(reverse('agent_page'))
@@ -73,6 +73,20 @@ class P0HardeningTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['initial_messages']), 1)
         self.assertEqual(response.context['initial_messages'][0]['message'], 'visible to alice')
+
+    def test_agent_page_keeps_bot_history_for_current_user(self):
+        bot_user = User.objects.create_user(username='LLM_Bot', password='secret123')
+        AgentMessage.objects.create(user=self.user, conversation_user=self.user, message='visible to alice')
+        AgentMessage.objects.create(user=bot_user, conversation_user=self.user, message='assistant reply')
+        AgentMessage.objects.create(user=bot_user, conversation_user=self.other_user, message='must stay private')
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('agent_page'))
+
+        self.assertEqual(
+            [message['message'] for message in response.context['initial_messages']],
+            ['visible to alice', 'assistant reply']
+        )
 
     def test_load_canvas_requires_login(self):
         response = self.client.get(reverse('load_canvas', args=['demo.py']))
@@ -94,14 +108,16 @@ class P0HardeningTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_delete_messages_for_user_is_scoped(self):
-        AgentMessage.objects.create(user=self.user, message='delete me')
-        AgentMessage.objects.create(user=self.other_user, message='keep me')
+        bot_user = User.objects.create_user(username='LLM_Bot', password='secret123')
+        AgentMessage.objects.create(user=self.user, conversation_user=self.user, message='delete me')
+        AgentMessage.objects.create(user=bot_user, conversation_user=self.user, message='delete me too')
+        AgentMessage.objects.create(user=self.other_user, conversation_user=self.other_user, message='keep me')
 
         consumer = AgentConsumer()
         async_to_sync(consumer.delete_messages_for_user)(self.user)
 
-        self.assertFalse(AgentMessage.objects.filter(user=self.user).exists())
-        self.assertTrue(AgentMessage.objects.filter(user=self.other_user).exists())
+        self.assertFalse(AgentMessage.objects.filter(conversation_user=self.user).exists())
+        self.assertTrue(AgentMessage.objects.filter(conversation_user=self.other_user).exists())
 
     def test_anonymous_websocket_connection_is_rejected(self):
         communicator = WebsocketCommunicator(application, '/ws/agent/')

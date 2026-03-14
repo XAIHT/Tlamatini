@@ -518,7 +518,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message):
+    async def queue_llm_retrieval(self, message, conversation_user):
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -531,8 +531,18 @@ class AgentConsumer(AsyncWebsocketConsumer):
             
             print("--- The message is being procesed by the LLM")
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
-            llm_response = await ask_rag_async(self.rag_chain, {"input": message}, inet_enabled=self.inet_enabled)
-            await process_llm_response(llm_response, self.rag_chain, self.channel_layer, self.room_group_name)
+            llm_response = await ask_rag_async(
+                self.rag_chain,
+                {"input": message, "conversation_user_id": conversation_user.id},
+                inet_enabled=self.inet_enabled
+            )
+            await process_llm_response(
+                llm_response,
+                self.rag_chain,
+                self.channel_layer,
+                self.room_group_name,
+                conversation_user=conversation_user,
+            )
         except Exception as e:
             print(f"!!! ERROR in queue_llm_retrieval method: {e}")
             if global_state.get_state('cancel_generation'):
@@ -993,7 +1003,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):
                 print("--- User message saved to DB.")
-                await self.save_message(user, message)
+                await self.save_message(user, message, conversation_user=user)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
                     {'type': 'agent_message', 'message': message, 'username': user.username}
@@ -1016,7 +1026,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 return
             
             print(f"--- Message parsed: '{message}' from user '{user.username}' **** to be sent to LLM")
-            await self.save_message(user, message)
+            await self.save_message(user, message, conversation_user=user)
             print("--- User message saved to DB.")
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
@@ -1029,7 +1039,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {'type': 'agent_message', 'message': constants.MSG_PROCESSING_REQUEST, 'username': 'LLM_Bot'}
             )
             print("--- Bot message broadcast to room.")
-            asyncio.create_task(self.queue_llm_retrieval(message))
+            asyncio.create_task(self.queue_llm_retrieval(message, user))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")
             not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
@@ -1054,12 +1064,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
         }))
 
     @database_sync_to_async
-    def save_message(self, user, message):
-        AgentMessage.objects.create(user=user, message=message)
+    def save_message(self, user, message, conversation_user=None):
+        AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message)
 
     @database_sync_to_async
     def delete_messages_for_user(self, user):
-        AgentMessage.objects.filter(user=user).delete()
+        AgentMessage.objects.filter(conversation_user=user).delete()
 
     @database_sync_to_async
     def save_program(self, programName, programLanguage, programContent):

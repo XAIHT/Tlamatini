@@ -611,6 +611,8 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         return str(access_rejection)
 
     payload = {"input": raw_text, "chat_history": chat_history}
+    if isinstance(question, dict) and question.get("conversation_user_id") is not None:
+        payload["conversation_user_id"] = question["conversation_user_id"]
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException

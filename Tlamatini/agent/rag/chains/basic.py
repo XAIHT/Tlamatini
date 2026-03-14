@@ -130,7 +130,7 @@ class BasicPromptOnlyChain:
         if hist and len(hist) > 0:
             rewritten = self.contextualize_chain.invoke({"input": payload["input"], "chat_history": hist})
             rewritten_text = _sanitize_rewritten_question(self._to_text(rewritten))
-            show_rephrased_question(rewritten_text)
+            show_rephrased_question(rewritten_text, payload.get("conversation_user_id"))
         else:
             rewritten_text = original_input
             print("\n--- No chat history found, using original question without rephrasing")

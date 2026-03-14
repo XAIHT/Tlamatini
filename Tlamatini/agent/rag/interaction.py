@@ -19,7 +19,7 @@ def load_context_blob(query_hash: str) -> Optional[str]:
     except ContextCache.DoesNotExist:
         return None
 
-def show_rephrased_question(rephrased_question):
+def show_rephrased_question(rephrased_question, conversation_user_id=None):
     if rephrased_question is None or rephrased_question == "" or rephrased_question.strip() == "":
         print("\n--- Rephrased question is None, empty, or whitespace. Skipping...")
         return False
@@ -30,7 +30,11 @@ def show_rephrased_question(rephrased_question):
             referencedRephrase = rephrased_question
 
         bot_user, _ = User.objects.get_or_create(username='LLM_Bot')
-        result = AgentMessage.objects.create(user=bot_user, message=referencedRephrase)
+        result = AgentMessage.objects.create(
+            user=bot_user,
+            conversation_user_id=conversation_user_id,
+            message=referencedRephrase
+        )
         print(f"\n--- Rephrased question has been saved to DB: {result}")
 
         try:
