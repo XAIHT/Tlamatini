@@ -416,7 +416,7 @@ class UnifiedAgentRAGChain:
             })
             q_rewritten = _sanitize_rewritten_question(self._to_text(rewritten))
             print("--- Conversation context available, proceeding with added history ---")
-            show_rephrased_question(q_rewritten)
+            show_rephrased_question(q_rewritten, payload.get("conversation_user_id"))
         else:
             q_rewritten = original_input
             print("--- No conversation context available, proceeding with original query ---")

@@ -143,7 +143,7 @@ class HistoryAwareNoDocsChain:
         if hist and len(hist) > 0:
             rewritten = self.contextualize_chain.invoke({"input": original_input, "chat_history": hist})
             rewritten_text = _sanitize_rewritten_question(self._to_text(rewritten))
-            show_rephrased_question(rewritten_text)
+            show_rephrased_question(rewritten_text, payload.get("conversation_user_id"))
         else:
             rewritten_text = original_input
             print("--- No significant chat history detected, proceeding with original question ---")
@@ -379,7 +379,7 @@ class OptimizedHistoryAwareRAGChain:
                 "chat_history": hist
             })
             q_rewritten = _sanitize_rewritten_question(self._to_text(rewritten))
-            show_rephrased_question(q_rewritten)
+            show_rephrased_question(q_rewritten, payload.get("conversation_user_id"))
         else:
             q_rewritten = original_input
             print("--- No conversation context available, proceeding with original query ---")

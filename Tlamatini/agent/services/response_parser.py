@@ -7,8 +7,8 @@ from .filesystem import get_time_stamp
 
 # Database operations wrapped for async
 @sync_to_async
-def save_message(user, message):
-    AgentMessage.objects.create(user=user, message=message)
+def save_message(user, message, conversation_user=None):
+    AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message)
 
 @sync_to_async
 def save_program(programName, programLanguage, programContent):
@@ -22,7 +22,7 @@ def save_snippet(snippetName, snippetLanguage, snippetContent):
 def get_or_create_bot_user():
     return User.objects.get_or_create(username='LLM_Bot')
 
-async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name):
+async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None):
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
@@ -140,7 +140,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     print("\n--- The final parsed/cleaned LLM response is: "+llm_response)
     print("\n--- We take the parsed/processed response by the LLM and save it to the DB")
     bot_user, _ = await get_or_create_bot_user()
-    await save_message(bot_user, llm_response)
+    await save_message(bot_user, llm_response, conversation_user=conversation_user)
     
     if channel_layer:
         await channel_layer.group_send(

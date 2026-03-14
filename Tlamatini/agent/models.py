@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 
 class AgentMessage(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    conversation_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='agent_messages', null=True)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
