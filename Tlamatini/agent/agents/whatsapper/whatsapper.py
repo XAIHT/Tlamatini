@@ -3,7 +3,6 @@ import sys
 import time
 import yaml
 import logging
-import threading
 import requests
 from typing import Dict, Optional
 
@@ -306,78 +305,8 @@ def analyze_log_chunk(llm, config, chunk: str, source_agent: str) -> Optional[st
 
 
 # ─────────────────────────────────────────────────────────────
-# Monitoring thread (with smart polling)
+# Monitoring loop (single-threaded, sequential polling)
 # ─────────────────────────────────────────────────────────────
-
-def monitor_source(agent_name: str, stop_event: threading.Event, config: Dict,
-                   global_offsets: Dict, offset_lock: threading.Lock):
-    """
-    Thread function to monitor a single source agent's log file.
-    Uses smart polling to handle log files that don't exist yet or get truncated.
-    """
-    logging.info(f"👀 Started monitoring thread for: {agent_name}")
-
-    # Initialize LLM for this thread
-    try:
-        llm = ChatOllama(
-            base_url=config['llm']['base_url'],
-            model=config['llm']['model'],
-            temperature=config['llm']['temperature']
-        )
-    except Exception as e:
-        logging.error(f"❌ Failed to init LLM for {agent_name}: {e}")
-        return
-
-    log_path = get_agent_log_path(agent_name)
-    logging.info(f"   📄 {agent_name} log: {log_path} (exists: {os.path.exists(log_path)})")
-
-    # Per-thread file size tracking for smart polling
-    # -1 means file hasn't been seen yet (waiting for appearance)
-    file_sizes: Dict[str, int] = {}
-
-    # Initialize file size tracking
-    if os.path.exists(log_path):
-        file_sizes[log_path] = os.path.getsize(log_path)
-    else:
-        file_sizes[log_path] = -1  # Mark as waiting for file to appear
-
-    # Initialize offset: start at 0 to catch all content (including pre-existing)
-    with offset_lock:
-        if agent_name not in global_offsets:
-            global_offsets[agent_name] = 0
-
-    poll_interval = config.get('poll_interval', 1)  # Default 1s
-
-    while not stop_event.is_set():
-        try:
-            with offset_lock:
-                current_offset = global_offsets.get(agent_name, 0)
-
-            # Smart polling: handles missing files, truncation, appearing files
-            new_content, new_offset = check_log_for_new_content(
-                log_path, current_offset, file_sizes
-            )
-
-            with offset_lock:
-                global_offsets[agent_name] = new_offset
-
-            # Analyze if there's new content
-            if new_content:
-                alert_msg = analyze_log_chunk(llm, config, new_content, agent_name)
-
-                if alert_msg:
-                    logging.info(f"🚨 Keywords detected in {agent_name}!")
-                    send_whatsapp_message(
-                        config['textmebot']['phone'],
-                        config['textmebot']['apikey'],
-                        alert_msg
-                    )
-
-        except Exception as e:
-            logging.error(f"Error monitoring {agent_name}: {e}")
-
-        time.sleep(poll_interval)
-
 
 def main():
     write_pid_file()
@@ -405,39 +334,69 @@ def main():
 
     logging.info("=" * 60)
 
-    # Shared state
+    # State
     offsets = load_reanim_offsets()
-    offset_lock = threading.Lock()
-    stop_event = threading.Event()
-    threads = []
+    poll_interval = config.get('poll_interval', 1)
 
     # Initialize offsets for new sources (start at 0 to catch everything)
     for agent in source_agents:
         if agent not in offsets:
             offsets[agent] = 0
 
-    # Start threads
-    for agent in source_agents:
-        t = threading.Thread(
-            target=monitor_source,
-            args=(agent, stop_event, config, offsets, offset_lock)
+    # Initialize LLM once (shared across all source agents)
+    try:
+        llm = ChatOllama(
+            base_url=config['llm']['base_url'],
+            model=config['llm']['model'],
+            temperature=config['llm']['temperature']
         )
-        t.daemon = True
-        t.start()
-        threads.append(t)
+    except Exception as e:
+        logging.error(f"❌ Failed to init LLM: {e}")
+        remove_pid_file()
+        return
+
+    # File size tracking for smart polling per source agent
+    file_sizes: Dict[str, int] = {}
+    for agent in source_agents:
+        lp = get_agent_log_path(agent)
+        file_sizes[lp] = os.path.getsize(lp) if os.path.exists(lp) else -1
 
     try:
-        # Main loop: periodic offset saving
+        # Single-threaded main loop: iterate over all sources each cycle
         while True:
-            time.sleep(10)
-            with offset_lock:
-                save_reanim_offsets(offsets)
+            for agent_name in source_agents:
+                try:
+                    log_path = get_agent_log_path(agent_name)
+                    current_offset = offsets.get(agent_name, 0)
+
+                    # Smart polling: handles missing files, truncation, appearing files
+                    new_content, new_offset = check_log_for_new_content(
+                        log_path, current_offset, file_sizes
+                    )
+                    offsets[agent_name] = new_offset
+
+                    # Analyze if there's new content
+                    if new_content:
+                        alert_msg = analyze_log_chunk(llm, config, new_content, agent_name)
+
+                        if alert_msg:
+                            logging.info(f"🚨 Keywords detected in {agent_name}!")
+                            send_whatsapp_message(
+                                config['textmebot']['phone'],
+                                config['textmebot']['apikey'],
+                                alert_msg
+                            )
+
+                except Exception as e:
+                    logging.error(f"Error monitoring {agent_name}: {e}")
+
+            # Save offsets after each full cycle
+            save_reanim_offsets(offsets)
+
+            time.sleep(poll_interval)
 
     except KeyboardInterrupt:
         logging.info("Stopping Whatsapper agent...")
-        stop_event.set()
-        for t in threads:
-            t.join(timeout=2)
     except Exception as e:
         logging.error(f"Critical Error: {e}")
     finally:

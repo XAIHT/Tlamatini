@@ -246,6 +246,31 @@ def is_agent_running(agent_name: str) -> Optional[int]:
     
     return None
 
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
 
 
 def recursive_kill(pid: int):
@@ -381,27 +406,17 @@ def main():
         logging.info("=" * 60)
         
         started_count = 0
-        restarted_count = 0
-        
-        # Start all target agents
+
+        # Wait for all target agents to stop before starting them
+        wait_for_agents_to_stop(target_agents)
         for target in target_agents:
             logging.info(f"\n🎯 Processing target: {target}")
-            
-            # Check if already running
-            running_pid = is_agent_running(target)
-            if running_pid:
-                logging.info(f"⚠️ Agent '{target}' already running (PID: {running_pid}). Restarting...")
-                stop_agent(running_pid, target)
-                logging.info(f"🚀 Restarting agent '{target}'...")
-                if start_agent(target):
-                    restarted_count += 1
-            else:
-                logging.info(f"🚀 Starting agent '{target}'...")
-                if start_agent(target):
-                    started_count += 1
-        
+            logging.info(f"🚀 Starting agent '{target}'...")
+            if start_agent(target):
+                started_count += 1
+
         logging.info("=" * 60)
-        logging.info(f"🚀 STARTUP COMPLETE: {started_count} started, {restarted_count} restarted")
+        logging.info(f"🚀 STARTUP COMPLETE: {started_count} started")
         logging.info("=" * 60)
         
         if exit_after_start:

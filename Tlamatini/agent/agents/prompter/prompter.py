@@ -158,6 +158,63 @@ def get_agent_script_path(agent_name: str) -> str:
     return os.path.join(agent_dir, f"{agent_name}.py")
 
 
+def is_agent_running(agent_name: str) -> bool:
+    """Check if an agent is currently running by verifying its PID file and process."""
+    agent_dir = get_agent_directory(agent_name)
+    pid_path = os.path.join(agent_dir, "agent.pid")
+
+    if not os.path.exists(pid_path):
+        return False
+
+    try:
+        with open(pid_path, "r") as f:
+            pid = int(f.read().strip())
+    except (ValueError, OSError):
+        return False
+
+    try:
+        import psutil
+        if not psutil.pid_exists(pid):
+            return False
+        proc = psutil.Process(pid)
+        if proc.status() == psutil.STATUS_ZOMBIE:
+            return False
+        return True
+    except Exception:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
+
+
 def start_agent(agent_name: str) -> bool:
     agent_dir = get_agent_directory(agent_name)
     script_path = get_agent_script_path(agent_name)
@@ -288,6 +345,7 @@ def main():
         # Trigger downstream agents
         total_triggered = 0
         if target_agents:
+            wait_for_agents_to_stop(target_agents)
             logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
             for target in target_agents:
                 if start_agent(target):

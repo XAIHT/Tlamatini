@@ -1,11 +1,11 @@
-# Stopper Agent - Multi-threaded pattern-based agent terminator
+# Stopper Agent - Single-threaded pattern-based agent terminator
 # This agent monitors source agent log files for configurable patterns
 # and terminates those agents when their patterns are detected.
 #
 # Key Features:
-# - Multi-threaded: One thread per source agent for independent parallel monitoring
+# - Single-threaded: Sequential polling of all source agents in main loop
 # - Per-source .pos files: Each source gets its own position file
-# - Continuous execution: Threads run until the Stopper is killed
+# - Continuous execution: Runs until the Stopper is killed
 # - Supports 1-256 source agents
 #
 # Deployment: When deployed via agentic_control_panel, this agent is copied to
@@ -20,7 +20,6 @@ os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import time
 import yaml
 import logging
-import threading
 import psutil
 import glob
 from typing import List, Dict
@@ -50,8 +49,8 @@ logging.getLogger().addHandler(console_handler)
 
 PID_FILE = "agent.pid"
 
-# Thread-safe flag for shutdown
-shutdown_event = threading.Event()
+# Shutdown flag (single-threaded, checked in main loop)
+shutdown_flag = False
 
 
 def get_pool_path() -> str:
@@ -298,51 +297,44 @@ def terminate_agent(agent_name: str) -> bool:
     return terminated
 
 
-def monitor_source_agent(source_agent: str, pattern: str, poll_interval: int, thread_id: int):
+def check_source_agent(source_agent: str, pattern: str, index: int,
+                       pos_states: Dict[str, Dict]) -> None:
     """
-    Monitor a single source agent's log file for a pattern.
-    This function runs in its own thread and continues until shutdown.
+    Check a single source agent's log file for a pattern (one-shot check).
+    Called sequentially from the main loop each poll cycle.
     """
     pos_file = get_pos_filename(source_agent)
     log_path = get_agent_log_path(source_agent)
-    
-    # Load saved position
-    pos_data = load_pos_file(pos_file)
-    offset = pos_data.get('offset', 0)
-    file_size = pos_data.get('file_size', -1)
-    
-    logging.info(f"🧵 Thread-{thread_id} started: Monitoring '{source_agent}' for pattern '{pattern}'")
-    logging.info(f"   📄 Log path: {log_path}")
-    logging.info(f"   📍 Position file: {pos_file}")
-    
-    while not shutdown_event.is_set():
-        try:
-            pattern_found, new_offset, matched_line, new_file_size = check_log_for_pattern(
-                log_path, offset, pattern, file_size
-            )
-            
-            offset = new_offset
-            file_size = new_file_size
-            
-            # Save position after each check
-            save_pos_file(pos_file, offset, file_size)
-            
-            if pattern_found:
-                logging.info(f"🚨 Thread-{thread_id}: PATTERN DETECTED in '{source_agent}': {matched_line}")
-                logging.info(f"🛑 Thread-{thread_id}: Terminating agent '{source_agent}'...")
-                terminate_agent(source_agent)
-                # Continue monitoring - agent may restart and need to be stopped again
-            
-        except Exception as e:
-            logging.error(f"❌ Thread-{thread_id} error: {e}")
-        
-        # Wait for poll interval, but check shutdown more frequently
-        for _ in range(poll_interval * 2):
-            if shutdown_event.is_set():
-                break
-            time.sleep(0.5)
-    
-    logging.info(f"🧵 Thread-{thread_id} stopped: Was monitoring '{source_agent}'")
+
+    # Get or initialize state for this source
+    if source_agent not in pos_states:
+        pos_data = load_pos_file(pos_file)
+        pos_states[source_agent] = {
+            'offset': pos_data.get('offset', 0),
+            'file_size': pos_data.get('file_size', -1),
+        }
+
+    state = pos_states[source_agent]
+
+    try:
+        pattern_found, new_offset, matched_line, new_file_size = check_log_for_pattern(
+            log_path, state['offset'], pattern, state['file_size']
+        )
+
+        state['offset'] = new_offset
+        state['file_size'] = new_file_size
+
+        # Save position after each check
+        save_pos_file(pos_file, new_offset, new_file_size)
+
+        if pattern_found:
+            logging.info(f"🚨 [{index}]: PATTERN DETECTED in '{source_agent}': {matched_line}")
+            logging.info(f"🛑 [{index}]: Terminating agent '{source_agent}'...")
+            terminate_agent(source_agent)
+            # Continue monitoring - agent may restart and need to be stopped again
+
+    except Exception as e:
+        logging.error(f"❌ [{index}] error checking '{source_agent}': {e}")
 
 
 def write_pid_file():
@@ -369,81 +361,68 @@ def remove_pid_file():
 
 
 def main():
-    """Main execution for the Stopper agent - starts monitoring threads."""
+    """Main execution for the Stopper agent - single-threaded sequential monitoring."""
     config = load_config()
-    
+
     # Write PID file immediately
     write_pid_file()
-    
+
     try:
         source_agents: List[str] = config.get('source_agents', [])
         patterns: List[str] = config.get('patterns', [])
         output_agents: List[str] = config.get('output_agents', [])
         poll_interval: int = config.get('poll_interval', 1)  # Default 1s
-        
+
         # Validate configuration
         if not source_agents:
             logging.error("❌ No source agents configured.")
             logging.info("💡 Connect agents to Stopper's input on the canvas.")
             return
-        
+
         if not patterns:
             logging.error("❌ No patterns configured.")
             logging.info("💡 Configure patterns in the Stopper's config dialog.")
             return
-        
+
         if len(source_agents) != len(patterns):
             logging.error(f"❌ Configuration error: {len(source_agents)} source agents but {len(patterns)} patterns.")
             logging.error("💡 Each source agent must have exactly one corresponding pattern.")
             logging.error(f"   Source agents: {source_agents}")
             logging.error(f"   Patterns: {patterns}")
             return
-        
+
         logging.info("🛑 STOPPER AGENT STARTED")
         logging.info(f"📁 Pool path: {get_pool_path()}")
         logging.info(f"👀 Monitoring {len(source_agents)} source agent(s)")
         logging.info(f"⏱️ Poll interval: {poll_interval}s")
         if output_agents:
             logging.info(f"📤 Output agents (for autoconfiguration): {output_agents}")
-        
+
         # Log each source-pattern pair
         for i, (src, pat) in enumerate(zip(source_agents, patterns)):
             logging.info(f"   [{i+1}] {src} → pattern: '{pat}'")
-        
+
         logging.info("=" * 60)
-        
-        # Start monitoring threads
-        threads = []
-        for i, (source, pattern) in enumerate(zip(source_agents, patterns)):
-            thread = threading.Thread(
-                target=monitor_source_agent,
-                args=(source, pattern, poll_interval, i + 1),
-                daemon=True,
-                name=f"Monitor-{source}"
-            )
-            thread.start()
-            threads.append(thread)
-            logging.info(f"🚀 Started monitoring thread for '{source}'")
-        
-        logging.info(f"✅ All {len(threads)} monitoring thread(s) started")
+
+        # State for per-source position tracking
+        pos_states: Dict[str, Dict] = {}
+
+        logging.info(f"✅ Monitoring {len(source_agents)} source(s) sequentially (single-threaded)")
         logging.info("=" * 60)
-        
-        # Keep main thread alive, waiting for shutdown
-        while not shutdown_event.is_set():
-            time.sleep(1)
-        
+
+        # Single-threaded main loop: check all sources each cycle
+        while True:
+            for i, (source, pattern) in enumerate(zip(source_agents, patterns)):
+                check_source_agent(source, pattern, i + 1, pos_states)
+
+            time.sleep(poll_interval)
+
     except KeyboardInterrupt:
         logging.info("\n⛔ Stopper agent stopped by user.")
     except Exception as e:
         logging.error(f"❌ Stopper agent error: {e}")
         raise
     finally:
-        # Signal threads to stop
-        shutdown_event.set()
-        
-        # Wait briefly for threads to finish
-        time.sleep(0.5)
-        
         # Cleanup
         logging.info("🧹 Cleaning up...")
         cleanup_pos_files()

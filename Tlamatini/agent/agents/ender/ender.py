@@ -18,7 +18,7 @@ import logging
 import psutil
 import subprocess
 import time
-from typing import List, Dict
+from typing import Dict, List
 
 # Set working directory to script location
 try:
@@ -259,18 +259,22 @@ def find_agent_processes(agent_name: str) -> List[psutil.Process]:
     return processes
 
 
-def terminate_agent(agent_name: str) -> bool:
+def terminate_agent(agent_name: str) -> str:
     """
     Terminate an agent's process(es) using kill signal.
-    Returns True if at least one process was terminated, False otherwise.
+    Returns one of:
+    - "terminated": all matching processes were terminated or already ended
+    - "not_running": no matching process was found
+    - "failed": one or more matching processes could not be terminated
     """
     processes = find_agent_processes(agent_name)
     
     if not processes:
         logging.info(f"⏭️ Agent '{agent_name}' is not running, skipping.")
-        return False
+        return "not_running"
     
     terminated = False
+    all_resolved = True
     for proc in processes:
         try:
             pid = proc.pid
@@ -297,10 +301,55 @@ def terminate_agent(agent_name: str) -> bool:
             terminated = True
         except psutil.AccessDenied:
             logging.error(f"❌ Access denied when trying to terminate '{agent_name}'.")
+            all_resolved = False
         except Exception as e:
             logging.error(f"❌ Error terminating '{agent_name}': {e}")
+            all_resolved = False
     
-    return terminated
+    if terminated and all_resolved:
+        return "terminated"
+
+    return "failed"
+
+
+def clear_reanimation_assets(agent_name: str) -> int:
+    """
+    Delete any reanimation assets for a target agent after Ender resolves it.
+
+    Reanimation assets follow the shared `reanim*` naming convention
+    (for example: reanim.pos, reanim.counter, reanim_<source>.pos).
+    """
+    agent_dir = get_agent_directory(agent_name)
+    if not os.path.isdir(agent_dir):
+        logging.info(
+            f"ℹ️ Agent directory missing while clearing reanimation assets for '{agent_name}', skipping."
+        )
+        return 0
+
+    removed = 0
+    try:
+        for filename in os.listdir(agent_dir):
+            if not filename.startswith("reanim"):
+                continue
+
+            asset_path = os.path.join(agent_dir, filename)
+            if not os.path.isfile(asset_path):
+                continue
+
+            try:
+                os.remove(asset_path)
+                removed += 1
+                logging.info(f"🧹 Cleared reanimation asset for '{agent_name}': {filename}")
+            except Exception as e:
+                logging.warning(f"⚠️ Could not delete reanimation asset '{asset_path}': {e}")
+    except Exception as e:
+        logging.warning(f"⚠️ Could not inspect reanimation assets for '{agent_name}': {e}")
+        return removed
+
+    if removed == 0:
+        logging.info(f"💾 No reanimation assets to clear for '{agent_name}'.")
+
+    return removed
 
 
 def _write_pid_file(agent_dir: str, pid: int):
@@ -312,6 +361,63 @@ def _write_pid_file(agent_dir: str, pid: int):
         logging.info(f"   📝 PID file created: {pid_file} (PID: {pid})")
     except Exception as e:
         logging.error(f"   ❌ Failed to write PID file: {e}")
+
+
+def is_agent_running(agent_name: str) -> bool:
+    """Check if an agent is currently running by verifying its PID file and process."""
+    agent_dir = get_agent_directory(agent_name)
+    pid_path = os.path.join(agent_dir, "agent.pid")
+
+    if not os.path.exists(pid_path):
+        return False
+
+    try:
+        with open(pid_path, "r") as f:
+            pid = int(f.read().strip())
+    except (ValueError, OSError):
+        return False
+
+    try:
+        import psutil
+        if not psutil.pid_exists(pid):
+            return False
+        proc = psutil.Process(pid)
+        if proc.status() == psutil.STATUS_ZOMBIE:
+            return False
+        return True
+    except Exception:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
 
 
 def launch_agent(agent_name: str):
@@ -431,20 +537,34 @@ def main():
             logging.info("💀 INITIATING IMMEDIATE TERMINATION SEQUENCE...")
             terminated_count = 0
             skipped_count = 0
+            failed_agents: List[str] = []
+            cleared_reanimation_assets = 0
 
             for agent in kill_agents:
                 logging.info(f"\n🎯 Processing: {agent}")
-                if terminate_agent(agent):
+                termination_status = terminate_agent(agent)
+
+                if termination_status == "terminated":
                     terminated_count += 1
-                else:
+                    cleared_reanimation_assets += clear_reanimation_assets(agent)
+                elif termination_status == "not_running":
                     skipped_count += 1
+                    cleared_reanimation_assets += clear_reanimation_assets(agent)
+                else:
+                    failed_agents.append(agent)
 
             logging.info(f"💀 TERMINATION COMPLETE: {terminated_count} terminated, {skipped_count} already stopped.")
+            logging.info(f"🧹 Reanimation cleanup complete: {cleared_reanimation_assets} asset(s) removed.")
+            if failed_agents:
+                logging.warning(
+                    f"⚠️ Reanimation cleanup skipped for agents with termination errors: {failed_agents}"
+                )
         
         logging.info("=" * 60)
 
         # 2. Launch Outputs (e.g., Cleaner)
         if output_agents:
+            wait_for_agents_to_stop(output_agents)
             logging.info("🚀 TRIGGERING OUTPUT AGENTS...")
             for out_agent in output_agents:
                 launch_agent(out_agent)
@@ -462,4 +582,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

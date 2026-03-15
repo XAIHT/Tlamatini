@@ -198,11 +198,37 @@ def is_agent_running(agent_name: str) -> Optional[int]:
             continue
     return None
 
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
+
 def get_python_command() -> list:
     """Get the command to run a Python script."""
     if not getattr(sys, 'frozen', False):
         return [sys.executable]
-    
+
     # Prefer PYTHON_HOME from USER environment variables
     python_home = get_user_python_home()
     if python_home:
@@ -215,7 +241,7 @@ def get_python_command() -> list:
         if os.path.exists(bundled_python):
             return [bundled_python]
         return ['python']
-    
+
     return ['python3']
 
 
@@ -399,13 +425,10 @@ def main():
             if triggered:
                 logging.info(f"🚨 OR GATE TRIGGERED, EVENT DETECTED: {trigger_reason}")
                 
+                wait_for_agents_to_stop(target_agents)
                 for target in target_agents:
-                    pid = is_agent_running(target)
-                    if pid:
-                        logging.info(f"⏭️ Target '{target}' already running (PID: {pid}).")
-                    else:
-                        logging.info(f"🚀 Starting target '{target}'...")
-                        start_agent(target)
+                    logging.info(f"🚀 Starting target '{target}'...")
+                    start_agent(target)
             
             # Heartbeat logging every 10 polls to show agent is alive
             if poll_count % 10 == 0:

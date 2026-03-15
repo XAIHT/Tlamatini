@@ -43,7 +43,7 @@ target_agents: []       # If this agent starts downstream agents
 - If the agent **starts downstream agents** → use `target_agents: []`
 - If the agent **monitors upstream logs** → use `source_agents: []`
 - If the agent is like Stopper/Cleaner (does NOT start downstream) → use `output_agents: []` instead of `target_agents`
-- The **Ender** agent is special: it uses `target_agents: []` (agents to KILL), `output_agents: []` (Cleaners to launch after killing), and `source_agents: []` (graphical input connections only — never killed, never started)
+- The **Ender** agent is special: it uses `target_agents: []` (agents to KILL), `output_agents: []` (Cleaners to launch after killing), and `source_agents: []` (graphical input connections only — never killed, never started). When Ender resolves a target successfully or finds it already stopped, it also deletes that target's `reanim*` restart-state files.
 - OR/AND gates use `source_agent_1`, `source_agent_2` (not a list)
 - Asker/Forker use `target_agents_a`, `target_agents_b` (not `target_agents`)
 
@@ -87,7 +87,8 @@ logging.getLogger().addHandler(console_handler)
 # --- Copy ALL helper functions from shoter.py ---
 # REQUIRED: load_config, get_python_command, get_user_python_home,
 #           get_agent_env, get_pool_path, get_agent_directory,
-#           get_agent_script_path, start_agent, write_pid_file, remove_pid_file
+#           get_agent_script_path, is_agent_running, wait_for_agents_to_stop,
+#           start_agent, write_pid_file, remove_pid_file
 # Copy them EXACTLY — do not modify these utility functions.
 
 PID_FILE = "agent.pid"
@@ -106,6 +107,7 @@ def main():
 
         # Trigger downstream agents (only if this agent starts others)
         if target_agents:
+            wait_for_agents_to_stop(target_agents)
             logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
             for target in target_agents:
                 start_agent(target)
@@ -125,7 +127,9 @@ if __name__ == "__main__":
 - `os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'` MUST be set before any other imports
 - PID file MUST be written immediately on start and removed in `finally` block
 - Log file name MUST be `{directory_name}.log` (the canvas reads this)
-- Copy ALL helper functions (`get_python_command`, `get_agent_env`, `get_pool_path`, etc.) exactly from `shoter.py`
+- Copy ALL helper functions (`get_python_command`, `get_agent_env`, `get_pool_path`, `is_agent_running`, `wait_for_agents_to_stop`, etc.) exactly from `shoter.py`
+- **Concurrency guard**: If the agent starts downstream agents, it MUST call `wait_for_agents_to_stop(target_agents)` BEFORE the loop that calls `start_agent()`. This prevents duplicate/orphaned processes in looping flows. The wait checks each target's PID file and blocks until all targets have exited, logging an ERROR every 10 seconds while waiting.
+- If the agent persists restart/reanimation state (offsets, counters, checkpoints), store it in files named `reanim*` so Ender can reset that state on flow shutdown (examples: `reanim.pos`, `reanim.counter`, `reanim_<source>.pos`). Manual per-agent restart from the contextual menu must preserve these files.
 
 ---
 

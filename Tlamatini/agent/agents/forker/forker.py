@@ -352,6 +352,32 @@ def is_agent_running(agent_name: str) -> Optional[int]:
 
     return None
 
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
+
 
 def start_agent(agent_name: str) -> bool:
     """
@@ -530,14 +556,11 @@ def main():
             if path_a_triggered and target_agents_a:
                 logging.info(f"🚀 Triggering Path A: {len(target_agents_a)} agents...")
                 total_started = 0
+                wait_for_agents_to_stop(target_agents_a)
                 for target in target_agents_a:
-                    running_pid = is_agent_running(target)
-                    if running_pid:
-                        logging.info(f"⏭️ Target agent '{target}' already running (PID: {running_pid}), skipping.")
-                    else:
-                        logging.info(f"   ► Starting: {target}")
-                        if start_agent(target):
-                            total_started += 1
+                    logging.info(f"   ► Starting: {target}")
+                    if start_agent(target):
+                        total_started += 1
                 logging.info(f"✨ Path A: started {total_started}/{len(target_agents_a)} agents.")
                 logging.info("🏁 Forker agent finished. Decision: Path A")
                 break
@@ -546,14 +569,11 @@ def main():
             if path_b_triggered and target_agents_b:
                 logging.info(f"🚀 Triggering Path B: {len(target_agents_b)} agents...")
                 total_started = 0
+                wait_for_agents_to_stop(target_agents_b)
                 for target in target_agents_b:
-                    running_pid = is_agent_running(target)
-                    if running_pid:
-                        logging.info(f"⏭️ Target agent '{target}' already running (PID: {running_pid}), skipping.")
-                    else:
-                        logging.info(f"   ► Starting: {target}")
-                        if start_agent(target):
-                            total_started += 1
+                    logging.info(f"   ► Starting: {target}")
+                    if start_agent(target):
+                        total_started += 1
                 logging.info(f"✨ Path B: started {total_started}/{len(target_agents_b)} agents.")
                 logging.info("🏁 Forker agent finished. Decision: Path B")
                 break

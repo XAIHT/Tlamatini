@@ -394,6 +394,32 @@ def is_agent_running(agent_name: str) -> Optional[int]:
     
     return None
 
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
+
 
 def start_agent(agent_name: str) -> bool:
     """
@@ -541,14 +567,10 @@ def main():
             if events_detected:
                 logging.info(f"📢 Events detected from {len(events_detected)} source(s). Checking target agents...")
                 
+                wait_for_agents_to_stop(target_agents)
                 for target in target_agents:
-                    running_pid = is_agent_running(target)
-                    
-                    if running_pid:
-                        logging.info(f"⏭️ Target agent '{target}' already running (PID: {running_pid}), skipping.")
-                    else:
-                        logging.info(f"🚀 Starting target agent '{target}'...")
-                        start_agent(target)
+                    logging.info(f"🚀 Starting target agent '{target}'...")
+                    start_agent(target)
                 
                 logging.info("=" * 60)
             
