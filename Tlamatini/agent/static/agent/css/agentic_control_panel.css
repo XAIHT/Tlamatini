@@ -901,6 +901,23 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #000000 0%, #FFFFFF 100%);
 }
 
+/* Counter Agent Styles - Persistent counter with L/G routing (Amber-to-Teal gradient) */
+.canvas-item.counter-agent {
+    background-color: #FF8F00;
+    color: white;
+    background: linear-gradient(135deg, #FF8F00 0%, #00695C 100%);
+}
+
+.canvas-item.counter-agent:hover {
+    box-shadow: 0 6px 15px rgba(255, 143, 0, 0.5);
+    background: linear-gradient(135deg, #FFA726 0%, #00897B 100%);
+}
+
+/* Counter agent icon in sidebar */
+.agent-tool-item[data-content="Counter"] .agent-tool-icon {
+    background: linear-gradient(135deg, #FF8F00 0%, #00695C 100%);
+}
+
 /* Kuberneter Agent Styles - Kubernetes executor (Black-to-DarkBlue gradient) */
 .canvas-item.kuberneter-agent {
     background-color: #000000;

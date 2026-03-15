@@ -221,6 +221,16 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
                     await updateForkerConnection(sourceId, 'target_b', targetId, 'remove');
                 }
             }
+            if (targetAgentName.toLowerCase() === 'counter') {
+                await updateCounterConnection(targetId, 'source', sourceId, 'remove');
+            }
+            if (sourceAgentName.toLowerCase() === 'counter') {
+                if (conn.outputSlot === 1) {
+                    await updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
+                } else if (conn.outputSlot === 2) {
+                    await updateCounterConnection(sourceId, 'target_g', targetId, 'remove');
+                }
+            }
             if (targetAgentName.toLowerCase() === 'gitter') {
                 await updateGitterConnection(targetId, sourceId, 'remove', 'source');
             }
@@ -406,6 +416,16 @@ async function recreateConnection(state) {
             await updateForkerConnection(sourceId, 'target_a', targetId, 'add');
         } else if (state.outputSlot === 2) {
             await updateForkerConnection(sourceId, 'target_b', targetId, 'add');
+        }
+    }
+    if (targetAgentName === 'counter') {
+        await updateCounterConnection(targetId, 'source', sourceId, 'add');
+    }
+    if (sourceAgentName === 'counter') {
+        if (state.outputSlot === 1) {
+            await updateCounterConnection(sourceId, 'target_l', targetId, 'add');
+        } else if (state.outputSlot === 2) {
+            await updateCounterConnection(sourceId, 'target_g', targetId, 'add');
         }
     }
     if (targetAgentName === 'gitter') {

@@ -53,6 +53,7 @@ function applyAgentTypeClass(el, agentName) {
         'pythonxer': 'pythonxer-agent',
         'asker': 'asker-agent',
         'forker': 'forker-agent',
+        'counter': 'counter-agent',
         'raiser': 'raiser-agent',
         'emailer': 'emailer-agent',
         'mongoxer': 'mongoxer-agent',
@@ -133,6 +134,23 @@ function appendOutputTriangles(el, agentName) {
         labelB.classList.add('output-label', 'label-b');
         labelB.textContent = 'B';
         el.appendChild(labelB);
+    } else if (agentName === 'counter') {
+        const outputTri1 = document.createElement('div');
+        outputTri1.classList.add('output-triangle', 'output-1');
+        outputTri1.title = "Output L (less than)";
+        el.appendChild(outputTri1);
+        const labelL = document.createElement('div');
+        labelL.classList.add('output-label', 'label-a');
+        labelL.textContent = 'L';
+        el.appendChild(labelL);
+        const outputTri2 = document.createElement('div');
+        outputTri2.classList.add('output-triangle', 'output-2');
+        outputTri2.title = "Output G (greater/equal)";
+        el.appendChild(outputTri2);
+        const labelG = document.createElement('div');
+        labelG.classList.add('output-label', 'label-b');
+        labelG.textContent = 'G';
+        el.appendChild(labelG);
     } else {
         const outputTri = document.createElement('div');
         outputTri.classList.add('output-triangle');
@@ -637,6 +655,11 @@ function removeConnection(conn) {
         if (targetAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'summarizer') updateSummarizerConnection(sourceId, targetId, 'remove', 'target');
         if (sourceAgentName.toLowerCase() === 'mouser') updateMouserConnection(sourceId, targetId, 'remove');
+        if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'counter') {
+            if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
+            else if (conn.outputSlot === 2) updateCounterConnection(sourceId, 'target_g', targetId, 'remove');
+        }
 
         conn.path.remove();
         ACP.connections.splice(idx, 1);
@@ -715,6 +738,11 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'forker' && !sourceBeingDeleted) {
             if (conn.outputSlot === 1) updateForkerConnection(sourceId, 'target_a', targetId, 'remove');
             else if (conn.outputSlot === 2) updateForkerConnection(sourceId, 'target_b', targetId, 'remove');
+        }
+        if (targetAgentName.toLowerCase() === 'counter' && !targetBeingDeleted) updateCounterConnection(targetId, 'source', sourceId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'counter' && !sourceBeingDeleted) {
+            if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
+            else if (conn.outputSlot === 2) updateCounterConnection(sourceId, 'target_g', targetId, 'remove');
         }
 
         conn.path.remove();
@@ -796,6 +824,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'shoter') iconDiv.style.background = 'linear-gradient(135deg, #06b6d4 0%, #d946ef 100%)';
         else if (lowerDesc === 'asker') iconDiv.style.background = 'linear-gradient(135deg, #EF4444 0%, #3B82F6 100%)';
         else if (lowerDesc === 'forker') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #FFFFFF 100%)';
+        else if (lowerDesc === 'counter') iconDiv.style.background = 'linear-gradient(135deg, #FF8F00 0%, #00695C 100%)';
         else if (lowerDesc === 'ssher') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #e53935 100%)';
         else if (lowerDesc === 'scper') iconDiv.style.background = 'linear-gradient(135deg, #424242 0%, #e53935 100%)';
         else if (lowerDesc === 'sqler') iconDiv.style.background = 'linear-gradient(135deg, #f97316 0%, #10b981 100%)';
@@ -1122,6 +1151,9 @@ function initCanvasEvents() {
                     if (targetAgentName.toLowerCase() === 'forker') updateForkerConnection(targetId, 'source', sourceId, 'add');
                     if (sourceAgentName.toLowerCase() === 'forker' && newConn.outputSlot === 1) updateForkerConnection(sourceId, 'target_a', targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'forker' && newConn.outputSlot === 2) updateForkerConnection(sourceId, 'target_b', targetId, 'add');
+                    if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'counter' && newConn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'counter' && newConn.outputSlot === 2) updateCounterConnection(sourceId, 'target_g', targetId, 'add');
                     if (targetAgentName.toLowerCase() === 'ssher') updateSsherConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'ssher') updateSsherConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'scper') updateScperConnection(targetId, sourceId, 'add', 'source');

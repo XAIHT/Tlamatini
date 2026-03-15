@@ -4867,6 +4867,99 @@ def update_forker_connection_view(request, agent_name):
 
 @csrf_exempt
 @require_POST
+def update_counter_connection_view(request, agent_name):
+    """
+    Update config.yaml for a Counter agent when a connection is made or removed.
+    Supports add/remove of target_agents_l, target_agents_g, and source_agents.
+    The 'connection_type' field determines which list to update:
+      - 'target_l' -> target_agents_l
+      - 'target_g' -> target_agents_g
+      - 'source'   -> source_agents
+    """
+    try:
+        data = json.loads(request.body)
+        connection_type = data.get('connection_type', 'source')
+        connected_agent = data.get('connected_agent', '')
+        action = data.get('action', 'add')
+
+        if not connected_agent:
+            return HttpResponse(json.dumps({'status': 'error', 'message': 'No connected_agent provided'}),
+                              content_type='application/json', status=400)
+
+        if not agent_name.lower().startswith('counter'):
+            return HttpResponse("Invalid agent type", status=400)
+
+        # Resolve pool path
+        pool_base_path = get_pool_path(request)
+
+        # Parse agent_name to get pool folder name
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        if cardinal:
+            pool_folder_name = f"{base_folder_name}_{cardinal}"
+        else:
+            pool_folder_name = base_folder_name
+
+        pool_dir = os.path.join(pool_base_path, pool_folder_name)
+        config_path = os.path.join(pool_dir, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(f"Config not found for {agent_name}", status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        # Resolve connected agent pool name
+        conn_parts = connected_agent.split('-')
+        conn_cardinal = None
+        if conn_parts[-1].isdigit():
+            conn_cardinal = conn_parts.pop()
+        conn_base = "_".join(conn_parts)
+        connected_pool_name = f"{conn_base}_{conn_cardinal}" if conn_cardinal else conn_base
+
+        # Determine which list to update
+        if connection_type == 'target_l':
+            list_key = 'target_agents_l'
+        elif connection_type == 'target_g':
+            list_key = 'target_agents_g'
+        else:
+            list_key = 'source_agents'
+
+        current_list = config.get(list_key, [])
+        if isinstance(current_list, str):
+            current_list = [s.strip() for s in current_list.split(',') if s.strip()]
+
+        changed = False
+        if action == 'add':
+            if connected_pool_name not in current_list:
+                current_list.append(connected_pool_name)
+                changed = True
+                print(f"[COUNTER] Added {connected_pool_name} to {agent_name} {list_key}")
+        elif action == 'remove':
+            if connected_pool_name in current_list:
+                current_list.remove(connected_pool_name)
+                changed = True
+                print(f"[COUNTER] Removed {connected_pool_name} from {agent_name} {list_key}")
+
+        config[list_key] = current_list
+        msg = f'Updated {list_key}: {current_list}'
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({'success': True, 'message': msg, 'changed': changed}),
+                          content_type='application/json')
+
+    except Exception as e:
+        print(f"Error updating counter connection: {e}")
+        return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
 def asker_choice_view(request, agent_name):
     """
     Receive the user's A/B choice from the frontend dialog and write it

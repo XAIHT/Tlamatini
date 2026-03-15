@@ -559,6 +559,25 @@ async function updateForkerConnection(agentId, connectionType, connectedAgentId,
     }
 }
 
+async function updateCounterConnection(agentId, connectionType, connectedAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_counter_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connection_type: connectionType, connected_agent: connectedAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Counter ${agentId} config updated (${connectionType}):`, result.message);
+        } else {
+            console.error(`--- Failed to update Counter ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Counter ${agentId}:`, error);
+    }
+}
+
 async function updateTelegramrxConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_telegramrx_connection/${agentId}/`, {

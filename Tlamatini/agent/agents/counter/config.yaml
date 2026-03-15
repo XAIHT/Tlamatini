@@ -1,0 +1,44 @@
+# Counter Agent Configuration
+# This is a deterministic agent (no LLM) that maintains a persistent counter
+# and routes to Path L (less than) or Path G (greater than or equal) based on
+# comparing the counter value against a configured threshold.
+#
+# BEHAVIOR:
+# When executed, this agent will:
+# 1. Load the counter value from its reanimation file (reanim.counter)
+# 2. Increment the counter by 1 (with overflow protection)
+# 3. Save the updated counter back to the reanimation file
+# 4. Compare counter with threshold_value:
+#    - If counter < threshold_value -> start agents in target_agents_l (Path L)
+#    - If counter >= threshold_value -> start agents in target_agents_g (Path G)
+# 5. Stop running
+#
+# REANIMATION:
+# On first run or flow restart, the counter is initialized to initial_value.
+# On subsequent executions within the same flow, the counter is loaded from
+# reanim.counter and incremented.
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents_l, target_agents_g, and source_agents are automatically
+# populated when you make connections on the canvas:
+#   - Connect an agent's OUTPUT to this Counter's INPUT -> adds to source_agents
+#   - Connect this Counter's OUTPUT L to an agent's INPUT -> adds to target_agents_l
+#   - Connect this Counter's OUTPUT G to an agent's INPUT -> adds to target_agents_g
+
+# =============================================================================
+# COUNTER CONFIGURATION
+# =============================================================================
+# Initial value of the counter (used on first run or flow restart)
+initial_value: 0
+
+# Threshold value: if counter < threshold -> Path L, else -> Path G
+threshold_value: 10
+
+# Agents to start if counter < threshold_value (auto-populated via canvas connections)
+target_agents_l: []
+
+# Agents to start if counter >= threshold_value (auto-populated via canvas connections)
+target_agents_g: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []
