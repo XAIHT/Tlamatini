@@ -1027,6 +1027,7 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #FF1744 0%, #651FFF 50%, #00E676 100%);
     color: white;
 }
+
 .canvas-item.mouser-agent:hover {
     background: linear-gradient(135deg, #FF5252 0%, #7C4DFF 50%, #69F0AE 100%);
     box-shadow: 0 6px 15px rgba(101, 31, 255, 0.5);
@@ -1621,6 +1622,32 @@ body.resizing-vertical {
 .canvas-item.emailer-agent:hover {
     background: linear-gradient(135deg, #7986CB 0%, #5C6BC0 100%);
     box-shadow: 0 6px 15px rgba(92, 107, 192, 0.5);
+}
+
+/* File-Interpreter Agent */
+.canvas-item.file-interpreter-agent {
+    background-color: #FF9A00;
+    background: linear-gradient(135deg, #FF9A00 0%, #1B1464 50%, #00FFC8 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.file-interpreter-agent:hover {
+    background: linear-gradient(135deg, #FFB347 0%, #2D2493 50%, #33FFD8 100%);
+    box-shadow: 0 6px 15px rgba(27, 20, 100, 0.5);
+}
+
+/* Image-Interpreter Agent */
+.canvas-item.image-interpreter-agent {
+    background-color: #C2185B;
+    background: linear-gradient(135deg, #C2185B 0%, #FFC107 50%, #009688 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.image-interpreter-agent:hover {
+    background: linear-gradient(135deg, #E91E63 0%, #FFD54F 50%, #26A69A 100%);
+    box-shadow: 0 6px 15px rgba(194, 24, 91, 0.5);
 }
 
 /* Emailer agent icon in sidebar */

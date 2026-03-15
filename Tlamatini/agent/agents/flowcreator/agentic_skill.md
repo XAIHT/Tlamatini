@@ -46,7 +46,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -654,6 +654,31 @@ system_prompt: |
   - `end_posy`: 500 (final Y position for localized mode)
   - `total_time`: 30 (duration in seconds for random movement)
   - `target_agents`: [] (downstream agents to start after execution)
+
+### 41. File-Interpreter
+- **Purpose**: Reads and interprets document files (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, JSON, YAML, XML, ODT, EPUB, and more), extracting text and optionally images, then logs structured output. In summarized mode, uses an LLM to produce a summary.
+- **Pool name pattern**: `file_interpreter_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `path_filenames`: "" (file path or wildcard pattern, e.g. "C:\temp\*.docx" or "D:\docs\report.pdf")
+  - `reading_type`: "fast" (one of: "fast", "complete", "summarized")
+  - `source_agents`: [] (upstream agents — for canvas connection tracking, informative only)
+  - `target_agents`: [] (downstream agents to start after ALL files are processed)
+  - `llm.host`: "http://localhost:11434" (LLM host, used only in summarized mode)
+  - `llm.model`: "gpt-oss:120b-cloud" (LLM model, used only in summarized mode)
+
+### 42. Image-Interpreter
+- **Purpose**: Non-deterministic agent that analyzes and interprets images using an LLM vision model. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64, queries the LLM, and logs structured INI_IMAGE_FILE/END_FILE blocks with the description. Can be strongly coupled with File-Interpreter.
+- **Pool name pattern**: `image_interpreter_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `images_pathfilenames`: "" (wildcards, directory path, File-Interpreter pool name, or single file)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after ALL images are processed)
+  - `llm.host`: "http://localhost:11434" (Ollama-compatible API URL)
+  - `llm.model`: "llama3.2-vision:11b" (vision model name)
+  - `llm.prompt`: "Describe this image in detail." (prompt sent with each image)
+  - `llm.token`: "" (optional bearer token for authentication)
 
 ---
 

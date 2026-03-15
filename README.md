@@ -73,7 +73,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 41 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 43 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -186,7 +186,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 41 pre-built agent types for diverse automation tasks
+- 43 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -408,6 +408,8 @@ Tlamatini/
 │   │   │   ├── asker/             # Interactive A/B path chooser (user dialog)
 │   │   │   ├── forker/            # Automatic A/B path router (pattern-based)
 │   │   │   ├── counter/            # Persistent counter with L/G threshold routing
+│   │   │   ├── file_interpreter/      # Document parsing and text/image extraction
+│   │   │   ├── image_interpreter/     # LLM vision-based image analysis and description
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1136,7 +1138,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **40 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **43 agent types** total.
 
 ### Agent Architecture
 
@@ -1153,7 +1155,7 @@ All workflow agents follow a common structural pattern:
 
 Agents are classified as:
 - **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
-- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection)
+- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
 
@@ -1213,6 +1215,8 @@ Agents are classified as:
 | **jenkinser** | CI/CD pipeline trigger — triggers Jenkins builds with CSRF crumb support, logs trigger result, and starts downstream agents regardless of outcome | `jenkins_url`: Jenkins server URL<br>`job_name`: Job to trigger<br>`user`: Jenkins username<br>`api_token`: API token<br>`parameters`: Build parameters map<br>`target_agents`: Downstream agents |
 | **crawler** | Web page crawler with LLM analysis — fetches URLs via HTTP GET, strips HTML markup, saves plain text to local files, and processes content with an LLM. Supports three modes: small-range (single URL), medium-range (same-domain links), large-range (all links) | `url`: Target URL<br>`system_prompt`: LLM prompt<br>`crawl_type`: small-range / medium-range / large-range<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 | **summarizer** | Log monitoring with LLM event detection — continuously polls source agent log files and sends content to an LLM with a configurable system prompt. When the LLM detects a positive event ([EVENT_TRIGGERED]), starts all configured downstream target agents | `source_agents`: Agents to monitor<br>`system_prompt`: LLM analysis prompt<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`poll_interval`: Seconds between polls<br>`target_agents`: Downstream agents |
+| **File-Interpreter** | Reads and interprets documents (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, etc.), extracting text and optionally images | `path_filenames`: File path or wildcard pattern<br>`reading_type`: fast/complete/summarized<br>`target_agents`: Downstream agents |
+| **Image-Interpreter** | Analyzes and describes images using an LLM vision model. Supports wildcards, directories, or coupling with File-Interpreter agent | `images_pathfilenames`: Wildcards, directory, File-Interpreter pool name, or file<br>`llm.host`: Ollama URL<br>`llm.model`: Vision model name<br>`target_agents`: Downstream agents |
 
 ### Logic Gates
 
@@ -1611,6 +1615,8 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_summarizer_connection/<agent_name>/` | POST | Update summarizer connections |
 | `/update_flowhypervisor_connection/<agent_name>/` | POST | Update flowhypervisor connections |
 | `/update_counter_connection/<agent_name>/` | POST | Update counter connections |
+| `/update_file_interpreter_connection/<agent_name>/` | POST | Update file-interpreter connections |
+| `/update_image_interpreter_connection/<agent_name>/` | POST | Update image-interpreter connections |
 
 #### Session & Pool Management
 
@@ -1872,6 +1878,8 @@ Enable verbose logging in config.json:
 | **Counter** | Deterministic agent that maintains a persistent counter and routes workflows to Path L or G based on threshold comparison |
 | **Crawler** | LLM-powered web crawler agent that fetches pages, strips HTML, and processes content with an LLM in three range modes (small/medium/large) |
 | **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
+| **File-Interpreter** | Hybrid agent that reads and parses document files, extracting text and images, with optional LLM-powered summarization |
+| **Image-Interpreter** | Non-deterministic agent that analyzes images using an LLM vision model, logging structured descriptions for each image |
 | **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery |
 | **Flow Validation** | Pre-execution 6-point structural verification that builds an NxN adjacency matrix from agent connections and validates topology rules (Starter inputs, Ender outputs, self-connections, orphaned agents, dangling references) |
 | **jd-cli** | Java Decompiler CLI tool bundled with the application for decompiling JAR/WAR files to source code |
@@ -1933,6 +1941,8 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Image-Interpreter Agent** - Non-deterministic LLM vision agent that analyzes images (wildcards, directories, or File-Interpreter coupling), logs structured INI_IMAGE_FILE/END_FILE blocks, and triggers downstream agents
+- **Added File-Interpreter Agent** - Hybrid deterministic/non-deterministic agent for document parsing with support for DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, and more file formats
 - **Added Counter Agent** - Deterministic persistent counter with threshold-based L/G routing, overflow protection, and reanimation support
 - **Added Flow Validation System** - Comprehensive 6-point structural verification engine (`acp-validate.js`) that builds an NxN adjacency matrix from agent connections and validates: no inputs to Starters, Ender-only connections to Cleaners, Cleaner-only inputs from Enders, no self-connections, all non-Starters have inputs, and all referenced agents exist with appropriate input types. Results shown with per-agent error details and suggestions
 - **Added FlowHypervisor Agent** - System-managed LLM-powered anomaly detector that monitors all running agents in a flow. Features include: reanimation support via `reanim.json` for crash recovery, incremental log reading (only processes new content), NxN connection matrix analysis, `hypervisor_alert.json` generation for frontend alerts, and smart exit logic (stops after 3 consecutive cycles with no running agents)

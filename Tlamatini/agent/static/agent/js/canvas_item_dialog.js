@@ -75,8 +75,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 fieldset.appendChild(legend);
                 renderFields(fieldset, val, fieldKey);
                 container.appendChild(fieldset);
-            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type') {
-                // Custom rendering for trigger_mode, operation, direction, crawl_type, movement_type - Radio Buttons
+            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type' || key === 'reading_type') {
+                // Custom rendering for trigger_mode, operation, direction, crawl_type, movement_type, reading_type - Radio Buttons
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
                 label.style.fontWeight = "bold";
@@ -101,6 +101,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     options = ['small-range', 'medium-range', 'large-range'];
                 } else if (key === 'movement_type') {
                     options = ['random', 'localized'];
+                } else if (key === 'reading_type') {
+                    options = ['fast', 'complete', 'summarized'];
                 }
 
                 options.forEach(opt => {

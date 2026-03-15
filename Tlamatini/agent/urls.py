@@ -98,5 +98,7 @@ urlpatterns = [
     path('execute_flowhypervisor/<str:agent_name>/', secure_post(views.execute_flowhypervisor_view), name='execute_flowhypervisor'),
     path('check_flowhypervisor_alert/<str:agent_name>/', secure_get(views.check_flowhypervisor_alert_view), name='check_flowhypervisor_alert'),
     path('validate_flow/', secure_get(views.validate_flow_view), name='validate_flow'),
+    path('update_file_interpreter_connection/<str:agent_name>/', secure_post(views.update_file_interpreter_connection_view), name='update_file_interpreter_connection'),
+    path('update_image_interpreter_connection/<str:agent_name>/', secure_post(views.update_image_interpreter_connection_view), name='update_image_interpreter_connection'),
 ]
 
