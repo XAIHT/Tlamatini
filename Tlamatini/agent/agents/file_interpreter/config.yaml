@@ -1,0 +1,37 @@
+# File-Interpreter Agent Configuration
+# Hybrid deterministic/non-deterministic agent that reads and interprets
+# documents (DOCX, PPTX, XLSX, PDF, TXT, TeX, and more),
+# extracts text (and optionally images), and logs the results.
+#
+# BEHAVIOR:
+# 1. Validate path_filenames (wildcards for directories, exact match for single files)
+# 2. Parse each matched file using the appropriate library
+# 3. Output extracted content to the agent log in structured blocks
+# 4. In 'summarized' mode, send the text to the configured LLM for summarization
+# 5. After ALL files are processed, start all target_agents
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents and target_agents are automatically populated
+# when you make connections on the canvas.
+
+# Path to the file(s) to read.
+# Supports wildcards for directories: e.g. "C:\temp\*.docx"
+# Or a single file path: e.g. "D:\temp\my-wedding.pptx"
+path_filenames: ""
+
+# Reading type: fast | complete | summarized
+# - fast: extract raw text only (no images)
+# - complete: extract text + images (images saved to 'images/' subdirectory)
+# - summarized: extract text, send to LLM for summarization (no images)
+reading_type: "fast"
+
+# Source agents (informative only — for canvas connection tracking)
+source_agents: []
+
+# Target agents to start after ALL files have been processed
+target_agents: []
+
+# LLM connection settings (used only when reading_type is 'summarized')
+llm:
+  host: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"

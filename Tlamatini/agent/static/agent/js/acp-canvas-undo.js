@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -282,6 +282,18 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'mouser') {
                 await updateMouserConnection(sourceId, targetId, 'remove');
             }
+            if (targetAgentName.toLowerCase() === 'file-interpreter') {
+                await updateFileInterpreterConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'file-interpreter') {
+                await updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'image-interpreter') {
+                await updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'image-interpreter') {
+                await updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -478,6 +490,18 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'mouser') {
         await updateMouserConnection(sourceId, targetId, 'add');
+    }
+    if (targetAgentName === 'file-interpreter') {
+        await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'file-interpreter') {
+        await updateFileInterpreterConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'image-interpreter') {
+        await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'image-interpreter') {
+        await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

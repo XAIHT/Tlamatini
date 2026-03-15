@@ -848,3 +848,41 @@ async function updateMouserConnection(agentId, targetAgentId, action) {
         console.error(`--- Error updating Mouser ${agentId}:`, error);
     }
 }
+
+async function updateFileInterpreterConnection(agentId, targetAgentId, action, type = 'target') {
+    try {
+        const response = await fetch(`/agent/update_file_interpreter_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- FileInterpreter ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update FileInterpreter ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating FileInterpreter ${agentId}:`, error);
+    }
+}
+
+async function updateImageInterpreterConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_image_interpreter_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- ImageInterpreter ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update ImageInterpreter ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating ImageInterpreter ${agentId}:`, error);
+    }
+}

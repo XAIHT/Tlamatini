@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -412,6 +412,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'crawler': await updateCrawlerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'summarizer': await updateSummarizerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'mouser': await updateMouserConnection(sourceId, targetId, 'add'); break;
+                case 'file-interpreter': await updateFileInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'image-interpreter': await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -461,6 +463,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'jenkinser': await updateJenkinserConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'crawler': await updateCrawlerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'summarizer': await updateSummarizerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'file-interpreter': await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'image-interpreter': await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 

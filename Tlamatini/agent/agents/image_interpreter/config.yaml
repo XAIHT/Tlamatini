@@ -1,0 +1,34 @@
+# Image-Interpreter Agent Configuration
+# Non-deterministic agent that analyzes and interprets images using an LLM vision model.
+#
+# BEHAVIOR:
+# 1. Resolve images_pathfilenames: supports wildcards, directory paths,
+#    or the pool name of a File-Interpreter agent (reads its config to get path).
+# 2. For each matched image file, convert to base64 and send to the LLM vision model.
+# 3. Log the LLM description in structured INI_IMAGE_FILE / END_FILE blocks.
+# 4. After ALL images are processed, start all target_agents.
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents and target_agents are automatically populated
+# when you make connections on the canvas.
+
+# Path to the image(s) to interpret.
+# Supports:
+#   - Wildcards: "C:\images\*.jpg", "/data/photos/*.png"
+#   - Directory: "C:\images" (will scan for all image types)
+#   - File-Interpreter agent pool name: "file_interpreter_1" (reads its config path)
+#   - Single file: "D:\photos\sunset.jpg"
+images_pathfilenames: ""
+
+# Source agents (informative only — for canvas connection tracking)
+source_agents: []
+
+# Target agents to start after ALL images have been processed
+target_agents: []
+
+# LLM connection settings (vision model via Ollama-compatible API)
+llm:
+  host: "http://localhost:11434"
+  model: "llama3.2-vision:11b"
+  prompt: "Describe this image in detail."
+  token: ""
