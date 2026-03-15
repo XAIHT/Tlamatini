@@ -73,7 +73,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 40 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 41 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -186,7 +186,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 40 pre-built agent types for diverse automation tasks
+- 41 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -371,7 +371,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (40 types)
+│   │   ├── agents/                 # Workflow agent templates (41 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -407,6 +407,7 @@ Tlamatini/
 │   │   │   ├── pser/             # LLM-powered process finder agent
 │   │   │   ├── asker/             # Interactive A/B path chooser (user dialog)
 │   │   │   ├── forker/            # Automatic A/B path router (pattern-based)
+│   │   │   ├── counter/            # Persistent counter with L/G threshold routing
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1150,7 +1151,7 @@ All workflow agents follow a common structural pattern:
 7. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection)
 
 ### Control Agents
@@ -1225,6 +1226,7 @@ Agents are classified as:
 |-------|---------|-------------------|
 | **asker** | Interactive A/B path chooser. Writes `ASKER_CHOICE_NEEDED` to its log, which the frontend detects and shows a dialog. The user picks Path A or Path B, and the corresponding agents are triggered. 5-minute timeout. | `target_agents_a`: Agents for Path A<br>`target_agents_b`: Agents for Path B<br>`source_agents`: Upstream agents |
 | **forker** | Automatic A/B path router. Continuously monitors source agent logs for two sets of patterns and automatically routes to Path A or Path B when detected. Supports reanimation offsets. | `pattern_a`: Patterns for Path A (comma-separated)<br>`pattern_b`: Patterns for Path B (comma-separated)<br>`target_agents_a`: Path A agents<br>`target_agents_b`: Path B agents<br>`source_agents`: Agents to monitor<br>`poll_interval`: Check frequency |
+| **counter** | Persistent counter with threshold-based routing. Increments a counter on each execution, compares against a threshold, and routes to Path L (less than) or Path G (greater than or equal). Supports reanimation for persistent state across flow restarts. | `initial_value`: 0<br>`threshold_value`: 10<br>`target_agents_l`: Path L agents<br>`target_agents_g`: Path G agents |
 
 ### Utility Agents
 
@@ -1607,6 +1609,7 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_crawler_connection/<agent_name>/` | POST | Update crawler connections |
 | `/update_summarizer_connection/<agent_name>/` | POST | Update summarizer connections |
 | `/update_flowhypervisor_connection/<agent_name>/` | POST | Update flowhypervisor connections |
+| `/update_counter_connection/<agent_name>/` | POST | Update counter connections |
 
 #### Session & Pool Management
 
@@ -1865,6 +1868,7 @@ Enable verbose logging in config.json:
 | **Pser** | LLM-powered agent that finds running processes by fuzzy name matching and logs the best match |
 | **Apirer** | HTTP/REST API agent that makes HTTP requests to any URL and starts downstream agents regardless of outcome |
 | **Jenkinser** | CI/CD pipeline trigger agent that triggers Jenkins builds and starts downstream agents regardless of trigger result |
+| **Counter** | Deterministic agent that maintains a persistent counter and routes workflows to Path L or G based on threshold comparison |
 | **Crawler** | LLM-powered web crawler agent that fetches pages, strips HTML, and processes content with an LLM in three range modes (small/medium/large) |
 | **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
 | **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery |
@@ -1928,6 +1932,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Counter Agent** - Deterministic persistent counter with threshold-based L/G routing, overflow protection, and reanimation support
 - **Added Flow Validation System** - Comprehensive 6-point structural verification engine (`acp-validate.js`) that builds an NxN adjacency matrix from agent connections and validates: no inputs to Starters, Ender-only connections to Cleaners, Cleaner-only inputs from Enders, no self-connections, all non-Starters have inputs, and all referenced agents exist with appropriate input types. Results shown with per-agent error details and suggestions
 - **Added FlowHypervisor Agent** - System-managed LLM-powered anomaly detector that monitors all running agents in a flow. Features include: reanimation support via `reanim.json` for crash recovery, incremental log reading (only processes new content), NxN connection matrix analysis, `hypervisor_alert.json` generation for frontend alerts, and smart exit logic (stops after 3 consecutive cycles with no running agents)
 - **Added Mouser Agent** - Mouse pointer movement agent using PyAutoGUI, supporting two modes: random (moves across screen for configurable duration) and localized (smooth easing movement from initial to final coordinates). Includes fail-safe exception handling and downstream agent triggering

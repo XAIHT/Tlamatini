@@ -372,6 +372,15 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                     console.warn(`[Restore] Forker output slot invalid: ${outputSlot}`);
                 }
             }
+            if (sourceAgentName === 'counter') {
+                if (outputSlot === 1) {
+                    await updateCounterConnection(sourceId, 'target_l', targetId, 'add');
+                } else if (outputSlot === 2) {
+                    await updateCounterConnection(sourceId, 'target_g', targetId, 'add');
+                } else {
+                    console.warn(`[Restore] Counter output slot invalid: ${outputSlot}`);
+                }
+            }
 
             switch (sourceAgentName) {
                 case 'notifier': await updateNotifierConnection(sourceId, 'target', targetId, 'add'); break;
@@ -424,6 +433,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
             switch (targetAgentName) {
                 case 'asker': await updateAskerConnection(targetId, 'source', sourceId, 'add'); break;
                 case 'forker': await updateForkerConnection(targetId, 'source', sourceId, 'add'); break;
+                case 'counter': await updateCounterConnection(targetId, 'source', sourceId, 'add'); break;
                 case 'notifier': await updateNotifierConnection(targetId, 'source', sourceId, 'add'); break;
                 case 'recmailer': await updateRecmailerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'emailer': await updateEmailerConnection(targetId, sourceId, 'add', 'source'); break;

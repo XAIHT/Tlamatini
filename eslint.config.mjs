@@ -301,6 +301,8 @@ export default [
                 updateJenkinserConnection: "readonly",
                 updateCrawlerConnection: "readonly",
                 updateSummarizerConnection: "readonly",
+                updateMouserConnection: "readonly",
+                updateCounterConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
                 applyAgentTypeClass: "readonly",

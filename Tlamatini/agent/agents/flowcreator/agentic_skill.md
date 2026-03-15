@@ -41,11 +41,12 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 - An **Ender** agent has one or more inputs and does NOT start downstream agents (except Cleaners via `output_agents`). It auto-discovers Cleaner agents in the pool. **Important**: The Ender's `target_agents` are agents it will KILL. The Ender's `source_agents` are graphical input connections only — they are never killed and never started. The Ender's `output_agents` are agents to LAUNCH after killing (typically Cleaners). No other agent should list `ender_<n>` in its own `target_agents`.
 - **OR/AND** agents have exactly TWO inputs (source_agent_1, source_agent_2) and one output.
 - **Asker/Forker** agents have one input and TWO outputs (target_agents_a, target_agents_b).
+- **Counter** agent has one input and TWO outputs (target_agents_l, target_agents_g). Routes based on counter vs threshold.
 - Most other agents have one input and one output (source_agents, target_agents).
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -385,7 +386,19 @@ system_prompt: |
   - `source_agents`: [] (upstream agents whose logs to monitor)
   - `poll_interval`: 2
 
-### 21. Ssher
+### 21. Counter
+- **Purpose**: Maintains a persistent counter that increments on each execution and routes to Path L (less than) or Path G (greater than or equal) based on comparing the counter against a configured threshold.
+- **Pool name pattern**: `counter_<n>`
+- **Starts other agents**: YES (either target_agents_l or target_agents_g)
+- **Has TWO outputs**: target_agents_l and target_agents_g
+- **Config parameters**:
+  - `initial_value`: 0 (initial counter value on first run or flow restart)
+  - `threshold_value`: 10 (if counter < threshold -> Path L, else -> Path G)
+  - `target_agents_l`: [] (Path L agents — started when counter < threshold)
+  - `target_agents_g`: [] (Path G agents — started when counter >= threshold)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+
+### 22. Ssher
 - **Purpose**: SSH into a remote host and execute a command. Requires pre-configured SSH keys. Starts downstream on success.
 - **Pool name pattern**: `ssher_<n>`
 - **Starts other agents**: YES (on success)
@@ -396,7 +409,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start on success)
 
-### 22. Scper
+### 23. Scper
 - **Purpose**: SCP file transfer to/from a remote host. Requires pre-configured SSH keys. Starts downstream on success.
 - **Pool name pattern**: `scper_<n>`
 - **Starts other agents**: YES (on success)
@@ -408,7 +421,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start on success)
 
-### 23. Telegramer
+### 24. Telegramer
 - **Purpose**: Sends a Telegram message immediately upon start, then triggers downstream agents.
 - **Pool name pattern**: `telegramer_<n>`
 - **Starts other agents**: YES
@@ -421,7 +434,7 @@ system_prompt: |
   - `telegram.message`: "Hello from Telegramer agent!" (message text — formulate based on the flow's objective)
   - `poll_interval`: 5
 
-### 24. Telegramrx
+### 25. Telegramrx
 - **Purpose**: Receives Telegram messages and logs them. Long-running listener. Does NOT start downstream agents.
 - **Pool name pattern**: `telegramrx_<n>`
 - **Starts other agents**: NO
@@ -434,7 +447,7 @@ system_prompt: |
   - `whisper.model`: "medium" (options: "small", "medium", "large")
   - `poll_interval`: 2
 
-### 25. Whatsapper
+### 26. Whatsapper
 - **Purpose**: Monitors source agents for keywords and sends WhatsApp notifications via TextMeBot. Does NOT start downstream agents.
 - **Pool name pattern**: `whatsapper_<n>`
 - **Starts other agents**: NO
@@ -450,7 +463,7 @@ system_prompt: |
   - `poll_interval`: 2
   - `recursion_limit`: 1000
 
-### 26. Recmailer
+### 27. Recmailer
 - **Purpose**: Monitors an email inbox (IMAP) for keywords using LLM analysis. Long-running. Does NOT start downstream agents.
 - **Pool name pattern**: `recmailer_<n>`
 - **Starts other agents**: NO
@@ -469,7 +482,7 @@ system_prompt: |
   - `keywords_or_phrases`: ["urgent", "alert"] (keywords to detect in emails — formulate based on the flow's objective)
   - `outcome_word`: "PROCESSED" (word written to this agent's log when keywords are found)
 
-### 27. Sqler
+### 28. Sqler
 - **Purpose**: Executes SQL scripts against a SQL Server database, then starts downstream agents.
 - **Pool name pattern**: `sqler_<n>`
 - **Starts other agents**: YES
@@ -483,7 +496,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after SQL execution)
 
-### 28. Mongoxer
+### 29. Mongoxer
 - **Purpose**: Executes Python scripts against a MongoDB database using a pre-connected `db` object, then starts downstream agents.
 - **Pool name pattern**: `mongoxer_<n>`
 - **Starts other agents**: YES
@@ -496,7 +509,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after script execution)
 
-### 29. Prompter
+### 30. Prompter
 - **Purpose**: Sends a configured prompt to an Ollama LLM and logs the response, then starts downstream agents.
 - **Pool name pattern**: `prompter_<n>`
 - **Starts other agents**: YES
@@ -507,7 +520,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after LLM response)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
 
-### 30. Gitter
+### 31. Gitter
 - **Purpose**: Executes Git commands (clone, pull, push, commit, checkout, branch, diff, log, status) on a local repository, then starts downstream agents.
 - **Pool name pattern**: `gitter_<n>`
 - **Starts other agents**: YES (on success, exit code 0)
@@ -521,7 +534,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start on success)
 
-### 31. Dockerer
+### 32. Dockerer
 - **Purpose**: Manages Docker containers and docker-compose operations, then starts downstream agents regardless of success or failure.
   - **Important Fallback Mechanism**: Dockerer is bulletproof. If `docker-compose` is attempted but fails (e.g. missing compose file), it will automatically try the raw `docker` equivalent (e.g. `docker-compose ps` -> `docker ps`). If a `custom_command` is provided without the `docker` prefix, it will automatically prepend `docker` as a fallback.
 - **Pool name pattern**: `dockerer_<n>`
@@ -539,7 +552,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 32. Pser
+### 33. Pser
 - **Purpose**: Searches for a running process by a likely name using LLM-powered fuzzy matching, then logs the best match and starts downstream agents.
 - **Pool name pattern**: `pser_<n>`
 - **Starts other agents**: YES
@@ -550,7 +563,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after process lookup)
 
-### 33. Kuberneter
+### 34. Kuberneter
 - **Purpose**: Executes `kubectl` commands and logs the execution status, then starts downstream agents regardless of success or failure.
 - **Pool name pattern**: `kuberneter_<n>`
 - **Starts other agents**: YES (always, regardless of exit code)
@@ -562,7 +575,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 34. Apirer
+### 35. Apirer
 - **Purpose**: Makes HTTP/REST API requests (GET/POST/PUT/DELETE) to any URL, logs response status, body, and latency, then starts downstream agents regardless of success or failure.
 - **Pool name pattern**: `apirer_<n>`
 - **Starts other agents**: YES (always, regardless of HTTP response status)
@@ -576,7 +589,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 35. Jenkinser
+### 36. Jenkinser
 - **Purpose**: Triggers Jenkins CI/CD pipeline builds and logs the trigger result, then starts downstream agents regardless of whether the trigger succeeded or failed.
 - **Pool name pattern**: `jenkinser_<n>`
 - **Starts other agents**: YES (always, regardless of build trigger status)
@@ -590,7 +603,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 36. Crawler
+### 37. Crawler
 - **Purpose**: Crawls web pages via HTTP GET, strips all HTML markup, saves plain text to local files, then processes each page's content with an LLM using a configurable system prompt. Supports three crawl modes: small-range (single URL), medium-range (same-domain links), and large-range (all links).
 - **Pool name pattern**: `crawler_<n>`
 - **Starts other agents**: YES (after all crawling and LLM processing completes)
@@ -603,7 +616,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 37. Summarizer
+### 38. Summarizer
 - **Purpose**: Continuously polls log files from source agents and sends their content to an LLM with a configurable system prompt to detect events. When the LLM response contains [EVENT_TRIGGERED], starts all configured downstream target agents.
 - **Pool name pattern**: `summarizer_<n>`
 - **Starts other agents**: YES (when a positive event is detected in any source agent log)
@@ -615,7 +628,7 @@ system_prompt: |
   - `poll_interval`: 5 (seconds between log file polling cycles)
   - `target_agents`: [] (downstream agents to start when an event is triggered)
 
-### 38. FlowHypervisor
+### 39. FlowHypervisor
 - **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system.
 - **Pool name pattern**: `flowhypervisor` (Note: Only one instance allowed per flow, no cardinal number).
 - **Starts other agents**: NO (System managed).
@@ -625,7 +638,7 @@ system_prompt: |
   - `llm.temperature`: 0.0
   - `monitoring_poll_time`: 10
 
-### 39. Mouser
+### 40. Mouser
 - **Purpose**: Moves the mouse pointer either randomly for a specified duration or from one screen position to another. Useful for keeping sessions alive or simulating user activity.
 - **Pool name pattern**: `mouser_<n>`
 - **Starts other agents**: YES
@@ -668,7 +681,7 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
 7. No agent should list `ender_<n>` in its own `target_agents` or `source_agents`. The Ender receives connections visually from leaf agents (agents with no further downstream targets).
 8. For agents that monitor logs (Raiser, Emailer, Forker, Stopper), set the `source_agents` to the agents whose logs they should watch.
 9. For OR/AND agents, use `source_agent_1` and `source_agent_2` (not source_agents list).
-10. For Asker/Forker agents, use `target_agents_a` and `target_agents_b` (not target_agents).
+10. For Asker/Forker agents, use `target_agents_a` and `target_agents_b` (not target_agents). For Counter agents, use `target_agents_l` and `target_agents_g`.
 11. Leave credential fields (passwords, API keys, tokens) as empty strings — the user will fill those in later.
 12. Use sensible defaults for all parameters based on the user's objective.
 13. Do NOT include the FlowCreator agent itself in the output.
@@ -1059,7 +1072,7 @@ List every agent in your proposed flow. For each agent, note:
 
 **Step 2 — Build a mental adjacency matrix.**
 For every pair of agents (A, B), determine whether there is a directed connection A→B. A connection A→B exists if:
-- Agent A lists agent B in any of its output fields (`target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`), OR
+- Agent A lists agent B in any of its output fields (`target_agents`, `target_agents_a`, `target_agents_b`, `target_agents_l`, `target_agents_g`, `output_agents`), OR
 - Agent B lists agent A in its `source_agents`.
 
 **Step 3 — Run ALL six checks below. Every check must pass.**
@@ -1077,7 +1090,7 @@ For every agent of type `cleaner`: confirm that every agent connecting to it (th
 - **If violated**: Remove any non-Ender input to the Cleaner. Cleaner is exclusively triggered by Ender.
 
 #### Check 4: No agent may connect to itself (no self-loops)
-For every agent: confirm it does NOT list its own pool name in any of its `target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`, or `source_agents`.
+For every agent: confirm it does NOT list its own pool name in any of its `target_agents`, `target_agents_a`, `target_agents_b`, `target_agents_l`, `target_agents_g`, `output_agents`, or `source_agents`.
 - **If violated**: Remove the self-reference. If you need a loop, route through a different intermediate agent.
 
 #### Check 5: Every non-Starter agent must have at least one incoming connection
@@ -1085,9 +1098,9 @@ For every agent that is NOT a `starter`: confirm that at least one other agent c
 - **If violated**: The agent is unreachable and will never execute. Connect it to an upstream agent or remove it from the flow.
 
 #### Check 6: All referenced agent names must exist in the flow and be valid targets
-For every agent name referenced in any `target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`, or `source_agents` field:
+For every agent name referenced in any `target_agents`, `target_agents_a`, `target_agents_b`, `target_agents_l`, `target_agents_g`, `output_agents`, or `source_agents` field:
 - (a) That agent name must correspond to an actual agent in the flow. If not, you are referencing a non-existent agent — add it or fix the reference.
-- (b) Agents referenced as targets (in `target_agents`, `target_agents_a`, `target_agents_b`, `output_agents`) must NOT be of type `starter`, because Starter agents cannot receive input. If violated, change the target or the agent type.
+- (b) Agents referenced as targets (in `target_agents`, `target_agents_a`, `target_agents_b`, `target_agents_l`, `target_agents_g`, `output_agents`) must NOT be of type `starter`, because Starter agents cannot receive input. If violated, change the target or the agent type.
 - (c) Agents referenced in `source_agents` must also exist in the flow.
 
 ### Validation result

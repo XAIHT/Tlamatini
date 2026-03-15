@@ -74,6 +74,7 @@ urlpatterns = [
     path('restart_agents/', secure_post(views.restart_agents_view), name='restart_agents'),
     path('update_asker_connection/<str:agent_name>/', secure_post(views.update_asker_connection_view), name='update_asker_connection'),
     path('update_forker_connection/<str:agent_name>/', secure_post(views.update_forker_connection_view), name='update_forker_connection'),
+    path('update_counter_connection/<str:agent_name>/', secure_post(views.update_counter_connection_view), name='update_counter_connection'),
     path('update_shoter_connection/<str:agent_name>/', secure_post(views.update_shoter_connection_view), name='update_shoter_connection'),
     path('update_ssher_connection/<str:agent_name>/', secure_post(views.update_ssher_connection_view), name='update_ssher_connection'),
     path('update_scper_connection/<str:agent_name>/', secure_post(views.update_scper_connection_view), name='update_scper_connection'),
