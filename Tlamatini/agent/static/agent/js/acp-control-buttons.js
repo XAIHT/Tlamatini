@@ -955,7 +955,20 @@ async function pollFlowHypervisorAlertSerial() {
     }
 }
 
+function playHypervisorAlertSound() {
+    try {
+        const audio = new Audio('/static/agent/sounds/hypervisor_alert.wav');
+        audio.volume = 1.0; // MAXIMUM volume
+        audio.play().catch(e => console.warn("Hypervisor alert sound failed:", e));
+    } catch (e) {
+        console.warn("Could not create hypervisor alert audio:", e);
+    }
+}
+
 function showHypervisorAlertDialog(message) {
+    // Play crash-like alert sound at maximum volume
+    playHypervisorAlertSound();
+
     // Determine if dialog already exists
     let dialogDiv = document.getElementById('hypervisor-alert-dialog');
     if (!dialogDiv) {
