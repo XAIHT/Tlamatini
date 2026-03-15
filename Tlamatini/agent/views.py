@@ -2942,11 +2942,123 @@ def read_agent_log_view(request, agent_name):
             "message": str(e)
         }), content_type='application/json', status=500)
 
+def _find_agent_processes_for_restart(agent_dir, pool_folder_name, script_name):
+    """Find all running processes that belong to a deployed agent instance."""
+    processes = []
+    seen_pids = set()
+
+    is_windows = sys.platform.startswith('win')
+    agent_dir_normalized = agent_dir.lower() if is_windows else agent_dir
+    pool_folder_normalized = pool_folder_name.lower() if is_windows else pool_folder_name
+    script_name_normalized = script_name.lower() if is_windows else script_name
+
+    for proc in psutil.process_iter(['pid', 'cmdline', 'cwd']):
+        try:
+            cmdline = proc.info.get('cmdline', []) or []
+            proc_cwd = proc.info.get('cwd', '') or ''
+            cmdline_str = ' '.join(str(part) for part in cmdline)
+
+            cmdline_check = cmdline_str.lower() if is_windows else cmdline_str
+            cwd_check = proc_cwd.lower() if is_windows else proc_cwd
+
+            cmdline_dir_match = agent_dir_normalized in cmdline_check
+            cmdline_script_match = (
+                script_name_normalized in cmdline_check and
+                pool_folder_normalized in cmdline_check
+            )
+            cwd_match = agent_dir_normalized in cwd_check
+
+            if (cmdline_dir_match or cmdline_script_match or cwd_match) and proc.pid not in seen_pids:
+                processes.append(proc)
+                seen_pids.add(proc.pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    return processes
+
+
+def _terminate_process_tree_for_restart(proc, graceful_timeout=3.0, kill_timeout=3.0):
+    """Terminate a process tree and wait until it is gone."""
+    try:
+        parent = psutil.Process(proc.pid)
+    except psutil.NoSuchProcess:
+        return True
+
+    try:
+        children = parent.children(recursive=True)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        children = []
+
+    targets = []
+    seen_pids = set()
+    for target in children + [parent]:
+        if target.pid not in seen_pids:
+            targets.append(target)
+            seen_pids.add(target.pid)
+
+    for child in children:
+        try:
+            print(f"[RESTART] Terminating child process PID {child.pid} ({child.name()})...")
+            child.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+    try:
+        print(f"[RESTART] Terminating process PID {parent.pid} ({parent.name()})...")
+        parent.terminate()
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        pass
+
+    _, alive = psutil.wait_procs(targets, timeout=graceful_timeout)
+
+    if alive:
+        for target in alive:
+            try:
+                print(f"[RESTART] Force killing PID {target.pid} ({target.name()})...")
+                target.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        _, alive = psutil.wait_procs(alive, timeout=kill_timeout)
+
+    return not alive
+
+
+def _stop_running_agent_processes_for_restart(agent_dir, pool_folder_name, script_name):
+    """
+    Ensure a matching agent instance is fully stopped before restart.
+    Returns (success, stopped_count, error_message).
+    """
+    stopped_pids = set()
+
+    for attempt in range(4):
+        processes = _find_agent_processes_for_restart(agent_dir, pool_folder_name, script_name)
+        if not processes:
+            return True, len(stopped_pids), None
+
+        for proc in processes:
+            stopped_pids.add(proc.pid)
+            print(f"[RESTART] Found running agent process PID {proc.pid} on attempt {attempt + 1}.")
+            _terminate_process_tree_for_restart(proc)
+
+        time.sleep(0.2)
+
+    remaining = _find_agent_processes_for_restart(agent_dir, pool_folder_name, script_name)
+    if remaining:
+        remaining_pids = [proc.pid for proc in remaining]
+        return (
+            False,
+            len(stopped_pids),
+            f"Agent '{pool_folder_name}' could not be fully stopped before restart. Remaining PID(s): {remaining_pids}",
+        )
+
+    return True, len(stopped_pids), None
+
 
 @csrf_exempt
 def restart_agent_view(request, agent_name):
     """
-    Restart (start) a single agent by running its Python script.
+    Restart a single agent by fully stopping its current process tree, then starting it again.
     This is called from the context menu "Restart" option.
     
     agent_name: e.g., 'monitor-log-1' -> runs 'pool/monitor_log_1/monitor_log.py'
@@ -2994,73 +3106,23 @@ def restart_agent_view(request, agent_name):
                 "message": f"Agent script not found: {base_folder_name}.py"
             }), content_type='application/json', status=404)
         
-        # Step 1: Aggressively kill any running process for this specific agent
-        def recursive_kill_agent(pid):
-            """Recursively kill a process and all its children."""
-            try:
-                parent = psutil.Process(pid)
-                children = parent.children(recursive=True)
-            except psutil.NoSuchProcess:
-                return 0
-            
-            killed = 0
-            # Kill children first
-            for child in children:
-                try:
-                    print(f"[RESTART] Killing child process PID {child.pid} ({child.name()})...")
-                    child.kill()
-                    killed += 1
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-            
-            # Kill parent
-            try:
-                print(f"[RESTART] Killing process PID {parent.pid} ({parent.name()})...")
-                parent.kill()
-                killed += 1
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-            
-            return killed
-        
-        # Find and kill running processes for this agent
-        killed_count = 0
         script_name = f"{base_folder_name}.py"
-        for proc in psutil.process_iter(['pid', 'cmdline']):
-            try:
-                cmdline = proc.info.get('cmdline', [])
-                if cmdline:
-                    cmdline_str = ' '.join(cmdline)
-                    # Check if this process is running this specific agent
-                    if agent_dir in cmdline_str or (script_name in cmdline_str and pool_folder_name in cmdline_str):
-                        print(f"[RESTART] Found running agent process PID {proc.info['pid']}: {cmdline_str[:100]}...")
-                        killed_count += recursive_kill_agent(proc.info['pid'])
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
-        
+        stop_ok, killed_count, stop_error = _stop_running_agent_processes_for_restart(
+            agent_dir,
+            pool_folder_name,
+            script_name,
+        )
+        if not stop_ok:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": stop_error,
+                "killed_count": killed_count,
+            }), content_type='application/json', status=409)
+
         if killed_count > 0:
-            print(f"[RESTART] Killed {killed_count} process(es) for {pool_folder_name}")
-            # Brief wait for processes to fully terminate
-            time.sleep(0.3)
-        
-        # Step 2: Delete any .pos files in the agent directory before restarting
-        # This ensures a fresh start without stale reanimation position data
-        pos_files_deleted = 0
-        try:
-            for filename in os.listdir(agent_dir):
-                if filename.endswith('.pos'):
-                    pos_file_path = os.path.join(agent_dir, filename)
-                    try:
-                        os.remove(pos_file_path)
-                        print(f"[RESTART] Deleted .pos file: {pos_file_path}")
-                        pos_files_deleted += 1
-                    except Exception as del_err:
-                        print(f"[RESTART] Warning: Could not delete {pos_file_path}: {del_err}")
-        except Exception as scan_err:
-            print(f"[RESTART] Warning: Error scanning for .pos files: {scan_err}")
-        
-        if pos_files_deleted > 0:
-            print(f"[RESTART] Cleared {pos_files_deleted} .pos file(s) for {pool_folder_name}")
+            print(f"[RESTART] Confirmed stop of {killed_count} process(es) for {pool_folder_name}")
+        else:
+            print(f"[RESTART] No running process found for {pool_folder_name}; starting fresh.")
         
         # Execute the agent
         python_cmd = get_python_command()
@@ -3070,6 +3132,7 @@ def restart_agent_view(request, agent_name):
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
+                env=get_agent_env(),
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
             )
         else:
@@ -3077,6 +3140,7 @@ def restart_agent_view(request, agent_name):
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
+                env=get_agent_env(),
                 start_new_session=True
             )
         
@@ -3086,7 +3150,7 @@ def restart_agent_view(request, agent_name):
         
         return HttpResponse(json.dumps({
             "success": True,
-            "message": f"Started {pool_folder_name}",
+            "message": f"Restarted {pool_folder_name}",
             "pid": process.pid
         }), content_type='application/json')
         

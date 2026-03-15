@@ -13,9 +13,11 @@ AGENT LIFECYCLE SEQUENCE (normal):
 2. Each Starter agent logs "🚀 STARTER AGENT STARTED", starts its target agents, then logs "🚀 STARTUP COMPLETE: N started, M restarted" and exits.
 3. Each downstream agent logs its own startup marker (e.g., "🔥 EXECUTER AGENT STARTED (SCRIPT MODE)", "📸 SHOTER AGENT STARTED", etc.) and runs its task.
 4. When an agent finishes its work, it logs "🏁 <AgentType> agent finished" and exits (PID disappears).
-5. Eventually an Ender agent is triggered. It logs "💀 ENDER AGENT STARTED", terminates all agents in its target_agents kill list, logs "💀 TERMINATION COMPLETE", then optionally launches Cleaner agents via output_agents and exits.
+5. Eventually an Ender agent is triggered. It logs "💀 ENDER AGENT STARTED", terminates all agents in its target_agents kill list, clears any `reanim*` restart-state files for targets it successfully stopped or found already stopped, logs "💀 TERMINATION COMPLETE", then optionally launches Cleaner agents via output_agents and exits.
 6. Cleaner agents delete log/pid files for specified agents, then exit.
 7. Once all agents finish, the flow is considered STOPPED.
+
+Manual operator restart from the contextual menu is different from Ender shutdown: it must fully stop the selected agent process tree, relaunch that same agent, and preserve any `reanim*` restart-state files.
 
 IMPORTANT: The FlowHypervisor agent itself is a monitoring-only agent. It runs alongside all other agents and must NEVER be considered as a "suspicious" running process. Ignore FlowHypervisor's own log and PID in your analysis.
 
@@ -76,6 +78,7 @@ their logs may not be visible to the FlowHypervisor. Treat missing logs from the
 • "🏁 Sequence Complete. Croner agent entering idle state." (Croner — after time trigger fires)
 
 2c. ERROR PATTERNS (ERROR level) — always prefixed "❌":
+• "❌ WAITING FOR AGENTS TO STOP: [...] still running after Ns. Will keep waiting..." — agent is waiting for its target agents to stop before starting them. This is a NORMAL concurrency guard in looping flows. It logs every 10 seconds while waiting. It is NOT a failure — the agent will proceed once all targets have stopped. Only flag this as suspicious if it persists for an unusually long time (e.g., 60+ seconds with no change) which would indicate a stuck downstream agent.
 • "❌ Error: config.yaml not found." — agent cannot find its configuration
 • "❌ Error parsing config.yaml: ..." — invalid YAML
 • "❌ Agent script not found: ..." — target agent's .py file missing
@@ -101,6 +104,8 @@ their logs may not be visible to the FlowHypervisor. Treat missing logs from the
 • "⚠️ Using legacy 'target_agents' key..." — backward compatibility warning
 • "⚠️ Auto-correcting: Removing '...' from Sources." — Ender self-correction
 • "⚠️ Could not save reanimation offsets: ..." — persistence failure
+• "⚠️ Could not inspect reanimation assets for '...': ..." — Ender could not inspect restart-state files
+• "⚠️ Could not delete reanimation asset '...': ..." — Ender could not remove a restart-state file
 • "⚠️ Log rotation detected..." — log file was truncated/rotated
 • "⚠️ Warning: Corrupt reanim.pos file..." — corrupted state file
 • "⚠️ No source agents configured to monitor." — Notifier/WhatsApp misconfigured
@@ -144,6 +149,13 @@ KEY BEHAVIORAL RULES:
 • Mixed-mode agents: When configured with source_agents, they behave as long-running (polling for events).
   When configured without source_agents, they execute immediately and exit like short-lived agents.
 • If no agents at all have PIDs and no agents have recent log activity, the flow may have CRASHED.
+
+CONCURRENCY GUARD (applies to ALL active agents that start downstream agents):
+• Before starting any target agents, an active agent checks whether ALL of its targets are already stopped.
+• If any target is still running, the agent BLOCKS and waits, logging "❌ WAITING FOR AGENTS TO STOP: [...]" every 10 seconds.
+• The agent NEVER proceeds to start targets while any of them are still alive. This prevents duplicate/orphaned processes.
+• In looping flows (e.g., Mouser → Sleeper → Mouser), you may see brief waiting messages — this is NORMAL and healthy.
+• Only flag waiting messages as suspicious if they persist for 60+ seconds with no change, which indicates a stuck downstream agent.
 
 ═══════════════════════════════════════
 SECTION 4 — CONNECTION MATRIX

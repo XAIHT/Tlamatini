@@ -1,8 +1,10 @@
+import importlib.util
 import ast
 import os
 import shutil
 import tempfile
-from unittest.mock import AsyncMock, patch
+from functools import lru_cache
+from unittest.mock import AsyncMock, call, patch
 
 from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
@@ -10,6 +12,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from agent import views
 from agent.consumers import AgentConsumer, _sanitize_context_filename
 from agent.models import AgentMessage
 from agent.path_guard import (
@@ -56,6 +59,27 @@ def _load_seeded_prompt_contents():
                 ):
                     prompt_contents.append(value_node.value)
     return prompt_contents
+
+
+@lru_cache(maxsize=1)
+def _load_ender_module_for_tests():
+    module_path = os.path.join(
+        os.path.dirname(__file__),
+        'agents',
+        'ender',
+        'ender.py',
+    )
+    spec = importlib.util.spec_from_file_location('agent_ender_module_for_tests', module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f'Unable to load Ender module from {module_path}')
+
+    module = importlib.util.module_from_spec(spec)
+    current_dir = os.getcwd()
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        os.chdir(current_dir)
+    return module
 
 
 class P0HardeningTests(TestCase):
@@ -281,3 +305,145 @@ class PromptValidationDecisionTests(TestCase):
 
         self.assertIsNone(result)
         mock_classifier.assert_called_once()
+
+
+class EnderAgentTests(TestCase):
+    def test_clear_reanimation_assets_only_removes_reanim_files(self):
+        ender_module = _load_ender_module_for_tests()
+
+        with tempfile.TemporaryDirectory() as agent_dir:
+            reanim_pos = os.path.join(agent_dir, 'reanim.pos')
+            reanim_counter = os.path.join(agent_dir, 'reanim.counter')
+            agent_log = os.path.join(agent_dir, 'counter_1.log')
+            custom_pos = os.path.join(agent_dir, 'custom.pos')
+
+            for path in (reanim_pos, reanim_counter, agent_log, custom_pos):
+                with open(path, 'w', encoding='utf-8') as handle:
+                    handle.write('sample')
+
+            with patch.object(ender_module, 'get_agent_directory', return_value=agent_dir):
+                removed = ender_module.clear_reanimation_assets('counter_1')
+
+            self.assertEqual(removed, 2)
+            self.assertFalse(os.path.exists(reanim_pos))
+            self.assertFalse(os.path.exists(reanim_counter))
+            self.assertTrue(os.path.exists(agent_log))
+            self.assertTrue(os.path.exists(custom_pos))
+
+    def test_main_clears_reanimation_assets_for_resolved_targets_only(self):
+        ender_module = _load_ender_module_for_tests()
+        config = {
+            'target_agents': ['counter_1', 'monitor_log_1', 'raiser_1'],
+            'output_agents': [],
+        }
+
+        with tempfile.TemporaryDirectory() as pool_dir, \
+                patch.object(ender_module, 'load_config', return_value=config), \
+                patch.object(ender_module, 'write_pid_file'), \
+                patch.object(ender_module, 'remove_pid_file'), \
+                patch.object(ender_module, 'launch_agent'), \
+                patch.object(ender_module, 'get_pool_path', return_value=pool_dir), \
+                patch.object(
+                    ender_module,
+                    'terminate_agent',
+                    side_effect=['terminated', 'not_running', 'failed'],
+                ), \
+                patch.object(ender_module, 'clear_reanimation_assets', return_value=1) as mock_clear, \
+                patch.object(ender_module.time, 'sleep'):
+            ender_module.main()
+
+        self.assertEqual(
+            mock_clear.call_args_list,
+            [call('counter_1'), call('monitor_log_1')],
+        )
+
+
+class RestartAgentViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='restart-user', password='secret123')
+        self.client.force_login(self.user)
+
+    def test_context_menu_restart_preserves_reanimation_assets(self):
+        with tempfile.TemporaryDirectory() as pool_dir:
+            agent_dir = os.path.join(pool_dir, 'counter_1')
+            os.makedirs(agent_dir, exist_ok=True)
+
+            script_path = os.path.join(agent_dir, 'counter.py')
+            reanim_pos = os.path.join(agent_dir, 'reanim.pos')
+            reanim_counter = os.path.join(agent_dir, 'reanim.counter')
+            with open(script_path, 'w', encoding='utf-8') as handle:
+                handle.write('print("hello")\n')
+            with open(reanim_pos, 'w', encoding='utf-8') as handle:
+                handle.write('offset: 10\n')
+            with open(reanim_counter, 'w', encoding='utf-8') as handle:
+                handle.write('counter: 3\n')
+
+            fake_process = type('FakeProcess', (), {'pid': 4321})()
+
+            with patch('agent.views.get_pool_path', return_value=pool_dir), \
+                    patch('agent.views.get_python_command', return_value=['python']), \
+                    patch('agent.views.get_agent_env', return_value={}), \
+                    patch(
+                        'agent.views._stop_running_agent_processes_for_restart',
+                        return_value=(True, 1, None),
+                    ) as mock_stop, \
+                    patch('agent.views.subprocess.Popen', return_value=fake_process) as mock_popen, \
+                    patch('agent.views._write_pid_file') as mock_write_pid:
+                response = self.client.post(reverse('restart_agent', args=['counter-1']))
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertTrue(payload['success'])
+            self.assertEqual(payload['pid'], 4321)
+            self.assertTrue(os.path.exists(reanim_pos))
+            self.assertTrue(os.path.exists(reanim_counter))
+            mock_stop.assert_called_once_with(agent_dir, 'counter_1', 'counter.py')
+            mock_popen.assert_called_once()
+            mock_write_pid.assert_called_once_with(agent_dir, 4321)
+
+    def test_context_menu_restart_fails_if_agent_cannot_be_fully_stopped(self):
+        with tempfile.TemporaryDirectory() as pool_dir:
+            agent_dir = os.path.join(pool_dir, 'counter_1')
+            os.makedirs(agent_dir, exist_ok=True)
+
+            script_path = os.path.join(agent_dir, 'counter.py')
+            reanim_pos = os.path.join(agent_dir, 'reanim.pos')
+            with open(script_path, 'w', encoding='utf-8') as handle:
+                handle.write('print("hello")\n')
+            with open(reanim_pos, 'w', encoding='utf-8') as handle:
+                handle.write('offset: 10\n')
+
+            with patch('agent.views.get_pool_path', return_value=pool_dir), \
+                    patch(
+                        'agent.views._stop_running_agent_processes_for_restart',
+                        return_value=(False, 1, 'remaining pid'),
+                    ), \
+                    patch('agent.views.subprocess.Popen') as mock_popen:
+                response = self.client.post(reverse('restart_agent', args=['counter-1']))
+
+            self.assertEqual(response.status_code, 409)
+            payload = response.json()
+            self.assertFalse(payload['success'])
+            self.assertEqual(payload['killed_count'], 1)
+            self.assertTrue(os.path.exists(reanim_pos))
+            mock_popen.assert_not_called()
+
+    def test_stop_running_agent_processes_requires_no_remaining_processes(self):
+        proc = type('FakeProcess', (), {'pid': 7777})()
+
+        with patch.object(
+            views,
+            '_find_agent_processes_for_restart',
+            side_effect=[[proc], [proc], [proc], [proc], [proc]],
+        ), \
+                patch.object(views, '_terminate_process_tree_for_restart', return_value=True), \
+                patch.object(views.time, 'sleep'):
+            stop_ok, killed_count, error_message = views._stop_running_agent_processes_for_restart(
+                'C:\\pool\\counter_1',
+                'counter_1',
+                'counter.py',
+            )
+
+        self.assertFalse(stop_ok)
+        self.assertEqual(killed_count, 1)
+        self.assertIn('Remaining PID(s): [7777]', error_message)

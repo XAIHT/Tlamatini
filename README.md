@@ -1148,7 +1148,8 @@ All workflow agents follow a common structural pattern:
 4. **Reanimation**: `.pos` files store file offsets to survive restarts without re-reading old data
 5. **Pool navigation**: Agents resolve sibling agent directories relative to their pool root (supports both frozen/PyInstaller and development modes)
 6. **Subprocess spawning**: Target agents are started as new processes using the resolved Python command
-7. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
+7. **Concurrency guard**: Before starting any target agents, the caller waits until ALL targets have stopped running. If they are still running after 10 seconds, an ERROR is logged every 10 seconds until they stop. The agent NEVER proceeds to start targets while any of them are still alive — this prevents duplicate/orphaned processes in looping flows
+8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
 - **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`
@@ -1160,7 +1161,7 @@ Agents are classified as:
 |-------|---------|-------------------|
 | **starter** | Initiates workflow execution | `target_agents`: List of agents to start<br>`exit_after_start`: Boolean |
 | **ender** | Terminates all agents in target_agents, then launches Cleaners | `target_agents`: Agents to KILL<br>`source_agents`: Graphical input connections only (never killed/started)<br>`output_agents`: Agents to LAUNCH after termination (typically Cleaners). Also auto-discovers Cleaners in pool. |
-| **stopper** | Multi-threaded pattern-based agent terminator. Monitors source agent logs and kills agents when patterns are detected. One thread per source agent. Does NOT start downstream agents. | `source_agents`: Agents to monitor and terminate<br>`patterns`: One pattern per source agent<br>`poll_interval`: Check frequency<br>`output_agents`: Canvas wiring only (not used for starting agents) |
+| **stopper** | Single-threaded pattern-based agent terminator. Monitors source agent logs and kills agents when patterns are detected. Sequential polling of all source agents. Does NOT start downstream agents. | `source_agents`: Agents to monitor and terminate<br>`patterns`: One pattern per source agent<br>`poll_interval`: Check frequency<br>`output_agents`: Canvas wiring only (not used for starting agents) |
 
 ### Monitoring Agents
 

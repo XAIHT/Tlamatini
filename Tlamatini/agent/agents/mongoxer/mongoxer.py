@@ -4,6 +4,7 @@ import sys
 import logging
 import yaml
 import subprocess
+import time
 from pymongo import MongoClient
 import traceback
 
@@ -27,6 +28,64 @@ def start_agent(agent_name, pool_dir_name):
     creationflags = subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
     
     subprocess.Popen([py_executable, agent_script_path], env=new_env, creationflags=creationflags)
+
+
+def is_agent_running(agent_name: str) -> bool:
+    """Check if an agent is currently running by verifying its PID file and process."""
+    agent_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', agent_name)
+    pid_path = os.path.join(agent_dir, "agent.pid")
+
+    if not os.path.exists(pid_path):
+        return False
+
+    try:
+        with open(pid_path, "r") as f:
+            pid = int(f.read().strip())
+    except (ValueError, OSError):
+        return False
+
+    try:
+        import psutil
+        if not psutil.pid_exists(pid):
+            return False
+        proc = psutil.Process(pid)
+        if proc.status() == psutil.STATUS_ZOMBIE:
+            return False
+        return True
+    except Exception:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+
+def wait_for_agents_to_stop(agent_names: list):
+    """
+    Wait until ALL specified agents have stopped running.
+    Logs ERROR every 10 seconds while waiting. Never proceeds until all have stopped.
+    """
+    if not agent_names:
+        return
+
+    waited = 0.0
+    poll_interval = 0.5
+
+    while True:
+        still_running = [name for name in agent_names if is_agent_running(name)]
+        if not still_running:
+            return
+
+        if waited >= 10.0:
+            logging.error(
+                f"❌ WAITING FOR AGENTS TO STOP: {still_running} still running "
+                f"after {int(waited)}s. Will keep waiting..."
+            )
+            waited = 0.0
+
+        time.sleep(poll_interval)
+        waited += poll_interval
+
 
 def main():
     os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
@@ -78,6 +137,8 @@ def main():
         client.close()
 
         target_agents = config.get('target_agents', [])
+        if target_agents:
+            wait_for_agents_to_stop(target_agents)
         for agent_name in target_agents:
             start_agent(agent_name, pool_dir_name)
             
