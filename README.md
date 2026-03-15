@@ -166,7 +166,7 @@ If you are setting up from source (manual setup), you will create your own super
 - Canvas area for viewing, editing, and copying generated code
 - Session persistence across browser reconnections (24-hour expiry)
 - Generation cancellation support
-- Modular frontend architecture (8 JS modules for maintainability)
+- Modular frontend architecture (23 JS modules: 8 chat interface + 11 ACP workflow designer + 4 shared)
 
 ### Advanced RAG System
 - **Dynamic Context Loading**: Set local files or entire directories as context directly from the web interface
@@ -309,7 +309,7 @@ Tlamatini/
 │   ├── agent/                       # Core application
 │   │   ├── apps.py                  # App config (MCP startup, signal handlers, cleanup)
 │   │   ├── admin.py                 # Django admin model registration
-│   │   ├── views.py                # HTTP request handlers (65+ endpoints)
+│   │   ├── views.py                # HTTP request handlers (83 endpoints)
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
 │   │   ├── models.py               # Database models (12 models)
 │   │   ├── urls.py                 # URL routing definitions
@@ -371,7 +371,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (41 types)
+│   │   ├── agents/                 # Workflow agent templates (43 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -401,7 +401,7 @@ Tlamatini/
 │   │   │   ├── kuberneter/        # Kubernetes command executor agent
 │   │   │   ├── apirer/           # HTTP/REST API request agent
 │   │   │   ├── jenkinser/        # CI/CD pipeline trigger agent
-│   │   │   ├── crawler/          # Web page crawler with LLM analysis
+│   │   │   ├── crawler/          # Developer-oriented web crawler with raw content + LLM analysis
 │   │   │   ├── summarizer/       # Log monitoring with LLM event detection
 │   │   │   ├── flowhypervisor/   # System-managed LLM anomaly detector
 │   │   │   ├── pser/             # LLM-powered process finder agent
@@ -423,13 +423,16 @@ Tlamatini/
 │   │   │   └── welcome.html       # Home page
 │   │   │
 │   │   └── static/agent/           # Frontend assets
+│   │       ├── sounds/            # Audio alerts
+│   │       │   ├── notification.wav       # Notifier browser alert sound
+│   │       │   └── hypervisor_alert.wav   # FlowHypervisor anomaly alert sound
 │   │       ├── css/               # Stylesheets
 │   │       │   ├── agent_page.css
 │   │       │   ├── agentic_control_panel.css
 │   │       │   ├── login.css
 │   │       │   ├── tools_dialog.css
 │   │       │   └── welcome.css
-│   │       └── js/                # JavaScript modules
+│   │       └── js/                # JavaScript modules (23 files)
 │   │           ├── agent_page_init.js     # App initialization & WebSocket setup
 │   │           ├── agent_page_chat.js     # Chat message handling
 │   │           ├── agent_page_canvas.js   # Code canvas rendering
@@ -438,11 +441,21 @@ Tlamatini/
 │   │           ├── agent_page_layout.js   # UI layout management
 │   │           ├── agent_page_state.js    # Client-side state
 │   │           ├── agent_page_ui.js       # General UI utilities
-│   │           ├── agentic_control_panel.js # Flow designer
-│   │           ├── canvas_item_dialog.js  # Agent config dialog on canvas
+│   │           ├── agentic_control_panel.js # Flow designer entry point
+│   │           ├── acp-globals.js          # ACP shared global state & constants
+│   │           ├── acp-canvas-core.js      # ACP canvas rendering & drag-and-drop
+│   │           ├── acp-canvas-undo.js      # ACP undo/redo state management
+│   │           ├── acp-agent-connectors.js # ACP agent connection logic (43 types)
+│   │           ├── acp-control-buttons.js  # ACP start/stop/pause/hypervisor controls
+│   │           ├── acp-file-io.js          # ACP workflow save/load (.flw files)
+│   │           ├── acp-running-state.js    # ACP LED indicators & process monitoring
+│   │           ├── acp-session.js          # ACP session pool management
+│   │           ├── acp-layout.js           # ACP canvas layout utilities
+│   │           ├── acp-undo-manager.js     # ACP undo stack manager
 │   │           ├── acp-validate.js         # Flow validation engine (6-point check)
-│   │           ├── contextual_menus.js    # Right-click menus
-│   │           └── tools_dialog.js        # Tool enable/disable dialog
+│   │           ├── canvas_item_dialog.js   # Agent config dialog on canvas
+│   │           ├── contextual_menus.js     # Right-click menus
+│   │           └── tools_dialog.js         # Tool enable/disable dialog
 │   │
 │   ├── jd-cli/                      # Java decompiler CLI tool
 │   │   ├── jd-cli.bat               # Batch wrapper for JAR/WAR decompilation
@@ -1052,7 +1065,7 @@ The application uses Django ORM with SQLite and defines the following models in 
 
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
-| **AgentMessage** | Chat messages between users and LLM | `user` (FK->User), `message`, `timestamp` |
+| **AgentMessage** | Chat messages between users and LLM | `user` (FK->User), `conversation_user` (FK->User, per-user history isolation), `message`, `timestamp` |
 | **LLMProgram** | Stored code programs with metadata | `programName`, `programLanguage`, `programContent` |
 | **LLMSnippet** | Code snippets with language info | `snippetName`, `snippetLanguage`, `snippetContent` |
 | **Prompt** | Reusable prompt templates | `promptName`, `promptContent` |
@@ -1213,10 +1226,10 @@ Agents are classified as:
 | **apirer** | HTTP/REST API agent — makes GET/POST/PUT/DELETE requests, logs response status and latency, triggers downstream agents regardless of outcome. Produces structured content reports: `<{url}> RESPONSE { ... }` with timing in milliseconds and Authorization header masking for security | `url`: Target URL<br>`method`: HTTP method<br>`headers`: Request headers map<br>`body`: Request body<br>`expected_status`: Expected HTTP status<br>`timeout`: Timeout in seconds<br>`target_agents`: Downstream agents |
 | **pser** | LLM-powered process finder — searches running processes by likely name using semantic matching | `likely_process_name`: Process to find<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 | **jenkinser** | CI/CD pipeline trigger — triggers Jenkins builds with CSRF crumb support, logs trigger result, and starts downstream agents regardless of outcome | `jenkins_url`: Jenkins server URL<br>`job_name`: Job to trigger<br>`user`: Jenkins username<br>`api_token`: API token<br>`parameters`: Build parameters map<br>`target_agents`: Downstream agents |
-| **crawler** | Web page crawler with LLM analysis — fetches URLs via HTTP GET, strips HTML markup, saves plain text to local files, and processes content with an LLM. Supports three modes: small-range (single URL), medium-range (same-domain links), large-range (all links) | `url`: Target URL<br>`system_prompt`: LLM prompt<br>`crawl_type`: small-range / medium-range / large-range<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
+| **crawler** | Developer-oriented web crawler with LLM analysis — fetches URLs via HTTP GET and captures **raw content** by default (complete HTML markup, inline/external JavaScript, CSS, meta tags, HTTP response headers, JSON-LD structured data) or plain text. Generates resource inventories cataloging all scripts, styles, forms, images, endpoints, and data-* attributes. Processes content with an LLM using a developer-centric preamble for deep technical analysis. Supports three crawl modes: small-range (single URL), medium-range (same-domain links), large-range (all links) | `url`: Target URL<br>`system_prompt`: LLM prompt<br>`crawl_type`: small-range / medium-range / large-range<br>`content_mode`: raw (default) / text<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`target_agents`: Downstream agents |
 | **summarizer** | Log monitoring with LLM event detection — continuously polls source agent log files and sends content to an LLM with a configurable system prompt. When the LLM detects a positive event ([EVENT_TRIGGERED]), starts all configured downstream target agents | `source_agents`: Agents to monitor<br>`system_prompt`: LLM analysis prompt<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`poll_interval`: Seconds between polls<br>`target_agents`: Downstream agents |
-| **File-Interpreter** | Reads and interprets documents (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, etc.), extracting text and optionally images | `path_filenames`: File path or wildcard pattern<br>`reading_type`: fast/complete/summarized<br>`target_agents`: Downstream agents |
-| **Image-Interpreter** | Analyzes and describes images using an LLM vision model. Supports wildcards, directories, or coupling with File-Interpreter agent | `images_pathfilenames`: Wildcards, directory, File-Interpreter pool name, or file<br>`llm.host`: Ollama URL<br>`llm.model`: Vision model name<br>`target_agents`: Downstream agents |
+| **file_interpreter** | Reads and interprets documents (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, etc.), extracting text and optionally images. Supports three reading modes: `fast` (text only), `complete` (text + image extraction to images/ subdirectory), and `summarized` (text + LLM summarization). Outputs structured INI/END_FILE blocks. Supports wildcards for batch processing | `path_filenames`: File path or wildcard pattern<br>`reading_type`: fast / complete / summarized<br>`llm.host`: Ollama URL (for summarized mode)<br>`llm.model`: Model name (for summarized mode)<br>`target_agents`: Downstream agents |
+| **image_interpreter** | Analyzes and describes images using an LLM vision model. Converts images to base64 for LLM transmission. Supports 12+ image formats (jpg, png, gif, bmp, tiff, webp, svg, ico, heic, avif). Can accept wildcards, directories, File-Interpreter pool names, or single files. Outputs structured INI_IMAGE_FILE/END_FILE blocks | `images_pathfilenames`: Wildcards, directory, File-Interpreter pool name, or file<br>`llm.host`: Ollama URL<br>`llm.model`: Vision model name<br>`system_prompt`: Custom analysis prompt (default: "Describe this image in detail.")<br>`target_agents`: Downstream agents |
 
 ### Logic Gates
 
@@ -1864,7 +1877,7 @@ Enable verbose logging in config.json:
 | **Logic Gate** | Agent that performs boolean operations (AND/OR) on events |
 | **Routing Agent** | Agent that directs workflow flow to one of multiple paths (Asker, Forker) |
 | **Notifier** | LangGraph-based agent that monitors logs and triggers browser notifications |
-| **Stopper** | Multi-threaded agent that monitors and terminates other agents based on patterns. Uses `output_agents` (not `target_agents`) for canvas wiring |
+| **Stopper** | Single-threaded agent that sequentially polls and terminates other agents based on patterns. Uses `output_agents` (not `target_agents`) for canvas wiring |
 | **Pythonxer** | Agent that executes Python scripts with Ruff validation and boolean exit code |
 | **Recmailer** | LangGraph agent that monitors IMAP email inbox with LLM-based keyword analysis |
 | **Whatsapper** | Agent that sends WhatsApp notifications via TextMeBot API with LLM summarization |
@@ -1876,7 +1889,7 @@ Enable verbose logging in config.json:
 | **Apirer** | HTTP/REST API agent that makes HTTP requests to any URL and starts downstream agents regardless of outcome |
 | **Jenkinser** | CI/CD pipeline trigger agent that triggers Jenkins builds and starts downstream agents regardless of trigger result |
 | **Counter** | Deterministic agent that maintains a persistent counter and routes workflows to Path L or G based on threshold comparison |
-| **Crawler** | LLM-powered web crawler agent that fetches pages, strips HTML, and processes content with an LLM in three range modes (small/medium/large) |
+| **Crawler** | LLM-powered developer-oriented web crawler that fetches pages in raw mode (full HTML/JS/CSS/headers) or text mode, generates resource inventories, and processes content with an LLM in three range modes (small/medium/large) |
 | **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
 | **File-Interpreter** | Hybrid agent that reads and parses document files, extracting text and images, with optional LLM-powered summarization |
 | **Image-Interpreter** | Non-deterministic agent that analyzes images using an LLM vision model, logging structured descriptions for each image |
@@ -1941,8 +1954,14 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
-- **Added Image-Interpreter Agent** - Non-deterministic LLM vision agent that analyzes images (wildcards, directories, or File-Interpreter coupling), logs structured INI_IMAGE_FILE/END_FILE blocks, and triggers downstream agents
-- **Added File-Interpreter Agent** - Hybrid deterministic/non-deterministic agent for document parsing with support for DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, and more file formats
+- **Crawler Substantially Improved** - Now captures **raw content** by default (complete HTML markup, JavaScript, CSS, meta tags, HTTP response headers, JSON-LD structured data) instead of plain text. Generates resource inventories cataloging scripts, styles, forms, images, endpoints, and data-* attributes. Developer-oriented LLM preamble for deep technical analysis of page structure, security patterns, and framework signatures
+- **Ender Reanimation Asset Clearing** - Ender now deletes all `reanim*` prefixed files (reanim.pos, reanim.counter, reanim_\<source\>.pos) from terminated agent directories, enabling clean contextual restarts in looping flows
+- **Concurrency Guard for All Starter-Capable Agents** - Starter, Ender, and all agents that spawn downstream targets now implement a mandatory blocked wait: before starting any target agents, the caller waits until ALL targets have stopped running, logging ERROR every 10 seconds while waiting. Prevents duplicate/orphaned processes in looping workflows
+- **Chat History Per-User Isolation** - Added `conversation_user` foreign key to `AgentMessage` model (migration 0043), enabling per-user conversation history filtering and preventing cross-user message leakage
+- **FlowHypervisor Monitoring Prompt Enhanced** - Now recognizes 42 distinct agent startup markers, 30+ error patterns, 16+ warning patterns, concurrency guard messages ("WAITING FOR AGENTS TO STOP"), reanimation asset cleanup validation, and agent categorization (short-lived vs. long-running vs. mixed-mode)
+- **Stopper Refactored to Single-Threaded** - Changed from multi-threaded per-source monitoring to sequential polling of all source agents in a single main loop for more reliable pattern matching
+- **Added Image-Interpreter Agent** - Non-deterministic LLM vision agent that analyzes images in 12+ formats (jpg, png, gif, bmp, tiff, webp, svg, ico, heic, avif), supports wildcards, directories, or File-Interpreter coupling, logs structured INI_IMAGE_FILE/END_FILE blocks, and triggers downstream agents
+- **Added File-Interpreter Agent** - Hybrid deterministic/non-deterministic agent for document parsing with three reading modes (fast/complete/summarized), support for DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, and more file formats, optional image extraction, and LLM-powered summarization
 - **Added Counter Agent** - Deterministic persistent counter with threshold-based L/G routing, overflow protection, and reanimation support
 - **Added Flow Validation System** - Comprehensive 6-point structural verification engine (`acp-validate.js`) that builds an NxN adjacency matrix from agent connections and validates: no inputs to Starters, Ender-only connections to Cleaners, Cleaner-only inputs from Enders, no self-connections, all non-Starters have inputs, and all referenced agents exist with appropriate input types. Results shown with per-agent error details and suggestions
 - **Added FlowHypervisor Agent** - System-managed LLM-powered anomaly detector that monitors all running agents in a flow. Features include: reanimation support via `reanim.json` for crash recovery, incremental log reading (only processes new content), NxN connection matrix analysis, `hypervisor_alert.json` generation for frontend alerts, and smart exit logic (stops after 3 consecutive cycles with no running agents)
@@ -1952,18 +1971,18 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **jd-cli Bundled in Installation** - The Java decompiler CLI tool (`jd-cli/`) is now included in `pkg.zip` during the build process, available at the application root alongside `agents/`, `application/`, etc.
 - **FlowCreator Skill Enhancements** - Updated `agentic_skill.md` with Mouser agent documentation, improved validation instructions for agent connection rules, and enhanced button behavior for the Validate flow action
 - **Added PyAutoGUI Dependency** - `PyAutoGUI==0.9.54` added to `requirements.txt` for Mouser agent mouse control
-- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), and `/update_mouser_connection/<agent_name>/` (POST)
+- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), `/update_mouser_connection/<agent_name>/` (POST), `/update_counter_connection/<agent_name>/` (POST), `/update_file_interpreter_connection/<agent_name>/` (POST), and `/update_image_interpreter_connection/<agent_name>/` (POST). Total endpoints now at 83
 - **P0/P1/P2 Security Hardening** - Comprehensive, tiered security test suite covering user isolation, CSRF, login enforcement (P0), path traversal prevention and safe path joining (P1), and prompt injection defense with indirect file access detection (P2)
 - **Added Path Guard Module** (`path_guard.py`) - Centralized path validation layer that resolves Windows known folders, enforces `allowed_paths` from config, and prevents directory traversal across all file operations
 - **Improved File Search Chain** - `chain_files_search_lcel.py` now integrates with `path_guard.py` for secure path validation, supports non-explicit lookup crawling, and validates all gRPC results against path escaping
 - **Expanded Security Tests** - `tests.py` now includes three test classes (`P0HardeningTests`, `P1HardeningTests`, `PromptPathHardeningTests`) covering critical to prompt-level hardening scenarios
 - **Enhanced RAG Interface Security** - `rag/interface.py` now performs LLM-based indirect file access detection and prompt-level path validation before file operations
-- **Improved Crawler Agent** - Better non-explicit lookup support and updated source LLM model configuration
+- **Improved Crawler Agent** - Raw content capture mode (HTML/JS/CSS/headers), resource inventory generation, developer-oriented LLM analysis preamble, and updated source LLM model configuration
 - **UI Refinements** - MCP/agents dialog improved with golden-ratio styled columns for better readability
 - **ESLint Configuration** - Added `eslint.config.mjs` for frontend JavaScript quality assurance
 - **Added Summarizer Agent** - LLM-powered log monitoring agent that continuously polls source agent log files, sends content to an LLM with a configurable system prompt for event detection, and triggers downstream agents when positive events are found
 - **Added FlowHypervisor Agent** - System-managed LLM anomaly detector that watches all running agents' processes and log files, builds a connection matrix, and alerts the user to anomalies via an interactive UI dialog
-- **Added Crawler Agent** - LLM-powered web page crawler that fetches URLs, strips HTML markup, saves plain text to local files, and processes content with a configurable LLM prompt across three crawl modes (small-range, medium-range, large-range)
+- **Added Crawler Agent** - Developer-oriented web page crawler that fetches URLs in raw mode (full HTML/JS/CSS/headers with resource inventory) or text mode, saves to local files, and processes content with a configurable LLM prompt across three crawl modes (small-range, medium-range, large-range)
 - **Added Jenkinser Agent** - CI/CD pipeline trigger agent that triggers Jenkins builds with CSRF crumb and authentication support, and starts downstream agents regardless of trigger outcome
 - **Added Apirer Agent** - HTTP/REST API agent that makes GET/POST/PUT/DELETE requests, logs response details, and triggers downstream agents regardless of success or failure
 - **Added Pser Agent** - LLM-powered process finder that semantically matches running processes by likely name and logs detailed process info
@@ -1976,7 +1995,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Added Forker Agent** - Deterministic A/B path router that monitors source agent logs for configurable patterns and automatically routes to Path A or Path B
 - **Added Asker Agent** - Interactive A/B path chooser that pauses workflow for user decision via browser dialog, with 5-minute timeout
 - **Added Pythonxer Agent** - Python script executor with Ruff linting validation, boolean exit code logic, and optional forked window execution
-- **Added Stopper Agent** - Multi-threaded pattern-based agent terminator with per-source monitoring threads and continuous execution
+- **Added Stopper Agent** - Single-threaded pattern-based agent terminator with sequential polling of all source agents, per-source reanimation offsets, and continuous execution
 - **Added Recmailer Agent** - IMAP email receiver with LangGraph-based LLM analysis for keyword detection in incoming emails
 - **Added Whatsapper Agent** - WhatsApp notification agent using TextMeBot API with LLM-powered log summarization
 - **Added Qwen Image Analysis** - Dual-backend image analysis supporting both Claude (cloud) and Qwen/Ollama (local) vision models
@@ -1995,7 +2014,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Tools Dialog** - Per-tool enable/disable via the chat interface
 - **Image Format Conversion** - Added `converter.py` module for image format transformations and base64 encoding
 - **Chat History Management** - Added `chat_history_loader.py` for persistent conversation history
-- **60+ HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
+- **83 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
 
 ---
 
