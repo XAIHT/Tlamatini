@@ -946,6 +946,17 @@ async function pollFlowHypervisorAlertSerial() {
         if (result.has_alert) {
             showHypervisorAlertDialog(result.message);
         }
+        // Core auto-stop: if no non-system agents are running, the flow
+        // is complete — stop the FlowHypervisor immediately from the core
+        // (the agent also has its own 3-cycle self-stop as a safety net
+        // for when the core/browser is killed or frozen)
+        if (result.flow_alive === false) {
+            console.log('--- [FlowHypervisor] No agents running in the flow. Stopping FlowHypervisor from core.');
+            flowHypervisorPollingActive = false;
+            flowHypervisorPollBusy = false;
+            stopSystemManagedFlowHypervisor();
+            return;
+        }
     } catch (err) {
         // ignore network errors
     } finally {

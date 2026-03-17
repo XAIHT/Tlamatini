@@ -6377,6 +6377,9 @@ def check_flowhypervisor_alert_view(request, agent_name):
     """
     Check if the FlowHypervisor has written an alert file.
     Returns the alert data if found, or empty response if no alert.
+    Also returns `flow_alive` indicating whether any non-system agents
+    are still running in the pool — the frontend uses this to stop the
+    FlowHypervisor immediately when the flow is complete.
     The frontend polls this endpoint to detect ATTENTION NEEDED alerts.
     """
     try:
@@ -6390,8 +6393,33 @@ def check_flowhypervisor_alert_view(request, agent_name):
         pool_base_path = get_pool_path(request)
         alert_path = os.path.join(pool_base_path, pool_folder_name, "hypervisor_alert.json")
 
+        # Check if any non-system agents are still running in the pool
+        excluded_types = {'flowcreator', 'flowhypervisor'}
+        flow_alive = False
+        if os.path.isdir(pool_base_path):
+            for folder in os.listdir(pool_base_path):
+                folder_path = os.path.join(pool_base_path, folder)
+                if not os.path.isdir(folder_path):
+                    continue
+                # Extract base agent type (e.g. 'starter_1' -> 'starter')
+                folder_parts = folder.rsplit('_', 1)
+                agent_type = folder_parts[0] if len(folder_parts) == 2 and folder_parts[1].isdigit() else folder
+                if agent_type.lower() in excluded_types:
+                    continue
+                pid_path = os.path.join(folder_path, "agent.pid")
+                if os.path.exists(pid_path):
+                    try:
+                        with open(pid_path, "r") as pf:
+                            pid = int(pf.read().strip())
+                        if psutil.pid_exists(pid):
+                            flow_alive = True
+                            break
+                    except (ValueError, OSError):
+                        pass
+
         if not os.path.exists(alert_path):
-            return HttpResponse(json.dumps({"has_alert": False}), content_type='application/json')
+            return HttpResponse(json.dumps({"has_alert": False, "flow_alive": flow_alive}),
+                                content_type='application/json')
 
         with open(alert_path, 'r', encoding='utf-8') as f:
             alert_data = json.load(f)
@@ -6403,11 +6431,12 @@ def check_flowhypervisor_alert_view(request, agent_name):
             pass
 
         alert_data["has_alert"] = True
+        alert_data["flow_alive"] = flow_alive
         return HttpResponse(json.dumps(alert_data), content_type='application/json')
 
     except Exception as e:
         print(f"Error checking flowhypervisor alert: {e}")
-        return HttpResponse(json.dumps({"has_alert": False, "error": str(e)}),
+        return HttpResponse(json.dumps({"has_alert": False, "flow_alive": True, "error": str(e)}),
                             content_type='application/json', status=500)
 
 

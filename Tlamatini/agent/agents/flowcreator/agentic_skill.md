@@ -632,7 +632,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start when an event is triggered)
 
 ### 39. FlowHypervisor
-- **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system.
+- **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system. Users can provide custom `user_instructions` to fine-tune supervision (e.g. dismiss known false positives, adjust sensitivity, add domain rules).
 - **Pool name pattern**: `flowhypervisor` (Note: Only one instance allowed per flow, no cardinal number).
 - **Starts other agents**: NO (System managed).
 - **Config parameters**:
@@ -640,6 +640,7 @@ system_prompt: |
   - `llm.model`: "llama3.1:8b"
   - `llm.temperature`: 0.0
   - `monitoring_poll_time`: 10
+  - `user_instructions`: "" (custom directives appended to the monitoring prompt)
 
 ### 40. Mouser
 - **Purpose**: Moves the mouse pointer either randomly for a specified duration or from one screen position to another. Useful for keeping sessions alive or simulating user activity.

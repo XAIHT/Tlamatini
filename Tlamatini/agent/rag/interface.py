@@ -3,7 +3,7 @@ import re
 import sys
 import json
 import logging
-import requests
+import concurrent.futures
 from typing import List
 from ..global_state import global_state
 from ..models import LLMProgram
@@ -54,46 +54,13 @@ def get_program_by_name(programName):
 
 def tokenCounterOfAsk(question: str):
     """
-    Counts tokens using Ollama /api/tokenize. Falls back to char-based estimate.
-    Respects "ssl_verify" and optional auth, preserving your previous behavior by default.
+    Fast local token estimate.  Uses the char-based heuristic (~1 token per
+    4 chars) which is sufficient for the input-length gate check.  This
+    avoids an HTTP round-trip to Ollama /api/tokenize on every single query.
     """
-    config_file_path = os.path.join(application_path, 'config.json')
-    if not os.path.exists(config_file_path):
-        print("Warning: config.json not found for token counting. Falling back to character estimation.")
-        num_tokens = _approx_tokens(question)
-        print(f"Number of tokens in input (estimated): {num_tokens}")
-        return num_tokens
-
-    try:
-        with open(config_file_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-
-        ollama_base_url = config.get('ollama_base_url')
-        model = config.get('chained-model')
-        token = config.get('ollama_token')
-        verify = bool(config.get("ssl_verify", False))  # default False to preserve old behavior
-        if not ollama_base_url or not model:
-            raise ValueError("Ollama base URL or model not found in config.json")
-
-        api_url = f"{ollama_base_url.rstrip('/')}/api/tokenize"
-        headers = {"Authorization": f"Bearer {token}"} if token else {}
-        payload = {"model": model, "prompt": question}
-
-        session = requests.Session()
-        if config.get("disable_proxies", False):
-            session.trust_env = False
-
-        response = session.post(api_url, json=payload, headers=headers, timeout=20, verify=verify)
-        response.raise_for_status()
-        num_tokens = len(response.json().get('tokens', []))
-        print(f"Number of tokens in input: {num_tokens}")
-        return num_tokens
-
-    except (requests.exceptions.RequestException, FileNotFoundError, ValueError, KeyError) as e:
-        print(f"Could not use Ollama for token counting due to an error: {e}. Falling back to character estimation.")
-        num_tokens = _approx_tokens(question)
-        print(f"Number of tokens in input (estimated): {num_tokens}")
-        return num_tokens
+    num_tokens = _approx_tokens(question)
+    print(f"Number of tokens in input (estimated): {num_tokens}")
+    return num_tokens
 
 def is_valid_prompt(text: str) -> bool:
     """
@@ -287,47 +254,78 @@ def _relative_path_rejection_message() -> str:
     )
 
 
-def _acces_aimed_prompt(question: str) -> bool:
-    """
-    Classify whether a user question INTENDS to access/read/write/execute files
-    at the paths mentioned, or if the paths are merely informative/contextual.
+# ── Cached classifier LLM instance ───────────────────────────────────────────
+# Both _acces_aimed_prompt and _indirect_file_access_prompt use the same
+# stateless OllamaLLM (same model, base_url, token).  We build it once and
+# reuse it for every subsequent call, avoiding repeated config reads, import
+# overhead, and HTTP-client construction on every query.
 
-    Connects to Ollama using the ``access_aimed_prompt_model`` from config.json
-    (same connection pattern as SystemRAGChain / inet_determiner).
+_classifier_llm = None
+_classifier_llm_config_key = None   # tracks config identity for invalidation
 
-    Returns True if the LLM determines INTENT, False otherwise.
+
+def _get_classifier_llm():
     """
+    Return a cached OllamaLLM instance for the access classifiers.
+    Rebuilds automatically if config.json values change at runtime.
+    """
+    global _classifier_llm, _classifier_llm_config_key
+
     try:
         config_path = os.path.join(application_path, 'config.json')
         with open(config_path, 'r', encoding='utf-8') as f:
             cfg = json.load(f)
     except Exception as exc:
-        logging.error("_acces_aimed_prompt: cannot load config.json: %s", exc)
-        # Fail-safe: assume intent (block the action)
-        return True
+        logging.error("_get_classifier_llm: cannot load config.json: %s", exc)
+        return None
 
     model = str(cfg.get('access_aimed_prompt_model',
                         cfg.get('chained-model', 'llama3.2:latest')))
     base_url = str(cfg.get('ollama_base_url', 'http://127.0.0.1:11434')).strip()
     token = str(cfg.get('ollama_token', '')).strip()
 
+    # Simple identity key — rebuild only when relevant config values change
+    config_key = (model, base_url, token)
+    if _classifier_llm is not None and _classifier_llm_config_key == config_key:
+        return _classifier_llm
+
     try:
         from langchain_ollama import OllamaLLM
     except ImportError:
-        logging.error("_acces_aimed_prompt: langchain_ollama not installed")
-        return True       # fail-safe: assume intent
+        logging.error("_get_classifier_llm: langchain_ollama not installed")
+        return None
 
     client_kwargs = {}
     if token:
         client_kwargs["headers"] = {"Authorization": f"Bearer {token}"}
 
     try:
-        llm = OllamaLLM(
+        _classifier_llm = OllamaLLM(
             base_url=base_url,
             model=model,
             client_kwargs=client_kwargs,
         )
+        _classifier_llm_config_key = config_key
+        return _classifier_llm
+    except Exception as exc:
+        logging.error("_get_classifier_llm: failed to build OllamaLLM: %s", exc)
+        return None
 
+
+def _acces_aimed_prompt(question: str) -> bool:
+    """
+    Classify whether a user question INTENDS to access/read/write/execute files
+    at the paths mentioned, or if the paths are merely informative/contextual.
+
+    Uses the cached classifier LLM instance.
+
+    Returns True if the LLM determines INTENT, False otherwise.
+    """
+    llm = _get_classifier_llm()
+    if llm is None:
+        return True       # fail-safe: assume intent
+
+    try:
         classification_prompt = (
             "You are a strict classifier.  Decide whether the user's question "
             "INTENDS to access, read, write, execute, move, copy, delete, or "
@@ -376,38 +374,15 @@ def _indirect_file_access_prompt(question: str) -> bool:
       - "Explain how config.json works."
       - "How do I run a .py script in general?"
 
+    Uses the cached classifier LLM instance.
+
     Returns True if indirect access is detected, False otherwise.
     """
-    try:
-        config_path = os.path.join(application_path, 'config.json')
-        with open(config_path, 'r', encoding='utf-8') as f:
-            cfg = json.load(f)
-    except Exception as exc:
-        logging.error("_indirect_file_access_prompt: cannot load config.json: %s", exc)
+    llm = _get_classifier_llm()
+    if llm is None:
         return True  # fail-safe
 
-    model = str(cfg.get('access_aimed_prompt_model',
-                        cfg.get('chained-model', 'llama3.2:latest')))
-    base_url = str(cfg.get('ollama_base_url', 'http://127.0.0.1:11434')).strip()
-    token = str(cfg.get('ollama_token', '')).strip()
-
     try:
-        from langchain_ollama import OllamaLLM
-    except ImportError:
-        logging.error("_indirect_file_access_prompt: langchain_ollama not installed")
-        return True
-
-    client_kwargs = {}
-    if token:
-        client_kwargs["headers"] = {"Authorization": f"Bearer {token}"}
-
-    try:
-        llm = OllamaLLM(
-            base_url=base_url,
-            model=model,
-            client_kwargs=client_kwargs,
-        )
-
         classification_prompt = (
             "You are a security classifier for a local computer assistant. "
             "Determine whether the user's question tries to ACCESS, EXECUTE, "
@@ -603,10 +578,31 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         global_state.set_state('rag_chain_ready', True)
         return str(response)
 
-    # ── Prompt-level access validation ──
+    # ── Parallel classifier execution with sequential evaluation ──
+    # Both classifiers are independent and stateless: each receives only
+    # raw_text and produces a result without shared mutable state.
+    # We launch them concurrently but evaluate results in the ORIGINAL
+    # sequential order so that the security gate (_validate_accesses)
+    # is honoured before any routing decision (inet_determiner).
+
+    inet_future = None
+    if inet_enabled:
+        # Launch inet classifier in background while access validation runs
+        _inet_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="inet_classifier"
+        )
+        inet_future = _inet_executor.submit(
+            inet_determiner.determine_internet_required, raw_text
+        )
+        _inet_executor.shutdown(wait=False)  # don't block; we'll .result() later
+
+    # ── BARRIER STEP 1: access validation (security gate, evaluated first) ──
     access_rejection = _validate_accesses_in_prompt(raw_text)
     if access_rejection:
         print("--- ask_rag: prompt rejected by access validation")
+        # Cancel/discard the inet result — security gate takes priority
+        if inet_future is not None:
+            inet_future.cancel()
         global_state.set_state('rag_chain_ready', True)
         return str(access_rejection)
 
@@ -620,20 +616,30 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     # Check if already cancelled before even starting
     if global_state.get_state('cancel_generation'):
         print("--- [CANCEL] Generation cancelled before starting ---")
+        if inet_future is not None:
+            inet_future.cancel()
         global_state.set_state('rag_chain_ready', True)
         return "Generation was cancelled."
 
     try:
         if inet_enabled:
-            inet_required = inet_determiner.determine_internet_required(raw_text)
+            # ── BARRIER STEP 2: collect inet result (was running in parallel) ──
+            try:
+                inet_required = inet_future.result(timeout=60)
+            except concurrent.futures.CancelledError:
+                inet_required = False
+            except Exception as exc:
+                print(f"--- inet classifier failed: {exc}; defaulting to False ---")
+                inet_required = False
+
             print(f"\n--- Internet may be required: {inet_required}")
-            
+
             # Check for cancellation before web search
             if global_state.get_state('cancel_generation'):
                 print("--- [CANCEL] Cancelled before web search ---")
                 global_state.set_state('rag_chain_ready', True)
                 return "Generation was cancelled."
-            
+
             if inet_required:
                 print("--- Internet search required. Enriching with web context before answering. ---")
                 web_search_llm_instance = web_search_llm.build_web_search_llm(rag_chain.getHttpxClientInstance())
@@ -644,13 +650,13 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
                         payload["external_sources"] = web_result.get("sources", [])
                 else:
                     print("--- Web search component unavailable; proceeding without web context ---")
-            
+
             # Check for cancellation before LLM invoke
             if global_state.get_state('cancel_generation'):
                 print("--- [CANCEL] Cancelled before LLM invoke ---")
                 global_state.set_state('rag_chain_ready', True)
                 return "Generation was cancelled."
-            
+
             response = rag_chain.invoke(payload)
         else:
             # Check for cancellation before LLM invoke
@@ -658,7 +664,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
                 print("--- [CANCEL] Cancelled before LLM invoke ---")
                 global_state.set_state('rag_chain_ready', True)
                 return "Generation was cancelled."
-            
+
             response = rag_chain.invoke(payload)
             
     except GenerationCancelledException:

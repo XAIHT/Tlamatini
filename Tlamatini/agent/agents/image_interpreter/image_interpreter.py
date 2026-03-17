@@ -18,7 +18,7 @@ import logging
 import subprocess
 import urllib.request
 import urllib.error
-from typing import Dict
+from typing import Dict, Optional
 
 # Set working directory to script location
 try:
@@ -219,6 +219,74 @@ def start_agent(agent_name: str) -> bool:
 # IMAGE INTERPRETATION FUNCTIONS
 # ==============================
 
+def extract_image_metadata(image_path: str) -> Dict:
+    """Extract EXIF and other metadata from an image file. Returns a dict of available metadata."""
+    metadata = {}
+    try:
+        from PIL import Image
+        from PIL.ExifTags import TAGS, GPSTAGS
+        img = Image.open(image_path)
+        metadata['format'] = img.format or ''
+        metadata['size'] = f"{img.width}x{img.height}"
+        metadata['mode'] = img.mode
+        exif_data = img.getexif()
+        if exif_data:
+            for tag_id, value in exif_data.items():
+                tag_name = TAGS.get(tag_id, str(tag_id))
+                # Skip binary/raw data fields
+                if isinstance(value, bytes):
+                    continue
+                metadata[tag_name] = str(value)
+    except ImportError:
+        logging.debug("Pillow not installed — skipping EXIF metadata extraction.")
+    except Exception as e:
+        logging.debug(f"Could not extract metadata from {image_path}: {e}")
+    return metadata
+
+
+def build_system_context(image_path: str, metadata: Dict) -> str:
+    """
+    Build a system prompt that provides the LLM with contextual hints
+    derived from the image filename and any available metadata.
+    """
+    filename = os.path.basename(image_path)
+    name_without_ext = os.path.splitext(filename)[0]
+    # Clean up common filename separators to get readable tokens
+    readable_name = name_without_ext.replace('_', ' ').replace('-', ' ').replace('.', ' ')
+
+    parts = [
+        "You are an expert image analyst. You have been given an image to analyze along with contextual information derived from the file itself.",
+        "",
+        "== FILE CONTEXT ==",
+        f"File name: {filename}",
+        f"Readable name tokens: {readable_name}",
+    ]
+
+    parent_dir = os.path.basename(os.path.dirname(image_path))
+    if parent_dir:
+        parts.append(f"Parent folder: {parent_dir}")
+
+    if metadata:
+        parts.append("")
+        parts.append("== IMAGE METADATA ==")
+        for key, value in metadata.items():
+            parts.append(f"{key}: {value}")
+
+    parts.append("")
+    parts.append("== INSTRUCTIONS ==")
+    parts.append(
+        "Use the file name and metadata above as contextual hints when answering the user's question. "
+        "For example, if the user asks who is the person in the image, the file name may contain "
+        "the person's name — use it as a hint but always verify against what you actually see in the image. "
+        "If the file name suggests a name (e.g. 'John_Smith.jpg'), mention it and confirm or deny based "
+        "on visual evidence. Do NOT blindly trust the file name — treat it as a clue, not a fact. "
+        "Similarly, metadata fields like 'Artist', 'ImageDescription', or 'XPComment' may contain "
+        "relevant information about the subject."
+    )
+
+    return "\n".join(parts)
+
+
 def convert_image_to_base64(image_path: str) -> str:
     """Convert an image file to a raw base64 encoded string."""
     if not os.path.exists(image_path):
@@ -306,9 +374,18 @@ def analyze_image_with_llm(image_path: str, llm_config: dict) -> str:
     except Exception as e:
         return f"Error converting image: {e}"
 
+    # Build system context with filename hints and metadata
+    metadata = extract_image_metadata(image_path)
+    system_context = build_system_context(image_path, metadata)
+    logging.info(f"   System context built with {len(metadata)} metadata fields for: {os.path.basename(image_path)}")
+
     payload = {
         "model": model,
         "messages": [
+            {
+                "role": "system",
+                "content": system_context
+            },
             {
                 "role": "user",
                 "content": prompt,

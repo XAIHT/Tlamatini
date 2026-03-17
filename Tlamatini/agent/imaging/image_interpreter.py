@@ -4,6 +4,70 @@ import sys
 import requests
 from langchain.tools import tool
 from .converter import convert_image_to_base64
+from typing import Dict
+
+
+def _extract_image_metadata(image_path: str) -> Dict:
+    """Extract EXIF and other metadata from an image file."""
+    metadata = {}
+    try:
+        from PIL import Image
+        from PIL.ExifTags import TAGS
+        img = Image.open(image_path)
+        metadata['format'] = img.format or ''
+        metadata['size'] = f"{img.width}x{img.height}"
+        metadata['mode'] = img.mode
+        exif_data = img.getexif()
+        if exif_data:
+            for tag_id, value in exif_data.items():
+                tag_name = TAGS.get(tag_id, str(tag_id))
+                if isinstance(value, bytes):
+                    continue
+                metadata[tag_name] = str(value)
+    except ImportError:
+        pass
+    except Exception:
+        pass
+    return metadata
+
+
+def _build_system_context(image_path: str, metadata: Dict) -> str:
+    """Build a system prompt with filename hints and image metadata."""
+    filename = os.path.basename(image_path)
+    name_without_ext = os.path.splitext(filename)[0]
+    readable_name = name_without_ext.replace('_', ' ').replace('-', ' ').replace('.', ' ')
+
+    parts = [
+        "You are an expert image analyst. You have been given an image to analyze along with contextual information derived from the file itself.",
+        "",
+        "== FILE CONTEXT ==",
+        f"File name: {filename}",
+        f"Readable name tokens: {readable_name}",
+    ]
+
+    parent_dir = os.path.basename(os.path.dirname(image_path))
+    if parent_dir:
+        parts.append(f"Parent folder: {parent_dir}")
+
+    if metadata:
+        parts.append("")
+        parts.append("== IMAGE METADATA ==")
+        for key, value in metadata.items():
+            parts.append(f"{key}: {value}")
+
+    parts.append("")
+    parts.append("== INSTRUCTIONS ==")
+    parts.append(
+        "Use the file name and metadata above as contextual hints when answering the user's question. "
+        "For example, if the user asks who is the person in the image, the file name may contain "
+        "the person's name — use it as a hint but always verify against what you actually see in the image. "
+        "If the file name suggests a name (e.g. 'John_Smith.jpg'), mention it and confirm or deny based "
+        "on visual evidence. Do NOT blindly trust the file name — treat it as a clue, not a fact. "
+        "Similarly, metadata fields like 'Artist', 'ImageDescription', or 'XPComment' may contain "
+        "relevant information about the subject."
+    )
+
+    return "\n".join(parts)
 
 def _get_config():
     """
@@ -107,13 +171,21 @@ def opus_analyze_image(image_path: str = None, prompt: str = "Describe this imag
         print("\n--- [Image Interpreter] Analyzing image with Claude Opus... ---")
         print(f"Image path: {target_image_path}")
         print(f"Prompt: {prompt}")
-        
+
+        # Build system context with filename hints and metadata
+        metadata = _extract_image_metadata(target_image_path)
+        system_context = _build_system_context(target_image_path, metadata)
+        print(f"--- [Image Interpreter] System context built with {len(metadata)} metadata fields")
+
+        # Prepend system context to the user prompt so the LLM has file/metadata hints
+        enriched_prompt = f"[System Context]\n{system_context}\n\n[User Request]\n{prompt}"
+
         # Create the Claude client with the API key from config
         client = ClaudeClient(api_key=api_key)
-        
+
         # Use chat_with_image to analyze the image (same pattern as example_image_analysis)
         response = client.chat_with_image(
-            message=prompt,
+            message=enriched_prompt,
             image=target_image_path
         )
         
@@ -176,12 +248,21 @@ def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this imag
             return "Error: Failed to convert image to base64"
         else:
             print(f"Image converted to base64, size: {len(image_base64)} bytes.")
-        
+
+        # Build system context with filename hints and metadata
+        metadata = _extract_image_metadata(target_image_path)
+        system_context = _build_system_context(target_image_path, metadata)
+        print(f"--- [Image Interpreter] System context built with {len(metadata)} metadata fields")
+
         full_content = prompt
 
         payload = {
             "model": model,
             "messages": [
+                {
+                    "role": "system",
+                    "content": system_context
+                },
                 {
                     "role": "user",
                     "content": full_content,
