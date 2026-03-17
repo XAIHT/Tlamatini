@@ -181,7 +181,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 label.style.color = "#ddd";
 
                 let input;
-                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt')) {
+                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt' || key === 'user_instructions')) {
                     input = document.createElement('textarea');
                     input.rows = 4;
                 } else {
@@ -437,6 +437,13 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.appendChild(hvWarning);
 
         renderFields(canvasItemList, dataObj);
+
+        // Style the user_instructions textarea with placeholder and extra rows
+        const instrTextarea = canvasItemList.querySelector('[data-key="user_instructions"]');
+        if (instrTextarea) {
+            instrTextarea.placeholder = 'e.g. "Ignore warnings from sleeper agents", "Alert immediately if executer runs longer than 2 minutes", "The crawler agent is expected to take 5+ minutes — do not flag it as stuck"';
+            instrTextarea.rows = 5;
+        }
 
     } else {
         // Standard Behavior

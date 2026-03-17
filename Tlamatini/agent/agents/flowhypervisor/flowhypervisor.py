@@ -333,11 +333,23 @@ def collect_incremental_logs(
 # ============================================================
 
 def query_ollama(host: str, model: str, system_prompt: str,
-                 context: str, temperature: float = 0.0) -> str:
+                 context: str, temperature: float = 0.0,
+                 user_instructions: str = "") -> str:
     """Send a prompt to Ollama and return the full response."""
     url = f"{host.rstrip('/')}/api/generate"
+
+    # Build the user-instructions section if provided
+    user_section = ""
+    if user_instructions and user_instructions.strip():
+        user_section = (
+            f"\n\n═══ ADDITIONAL USER INSTRUCTIONS ═══\n\n"
+            f"{user_instructions.strip()}\n\n"
+            f"═══ END USER INSTRUCTIONS ═══\n"
+        )
+
     full_prompt = (
-        f"{system_prompt}\n\n"
+        f"{system_prompt}"
+        f"{user_section}\n\n"
         f"═══ MONITORING DATA ═══\n\n"
         f"{context}\n\n"
         f"═══ END MONITORING DATA ═══\n\n"
@@ -528,6 +540,7 @@ def main():
         model = llm_config.get('model', 'llama3.1:8b')
         temperature = llm_config.get('temperature', 0.0)
         poll_time = config.get('monitoring_poll_time', 10)
+        user_instructions = config.get('user_instructions', '')
 
         # Load monitoring prompt
         monitoring_prompt = load_monitoring_prompt()
@@ -541,6 +554,8 @@ def main():
         logging.info(f"📁 Pool path: {pool_path}")
         logging.info(f"🤖 LLM: {model} @ {host}")
         logging.info(f"⏱️ Poll interval: {poll_time}s")
+        if user_instructions and user_instructions.strip():
+            logging.info(f"📝 User instructions: {user_instructions[:100]}{'...' if len(user_instructions) > 100 else ''}")
         logging.info("=" * 60)
 
         # Step A: Discover agents
@@ -647,7 +662,7 @@ def main():
             try:
                 llm_response = query_ollama(
                     host, model, monitoring_prompt,
-                    context, temperature
+                    context, temperature, user_instructions
                 )
                 logging.info(
                     f"   📝 LLM Response: "

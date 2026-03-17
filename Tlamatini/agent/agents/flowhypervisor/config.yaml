@@ -9,3 +9,9 @@ llm:
 
 # Monitoring poll interval (seconds)
 monitoring_poll_time: 10
+
+# User instructions — additional directives appended to the monitoring prompt.
+# Use this to fine-tune supervision: add domain-specific rules, dismiss known
+# false positives, emphasize specific agents, adjust sensitivity, etc.
+# Leave empty for default behavior.
+user_instructions: ""

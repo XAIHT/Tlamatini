@@ -1184,7 +1184,7 @@ Agents are classified as:
 |-------|---------|-------------------|
 | **monitor_log** | LLM-based log file monitoring | `logfile_path`: Log to watch<br>`keywords`: ERROR, FATAL, WARN, etc.<br>`outcome_word`: TARGET_FOUND<br>`poll_interval`: Check frequency |
 | **monitor_netstat** | Network connection monitoring | Similar to monitor_log |
-| **flowhypervisor** | System-managed LLM anomaly detector with reanimation support, incremental log reading, NxN connection matrix analysis, and smart exit (stops after 3 cycles with no running agents) | `llm.model`: Ollama model<br>`llm.host`: Ollama URL<br>`llm.temperature`: LLM temperature<br>`monitoring_poll_time`: Check frequency (default: 10s) |
+| **flowhypervisor** | System-managed LLM anomaly detector with reanimation support, incremental log reading, NxN connection matrix analysis, user-configurable supervision instructions, and dual-layer auto-stop: the core system polls `flow_alive` and stops the agent immediately when no non-system agents are running; the agent also self-stops after 3 idle cycles as a safety net for when the core/browser is killed or frozen | `llm.model`: Ollama model<br>`llm.host`: Ollama URL<br>`llm.temperature`: LLM temperature<br>`monitoring_poll_time`: Check frequency (default: 10s)<br>`user_instructions`: Custom directives appended to the monitoring prompt |
 
 ### Notification Agents
 
@@ -1893,7 +1893,7 @@ Enable verbose logging in config.json:
 | **Summarizer** | LLM-powered log monitoring agent that polls source agent logs and uses an LLM to detect events, triggering downstream agents on positive detection |
 | **File-Interpreter** | Hybrid agent that reads and parses document files, extracting text and images, with optional LLM-powered summarization |
 | **Image-Interpreter** | Non-deterministic agent that analyzes images using an LLM vision model, logging structured descriptions for each image |
-| **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery |
+| **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery, user-configurable `user_instructions` for fine-tuning supervision, and dual-layer auto-stop |
 | **Flow Validation** | Pre-execution 6-point structural verification that builds an NxN adjacency matrix from agent connections and validates topology rules (Starter inputs, Ender outputs, self-connections, orphaned agents, dangling references) |
 | **jd-cli** | Java Decompiler CLI tool bundled with the application for decompiling JAR/WAR files to source code |
 | **PyAutoGUI** | Python library for programmatic mouse and keyboard control, used by the Mouser agent |
@@ -1954,6 +1954,8 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **FlowHypervisor User Instructions** - FlowHypervisor now supports a `user_instructions` config field (editable as a textarea in the properties dialog) that lets users append custom directives to the monitoring prompt — e.g. dismiss known false positives, emphasize specific agents, adjust sensitivity thresholds, or add domain-specific rules
+- **FlowHypervisor Core Auto-Stop** - The core system now stops the FlowHypervisor agent immediately when no non-system agents are running in the flow, via a `flow_alive` flag returned by the alert-check endpoint. The agent's existing 3-cycle self-stop is retained as a safety net for when the core/browser is killed or frozen
 - **Crawler Substantially Improved** - Now captures **raw content** by default (complete HTML markup, JavaScript, CSS, meta tags, HTTP response headers, JSON-LD structured data) instead of plain text. Generates resource inventories cataloging scripts, styles, forms, images, endpoints, and data-* attributes. Developer-oriented LLM preamble for deep technical analysis of page structure, security patterns, and framework signatures
 - **Ender Reanimation Asset Clearing** - Ender now deletes all `reanim*` prefixed files (reanim.pos, reanim.counter, reanim_\<source\>.pos) from terminated agent directories, enabling clean contextual restarts in looping flows
 - **Concurrency Guard for All Starter-Capable Agents** - Starter, Ender, and all agents that spawn downstream targets now implement a mandatory blocked wait: before starting any target agents, the caller waits until ALL targets have stopped running, logging ERROR every 10 seconds while waiting. Prevents duplicate/orphaned processes in looping workflows
