@@ -18,7 +18,7 @@ import logging
 import subprocess
 import urllib.request
 import urllib.error
-from typing import Dict, Optional
+from typing import Dict
 
 # Set working directory to script location
 try:
@@ -224,7 +224,7 @@ def extract_image_metadata(image_path: str) -> Dict:
     metadata = {}
     try:
         from PIL import Image
-        from PIL.ExifTags import TAGS, GPSTAGS
+        from PIL.ExifTags import TAGS
         img = Image.open(image_path)
         metadata['format'] = img.format or ''
         metadata['size'] = f"{img.width}x{img.height}"
