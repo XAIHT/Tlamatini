@@ -1253,7 +1253,7 @@ Agents are classified as:
 | **raiser** | Event-driven launcher. Primary bridge between monitoring agents and action agents. | `source_agents`: Agents whose logs to monitor<br>`pattern`: Text to detect<br>`target_agents`: Agents to start on detection<br>`poll_interval`: Check frequency |
 | **sleeper** | Delay execution | `duration_ms`: Wait time in milliseconds<br>`target_agents`: Trigger after delay |
 | **croner** | Time-scheduled trigger | `trigger_time`: HH:MM format<br>`target_agents`: Agents to trigger<br>`poll_interval`: Check frequency |
-| **cleaner** | Post-termination cleanup. Deletes .log and .pid files for specified agents, then launches agents in `output_agents`. Only accepts input from Ender (auto-discovered). | `agents_to_clean`: Agent pool names to clean<br>`output_agents`: Agents to start after cleanup |
+| **cleaner** | Post-termination cleanup. Deletes .log and .pid files for specified agents, then launches agents in `output_agents`. Only accepts input from Ender (auto-discovered). | `agents_to_clean`: Agent pool names to clean (auto-populated by Ender/dialog)<br>`cleaned_agents`: Pre-configured agent pool names to always clean on execution<br>`output_agents`: Agents to start after cleanup |
 | **flowcreator** | LLM-powered AI flow designer. Reads `agentic_skill.md` and generates complete flow configurations from natural language descriptions. | `llm.base_url`: Ollama URL<br>`llm.model`: Model for flow design |
 
 Each agent has a `config.yaml` file for customization.

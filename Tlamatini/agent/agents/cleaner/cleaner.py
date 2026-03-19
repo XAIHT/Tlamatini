@@ -240,10 +240,18 @@ def main():
     write_pid_file()
     
     try:
-        # 1. Clean Targets (from Ender connection)
+        # 1. Clean Targets (from Ender connection + dialog checkboxes)
         # The config should have 'agents_to_clean' populated by the backend when connecting Ender->Cleaner
         agents_to_clean = config.get('agents_to_clean', [])
-        
+
+        # 1b. Merge pre-configured cleaned_agents (user-defined in config.yaml)
+        cleaned_agents = config.get('cleaned_agents', [])
+        if cleaned_agents:
+            logging.info(f"📋 Pre-configured cleaned_agents: {cleaned_agents}")
+            for agent in cleaned_agents:
+                if agent not in agents_to_clean:
+                    agents_to_clean.append(agent)
+
         if not agents_to_clean:
             logging.warning("⚠️ No agents configured to clean.")
         else:
