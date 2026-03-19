@@ -336,7 +336,9 @@ system_prompt: |
 - **Pool name pattern**: `cleaner_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
-  - `agents_to_clean`: [] (list of agent pool names whose .log and .pid files should be deleted)
+  - `agents_to_clean`: [] (list of agent pool names whose .log and .pid files should be deleted — auto-populated by Ender connection and checkbox dialog)
+  - `cleaned_agents`: [] (pre-configured list of agent pool names to always clean on execution, regardless of Ender connections or dialog selections. Merged with `agents_to_clean` at runtime, no duplicates.)
+  - `output_agents`: [] (agents to start after cleanup — canvas wiring only)
 
 ### 17. OR
 - **Purpose**: Logical OR gate. Monitors two source agents for their respective patterns. Triggers target agents if EITHER Pattern 1 is found in Source 1 OR Pattern 2 is found in Source 2.
@@ -1070,7 +1072,9 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "notifier_1",
         "whatsapper_1",
         "telegramer_1"
-      ]
+      ],
+      "cleaned_agents": [],
+      "output_agents": []
     }
   }
 ]
@@ -1082,7 +1086,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 
 **Key design decisions in this example**:
 - Pure sequential chaining for standard linear deployment steps (Starter → Executer → Deleter → ... → Mover).
-- `ender` includes all active and monitoring agents in its `target_agents` to ensure complete termination, while Cleaner uses `agents_to_clean` with proper pool names (`pool_name_n`).
+- `ender` includes all active and monitoring agents in its `target_agents` to ensure complete termination, while Cleaner uses `agents_to_clean` (auto-populated by Ender/dialog) and `cleaned_agents` (user pre-configured) with proper pool names (`pool_name_n`). Both lists are merged at runtime.
 
 ---
 

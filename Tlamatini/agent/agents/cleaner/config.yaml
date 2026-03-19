@@ -1,0 +1,10 @@
+# Cleaner Agent Configuration
+
+# Agents to clean (auto-populated by Ender connection and checkbox dialog)
+agents_to_clean: []
+
+# Pre-configured agents to clean on execution (user-defined, always cleaned regardless of dialog/Ender)
+cleaned_agents: []
+
+# Agents to start after cleanup (canvas wiring only — Cleaner does NOT use target_agents)
+output_agents: []
