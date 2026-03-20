@@ -412,6 +412,52 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
             applyMouserState();
         }, 50);
 
+    } else if (agentName.startsWith('crawler')) {
+        // Crawler custom dialog with conditional depth field visibility
+        canvasItemList.innerHTML = '';
+
+        const crawlerLegend = document.createElement('p');
+        crawlerLegend.innerHTML = '<strong>&#127760; Crawler</strong> — Crawl web pages and process their content with an LLM. <b>Small-range</b>: same-domain links only. <b>Medium-range</b>: all links (cross-domain). <b>Large-range</b>: all links recursively up to a configurable depth.';
+        crawlerLegend.style.color = '#00BCD4';
+        crawlerLegend.style.marginBottom = '12px';
+        crawlerLegend.style.padding = '8px';
+        crawlerLegend.style.border = '1px solid #00BCD4';
+        crawlerLegend.style.borderRadius = '5px';
+        crawlerLegend.style.backgroundColor = 'rgba(0, 188, 212, 0.1)';
+        canvasItemList.appendChild(crawlerLegend);
+
+        renderFields(canvasItemList, dataObj);
+
+        // Wire up conditional depth field visibility based on crawl_type
+        setTimeout(() => {
+            const radioSmall = document.getElementById('prop-crawl_type-small-range');
+            const radioMedium = document.getElementById('prop-crawl_type-medium-range');
+            const radioLarge = document.getElementById('prop-crawl_type-large-range');
+            const inputDepth = document.getElementById('prop-depth');
+
+            function applyCrawlerState() {
+                const isLargeRange = radioLarge && radioLarge.checked;
+
+                // depth field: only enabled and visible when large-range is selected
+                if (inputDepth) {
+                    inputDepth.disabled = !isLargeRange;
+                    inputDepth.style.opacity = isLargeRange ? '1' : '0.4';
+                    // Also hide/show the parent container (label + input)
+                    const depthContainer = inputDepth.closest('div');
+                    if (depthContainer) {
+                        depthContainer.style.display = isLargeRange ? 'flex' : 'none';
+                    }
+                }
+            }
+
+            if (radioSmall) radioSmall.addEventListener('change', applyCrawlerState);
+            if (radioMedium) radioMedium.addEventListener('change', applyCrawlerState);
+            if (radioLarge) radioLarge.addEventListener('change', applyCrawlerState);
+
+            // Apply initial state
+            applyCrawlerState();
+        }, 50);
+
     } else if (agentName.startsWith('flowhypervisor')) {
         // FlowHypervisor custom dialog
         canvasItemList.innerHTML = '';

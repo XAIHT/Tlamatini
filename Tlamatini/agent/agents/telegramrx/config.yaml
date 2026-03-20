@@ -9,8 +9,8 @@ target_agents: []
 
 # Telegram Configuration
 telegram:
-  api_id:   # Replace with your actual api_id
-  api_hash: ""     # Replace with your actual Telegram API Hash
+  api_id: 36367295  # Replace with your actual api_id
+  api_hash: "9854952a0bd1cf028341b5d591305d32"     # Replace with your actual Telegram API Hash
   listen_chat: "me"  # Chat to listen on ("me" = Saved Messages)
 
 # Whisper Configuration (for voice message transcription)
