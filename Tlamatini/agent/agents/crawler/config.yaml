@@ -10,9 +10,9 @@
 #    headers, and pass EVERYTHING to the LLM with a developer-oriented preamble
 # 3. In 'text' mode (legacy): strip HTML markup and send only visible text to the LLM
 # 4. Depending on 'crawl_type':
-#    - small-range: Process only the given URL with the LLM
-#    - medium-range: Follow all same-domain links and process each
-#    - large-range: Follow ALL links and process each
+#    - small-range: Follow all same-domain links on the page (not recursively) and process each
+#    - medium-range: Follow ALL links regardless of domain (not recursively) and process each
+#    - large-range: Follow ALL links regardless of domain RECURSIVELY up to 'depth' levels
 # 5. Save raw HTML and resource inventory to timestamped files
 # 6. Log the LLM response in a structured format
 # 7. Trigger any configured downstream agents
@@ -44,7 +44,15 @@ content_mode: "raw"
 include_headers: true
 
 # Crawl type: small-range | medium-range | large-range
+#   small-range  - Follow all same-domain links on the page (not recursively) and process each with the LLM.
+#   medium-range - Follow ALL links on the page regardless of domain (not recursively) and process each with the LLM.
+#   large-range  - Follow ALL links on the page regardless of domain RECURSIVELY up to 'depth' levels and process each with the LLM.
 crawl_type: "small-range"
+
+# Recursive depth (only used when crawl_type is "large-range")
+# depth=1 behaves like medium-range (one level of links).
+# depth=2 also processes links found in those linked pages, etc.
+depth: 1
 
 # LLM connection settings (Ollama)
 llm:

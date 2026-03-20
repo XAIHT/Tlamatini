@@ -609,13 +609,19 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 ### 37. Crawler
-- **Purpose**: Crawls web pages via HTTP GET, strips all HTML markup, saves plain text to local files, then processes each page's content with an LLM using a configurable system prompt. Supports three crawl modes: small-range (single URL), medium-range (same-domain links), and large-range (all links).
+- **Purpose**: Crawls web pages via HTTP GET, captures full raw content (HTML, JavaScript, CSS, headers, meta tags, data attributes, API endpoints), and processes each page's content with an LLM using a configurable system prompt. Supports three crawl modes: small-range (same-domain links, not recursive), medium-range (all links cross-domain, not recursive), and large-range (all links cross-domain, recursive up to a configurable depth).
 - **Pool name pattern**: `crawler_<n>`
 - **Starts other agents**: YES (after all crawling and LLM processing completes)
 - **Config parameters**:
   - `url`: "" (URL to crawl)
   - `system_prompt`: "" (multi-line prompt to send to the LLM along with the crawled content)
+  - `content_mode`: "raw" (one of: raw, text — raw sends full HTML/JS/CSS source; text sends only visible text)
+  - `include_headers`: true (include HTTP response headers in the LLM context, only applies to raw mode)
   - `crawl_type`: "small-range" (one of: small-range, medium-range, large-range)
+    - small-range: follows all same-domain links on the page (not recursively) and processes each with the LLM
+    - medium-range: follows ALL links on the page regardless of domain (not recursively) and processes each with the LLM
+    - large-range: follows ALL links on the page regardless of domain RECURSIVELY up to `depth` levels and processes each with the LLM
+  - `depth`: 1 (recursive depth, only used when crawl_type is "large-range". depth=1 behaves like medium-range; depth=2 also processes links found in those linked pages, etc.)
   - `llm.host`: "http://localhost:11434" (Ollama server URL)
   - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
