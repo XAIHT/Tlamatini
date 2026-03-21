@@ -463,7 +463,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const hvLegend = document.createElement('p');
-        hvLegend.innerHTML = '<strong>&#128737; FlowHypervisor</strong> — LLM-powered flow monitoring. Configure the LLM and monitoring interval, then click <strong>Start Monitoring</strong> to begin.';
+        hvLegend.innerHTML = '<strong>&#128737; FlowHypervisor</strong> — LLM-powered flow monitoring. Configure the LLM and monitoring interval, then click <strong>Save</strong> to begin.';
         hvLegend.style.color = '#AB47BC';
         hvLegend.style.marginBottom = '12px';
         hvLegend.style.padding = '8px';
@@ -527,7 +527,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 "padding": "10px 20px"
             });
 
-            buttonPane.find('button:contains("Save"), button:contains("Go!"), button:contains("Start Monitoring")')
+            buttonPane.find('button:contains("Save"), button:contains("Go!")')
                 .css({
                     'background-color': '#55BBAA',
                     'color': 'white',
@@ -555,13 +555,13 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 if (e.key === 'Enter' && !$(e.target).is('textarea')) {
                     e.preventDefault();
                     // Find and click the Save/Go! button
-                    dialogEl.parent().find('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!"), .ui-dialog-buttonpane button:contains("Start Monitoring")').click();
+                    dialogEl.parent().find('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")').click();
                 }
             });
         },
         buttons: [
             {
-                text: isFlowCreatorDialog ? "Go!" : isFlowHypervisorDialog ? "Start Monitoring" : "Save",
+                text: isFlowCreatorDialog ? "Go!" : isFlowHypervisorDialog ? "Save" : "Save",
                 click: async function () {
                     console.log("Saving item properties...");
                     const inputs = canvasItemList.querySelectorAll('input, textarea');
@@ -642,7 +642,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                                 // FlowCreator: clean canvas, clean pool, start agent, poll for result
                                 await _executeFlowCreator(agentId);
                             } else if (isFlowHypervisorDialog) {
-                                // FlowHypervisor: start monitoring agent
+                                // FlowHypervisor: monitoring agent
                                 await _executeFlowHypervisor(agentId);
                             } else {
                                 showDeploymentResultDialog(true, agentId, result.path);
@@ -678,7 +678,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 }
 
 function renderCanvasItemDialog() {
-    $('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!"), .ui-dialog-buttonpane button:contains("Start Monitoring")')
+    $('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")')
         .css({
             'background-color': '#55BBAA',
             'color': 'white',
