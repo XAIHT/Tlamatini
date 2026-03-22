@@ -1650,6 +1650,19 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(194, 24, 91, 0.5);
 }
 
+/* Gatewayer Agent */
+.canvas-item.gatewayer-agent {
+    background-color: #FF006E;
+    background: linear-gradient(135deg, #FF006E 0%, #8338EC 33%, #3A86FF 66%, #00F5D4 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.gatewayer-agent:hover {
+    background: linear-gradient(135deg, #FF3D8E 0%, #9B59F5 33%, #5DA3FF 66%, #33FFE0 100%);
+    box-shadow: 0 6px 15px rgba(131, 56, 236, 0.5);
+}
+
 /* Emailer agent icon in sidebar */
 .agent-tool-item[data-content="Emailer"] .agent-tool-icon {
     background: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%);

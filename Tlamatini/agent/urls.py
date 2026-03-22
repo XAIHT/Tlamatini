@@ -100,5 +100,6 @@ urlpatterns = [
     path('validate_flow/', secure_get(views.validate_flow_view), name='validate_flow'),
     path('update_file_interpreter_connection/<str:agent_name>/', secure_post(views.update_file_interpreter_connection_view), name='update_file_interpreter_connection'),
     path('update_image_interpreter_connection/<str:agent_name>/', secure_post(views.update_image_interpreter_connection_view), name='update_image_interpreter_connection'),
+    path('update_gatewayer_connection/<str:agent_name>/', secure_post(views.update_gatewayer_connection_view), name='update_gatewayer_connection'),
 ]
 
