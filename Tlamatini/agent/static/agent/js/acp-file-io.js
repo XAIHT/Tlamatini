@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -414,6 +414,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'mouser': await updateMouserConnection(sourceId, targetId, 'add'); break;
                 case 'file-interpreter': await updateFileInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'gatewayer': await updateGatewayerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -465,6 +466,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'summarizer': await updateSummarizerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-interpreter': await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'gatewayer': await updateGatewayerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 

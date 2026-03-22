@@ -886,3 +886,22 @@ async function updateImageInterpreterConnection(agentId, targetAgentId, action, 
         console.error(`--- Error updating ImageInterpreter ${agentId}:`, error);
     }
 }
+
+async function updateGatewayerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_gatewayer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Gatewayer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Gatewayer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Gatewayer ${agentId}:`, error);
+    }
+}

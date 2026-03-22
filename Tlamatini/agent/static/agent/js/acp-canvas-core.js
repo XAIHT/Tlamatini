@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -76,6 +76,7 @@ function applyAgentTypeClass(el, agentName) {
         'mouser': 'mouser-agent',
         'file-interpreter': 'file-interpreter-agent',
         'image-interpreter': 'image-interpreter-agent',
+        'gatewayer': 'gatewayer-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -661,6 +662,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -738,6 +741,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'file-interpreter' && !sourceBeingDeleted) updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'image-interpreter' && !targetBeingDeleted) updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'image-interpreter' && !sourceBeingDeleted) updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'gatewayer' && !targetBeingDeleted) updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'gatewayer' && !sourceBeingDeleted) updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -855,6 +860,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'mouser') iconDiv.style.background = 'linear-gradient(135deg, #FF1744 0%, #651FFF 50%, #00E676 100%)';
         else if (lowerDesc === 'file-interpreter' || lowerDesc === 'file interpreter') iconDiv.style.background = 'linear-gradient(135deg, #FF9A00 0%, #1B1464 50%, #00FFC8 100%)';
         else if (lowerDesc === 'image-interpreter' || lowerDesc === 'image interpreter') iconDiv.style.background = 'linear-gradient(135deg, #C2185B 0%, #FFC107 50%, #009688 100%)';
+        else if (lowerDesc === 'gatewayer') iconDiv.style.background = 'linear-gradient(135deg, #FF006E 0%, #8338EC 33%, #3A86FF 66%, #00F5D4 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
         const span = document.createElement('span');
@@ -1189,6 +1195,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

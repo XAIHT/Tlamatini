@@ -46,7 +46,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -688,6 +688,26 @@ system_prompt: |
   - `llm.model`: "llama3.2-vision:11b" (vision model name)
   - `llm.prompt`: "Describe this image in detail." (prompt sent with each image)
   - `llm.token`: "" (optional bearer token for authentication)
+
+### 43. Gatewayer
+- **Purpose**: Inbound gateway agent that receives external events via HTTP webhook (or optional folder-drop watcher), validates and authenticates requests, normalizes them into canonical event envelopes, persists artifacts to disk, queues accepted events, and dispatches them to downstream target_agents. Long-running active agent — stays alive waiting for inbound events. Does NOT execute privileged actions directly; its role is ingress, validation, persistence, and orchestration only.
+- **Pool name pattern**: `gatewayer_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `listen_mode`: "http_webhook" (primary ingress channel: "http_webhook" or "folder_watch")
+  - `http.enabled`: true (enable HTTP webhook listener)
+  - `http.host`: "127.0.0.1" (bind address)
+  - `http.port`: 8787 (listen port)
+  - `http.path`: "/gatewayer" (webhook endpoint path)
+  - `auth.mode`: "bearer" (authentication mode: "none", "bearer", or "hmac")
+  - `auth.bearer_token`: "" (expected bearer token)
+  - `folder_watch.enabled`: false (enable folder-drop watcher)
+  - `folder_watch.watch_path`: "" (directory to watch)
+  - `queue.max_pending_events`: 100 (max events in queue)
+  - `queue.dedup_enabled`: true (deduplicate events)
+  - `storage.output_dir`: "gateway_events" (directory for event artifacts)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start per dispatched event)
 
 ---
 
