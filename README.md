@@ -1262,7 +1262,7 @@ Agents are classified as:
 | **croner** | Time-scheduled trigger | `trigger_time`: HH:MM format<br>`target_agents`: Agents to trigger<br>`poll_interval`: Check frequency |
 | **cleaner** | Post-termination cleanup. Deletes .log and .pid files for specified agents, then launches agents in `output_agents`. Only accepts input from Ender (auto-discovered). | `agents_to_clean`: Agent pool names to clean (auto-populated by Ender/dialog)<br>`cleaned_agents`: Pre-configured agent pool names to always clean on execution<br>`output_agents`: Agents to start after cleanup |
 | **flowcreator** | LLM-powered AI flow designer. Reads `agentic_skill.md` and generates complete flow configurations from natural language descriptions. | `llm.base_url`: Ollama URL<br>`llm.model`: Model for flow design |
-| **gatewayer** | Inbound gateway agent. Receives external events via HTTP webhook or folder-drop, validates, normalizes into canonical envelopes, persists to disk, queues, and dispatches to downstream agents. Long-running active ingress agent. | `http.port`: 8787<br>`auth.mode`: bearer<br>`target_agents`: Downstream agents |
+| **gatewayer** | Inbound gateway agent. Receives external events via HTTP webhook or folder-drop, normalizes into canonical envelopes, persists to disk, queues, and dispatches to downstream agents. HTTP ingress performs authentication/validation and optional dedup; folder-drop performs best-effort parsing plus persistence/dispatch. Long-running active ingress agent. | `http.port`: 8787<br>`auth.mode`: bearer<br>`storage.output_dir`: Event artifact path<br>`target_agents`: Downstream agents |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -1270,63 +1270,50 @@ Each agent has a `config.yaml` file for customization.
 
 ## Gatewayer: The Inbound Gateway Agent
 
-Gatewayer is Tlamatini's **ingress controller** — a long-running, deterministic agent that turns your workflow canvas into a system that reacts to the outside world. While most Tlamatini agents are triggered internally (a Starter fires, a Croner ticks, a Monitor detects), Gatewayer opens a controlled door to external callers: CI/CD webhooks, third-party SaaS event notifications, IoT telemetry pushes, or any HTTP client that can send a POST request.
+Gatewayer is Tlamatini's **ingress controller** — a long-running, deterministic agent that turns your workflow canvas into a system that reacts to the outside world. While most Tlamatini agents are triggered internally (a Starter fires, a Croner ticks, a Monitor detects), Gatewayer opens a controlled door to external callers: CI/CD webhooks, third-party SaaS event notifications, IoT telemetry pushes, file drops, or any HTTP client that can send a request.
 
-It does **one thing and does it well**: receive, validate, normalize, persist, and queue inbound events — then hand them off to whatever downstream agents you wire on the canvas. Gatewayer never executes privileged actions itself. It is purely an ingress, validation, and orchestration boundary.
+It does **one thing and does it well**: receive, normalize, persist, and queue inbound events — then hand them off to whatever downstream agents you wire on the canvas. On the HTTP ingress path it also authenticates, validates, and can deduplicate requests before they are queued. Gatewayer never executes privileged actions itself. It is purely an ingress and orchestration boundary.
 
 ### How It Works
 
-When Gatewayer starts (via Starter or Croner), it remains alive indefinitely, listening for inbound events through one of two ingress channels:
+When Gatewayer starts (via Starter or Croner), it remains alive indefinitely. In the current implementation, HTTP and folder-watch can both run at the same time if both are enabled in `config.yaml`; `listen_mode` is informational only.
 
-**1. HTTP Webhook (primary, enabled by default)**
-A lightweight `HTTPServer` binds to a configurable host/port (default `127.0.0.1:8787`) and exposes an endpoint (default `/gatewayer`). POST requests hit the handler, which executes the full ingress pipeline synchronously before returning an HTTP 202 acknowledgment with the generated `event_id`. Optional TLS support is available for production-facing deployments.
+**1. HTTP Webhook (enabled by default)**
+A lightweight `HTTPServer` binds to a configurable host/port (default `127.0.0.1:8787`). The configured path (default `/gatewayer`) is currently logged for operator clarity, but not enforced by the handler. The current handler accepts `POST`, `PUT`, and `PATCH`, executes the ingress pipeline synchronously, and returns a JSON acknowledgment with the generated `event_id` on accepted requests. Optional TLS support is available for production-facing deployments.
 
 **2. Folder-Drop Watcher (optional, disabled by default)**
-A polling loop watches a directory for files matching a glob pattern (default `*.json`). Each new file is read, wrapped into the same canonical envelope, and enqueued identically to an HTTP event. Processed files are archived or deleted. This channel is useful for air-gapped integrations, batch file ingestion, or systems that write to shared network drives.
+A polling loop watches a directory for files matching a glob pattern (default `*.json`). Each new file is read, parsed as JSON when possible, wrapped into a similar canonical envelope, persisted, enqueued, and then archived or deleted. In the current code, folder-drop does **not** call the HTTP authentication or `validate_request()` helpers, and it does not apply the HTTP dedup or overflow checks. This channel is useful for air-gapped integrations, batch file ingestion, or systems that write to shared network drives.
 
-Both channels feed into a single **event pipeline**:
+The current implementation uses two related pipelines:
 
 ```
-Inbound Request/File
-        │
-        v
-  ┌─────────────┐
-  │ Authenticate │── FAIL ──> 401 + GATEWAY_EVENT_REJECTED
-  └──────┬──────┘
-         v
-  ┌─────────────┐
-  │  Validate   │── FAIL ──> 500 + GATEWAY_EVENT_REJECTED
-  └──────┬──────┘
-         v
-  ┌─────────────┐
-  │  Normalize  │  Generate event_id, build canonical envelope
-  └──────┬──────┘
-         v
-  ┌─────────────┐
-  │   Dedup     │── DUPLICATE ──> 202 (silent absorb)
-  └──────┬──────┘
-         v
-  ┌─────────────┐
-  │   Persist   │  Write event.json, headers.json, request_body.txt
-  └──────┬──────┘
-         v
-  ┌─────────────┐
-  │   Enqueue   │── FULL ──> 500 + GATEWAY_ERROR (overflow policy)
-  └──────┬──────┘
-         v
-  HTTP 202 {"status":"accepted","event_id":"..."}
-         │
-         v
-  ┌──────────────────┐
-  │  Dispatch Loop   │  Background thread drains queue serially,
-  │  (concurrency    │  waits for target_agents to stop,
-  │   guard)         │  then starts them per event
-  └──────────────────┘
+HTTP Request
+    │
+    v
+Authenticate -> Validate -> Normalize -> Dedup -> Persist -> Enqueue -> 202/401/500
+    │
+    v
+Dispatch Loop (serial drain, wait for target_agents to stop, then start them)
+
+Folder-Drop File
+    │
+    v
+Read/Parse best-effort -> Normalize -> Persist -> Enqueue -> Archive/Delete
+    │
+    v
+Dispatch Loop (same shared queue and serial dispatch thread)
 ```
 
-**Crash recovery**: The pending queue and dedup window are continuously persisted to `reanim_queue.json` and `reanim_dedup.json`. If the agent crashes or the host reboots, accepted-but-not-yet-dispatched events are automatically restored on restart. Ender clears these files on full flow shutdown, ensuring a clean slate for the next run.
+**Crash recovery**: The pending queue and dedup window are continuously persisted to `reanim_queue.json` and `reanim_dedup.json`. If the agent crashes or the host reboots, accepted-but-not-yet-dispatched events are automatically restored on restart. Ender clears any `reanim*` files for target agents it resolves, which includes Gatewayer's queue/dedup files when Gatewayer is part of the flow shutdown kill list.
 
 **Stable log markers**: Every event transition emits a configurable log word (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_REJECTED`, `GATEWAY_EVENT_QUEUED`, `GATEWAY_EVENT_DISPATCHED`, `GATEWAY_ERROR`), making Gatewayer fully observable by Tlamatini's own Monitor Log and Summarizer agents — so you can build meta-workflows that monitor your gateway's health.
+
+**Current implementation notes**:
+- `listen_mode` is currently informational; startup is controlled by `http.enabled` and `folder_watch.enabled`
+- `http.path`, `http.methods`, and `http.request_timeout_sec` are declared in config but not enforced/used by the current handler
+- The response path always emits JSON via `_send_json()`; `response.mode` and `response.body_template` are currently unused
+- `queue.enabled`, `queue.dispatch_mode`, `runtime.worker_threads`, `storage.write_response_json`, `payload.attachments_enabled`, and `payload.max_attachment_bytes` are currently declared but unused in `gatewayer.py`
+- Dedup, max-pending overflow checks, and payload validation currently apply to HTTP ingress only
 
 ### Authentication Modes
 
@@ -1334,9 +1321,11 @@ Inbound Request/File
 |------|-------------|
 | `none` | Open endpoint, no authentication (development/testing only) |
 | `bearer` | Validates `Authorization: Bearer <token>` header against a configured secret |
-| `hmac` | Validates a SHA-256 HMAC signature over timestamp+body, with configurable clock skew tolerance. Used by services like GitHub, Stripe, and Shopify that sign their webhook payloads |
+| `hmac` | Validates a raw hex SHA-256 HMAC signature over `timestamp + body`, with configurable signature and timestamp header names plus clock-skew tolerance. Suitable for custom senders or relays that can generate Gatewayer's expected signature format |
 
 All modes support an optional IP allowlist (`allowed_ips`) as an additional layer.
+
+**Important**: Current HMAC mode is **not** directly compatible with providers like GitHub that sign only the body (for example `X-Hub-Signature-256`) and expose event type in headers. To accept those webhooks unchanged, add a small translating relay or patch `gatewayer.py`.
 
 ### Gatewayer vs. OpenClaw's Gateway
 
@@ -1345,28 +1334,28 @@ OpenClaw (the open-source personal AI assistant with 180K+ GitHub stars) uses a 
 | Dimension | OpenClaw Gateway | Tlamatini Gatewayer |
 |-----------|-----------------|---------------------|
 | **Core purpose** | AI chat routing — shuttles messages between 30+ messaging platforms and an LLM agent runtime | Workflow ingress — receives arbitrary structured events and dispatches deterministic automation pipelines |
-| **Protocol** | WebSocket (persistent bidirectional connection) | HTTP request/response (stateless, fire-and-forget). Every caller gets an immediate 202 ack with the `event_id` — no socket to maintain |
-| **Ingress channels** | Messaging platform adapters (WhatsApp, Slack, Telegram, etc.) — tightly coupled to chat semantics | Generic HTTP webhook + folder-drop watcher. Any system that can send an HTTP POST or write a file can trigger a workflow. Zero adapter code required |
+| **Protocol** | WebSocket (persistent bidirectional connection) | HTTP request/response (stateless, fire-and-forget). Accepted and duplicate requests get an immediate JSON ack with the `event_id`; rejected requests return 401/500 |
+| **Ingress channels** | Messaging platform adapters (WhatsApp, Slack, Telegram, etc.) — tightly coupled to chat semantics | Generic HTTP webhook + folder-drop watcher. Any system that can send an HTTP request or write a file can trigger a workflow. Current HTTP handler accepts `POST`/`PUT`/`PATCH`; folder-drop is polling-based |
 | **Event model** | Chat messages with platform-specific schemas (reactions, threads, attachments, presence) | Canonical event envelope with `event_id`, `event_type`, `session_id`, `correlation_id`, `body_hash`, raw body, headers, query params. Content-agnostic — JSON, plaintext, or form-encoded payloads are all first-class |
-| **Authentication** | Platform-level OAuth/bot tokens managed per adapter | Built-in bearer token, HMAC signature verification (GitHub/Stripe-compatible), IP allowlists — all configurable in YAML, no code changes |
+| **Authentication** | Platform-level OAuth/bot tokens managed per adapter | Built-in bearer token, Gatewayer-specific timestamp+body HMAC verification, and IP allowlists — configurable in YAML. Direct compatibility with third-party webhook HMAC schemes may require a relay or code patch |
 | **Persistence** | Session state stored in memory/database; messages are consumed | Every event is written to disk as a structured artifact directory (`event.json`, `headers.json`, `request_body.txt`) with configurable retention. Full audit trail by default |
 | **Crash recovery** | Relies on the messaging platform to redeliver (platform-dependent) | `reanim_queue.json` and `reanim_dedup.json` files persist pending events and dedup state locally. On restart, accepted-but-undispatched events resume automatically |
-| **Deduplication** | No built-in dedup — relies on message IDs from each platform | Configurable dedup over a sliding time window, keyed on any combination of event fields (`event_type`, `session_id`, `body_hash`). Duplicate webhooks are silently absorbed |
+| **Deduplication** | No built-in dedup — relies on message IDs from each platform | Configurable sliding-window dedup for HTTP ingress, keyed on any combination of event fields (`event_type`, `session_id`, `body_hash`). Folder-drop does not currently apply dedup |
 | **Downstream dispatch** | Routes to a single LLM agent runtime; responses flow back through the same WebSocket | Triggers any number of `target_agents` on the Tlamatini canvas via the standard concurrency guard. Downstream can be anything: Executer, Pythonxer, SSHer, Emailer, another Gatewayer — the full agent catalog |
-| **Concurrency model** | Serializes messages per session, parallel across sessions. Heavy LLM calls are the bottleneck | Serial dispatch per event with explicit concurrency guard (`wait_for_agents_to_stop`). No orphaned processes, no race conditions, no LLM dependency |
+| **Concurrency model** | Serializes messages per session, parallel across sessions. Heavy LLM calls are the bottleneck | Serial dispatch per event with explicit concurrency guard (`wait_for_agents_to_stop`). Gatewayer waits for all target agents to stop before launching them for the next event |
 | **Multi-tenant security** | Single-user trust boundary by design. Shared gateways are explicitly discouraged for mixed-trust users (cited by Microsoft, DigitalOcean, Nebius security analyses) | Session-scoped pool isolation. Each Tlamatini session gets its own pool directory, PID files, logs, and reanim state. Multiple Gatewayer instances can coexist in the same flow or across sessions without interference |
-| **Dependencies** | Node.js 22+, npm ecosystem, platform-specific adapter packages, LLM API keys | Python standard library only (`http.server`, `threading`, `queue`, `hashlib`, `ssl`). Zero external dependencies beyond what Tlamatini already ships. Runs on any Python 3.10+ environment |
+| **Dependencies** | Node.js 22+, npm ecosystem, platform-specific adapter packages, LLM API keys | Python runtime plus `PyYAML`; optionally uses `psutil` when available for process checks and otherwise falls back to OS-level probing. Core networking/storage logic uses the standard library (`http.server`, `threading`, `queue`, `hashlib`, `ssl`) |
 
-**In short**: OpenClaw's Gateway is a **chat router** — it excels at connecting messaging platforms to an LLM loop. Tlamatini's Gatewayer is a **workflow trigger** — it excels at turning arbitrary external signals into deterministic, auditable, crash-recoverable automation pipelines. If your goal is to build a chatbot that responds on Slack, use OpenClaw. If your goal is to receive a GitHub webhook and trigger a build-test-deploy-notify pipeline that you can see, inspect, and replay on a visual canvas — Gatewayer is purpose-built for that.
+**In short**: OpenClaw's Gateway is a **chat router** — it excels at connecting messaging platforms to an LLM loop. Tlamatini's Gatewayer is a **workflow trigger** — it excels at turning arbitrary external signals into deterministic, auditable, crash-recoverable automation pipelines. If your goal is to build a chatbot that responds on Slack, use OpenClaw. If your goal is to receive a custom webhook, a CI callback, or a translated third-party webhook and trigger a build-test-deploy-notify pipeline that you can see, inspect, and replay on a visual canvas — Gatewayer is purpose-built for that.
 
 ### Usage Examples
 
-#### Example A: GitHub Push Webhook Triggers a Build-and-Notify Pipeline
+#### Example A: Timestamped HMAC Webhook Triggers a Build-and-Notify Pipeline
 
-A GitHub repository sends a `push` webhook to Gatewayer. On each accepted event, the workflow executes a build script, runs tests, and sends the result via email.
+A CI system, relay, or custom sender sends a timestamped HMAC-signed `push` event to Gatewayer. On each accepted event, the workflow executes a build script, runs tests, and sends the result via email.
 
 ```
-                         HTTP POST (GitHub webhook)
+                         HTTP POST (timestamped HMAC webhook)
                                   │
                                   v
 ┌─────────┐     ┌──────────────┐     ┌─────────────┐     ┌───────────┐     ┌───────────┐
@@ -1392,15 +1381,15 @@ http:
 
 auth:
   mode: "hmac"
-  hmac_secret: "your-github-webhook-secret"
-  signature_header: "X-Hub-Signature-256"
-  timestamp_header: ""
+  hmac_secret: "shared-secret-between-sender-and-gatewayer"
+  signature_header: "X-Tlamatini-Signature"
+  timestamp_header: "X-Tlamatini-Timestamp"
   max_clock_skew_sec: 600
 
 payload:
   accepted_content_types: ["application/json"]
-  required_fields: ["ref", "repository"]
-  event_type_field: "action"
+  required_fields: ["event_type", "ref", "repository"]
+  event_type_field: "event_type"
   save_raw_body: true
 
 queue:
@@ -1409,15 +1398,17 @@ queue:
   dedup_window_sec: 10
 ```
 
-**What happens when GitHub sends a push event**:
-1. GitHub POSTs to `http://your-host:8787/gatewayer` with an HMAC-signed JSON body
-2. Gatewayer verifies the HMAC signature using the shared secret
-3. Validates that `ref` and `repository` fields exist in the payload
+**What happens when the sender posts a push event**:
+1. The sender POSTs to `http://your-host:8787/gatewayer` with a JSON body plus `X-Tlamatini-Timestamp` and `X-Tlamatini-Signature`
+2. Gatewayer verifies the raw hex SHA-256 HMAC over `timestamp + body` using the shared secret
+3. Validates that `event_type`, `ref`, and `repository` fields exist in the payload
 4. Generates a unique `event_id`, builds the canonical envelope, checks dedup, persists to `gateway_events/<event_id>/`
-5. Returns `HTTP 202 {"status":"accepted","event_id":"a3f8..."}` — GitHub sees success immediately
+5. Returns `HTTP 202 {"status":"accepted","event_id":"a3f8..."}` — the sender sees success immediately
 6. The dispatch loop waits for Executer_1 to be free, then starts it
-7. Executer_1 runs `build.sh`, triggers Pythonxer_1 for tests, which triggers Emailer_1 with results
+7. Executer_1 runs `build.sh`, triggers Pythonxer_1 for tests, and the downstream notification stage can be wired to send the result based on the upstream agents' logs/output
 8. If Gatewayer crashes mid-queue, pending events survive in `reanim_queue.json` and resume on restart
+
+If your original sender is GitHub, GitLab, Stripe, Shopify, or another provider with a different signing convention, put a tiny relay in front of Gatewayer or patch the HMAC logic so the provider's native webhook format is translated into the expected timestamp+body scheme.
 
 #### Example B: IoT Sensor Alerts via Folder-Drop with Conditional Routing
 
@@ -1447,7 +1438,7 @@ An industrial monitoring system writes JSON sensor readings to a shared network 
 **Gatewayer_1 config.yaml** (key fields):
 ```yaml
 target_agents: ["forker_1"]
-listen_mode: "folder_watch"
+listen_mode: "folder_watch"  # informational; actual startup is driven by http.enabled/folder_watch.enabled
 
 http:
   enabled: false
@@ -1461,14 +1452,7 @@ folder_watch:
   processed_dir: "archived"
 
 payload:
-  required_fields: ["sensor_id", "reading", "severity"]
   event_type_field: "severity"
-
-queue:
-  max_pending_events: 500
-  dedup_enabled: true
-  dedup_key_fields: ["event_type", "session_id", "body_hash"]
-  dedup_window_sec: 60
 
 storage:
   output_dir: "/var/tlamatini/sensor_events"
@@ -1478,19 +1462,21 @@ storage:
 **What happens when a sensor drops a file**:
 1. The external monitoring system writes `alert_20260322_143055.json` to `/mnt/sensors/incoming/`
 2. Gatewayer's folder watcher detects the new file within 5 seconds
-3. Reads the JSON, validates `sensor_id`, `reading`, and `severity` fields exist
-4. Builds the canonical envelope, persists artifacts, enqueues the event
+3. Reads the file, attempts to parse it as JSON, and if successful extracts `severity` into the envelope's `event_type`
+4. Builds the canonical envelope, persists artifacts, and enqueues the event
 5. Archives the original file to `/mnt/sensors/incoming/archived/`
 6. The dispatch loop starts Forker_1, which reads the latest event and routes: `severity: "critical"` goes to Telegramer_1 (instant Telegram alert), while `severity: "normal"` goes to Sqler_1 (INSERT into time-series database)
 7. All events — normal and critical — are persisted for 30 days in `/var/tlamatini/sensor_events/`, creating a complete audit trail
 
+Current folder-drop note: `payload.required_fields`, HTTP dedup, and queue overflow limits are not applied by the folder watcher in the current code path.
+
 ### When to Use Gatewayer
 
-- **Webhook receivers**: GitHub, GitLab, Bitbucket, Stripe, Shopify, Slack outgoing webhooks, Jira, PagerDuty, Datadog, or any service that can send an HTTP POST
+- **Webhook receivers**: Internal services, CI/CD tools, SaaS callbacks, or any system that can send an HTTP request. Third-party providers with non-matching HMAC schemes may need a tiny relay or auth patch
 - **CI/CD triggers**: Jenkins, GitHub Actions, or ArgoCD calling back to Tlamatini on pipeline completion
 - **IoT / edge ingestion**: Sensors, PLCs, or edge gateways writing JSON files to a shared folder
 - **Cross-system orchestration**: System A finishes a job and POSTs a signal to Tlamatini, which triggers a multi-step pipeline in System B
-- **Manual triggers**: A curl command or a simple HTML form that POSTs to the Gatewayer endpoint, useful for one-off administrative tasks wired to complex workflows
+- **Manual triggers**: A curl command or a simple HTML form that sends an HTTP request to Gatewayer, useful for one-off administrative tasks wired to complex workflows
 - **Event replay and auditing**: Because every event is persisted with its full envelope, you can inspect, replay, or debug any past event by reading its artifact directory
 
 ---
@@ -2144,7 +2130,7 @@ Enable verbose logging in config.json:
 | **Reanimation Offset** | Saved position in log file to handle restarts and log rotation |
 | **TextMeBot** | Third-party API service for sending WhatsApp messages programmatically |
 | **Ruff** | Fast Python linter used by Pythonxer for script validation |
-| **Gatewayer** | Inbound gateway agent that receives external events via HTTP webhook or folder-drop watcher, validates, persists, and dispatches to downstream agents |
+| **Gatewayer** | Inbound gateway agent that receives external events via HTTP webhook or folder-drop watcher, persists them as event artifacts, and dispatches to downstream agents. HTTP ingress authenticates/validates; folder-drop is best-effort parsing plus dispatch |
 
 ---
 
