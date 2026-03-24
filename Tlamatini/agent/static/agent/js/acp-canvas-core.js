@@ -77,7 +77,7 @@ function applyAgentTypeClass(el, agentName) {
         'file-interpreter': 'file-interpreter-agent',
         'image-interpreter': 'image-interpreter-agent',
         'gatewayer': 'gatewayer-agent',
-        'gateway_relayer': 'gateway_relayer-agent',
+        'gateway-relayer': 'gateway-relayer-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -665,8 +665,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'gateway_relayer') updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'gateway_relayer') updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -746,8 +746,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'image-interpreter' && !sourceBeingDeleted) updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gatewayer' && !targetBeingDeleted) updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'gatewayer' && !sourceBeingDeleted) updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'gateway_relayer' && !targetBeingDeleted) updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'gateway_relayer' && !sourceBeingDeleted) updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'gateway relayer' && !targetBeingDeleted) updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'gateway relayer' && !sourceBeingDeleted) updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -866,7 +866,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'file-interpreter' || lowerDesc === 'file interpreter') iconDiv.style.background = 'linear-gradient(135deg, #FF9A00 0%, #1B1464 50%, #00FFC8 100%)';
         else if (lowerDesc === 'image-interpreter' || lowerDesc === 'image interpreter') iconDiv.style.background = 'linear-gradient(135deg, #C2185B 0%, #FFC107 50%, #009688 100%)';
         else if (lowerDesc === 'gatewayer') iconDiv.style.background = 'linear-gradient(135deg, #FF006E 0%, #8338EC 33%, #3A86FF 66%, #00F5D4 100%)';
-        else if (lowerDesc === 'gatewayrelayer' || lowerDesc === 'gateway_relayer') iconDiv.style.background = 'linear-gradient(135deg, #264653 0%, #2A9D8F 33%, #E9C46A 66%, #E76F51 100%)';
+        else if (lowerDesc === 'gateway relayer') iconDiv.style.background = 'linear-gradient(135deg, #264653 0%, #2A9D8F 33%, #E9C46A 66%, #E76F51 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
         const span = document.createElement('span');
@@ -1203,8 +1203,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'add', 'target');
-                    if (targetAgentName.toLowerCase() === 'gateway_relayer') updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source');
-                    if (sourceAgentName.toLowerCase() === 'gateway_relayer') updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

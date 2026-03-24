@@ -1664,14 +1664,14 @@ body.resizing-vertical {
 }
 
 /* GatewayRelayer Agent */
-.canvas-item.gateway_relayer-agent {
+.canvas-item.gateway-relayer-agent {
     background-color: #264653;
     background: linear-gradient(135deg, #264653 0%, #2A9D8F 33%, #E9C46A 66%, #E76F51 100%);
     color: white;
     font-size: smaller;
 }
 
-.canvas-item.gateway_relayer-agent:hover {
+.canvas-item.gateway-relayer-agent:hover {
     background: linear-gradient(135deg, #2F5D70 0%, #36B4A5 33%, #F2D382 66%, #F0916C 100%);
     box-shadow: 0 6px 15px rgba(42, 157, 143, 0.5);
 }

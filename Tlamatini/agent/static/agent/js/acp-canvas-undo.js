@@ -300,10 +300,10 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'gatewayer') {
                 await updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
             }
-            if (targetAgentName.toLowerCase() === 'gateway_relayer') {
+            if (targetAgentName.toLowerCase() === 'gateway relayer') {
                 await updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
             }
-            if (sourceAgentName.toLowerCase() === 'gateway_relayer') {
+            if (sourceAgentName.toLowerCase() === 'gateway relayer') {
                 await updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
             }
 
@@ -521,10 +521,10 @@ async function recreateConnection(state) {
     if (sourceAgentName === 'gatewayer') {
         await updateGatewayerConnection(sourceId, targetId, 'add', 'target');
     }
-    if (targetAgentName === 'gateway_relayer') {
+    if (targetAgentName === 'gateway relayer') {
         await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source');
     }
-    if (sourceAgentName === 'gateway_relayer') {
+    if (sourceAgentName === 'gateway relayer') {
         await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target');
     }
 
