@@ -45,6 +45,21 @@
       <div id="contextInfo" class="d-none d-lg-flex align-items-center flex-grow-1 mx-2 context-info-invisible">
         <span class="me-2">Context:</span>
         <span id="contextData" class="context-ellipsis" title=""></span>
+        <div class="dropdown" id="open-in-dropdown-item" style="display: none;">
+          <button class="open-in-btn" type="button" id="open-in-menu-button"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            <svg class="open-in-icon" viewBox="0 0 16 16" fill="currentColor" width="12" height="12">
+              <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+              <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+            </svg>
+            Open in...
+            <svg class="open-in-caret" viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
+              <path d="M3.204 5h9.592L8 10.481 3.204 5z"/>
+            </svg>
+          </button>
+          <ul class="dropdown-menu dropdown-entry" aria-labelledby="open-in-menu-button" id="open-in-menu-list">
+          </ul>
+        </div>
       </div>
       <div class="collapse navbar-collapse justify-content-end" id="navbarMenu">
         <ul class="navbar-nav align-items-lg-center" id="menu-editor">
@@ -61,17 +76,6 @@
               <li><a class="dropdown-item menu-entry" href="#" id="clear-context">Clear context</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="set-omissions"
                   onclick="OpenOmissionsDialog(event);">Set file type omissions</a></li>
-            </ul>
-          </li>
-          <li class="nav-item dropdown" id="open-in-dropdown-item" style="display: none;">
-            <a class="nav-link dropdown-toggle open-in-toggle" href="#" id="open-in-menu-button" role="button"
-              data-bs-toggle="dropdown" aria-expanded="false">
-              <svg class="open-in-icon" viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
-                <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-                <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
-              </svg>
-              Open in...</a>
-            <ul class="dropdown-menu dropdown-entry" aria-labelledby="open-in-menu-button" id="open-in-menu-list">
             </ul>
           </li>
           <li class="nav-item dropdown">
