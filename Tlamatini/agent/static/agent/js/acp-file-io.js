@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -415,6 +415,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'file-interpreter': await updateFileInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'gatewayer': await updateGatewayerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'gateway_relayer': await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -467,6 +468,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'file-interpreter': await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gatewayer': await updateGatewayerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'gateway_relayer': await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 

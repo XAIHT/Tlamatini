@@ -46,7 +46,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -708,6 +708,26 @@ system_prompt: |
   - `storage.output_dir`: "gateway_events" (directory for event artifacts)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start per dispatched event)
+
+### 44. GatewayRelayer
+- **Purpose**: Long-running deterministic ingress relay that receives third-party webhook events (e.g. GitHub) in their native format, validates the upstream provider signature (X-Hub-Signature-256), transforms the payload into Gatewayer-compatible canonical input (event_type + session_id + original fields), HMAC-signs the forwarded body using Gatewayer's timestamp+body scheme, and relays it to a configured Gatewayer HTTP endpoint. Bridges external providers into Gatewayer without modifying Gatewayer itself. Does NOT use any LLM.
+- **Pool name pattern**: `gateway_relayer_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `listen_host`: "127.0.0.1" (bind address)
+  - `listen_port`: 9090 (listen port)
+  - `listen_path`: "/relay" (webhook endpoint path)
+  - `provider_mode`: "github" (upstream provider: "github")
+  - `provider_secret`: "" (GitHub webhook secret for signature verification)
+  - `allowed_events`: ["push", "pull_request", "workflow_run", "release"] (accepted GitHub event types)
+  - `allowed_refs`: [] (accepted git refs — empty = all refs)
+  - `respond_ping_ok`: true (answer ping events without forwarding)
+  - `forward_url`: "http://127.0.0.1:8787/gatewayer" (Gatewayer endpoint)
+  - `forward_hmac_secret`: "" (Gatewayer HMAC secret for signing)
+  - `forward_signature_header`: "X-Tlamatini-Signature"
+  - `forward_timestamp_header`: "X-Tlamatini-Timestamp"
+  - `request_timeout_sec`: 15 (forward request timeout)
+  - `target_agents`: [] (downstream agents to start after successful forward)
 
 ---
 
