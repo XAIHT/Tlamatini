@@ -1,0 +1,48 @@
+# GatewayRelayer Agent Configuration
+# Long-running deterministic ingress relay that receives third-party webhook
+# events (e.g. GitHub), validates the upstream provider signature, transforms
+# the payload into Gatewayer-compatible canonical input, HMAC-signs the
+# forwarded body, and relays to a configured Gatewayer HTTP endpoint.
+
+# Connection fields (auto-populated via canvas connections)
+target_agents: []
+
+# --- Listener ---
+listen_host: "127.0.0.1"
+listen_port: 9090
+listen_path: "/relay"
+
+# --- Upstream provider ---
+provider_mode: "github"
+provider_secret: ""            # GitHub webhook secret for X-Hub-Signature-256
+allowed_events:
+  - "push"
+  - "pull_request"
+  - "workflow_run"
+  - "release"
+allowed_refs: []               # e.g. ["refs/heads/main"] — empty = all refs
+respond_ping_ok: true          # answer GitHub ping events without forwarding
+
+# --- Forwarding to Gatewayer ---
+forward_url: "http://127.0.0.1:8787/gatewayer"
+forward_hmac_secret: ""        # Gatewayer's HMAC secret (auth.hmac_secret)
+forward_signature_header: "X-Tlamatini-Signature"
+forward_timestamp_header: "X-Tlamatini-Timestamp"
+forward_content_type: "application/json"
+correlation_id_header: "X-Correlation-ID"
+request_timeout_sec: 15
+
+# --- TLS (optional) ---
+use_tls: false
+tls_cert: ""
+tls_key: ""
+
+# --- Relay logging markers ---
+logging_behavior:
+  accepted_word: "RELAY_ACCEPTED"
+  rejected_word: "RELAY_REJECTED"
+  forwarded_word: "RELAY_FORWARDED"
+  error_word: "RELAY_ERROR"
+
+# --- Runtime ---
+graceful_shutdown_sec: 5

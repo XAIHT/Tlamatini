@@ -79,7 +79,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 44 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 45 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -192,7 +192,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 44 pre-built agent types for diverse automation tasks
+- 45 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -377,7 +377,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (43 types)
+│   │   ├── agents/                 # Workflow agent templates (44 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -417,6 +417,7 @@ Tlamatini/
 │   │   │   ├── file_interpreter/      # Document parsing and text/image extraction
 │   │   │   ├── image_interpreter/     # LLM vision-based image analysis and description
 │   │   │   ├── gatewayer/         # Inbound gateway: HTTP webhook / folder-drop ingress
+│   │   │   ├── gateway_relayer/  # Ingress relay: bridges provider webhooks into Gatewayer
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1174,7 +1175,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1263,6 +1264,7 @@ Agents are classified as:
 | **cleaner** | Post-termination cleanup. Deletes .log and .pid files for specified agents, then launches agents in `output_agents`. Only accepts input from Ender (auto-discovered). | `agents_to_clean`: Agent pool names to clean (auto-populated by Ender/dialog)<br>`cleaned_agents`: Pre-configured agent pool names to always clean on execution<br>`output_agents`: Agents to start after cleanup |
 | **flowcreator** | LLM-powered AI flow designer. Reads `agentic_skill.md` and generates complete flow configurations from natural language descriptions. | `llm.base_url`: Ollama URL<br>`llm.model`: Model for flow design |
 | **gatewayer** | Inbound gateway agent. Receives external events via HTTP webhook or folder-drop, normalizes into canonical envelopes, persists to disk, queues, and dispatches to downstream agents. HTTP ingress performs authentication/validation and optional dedup; folder-drop performs best-effort parsing plus persistence/dispatch. Long-running active ingress agent. | `http.port`: 8787<br>`auth.mode`: bearer<br>`storage.output_dir`: Event artifact path<br>`target_agents`: Downstream agents |
+| **gateway_relayer** | Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format. Validates upstream signatures, transforms payloads, HMAC-signs the forwarded body, and relays to a configured Gatewayer endpoint. Does NOT use any LLM. | `listen_port`: 9090<br>`provider_mode`: github<br>`forward_url`: Gatewayer endpoint<br>`forward_hmac_secret`: Gatewayer HMAC secret<br>`target_agents`: Downstream agents |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -1852,6 +1854,7 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_file_interpreter_connection/<agent_name>/` | POST | Update file-interpreter connections |
 | `/update_image_interpreter_connection/<agent_name>/` | POST | Update image-interpreter connections |
 | `/update_gatewayer_connection/<agent_name>/` | POST | Update gatewayer connections |
+| `/update_gateway_relayer_connection/<agent_name>/` | POST | Update gateway_relayer connections |
 
 #### Session & Pool Management
 
@@ -2131,6 +2134,7 @@ Enable verbose logging in config.json:
 | **TextMeBot** | Third-party API service for sending WhatsApp messages programmatically |
 | **Ruff** | Fast Python linter used by Pythonxer for script validation |
 | **Gatewayer** | Inbound gateway agent that receives external events via HTTP webhook or folder-drop watcher, persists them as event artifacts, and dispatches to downstream agents. HTTP ingress authenticates/validates; folder-drop is best-effort parsing plus dispatch |
+| **GatewayRelayer** | Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format without modifying Gatewayer itself |
 
 ---
 
@@ -2177,6 +2181,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added GatewayRelayer Agent** - Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format. Validates upstream X-Hub-Signature-256 signatures, transforms payloads into Gatewayer-compatible canonical input, HMAC-signs the forwarded body, and relays to a configured Gatewayer HTTP endpoint. Supports configurable event/ref filtering, ping handling, TLS, and downstream agent triggering after successful forwards
 - **Added Gatewayer Agent** - Inbound gateway agent for receiving external events via HTTP webhook or folder-drop watcher. Validates, authenticates, normalizes into canonical envelopes, persists to disk, queues with dedup, and dispatches to downstream target_agents. Supports bearer/HMAC auth, TLS, crash-recovery via reanim files, and configurable event retention
 - **FlowHypervisor User Instructions** - FlowHypervisor now supports a `user_instructions` config field (editable as a textarea in the properties dialog) that lets users append custom directives to the monitoring prompt — e.g. dismiss known false positives, emphasize specific agents, adjust sensitivity thresholds, or add domain-specific rules
 - **FlowHypervisor Core Auto-Stop** - The core system now stops the FlowHypervisor agent immediately when no non-system agents are running in the flow, via a `flow_alive` flag returned by the alert-check endpoint. The agent's existing 3-cycle self-stop is retained as a safety net for when the core/browser is killed or frozen

@@ -905,3 +905,22 @@ async function updateGatewayerConnection(agentId, targetAgentId, action, type = 
         console.error(`--- Error updating Gatewayer ${agentId}:`, error);
     }
 }
+
+async function updateGatewayRelayerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_gateway_relayer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- GatewayRelayer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update GatewayRelayer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating GatewayRelayer ${agentId}:`, error);
+    }
+}
