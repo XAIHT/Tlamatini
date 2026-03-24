@@ -46,7 +46,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -728,6 +728,41 @@ system_prompt: |
   - `forward_timestamp_header`: "X-Tlamatini-Timestamp"
   - `request_timeout_sec`: 15 (forward request timeout)
   - `target_agents`: [] (downstream agents to start after successful forward)
+
+### 45. NodeManager
+- **Purpose**: Long-running infrastructure agent that maintains a live registry of local and remote Windows/Linux nodes, probes health (ping, TCP, SSH, WinRM, HTTP), classifies node state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, persists normalized node state to disk, exports filtered selected-node manifests, and triggers downstream target_agents when configured node events occur. Does NOT use any LLM.
+- **Pool name pattern**: `node_manager_<n>`
+- **Starts other agents**: YES (on configured trigger events)
+- **Config parameters**:
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start on node events)
+  - `inventory.nodes_file`: "" (path to external inventory file)
+  - `inventory.merge_with_inline_nodes`: true (merge file nodes with inline)
+  - `inventory.inline_nodes`: [] (static node definitions)
+  - `inventory.default_transport`: "ssh" (default transport: ssh/winrm)
+  - `discovery.enabled`: false (hostname/CIDR discovery — disabled by default)
+  - `heartbeat.poll_interval`: 30 (seconds between health checks)
+  - `heartbeat.timeout_sec`: 5 (probe timeout)
+  - `heartbeat.offline_after_failures`: 3 (consecutive failures before OFFLINE)
+  - `probes.ping_enabled`: true (ICMP ping)
+  - `probes.tcp_connect_enabled`: true (TCP connectivity)
+  - `probes.ssh_probe_enabled`: true (SSH port reachability)
+  - `probes.winrm_probe_enabled`: true (WinRM port reachability)
+  - `probes.http_probe_enabled`: false (HTTP GET probe)
+  - `probes.command_probe_enabled`: false (read-only command probes — disabled by default)
+  - `capabilities.detect_os`: true (OS detection)
+  - `capabilities.detect_python`: true (Python version)
+  - `capabilities.detect_git`: true (git availability)
+  - `capabilities.detect_docker`: true (Docker availability)
+  - `capabilities.cache_ttl_sec`: 300 (capability cache duration)
+  - `selection.export_selected_nodes`: true (write filtered manifest)
+  - `selection.require_online`: true (only select ONLINE nodes)
+  - `selection.include_tags`: [] (filter by tags)
+  - `selection.os_types`: [] (filter by OS family)
+  - `storage.registry_dir`: "node_registry" (output directory)
+  - `triggers.enabled`: true (enable event triggers)
+  - `triggers.trigger_events`: ["NODE_ONLINE", "NODE_OFFLINE", "NODE_DEGRADED", "NODE_CAPABILITIES_CHANGED"]
+  - `security.allow_command_probes`: false (gate remote command execution)
 
 ---
 

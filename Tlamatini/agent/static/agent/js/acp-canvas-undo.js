@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -306,6 +306,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'gateway relayer') {
                 await updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'node manager') {
+                await updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'node manager') {
+                await updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -526,6 +532,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'gateway relayer') {
         await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'node manager') {
+        await updateNodeManagerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'node manager') {
+        await updateNodeManagerConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

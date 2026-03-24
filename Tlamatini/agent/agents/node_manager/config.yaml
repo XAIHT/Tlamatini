@@ -1,0 +1,81 @@
+# NodeManager Agent Configuration
+
+source_agents: []
+target_agents: []
+
+inventory:
+  nodes_file: ""
+  merge_with_inline_nodes: true
+  inline_nodes: []
+  default_transport: "ssh"
+
+discovery:
+  enabled: false
+  resolve_dns: true
+  hostnames: []
+  cidrs: []
+  allowed_ports: [22, 5985, 5986]
+  tcp_timeout_sec: 3
+
+heartbeat:
+  poll_interval: 30
+  timeout_sec: 5
+  offline_after_failures: 3
+  debounce_sec: 20
+  max_parallel_probes: 10
+
+probes:
+  ping_enabled: true
+  tcp_connect_enabled: true
+  ssh_probe_enabled: true
+  winrm_probe_enabled: true
+  http_probe_enabled: false
+  http_paths: ["/"]
+  collect_banners: true
+  command_probe_enabled: false
+  linux_command: "uname -a"
+  windows_command: "hostname"
+
+capabilities:
+  detect_os: true
+  detect_python: true
+  detect_git: true
+  detect_docker: true
+  detect_kubectl: false
+  detect_gpu: false
+  cache_ttl_sec: 300
+
+selection:
+  export_selected_nodes: true
+  require_online: true
+  include_tags: []
+  exclude_tags: []
+  include_roles: []
+  os_types: []
+  transports: []
+
+storage:
+  registry_dir: "node_registry"
+  snapshot_file: "nodes_snapshot.json"
+  selected_nodes_file: "selected_nodes.json"
+  events_file: "node_events.jsonl"
+  write_per_node_files: true
+  keep_days: 14
+
+triggers:
+  enabled: true
+  trigger_events:
+    - "NODE_ONLINE"
+    - "NODE_OFFLINE"
+    - "NODE_DEGRADED"
+    - "NODE_CAPABILITIES_CHANGED"
+
+security:
+  allow_command_probes: false
+  refuse_plaintext_passwords: true
+  mask_secrets_in_logs: true
+  auth_refs_file: ""
+
+runtime:
+  idle_sleep_ms: 250
+  graceful_shutdown_sec: 5
