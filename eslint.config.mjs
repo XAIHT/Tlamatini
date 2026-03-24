@@ -114,9 +114,17 @@ export default [
                 tools: "writable",
                 agents: "writable",
 
+                // Cross-file globals: agent_page_state.js (Open In)
+                openInDropdownItem: "readonly",
+                openInMenuButton: "readonly",
+                openInMenuList: "readonly",
+                installedApps: "writable",
+                getCsrfToken: "readonly",
+
                 // Cross-file globals: agent_page_ui.js
                 setContextText: "readonly",
                 updateViewContextDirMenuState: "readonly",
+                detectInstalledApps: "readonly",
                 setTitleBusy: "readonly",
                 isBusyMessageRequest: "readonly",
                 isBusyMessageContext: "readonly",

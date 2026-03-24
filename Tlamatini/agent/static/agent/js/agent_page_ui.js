@@ -38,25 +38,16 @@ const openInAppIcons = {
 };
 
 /**
- * Update the "Open in..." dropdown visibility and enabled state.
- * Shown only when installedApps has items; enabled only when actualContextDir is set.
+ * Update the "Open in..." dropdown visibility.
+ * Only visible when a directory is loaded as context and apps have been detected.
  */
 function updateOpenInMenuState() {
-    if (!openInDropdownItem || !openInMenuButton) return;
+    if (!openInDropdownItem) return;
 
-    if (installedApps.length === 0) {
-        openInDropdownItem.style.display = 'none';
-        return;
-    }
-
-    openInDropdownItem.style.display = '';
-
-    if (actualContextDir !== null && actualContextDir !== '') {
-        openInMenuButton.classList.remove('disabled-link');
-        openInMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    if (installedApps.length > 0 && actualContextDir !== null && actualContextDir !== '') {
+        openInDropdownItem.style.display = '';
     } else {
-        openInMenuButton.classList.add('disabled-link');
-        openInMenuButton.removeAttribute('data-bs-toggle');
+        openInDropdownItem.style.display = 'none';
     }
 }
 
@@ -200,9 +191,8 @@ function disableControlsDuringOperation() {
     contextMenuButton.removeAttribute('data-bs-toggle');
     mcpsMenuButton.setAttribute('disabled', 'disabled');
     mcpsMenuButton.removeAttribute('data-bs-toggle');
-    if (openInMenuButton) {
-        openInMenuButton.classList.add('disabled-link');
-        openInMenuButton.removeAttribute('data-bs-toggle');
+    if (openInDropdownItem) {
+        openInDropdownItem.style.display = 'none';
     }
     // Keep agentsMenuButton enabled so "Agentic Control Panel" remains accessible
     // Only disable the "Configure Agents" entry
