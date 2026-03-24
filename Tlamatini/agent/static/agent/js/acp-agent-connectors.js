@@ -924,3 +924,22 @@ async function updateGatewayRelayerConnection(agentId, targetAgentId, action, ty
         console.error(`--- Error updating GatewayRelayer ${agentId}:`, error);
     }
 }
+
+async function updateNodeManagerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_node_manager_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- NodeManager ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update NodeManager ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating NodeManager ${agentId}:`, error);
+    }
+}

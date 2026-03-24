@@ -94,6 +94,9 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "GATEWAYER AGENT STARTED"
   • "GATEWAY_RELAYER AGENT STARTED"
 
+  INFRASTRUCTURE / REGISTRY:
+  • "🖧 NODE MANAGER AGENT STARTED"
+
   SYSTEM:
   • "🛡️ FLOWHYPERVISOR AGENT STARTED"
 
@@ -111,6 +114,7 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "🏁 Immediate task finished. Exiting." — Mover/Deleter in immediate mode
   • "🛑 Sqler Agent stopped." / "Agent stopped." — Sqler/Mongoxer shutdown
   • "Gatewayer agent finished." / "GatewayRelayer agent finished." — long-running ingress shutdown
+  • "NodeManager agent shutting down." — NodeManager long-running agent stopping
   • "FlowCreator agent finished successfully." — FlowCreator completed flow generation
 
   AGENT-SPECIFIC COMPLETION DETAILS:
@@ -163,6 +167,15 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "RELAY_REJECTED ref=... not_allowed" — git ref not in allowed_refs
   • "RELAY_REJECTED invalid_json" — upstream body is not valid JSON
   • "RELAY_ERROR forward_failed ..." — relay could not reach Gatewayer
+
+  NODE MANAGER EVENTS:
+  • "🔄 Node '...' state: {old} → {new}" — node state transition
+  • "🔧 Node '...' capabilities changed" — capability change detected
+  • "📝 Event: NODE_ONLINE for node ..." — node came online
+  • "📝 Event: NODE_OFFLINE for node ..." — node went offline
+  • "📝 Event: NODE_DEGRADED for node ..." — node partially reachable
+  • "📝 Event: NODE_CAPABILITIES_CHANGED for node ..." — node capabilities updated
+  • "🚀 Triggering N downstream agents due to node events..." — trigger on node events
 
   ENDER REANIMATION CLEANUP:
   • "🧹 Cleared reanimation asset: {filename}" — Ender deleted a reanim* file
@@ -217,6 +230,13 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "GATEWAY_ERROR ..." — Gatewayer internal error
   • "RELAY_ERROR ..." — GatewayRelayer internal error
 
+  NODE MANAGER ERRORS:
+  • "❌ Failed to load nodes file ..." — inventory file load failure
+  • "❌ Failed to export snapshot: ..." — registry snapshot write failure
+  • "❌ Failed to export selected nodes: ..." — selected manifest write failure
+  • "❌ Failed to save reanim_registry.json: ..." — reanimation state persistence failure
+  • "❌ NodeManager fatal error: ..." — unhandled exception in main loop
+
 2e. WARNING PATTERNS (WARNING level) — prefixed "⚠️":
   • "⚠️ Timed out waiting for agent '...' to stop." — graceful SIGTERM timed out (5s)
   • "⚠️ Agent '...' didn't stop gracefully, force killing..." — escalation to SIGKILL
@@ -256,7 +276,8 @@ SHORT-LIVED agents (start, do work, exit — typically finish in seconds to a fe
 
 LONG-RUNNING agents (start, poll/listen continuously, exit only when externally stopped or a one-shot pattern fires):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
-  Emailer, Whatsapper, RecMailer, TelegramRX, Stopper, Gatewayer, GatewayRelayer
+  Emailer, Whatsapper, RecMailer, TelegramRX, Stopper, Gatewayer, GatewayRelayer,
+  NodeManager
 
 MIXED-MODE agents (behavior depends on configuration):
   Deleter — immediate mode (no source_agents): short-lived; event mode (with source_agents): long-running
@@ -275,6 +296,7 @@ TIMING EXPECTATIONS:
   • Raiser: Polls continuously — normal to run for the entire flow duration in looping flows
   • Crawler: Web requests can take minutes depending on sites and crawl depth
   • Gatewayer/GatewayRelayer: HTTP servers — run for entire flow lifetime, produce output only when events arrive (silence between events is NORMAL)
+  • NodeManager: Long-running infrastructure agent — polls nodes at configured heartbeat interval (default 30s). Silence between poll cycles is NORMAL. Produces output on state transitions and capability changes only
   • Counter: Near-instant (increment + route); should finish in < 1 second
   • AND/OR gates: Long-running; poll source logs until gate condition met (both patterns for AND, any pattern for OR)
 
@@ -354,6 +376,7 @@ Certain agents persist state in files named reanim* to survive restarts:
   • reanim.counter — YAML with counter value (Counter)
   • reanim.json — JSON state object (FlowHypervisor)
   • reanim_queue.json / reanim_dedup.json — JSON (Gatewayer)
+  • reanim_registry.json — JSON with full node registry state (NodeManager)
 
 Ender clears ALL reanim* files for each target it terminates → ensures a clean restart on next flow run.
 Manual operator restart from the contextual menu PRESERVES reanim* files → agent resumes from its last position.
@@ -418,6 +441,13 @@ YOUR JOB is to determine if the flow is healthy or not by applying these diagnos
   • "RELAY_ERROR forward_failed" means GatewayRelayer cannot reach Gatewayer — report if repeated
   • "GATEWAY_ERROR queue full" means Gatewayer's internal queue overflowed — dispatch may be too slow
 
+─── CHECK 6b: NODE MANAGER HEALTH ───
+  • NodeManager is a long-running infrastructure agent — silence between poll cycles (default 30s) is NORMAL
+  • Repeated "❌ Failed to save reanim_registry.json" indicates filesystem/permissions issues
+  • Repeated "❌ Failed to export snapshot" or "❌ Failed to export selected nodes" means downstream agents may not get updated manifests
+  • If NodeManager has a PID but no log output for 3+ monitoring cycles (well beyond its poll_interval), it may be hung
+  • Rapid succession of NODE_OFFLINE events for ALL nodes simultaneously may indicate a network issue on the NodeManager host, not actual node failures
+
 ─── CHECK 7: RESOURCE / SYSTEM INDICATORS ───
   • If ALL agents simultaneously lose PIDs, the host system may have crashed or a kill-all was issued
   • If agents are running but NO logs are being written, there may be a filesystem issue
@@ -432,7 +462,8 @@ DO NOT flag the following as problems:
   • FlowCreator agent activity (it is a design-time tool, not a runtime participant)
   • Sqler/Mongoxer missing from logs (they run in separate console windows)
   • "❌ WAITING FOR AGENTS TO STOP" in a flow with cycles (normal concurrency guard)
-  • Long-running agents (Gatewayer, GatewayRelayer, Raiser, Monitor_Log, etc.) that have been running for a long time with no completion marker (they are DESIGNED to run indefinitely)
+  • Long-running agents (Gatewayer, GatewayRelayer, NodeManager, Raiser, Monitor_Log, etc.) that have been running for a long time with no completion marker (they are DESIGNED to run indefinitely)
+  • NodeManager producing no output between heartbeat poll cycles (it only logs on state transitions or capability changes — silence between polls is expected)
   • Single transient warning messages that don't repeat
   • "⚠️ No files found for pattern" (Deleter/Mover found nothing to process — this is fine)
   • "⚠️ No process matching ... was found" (Pser found no matching process — expected in many cases)

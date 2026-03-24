@@ -265,7 +265,7 @@ class Migration(migrations.Migration):
     ]
 ```
 
-**Important:** The `agentDescription` field value (e.g., `'Shoter'`) is what the frontend uses as the agent's display name and CSS class name. It MUST match exactly (case-sensitive) in all places.
+**Important:** The `agentDescription` field value is the **display name** shown in the sidebar. It is the **single source of truth** for all naming across the system. It flows into `dataset.agentName` on canvas items and gets transformed differently in each context. See the Naming Convention below.
 
 After creating the migration, run:
 ```bash
@@ -274,30 +274,97 @@ python Tlamatini/manage.py migrate
 
 ---
 
-## Step 4 · Frontend: CSS Styling
+## CRITICAL: Agent Naming Convention (READ THIS FIRST)
 
-Edit `agent/static/agent/css/agentic_control_panel.css` and add these CSS rules:
+The `agentDescription` from the database is the agent's display name (e.g., `"Shoter"`, `"Monitor Log"`, `"Node Manager"`, `"Gateway Relayer"`). This single value gets **transformed differently** in 3 contexts. Getting any of these wrong causes broken colors, broken connections, or invisible sidebar icons.
+
+### The 3 Name Forms
+
+| Context | Transform | Example for `"Node Manager"` | Example for `"Shoter"` |
+|---|---|---|---|
+| **CSS classMap key** | `name.toLowerCase().replace(/\s+/g, '-')` | `'node-manager'` | `'shoter'` |
+| **Sidebar icon** (`lowerDesc`) | `name.toLowerCase()` (preserves spaces) | `'node manager'` | `'shoter'` |
+| **Connection handlers** (`agentName.toLowerCase()`) | `name.toLowerCase()` (preserves spaces) | `'node manager'` | `'shoter'` |
+
+**For single-word agents** (e.g., `"Shoter"`, `"Emailer"`), all 3 forms are identical: `'shoter'`.
+
+**For multi-word agents** (e.g., `"Node Manager"`, `"Gateway Relayer"`), the forms DIFFER:
+- classMap key uses **hyphens**: `'node-manager'`
+- sidebar icon and connection handlers use **spaces**: `'node manager'`
+
+> **WHY THIS MATTERS**: `applyAgentTypeClass()` normalizes with `replace(/\s+/g, '-')` before looking up the classMap. But `lowerDesc` in the sidebar and `agentName.toLowerCase()` in connection code keep the original spaces. If you use the wrong form, the gradient won't render or connections won't fire.
+
+### Multi-Word Agent Sidebar Icon — BOTH FORMS
+
+For multi-word agents, you MUST check BOTH the spaced and hyphenated forms in the sidebar icon code, because some agents may be registered either way:
+```javascript
+else if (lowerDesc === 'node manager' || lowerDesc === 'node-manager') iconDiv.style.background = '...';
+```
+
+---
+
+## Step 4 · Frontend: CSS Styling and Color Gradient
+
+Edit `agent/static/agent/css/agentic_control_panel.css` and add gradient rules.
+
+### 4a. Choose a UNIQUE 4-color gradient
+
+Every new agent MUST use a **4-color gradient** (`0%, 33%, 66%, 100%`) that is visually distinct from ALL existing agents. Before choosing colors, review the existing gradients in the CSS file and sidebar icon section of `acp-canvas-core.js` to avoid collisions.
+
+**Existing 4-color gradients (DO NOT reuse these color families):**
+- Gatewayer: `#FF006E → #8338EC → #3A86FF → #00F5D4` (Pink → Purple → Blue → Cyan)
+- Gateway Relayer: `#264653 → #2A9D8F → #E9C46A → #E76F51` (Dark Teal → Teal → Gold → Orange)
+- Node Manager: `#0D4F4F → #00ACC1 → #76FF03 → #FFB300` (Dark Teal → Cyan → Lime → Amber)
+
+**Existing 3-color gradients:**
+- FlowHypervisor: `#FFD600 → #E91E63 → #00BCD4` (Yellow → Magenta → Cyan)
+- FlowCreator: `#1565C0 → #C62828 → #2E7D32` (Blue → Red → Green)
+- Mouser: `#FF1744 → #651FFF → #00E676` (Red → Purple → Green)
+- File Interpreter: `#FF9A00 → #1B1464 → #00FFC8` (Orange → Navy → Mint)
+- Image Interpreter: `#C2185B → #FFC107 → #009688` (Crimson → Amber → Teal)
+
+Pick 4 colors that form a visually pleasing gradient across distinct hue ranges. The hover state should use **lighter/brighter** versions of the same 4 colors.
+
+### 4b. Add the CSS rules
+
+Use the CSS class name from the classMap value (typically `<agent_name_no_spaces>-agent`):
 
 ```css
 /* <AgentName> Agent */
-.canvas-item.<agent_name>-agent {
-    background-color: #<base_color>;
-    background: linear-gradient(135deg, #<color1> 0%, #<color2> 100%);
+.canvas-item.<css_class_name> {
+    background-color: #<color1>;
+    background: linear-gradient(135deg, #<color1> 0%, #<color2> 33%, #<color3> 66%, #<color4> 100%);
     color: white;
+    font-size: smaller;
 }
-.canvas-item.<agent_name>-agent:hover {
-    background: linear-gradient(135deg, #<lighter1> 0%, #<lighter2> 100%);
+.canvas-item.<css_class_name>:hover {
+    background: linear-gradient(135deg, #<color1_light> 0%, #<color2_light> 33%, #<color3_light> 66%, #<color4_light> 100%);
     box-shadow: 0 6px 15px rgba(<r>, <g>, <b>, 0.5);
 }
 ```
 
-The user will specify the desired gradient colors. Choose complementary colors that look premium.
+**Example for a multi-word agent "Node Manager" (CSS class `nodemanager-agent`):**
+```css
+/* NodeManager Agent */
+.canvas-item.nodemanager-agent {
+    background-color: #0D4F4F;
+    background: linear-gradient(135deg, #0D4F4F 0%, #00ACC1 33%, #76FF03 66%, #FFB300 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.nodemanager-agent:hover {
+    background: linear-gradient(135deg, #15696A 0%, #26C6DA 33%, #9EFF5A 66%, #FFC93C 100%);
+    box-shadow: 0 6px 15px rgba(0, 172, 193, 0.5);
+}
+```
+
+### 4c. Verify: The gradient string in CSS MUST be identical to the one used in the sidebar icon (Step 5b Location 3). Copy-paste it — do NOT retype.
 
 ---
 
 ## Step 5 · Frontend: JavaScript Integration
 
-You must edit **4 JavaScript files**. Here are the exact locations and patterns:
+You must edit **4 JavaScript files**. The most error-prone part is **getting the agent name form right** in each context. Refer to the Naming Convention table above for EVERY code snippet below.
 
 ### 5a. `acp-agent-connectors.js` — Add fetch connector function
 
@@ -324,54 +391,95 @@ async function update<AgentName>Connection(agentId, targetAgentId, action, type 
 }
 ```
 
-### 5b. `acp-canvas-core.js` — Register agent in 4 places
+### 5b. `acp-canvas-core.js` — Register agent in 6 places
 
 **Location 1: `applyAgentTypeClass()` classMap** (~line 32)
-Add entry to the `classMap` object:
+
+Add entry to the `classMap` object. The KEY must use the **hyphenated form** (how `replace(/\s+/g, '-')` normalizes the name):
 ```javascript
-'<agent_name>': '<agent_name>-agent',
+// Single-word example:
+'shoter': 'shoter-agent',
+// Multi-word example (KEY is hyphenated, VALUE is the CSS class):
+'node-manager': 'nodemanager-agent',
 ```
 
 **Location 2: `AGENTS_NEVER_START_OTHERS` array** (~line 94)
-If the agent does NOT start downstream agents, add `'<agent_name>'` to this array. If it DOES start downstream agents, do NOT add it.
+If the agent does NOT start downstream agents, add the **hyphenated form** to this array.
 
-**Location 3: `populateAgentsList()` icon color** (~line 684)
-Add an `else if` line to set the sidebar icon color:
+**Location 3: `populateAgentsList()` icon color** (~line 830)
+
+Add an `else if` line using the **SAME 4-color gradient** from Step 4b. The match key uses `lowerDesc` which is `description.toLowerCase()` — this preserves spaces. For multi-word agents, check BOTH forms:
 ```javascript
-else if (lowerDesc === '<agent_name>') iconDiv.style.background = 'linear-gradient(135deg, #<color1> 0%, #<color2> 100%)';
+// Single-word agent:
+else if (lowerDesc === 'shoter') iconDiv.style.background = 'linear-gradient(135deg, ...)';
+// Multi-word agent — MUST check BOTH spaced and hyphenated forms:
+else if (lowerDesc === 'node manager' || lowerDesc === 'node-manager') iconDiv.style.background = 'linear-gradient(135deg, #0D4F4F 0%, #00ACC1 33%, #76FF03 66%, #FFB300 100%)';
 ```
 
-**Location 4: `removeConnection()` function** (~line 517)
-Add connection removal handlers. For a standard agent with source+target:
+> **CRITICAL**: The gradient string here MUST be identical to the one in the CSS (Step 4b). Copy-paste it.
+
+**Location 4: `removeConnection()` function** (~line 600)
+
+Add connection removal handlers. Use the **spaced lowercase form** (how `agentName.toLowerCase()` works):
 ```javascript
-if (targetAgentName.toLowerCase() === '<agent_name>') update<AgentName>Connection(targetId, sourceId, 'remove', 'source');
-if (sourceAgentName.toLowerCase() === '<agent_name>') update<AgentName>Connection(sourceId, targetId, 'remove', 'target');
+// Single-word:
+if (targetAgentName.toLowerCase() === 'shoter') update...
+// Multi-word — use SPACES, not hyphens:
+if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
+if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
 ```
 
-**Location 5: `removeConnectionsFor()` function** (~line 580)
-Add the same lines but with the `!targetBeingDeleted` / `!sourceBeingDeleted` guards:
+**Location 5: `removeConnectionsFor()` function** (~line 740)
+
+Same as Location 4, but with the deletion guards. Use **spaced lowercase form**:
 ```javascript
-if (targetAgentName.toLowerCase() === '<agent_name>' && !targetBeingDeleted) update<AgentName>Connection(targetId, sourceId, 'remove', 'source');
-if (sourceAgentName.toLowerCase() === '<agent_name>' && !sourceBeingDeleted) update<AgentName>Connection(sourceId, targetId, 'remove', 'target');
+if (targetAgentName.toLowerCase() === 'node manager' && !targetBeingDeleted) updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
+if (sourceAgentName.toLowerCase() === 'node manager' && !sourceBeingDeleted) updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
 ```
 
-**Location 6: `mouseup` event handler (connection finalize)** (~line 930)
-Add connection creation handlers in the `// Auto-configure all agent types` section:
+**Location 6: `mouseup` event handler (connection finalize)** (~line 1200)
+
+Add connection creation handlers. Use **spaced lowercase form**:
 ```javascript
-if (targetAgentName.toLowerCase() === '<agent_name>') update<AgentName>Connection(targetId, sourceId, 'add', 'source');
-if (sourceAgentName.toLowerCase() === '<agent_name>') update<AgentName>Connection(sourceId, targetId, 'add', 'target');
+if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'add', 'source');
+if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'add', 'target');
 ```
 
 ### 5c. `acp-canvas-undo.js` — Add undo/redo handlers
 
-Search for existing agent patterns (e.g., `updateShoterConnection`) in this file and add matching lines for your new agent in both the undo and redo sections.
+Search for existing agent patterns (e.g., `updateGatewayRelayerConnection`) in this file. Add matching lines for your new agent in BOTH the undo and redo sections. Use the **spaced lowercase form** for name comparisons:
+```javascript
+// In redo section (removeConnection undo):
+if (targetAgentName.toLowerCase() === 'node manager') {
+    await updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
+}
+if (sourceAgentName.toLowerCase() === 'node manager') {
+    await updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
+}
+
+// In undo section (recreateConnection):
+if (targetAgentName === 'node manager') {
+    await updateNodeManagerConnection(targetId, sourceId, 'add', 'source');
+}
+if (sourceAgentName === 'node manager') {
+    await updateNodeManagerConnection(sourceId, targetId, 'add', 'target');
+}
+```
 
 ### 5d. `acp-file-io.js` — Add `.flw` file load handler
 
-In the `loadDiagram` function's switch statement that restores connections, add:
+In the `restoreAgentConnection` function's switch statements that restore connections, add cases using the **spaced lowercase form** (since `sourceAgentName` = `dataset.agentName.toLowerCase()`):
 ```javascript
-case '<agent_name>': await update<AgentName>Connection(sourceId, targetId, 'add'); break;
+// In the SOURCE-SIDE switch:
+case 'node manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
+
+// In the TARGET-SIDE switch:
+case 'node manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
 ```
+
+### 5e. Verify `/* global */` declarations
+
+At the top of `acp-canvas-core.js`, `acp-canvas-undo.js`, and `acp-file-io.js`, there is a `/* global ... */` comment that declares imported functions. Add `update<AgentName>Connection` to each of these declarations so the linter knows the function exists.
 
 ---
 
@@ -478,12 +586,23 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
 [ ] Step 1: Create agent/agents/<agent_name>/<agent_name>.py and config.yaml
 [ ] Step 2: Add update_<agent_name>_connection_view in views.py + URL in urls.py
 [ ] Step 3: Create database migration and run `python manage.py migrate`
-[ ] Step 4: Add CSS classes in agentic_control_panel.css
-[ ] Step 5: JavaScript integration:
+    [ ] Decide: is agentDescription single-word (e.g., "Shoter") or multi-word (e.g., "Node Manager")?
+    [ ] This choice determines ALL naming forms — see Naming Convention section
+[ ] Step 4: CSS gradient styling in agentic_control_panel.css
+    [ ] 4a: Choose a UNIQUE 4-color gradient (0%, 33%, 66%, 100%) — check existing gradients first!
+    [ ] 4b: Add .canvas-item.<css_class>-agent rules (normal + hover)
+    [ ] 4c: VERIFY: gradient string matches what you'll use in Step 5b Location 3
+[ ] Step 5: JavaScript integration (USE CORRECT NAME FORM FOR EACH CONTEXT!):
     [ ] 5a: Add fetch connector in acp-agent-connectors.js
-    [ ] 5b: Register in acp-canvas-core.js (classMap, NEVER_START array, icon color, removeConnection, removeConnectionsFor, mouseup)
-    [ ] 5c: Add undo/redo handlers in acp-canvas-undo.js
-    [ ] 5d: Add .flw load case in acp-file-io.js
+    [ ] 5b-1: classMap key in acp-canvas-core.js → HYPHENATED form (e.g., 'node-manager')
+    [ ] 5b-2: AGENTS_NEVER_START_OTHERS → HYPHENATED form (if applicable)
+    [ ] 5b-3: Sidebar icon color → SPACED form + fallback (e.g., 'node manager' || 'node-manager')
+    [ ] 5b-4: removeConnection() → SPACED form (e.g., 'node manager')
+    [ ] 5b-5: removeConnectionsFor() → SPACED form with deletion guards
+    [ ] 5b-6: mouseup handler → SPACED form
+    [ ] 5c: Undo/redo in acp-canvas-undo.js → SPACED form
+    [ ] 5d: .flw load cases in acp-file-io.js → SPACED form (BOTH source + target switch)
+    [ ] 5e: /* global */ declarations updated in all 3 JS files
 [ ] Step 6: Add agent entry in agentic_skill.md (for FlowCreator AI)
 [ ] Step 7: Update README.md (count, structure, tables, glossary, changelog, API)
 [ ] Step 8: Lint and fix:

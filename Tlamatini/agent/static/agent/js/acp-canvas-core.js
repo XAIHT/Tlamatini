@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -78,6 +78,7 @@ function applyAgentTypeClass(el, agentName) {
         'image-interpreter': 'image-interpreter-agent',
         'gatewayer': 'gatewayer-agent',
         'gateway-relayer': 'gateway-relayer-agent',
+        'node-manager': 'nodemanager-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -667,6 +668,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -748,6 +751,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'gatewayer' && !sourceBeingDeleted) updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gateway relayer' && !targetBeingDeleted) updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'gateway relayer' && !sourceBeingDeleted) updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'node manager' && !targetBeingDeleted) updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'node manager' && !sourceBeingDeleted) updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -867,6 +872,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'image-interpreter' || lowerDesc === 'image interpreter') iconDiv.style.background = 'linear-gradient(135deg, #C2185B 0%, #FFC107 50%, #009688 100%)';
         else if (lowerDesc === 'gatewayer') iconDiv.style.background = 'linear-gradient(135deg, #FF006E 0%, #8338EC 33%, #3A86FF 66%, #00F5D4 100%)';
         else if (lowerDesc === 'gateway relayer') iconDiv.style.background = 'linear-gradient(135deg, #264653 0%, #2A9D8F 33%, #E9C46A 66%, #E76F51 100%)';
+        else if (lowerDesc === 'node manager' || lowerDesc === 'nodemanager') iconDiv.style.background = 'linear-gradient(135deg, #0D4F4F 0%, #00ACC1 33%, #76FF03 66%, #FFB300 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
         const span = document.createElement('span');
@@ -1205,6 +1211,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);
