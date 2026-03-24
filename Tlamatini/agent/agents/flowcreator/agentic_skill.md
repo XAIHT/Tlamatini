@@ -1269,3 +1269,8 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
     Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
               |
               -->Emailer (1)->X.
+
+7. **❌ Connecting agents to Ender's source_agents only to not leave its output unconnected is incorrect and should be avoided.** Ender agent is used to terminate the flow and clean up the logs and PIDs of the agents. If there is no need to do something additional to its output, don't connect it to any other agent, for example: 
+    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+              |
+              -->Emailer (1)->X.
