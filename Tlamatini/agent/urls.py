@@ -103,5 +103,7 @@ urlpatterns = [
     path('update_gatewayer_connection/<str:agent_name>/', secure_post(views.update_gatewayer_connection_view), name='update_gatewayer_connection'),
     path('update_gateway_relayer_connection/<str:agent_name>/', secure_post(views.update_gateway_relayer_connection_view), name='update_gateway_relayer_connection'),
     path('update_node_manager_connection/<str:agent_name>/', secure_post(views.update_node_manager_connection_view), name='update_node_manager_connection'),
+    path('detect_installed_apps/', secure_get(views.detect_installed_apps_view), name='detect_installed_apps'),
+    path('open_in_app/', secure_post(views.open_in_app_view), name='open_in_app'),
 ]
 

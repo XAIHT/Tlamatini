@@ -220,6 +220,12 @@ const label_mcp2 = document.getElementById('label-mcp-2');
 const toolMcpsList = document.getElementById('tool-mcps-list');
 const agentsList = document.getElementById('agents-list');
 
+// --- Open in... dropdown references ---
+const openInDropdownItem = document.getElementById('open-in-dropdown-item');
+const openInMenuButton = document.getElementById('open-in-menu-button');
+const openInMenuList = document.getElementById('open-in-menu-list');
+let installedApps = [];
+
 // --- Initial button state ---
 contextButton.disabled = true;
 contextButton.style.backgroundColor = "#808080";

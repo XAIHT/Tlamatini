@@ -597,6 +597,9 @@ window.onload = () => {
     });
     clearContextEnabled = false;
     clearContextButton.setAttribute("style", "display: none !important;");
+
+    // Detect installed apps for "Open in..." dropdown
+    detectInstalledApps();
 };
 
 // ----------------------------------------------------------------

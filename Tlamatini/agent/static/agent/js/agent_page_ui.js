@@ -27,6 +27,108 @@ function updateViewContextDirMenuState() {
             viewContextDirInCanvasMenu.parentElement.style.display = 'none';
         }
     }
+    updateOpenInMenuState();
+}
+
+// --- SVG icon data for "Open in..." menu items ---
+const openInAppIcons = {
+    explorer: '<svg viewBox="0 0 16 16" class="open-in-app-icon" fill="#FFD75E"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.879a1.5 1.5 0 0 1 1.06.44l.44.439a.5.5 0 0 0 .354.146H13.5A1.5 1.5 0 0 1 15 4.5v1H1V3.5zM1 6h14v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5V6z"/></svg>',
+    vscode: '<svg viewBox="0 0 100 100" class="open-in-app-icon"><path d="M74.9 97.3l20.1-9.7V12.4L74.9 2.7 34.8 38.8 14.3 23.5 5 27v46l9.3 3.5 20.5-15.3 40.1 36.1zm-4.7-73.9L45.6 44.2l24.6 20.8V23.4zM24.3 50l-8.4 6.3V43.7L24.3 50z" fill="#007ACC"/></svg>',
+    antigravity: '<svg viewBox="0 0 16 16" class="open-in-app-icon"><circle cx="8" cy="8" r="7" fill="none" stroke="#A78BFA" stroke-width="1.2"/><path d="M8 2C5 5 4 8 5 11c1 3 5 3 6 0 1-3 0-6-3-9z" fill="#A78BFA" opacity="0.85"/><circle cx="8" cy="7" r="1.5" fill="#E0D4FC"/></svg>'
+};
+
+/**
+ * Update the "Open in..." dropdown visibility and enabled state.
+ * Shown only when installedApps has items; enabled only when actualContextDir is set.
+ */
+function updateOpenInMenuState() {
+    if (!openInDropdownItem || !openInMenuButton) return;
+
+    if (installedApps.length === 0) {
+        openInDropdownItem.style.display = 'none';
+        return;
+    }
+
+    openInDropdownItem.style.display = '';
+
+    if (actualContextDir !== null && actualContextDir !== '') {
+        openInMenuButton.classList.remove('disabled-link');
+        openInMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    } else {
+        openInMenuButton.classList.add('disabled-link');
+        openInMenuButton.removeAttribute('data-bs-toggle');
+    }
+}
+
+/**
+ * Fetch installed apps from the server and populate the "Open in..." dropdown.
+ */
+function detectInstalledApps() {
+    fetch('/agent/detect_installed_apps/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.apps)) {
+                installedApps = data.apps.filter(app => app.available);
+                renderOpenInMenu();
+                updateOpenInMenuState();
+            }
+        })
+        .catch(err => {
+            console.error('Failed to detect installed apps:', err);
+        });
+}
+
+/**
+ * Render the "Open in..." dropdown menu items based on detected apps.
+ */
+function renderOpenInMenu() {
+    if (!openInMenuList) return;
+    openInMenuList.innerHTML = '';
+
+    installedApps.forEach(app => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.className = 'dropdown-item menu-entry open-in-menu-item';
+        a.href = '#';
+
+        const iconHtml = openInAppIcons[app.id] || '';
+        a.innerHTML = iconHtml + '<span>' + app.name + '</span>';
+
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!actualContextDir) return;
+            openDirectoryInApp(app.id);
+        });
+
+        li.appendChild(a);
+        openInMenuList.appendChild(li);
+    });
+}
+
+/**
+ * Send POST request to open the context directory in the given app.
+ */
+function openDirectoryInApp(appId) {
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('app_id', appId);
+    formData.append('directory', actualContextDir);
+
+    fetch('/agent/open_in_app/', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error opening in app:', data.error);
+            } else {
+                console.log('--- Opened directory in ' + appId);
+            }
+        })
+        .catch(err => {
+            console.error('Failed to open in app:', err);
+        });
 }
 
 function setTitleBusy(isBusy) {
@@ -98,6 +200,10 @@ function disableControlsDuringOperation() {
     contextMenuButton.removeAttribute('data-bs-toggle');
     mcpsMenuButton.setAttribute('disabled', 'disabled');
     mcpsMenuButton.removeAttribute('data-bs-toggle');
+    if (openInMenuButton) {
+        openInMenuButton.classList.add('disabled-link');
+        openInMenuButton.removeAttribute('data-bs-toggle');
+    }
     // Keep agentsMenuButton enabled so "Agentic Control Panel" remains accessible
     // Only disable the "Configure Agents" entry
     const configureAgentsItem = document.getElementById('enable-agents');
@@ -160,6 +266,7 @@ function enableControlsAfterOperation() {
     contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
     mcpsMenuButton.removeAttribute('disabled', 'disabled');
     mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    updateOpenInMenuState();
     // Re-enable the "Configure Agents" entry
     const configureAgentsItem = document.getElementById('enable-agents');
     if (configureAgentsItem) {
