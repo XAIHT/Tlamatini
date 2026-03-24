@@ -6910,3 +6910,120 @@ def update_node_manager_connection_view(request, agent_name):
     except Exception as e:
         print(f"Error updating NodeManager connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+def detect_installed_apps_view(request):
+    """
+    Detect which IDEs/editors are installed on the system.
+    Checks for Visual Studio Code and Antigravity IDE.
+    File Explorer is always available on Windows.
+    """
+    apps = []
+
+    # Always include File Explorer (Windows)
+    apps.append({"id": "explorer", "name": "File Explorer", "available": True})
+
+    # Detect Visual Studio Code
+    vscode_available = shutil.which("code") is not None
+    if not vscode_available:
+        # Check common install paths on Windows
+        vscode_paths = [
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe"),
+            os.path.expandvars(r"%ProgramFiles%\Microsoft VS Code\Code.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft VS Code\Code.exe"),
+        ]
+        for p in vscode_paths:
+            if os.path.isfile(p):
+                vscode_available = True
+                break
+    apps.append({"id": "vscode", "name": "VS Code", "available": vscode_available})
+
+    # Detect Antigravity IDE
+    antigravity_available = shutil.which("antigravity") is not None
+    if not antigravity_available:
+        antigravity_paths = [
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs\Antigravity\Antigravity.exe"),
+            os.path.expandvars(r"%ProgramFiles%\Antigravity\Antigravity.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Antigravity\Antigravity.exe"),
+            os.path.expandvars(r"%LOCALAPPDATA%\antigravity\Antigravity.exe"),
+        ]
+        for p in antigravity_paths:
+            if os.path.isfile(p):
+                antigravity_available = True
+                break
+    apps.append({"id": "antigravity", "name": "Antigravity", "available": antigravity_available})
+
+    return HttpResponse(json.dumps({"success": True, "apps": apps}), content_type='application/json')
+
+
+def open_in_app_view(request):
+    """
+    Open the given directory in the specified application.
+    Expects POST with 'app_id' and 'directory' fields.
+    """
+    try:
+        app_id = request.POST.get('app_id', '').strip()
+        directory = request.POST.get('directory', '').strip()
+
+        if not app_id or not directory:
+            return HttpResponse(
+                json.dumps({"error": "app_id and directory are required"}),
+                content_type='application/json', status=400
+            )
+
+        # Security: resolve and validate directory exists
+        resolved = os.path.realpath(directory)
+        if not os.path.isdir(resolved):
+            return HttpResponse(
+                json.dumps({"error": "Directory does not exist"}),
+                content_type='application/json', status=400
+            )
+
+        if app_id == 'explorer':
+            subprocess.Popen(['explorer', resolved])
+        elif app_id == 'vscode':
+            code_cmd = shutil.which("code")
+            if not code_cmd:
+                # Try common paths
+                for p in [
+                    os.path.expandvars(r"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe"),
+                    os.path.expandvars(r"%ProgramFiles%\Microsoft VS Code\Code.exe"),
+                    os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft VS Code\Code.exe"),
+                ]:
+                    if os.path.isfile(p):
+                        code_cmd = p
+                        break
+            if not code_cmd:
+                return HttpResponse(
+                    json.dumps({"error": "VS Code not found"}),
+                    content_type='application/json', status=404
+                )
+            subprocess.Popen([code_cmd, resolved])
+        elif app_id == 'antigravity':
+            ag_cmd = shutil.which("antigravity")
+            if not ag_cmd:
+                for p in [
+                    os.path.expandvars(r"%LOCALAPPDATA%\Programs\Antigravity\Antigravity.exe"),
+                    os.path.expandvars(r"%ProgramFiles%\Antigravity\Antigravity.exe"),
+                    os.path.expandvars(r"%ProgramFiles(x86)%\Antigravity\Antigravity.exe"),
+                    os.path.expandvars(r"%LOCALAPPDATA%\antigravity\Antigravity.exe"),
+                ]:
+                    if os.path.isfile(p):
+                        ag_cmd = p
+                        break
+            if not ag_cmd:
+                return HttpResponse(
+                    json.dumps({"error": "Antigravity not found"}),
+                    content_type='application/json', status=404
+                )
+            subprocess.Popen([ag_cmd, resolved])
+        else:
+            return HttpResponse(
+                json.dumps({"error": f"Unknown app: {app_id}"}),
+                content_type='application/json', status=400
+            )
+
+        return HttpResponse(json.dumps({"success": True}), content_type='application/json')
+    except Exception as e:
+        print(f"Error opening in app: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)

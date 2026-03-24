@@ -713,6 +713,39 @@ body.resizing-vertical {
     font-size: 13px;
     font-weight: 700;
 }
+/* Open in... dropdown */
+.open-in-toggle {
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
+}
+
+.open-in-icon {
+    flex-shrink: 0;
+}
+
+.open-in-menu-item {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px !important;
+}
+
+.open-in-menu-item:hover {
+    background-color: #4a4f5c !important;
+}
+
+.open-in-menu-item .open-in-app-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+#open-in-menu-button.disabled-link {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
 .connection-status { min-height: 2.5rem; padding: .55rem 1rem; font-size: .95rem; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.08); }
 .connection-status-hidden { display: none; }
 .connection-status-warning { display: block; background-color: #5c2b29; color: #ffe0de; }

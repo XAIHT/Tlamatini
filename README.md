@@ -65,6 +65,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [WebSocket Protocol](#websocket-protocol)
   - [HTTP Endpoints](#http-endpoints)
 - [Session Management](#session-management)
+- [Open in... External Editors](#open-in-external-editors)
 - [Security Considerations](#security-considerations)
 - [Troubleshooting](#troubleshooting)
 - [Glossary](#glossary)
@@ -213,6 +214,12 @@ If you are setting up from source (manual setup), you will create your own super
 - DuckDuckGo web search with result summarization
 - Configurable hint words for search triggering
 - Dedicated summarizer model configuration
+
+### Open in External Editors
+- **"Open in..." dropdown** in the navigation bar to launch the context directory in an external editor
+- Auto-detects installed applications: VS Code, Antigravity IDE, and Windows File Explorer
+- Only enabled when a directory is fully loaded as context
+- Each entry displays the application's icon for quick recognition
 
 ### Enterprise Features
 - Django-based user authentication
@@ -1908,6 +1915,44 @@ When reconnecting:
 - Automatic: After 24 hours of inactivity
 - Manual: Close browser (in-memory state cleared)
 - API: POST to `/cleanup_session/` or `/clear_session_state/`
+
+---
+
+## Open in... External Editors
+
+Tlamatini includes an **"Open in..."** dropdown button in the navigation bar that lets you open the currently loaded context directory directly in an external editor or file manager, without leaving the application.
+
+### Supported Applications
+
+| Application     | Detection Method                                                                 |
+|-----------------|----------------------------------------------------------------------------------|
+| **File Explorer** | Always available (Windows built-in)                                            |
+| **VS Code**       | Detected via the `code` command on PATH, or common Windows install locations   |
+| **Antigravity**   | Detected via the `antigravity` command on PATH, or common Windows install locations |
+
+Only applications that are actually installed on the system will appear in the dropdown. File Explorer is always shown.
+
+### How to Use
+
+1. **Load a directory as context** using the **Context > Set directory as context** menu entry.
+2. Wait for the context to be fully loaded (the context bar at the top will display the directory path).
+3. The **"Open in..."** dropdown becomes enabled in the navigation bar (between the Context and MCPs menus).
+4. Click **"Open in..."** and select the desired application from the dropdown.
+5. The context directory will open in a new window of the selected application.
+
+### Behavior Details
+
+- **Visibility:** The dropdown only appears if at least one supported application is detected on the system (File Explorer is always detected on Windows, so the dropdown is always visible).
+- **Disabled state:** The dropdown is grayed out and non-interactive until a directory is successfully loaded as context. File-based contexts do not enable the dropdown.
+- **During long operations:** The dropdown is automatically disabled while the LLM is processing a request or a context is being loaded, and re-enabled once the operation completes.
+- **Reconnect / Clear context:** If the context is cleared or the session is reconnected, the dropdown returns to its disabled state.
+
+### API Endpoints
+
+The feature relies on two HTTP endpoints:
+
+- **`GET /agent/detect_installed_apps/`** — Returns a JSON list of applications and whether each is available on the system.
+- **`POST /agent/open_in_app/`** — Accepts `app_id` and `directory` fields, validates the directory, and launches the requested application with that directory.
 
 ---
 
