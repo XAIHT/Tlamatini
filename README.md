@@ -151,7 +151,7 @@ When Tlamatini is built and installed using the installer (or via `build.py`), a
 | Field | Value |
 |-------|-------|
 | **Username** | `user` |
-| **Password** | `user` |
+| **Password** | `changeme` |
 | **Email** | `user@xaiht.com` |
 
 Use these credentials to log in at `http://127.0.0.1:8000/` after installation.
