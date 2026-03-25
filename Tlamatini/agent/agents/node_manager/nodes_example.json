@@ -1,0 +1,79 @@
+[
+  {
+    "id": "local-dev",
+    "host": "localhost",
+    "port": 22,
+    "transport": "ssh",
+    "tags": ["development", "primary"],
+    "roles": ["controller", "builder"]
+  },
+  {
+    "id": "web-server-01",
+    "host": "192.168.1.10",
+    "transport": "ssh",
+    "tags": ["production", "web-tier", "us-east"],
+    "roles": ["webserver", "load-balancer"]
+  },
+  {
+    "id": "web-server-02",
+    "host": "192.168.1.11",
+    "transport": "ssh",
+    "tags": ["production", "web-tier", "us-east"],
+    "roles": ["webserver"]
+  },
+  {
+    "id": "db-primary",
+    "host": "192.168.1.20",
+    "port": 22,
+    "transport": "ssh",
+    "tags": ["production", "data-tier", "critical"],
+    "roles": ["database", "postgres-primary"]
+  },
+  {
+    "id": "db-replica-01",
+    "host": "192.168.1.21",
+    "transport": "ssh",
+    "tags": ["production", "data-tier"],
+    "roles": ["database", "postgres-replica"]
+  },
+  {
+    "id": "win-build-01",
+    "host": "192.168.2.50",
+    "port": 5985,
+    "transport": "winrm",
+    "tags": ["staging", "windows"],
+    "roles": ["builder", "ci-runner"]
+  },
+  {
+    "id": "win-ad-controller",
+    "host": "192.168.2.10",
+    "transport": "winrm",
+    "tags": ["production", "windows", "critical"],
+    "roles": ["active-directory", "dns"]
+  },
+  {
+    "id": "jump-host",
+    "host": "bastion.example.com",
+    "port": 2222,
+    "transport": "ssh",
+    "tags": ["infrastructure", "dmz"],
+    "roles": ["jump-host", "gateway"]
+  },
+  {
+    "host": "10.0.0.99"
+  },
+  {
+    "id": "monitoring-server",
+    "host": "monitor.internal.example.com",
+    "transport": "ssh",
+    "tags": ["infrastructure", "monitoring"],
+    "roles": ["prometheus", "grafana"]
+  },
+  {
+    "id": "gpu-worker-01",
+    "host": "192.168.3.100",
+    "transport": "ssh",
+    "tags": ["compute", "gpu", "ml-training"],
+    "roles": ["gpu-worker", "ml-trainer"]
+  }
+]
