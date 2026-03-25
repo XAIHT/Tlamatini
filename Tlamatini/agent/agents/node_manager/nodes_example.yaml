@@ -1,0 +1,148 @@
+# ============================================================
+# HYPOTHETICAL NODES FILE FOR NODE MANAGER AGENT
+# ============================================================
+# This file defines the inventory of nodes (machines/servers)
+# that the NodeManager will monitor.
+#
+# FORMAT: A top-level YAML list (array) of node objects.
+#         Can also be a .json file with a JSON array.
+#
+# HOW TO USE: Set this in config.yaml under:
+#   inventory:
+#     nodes_file: "nodes_example.yaml"
+#
+# EACH NODE OBJECT FIELDS:
+#   id        - (string) Unique identifier. If omitted, 'host' is used as id.
+#   host      - (string) Hostname or IP to probe. If omitted, 'id' is used.
+#   port      - (int)    Port for TCP probes. Default: 22 (ssh) or 5985 (winrm).
+#   transport - (string) Protocol: "ssh" or "winrm". Default: "ssh".
+#   tags      - (list)   Freeform labels for filtering in the selection config.
+#   roles     - (list)   Functional roles for filtering in the selection config.
+# ============================================================
+
+# --- LOCAL NODE ---
+# The machine where NodeManager itself is running.
+# Capabilities (OS, Python, Git, Docker) are auto-detected for local nodes.
+- id: "local-dev"
+  host: "localhost"
+  port: 22
+  transport: "ssh"
+  tags:
+    - "development"
+    - "primary"
+  roles:
+    - "controller"
+    - "builder"
+
+# --- LINUX SERVERS (SSH) ---
+# Remote Linux machines accessed via SSH on default port 22.
+- id: "web-server-01"
+  host: "192.168.1.10"
+  transport: "ssh"
+  tags:
+    - "production"
+    - "web-tier"
+    - "us-east"
+  roles:
+    - "webserver"
+    - "load-balancer"
+
+- id: "web-server-02"
+  host: "192.168.1.11"
+  transport: "ssh"
+  tags:
+    - "production"
+    - "web-tier"
+    - "us-east"
+  roles:
+    - "webserver"
+
+- id: "db-primary"
+  host: "192.168.1.20"
+  port: 22
+  transport: "ssh"
+  tags:
+    - "production"
+    - "data-tier"
+    - "critical"
+  roles:
+    - "database"
+    - "postgres-primary"
+
+- id: "db-replica-01"
+  host: "192.168.1.21"
+  transport: "ssh"
+  tags:
+    - "production"
+    - "data-tier"
+  roles:
+    - "database"
+    - "postgres-replica"
+
+# --- WINDOWS SERVERS (WinRM) ---
+# Remote Windows machines accessed via WinRM (ports 5985/5986).
+- id: "win-build-01"
+  host: "192.168.2.50"
+  port: 5985
+  transport: "winrm"
+  tags:
+    - "staging"
+    - "windows"
+  roles:
+    - "builder"
+    - "ci-runner"
+
+- id: "win-ad-controller"
+  host: "192.168.2.10"
+  transport: "winrm"
+  tags:
+    - "production"
+    - "windows"
+    - "critical"
+  roles:
+    - "active-directory"
+    - "dns"
+
+# --- CUSTOM PORT EXAMPLE ---
+# An SSH server running on a non-standard port.
+- id: "jump-host"
+  host: "bastion.example.com"
+  port: 2222
+  transport: "ssh"
+  tags:
+    - "infrastructure"
+    - "dmz"
+  roles:
+    - "jump-host"
+    - "gateway"
+
+# --- MINIMAL NODE ---
+# Only 'host' is required. Everything else gets defaults:
+#   id = host, port = 22, transport = "ssh", tags = [], roles = []
+- host: "10.0.0.99"
+
+# --- DNS HOSTNAME EXAMPLE ---
+# You can use FQDNs instead of IPs.
+- id: "monitoring-server"
+  host: "monitor.internal.example.com"
+  transport: "ssh"
+  tags:
+    - "infrastructure"
+    - "monitoring"
+  roles:
+    - "prometheus"
+    - "grafana"
+
+# --- GPU COMPUTE NODE ---
+# A node with GPU hardware. Enable detect_gpu in config.yaml
+# capabilities section to auto-detect NVIDIA GPUs.
+- id: "gpu-worker-01"
+  host: "192.168.3.100"
+  transport: "ssh"
+  tags:
+    - "compute"
+    - "gpu"
+    - "ml-training"
+  roles:
+    - "gpu-worker"
+    - "ml-trainer"
