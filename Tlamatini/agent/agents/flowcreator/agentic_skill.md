@@ -269,6 +269,8 @@ system_prompt: |
   - `operation`: "copy" (options: "copy", "move")
   - `source_files`: ["C:/Temp/Source/*.txt"] (list of file glob patterns — formulate based on the flow's objective)
   - `destination_folder`: "C:/Temp/Dest" (formulate based on the flow's objective)
+  - `recursive`: false (when true, scans subdirectories recursively for matching files)
+  - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "exe, msi, .profile, main.cpp")
   - `source_agents`: [] (upstream agents — for canvas connection tracking and event monitoring)
   - `target_agents`: [] (downstream agents to start after file operation)
   - `trigger_event_string`: "EVENT DETECTED" (only used when trigger_mode is "event")
@@ -281,6 +283,8 @@ system_prompt: |
 - **Config parameters**:
   - `trigger_mode`: "immediate" (options: "immediate", "event")
   - `files_to_delete`: ["C:/Temp/*.tmp"] (list of file glob patterns — formulate based on the flow's objective)
+  - `recursive`: false (when true, scans subdirectories recursively for matching files)
+  - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "exe, msi, .profile")
   - `source_agents`: [] (upstream agents — for canvas connection tracking and event monitoring)
   - `target_agents`: [] (downstream agents to start after deletion)
   - `trigger_event_string`: "EVENT DETECTED"
@@ -671,6 +675,8 @@ system_prompt: |
 - **Config parameters**:
   - `path_filenames`: "" (file path or wildcard pattern, e.g. "C:\temp\*.docx" or "D:\docs\report.pdf")
   - `reading_type`: "fast" (one of: "fast", "complete", "summarized")
+  - `recursive`: false (when true, scans subdirectories recursively for matching files)
+  - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "exe, msi, .profile, main.cpp")
   - `source_agents`: [] (upstream agents — for canvas connection tracking, informative only)
   - `target_agents`: [] (downstream agents to start after ALL files are processed)
   - `llm.host`: "http://localhost:11434" (LLM host, used only in summarized mode)
@@ -682,6 +688,8 @@ system_prompt: |
 - **Starts other agents**: YES
 - **Config parameters**:
   - `images_pathfilenames`: "" (wildcards, directory path, File-Interpreter pool name, or single file)
+  - `recursive`: false (when true, scans subdirectories recursively for images)
+  - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "svg, ico, thumbnail.png")
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after ALL images are processed)
   - `llm.host`: "http://localhost:11434" (Ollama-compatible API URL)
@@ -780,6 +788,8 @@ system_prompt: |
 - **Starts other agents**: YES (always, regardless of extraction result)
 - **Config parameters**:
   - `path_filenames`: "" (file path or wildcard pattern, e.g. `C:\data\*.txt`, `/tmp/report.pdf`)
+  - `recursive`: false (when true, scans subdirectories recursively for matching files)
+  - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "exe, msi, .profile, main.cpp")
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after extraction attempt)
 

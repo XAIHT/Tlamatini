@@ -95,9 +95,41 @@ def resolve_log_paths(source_agents: List[str]) -> List[str]:
             
     return resolved_paths
 
-def perform_file_operations(operation: str, sources_list: List[str], destination_folder: str):
+def parse_exclusions(filetype_exclusions: str) -> tuple:
+    """
+    Parse a comma-separated exclusions string into (excluded_extensions, excluded_filenames).
+    """
+    excluded_extensions = set()
+    excluded_filenames = set()
+    if not filetype_exclusions or not filetype_exclusions.strip():
+        return excluded_extensions, excluded_filenames
+    for entry in filetype_exclusions.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if '.' in entry and not entry.startswith('.'):
+            excluded_filenames.add(entry.lower())
+        elif entry.startswith('.') and len(entry) > 1 and '.' not in entry[1:]:
+            excluded_filenames.add(entry.lower())
+        else:
+            ext = entry.lower() if entry.startswith('.') else f".{entry.lower()}"
+            excluded_extensions.add(ext)
+    return excluded_extensions, excluded_filenames
+
+
+def is_excluded(file_path: str, excluded_extensions: set, excluded_filenames: set) -> bool:
+    """Check if a file matches any exclusion rule."""
+    if not excluded_extensions and not excluded_filenames:
+        return False
+    basename = os.path.basename(file_path).lower()
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in excluded_extensions or basename in excluded_filenames
+
+
+def perform_file_operations(operation: str, sources_list: List[str], destination_folder: str, recursive: bool = False, excluded_extensions: set = None, excluded_filenames: set = None):
     """
     Executes the move/copy operation for the given list of source patterns.
+    When recursive=True, injects **/ to scan subdirectories.
     """
     if not os.path.exists(destination_folder):
         try:
@@ -115,12 +147,18 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
         # Enhancement: Treat *.* as * to include items without extensions (common Windows expectation)
         if original_pattern.endswith('*.*'):
              patterns_to_check.append(original_pattern[:-3] + '*')
-        
+
         processed_paths = set()
 
         for pattern in patterns_to_check:
+            # When recursive, inject **/ before the filename portion if not already present
+            if recursive and '**' not in pattern and any(c in pattern for c in ['*', '?']):
+                parent = os.path.dirname(pattern)
+                filename_part = os.path.basename(pattern)
+                pattern = os.path.join(parent, '**', filename_part) if parent else os.path.join('**', filename_part)
+                logging.info(f"🔄 Recursive mode: expanded pattern to '{pattern}'")
             # Handle wildcards
-            files_found = glob.glob(pattern)
+            files_found = glob.glob(pattern, recursive=recursive)
             if not files_found:
                  if pattern == original_pattern: # Only warn if original pattern yielded nothing
                     logging.warning(f"⚠️ No files found for pattern: {pattern}")
@@ -130,6 +168,10 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
                 if file_path in processed_paths:
                     continue
                 processed_paths.add(file_path)
+
+                if is_excluded(file_path, excluded_extensions or set(), excluded_filenames or set()):
+                    logging.info(f"🚫 Excluded: {file_path}")
+                    continue
 
                 filename = os.path.basename(file_path)
                 dest_path = os.path.join(destination_folder, filename)
@@ -201,7 +243,10 @@ def main():
     source_patterns = config.get('source_files', []) # List of file paths/patterns
     source_agents = config.get('source_agents', []) # List of source agents for event triggering
     destination = config.get('destination_folder', '')
-    
+    recursive = config.get('recursive', False)
+    filetype_exclusions = config.get('filetype_exclusions', '')
+    excl_exts, excl_names = parse_exclusions(filetype_exclusions)
+
     target_agents = config.get('target_agents', [])
     trigger_event_string = config.get('trigger_event_string', 'EVENT DETECTED')
     poll_interval = config.get('poll_interval', 5)
@@ -209,6 +254,9 @@ def main():
     logging.info("🔥 MOVER AGENT STARTED")
     logging.info(f"⚙️ Mode: {trigger_mode}")
     logging.info(f"⚙️ Operation: {operation}")
+    logging.info(f"🔄 Recursive: {recursive}")
+    if filetype_exclusions:
+        logging.info(f"🚫 Exclusions: {filetype_exclusions}")
     logging.info(f"📂 Destination: {destination}")
     logging.info(f"🎯 Targets: {target_agents}")
 
@@ -229,9 +277,9 @@ def main():
 
         if trigger_mode.lower() == 'immediate':
             logging.info("🚀 Executing immediate operation...")
-            
+
             try:
-                perform_file_operations(operation, source_patterns, destination)
+                perform_file_operations(operation, source_patterns, destination, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names)
             except Exception as e:
                 logging.error(f"❌ Operation terminated with error: {e}")
                 logging.warning("⚠️ Proceeding to downstream agents despite errors...")
@@ -285,7 +333,7 @@ def main():
 
                 if any_event_triggered:
                     logging.info("🚀 Executing operation...")
-                    perform_file_operations(operation, source_patterns, destination)
+                    perform_file_operations(operation, source_patterns, destination, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names)
                     
                     # Trigger downstream agents
                     if target_agents:

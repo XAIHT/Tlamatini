@@ -267,10 +267,11 @@ def query_ollama(host: str, model: str, system_prompt: str, context: str) -> str
 # File Resolution
 # ============================================================
 
-def resolve_files(path_filenames: str) -> list:
+def resolve_files(path_filenames: str, recursive: bool = False) -> list:
     """
     Resolve path_filenames into a list of actual file paths.
     Supports wildcards (e.g. 'C:\\temp\\*.docx') or single file paths.
+    When recursive=True, injects '**/' to scan subdirectories.
     """
     path_filenames = path_filenames.strip()
     if not path_filenames:
@@ -281,18 +282,32 @@ def resolve_files(path_filenames: str) -> list:
     has_wildcard = any(c in path_filenames for c in ['*', '?'])
 
     if has_wildcard:
+        pattern = path_filenames
+        # When recursive, inject **/ before the filename portion if not already present
+        if recursive and '**' not in pattern:
+            parent = os.path.dirname(pattern)
+            filename_part = os.path.basename(pattern)
+            pattern = os.path.join(parent, '**', filename_part) if parent else os.path.join('**', filename_part)
+            logging.info(f"🔄 Recursive mode: expanded pattern to '{pattern}'")
         # Use glob to expand wildcards
-        matched_files = glob.glob(path_filenames, recursive=True)
+        matched_files = glob.glob(pattern, recursive=recursive)
         if not matched_files:
-            logging.warning(f"⚠️ No files matched the pattern: {path_filenames}")
+            logging.warning(f"⚠️ No files matched the pattern: {pattern}")
             return []
         # Filter out directories, keep only files
         matched_files = [f for f in matched_files if os.path.isfile(f)]
-        logging.info(f"📂 Pattern '{path_filenames}' matched {len(matched_files)} file(s)")
+        logging.info(f"📂 Pattern '{pattern}' matched {len(matched_files)} file(s)")
         return sorted(matched_files)
     else:
         # Single file path or bare directory
         if os.path.isdir(path_filenames):
+            if recursive:
+                # Recursive scan of entire directory tree
+                pattern = os.path.join(path_filenames, '**', '*')
+                matched_files = glob.glob(pattern, recursive=True)
+                matched_files = [f for f in matched_files if os.path.isfile(f)]
+                logging.info(f"📂 Recursive scan of '{path_filenames}' found {len(matched_files)} file(s)")
+                return sorted(matched_files)
             logging.error(
                 f"❌ path_filenames '{path_filenames}' is a directory without wildcards. "
                 f"Please add a wildcard pattern, e.g.: {path_filenames}\\*.docx"
@@ -302,6 +317,51 @@ def resolve_files(path_filenames: str) -> list:
             logging.error(f"❌ File not found or not readable: {path_filenames}")
             return []
         return [path_filenames]
+
+
+def parse_exclusions(filetype_exclusions: str) -> tuple:
+    """
+    Parse a comma-separated exclusions string into (excluded_extensions, excluded_filenames).
+    Entries with a dot and no other path chars are treated as extensions (e.g. "exe" -> ".exe").
+    Entries that look like filenames (e.g. "main.cpp", ".profile") go into excluded_filenames.
+    """
+    excluded_extensions = set()
+    excluded_filenames = set()
+    if not filetype_exclusions or not filetype_exclusions.strip():
+        return excluded_extensions, excluded_filenames
+    for entry in filetype_exclusions.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        # If it contains a dot and has chars after it, treat as filename (e.g. "main.cpp", ".profile")
+        if '.' in entry and not entry.startswith('.'):
+            excluded_filenames.add(entry.lower())
+        elif entry.startswith('.') and len(entry) > 1 and '.' not in entry[1:]:
+            # Dotfile like ".profile" — treat as filename
+            excluded_filenames.add(entry.lower())
+        else:
+            # Bare extension like "exe", "msi" — normalize to ".exe"
+            ext = entry.lower() if entry.startswith('.') else f".{entry.lower()}"
+            excluded_extensions.add(ext)
+    return excluded_extensions, excluded_filenames
+
+
+def apply_exclusions(files: list, excluded_extensions: set, excluded_filenames: set) -> list:
+    """Filter out files matching excluded extensions or filenames."""
+    if not excluded_extensions and not excluded_filenames:
+        return files
+    original_count = len(files)
+    filtered = []
+    for f in files:
+        basename = os.path.basename(f).lower()
+        ext = os.path.splitext(f)[1].lower()
+        if ext in excluded_extensions or basename in excluded_filenames:
+            continue
+        filtered.append(f)
+    excluded_count = original_count - len(filtered)
+    if excluded_count > 0:
+        logging.info(f"🚫 Excluded {excluded_count} file(s) by filetype_exclusions filter")
+    return filtered
 
 
 # ============================================================
@@ -810,6 +870,8 @@ def main():
     try:
         path_filenames = config.get('path_filenames', '')
         reading_type = config.get('reading_type', 'fast').strip().lower()
+        recursive = config.get('recursive', False)
+        filetype_exclusions = config.get('filetype_exclusions', '')
         source_agents = config.get('source_agents', [])
         target_agents = config.get('target_agents', [])
         llm_config = config.get('llm', {})
@@ -819,6 +881,9 @@ def main():
         logging.info("📄 FILE-INTERPRETER AGENT STARTED")
         logging.info(f"📂 Path/pattern: {path_filenames}")
         logging.info(f"📋 Reading type: {reading_type}")
+        logging.info(f"🔄 Recursive: {recursive}")
+        if filetype_exclusions:
+            logging.info(f"🚫 Exclusions: {filetype_exclusions}")
         logging.info(f"📥 Source agents: {source_agents}")
         logging.info(f"🎯 Target agents: {target_agents}")
         if reading_type == 'summarized':
@@ -831,7 +896,9 @@ def main():
             return
 
         # Resolve files
-        files = resolve_files(path_filenames)
+        files = resolve_files(path_filenames, recursive=recursive)
+        excl_exts, excl_names = parse_exclusions(filetype_exclusions)
+        files = apply_exclusions(files, excl_exts, excl_names)
         if not files:
             logging.error("❌ No files to process. Agent stopping.")
             return

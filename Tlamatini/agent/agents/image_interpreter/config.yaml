@@ -20,6 +20,14 @@
 #   - Single file: "D:\photos\sunset.jpg"
 images_pathfilenames: ""
 
+# When true, scan subdirectories recursively for images.
+# e.g. "C:\images\*.jpg" becomes "C:\images\**\*.jpg"
+recursive: false
+
+# Comma-separated list of extensions and/or filenames to exclude from processing.
+# Examples: "svg, ico, thumbnail.png"
+filetype_exclusions: ""
+
 # Source agents (informative only — for canvas connection tracking)
 source_agents: []
 

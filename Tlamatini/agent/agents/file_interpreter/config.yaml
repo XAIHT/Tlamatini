@@ -19,6 +19,14 @@
 # Or a single file path: e.g. "D:\temp\my-wedding.pptx"
 path_filenames: ""
 
+# When true, scan subdirectories recursively from the base directory.
+# e.g. "C:\temp\*.docx" becomes "C:\temp\**\*.docx"
+recursive: false
+
+# Comma-separated list of extensions and/or filenames to exclude from processing.
+# Examples: "exe, msi, .profile, main.cpp"
+filetype_exclusions: ""
+
 # Reading type: fast | complete | summarized
 # - fast: extract raw text only (no images)
 # - complete: extract text + images (images saved to 'images/' subdirectory)
