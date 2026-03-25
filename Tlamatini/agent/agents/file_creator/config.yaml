@@ -1,0 +1,11 @@
+# File-Creator Agent Configuration
+
+# File to create (path + filename + extension)
+file_path: ""
+
+# Raw content to write into the file
+content: ""
+
+# Connection fields
+source_agents: []
+target_agents: []

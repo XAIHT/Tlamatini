@@ -925,6 +925,44 @@ async function updateGatewayRelayerConnection(agentId, targetAgentId, action, ty
     }
 }
 
+async function updateFileCreatorConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_file_creator_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- File-Creator ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update File-Creator ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating File-Creator ${agentId}:`, error);
+    }
+}
+
+async function updateFileExtractorConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_file_extractor_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- File-Extractor ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update File-Extractor ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating File-Extractor ${agentId}:`, error);
+    }
+}
+
 async function updateNodeManagerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
     try {
         const response = await fetch(`/agent/update_node_manager_connection/${agentId}/`, {

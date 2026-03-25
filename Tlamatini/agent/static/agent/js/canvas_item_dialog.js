@@ -181,9 +181,9 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 label.style.color = "#ddd";
 
                 let input;
-                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt' || key === 'user_instructions')) {
+                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt' || key === 'user_instructions' || key === 'content')) {
                     input = document.createElement('textarea');
-                    input.rows = 4;
+                    input.rows = key === 'content' ? 6 : 4;
                 } else {
                     input = document.createElement('input');
                     input.type = typeof val === 'number' ? 'number' : 'text';

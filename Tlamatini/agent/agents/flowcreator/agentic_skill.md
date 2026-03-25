@@ -46,7 +46,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -763,6 +763,25 @@ system_prompt: |
   - `triggers.enabled`: true (enable event triggers)
   - `triggers.trigger_events`: ["NODE_ONLINE", "NODE_OFFLINE", "NODE_DEGRADED", "NODE_CAPABILITIES_CHANGED"]
   - `security.allow_command_probes`: false (gate remote command execution)
+
+### 46. File-Creator
+- **Purpose**: Short-running infrastructure agent that creates a file with specified content (path + filename + extension, raw content), then triggers downstream target_agents regardless of whether the file creation succeeded or failed, then stops itself. Does NOT use any LLM.
+- **Pool name pattern**: `file_creator_<n>`
+- **Starts other agents**: YES (always, regardless of file creation result)
+- **Config parameters**:
+  - `file_path`: "" (full path + filename + extension of the file to create)
+  - `content`: "" (raw content to write into the file)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after file creation attempt)
+
+### 47. File-Extractor
+- **Purpose**: Short-running infrastructure agent that reads/loads one or more files (supports wildcards) and extracts their text content using the same file type support as File-Interpreter. For unknown file types, extracts printable strings (like the Linux `strings` command). Logs each file's content in the `INI_FILE/END_FILE` format, then triggers downstream target_agents regardless of extraction result, then stops itself. Does NOT use any LLM.
+- **Pool name pattern**: `file_extractor_<n>`
+- **Starts other agents**: YES (always, regardless of extraction result)
+- **Config parameters**:
+  - `path_filenames`: "" (file path or wildcard pattern, e.g. `C:\data\*.txt`, `/tmp/report.pdf`)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after extraction attempt)
 
 ---
 
