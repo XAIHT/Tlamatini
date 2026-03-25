@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -417,6 +417,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'gatewayer': await updateGatewayerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'gateway relayer': await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'node manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'file-creator': await updateFileCreatorConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'file-extractor': await updateFileExtractorConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -471,6 +473,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'gatewayer': await updateGatewayerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gateway relayer': await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'node manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'file-creator': await updateFileCreatorConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'file-extractor': await updateFileExtractorConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 

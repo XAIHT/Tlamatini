@@ -1,0 +1,8 @@
+# File-Extractor Agent Configuration
+
+# File path or wildcard pattern (e.g. C:\temp\*.docx, /data/reports/*.pdf)
+path_filenames: ""
+
+# Connection fields
+source_agents: []
+target_agents: []

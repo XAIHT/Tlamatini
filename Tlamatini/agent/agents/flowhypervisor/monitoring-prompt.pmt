@@ -96,6 +96,8 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
 
   INFRASTRUCTURE / REGISTRY:
   • "🖧 NODE MANAGER AGENT STARTED"
+  • "📝 FILE-CREATOR AGENT STARTED"
+  • "📦 FILE-EXTRACTOR AGENT STARTED"
 
   SYSTEM:
   • "🛡️ FLOWHYPERVISOR AGENT STARTED"
@@ -116,6 +118,8 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "Gatewayer agent finished." / "GatewayRelayer agent finished." — long-running ingress shutdown
   • "NodeManager agent shutting down." — NodeManager long-running agent stopping
   • "FlowCreator agent finished successfully." — FlowCreator completed flow generation
+  • "File-Creator agent finished." — File-Creator completed file creation attempt
+  • "File-Extractor agent finished." — File-Extractor completed text extraction attempt
 
   AGENT-SPECIFIC COMPLETION DETAILS:
   • Executer: "🏁 Executer agent finished. Result: SUCCESS" or "Result: FAILED"
@@ -272,7 +276,7 @@ SHORT-LIVED agents (start, do work, exit — typically finish in seconds to a fe
   Starter, Ender, Cleaner, Shoter, Executer, Pythonxer, Telegramer, Ssher, Scper,
   Sleeper, Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser,
   Crawler, FlowCreator, Asker, Counter, Summarizer, Mouser, File-Interpreter,
-  Image-Interpreter
+  Image-Interpreter, File-Creator, File-Extractor
 
 LONG-RUNNING agents (start, poll/listen continuously, exit only when externally stopped or a one-shot pattern fires):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -298,6 +302,8 @@ TIMING EXPECTATIONS:
   • Gatewayer/GatewayRelayer: HTTP servers — run for entire flow lifetime, produce output only when events arrive (silence between events is NORMAL)
   • NodeManager: Long-running infrastructure agent — polls nodes at configured heartbeat interval (default 30s). Silence between poll cycles is NORMAL. Produces output on state transitions and capability changes only
   • Counter: Near-instant (increment + route); should finish in < 1 second
+  • File-Creator: Near-instant (file write + trigger downstream); should finish in < 5 seconds
+  • File-Extractor: Quick extraction (read files + extract text + trigger downstream); should finish in < 30 seconds depending on file count/size
   • AND/OR gates: Long-running; poll source logs until gate condition met (both patterns for AND, any pattern for OR)
 
 ═══════════════════════════════════════

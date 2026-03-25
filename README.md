@@ -80,7 +80,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 46 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 48 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -193,7 +193,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 46 pre-built agent types for diverse automation tasks
+- 48 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -426,6 +426,8 @@ Tlamatini/
 │   │   │   ├── gatewayer/         # Inbound gateway: HTTP webhook / folder-drop ingress
 │   │   │   ├── gateway_relayer/  # Ingress relay: bridges provider webhooks into Gatewayer
 │   │   │   ├── node_manager/     # Infrastructure registry and node supervision agent
+│   │   │   ├── file_creator/    # File creation utility agent
+│   │   │   ├── file_extractor/  # File text extraction utility agent
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1167,7 +1169,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **44 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **45 agent types** total.
 
 ### Agent Architecture
 
@@ -1183,7 +1185,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1274,6 +1276,8 @@ Agents are classified as:
 | **gatewayer** | Inbound gateway agent. Receives external events via HTTP webhook or folder-drop, normalizes into canonical envelopes, persists to disk, queues, and dispatches to downstream agents. HTTP ingress performs authentication/validation and optional dedup; folder-drop performs best-effort parsing plus persistence/dispatch. Long-running active ingress agent. | `http.port`: 8787<br>`auth.mode`: bearer<br>`storage.output_dir`: Event artifact path<br>`target_agents`: Downstream agents |
 | **gateway_relayer** | Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format. Validates upstream signatures, transforms payloads, HMAC-signs the forwarded body, and relays to a configured Gatewayer endpoint. Does NOT use any LLM. | `listen_port`: 9090<br>`provider_mode`: github<br>`forward_url`: Gatewayer endpoint<br>`forward_hmac_secret`: Gatewayer HMAC secret<br>`target_agents`: Downstream agents |
 | **node_manager** | Long-running infrastructure agent that maintains a live registry of local/remote nodes, probes health (ping, TCP, SSH, WinRM, HTTP), classifies node state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, persists state, exports filtered manifests, and triggers downstream agents on configured node events. | `heartbeat.poll_interval`: 30<br>`inventory.inline_nodes`: Static nodes<br>`triggers.trigger_events`: Event types<br>`target_agents`: Downstream agents |
+| **file_creator** | Short-running infrastructure agent that creates a file with specified content, then triggers downstream agents regardless of file creation result. | `file_path`: Target file path<br>`content`: Raw file content<br>`target_agents`: Downstream agents |
+| **file_extractor** | Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content using the same file type support as file_interpreter, falls back to strings extraction for unknown types, then triggers downstream agents regardless of extraction result. | `path_filenames`: File path or wildcard pattern<br>`target_agents`: Downstream agents |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -1865,6 +1869,8 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_gatewayer_connection/<agent_name>/` | POST | Update gatewayer connections |
 | `/update_gateway_relayer_connection/<agent_name>/` | POST | Update gateway_relayer connections |
 | `/update_node_manager_connection/<agent_name>/` | POST | Update node_manager connections |
+| `/update_file_creator_connection/<agent_name>/` | POST | Update file_creator connections |
+| `/update_file_extractor_connection/<agent_name>/` | POST | Update file_extractor connections |
 
 #### Session & Pool Management
 
@@ -2184,6 +2190,8 @@ Enable verbose logging in config.json:
 | **Gatewayer** | Inbound gateway agent that receives external events via HTTP webhook or folder-drop watcher, persists them as event artifacts, and dispatches to downstream agents. HTTP ingress authenticates/validates; folder-drop is best-effort parsing plus dispatch |
 | **GatewayRelayer** | Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format without modifying Gatewayer itself |
 | **NodeManager** | Long-running infrastructure agent that maintains a live registry of local/remote nodes, probes health, classifies state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, and triggers downstream agents on node events |
+| **File-Creator** | Short-running infrastructure agent that creates a file with specified content (path + filename, raw content), triggers downstream agents regardless of file creation result, then stops |
+| **File-Extractor** | Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content for all file types supported by File-Interpreter, uses strings extraction for unknown binary types, triggers downstream agents regardless of result, then stops |
 
 ---
 
@@ -2230,6 +2238,8 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added File-Extractor Agent** - Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content for all file types File-Interpreter supports, uses strings-like extraction for unknown binary types, logs content in INI_FILE/END_FILE format, triggers downstream agents regardless of result, then stops itself
+- **Added File-Creator Agent** - Short-running infrastructure agent that creates a file with specified content (path + filename + extension, raw content), triggers downstream agents regardless of file creation result, then stops itself
 - **Added NodeManager Agent** - Long-running infrastructure agent that maintains a live registry of local and remote Windows/Linux nodes, probes health via ping, TCP, SSH, WinRM, and HTTP checks, classifies node state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, persists normalized node state to disk via reanim files, exports filtered selected-node manifests, and triggers downstream agents on configured node events. Supports static inventory, optional discovery, parallel probing, per-node file export, and event-based triggers
 - **Added GatewayRelayer Agent** - Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format. Validates upstream X-Hub-Signature-256 signatures, transforms payloads into Gatewayer-compatible canonical input, HMAC-signs the forwarded body, and relays to a configured Gatewayer HTTP endpoint. Supports configurable event/ref filtering, ping handling, TLS, and downstream agent triggering after successful forwards
 - **Added Gatewayer Agent** - Inbound gateway agent for receiving external events via HTTP webhook or folder-drop watcher. Validates, authenticates, normalizes into canonical envelopes, persists to disk, queues with dedup, and dispatches to downstream target_agents. Supports bearer/HMAC auth, TLS, crash-recovery via reanim files, and configurable event retention

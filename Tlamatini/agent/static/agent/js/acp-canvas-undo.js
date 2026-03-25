@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -312,6 +312,18 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'node manager') {
                 await updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'file-creator') {
+                await updateFileCreatorConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'file-creator') {
+                await updateFileCreatorConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'file-extractor') {
+                await updateFileExtractorConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'file-extractor') {
+                await updateFileExtractorConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -538,6 +550,18 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'node manager') {
         await updateNodeManagerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'file-creator') {
+        await updateFileCreatorConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'file-creator') {
+        await updateFileCreatorConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'file-extractor') {
+        await updateFileExtractorConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'file-extractor') {
+        await updateFileExtractorConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);
