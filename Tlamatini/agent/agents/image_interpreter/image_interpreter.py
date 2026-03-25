@@ -295,7 +295,49 @@ def convert_image_to_base64(image_path: str) -> str:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 
-def resolve_image_paths(images_pathfilenames: str) -> list:
+def parse_exclusions(filetype_exclusions: str) -> tuple:
+    """
+    Parse a comma-separated exclusions string into (excluded_extensions, excluded_filenames).
+    Entries with a dot and no other path chars are treated as extensions (e.g. "exe" -> ".exe").
+    Entries that look like filenames (e.g. "thumbnail.png", ".profile") go into excluded_filenames.
+    """
+    excluded_extensions = set()
+    excluded_filenames = set()
+    if not filetype_exclusions or not filetype_exclusions.strip():
+        return excluded_extensions, excluded_filenames
+    for entry in filetype_exclusions.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if '.' in entry and not entry.startswith('.'):
+            excluded_filenames.add(entry.lower())
+        elif entry.startswith('.') and len(entry) > 1 and '.' not in entry[1:]:
+            excluded_filenames.add(entry.lower())
+        else:
+            ext = entry.lower() if entry.startswith('.') else f".{entry.lower()}"
+            excluded_extensions.add(ext)
+    return excluded_extensions, excluded_filenames
+
+
+def apply_exclusions(files: list, excluded_extensions: set, excluded_filenames: set) -> list:
+    """Filter out files matching excluded extensions or filenames."""
+    if not excluded_extensions and not excluded_filenames:
+        return files
+    original_count = len(files)
+    filtered = []
+    for f in files:
+        basename = os.path.basename(f).lower()
+        ext = os.path.splitext(f)[1].lower()
+        if ext in excluded_extensions or basename in excluded_filenames:
+            continue
+        filtered.append(f)
+    excluded_count = original_count - len(filtered)
+    if excluded_count > 0:
+        logging.info(f"🚫 Excluded {excluded_count} file(s) by filetype_exclusions filter")
+    return filtered
+
+
+def resolve_image_paths(images_pathfilenames: str, recursive: bool = False) -> list:
     """
     Resolve the images_pathfilenames parameter to a list of actual image file paths.
     Supports:
@@ -303,6 +345,7 @@ def resolve_image_paths(images_pathfilenames: str) -> list:
       - Directory path: "C:\\images" (scans for all image types)
       - File-Interpreter agent pool name: "file_interpreter_1"
       - Single file path: "D:\\photos\\sunset.jpg"
+    When recursive=True, scans subdirectories as well.
     """
     if not images_pathfilenames:
         return []
@@ -329,16 +372,28 @@ def resolve_image_paths(images_pathfilenames: str) -> list:
 
     # Check if it's a directory → scan for all image types
     if os.path.isdir(resolved):
-        logging.info(f"📁 Scanning directory for images: {resolved}")
+        scan_type = "Recursively scanning" if recursive else "Scanning"
+        logging.info(f"📁 {scan_type} directory for images: {resolved}")
         image_files = []
+        sub_pattern = '**' if recursive else ''
         for ext in IMAGE_EXTENSIONS:
-            image_files.extend(glob.glob(os.path.join(resolved, f"*{ext}")))
-            image_files.extend(glob.glob(os.path.join(resolved, f"*{ext.upper()}")))
+            if recursive:
+                image_files.extend(glob.glob(os.path.join(resolved, sub_pattern, f"*{ext}"), recursive=True))
+                image_files.extend(glob.glob(os.path.join(resolved, sub_pattern, f"*{ext.upper()}"), recursive=True))
+            else:
+                image_files.extend(glob.glob(os.path.join(resolved, f"*{ext}")))
+                image_files.extend(glob.glob(os.path.join(resolved, f"*{ext.upper()}")))
         return sorted(set(image_files))
 
     # Check if it contains wildcards
     if '*' in resolved or '?' in resolved:
-        matched = glob.glob(resolved)
+        pattern = resolved
+        if recursive and '**' not in pattern:
+            parent = os.path.dirname(pattern)
+            filename_part = os.path.basename(pattern)
+            pattern = os.path.join(parent, '**', filename_part) if parent else os.path.join('**', filename_part)
+            logging.info(f"🔄 Recursive mode: expanded pattern to '{pattern}'")
+        matched = glob.glob(pattern, recursive=recursive)
         return [f for f in matched if os.path.splitext(f)[1].lower() in IMAGE_EXTENSIONS]
 
     # Single file
@@ -476,16 +531,23 @@ def main():
 
     try:
         images_pathfilenames = config.get('images_pathfilenames', '')
+        recursive = config.get('recursive', False)
+        filetype_exclusions = config.get('filetype_exclusions', '')
         target_agents = config.get('target_agents', [])
         llm_config = config.get('llm', {})
 
         logging.info("🖼️ IMAGE-INTERPRETER AGENT STARTED")
         logging.info(f"📁 images_pathfilenames: {images_pathfilenames}")
+        logging.info(f"🔄 Recursive: {recursive}")
+        if filetype_exclusions:
+            logging.info(f"🚫 Exclusions: {filetype_exclusions}")
         logging.info(f"🤖 LLM model: {llm_config.get('model', 'N/A')} @ {llm_config.get('host', 'N/A')}")
         logging.info(f"🎯 Targets: {target_agents}")
 
         # Resolve image paths
-        image_files = resolve_image_paths(images_pathfilenames)
+        image_files = resolve_image_paths(images_pathfilenames, recursive=recursive)
+        excl_exts, excl_names = parse_exclusions(filetype_exclusions)
+        image_files = apply_exclusions(image_files, excl_exts, excl_names)
 
         if not image_files:
             logging.warning("⚠️ No image files found to process.")

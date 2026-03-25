@@ -3,6 +3,14 @@
 # File path or wildcard pattern (e.g. C:\temp\*.docx, /data/reports/*.pdf)
 path_filenames: ""
 
+# When true, scan subdirectories recursively from the base directory.
+# e.g. "C:\temp\*.docx" becomes "C:\temp\**\*.docx"
+recursive: false
+
+# Comma-separated list of extensions and/or filenames to exclude from extraction.
+# Examples: "exe, msi, .profile, main.cpp"
+filetype_exclusions: ""
+
 # Connection fields
 source_agents: []
 target_agents: []

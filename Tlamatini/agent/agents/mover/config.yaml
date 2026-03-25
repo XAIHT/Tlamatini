@@ -3,6 +3,8 @@ operation: "copy" # Options: "move", "copy"
 source_files:
   - "C:/Temp/Source/*.txt"
 destination_folder: "C:/Temp/MoverDest"
+recursive: false # When true, scan subdirectories recursively for matching files
+filetype_exclusions: "" # Comma-separated extensions/filenames to exclude (e.g. "exe, msi, .profile")
 source_agents: [] # List of connected agent names (e.g., ["monitor_log_1"])
 target_agents: [] # List of downstream agents to trigger
 trigger_event_string: "EVENT DETECTED"
