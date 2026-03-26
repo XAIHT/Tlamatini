@@ -105,6 +105,9 @@ urlpatterns = [
     path('update_node_manager_connection/<str:agent_name>/', secure_post(views.update_node_manager_connection_view), name='update_node_manager_connection'),
     path('update_file_creator_connection/<str:agent_name>/', secure_post(views.update_file_creator_connection_view), name='update_file_creator_connection'),
     path('update_file_extractor_connection/<str:agent_name>/', secure_post(views.update_file_extractor_connection_view), name='update_file_extractor_connection'),
+    path('update_kyber_keygen_connection/<str:agent_name>/', secure_post(views.update_kyber_keygen_connection_view), name='update_kyber_keygen_connection'),
+    path('update_kyber_cipher_connection/<str:agent_name>/', secure_post(views.update_kyber_cipher_connection_view), name='update_kyber_cipher_connection'),
+    path('update_kyber_decipher_connection/<str:agent_name>/', secure_post(views.update_kyber_decipher_connection_view), name='update_kyber_decipher_connection'),
     path('detect_installed_apps/', secure_get(views.detect_installed_apps_view), name='detect_installed_apps'),
     path('open_in_app/', secure_post(views.open_in_app_view), name='open_in_app'),
 ]

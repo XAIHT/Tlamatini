@@ -981,3 +981,60 @@ async function updateNodeManagerConnection(agentId, targetAgentId, action, type 
         console.error(`--- Error updating NodeManager ${agentId}:`, error);
     }
 }
+
+async function updateKyberKeygenConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_kyber_keygen_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Kyber-KeyGen ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Kyber-KeyGen ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Kyber-KeyGen ${agentId}:`, error);
+    }
+}
+
+async function updateKyberCipherConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_kyber_cipher_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Kyber-Cipher ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Kyber-Cipher ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Kyber-Cipher ${agentId}:`, error);
+    }
+}
+
+async function updateKyberDecipherConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_kyber_decipher_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Kyber-DeCipher ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Kyber-DeCipher ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Kyber-DeCipher ${agentId}:`, error);
+    }
+}

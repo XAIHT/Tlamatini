@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -324,6 +324,24 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'file-extractor') {
                 await updateFileExtractorConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'kyber-keygen') {
+                await updateKyberKeygenConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'kyber-keygen') {
+                await updateKyberKeygenConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'kyber-cipher') {
+                await updateKyberCipherConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'kyber-cipher') {
+                await updateKyberCipherConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'kyber-decipher') {
+                await updateKyberDecipherConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'kyber-decipher') {
+                await updateKyberDecipherConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -562,6 +580,24 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'file-extractor') {
         await updateFileExtractorConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'kyber-keygen') {
+        await updateKyberKeygenConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'kyber-keygen') {
+        await updateKyberKeygenConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'kyber-cipher') {
+        await updateKyberCipherConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'kyber-cipher') {
+        await updateKyberCipherConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'kyber-decipher') {
+        await updateKyberDecipherConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'kyber-decipher') {
+        await updateKyberDecipherConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

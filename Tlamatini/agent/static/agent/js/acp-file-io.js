@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -419,6 +419,9 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'node manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'file-creator': await updateFileCreatorConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'file-extractor': await updateFileExtractorConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'kyber-keygen': await updateKyberKeygenConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'kyber-cipher': await updateKyberCipherConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'kyber-decipher': await updateKyberDecipherConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -475,6 +478,9 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'node manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-creator': await updateFileCreatorConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-extractor': await updateFileExtractorConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'kyber-keygen': await updateKyberKeygenConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'kyber-cipher': await updateKyberCipherConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'kyber-decipher': await updateKyberDecipherConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 

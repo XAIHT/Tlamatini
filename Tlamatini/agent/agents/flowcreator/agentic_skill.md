@@ -793,6 +793,39 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after extraction attempt)
 
+### 48. Kyber-KeyGen
+- **Purpose**: Short-running infrastructure deterministic agent that generates a CRYSTALS-Kyber public/private key pair and logs them in base64 format. Supports Kyber-512, Kyber-768, and Kyber-1024 variants. Does NOT use any LLM.
+- **Pool name pattern**: `kyber_keygen_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `kyber_variant`: "kyber-768" (one of: kyber-512, kyber-768, kyber-1024)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after key generation)
+
+### 49. Kyber-Cipher
+- **Purpose**: Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key. Performs Kyber encapsulation to derive a shared secret, then uses AES-256-CTR to encrypt the buffer. Logs the encapsulation, initialization vector, and cipher text in base64 format. Does NOT use any LLM.
+- **Pool name pattern**: `kyber_cipher_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `kyber_variant`: "kyber-768" (one of: kyber-512, kyber-768, kyber-1024)
+  - `public_key`: "" (Kyber public key in base64 format)
+  - `buffer`: "" (plaintext to encrypt)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after encryption)
+
+### 50. Kyber-DeCipher
+- **Purpose**: Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key. Performs Kyber decapsulation to recover the shared secret, then uses AES-256-CTR to decrypt the cipher text. Logs the deciphered buffer in its original format. Does NOT use any LLM.
+- **Pool name pattern**: `kyber_decipher_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `kyber_variant`: "kyber-768" (one of: kyber-512, kyber-768, kyber-1024)
+  - `private_key`: "" (Kyber private key in base64 format)
+  - `encapsulation`: "" (Kyber encapsulation/ciphertext in base64 format)
+  - `initialization_vector`: "" (AES initialization vector in base64 format)
+  - `cipher_text`: "" (encrypted data in base64 format)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after decryption)
+
 ---
 
 ## Output Format

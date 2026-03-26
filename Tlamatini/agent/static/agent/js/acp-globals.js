@@ -2,21 +2,21 @@
 // LOAD ORDER: #1 - Must be loaded before all other acp-*.js files.
 
 // ---- DOM References (top-level, available globally) ----
-const container    = document.getElementById('agents-container');
-const canvas       = document.getElementById('monitor-container');
-const submonitor   = document.getElementById('submonitor-container');
-const chat         = document.getElementById('main-agents-container');
-const divider      = document.getElementById('drag-divider');
-const openBtn      = document.getElementById('file-open-button');
+const container = document.getElementById('agents-container');
+const canvas = document.getElementById('monitor-container');
+const submonitor = document.getElementById('submonitor-container');
+const chat = document.getElementById('main-agents-container');
+const divider = document.getElementById('drag-divider');
+const openBtn = document.getElementById('file-open-button');
 const fileCloseBtn = document.getElementById('file-close-button');
-const saveBtn      = document.getElementById('save-as-button');
+const saveBtn = document.getElementById('save-as-button');
 const filenameSpan = document.getElementById('filename');
 
 // Control Panel Buttons
-const btnStart    = document.getElementById('btn-start');
-const btnStop     = document.getElementById('btn-stop');
-const btnPause    = document.getElementById('btn-pause');
-const btnClear    = document.getElementById('btn-clear');
+const btnStart = document.getElementById('btn-start');
+const btnStop = document.getElementById('btn-stop');
+const btnPause = document.getElementById('btn-pause');
+const btnClear = document.getElementById('btn-clear');
 const btnValidate = document.getElementById('btn-validate');
 
 // ========================================
@@ -25,7 +25,7 @@ const btnValidate = document.getElementById('btn-validate');
 const GLOBAL_STATE = {
     STOPPED: 'STOPPED',
     RUNNING: 'RUNNING',
-    PAUSED:  'PAUSED'
+    PAUSED: 'PAUSED'
 };
 let globalRunningState = GLOBAL_STATE.STOPPED;
 
@@ -60,24 +60,24 @@ let hasUnsavedChanges = false;
 // so they can be accessed across multiple split files.
 const ACP = window.ACP = {
     // Canvas data structures
-    connections:   [],        // { source, target, path, visiblePath, hitPath, inputSlot, outputSlot }
+    connections: [],        // { source, target, path, visiblePath, hitPath, inputSlot, outputSlot }
     selectedItems: new Set(), // Selected DOM elements (.canvas-item) and connection objects
-    itemCounters:  new Map(), // baseName -> count (for unique ID generation)
-    nodeConfigs:   new Map(), // nodeId -> configData (agent config cache)
+    itemCounters: new Map(), // baseName -> count (for unique ID generation)
+    nodeConfigs: new Map(), // nodeId -> configData (agent config cache)
 
     // SVG connection layer (DOM element - set during canvas init)
     svgLayer: null,
 
     // Selection box (DOM element - set during canvas init)
-    selectionBox:  null,
-    isSelecting:   false,
-    initialBoxX:   0,
-    initialBoxY:   0,
+    selectionBox: null,
+    isSelecting: false,
+    initialBoxX: 0,
+    initialBoxY: 0,
 
     // Connection drawing state
-    tempPath:       null,
-    isConnecting:   false,
-    sourceNode:     null,
+    tempPath: null,
+    isConnecting: false,
+    sourceNode: null,
     sourceOutputEl: null,  // Which output triangle was clicked (for Asker/Forker dual outputs)
 
     // Divider/layout state (local to acp-layout.js but stored here for access if needed)
@@ -85,7 +85,7 @@ const ACP = window.ACP = {
 
     // Agent list drag state
     draggedItemContent: null,
-    MAX_AGENTS: 50,
+    MAX_AGENTS: 128,
 };
 
 // Expose nodeConfigs to global scope for contextual menus (backward compatibility)

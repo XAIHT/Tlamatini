@@ -90,6 +90,11 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "🖼️ IMAGE-INTERPRETER AGENT STARTED"
   • "FLOWCREATOR AGENT STARTED"
 
+  CRYPTOGRAPHY / POST-QUANTUM:
+  • "KYBER-KEYGEN AGENT STARTED"
+  • "KYBER-CIPHER AGENT STARTED"
+  • "KYBER-DECIPHER AGENT STARTED"
+
   INGRESS / GATEWAY:
   • "GATEWAYER AGENT STARTED"
   • "GATEWAY_RELAYER AGENT STARTED"
@@ -120,6 +125,9 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "FlowCreator agent finished successfully." — FlowCreator completed flow generation
   • "File-Creator agent finished." — File-Creator completed file creation attempt
   • "File-Extractor agent finished." — File-Extractor completed text extraction attempt
+  • "Kyber-KeyGen agent finished. Triggered N/M agents." — Kyber-KeyGen completed key pair generation
+  • "Kyber-Cipher agent finished. Triggered N/M agents." — Kyber-Cipher completed encryption
+  • "Kyber-DeCipher agent finished. Triggered N/M agents." — Kyber-DeCipher completed decryption
 
   AGENT-SPECIFIC COMPLETION DETAILS:
   • Executer: "🏁 Executer agent finished. Result: SUCCESS" or "Result: FAILED"
@@ -132,6 +140,9 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • Dockerer: "🏁 Dockerer agent finished. Exit code: N. Triggered M/T agents."
   • Kuberneter: "🏁 Kuberneter agent finished. Exit code: N. Triggered M/T agents."
   • Jenkinser: "🏁 Jenkinser agent finished. Build trigger: SUCCESS" or "FAILED"
+  • Kyber-KeyGen: "Kyber-KeyGen agent finished. Triggered N/M agents." — logs public/private keys before finishing
+  • Kyber-Cipher: "Kyber-Cipher agent finished. Triggered N/M agents." — logs encapsulation, IV, and ciphertext before finishing
+  • Kyber-DeCipher: "Kyber-DeCipher agent finished. Triggered N/M agents." — logs deciphered buffer before finishing
 
 2c. UNIQUE STATUS / EVENT MARKERS — critical domain-specific signals:
 
@@ -180,6 +191,19 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "📝 Event: NODE_DEGRADED for node ..." — node partially reachable
   • "📝 Event: NODE_CAPABILITIES_CHANGED for node ..." — node capabilities updated
   • "🚀 Triggering N downstream agents due to node events..." — trigger on node events
+
+  KYBER CRYPTOGRAPHIC OUTPUTS (written to agent's own log):
+  • "KYBER PUBLIC KEY { ... }" — Kyber-KeyGen generated public key (base64)
+  • "KYBER PRIVATE KEY { ... }" — Kyber-KeyGen generated private key (base64)
+  • "Key pair generated successfully for {variant}" — Kyber-KeyGen success confirmation
+  • "KYBER GENERATED ENCAPSULATION { ... }" — Kyber-Cipher encapsulation output (base64)
+  • "KYBER GENERATED INIT VECTOR { ... }" — Kyber-Cipher initialization vector (base64)
+  • "KYBER GENERATED CIPHER TEXT { ... }" — Kyber-Cipher encrypted ciphertext (base64)
+  • "Kyber encapsulation completed for {variant}" — Kyber-Cipher encapsulation success
+  • "Encryption completed successfully" — Kyber-Cipher AES-256-CTR encryption success
+  • "KYBER DECIPHERED BUFFER { ... }" — Kyber-DeCipher recovered plaintext
+  • "Kyber decapsulation completed for {variant}" — Kyber-DeCipher decapsulation success
+  • "Decryption completed successfully" — Kyber-DeCipher AES-256-CTR decryption success
 
   ENDER REANIMATION CLEANUP:
   • "🧹 Cleared reanimation asset: {filename}" — Ender deleted a reanim* file
@@ -234,6 +258,20 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "GATEWAY_ERROR ..." — Gatewayer internal error
   • "RELAY_ERROR ..." — GatewayRelayer internal error
 
+  KYBER CRYPTOGRAPHIC ERRORS:
+  • "Invalid Kyber variant: ..." — unsupported variant (must be kyber-512, kyber-768, or kyber-1024)
+  • "Key generation failed: ..." — Kyber-KeyGen key pair generation failure
+  • "No public key provided..." — Kyber-Cipher missing required public key
+  • "No buffer provided..." — Kyber-Cipher missing plaintext to encrypt
+  • "Kyber encapsulation failed: ..." — Kyber-Cipher encapsulation failure
+  • "Encryption failed: ..." — Kyber-Cipher AES-256-CTR encryption failure
+  • "No private key provided..." — Kyber-DeCipher missing required private key
+  • "No encapsulation provided..." — Kyber-DeCipher missing encapsulation data
+  • "No initialization vector provided..." — Kyber-DeCipher missing IV
+  • "No cipher text provided..." — Kyber-DeCipher missing ciphertext
+  • "Kyber decapsulation failed: ..." — Kyber-DeCipher decapsulation failure
+  • "Decryption failed: ..." — Kyber-DeCipher AES-256-CTR decryption failure
+
   NODE MANAGER ERRORS:
   • "❌ Failed to load nodes file ..." — inventory file load failure
   • "❌ Failed to export snapshot: ..." — registry snapshot write failure
@@ -267,6 +305,11 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "EXECUTION SUCCESS" — Executer script success
   • "SSH EXECUTION SUCCESS" — Ssher success
   • "SCP TRANSFER SUCCESS" — Scper success
+  • "Key pair generated successfully for ..." — Kyber-KeyGen success
+  • "Kyber encapsulation completed for ..." — Kyber-Cipher encapsulation success
+  • "Encryption completed successfully" — Kyber-Cipher encryption success
+  • "Kyber decapsulation completed for ..." — Kyber-DeCipher decapsulation success
+  • "Decryption completed successfully" — Kyber-DeCipher decryption success
 
 ═══════════════════════════════════════
 SECTION 3 — AGENT CATEGORIES, EXPECTED BEHAVIOR, AND TIMING
@@ -276,7 +319,8 @@ SHORT-LIVED agents (start, do work, exit — typically finish in seconds to a fe
   Starter, Ender, Cleaner, Shoter, Executer, Pythonxer, Telegramer, Ssher, Scper,
   Sleeper, Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser,
   Crawler, FlowCreator, Asker, Counter, Summarizer, Mouser, File-Interpreter,
-  Image-Interpreter, File-Creator, File-Extractor
+  Image-Interpreter, File-Creator, File-Extractor, Kyber-KeyGen, Kyber-Cipher,
+  Kyber-DeCipher
 
 LONG-RUNNING agents (start, poll/listen continuously, exit only when externally stopped or a one-shot pattern fires):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -304,6 +348,9 @@ TIMING EXPECTATIONS:
   • Counter: Near-instant (increment + route); should finish in < 1 second
   • File-Creator: Near-instant (file write + trigger downstream); should finish in < 5 seconds
   • File-Extractor: Quick extraction (read files + extract text + trigger downstream); should finish in < 30 seconds depending on file count/size
+  • Kyber-KeyGen: Generates CRYSTALS-Kyber public/private key pair; computational (polynomial math); should finish in < 30 seconds depending on variant (kyber-512 fastest, kyber-1024 slowest)
+  • Kyber-Cipher: Performs Kyber encapsulation + AES-256-CTR encryption of a buffer; should finish in < 30 seconds depending on variant and buffer size
+  • Kyber-DeCipher: Performs Kyber decapsulation + AES-256-CTR decryption of ciphertext; should finish in < 30 seconds depending on variant and ciphertext size
   • AND/OR gates: Long-running; poll source logs until gate condition met (both patterns for AND, any pattern for OR)
 
 ═══════════════════════════════════════
@@ -477,6 +524,7 @@ DO NOT flag the following as problems:
   • Empty log data in the first monitoring cycle — agents may still be starting up
   • Croner with no activity before its trigger time — it is waiting for the scheduled time
   • Asker with "ASKER_CHOICE_NEEDED" — it is correctly waiting for user input
+  • Kyber agents (Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher) running for up to 30 seconds with no new output — polynomial arithmetic is CPU-intensive, especially for kyber-1024 variant
 
 ═══════════════════════════════════════
 SECTION 9 — RESPONSE FORMAT

@@ -1,0 +1,20 @@
+# Kyber-DeCipher Agent Configuration
+
+# Kyber variant: kyber-512, kyber-768, or kyber-1024
+kyber_variant: "kyber-768"
+
+# Private key in base64 format (from Kyber-KeyGen agent)
+private_key: ""
+
+# Encapsulation in base64 format (from Kyber-Cipher agent)
+encapsulation: ""
+
+# Initialization vector in base64 format (from Kyber-Cipher agent)
+initialization_vector: ""
+
+# Cipher text in base64 format (from Kyber-Cipher agent)
+cipher_text: ""
+
+# Connection fields
+source_agents: []
+target_agents: []

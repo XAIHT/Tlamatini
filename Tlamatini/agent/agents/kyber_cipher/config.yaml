@@ -1,0 +1,14 @@
+# Kyber-Cipher Agent Configuration
+
+# Kyber variant: kyber-512, kyber-768, or kyber-1024
+kyber_variant: "kyber-768"
+
+# Public key in base64 format (from Kyber-KeyGen agent)
+public_key: ""
+
+# Buffer/plaintext to encrypt
+buffer: ""
+
+# Connection fields
+source_agents: []
+target_agents: []

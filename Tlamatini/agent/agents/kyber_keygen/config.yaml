@@ -1,0 +1,8 @@
+# Kyber-KeyGen Agent Configuration
+
+# Kyber variant: kyber-512, kyber-768, or kyber-1024
+kyber_variant: "kyber-768"
+
+# Connection fields
+source_agents: []
+target_agents: []

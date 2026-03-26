@@ -266,6 +266,7 @@ export default [
                 // Cross-file globals: acp-running-state.js
                 setGlobalRunningState: "readonly",
                 pollAgentStatus: "readonly",
+                updateControlButtonStates: "readonly",
 
                 // Cross-file globals: acp-validate.js
                 updateValidateButtonState: "readonly",
