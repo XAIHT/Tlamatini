@@ -99,6 +99,9 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "GATEWAYER AGENT STARTED"
   • "GATEWAY_RELAYER AGENT STARTED"
 
+  UTILITY / INTERCONNECTION:
+  • "PARAMETRIZER AGENT STARTED"
+
   INFRASTRUCTURE / REGISTRY:
   • "🖧 NODE MANAGER AGENT STARTED"
   • "📝 FILE-CREATOR AGENT STARTED"
@@ -128,6 +131,7 @@ SECTION 2 — COMPLETE LOG PATTERN ENCYCLOPEDIA
   • "Kyber-KeyGen agent finished. Triggered N/M agents." — Kyber-KeyGen completed key pair generation
   • "Kyber-Cipher agent finished. Triggered N/M agents." — Kyber-Cipher completed encryption
   • "Kyber-DeCipher agent finished. Triggered N/M agents." — Kyber-DeCipher completed decryption
+  • "Parametrizer agent finished. Processed N element(s) from 'source' into 'target'." — Parametrizer completed all mapping iterations
 
   AGENT-SPECIFIC COMPLETION DETAILS:
   • Executer: "🏁 Executer agent finished. Result: SUCCESS" or "Result: FAILED"
@@ -320,7 +324,7 @@ SHORT-LIVED agents (start, do work, exit — typically finish in seconds to a fe
   Sleeper, Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser,
   Crawler, FlowCreator, Asker, Counter, Summarizer, Mouser, File-Interpreter,
   Image-Interpreter, File-Creator, File-Extractor, Kyber-KeyGen, Kyber-Cipher,
-  Kyber-DeCipher
+  Kyber-DeCipher, Parametrizer
 
 LONG-RUNNING agents (start, poll/listen continuously, exit only when externally stopped or a one-shot pattern fires):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -351,6 +355,7 @@ TIMING EXPECTATIONS:
   • Kyber-KeyGen: Generates CRYSTALS-Kyber public/private key pair; computational (polynomial math); should finish in < 30 seconds depending on variant (kyber-512 fastest, kyber-1024 slowest)
   • Kyber-Cipher: Performs Kyber encapsulation + AES-256-CTR encryption of a buffer; should finish in < 30 seconds depending on variant and buffer size
   • Kyber-DeCipher: Performs Kyber decapsulation + AES-256-CTR decryption of ciphertext; should finish in < 30 seconds depending on variant and ciphertext size
+  • Parametrizer: Maps structured output from source agent log to target agent config.yaml, then starts target agent. If multiple output elements exist, iterates sequentially (fill config -> start -> wait -> repeat). Duration depends on number of output elements and target agent execution time
   • AND/OR gates: Long-running; poll source logs until gate condition met (both patterns for AND, any pattern for OR)
 
 ═══════════════════════════════════════

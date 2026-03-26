@@ -60,6 +60,15 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Gatewayer vs. OpenClaw's Gateway](#gatewayer-vs-openclaws-gateway)
   - [Usage Examples](#usage-examples)
   - [When to Use Gatewayer](#when-to-use-gatewayer)
+- [Parametrizer: The Interconnection Engine](#parametrizer-the-interconnection-engine)
+  - [Why Parametrizer Exists](#why-parametrizer-exists)
+  - [How It Works](#how-it-works-1)
+  - [The Interconnection Scheme](#the-interconnection-scheme)
+  - [Supported Source Agents and Their Output Fields](#supported-source-agents-and-their-output-fields)
+  - [Iterative Execution Model](#iterative-execution-model)
+  - [The Visual Mapping Dialog](#the-visual-mapping-dialog)
+  - [Practical Examples](#practical-examples)
+  - [Design Constraints](#design-constraints)
 - [Workflow Examples](#workflow-examples)
 - [API Reference](#api-reference)
   - [WebSocket Protocol](#websocket-protocol)
@@ -80,7 +89,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 51 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 52 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -193,7 +202,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 51 pre-built agent types for diverse automation tasks
+- 52 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -431,6 +440,7 @@ Tlamatini/
 │   │   │   ├── kyber_keygen/   # CRYSTALS-Kyber key pair generation agent
 │   │   │   ├── kyber_cipher/  # CRYSTALS-Kyber encryption agent
 │   │   │   ├── kyber_decipher/ # CRYSTALS-Kyber decryption agent
+│   │   │   ├── parametrizer/  # Utility interconnection agent (maps outputs to inputs)
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1172,7 +1182,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **45 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **46 agent types** total.
 
 ### Agent Architecture
 
@@ -1188,7 +1198,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `kyber_keygen`, `kyber_cipher`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `kyber_keygen`, `kyber_cipher`, `parametrizer`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1284,6 +1294,7 @@ Agents are classified as:
 | **kyber_keygen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs in base64 format. Supports Kyber-512, Kyber-768, and Kyber-1024 variants. | `kyber_variant`: kyber-768<br>`source_agents`: Upstream agents<br>`target_agents`: Downstream agents |
 | **kyber_cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR. Logs encapsulation, IV, and cipher text in base64. | `kyber_variant`: kyber-768<br>`public_key`: Base64 public key<br>`buffer`: Plaintext to encrypt<br>`target_agents`: Downstream agents |
 | **kyber_decipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR. Logs deciphered buffer in original format. | `kyber_variant`: kyber-768<br>`private_key`: Base64 private key<br>`encapsulation`: Base64 encapsulation<br>`initialization_vector`: Base64 IV<br>`cipher_text`: Base64 cipher text<br>`target_agents`: Downstream agents |
+| **parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via an interconnection-scheme.csv. When multiple output elements exist, iterates sequentially: fill config, start target, wait, repeat. Only connects to agents with structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher). | `source_agent`: Source agent name<br>`target_agent`: Target agent name<br>`source_agents`: [] (max 1)<br>`target_agents`: [] (max 1) |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -1499,6 +1510,148 @@ Current folder-drop note: `payload.required_fields`, HTTP dedup, and queue overf
 - **Cross-system orchestration**: System A finishes a job and POSTs a signal to Tlamatini, which triggers a multi-step pipeline in System B
 - **Manual triggers**: A curl command or a simple HTML form that sends an HTTP request to Gatewayer, useful for one-off administrative tasks wired to complex workflows
 - **Event replay and auditing**: Because every event is persisted with its full envelope, you can inspect, replay, or debug any past event by reading its artifact directory
+
+---
+
+## Parametrizer: The Interconnection Engine
+
+Parametrizer is the **glue between agents** — a short-running utility agent that reads the structured output of one agent and writes it into the configuration of another, enabling fully automated data pipelines where no human touches a `config.yaml` between stages.
+
+In most workflow systems, data hand-off between stages is either hardcoded or requires a scripting layer. Parametrizer eliminates that: you visually draw lines from output fields to config parameters, and at runtime the agent handles everything — parsing, mapping, writing, launching, waiting, and iterating.
+
+### Why Parametrizer Exists
+
+Tlamatini agents communicate through **log files** (structured output) and **config.yaml files** (input parameters). This is deliberate — each agent is a self-contained process with no shared memory, no message bus, and no coupling. But this design creates a gap: how does the response body from an API call (Apirer) become the `buffer` parameter for encryption (Kyber-Cipher)? How do Kyber-KeyGen's generated keys flow into Kyber-Cipher's `public_key` field?
+
+Before Parametrizer, the answer was: manually edit `config.yaml` between runs, or write a custom agent. Parametrizer turns this into a **zero-code, visual wiring operation** that works with any combination of the 13 agents that produce structured output.
+
+### How It Works
+
+Parametrizer operates in five phases:
+
+```
+┌─────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌─────────────┐    ┌──────────┐
+│  1. VALIDATE │───▶│ 2. LOAD SCHEME   │───▶│ 3. PARSE SOURCE  │───▶│ 4. MAP & WRITE│───▶│ 5. LAUNCH │
+│  connections │    │  (CSV mappings)  │    │  (read log, run  │    │  (fill target │    │  (start   │
+│  & agent type│    │                  │    │   parser)        │    │   config.yaml)│    │   target) │
+└─────────────┘    └──────────────────┘    └──────────────────┘    └─────────────┘    └──────────┘
+```
+
+**Phase 1 — Validate.** Confirms exactly one source and one target are connected, and that the source is one of the 13 recognized structured-output agents.
+
+**Phase 2 — Load Scheme.** Reads `interconnection-scheme.csv` from its own directory. This CSV is the single source of truth for which output fields map to which config parameters.
+
+**Phase 3 — Parse Source.** Reads the source agent's log file and runs the appropriate parser from the `OUTPUT_PARSERS` registry. Each of the 13 supported source agents has a dedicated regex-based parser that extracts structured blocks into dictionaries.
+
+**Phase 4 — Map & Write.** For each extracted output block, applies the CSV mappings: looks up each `source_field` in the parsed dictionary and writes the value into the corresponding `target_param` in the target agent's `config.yaml`.
+
+**Phase 5 — Launch.** Starts the target agent via subprocess and writes its PID file, exactly as Starter or Raiser would.
+
+### The Interconnection Scheme
+
+The mapping between source output fields and target config parameters is stored in a simple CSV file:
+
+```csv
+source_field,target_param
+response_body,buffer
+url,api_endpoint
+public_key,public_key
+```
+
+Each row is one wire: "take `source_field` from the parsed output and write it into `target_param` in the target's config.yaml." This file is created and managed through the visual mapping dialog on the canvas, but can also be edited by hand.
+
+The CSV lives inside the Parametrizer agent's own directory (`agents/parametrizer/interconnection-scheme.csv`) and is versioned with the flow when saved.
+
+### Supported Source Agents and Their Output Fields
+
+Parametrizer includes dedicated parsers for 13 agent types. Each parser understands the agent's unique log format and extracts named fields:
+
+| Source Agent | Log Pattern | Extracted Fields |
+|---|---|---|
+| **Apirer** | `<url> RESPONSE {\n...\n}` | `url`, `response_body` |
+| **Gitter** | `<git command> RESPONSE {\n...\n}` | `git_command`, `response_body` |
+| **Kuberneter** | `KUBECTL EXECUTION PARAMETERS: ..., STATUS: code {\n...\n}` | `parameters`, `status`, `response_body` |
+| **Crawler** | `INI_RESPONSE_<LABEL><<<\n...\n>>>END_RESPONSE_<LABEL>` | `label`, `response_body` |
+| **Summarizer** | `INI_RESPONSE_SUMMARIZER<<<\n...\n>>>END_RESPONSE_SUMMARIZER` | `response_body` |
+| **File-Interpreter** | `INI_FILE: [path] (mode)\n...\nEND_FILE` | `file_path`, `mode`, `response_body` |
+| **Image-Interpreter** | `INI_IMAGE_FILE: [path]\n...\nEND_FILE` | `file_path`, `response_body` |
+| **File-Extractor** | `INI_FILE: [path] (extracted)\n...\nEND_FILE` | `file_path`, `response_body` |
+| **Prompter** | `INI_RESPONSE<<<\n...\n>>>END_RESPONSE` | `response_body` |
+| **FlowCreator** | `INI_RESPONSE\n...\n>>>END_RESPONSE` | `response_body` |
+| **Kyber-KeyGen** | `KYBER PUBLIC KEY {\n...\n}` + `KYBER PRIVATE KEY {\n...\n}` | `public_key`, `private_key` |
+| **Kyber-Cipher** | `KYBER GENERATED ENCAPSULATION/INIT VECTOR/CIPHER TEXT {\n...\n}` | `encapsulation`, `initialization_vector`, `cipher_text` |
+| **Kyber-DeCipher** | `KYBER DECIPHERED BUFFER {\n...\n}` | `deciphered_buffer` |
+
+### Iterative Execution Model
+
+A critical capability of Parametrizer is its handling of **multiple structured output elements** in a single source log. This commonly happens when:
+
+- An Apirer calls multiple API endpoints in sequence
+- A Crawler scrapes several pages
+- A File-Extractor processes a wildcard pattern matching many files
+
+When the parser returns N output blocks, Parametrizer does not batch them. Instead, it **iterates sequentially**:
+
+```
+For each output block (1..N):
+   1. Write mapped fields into target's config.yaml
+   2. Wait for target agent to stop (if still running from previous iteration)
+   3. Start target agent
+   4. Wait for target agent to finish
+   → Next block
+```
+
+This guarantees that each output element gets its own full execution cycle in the target agent. For example, if Apirer hit 5 endpoints and the target is Kyber-Cipher, the Parametrizer will encrypt each response body individually, producing 5 separate cipher texts — one per API response.
+
+### The Visual Mapping Dialog
+
+On the canvas, double-clicking or right-clicking a Parametrizer agent opens its custom mapping dialog (not the standard config editor). The dialog:
+
+1. **Validates connections first** — if the source or target is missing, or the source type is unsupported, an error overlay appears before the dialog opens.
+2. **Shows two columns** — left column lists the source agent's available output fields (cyan theme), right column lists the target agent's config.yaml parameters (orange theme).
+3. **Click-to-wire** — click a source field, then click a target parameter to create a mapping. A curved SVG Bezier line (gradient from cyan to orange) visually confirms the connection.
+4. **Click-to-remove** — click any existing line to remove that mapping.
+5. **Save** — writes the `interconnection-scheme.csv` to the backend.
+
+The dialog dynamically adapts to whatever source and target agents are connected — the field lists are always current with the actual agent types.
+
+### Practical Examples
+
+**Example 1: API Response → Encryption Pipeline**
+
+```
+Apirer ──▶ Parametrizer ──▶ Kyber-Cipher
+```
+Apirer calls an external API. Parametrizer maps `response_body` → `buffer` and `url` → (any tracking field). Kyber-Cipher encrypts each response. If Apirer hit 3 endpoints, the pipeline runs 3 encryption cycles automatically.
+
+**Example 2: Key Generation → Cipher Configuration**
+
+```
+Kyber-KeyGen ──▶ Parametrizer ──▶ Kyber-Cipher
+```
+Kyber-KeyGen produces a public/private key pair. Parametrizer maps `public_key` → `public_key` in Kyber-Cipher's config. This wires key generation directly into encryption without manual config editing.
+
+**Example 3: File Extraction → Summarization**
+
+```
+File-Extractor ──▶ Parametrizer ──▶ Summarizer
+```
+File-Extractor reads multiple files matching a wildcard. Parametrizer maps `response_body` → the Summarizer's input field. Each extracted file gets summarized individually — if 10 files matched the pattern, 10 summarization runs occur.
+
+**Example 4: Full Encrypt-Decrypt Round Trip**
+
+```
+Kyber-KeyGen ──▶ Parametrizer₁ ──▶ Kyber-Cipher ──▶ Parametrizer₂ ──▶ Kyber-DeCipher
+```
+Two Parametrizer instances chain the entire cryptographic lifecycle: the first maps generated keys into the cipher, the second maps cipher output (encapsulation, IV, cipher text) into the decipher agent's config.
+
+### Design Constraints
+
+- **One-to-one only.** Exactly one source agent and one target agent per Parametrizer instance. For fan-out or fan-in patterns, use multiple Parametrizer instances.
+- **Source must produce structured output.** Only the 13 agents listed above are valid sources. Connecting an unsupported source (e.g., Starter, Sleeper) will fail validation at both dialog-open time and runtime.
+- **Target can be any agent.** The target side has no type restriction — Parametrizer writes into whatever fields exist in the target's `config.yaml`.
+- **Mappings are static per run.** The CSV is read once at startup. To change mappings, stop the flow, update via the dialog, and restart.
+- **Sequential, not parallel.** When iterating over multiple output blocks, the target agent runs one-at-a-time. This is by design — it prevents race conditions on the target's config file and ensures deterministic ordering.
 
 ---
 
@@ -1880,6 +2033,9 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_kyber_keygen_connection/<agent_name>/` | POST | Update kyber_keygen connections |
 | `/update_kyber_cipher_connection/<agent_name>/` | POST | Update kyber_cipher connections |
 | `/update_kyber_decipher_connection/<agent_name>/` | POST | Update kyber_decipher connections |
+| `/update_parametrizer_connection/<agent_name>/` | POST | Update parametrizer connections |
+| `/get_parametrizer_dialog_data/<agent_name>/` | GET | Get Parametrizer mapping dialog data |
+| `/save_parametrizer_scheme/<agent_name>/` | POST | Save Parametrizer interconnection scheme |
 
 #### Session & Pool Management
 
@@ -2204,6 +2360,7 @@ Enable verbose logging in config.json:
 | **Kyber-KeyGen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512/768/1024) in base64 format, logs keys, and triggers downstream agents |
 | **Kyber-Cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR, logs encapsulation/IV/ciphertext in base64, and triggers downstream agents |
 | **Kyber-DeCipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer, and triggers downstream agents |
+| **Parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via interconnection-scheme.csv, supporting iterative execution for multiple output elements |
 
 ---
 
@@ -2250,6 +2407,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Parametrizer Agent** - Short-running active utility interconnection agent that maps structured outputs from source agent logs to target agent config.yaml parameters via a visual mapping dialog and interconnection-scheme.csv. Supports iterative execution for multiple output elements, connecting agents that produce structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher) to any target agent
 - **Added Kyber-DeCipher Agent** - Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer in original format
 - **Added Kyber-Cipher Agent** - Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via Kyber encapsulation + AES-256-CTR, logs encapsulation, initialization vector, and cipher text in base64 format
 - **Added Kyber-KeyGen Agent** - Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512, Kyber-768, Kyber-1024) in base64 format, logs keys in structured format, and triggers downstream agents

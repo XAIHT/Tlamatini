@@ -7238,6 +7238,274 @@ def update_kyber_decipher_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
+@csrf_exempt
+@require_POST
+def update_parametrizer_connection_view(request, agent_name):
+    """Update a Parametrizer agent's config.yaml when connections are made/removed."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        target_agent = data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target')
+
+        if not target_agent:
+            return HttpResponse(json.dumps({"success": False, "message": "Missing target_agent"}),
+                                content_type='application/json', status=400)
+
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({"success": False, "message": f"Config not found: {config_path}"}),
+                                content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        target_parts = target_agent.split('-')
+        target_cardinal = None
+        if target_parts[-1].isdigit():
+            target_cardinal = target_parts.pop()
+        target_base = "_".join(target_parts)
+        target_pool_name = f"{target_base}_{target_cardinal}" if target_cardinal else target_base
+
+        # For Parametrizer, also update singular source_agent / target_agent fields
+        if connection_type == 'source':
+            list_name = 'source_agents'
+            singular_field = 'source_agent'
+        else:
+            list_name = 'target_agents'
+            singular_field = 'target_agent'
+
+        if list_name not in config or not isinstance(config[list_name], list):
+            config[list_name] = []
+
+        if action == 'add':
+            if target_pool_name not in config[list_name]:
+                config[list_name].append(target_pool_name)
+            config[singular_field] = target_pool_name
+            message = f"Added {target_pool_name} to {list_name}"
+        elif action == 'remove':
+            if target_pool_name in config[list_name]:
+                config[list_name].remove(target_pool_name)
+            if config.get(singular_field) == target_pool_name:
+                config[singular_field] = config[list_name][0] if config[list_name] else ""
+            message = f"Removed {target_pool_name} from {list_name}"
+        else:
+            message = f"Unknown action: {action}"
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
+    except Exception as e:
+        print(f"Error updating Parametrizer connection: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+# Structured output field definitions for each source agent type
+PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
+    'apirer': ['url', 'response_body'],
+    'gitter': ['git_command', 'response_body'],
+    'kuberneter': ['parameters', 'status', 'response_body'],
+    'crawler': ['label', 'response_body'],
+    'summarizer': ['response_body'],
+    'file_interpreter': ['file_path', 'mode', 'response_body'],
+    'image_interpreter': ['file_path', 'response_body'],
+    'file_extractor': ['file_path', 'response_body'],
+    'prompter': ['response_body'],
+    'flowcreator': ['response_body'],
+    'kyber_keygen': ['public_key', 'private_key'],
+    'kyber_cipher': ['encapsulation', 'initialization_vector', 'cipher_text'],
+    'kyber_decipher': ['deciphered_buffer'],
+}
+
+# Allowed source agent base names
+PARAMETRIZER_ALLOWED_SOURCES = set(PARAMETRIZER_SOURCE_OUTPUT_FIELDS.keys())
+
+
+def _get_source_base_name(agent_pool_name):
+    """Extract base agent name from pool name for Parametrizer validation."""
+    for known_base in PARAMETRIZER_ALLOWED_SOURCES:
+        if agent_pool_name == known_base or agent_pool_name.startswith(known_base + '_'):
+            suffix = agent_pool_name[len(known_base):]
+            if suffix == '' or (suffix.startswith('_') and suffix[1:].isdigit()):
+                return known_base
+    return None
+
+
+def get_parametrizer_dialog_data_view(request, agent_name):
+    """
+    Return the dynamic config dialog data for a Parametrizer agent.
+    Validates connections and returns source output fields + target config params.
+    """
+    try:
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({"success": False, "message": "Config not found"}),
+                                content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        source_agent = config.get('source_agent', '')
+        target_agent = config.get('target_agent', '')
+
+        # Also check source_agents/target_agents lists
+        source_agents_list = config.get('source_agents', [])
+        target_agents_list = config.get('target_agents', [])
+
+        if not source_agent and len(source_agents_list) == 1:
+            source_agent = source_agents_list[0]
+        if not target_agent and len(target_agents_list) == 1:
+            target_agent = target_agents_list[0]
+
+        # Validate: exactly one source and one target
+        if not source_agent:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "No source agent connected to Parametrizer's input. "
+                           "Connect exactly one source agent before opening the configuration dialog."
+            }), content_type='application/json', status=400)
+
+        if not target_agent:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "No target agent connected to Parametrizer's output. "
+                           "Connect exactly one target agent before opening the configuration dialog."
+            }), content_type='application/json', status=400)
+
+        if len(source_agents_list) > 1:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"Only one source agent allowed but {len(source_agents_list)} are connected."
+            }), content_type='application/json', status=400)
+
+        if len(target_agents_list) > 1:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"Only one target agent allowed but {len(target_agents_list)} are connected."
+            }), content_type='application/json', status=400)
+
+        # Validate source agent type
+        source_base = _get_source_base_name(source_agent)
+        if source_base is None:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"Source agent '{source_agent}' does not produce structured output. "
+                           "Only Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, "
+                           "Image-Interpreter, File-Extractor, Prompter, FlowCreator, "
+                           "Kyber-KeyGen, Kyber-Cipher, and Kyber-DeCipher are allowed."
+            }), content_type='application/json', status=400)
+
+        # Get source output field names
+        source_fields = PARAMETRIZER_SOURCE_OUTPUT_FIELDS.get(source_base, [])
+
+        # Get target agent config params
+        target_config_path = os.path.join(pool_base_path, target_agent, 'config.yaml')
+        target_params = []
+        if os.path.exists(target_config_path):
+            with open(target_config_path, 'r', encoding='utf-8') as f:
+                target_config = yaml.safe_load(f) or {}
+            # Return all params except internal connection fields
+            excluded_keys = {'source_agents', 'target_agents', 'output_agents',
+                             'source_agent_1', 'source_agent_2',
+                             'target_agents_a', 'target_agents_b'}
+            target_params = [k for k in target_config.keys() if k not in excluded_keys]
+
+        # Load existing interconnection scheme if present
+        scheme_path = os.path.join(pool_base_path, pool_folder_name, 'interconnection-scheme.csv')
+        existing_mappings = []
+        if os.path.exists(scheme_path):
+            import csv
+            with open(scheme_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    sf = row.get('source_field', '').strip()
+                    tp = row.get('target_param', '').strip()
+                    if sf and tp:
+                        existing_mappings.append({'source_field': sf, 'target_param': tp})
+
+        return HttpResponse(json.dumps({
+            "success": True,
+            "source_agent": source_agent,
+            "target_agent": target_agent,
+            "source_fields": source_fields,
+            "target_params": target_params,
+            "existing_mappings": existing_mappings
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error getting Parametrizer dialog data: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
+def save_parametrizer_scheme_view(request, agent_name):
+    """Save the interconnection-scheme.csv for a Parametrizer agent."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        mappings = data.get('mappings', [])
+
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        scheme_path = os.path.join(pool_base_path, pool_folder_name, 'interconnection-scheme.csv')
+
+        import csv
+        with open(scheme_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=['source_field', 'target_param'])
+            writer.writeheader()
+            for m in mappings:
+                sf = m.get('source_field', '').strip()
+                tp = m.get('target_param', '').strip()
+                if sf and tp:
+                    writer.writerow({'source_field': sf, 'target_param': tp})
+
+        return HttpResponse(json.dumps({
+            "success": True,
+            "message": f"Saved {len(mappings)} mapping(s) to interconnection-scheme.csv"
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error saving Parametrizer scheme: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
 def detect_installed_apps_view(request):
     """
     Detect which IDEs/editors are installed on the system.

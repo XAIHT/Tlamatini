@@ -826,6 +826,21 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after decryption)
 
+### 51. Parametrizer
+- **Purpose**: Short-running active utility interconnection agent that maps structured output elements from a source agent's log file into configuration parameters of a target agent's config.yaml. Uses a user-defined interconnection-scheme.csv to know which source output fields map to which target config params. When the source agent produces multiple structured output elements, Parametrizer iterates: fills the target config, starts the target, waits for completion, then repeats with the next element. Does NOT use any LLM.
+- **Pool name pattern**: `parametrizer_<n>`
+- **Starts other agents**: YES (exactly one target agent, possibly multiple times)
+- **Config parameters**:
+  - `source_agent`: "" (the single upstream agent that produces structured output)
+  - `target_agent`: "" (the single downstream agent whose config.yaml gets populated)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking, max 1)
+  - `target_agents`: [] (downstream agents — for canvas connection tracking, max 1)
+- **Special behavior**:
+  - Only accepts input from agents that produce structured output: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher
+  - Exactly one source and one target agent must be connected
+  - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI
+  - When multiple output elements exist in the source log, iterates over each one sequentially
+
 ---
 
 ## Output Format

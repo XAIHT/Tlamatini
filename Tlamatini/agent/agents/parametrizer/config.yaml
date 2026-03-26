@@ -1,0 +1,11 @@
+# Parametrizer Agent Configuration
+# Utility Interconnection Agent: Maps structured outputs from a source agent
+# to configuration parameters of a target agent.
+
+# Connection fields (singular - only ONE agent each)
+source_agent: ""
+target_agent: ""
+
+# Connection fields for Tlamatini core (lists for canvas wiring)
+source_agents: []
+target_agents: []

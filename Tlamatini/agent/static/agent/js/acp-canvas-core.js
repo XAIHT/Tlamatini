@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -84,6 +84,7 @@ function applyAgentTypeClass(el, agentName) {
         'kyber-keygen': 'kyberkeygen-agent',
         'kyber-cipher': 'kybercipher-agent',
         'kyber-decipher': 'kyberdecipher-agent',
+        'parametrizer': 'parametrizer-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -685,6 +686,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'kyber-cipher') updateKyberCipherConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'kyber-decipher') updateKyberDecipherConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'kyber-decipher') updateKyberDecipherConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -778,6 +781,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'kyber-cipher' && !sourceBeingDeleted) updateKyberCipherConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'kyber-decipher' && !targetBeingDeleted) updateKyberDecipherConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'kyber-decipher' && !sourceBeingDeleted) updateKyberDecipherConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'parametrizer' && !targetBeingDeleted) updateParametrizerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'parametrizer' && !sourceBeingDeleted) updateParametrizerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -903,6 +908,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'kyber-keygen' || lowerDesc === 'kyber keygen') iconDiv.style.background = 'linear-gradient(135deg, #7B2FBE 0%, #00BFA5 50%, #FFD740 100%)';
         else if (lowerDesc === 'kyber-cipher' || lowerDesc === 'kyber cipher') iconDiv.style.background = 'linear-gradient(135deg, #D35400 0%, #1ABC9C 50%, #8E44AD 100%)';
         else if (lowerDesc === 'kyber-decipher' || lowerDesc === 'kyber decipher') iconDiv.style.background = 'linear-gradient(135deg, #4A90D9 0%, #D94F7A 50%, #82C91E 100%)';
+        else if (lowerDesc === 'parametrizer') iconDiv.style.background = 'linear-gradient(135deg, #311B92 0%, #AA00FF 33%, #FF6D00 66%, #00E5FF 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
         const span = document.createElement('span');
@@ -1005,6 +1011,17 @@ function initCanvasEvents() {
             e.preventDefault();
             e.stopPropagation();
             const agentId = item.id;
+            const agentDesc = (item.dataset.agentName || '').toLowerCase();
+
+            // Intercept Parametrizer to show custom mapping dialog
+            if (agentDesc === 'parametrizer') {
+                if (typeof openParametrizerDialog === 'function') {
+                    openParametrizerDialog(agentId);
+                } else {
+                    console.error('openParametrizerDialog function not found');
+                }
+                return;
+            }
 
             const onConfigSaved = (savedData) => {
                 console.log("Configuration saved:", savedData);
@@ -1253,6 +1270,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'kyber-cipher') updateKyberCipherConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'kyber-decipher') updateKyberDecipherConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'kyber-decipher') updateKyberDecipherConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);
