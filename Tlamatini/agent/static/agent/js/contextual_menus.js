@@ -2,6 +2,7 @@
  * Contextual Menus for Agentic Control Panel
  * Handles right-click context menus and log viewer modal for canvas agents
  */
+/* global openParametrizerDialog */
 
 // ========================================
 // CONTEXT MENU STATE
@@ -195,6 +196,17 @@ function hideContextMenu() {
 // ========================================
 async function openConfigureDialog(canvasItem) {
     const agentId = canvasItem.id;
+    const agentDesc = (canvasItem.dataset.agentName || '').toLowerCase();
+
+    // Intercept Parametrizer to show custom mapping dialog
+    if (agentDesc === 'parametrizer') {
+        if (typeof openParametrizerDialog === 'function') {
+            openParametrizerDialog(agentId);
+        } else {
+            console.error('openParametrizerDialog function not found');
+        }
+        return;
+    }
 
     // Callback to store config when saved (same as double-click behavior)
     const onConfigSaved = (savedData) => {

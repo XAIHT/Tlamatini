@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -422,6 +422,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kyber-keygen': await updateKyberKeygenConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kyber-cipher': await updateKyberCipherConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kyber-decipher': await updateKyberDecipherConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'parametrizer': await updateParametrizerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -481,6 +482,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kyber-keygen': await updateKyberKeygenConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kyber-cipher': await updateKyberCipherConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kyber-decipher': await updateKyberDecipherConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'parametrizer': await updateParametrizerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 
