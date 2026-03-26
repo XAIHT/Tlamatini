@@ -75,7 +75,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 fieldset.appendChild(legend);
                 renderFields(fieldset, val, fieldKey);
                 container.appendChild(fieldset);
-            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type' || key === 'reading_type') {
+            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type' || key === 'reading_type' || key === 'kyber_variant') {
                 // Custom rendering for trigger_mode, operation, direction, crawl_type, movement_type, reading_type - Radio Buttons
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
@@ -103,6 +103,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     options = ['random', 'localized'];
                 } else if (key === 'reading_type') {
                     options = ['fast', 'complete', 'summarized'];
+                } else if (key === 'kyber_variant') {
+                    options = ['kyber-512', 'kyber-768', 'kyber-1024'];
                 }
 
                 options.forEach(opt => {
@@ -181,9 +183,9 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 label.style.color = "#ddd";
 
                 let input;
-                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt' || key === 'user_instructions' || key === 'content')) {
+                if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt' || key === 'user_instructions' || key === 'content' || key === 'public_key' || key === 'buffer' || key === 'private_key' || key === 'encapsulation' || key === 'initialization_vector' || key === 'cipher_text')) {
                     input = document.createElement('textarea');
-                    input.rows = key === 'content' ? 6 : 4;
+                    input.rows = (key === 'content' || key === 'public_key' || key === 'buffer' || key === 'private_key' || key === 'encapsulation' || key === 'initialization_vector' || key === 'cipher_text') ? 6 : 4;
                 } else {
                     input = document.createElement('input');
                     input.type = typeof val === 'number' ? 'number' : 'text';

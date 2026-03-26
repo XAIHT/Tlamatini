@@ -1713,6 +1713,42 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(63, 81, 181, 0.5);
 }
 
+/* Kyber-KeyGen Agent */
+.canvas-item.kyberkeygen-agent {
+    background-color: #7B2FBE;
+    background: linear-gradient(135deg, #7B2FBE 0%, #00BFA5 50%, #FFD740 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.kyberkeygen-agent:hover {
+    background: linear-gradient(135deg, #9C4DCC 0%, #26D9B8 50%, #FFE57F 100%);
+    box-shadow: 0 6px 15px rgba(123, 47, 190, 0.5);
+}
+
+/* Kyber-Cipher Agent */
+.canvas-item.kybercipher-agent {
+    background-color: #D35400;
+    background: linear-gradient(135deg, #D35400 0%, #1ABC9C 50%, #8E44AD 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.kybercipher-agent:hover {
+    background: linear-gradient(135deg, #E67E22 0%, #48D1CC 50%, #9B59B6 100%);
+    box-shadow: 0 6px 15px rgba(26, 188, 156, 0.5);
+}
+
+/* Kyber-DeCipher Agent */
+.canvas-item.kyberdecipher-agent {
+    background-color: #4A90D9;
+    background: linear-gradient(135deg, #4A90D9 0%, #D94F7A 50%, #82C91E 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.kyberdecipher-agent:hover {
+    background: linear-gradient(135deg, #6AADE4 0%, #E8749A 50%, #A3D944 100%);
+    box-shadow: 0 6px 15px rgba(217, 79, 122, 0.5);
+}
+
 /* Emailer agent icon in sidebar */
 .agent-tool-item[data-content="Emailer"] .agent-tool-icon {
     background: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%);

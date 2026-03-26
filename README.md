@@ -80,7 +80,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 48 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 51 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -193,7 +193,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 48 pre-built agent types for diverse automation tasks
+- 51 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators (red/green/yellow)
@@ -428,6 +428,9 @@ Tlamatini/
 │   │   │   ├── node_manager/     # Infrastructure registry and node supervision agent
 │   │   │   ├── file_creator/    # File creation utility agent
 │   │   │   ├── file_extractor/  # File text extraction utility agent
+│   │   │   ├── kyber_keygen/   # CRYSTALS-Kyber key pair generation agent
+│   │   │   ├── kyber_cipher/  # CRYSTALS-Kyber encryption agent
+│   │   │   ├── kyber_decipher/ # CRYSTALS-Kyber decryption agent
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1185,7 +1188,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `kyber_keygen`, `kyber_cipher`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1278,6 +1281,9 @@ Agents are classified as:
 | **node_manager** | Long-running infrastructure agent that maintains a live registry of local/remote nodes, probes health (ping, TCP, SSH, WinRM, HTTP), classifies node state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, persists state, exports filtered manifests, and triggers downstream agents on configured node events. | `heartbeat.poll_interval`: 30<br>`inventory.inline_nodes`: Static nodes<br>`triggers.trigger_events`: Event types<br>`target_agents`: Downstream agents |
 | **file_creator** | Short-running infrastructure agent that creates a file with specified content, then triggers downstream agents regardless of file creation result. | `file_path`: Target file path<br>`content`: Raw file content<br>`target_agents`: Downstream agents |
 | **file_extractor** | Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content using the same file type support as file_interpreter, falls back to strings extraction for unknown types, then triggers downstream agents regardless of extraction result. | `path_filenames`: File path or wildcard pattern<br>`recursive`: false (scan subdirs)<br>`filetype_exclusions`: "" (exclude extensions/filenames)<br>`target_agents`: Downstream agents |
+| **kyber_keygen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs in base64 format. Supports Kyber-512, Kyber-768, and Kyber-1024 variants. | `kyber_variant`: kyber-768<br>`source_agents`: Upstream agents<br>`target_agents`: Downstream agents |
+| **kyber_cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR. Logs encapsulation, IV, and cipher text in base64. | `kyber_variant`: kyber-768<br>`public_key`: Base64 public key<br>`buffer`: Plaintext to encrypt<br>`target_agents`: Downstream agents |
+| **kyber_decipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR. Logs deciphered buffer in original format. | `kyber_variant`: kyber-768<br>`private_key`: Base64 private key<br>`encapsulation`: Base64 encapsulation<br>`initialization_vector`: Base64 IV<br>`cipher_text`: Base64 cipher text<br>`target_agents`: Downstream agents |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -1871,6 +1877,9 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_node_manager_connection/<agent_name>/` | POST | Update node_manager connections |
 | `/update_file_creator_connection/<agent_name>/` | POST | Update file_creator connections |
 | `/update_file_extractor_connection/<agent_name>/` | POST | Update file_extractor connections |
+| `/update_kyber_keygen_connection/<agent_name>/` | POST | Update kyber_keygen connections |
+| `/update_kyber_cipher_connection/<agent_name>/` | POST | Update kyber_cipher connections |
+| `/update_kyber_decipher_connection/<agent_name>/` | POST | Update kyber_decipher connections |
 
 #### Session & Pool Management
 
@@ -2192,6 +2201,9 @@ Enable verbose logging in config.json:
 | **NodeManager** | Long-running infrastructure agent that maintains a live registry of local/remote nodes, probes health, classifies state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, and triggers downstream agents on node events |
 | **File-Creator** | Short-running infrastructure agent that creates a file with specified content (path + filename, raw content), triggers downstream agents regardless of file creation result, then stops |
 | **File-Extractor** | Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content for all file types supported by File-Interpreter, uses strings extraction for unknown binary types, triggers downstream agents regardless of result, then stops |
+| **Kyber-KeyGen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512/768/1024) in base64 format, logs keys, and triggers downstream agents |
+| **Kyber-Cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR, logs encapsulation/IV/ciphertext in base64, and triggers downstream agents |
+| **Kyber-DeCipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer, and triggers downstream agents |
 
 ---
 
@@ -2238,6 +2250,9 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Kyber-DeCipher Agent** - Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer in original format
+- **Added Kyber-Cipher Agent** - Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via Kyber encapsulation + AES-256-CTR, logs encapsulation, initialization vector, and cipher text in base64 format
+- **Added Kyber-KeyGen Agent** - Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512, Kyber-768, Kyber-1024) in base64 format, logs keys in structured format, and triggers downstream agents
 - **Added `filetype_exclusions` parameter to File-Interpreter, Image-Interpreter, File-Extractor, Mover, and Deleter** — Comma-separated string (default: empty) that accepts extensions (e.g. `exe`, `msi`), dotfiles (e.g. `.profile`), or specific filenames (e.g. `main.cpp`). Matching files are excluded from each agent's core processing. Appears as a single-line text input in each agent's configuration dialog.
 - **Added `recursive` parameter to File-Interpreter, Image-Interpreter, File-Extractor, Mover, and Deleter** — Boolean checkbox (default: false) that enables recursive subdirectory scanning. When enabled, patterns like `C:\data\*.txt` automatically expand to `C:\data\**\*.txt`, and bare directories scan their entire tree. Appears as a checkbox in each agent's configuration dialog.
 - **Added File-Extractor Agent** - Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content for all file types File-Interpreter supports, uses strings-like extraction for unknown binary types, logs content in INI_FILE/END_FILE format, triggers downstream agents regardless of result, then stops itself
