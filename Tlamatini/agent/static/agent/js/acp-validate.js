@@ -531,6 +531,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (submonitorEl) {
         const observer = new MutationObserver(() => {
             resetFlowValidation();
+            // Also refresh all control button states (e.g. disable all when canvas is empty)
+            if (typeof updateControlButtonStates === 'function') {
+                updateControlButtonStates();
+            }
         });
         observer.observe(submonitorEl, { childList: true, subtree: false });
     }
