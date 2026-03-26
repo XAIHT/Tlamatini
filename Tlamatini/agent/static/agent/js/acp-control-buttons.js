@@ -19,13 +19,12 @@ async function executeStartSequence() {
 
     isBusyProcessing = true;
 
-    btnStart.disabled = true;
-    btnStart.style.opacity = '0.5';
-    btnStart.style.cursor = 'not-allowed';
-    if (btnStop) {
-        btnStop.disabled = true;
-        btnStop.style.opacity = '0.5';
-    }
+    // Disable all control buttons during the start sequence
+    if (btnStart)    btnStart.disabled = true;
+    if (btnStop)     btnStop.disabled  = true;
+    if (btnPause)    btnPause.disabled = true;
+    if (btnClear)    btnClear.disabled = true;
+    if (btnValidate) btnValidate.disabled = true;
 
     const starterAgents = document.querySelectorAll('#submonitor-container .canvas-item.starter-agent');
 
@@ -33,13 +32,7 @@ async function executeStartSequence() {
         console.log('--- No Starter agents found on canvas');
         alert('No Starter agents found on the canvas. Add a Starter agent and connect it to other agents to begin.');
         isBusyProcessing = false;
-        btnStart.disabled = false;
-        btnStart.style.opacity = '';
-        btnStart.style.cursor = '';
-        if (btnStop) {
-            btnStop.disabled = false;
-            btnStop.style.opacity = '';
-        }
+        updateControlButtonStates();
         return;
     }
 
@@ -299,8 +292,7 @@ function showStarterResult(success, failedAgentNames, dialog) {
     }
 
     isBusyProcessing = false;
-    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = ''; btnStart.style.cursor = ''; }
-    if (btnStop)  { btnStop.disabled = false; btnStop.style.opacity = ''; }
+    updateControlButtonStates();
 
     dialog.dialog("option", "buttons", [{
         text: "Continue!",
@@ -329,10 +321,12 @@ if (btnStop) {
         }
         isBusyProcessing = true;
 
-        btnStop.disabled = true;
-        btnStop.style.opacity = '0.5';
-        btnStop.style.cursor = 'not-allowed';
-        if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
+        // Disable all control buttons during the stop sequence
+        if (btnStart)    btnStart.disabled = true;
+        if (btnStop)     btnStop.disabled  = true;
+        if (btnPause)    btnPause.disabled = true;
+        if (btnClear)    btnClear.disabled = true;
+        if (btnValidate) btnValidate.disabled = true;
 
         const enderAgents = document.querySelectorAll('#submonitor-container .canvas-item.ender-agent');
 
@@ -340,10 +334,7 @@ if (btnStop) {
             console.log('--- No Ender agents found on canvas');
             alert('No Ender agents found on the canvas. Add an Ender agent and connect it to other agents to enable stop functionality.');
             isBusyProcessing = false;
-            btnStop.disabled = false;
-            btnStop.style.opacity = '';
-            btnStop.style.cursor = '';
-            if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = ''; }
+            updateControlButtonStates();
             return;
         }
 
@@ -561,8 +552,7 @@ function showEnderResult(success, failedAgentNames, dialog) {
     }
 
     isBusyProcessing = false;
-    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = ''; btnStart.style.cursor = ''; }
-    if (btnStop)  { btnStop.disabled = false; btnStop.style.opacity = ''; btnStop.style.cursor = ''; }
+    updateControlButtonStates();
 
     dialog.dialog("option", "buttons", [{
         text: "Continue!",
@@ -590,8 +580,6 @@ function showEnderAlreadyDownDialog(_enderInfo) {
     const failedListEl = document.getElementById('ender-execution-failed-list');
 
     isBusyProcessing = false;
-    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = ''; btnStart.style.cursor = ''; }
-    if (btnStop)  { btnStop.disabled = false; btnStop.style.opacity = ''; btnStop.style.cursor = ''; }
 
     spinnerContainer.style.display = 'none';
     resultContainer.style.display = 'block';
@@ -687,9 +675,12 @@ if (btnPause) {
 async function pauseExecution() {
     isBusyProcessing = true;
 
-    if (btnPause) { btnPause.disabled = true; btnPause.style.opacity = '0.5'; }
-    if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
-    if (btnStop)  { btnStop.disabled = true; btnStop.style.opacity = '0.5'; }
+    // Disable all control buttons during the pause operation
+    if (btnStart)    btnStart.disabled = true;
+    if (btnStop)     btnStop.disabled  = true;
+    if (btnPause)    btnPause.disabled = true;
+    if (btnClear)    btnClear.disabled = true;
+    if (btnValidate) btnValidate.disabled = true;
 
     try {
         console.log('--- Fetching running processes...');
@@ -746,9 +737,12 @@ async function pauseExecution() {
 async function resumeFromPause() {
     isBusyProcessing = true;
 
-    if (btnPause) { btnPause.disabled = true; btnPause.style.opacity = '0.5'; }
-    if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
-    if (btnStop)  { btnStop.disabled = true; btnStop.style.opacity = '0.5'; }
+    // Disable all control buttons during the resume operation
+    if (btnStart)    btnStart.disabled = true;
+    if (btnStop)     btnStop.disabled  = true;
+    if (btnPause)    btnPause.disabled = true;
+    if (btnClear)    btnClear.disabled = true;
+    if (btnValidate) btnValidate.disabled = true;
 
     try {
         const storedProcesses = pausedProcessesOnPause[SESSION_ID] || [];
@@ -812,9 +806,7 @@ async function resumeFromPause() {
  */
 function resetPauseButtons() {
     isBusyProcessing = false;
-    if (btnPause) { btnPause.disabled = false; btnPause.style.opacity = ''; }
-    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = ''; }
-    if (btnStop)  { btnStop.disabled = false; btnStop.style.opacity = ''; }
+    updateControlButtonStates();
 }
 
 // ========================================

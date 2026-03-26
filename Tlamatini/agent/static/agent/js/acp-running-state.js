@@ -12,6 +12,52 @@ const submittedAskerRequests = new Set();
 // ========================================
 
 /**
+ * Update all control button enabled/disabled states based on globalRunningState
+ * and whether agents are present on the canvas.
+ *
+ * State rules:
+ *   - No agents on canvas → ALL buttons disabled
+ *   - STOPPED  → Start=enabled, Stop=disabled, Pause=disabled, Clear=enabled
+ *   - RUNNING  → Start=disabled, Stop=enabled, Pause=enabled, Clear=disabled
+ *   - PAUSED   → Start=disabled, Stop=enabled, Pause=enabled, Clear=disabled
+ *
+ * Validate is handled separately by updateValidateButtonState() which applies
+ * the same STOPPED-only rule plus a canvas-content check.
+ */
+function updateControlButtonStates() {
+    const canvasItems = document.querySelectorAll('#submonitor-container .canvas-item');
+    const hasAgents = canvasItems.length > 0;
+
+    const isStopped = globalRunningState === GLOBAL_STATE.STOPPED;
+
+    if (!hasAgents) {
+        // No agents on canvas → everything disabled
+        if (btnStart)    btnStart.disabled = true;
+        if (btnStop)     btnStop.disabled  = true;
+        if (btnPause)    btnPause.disabled = true;
+        if (btnClear)    btnClear.disabled = true;
+        if (btnValidate) btnValidate.disabled = true;
+    } else {
+        // Start: enabled only when STOPPED
+        if (btnStart) btnStart.disabled = !isStopped;
+
+        // Stop: enabled when RUNNING or PAUSED
+        if (btnStop) btnStop.disabled = isStopped;
+
+        // Pause: enabled when RUNNING or PAUSED
+        if (btnPause) btnPause.disabled = isStopped;
+
+        // Clear: enabled only when STOPPED
+        if (btnClear) btnClear.disabled = !isStopped;
+
+        // Validate: delegated to its own function (checks STOPPED + canvas content)
+        if (typeof updateValidateButtonState === 'function') {
+            updateValidateButtonState();
+        }
+    }
+}
+
+/**
  * Set the global running state and update UI accordingly.
  * @param {string} newState - One of GLOBAL_STATE.RUNNING / STOPPED / PAUSED
  */
@@ -50,10 +96,8 @@ function setGlobalRunningState(newState) {
         updateAllLedIndicators({});
     }
 
-    // Update Validate button state on every state transition
-    if (typeof updateValidateButtonState === 'function') {
-        updateValidateButtonState();
-    }
+    // Update all control button enabled/disabled states
+    updateControlButtonStates();
 }
 
 /**
@@ -381,6 +425,9 @@ function showAskerChoiceDialog(agentId) {
 // PAGE LIFECYCLE: CLEAR POOL ON LOAD
 // ========================================
 document.addEventListener('DOMContentLoaded', async () => {
+    // Set initial button states (STOPPED, possibly no agents)
+    updateControlButtonStates();
+
     console.log('--- Page loaded: Clearing pool directory for fresh start...');
     try {
         const response = await fetch('/agent/clear_pool/', {
