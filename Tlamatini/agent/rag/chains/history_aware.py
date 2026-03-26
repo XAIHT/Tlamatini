@@ -14,14 +14,31 @@ from ..retrieval import retrieve_documents
 from agent.rag_enhancements import expand_query_with_context, allocate_context_budget, add_cross_references
 from .base import Callbacks
 
+# Regex to strip code blocks (``` or ''') so embedded code doesn't cause
+# false-positive file-listing detection.
+_CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```|'''[\s\S]*?'''")
+
 # Helper for file listing queries
 def _is_list_files_query(q: str) -> bool:
     if not q:
         return False
+
+    # Strip code blocks to avoid false positives from embedded code content
+    # (e.g. a Java comment saying "The login.conf FILE is not needed")
+    cleaned_q = _CODE_BLOCK_RE.sub("", q)
+
     pat = r"(show|enlist|list|enumerate|display|print)\s+(all\s+)?(of\s+)?(the\s+)?(snippets|programs|files|documents|docs|file)"
     extension_pat = r"(files?\s+with\s+(the\s+)?extension|files?\s+ending\s+in|\.\w+\s+files?|\*\.\w+)"
-    detectedFilesPrompt = bool(re.search(pat, q, flags=re.IGNORECASE))
-    detectedExtensionQuery = bool(re.search(extension_pat, q, flags=re.IGNORECASE))
+    detectedFilesPrompt = bool(re.search(pat, cleaned_q, flags=re.IGNORECASE))
+    detectedExtensionQuery = bool(re.search(extension_pat, cleaned_q, flags=re.IGNORECASE))
+
+    # For long prompts (likely containing inline code/context even without
+    # fences), require an explicit listing verb — the extension pattern alone
+    # is too easy to trigger on incidental mentions of file names.
+    if detectedExtensionQuery and not detectedFilesPrompt and len(cleaned_q.strip()) > 500:
+        print("--- _is_list_files_query: extension pattern matched but prompt is long and has no listing verb → ignoring ---\n")
+        return False
+
     result = detectedFilesPrompt or detectedExtensionQuery
     if result:
         print("--- Detected files prompt! ---\n")
@@ -399,19 +416,22 @@ class OptimizedHistoryAwareRAGChain:
         
         if files_ctx and files_ctx.strip() and not explicit_kb_request:
             # Check if files_context is a clarification request (not actual file results)
-            is_clarification = (
-                "LLM Clarification" in files_ctx or 
+            is_not_useful = (
+                "LLM Clarification" in files_ctx or
                 "File search was not possible" in files_ctx or
+                "File search was not needed" in files_ctx or
+                "No files found" in files_ctx or
+                "No files matching" in files_ctx or
                 "clarify" in files_ctx.lower() or
                 "Which base location" in files_ctx
             )
-            if not is_clarification:
+            if not is_not_useful:
                 # FileSearchRAGChain already found files, use that result
                 print("--- Using files_context from FileSearchRAGChain ---")
                 return {"answer": files_ctx}
             else:
-                # It's a clarification request - ignore it and use knowledge base files instead
-                print("--- FileSearchRAGChain returned clarification request, using knowledge base files instead ---")
+                # It's a clarification/empty result - ignore it and use knowledge base files instead
+                print("--- FileSearchRAGChain returned non-useful result, using knowledge base instead ---")
                 files_ctx = ""  # Clear it so we proceed to knowledge base check
         elif explicit_kb_request:
             print("--- User explicitly requested 'provided context', ignoring FileSearchRAGChain results ---")
@@ -424,7 +444,9 @@ class OptimizedHistoryAwareRAGChain:
                 return {"answer": "No files are currently loaded in the knowledge base. Please load documents to enable file listing."}
             
             # Check if user is asking for files with a specific extension
-            extension_match = re.search(r'\*\.(\w+)|\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', question, flags=re.IGNORECASE)
+            # Strip code blocks first to avoid matching extensions inside embedded code
+            cleaned_question = _CODE_BLOCK_RE.sub("", question)
+            extension_match = re.search(r'\*\.(\w+)|\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', cleaned_question, flags=re.IGNORECASE)
             if extension_match:
                 # Extract extension (prioritize *.ext format, then .ext, then "ext files")
                 ext = extension_match.group(1) or extension_match.group(2) or extension_match.group(3)
@@ -441,7 +463,7 @@ class OptimizedHistoryAwareRAGChain:
                             return {"answer": listing}
                         else:
                             return {"answer": f"No files with extension .{ext} found in the knowledge base."}
-            
+
             # No extension filter - return all files
             listing = f"Available files in knowledge base ({len(files)} total):\n" + "\n".join(f"• {f}" for f in files)
             return {"answer": listing}

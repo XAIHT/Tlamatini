@@ -14,7 +14,7 @@ from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
 from agent.rag_enhancements import expand_query_with_context, allocate_context_budget, add_cross_references
 from .base import Callbacks
-from .history_aware import _is_list_files_query
+from .history_aware import _is_list_files_query, _CODE_BLOCK_RE
 
 class UnifiedAgentChain:
     """
@@ -446,7 +446,9 @@ class UnifiedAgentRAGChain:
                 return {"answer": "No files are currently loaded in the knowledge base. Please load documents to enable file listing."}
             
             # Check if user is asking for files with a specific extension
-            extension_match = re.search(r'\*\.(\w+)|\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', question, flags=re.IGNORECASE)
+            # Strip code blocks first to avoid matching extensions inside embedded code
+            cleaned_question = _CODE_BLOCK_RE.sub("", question)
+            extension_match = re.search(r'\*\.(\w+)|\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', cleaned_question, flags=re.IGNORECASE)
             if extension_match:
                 # Extract extension (prioritize *.ext format, then .ext, then "ext files")
                 ext = extension_match.group(1) or extension_match.group(2) or extension_match.group(3)
@@ -463,7 +465,7 @@ class UnifiedAgentRAGChain:
                             return {"answer": listing}
                         else:
                             return {"answer": f"No files with extension .{ext} found in the knowledge base."}
-            
+
             # No extension filter - return all files
             listing = f"Available files in knowledge base ({len(files)} total):\n" + "\n".join(f"• {f}" for f in files)
             return {"answer": listing}
