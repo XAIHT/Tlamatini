@@ -91,7 +91,10 @@ class FileSearchRAGChain:
 
         # 1. Routing prompt (like chain_system_lcel.py)
         self.routing_prompt = PromptTemplate.from_template(
-            """Does this question ask to find, search for, list, or show files/folders?
+            """Does this question ask to find, search for, list, or show files/folders on the local file system?
+
+IMPORTANT: Answer YES only when the user wants to LOCATE, OPEN, or LIST files on disk.
+Answer NO when file names appear as part of code examples, inline content, or refactoring/implementation requests.
 
 Examples:
 Q: "how does the system work?" → NO
@@ -105,6 +108,11 @@ Q: "find all *.py in all allowed locations" → YES
 Q: "Describe the image Kosana.jpg" → YES
 Q: "Analyze the log file error.log" → YES
 Q: "Process the data in data.csv" → YES
+Q: "Implement a refactoring of the provided source code to replace NTLM with Kerberos" → NO
+Q: "Here is my krb5.conf content: [libdefaults]..." → NO (file content provided inline, not a search)
+Q: "Refactor this Java code that references login.conf" → NO (code discussion, not file search)
+Q: "Create an implementation based on KerberosClientAuthenticator.java" → NO (code generation request)
+Q: "The config.yaml file contains these settings..." → NO (describing content, not searching)
 
 Question: {question}
 
