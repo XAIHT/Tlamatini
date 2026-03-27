@@ -250,6 +250,7 @@ def trigger_frontend_notification(matches: List[str], source_agent: str):
             "source_agent": source_agent,
             "timestamp": time.time(),
             "sound_enabled": CONFIG['target'].get('sound_enabled', False),
+            "outcome_detail": CONFIG['target'].get('outcome_detail', ''),
             "message": f"Detected: {', '.join(matches)} in {source_agent}"
         }
         

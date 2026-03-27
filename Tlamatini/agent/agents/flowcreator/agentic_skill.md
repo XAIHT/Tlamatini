@@ -308,6 +308,7 @@ system_prompt: |
   - `llm.model`: "gpt-oss:120b-cloud"
   - `llm.temperature`: 0.1
   - `target.search_strings`: "" (text to detect in source agent logs — formulate based on what you want to be notified about)
+  - `target.outcome_detail`: "" (additional descriptive text shown in the notification dialog below the detected pattern — use this to explain what the detection means in human-readable terms, e.g. "The remote server state file has changed from its baseline value. Immediate review recommended.")
   - `target.sound_enabled`: false (play a sound when pattern is detected)
   - `target.shutdown_on_match`: false (stop this agent after first match)
   - `target.poll_interval`: 2
@@ -379,7 +380,8 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents_a`: [] (Path A: agents to start if the user picks option A)
   - `target_agents_b`: [] (Path B: agents to start if the user picks option B)
- 
+  - `legend_path_a`: '' (optional caption displayed under the Path A button in the runtime choice dialog, e.g. "Apply hotfix and restart")
+  - `legend_path_b`: '' (optional caption displayed under the Path B button in the runtime choice dialog, e.g. "Skip and escalate to on-call")
 
 ### 20. Forker
 - **Purpose**: Monitors source logs for two patterns and auto-routes to Path A or Path B based on which pattern is detected first.
@@ -927,6 +929,7 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
       },
       "target": {
         "search_strings": "STATE_CHANGED",
+        "outcome_detail": "The remote server state file has changed from its baseline value. Immediate review recommended.",
         "sound_enabled": true,
         "shutdown_on_match": false,
         "poll_interval": 2,
@@ -1120,6 +1123,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
       },
       "target": {
         "search_strings": "NormasDRM was successfully deployed",
+        "outcome_detail": "The NormasDRM application WAR file has been successfully deployed to the GlassFish autodeploy directory and the server confirmed deployment.",
         "sound_enabled": true,
         "shutdown_on_match": true,
         "poll_interval": 2,

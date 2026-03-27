@@ -927,7 +927,12 @@ def save_agent_config_view(request, agent_name):
         
         # Merge: existing config is base, user updates override
         merged_config = deep_merge(existing_config, config_data)
-        
+
+        # Sanitize Ender config: remove any unknown keys (e.g., corrupted "utput_agents")
+        if base_folder_name == 'ender':
+            ender_known_keys = {'target_agents', 'source_agents', 'output_agents'}
+            merged_config = {k: v for k, v in merged_config.items() if k in ender_known_keys}
+
         # Custom representer for multiline strings to use literal block style (|)
         def str_representer(dumper, data):
             if '\n' in data:

@@ -22,5 +22,13 @@ target_agents_a: []
 # Agents to start if user picks Path B (auto-populated via canvas connections)
 target_agents_b: []
 
+# Optional caption displayed under the Path A button in the runtime choice dialog.
+# Leave empty for no caption. Example: "Apply hotfix and restart service"
+legend_path_a: ''
+
+# Optional caption displayed under the Path B button in the runtime choice dialog.
+# Leave empty for no caption. Example: "Skip fix and escalate to on-call"
+legend_path_b: ''
+
 # Source agents (auto-populated via canvas connections)
 source_agents: []
