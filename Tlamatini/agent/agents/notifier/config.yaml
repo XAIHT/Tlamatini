@@ -5,6 +5,7 @@ llm:
 
 target:
   search_strings: "ERROR, EXCEPTION, FATAL" # Default strings to detect
+  outcome_detail: "" # Additional context shown in the notification dialog explaining what the detected pattern means
   sound_enabled: false
   shutdown_on_match: false
   poll_interval: 2

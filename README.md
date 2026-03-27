@@ -1235,6 +1235,7 @@ Agents are classified as:
 - Handles **log rotation** detection (file size shrinks -> offset reset)
 - Writes `notification.json` files that the frontend polls for real-time browser alerts
 - Each match triggers all configured `target_agents` via subprocess spawning
+- Supports **`outcome_detail`** parameter: an optional descriptive caption displayed in the notification dialog below the detected pattern, giving the user human-readable context about what the detection means (e.g., *"The remote server state file has changed from its baseline value. Immediate review recommended."*)
 
 ### Action Agents
 
@@ -1273,7 +1274,7 @@ Agents are classified as:
 
 | Agent | Purpose | Key Configuration |
 |-------|---------|-------------------|
-| **asker** | Interactive A/B path chooser. Writes `ASKER_CHOICE_NEEDED` to its log, which the frontend detects and shows a dialog. The user picks Path A or Path B, and the corresponding agents are triggered. 5-minute timeout. | `target_agents_a`: Agents for Path A<br>`target_agents_b`: Agents for Path B<br>`source_agents`: Upstream agents |
+| **asker** | Interactive A/B path chooser. Writes `ASKER_CHOICE_NEEDED` to its log, which the frontend detects and shows a dialog. The user picks Path A or Path B, and the corresponding agents are triggered. 5-minute timeout. Optional `legend_path_a`/`legend_path_b` captions describe each choice in the dialog. | `target_agents_a`: Agents for Path A<br>`target_agents_b`: Agents for Path B<br>`legend_path_a`: Caption for Path A button<br>`legend_path_b`: Caption for Path B button<br>`source_agents`: Upstream agents |
 | **forker** | Automatic A/B path router. Continuously monitors source agent logs for two sets of patterns and automatically routes to Path A or Path B when detected. Supports reanimation offsets. | `pattern_a`: Patterns for Path A (comma-separated)<br>`pattern_b`: Patterns for Path B (comma-separated)<br>`target_agents_a`: Path A agents<br>`target_agents_b`: Path B agents<br>`source_agents`: Agents to monitor<br>`poll_interval`: Check frequency |
 | **counter** | Persistent counter with threshold-based routing. Increments a counter on each execution, compares against a threshold, and routes to Path L (less than) or Path G (greater than or equal). Supports reanimation for persistent state across flow restarts. | `initial_value`: 0<br>`threshold_value`: 10<br>`target_agents_l`: Path L agents<br>`target_agents_g`: Path G agents |
 
@@ -1784,7 +1785,7 @@ poll_interval: 5
 
 ### Example 6: Interactive Decision with Asker
 
-Pause workflow for user decision.
+Pause workflow for user decision. Use `legend_path_a` and `legend_path_b` to describe each choice in the runtime dialog.
 
 ```
 ┌─────────┐     ┌───────────────┐     ┌──────────┐
@@ -1797,6 +1798,18 @@ Pause workflow for user decision.
                                 │Executer_1│  │ Ender_1  │
                                 │(fix it)  │  │(ignore)  │
                                 └──────────┘  └──────────┘
+```
+
+**Asker_1 config.yaml:**
+```yaml
+target_agents_a:
+  - executer_1
+target_agents_b:
+  - ender_1
+legend_path_a: 'Apply hotfix and restart'
+legend_path_b: 'Ignore and escalate'
+source_agents:
+  - monitor_log_1
 ```
 
 ### Example 7: Python Validation with Pythonxer

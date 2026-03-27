@@ -493,6 +493,18 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
             instrTextarea.rows = 5;
         }
 
+    } else if (agentName.startsWith('ender')) {
+        // Ender agent: sanitize config to only include known fields.
+        // Prevents rendering of corrupted/duplicate keys (e.g., "utput_agents").
+        const enderKnownKeys = ['target_agents', 'source_agents', 'output_agents'];
+        const sanitizedData = {};
+        for (const key of enderKnownKeys) {
+            if (key in dataObj) {
+                sanitizedData[key] = dataObj[key];
+            }
+        }
+        renderFields(canvasItemList, sanitizedData);
+
     } else {
         // Standard Behavior
         renderFields(canvasItemList, dataObj);
@@ -650,7 +662,19 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                                 showDeploymentResultDialog(true, agentId, result.path);
                             }
                             if (callbackOnSave != null) {
-                                callbackOnSave(result.config || updates);
+                                // Sanitize Ender config to prevent corrupted keys from persisting in .flw files
+                                let savedData = result.config || updates;
+                                if (agentId.toLowerCase().startsWith('ender')) {
+                                    const enderKnownKeys = ['target_agents', 'source_agents', 'output_agents'];
+                                    const cleanData = {};
+                                    for (const key of enderKnownKeys) {
+                                        if (key in savedData) {
+                                            cleanData[key] = savedData[key];
+                                        }
+                                    }
+                                    savedData = cleanData;
+                                }
+                                callbackOnSave(savedData);
                             }
                         } else {
                             const errorText = await response.text();
