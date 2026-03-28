@@ -123,7 +123,8 @@ function updateAllLedIndicators(runningAgents) {
             const isRunning = runningAgents[item.id] === true;
             led.classList.add(isRunning ? 'led-on' : 'led-off');
         } else if (globalRunningState === GLOBAL_STATE.PAUSED) {
-            led.classList.add(pausedAgentIds.has(item.id) ? 'led-paused' : 'led-idle');
+            // All paused agents show RED led (led-off), never gray
+            led.classList.add(pausedAgentIds.has(item.id) ? 'led-off' : 'led-idle');
         }
     });
 }

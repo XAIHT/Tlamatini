@@ -26,6 +26,11 @@ except Exception as e:
 # Use directory name for log file
 CURRENT_DIR_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
+
+# Reanimation detection: AGENT_REANIMATED=1 means resume from pause
+_IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
+if not _IS_REANIMATED:
+    open(LOG_FILE_PATH, 'w').close()
 logging.basicConfig(
     filename=LOG_FILE_PATH,
     level=logging.INFO,
@@ -225,6 +230,9 @@ def main():
     trigger_event_string = config.get('trigger_event_string', 'EVENT DETECTED')
     poll_interval = config.get('poll_interval', 5)
 
+    if _IS_REANIMATED:
+        logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
+        logging.info("=" * 60)
     logging.info("🔥 DELETER AGENT STARTED")
     logging.info(f"⚙️ Mode: {trigger_mode}")
     logging.info(f"🔄 Recursive: {recursive}")

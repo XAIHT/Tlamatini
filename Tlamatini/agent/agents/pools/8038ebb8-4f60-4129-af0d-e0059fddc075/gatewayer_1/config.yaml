@@ -1,0 +1,84 @@
+source_agents:
+- starter_1
+target_agents:
+- forker_1
+listen_mode: http_webhook
+http:
+  enabled: true
+  host: 127.0.0.1
+  port: 8787
+  path: /gatewayer
+  methods:
+  - POST
+  use_tls: false
+  cert_file: ''
+  key_file: ''
+  request_timeout_sec: 15
+folder_watch:
+  enabled: false
+  watch_path: ''
+  file_pattern: '*.json'
+  poll_interval: 2
+  archive_processed: true
+  processed_dir: processed
+auth:
+  mode: none
+  header_name: Authorization
+  bearer_token: ''
+  allowed_ips: []
+  hmac_secret: ''
+  signature_header: X-Tlamatini-Signature
+  timestamp_header: X-Tlamatini-Timestamp
+  max_clock_skew_sec: 300
+payload:
+  accepted_content_types:
+  - application/json
+  - text/plain
+  - application/x-www-form-urlencoded
+  max_body_bytes: 1048576
+  parse_json: true
+  save_raw_body: true
+  save_headers: true
+  save_query_params: true
+  required_fields: []
+  event_type_field: event_type
+  session_id_field: session_id
+  correlation_id_header: X-Correlation-ID
+  attachments_enabled: true
+  max_attachment_bytes: 5242880
+queue:
+  enabled: true
+  max_pending_events: 100
+  dispatch_mode: serial
+  overflow_policy: reject_new
+  dedup_enabled: true
+  dedup_key_fields:
+  - event_type
+  - session_id
+  - body_hash
+  dedup_window_sec: 30
+storage:
+  output_dir: gateway_events
+  latest_event_file: latest_event.json
+  write_event_json: true
+  write_request_body: true
+  write_headers_json: true
+  write_response_json: true
+  keep_days: 7
+response:
+  mode: json_ack
+  accepted_status: 202
+  rejected_status: 401
+  error_status: 500
+  content_type: application/json
+  body_template: '{"status":"accepted","event_id":"{event_id}"}'
+logging_behavior:
+  accepted_word: GATEWAY_EVENT_ACCEPTED
+  rejected_word: GATEWAY_EVENT_REJECTED
+  queued_word: GATEWAY_EVENT_QUEUED
+  dispatched_word: GATEWAY_EVENT_DISPATCHED
+  error_word: GATEWAY_ERROR
+runtime:
+  worker_threads: 2
+  idle_sleep_ms: 250
+  graceful_shutdown_sec: 5

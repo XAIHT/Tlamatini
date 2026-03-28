@@ -1,0 +1,9 @@
+source_agents: []
+target_agents:
+- ender_1
+telegram:
+  api_id: 36367295
+  api_hash: 9854952a0bd1cf028341b5d591305d32
+  chat_id: me
+  message: Option A  Telegmer was taken!!
+poll_interval: 5

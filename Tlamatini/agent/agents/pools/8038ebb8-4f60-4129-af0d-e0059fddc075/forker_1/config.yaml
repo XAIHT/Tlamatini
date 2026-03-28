@@ -1,0 +1,9 @@
+pattern_a: OPTION_A
+pattern_b: OPTION_B
+target_agents_a:
+- telegramer_1
+target_agents_b:
+- crawler_1
+source_agents:
+- gatewayer_1
+poll_interval: 2

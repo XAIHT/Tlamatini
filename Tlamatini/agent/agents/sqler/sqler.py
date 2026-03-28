@@ -97,22 +97,30 @@ def main():
     CURRENT_DIR_NAME = os.path.basename(agent_dir)
     LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
 
+    # Reanimation detection: AGENT_REANIMATED=1 means resume from pause
+    _is_reanimated = os.environ.get('AGENT_REANIMATED') == '1'
+    if not _is_reanimated:
+        open(LOG_FILE_PATH, 'w').close()
+
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         filename=LOG_FILE_PATH,
                         filemode='a',
                         encoding='utf-8')
-    
+
     # Also log to console
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logging.getLogger().addHandler(console_handler)
-    
+
     pid = os.getpid()
     with open('agent.pid', 'w') as f:
         f.write(str(pid))
-        
+
+    if _is_reanimated:
+        logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
+        logging.info("=" * 60)
     logging.info(f"🚀 Sqler Agent started with PID: {pid}")
 
     try:

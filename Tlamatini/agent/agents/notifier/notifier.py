@@ -22,6 +22,11 @@ except Exception as e:
 # Use directory name for log file (e.g., notifier_1 -> notifier_1.log)
 CURRENT_DIR_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
+
+# Reanimation detection: AGENT_REANIMATED=1 means resume from pause
+_IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
+if not _IS_REANIMATED:
+    open(LOG_FILE_PATH, 'w').close()
 NOTIFICATION_FILE = "notification.json"
 PID_FILE = "agent.pid"
 REANIM_FILE = "reanim.pos"
@@ -395,6 +400,9 @@ def remove_pid_file():
 
 if __name__ == "__main__":
     write_pid_file()
+    if _IS_REANIMATED:
+        logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
+        logging.info("=" * 60)
     try:
         logging.info("🔥 NOTIFIER AGENT STARTED")
         offsets = get_reanim_offset()

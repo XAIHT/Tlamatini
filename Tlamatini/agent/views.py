@@ -3532,6 +3532,238 @@ def restart_agents_view(request):
             "message": str(e)
         }), content_type='application/json', status=500)
 
+
+@csrf_exempt
+@require_POST
+def reanimate_agents_view(request):
+    """
+    Reanimate agents from stored process info (resume from pause).
+    Same as restart_agents but passes AGENT_REANIMATED=1 env var so agents
+    know to preserve logs and load reanimation state files.
+
+    Expected POST body (JSON):
+    {
+        "agents": [
+            {
+                "canvas_id": "monitor-log-1",
+                "folder_name": "monitor_log_1",
+                "script_name": "monitor_log.py"
+            }
+        ]
+    }
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        agents_to_reanimate = data.get('agents', [])
+
+        if not agents_to_reanimate:
+            return HttpResponse(json.dumps({
+                "success": True,
+                "reanimated": [],
+                "failed": [],
+                "message": "No agents to reanimate"
+            }), content_type='application/json')
+
+        pool_base_path = get_pool_path(request)
+        python_cmd = get_python_command()
+
+        reanimated = []
+        failed = []
+
+        for agent in agents_to_reanimate:
+            canvas_id = agent.get('canvas_id', '')
+            folder_name = agent.get('folder_name', '')
+            script_name = agent.get('script_name', '')
+
+            if not folder_name or not script_name:
+                failed.append(canvas_id)
+                continue
+
+            agent_dir = os.path.join(pool_base_path, folder_name)
+            script_path = os.path.join(agent_dir, script_name)
+
+            if not os.path.exists(script_path):
+                print(f"[REANIMATE] Script not found: {script_path}")
+                failed.append(canvas_id)
+                continue
+
+            try:
+                cmd = python_cmd + [script_path]
+                print(f"[REANIMATE] Starting: {' '.join(cmd)}")
+
+                # Build env with AGENT_REANIMATED=1 so agent preserves logs & state
+                agent_env = os.environ.copy()
+                agent_env['AGENT_REANIMATED'] = '1'
+
+                if sys.platform.startswith('win'):
+                    CREATE_NO_WINDOW = 0x08000000
+                    CREATE_NEW_PROCESS_GROUP = 0x00000200
+                    DETACHED_PROCESS = 0x00000008
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=agent_dir,
+                        env=agent_env,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        stdin=subprocess.DEVNULL,
+                        creationflags=CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
+                    )
+                else:
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=agent_dir,
+                        env=agent_env,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        stdin=subprocess.DEVNULL,
+                        start_new_session=True
+                    )
+
+                _write_pid_file(agent_dir, process.pid)
+
+                reanimated.append(canvas_id)
+                print(f"[REANIMATE] Successfully reanimated: {canvas_id}")
+
+            except Exception as start_err:
+                print(f"[REANIMATE] Failed to reanimate {canvas_id}: {start_err}")
+                failed.append(canvas_id)
+
+        success = len(failed) == 0
+
+        return HttpResponse(json.dumps({
+            "success": success,
+            "reanimated": reanimated,
+            "failed": failed,
+            "message": f"Reanimated {len(reanimated)} agent(s), {len(failed)} failed"
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error reanimating agents: {e}")
+        traceback.print_exc()
+        return HttpResponse(json.dumps({
+            "success": False,
+            "reanimated": [],
+            "failed": [],
+            "message": str(e)
+        }), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
+def save_paused_agents_view(request):
+    """
+    Save the list of running agents to paused_agents.reanim in the pool directory.
+    Called when the Pause button is pressed.
+
+    Expected POST body (JSON):
+    {
+        "agents": [
+            {
+                "canvas_id": "monitor-log-1",
+                "folder_name": "monitor_log_1",
+                "script_name": "monitor_log.py",
+                "pid": 12345,
+                "cmdline": "..."
+            }
+        ]
+    }
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        agents = data.get('agents', [])
+        pool_base_path = get_pool_path(request)
+
+        if not os.path.exists(pool_base_path):
+            os.makedirs(pool_base_path, exist_ok=True)
+
+        reanim_path = os.path.join(pool_base_path, 'paused_agents.reanim')
+
+        with open(reanim_path, 'w', encoding='utf-8') as f:
+            yaml.dump({'paused_agents': agents}, f, default_flow_style=False)
+
+        print(f"[PAUSE] Saved {len(agents)} agent(s) to {reanim_path}")
+
+        return HttpResponse(json.dumps({
+            "success": True,
+            "saved_count": len(agents),
+            "message": f"Saved {len(agents)} paused agent(s)"
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error saving paused agents: {e}")
+        traceback.print_exc()
+        return HttpResponse(json.dumps({
+            "success": False,
+            "message": str(e)
+        }), content_type='application/json', status=500)
+
+
+def load_paused_agents_view(request):
+    """
+    Load the list of paused agents from paused_agents.reanim.
+    Called when resuming from pause.
+    """
+    try:
+        pool_base_path = get_pool_path(request)
+        reanim_path = os.path.join(pool_base_path, 'paused_agents.reanim')
+
+        if not os.path.exists(reanim_path):
+            return HttpResponse(json.dumps({
+                "success": True,
+                "agents": [],
+                "message": "No paused_agents.reanim file found"
+            }), content_type='application/json')
+
+        with open(reanim_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+
+        agents = data.get('paused_agents', []) if data else []
+        print(f"[RESUME] Loaded {len(agents)} paused agent(s) from {reanim_path}")
+
+        return HttpResponse(json.dumps({
+            "success": True,
+            "agents": agents,
+            "message": f"Loaded {len(agents)} paused agent(s)"
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error loading paused agents: {e}")
+        traceback.print_exc()
+        return HttpResponse(json.dumps({
+            "success": False,
+            "agents": [],
+            "message": str(e)
+        }), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
+def delete_paused_agents_view(request):
+    """
+    Delete the paused_agents.reanim file after successful resume.
+    """
+    try:
+        pool_base_path = get_pool_path(request)
+        reanim_path = os.path.join(pool_base_path, 'paused_agents.reanim')
+
+        if os.path.exists(reanim_path):
+            os.remove(reanim_path)
+            print(f"[RESUME] Deleted {reanim_path}")
+
+        return HttpResponse(json.dumps({
+            "success": True,
+            "message": "paused_agents.reanim deleted"
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error deleting paused agents file: {e}")
+        traceback.print_exc()
+        return HttpResponse(json.dumps({
+            "success": False,
+            "message": str(e)
+        }), content_type='application/json', status=500)
+
+
 @csrf_exempt
 @require_POST
 def update_croner_connection_view(request, agent_name):

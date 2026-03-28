@@ -131,6 +131,57 @@ if __name__ == "__main__":
 - **Concurrency guard**: If the agent starts downstream agents, it MUST call `wait_for_agents_to_stop(target_agents)` BEFORE the loop that calls `start_agent()`. This prevents duplicate/orphaned processes in looping flows. The wait checks each target's PID file and blocks until all targets have exited, logging an ERROR every 10 seconds while waiting.
 - If the agent persists restart/reanimation state (offsets, counters, checkpoints), store it in files named `reanim*` so Ender can reset that state on flow shutdown (examples: `reanim.pos`, `reanim.counter`, `reanim_<source>.pos`). Manual per-agent restart from the contextual menu must preserve these files.
 
+### Reanimation Support
+
+Every agent must support reanimation (pause/resume). There are two lifecycle modes:
+
+- **Fresh start**: No `AGENT_REANIMATED` env var → log truncated → `"STARTED"` logged → reanim files ignored (Ender cleaned them)
+- **Reanimation** (pause/resume): `AGENT_REANIMATED=1` → log NOT truncated → `"REANIMATED"` logged → reanim files loaded to restore state
+- The `paused_agents.reanim` file in the pool dir stores which agents were running when paused
+
+**1. Reanimation detection (REQUIRED for all agents)**
+
+Add this at module level, right after the `LOG_FILE_PATH` definition and **before** `logging.basicConfig(...)`:
+
+```python
+# Reanimation detection: AGENT_REANIMATED=1 means resume from pause
+_IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
+if not _IS_REANIMATED:
+    open(LOG_FILE_PATH, 'w').close()
+```
+
+This ensures the log is only truncated on fresh starts, preserving log continuity across pause/resume cycles.
+
+**2. Reanimation marker in main() (REQUIRED for all agents)**
+
+Add this in `main()` right after `write_pid_file()`:
+
+```python
+if _IS_REANIMATED:
+    logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
+    logging.info("=" * 60)
+```
+
+**3. Offset persistence (REQUIRED only for agents that poll source logs)**
+
+Agents that track file offsets (e.g., monitor upstream log files) must also implement reanim offset storage so they resume reading from where they left off:
+
+```python
+REANIM_FILE = "reanim.pos"
+
+def save_reanim_offset(offset):
+    with open(REANIM_FILE, 'w') as f:
+        f.write(str(offset))
+
+def get_reanim_offset(log_file_path):
+    if os.path.exists(REANIM_FILE):
+        with open(REANIM_FILE, 'r') as f:
+            return int(f.read().strip())
+    return 0
+```
+
+At startup, load the offset from the reanim file. In the polling loop, call `save_reanim_offset(offset)` after each read. For agents monitoring multiple sources, use per-source files: `reanim_<source>.pos`.
+
 ---
 
 ## Step 2 · Backend: Django View for Connection Updates
@@ -584,6 +635,9 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
 
 ```
 [ ] Step 1: Create agent/agents/<agent_name>/<agent_name>.py and config.yaml
+    [ ] Add _IS_REANIMATED detection before logging setup
+    [ ] Add reanimation marker log in main() after write_pid_file()
+    [ ] If agent polls source logs: implement reanim offset save/load
 [ ] Step 2: Add update_<agent_name>_connection_view in views.py + URL in urls.py
 [ ] Step 3: Create database migration and run `python manage.py migrate`
     [ ] Decide: is agentDescription single-word (e.g., "Shoter") or multi-word (e.g., "Node Manager")?

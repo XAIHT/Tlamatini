@@ -12,8 +12,8 @@ async function executeStartSequence() {
     }
 
     if (globalRunningState === GLOBAL_STATE.PAUSED) {
-        console.log('--- Cannot start while system is PAUSED');
-        alert('The system is currently paused. Click the Pause button to resume, or click Stop to fully stop.');
+        console.log('--- System is PAUSED, triggering resume from Start button');
+        await resumeFromPause();
         return;
     }
 
@@ -670,7 +670,8 @@ if (btnPause) {
 }
 
 /**
- * Pause execution: get running processes, store them, kill them, update UI.
+ * Pause execution: get running processes, save to paused_agents.reanim on server,
+ * kill them (preserving logs and reanim state files), update UI with red LEDs.
  */
 async function pauseExecution() {
     isBusyProcessing = true;
@@ -683,7 +684,8 @@ async function pauseExecution() {
     if (btnValidate) btnValidate.disabled = true;
 
     try {
-        console.log('--- Fetching running processes...');
+        // Step 1: Get currently running processes
+        console.log('--- [Pause] Fetching running processes...');
         const getProcessesResponse = await fetch('/agent/get_session_running_processes/', {
             method: 'GET', headers: getHeaders(), credentials: 'same-origin'
         });
@@ -697,30 +699,48 @@ async function pauseExecution() {
         }
 
         const runningProcesses = processesResult.processes || [];
-        console.log(`--- Found ${runningProcesses.length} running process(es)`);
+        console.log(`--- [Pause] Found ${runningProcesses.length} running process(es)`);
 
         if (runningProcesses.length === 0) {
-            console.log('--- No running processes to pause');
+            console.log('--- [Pause] No running processes to pause');
             alert('No running processes found to pause.');
             resetPauseButtons();
             return;
         }
 
-        pausedProcessesOnPause[SESSION_ID] = runningProcesses;
-        console.log(`--- Stored ${runningProcesses.length} process(es) in pausedProcessesOnPause[${SESSION_ID}]`);
+        // Step 2: Save paused agents list to paused_agents.reanim file on server
+        console.log('--- [Pause] Saving paused agents to paused_agents.reanim...');
+        const saveResponse = await fetch('/agent/save_paused_agents/', {
+            method: 'POST',
+            headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ agents: runningProcesses })
+        });
+        const saveResult = await saveResponse.json();
+        if (saveResult.success) {
+            console.log(`--- [Pause] Saved ${saveResult.saved_count} agent(s) to paused_agents.reanim`);
+        } else {
+            console.warn('--- [Pause] Warning: Could not save paused agents file:', saveResult.message);
+        }
 
-        console.log('--- Killing all session processes...');
+        // Step 3: Store in JS memory for LED display
+        pausedProcessesOnPause[SESSION_ID] = runningProcesses;
+        console.log(`--- [Pause] Stored ${runningProcesses.length} process(es) in pausedProcessesOnPause[${SESSION_ID}]`);
+
+        // Step 4: Kill all session processes (do NOT erase logs or reanim files)
+        console.log('--- [Pause] Killing all session processes...');
         const killResponse = await fetch('/agent/kill_session_processes/', {
             method: 'POST', headers: getHeaders(), credentials: 'same-origin'
         });
         const killResult = await killResponse.json();
 
         if (killResult.success) {
-            console.log(`--- Killed ${killResult.killed_count} process(es)`);
+            console.log(`--- [Pause] Killed ${killResult.killed_count} process(es)`);
         } else {
-            console.warn('--- Kill operation reported issues:', killResult.message);
+            console.warn('--- [Pause] Kill operation reported issues:', killResult.message);
         }
 
+        // Step 5: Set PAUSED state (LEDs go red for paused agents)
         setGlobalRunningState(GLOBAL_STATE.PAUSED);
 
     } catch (error) {
@@ -732,7 +752,9 @@ async function pauseExecution() {
 }
 
 /**
- * Resume from pause: restart stored processes, update UI.
+ * Resume from pause: load agents from paused_agents.reanim on server,
+ * reanimate them (with AGENT_REANIMATED=1 env var so they preserve logs
+ * and load reanim state files), then delete paused_agents.reanim.
  */
 async function resumeFromPause() {
     isBusyProcessing = true;
@@ -745,51 +767,77 @@ async function resumeFromPause() {
     if (btnValidate) btnValidate.disabled = true;
 
     try {
-        const storedProcesses = pausedProcessesOnPause[SESSION_ID] || [];
+        // Step 1: Load paused agents list from paused_agents.reanim on server
+        console.log('--- [Resume] Loading paused agents from paused_agents.reanim...');
+        const loadResponse = await fetch('/agent/load_paused_agents/', {
+            method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+        });
+        const loadResult = await loadResponse.json();
+
+        let storedProcesses = [];
+        if (loadResult.success && loadResult.agents && loadResult.agents.length > 0) {
+            storedProcesses = loadResult.agents;
+            console.log(`--- [Resume] Loaded ${storedProcesses.length} agent(s) from server file`);
+        } else {
+            // Fallback to JS memory if server file is missing
+            storedProcesses = pausedProcessesOnPause[SESSION_ID] || [];
+            console.log(`--- [Resume] Fallback to JS memory: ${storedProcesses.length} agent(s)`);
+        }
 
         if (storedProcesses.length === 0) {
-            console.log('--- No stored processes to resume');
+            console.log('--- [Resume] No stored processes to resume');
             setGlobalRunningState(GLOBAL_STATE.STOPPED);
             resetPauseButtons();
             return;
         }
 
-        console.log(`--- Restarting ${storedProcesses.length} agent(s)...`);
-
-        const agentsToRestart = storedProcesses.map(proc => ({
+        // Step 2: Build unique agents list for reanimation
+        const agentsToReanimate = storedProcesses.map(proc => ({
             canvas_id: proc.canvas_id,
             folder_name: proc.folder_name,
             script_name: proc.script_name
         }));
 
-        // Remove duplicates based on canvas_id
         const uniqueAgents = [];
         const seenIds = new Set();
-        for (const agent of agentsToRestart) {
+        for (const agent of agentsToReanimate) {
             if (!seenIds.has(agent.canvas_id)) {
                 seenIds.add(agent.canvas_id);
                 uniqueAgents.push(agent);
             }
         }
-        console.log(`--- Unique agents to restart: ${uniqueAgents.length}`);
+        console.log(`--- [Resume] Unique agents to reanimate: ${uniqueAgents.length}`);
 
-        const restartResponse = await fetch('/agent/restart_agents/', {
+        // Step 3: Reanimate agents (uses AGENT_REANIMATED=1 env var)
+        const reanimateResponse = await fetch('/agent/reanimate_agents/', {
             method: 'POST',
             headers: { ...getHeaders(), 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify({ agents: uniqueAgents })
         });
-        const restartResult = await restartResponse.json();
+        const reanimateResult = await reanimateResponse.json();
 
-        if (restartResult.success) {
-            console.log(`--- Successfully restarted ${restartResult.restarted.length} agent(s)`);
+        if (reanimateResult.success) {
+            console.log(`--- [Resume] Successfully reanimated ${reanimateResult.reanimated.length} agent(s)`);
         } else {
-            console.warn('--- Some agents failed to restart:', restartResult.failed);
-            if (restartResult.failed.length > 0) {
-                alert(`Warning: ${restartResult.failed.length} agent(s) failed to restart.`);
+            console.warn('--- [Resume] Some agents failed to reanimate:', reanimateResult.failed);
+            if (reanimateResult.failed.length > 0) {
+                alert(`Warning: ${reanimateResult.failed.length} agent(s) failed to reanimate.`);
             }
         }
 
+        // Step 4: Delete paused_agents.reanim file from server
+        console.log('--- [Resume] Deleting paused_agents.reanim...');
+        try {
+            await fetch('/agent/delete_paused_agents/', {
+                method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+            });
+            console.log('--- [Resume] paused_agents.reanim deleted');
+        } catch (delErr) {
+            console.warn('--- [Resume] Warning: Could not delete paused_agents.reanim:', delErr);
+        }
+
+        // Step 5: Clear JS memory and transition to RUNNING
         delete pausedProcessesOnPause[SESSION_ID];
         setGlobalRunningState(GLOBAL_STATE.RUNNING);
 

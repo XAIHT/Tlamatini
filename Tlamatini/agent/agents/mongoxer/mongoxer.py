@@ -94,16 +94,26 @@ def main():
     os.chdir(agent_dir)
     
     pool_dir_name = os.environ.get('POOL_DIR_NAME', agent_dir)
+    CURRENT_DIR_NAME = os.path.basename(agent_dir)
+    LOG_FILE_PATH = f'{pool_dir_name}.log'
+
+    # Reanimation detection: AGENT_REANIMATED=1 means resume from pause
+    _is_reanimated = os.environ.get('AGENT_REANIMATED') == '1'
+    if not _is_reanimated:
+        open(LOG_FILE_PATH, 'w').close()
 
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
-                        filename=f'{pool_dir_name}.log',
+                        filename=LOG_FILE_PATH,
                         filemode='a')
-    
+
     pid = os.getpid()
     with open('agent.pid', 'w') as f:
         f.write(str(pid))
-        
+
+    if _is_reanimated:
+        logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
+        logging.info("=" * 60)
     logging.info(f"Agent started with PID: {pid}")
 
     try:
