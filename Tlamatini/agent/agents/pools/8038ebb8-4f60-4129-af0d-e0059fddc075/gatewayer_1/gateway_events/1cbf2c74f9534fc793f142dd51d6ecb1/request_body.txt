@@ -1,1 +1,0 @@
-{"event_type": "OPTION_A", "message": "User selected Option A - Telegram notification"}

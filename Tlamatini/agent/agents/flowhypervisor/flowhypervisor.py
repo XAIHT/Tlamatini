@@ -457,20 +457,41 @@ def build_monitoring_context(
     pool_path: str,
     matrix: List[List[int]],
     new_logs: str,
-    per_agent_info: Dict[str, str]
+    per_agent_info: Dict[str, str],
+    flow_start_time: float = 0.0,
+    agent_first_seen: Dict[str, float] = None,
+    last_alert_explanation: str = ""
 ) -> str:
     """Build the full context string to send to the LLM."""
     sections = []
 
-    # 1. Agent list with PID status
+    # 0. Flow elapsed time — hard fact the LLM can rely on
+    now = time.time()
+    if flow_start_time > 0:
+        elapsed = now - flow_start_time
+        mins = int(elapsed // 60)
+        secs = int(elapsed % 60)
+        sections.append(f"FLOW ELAPSED TIME: {mins}m {secs}s ({int(elapsed)}s total)")
+    sections.append(f"CURRENT TIME: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    sections.append("")
+
+    # 1. Agent list with PID status and running duration
+    if agent_first_seen is None:
+        agent_first_seen = {}
     sections.append("AGENT STATUS:")
     for agent_name in agents:
         pid = check_agent_pid(pool_path, agent_name)
         status = f"RUNNING (PID: {pid})" if pid else "NOT RUNNING"
         log_status = per_agent_info.get(agent_name, "(unknown)")
         has_log = os.path.exists(get_agent_log_path(pool_path, agent_name))
+
+        duration_str = ""
+        if pid and agent_name in agent_first_seen:
+            dur = now - agent_first_seen[agent_name]
+            duration_str = f" | Running for: {int(dur)}s"
+
         sections.append(
-            f"  {agent_name}: {status} | "
+            f"  {agent_name}: {status}{duration_str} | "
             f"Log file: {'exists' if has_log else 'missing'} | "
             f"New content: {log_status if log_status.startswith('(') else 'YES'}"
         )
@@ -480,7 +501,13 @@ def build_monitoring_context(
     sections.append("CONNECTION MATRIX:")
     sections.append(format_matrix(agents, matrix))
 
-    # 3. Incremental log content
+    # 3. Previous alert (so LLM doesn't forget issues between cycles)
+    if last_alert_explanation:
+        sections.append("")
+        sections.append("PREVIOUS CYCLE ALERT (still relevant unless resolved):")
+        sections.append(f"  {last_alert_explanation}")
+
+    # 4. Incremental log content
     sections.append("")
     if new_logs.strip():
         sections.append("NEW LOG CONTENT SINCE LAST CHECK:")
@@ -600,11 +627,17 @@ def main():
         # ==========================================
         cycle = 0
         consecutive_no_running = 0
+        flow_start_time = time.time()
+        agent_first_seen: Dict[str, float] = {}
+        last_alert_explanation = ""
 
         while True:
             cycle += 1
             logging.info(f"\n{'─' * 40}")
             logging.info(f"🔄 Monitoring cycle #{cycle}")
+
+            elapsed = time.time() - flow_start_time
+            logging.info(f"   ⏱️ Flow elapsed: {int(elapsed)}s")
 
             # Step E-F: Check PIDs
             running_agents = []
@@ -613,8 +646,13 @@ def main():
                 pid = check_agent_pid(pool_path, agent_name)
                 if pid:
                     running_agents.append((agent_name, pid))
+                    # Track when each agent was first seen running
+                    if agent_name not in agent_first_seen:
+                        agent_first_seen[agent_name] = time.time()
                 else:
                     stopped_agents.append(agent_name)
+                    # Clear first-seen when agent stops (it finished)
+                    agent_first_seen.pop(agent_name, None)
 
             logging.info(
                 f"   Running: {len(running_agents)} | "
@@ -622,7 +660,8 @@ def main():
             )
 
             for name, pid in running_agents:
-                logging.info(f"   ✅ {name} (PID: {pid})")
+                dur = int(time.time() - agent_first_seen.get(name, time.time()))
+                logging.info(f"   ✅ {name} (PID: {pid}, running {dur}s)")
             for name in stopped_agents:
                 logging.info(f"   ⏹️ {name} (not running)")
 
@@ -663,7 +702,8 @@ def main():
 
             # Step H: Build context and query LLM
             context = build_monitoring_context(
-                agents, pool_path, matrix, new_logs, per_agent_info
+                agents, pool_path, matrix, new_logs, per_agent_info,
+                flow_start_time, agent_first_seen, last_alert_explanation
             )
 
             logging.info("   🤖 Querying LLM for analysis...")
@@ -683,6 +723,7 @@ def main():
                 if is_ok:
                     logging.info("   ✅ LLM verdict: OK")
                     clear_alert_file()
+                    last_alert_explanation = ""
                 else:
                     # Step K: Write alert for frontend
                     logging.warning(
@@ -690,6 +731,7 @@ def main():
                     )
                     logging.warning(f"   📋 {explanation}")
                     write_alert_file(explanation)
+                    last_alert_explanation = explanation
 
             except RuntimeError as e:
                 logging.error(f"   ❌ LLM query failed: {e}")

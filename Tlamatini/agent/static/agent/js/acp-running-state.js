@@ -19,7 +19,7 @@ const submittedAskerRequests = new Set();
  *   - No agents on canvas → ALL buttons disabled
  *   - STOPPED  → Start=enabled, Stop=disabled, Pause=disabled, Clear=enabled
  *   - RUNNING  → Start=disabled, Stop=enabled, Pause=enabled, Clear=disabled
- *   - PAUSED   → Start=disabled, Stop=enabled, Pause=enabled, Clear=disabled
+ *   - PAUSED   → Start=enabled (resume), Stop=enabled, Pause=enabled, Clear=disabled
  *
  * Validate is handled separately by updateValidateButtonState() which applies
  * the same STOPPED-only rule plus a canvas-content check.
@@ -38,8 +38,9 @@ function updateControlButtonStates() {
         if (btnClear)    btnClear.disabled = true;
         if (btnValidate) btnValidate.disabled = true;
     } else {
-        // Start: enabled only when STOPPED
-        if (btnStart) btnStart.disabled = !isStopped;
+        // Start: enabled when STOPPED or PAUSED (PAUSED → resume)
+        const isPaused = globalRunningState === GLOBAL_STATE.PAUSED;
+        if (btnStart) btnStart.disabled = !(isStopped || isPaused);
 
         // Stop: enabled when RUNNING or PAUSED
         if (btnStop) btnStop.disabled = isStopped;
@@ -123,8 +124,8 @@ function updateAllLedIndicators(runningAgents) {
             const isRunning = runningAgents[item.id] === true;
             led.classList.add(isRunning ? 'led-on' : 'led-off');
         } else if (globalRunningState === GLOBAL_STATE.PAUSED) {
-            // All paused agents show RED led (led-off), never gray
-            led.classList.add(pausedAgentIds.has(item.id) ? 'led-off' : 'led-idle');
+            // ALL agents in the flow show yellow blinking LED when paused
+            led.classList.add('led-paused');
         }
     });
 }
