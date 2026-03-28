@@ -408,6 +408,56 @@ def build_event_envelope(handler, body_bytes: bytes, config: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Payload logging for downstream agents (Forker / Summarizer / Parametrizer)
+# ---------------------------------------------------------------------------
+
+def _log_event_payload(envelope: dict):
+    """Log accepted event payload in two formats for downstream consumption.
+
+    1. **Flat key-value lines** (``MESSAGE_<KEY>: <VALUE>``) — one per body
+       field when the body is a JSON object, or a single ``MESSAGE_BODY:``
+       line otherwise.  These are designed so that Forker can pattern-match
+       on specific payload values (e.g. ``MESSAGE_TYPE: TELEGRAM``).
+
+    2. **Structured output block** wrapped in
+       ``INI_GATEWAY_EVENT<<< … >>>END_GATEWAY_EVENT`` delimiters with one
+       ``key: value`` per line.  Parametrizer parses individual fields from
+       these lines; Summarizer can feed the whole block to an LLM.
+    """
+    event_id = envelope.get('event_id', '')
+    body = envelope.get('body')
+
+    # ── 1) Flat key-value lines for Forker pattern matching ──────────
+    if isinstance(body, dict):
+        for key, value in body.items():
+            logging.info(f"MESSAGE_{key.upper()}: {value}")
+    elif body:
+        logging.info(f"MESSAGE_BODY: {body}")
+
+    if envelope.get('event_type'):
+        logging.info(f"EVENT_TYPE: {envelope['event_type']}")
+    if envelope.get('session_id'):
+        logging.info(f"SESSION_ID: {envelope['session_id']}")
+
+    # ── 2) Structured block for Summarizer / Parametrizer ────────────
+    body_str = json.dumps(body, ensure_ascii=False) if isinstance(body, dict) else str(body or '')
+    block = (
+        f"event_id: {event_id}\n"
+        f"event_type: {envelope.get('event_type', '')}\n"
+        f"session_id: {envelope.get('session_id', '')}\n"
+        f"correlation_id: {envelope.get('correlation_id', '')}\n"
+        f"content_type: {envelope.get('content_type', '')}\n"
+        f"method: {envelope.get('method', '')}\n"
+        f"path: {envelope.get('path', '')}\n"
+        f"body: {body_str}"
+    )
+
+    logging.info(
+        f"INI_GATEWAY_EVENT<<<\n{block}\n>>>END_GATEWAY_EVENT"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Validation helpers
 # ---------------------------------------------------------------------------
 
@@ -602,6 +652,9 @@ class GatewayerHandler(BaseHTTPRequestHandler):
 
         logging.info(f"{log_cfg.get('accepted_word', 'GATEWAY_EVENT_ACCEPTED')} event_id={event_id}")
 
+        # Log payload details for downstream agents (Forker, Summarizer, Parametrizer)
+        _log_event_payload(envelope)
+
         # Enqueue
         max_pending = queue_cfg.get('max_pending_events', 100)
         overflow = queue_cfg.get('overflow_policy', 'reject_new')
@@ -710,6 +763,10 @@ def folder_watch_loop(config: dict):
                     logging.error(f"{log_cfg.get('error_word', 'GATEWAY_ERROR')} persist {fname}: {e}")
 
                 logging.info(f"{log_cfg.get('accepted_word', 'GATEWAY_EVENT_ACCEPTED')} file={fname} event_id={event_id}")
+
+                # Log payload details for downstream agents (Forker, Summarizer, Parametrizer)
+                _log_event_payload(envelope)
+
                 event_queue.put(envelope)
                 logging.info(f"{log_cfg.get('queued_word', 'GATEWAY_EVENT_QUEUED')} event_id={event_id}")
                 _persist_queue_snapshot()
