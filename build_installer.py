@@ -390,56 +390,41 @@ def main():
             cleanup_file.unlink()
             print(f"Removed: {cleanup_file}")
 
-    # ── 7) Copy pkg.zip into dist/Installer (next to the .exe) ───────
-    # install.py expects pkg.zip sitting right next to Installer.exe.
-    # We use verified copy with SHA-256 hash + size check and retry.
-    print("\n--- Copying pkg.zip to dist/Installer ---")
-    _verified_copy(pkg_zip, installer_dir / "pkg.zip")
-
-    # ── 7b) Copy Uninstaller.exe into dist/Installer (next to the .exe) ──
-    if uninstaller_exe_src.exists():
-        print("\n--- Copying Uninstaller.exe to dist/Installer ---")
-        dst_uninstaller = installer_dir / "Uninstaller.exe"
-        shutil.copy2(uninstaller_exe_src, dst_uninstaller)
-        un_mb = dst_uninstaller.stat().st_size / (1024 * 1024)
-        print(f"Copied Uninstaller.exe ({un_mb:.1f} MB)")
-
-    # ── 8) Setup Release Folder ──────────────────────────────────────
-    # Copy the entire --onedir output (which now includes pkg.zip from
-    # step 7) into the release directory.
-    print("\n--- Packaging Release ---")
+    # ── 7) Rename dist/Installer → dist/Tlamatini_Release ─────────────
+    # Instead of copying the entire --onedir output into a second folder,
+    # we simply rename it.  This avoids duplicating ~all build artifacts.
+    print("\n--- Setting up Release folder ---")
     release_dir = root / "dist" / "Tlamatini_Release"
     if release_dir.exists():
         shutil.rmtree(release_dir, onerror=_on_rmtree_error)
 
-    # Copy the full --onedir folder as the release directory
-    shutil.copytree(installer_dir, release_dir, dirs_exist_ok=True)
+    installer_dir.rename(release_dir)
+    print(f"Renamed {installer_dir.name}/ → {release_dir.name}/")
 
-    # Verify pkg.zip also ended up in the release directory
-    release_pkg = release_dir / "pkg.zip"
-    if not release_pkg.exists():
-        # copytree should have carried it, but if not, copy explicitly
-        print("WARNING: pkg.zip missing from release dir after copytree — copying explicitly")
-        _verified_copy(pkg_zip, release_pkg)
-    else:
-        # Verify the copytree'd file matches the source
-        src_hash = _sha256(pkg_zip)
-        dst_hash = _sha256(release_pkg)
-        if src_hash != dst_hash:
-            print("WARNING: pkg.zip in release dir has mismatched hash — re-copying")
-            release_pkg.unlink()
-            _verified_copy(pkg_zip, release_pkg)
-        else:
-            dst_size = release_pkg.stat().st_size
-            print(f"VERIFIED: pkg.zip in release dir OK "
-                  f"(SHA-256={src_hash[:12]}…, {dst_size / (1024*1024):.1f} MB)")
+    # ── 8) Move pkg.zip into the release folder (no duplicate) ───────
+    # install.py expects pkg.zip sitting right next to Installer.exe.
+    # We MOVE instead of copying to avoid doubling disk usage (~1 GB).
+    print("\n--- Moving pkg.zip to release folder ---")
+    _verified_move(pkg_zip, release_dir / "pkg.zip")
 
-    print(f"\nCOPIED: Installer bundle and pkg.zip into {release_dir}\n")
+    # ── 8b) Move Uninstaller.exe into the release folder ─────────────
+    if uninstaller_exe_src.exists():
+        print("\n--- Moving Uninstaller.exe to release folder ---")
+        dst_uninstaller = release_dir / "Uninstaller.exe"
+        shutil.move(str(uninstaller_exe_src), str(dst_uninstaller))
+        un_mb = dst_uninstaller.stat().st_size / (1024 * 1024)
+        print(f"Moved Uninstaller.exe ({un_mb:.1f} MB)")
+
+    print(f"\nREADY: Release folder at {release_dir}\n")
     print("*" * 60)
     print("DISTRIBUTION INSTRUCTIONS:")
     print("Zip the 'dist/Tlamatini_Release' folder and distribute it to users.")
     print("When users double-click Installer.exe, it will launch instantly")
     print("with NO temp extraction or DLL locking issues.")
+    print()
+    print("NOTE: pkg.zip and Uninstaller.exe were MOVED (not copied) into")
+    print("the release folder to save disk space. Originals are no longer")
+    print("at the project root.")
     print("*" * 60)
 
     elapsed = time.time() - build_start
@@ -448,7 +433,7 @@ def main():
     print(f"{'=' * 60}")
 
 
-# ── Bulletproof file copy with SHA-256 verification and retry ─────────────────
+# ── SHA-256 helpers for verified file operations ─────────────────────────────
 
 def _sha256(filepath: Path) -> str:
     """Compute SHA-256 hex digest of a file, reading in 8 MB chunks."""
@@ -462,18 +447,15 @@ def _sha256(filepath: Path) -> str:
     return h.hexdigest()
 
 
-def _verified_copy(src: Path, dst: Path, max_retries: int = 3):
-    """Copy *src* to *dst* with SHA-256 + size verification and retry.
+def _verified_move(src: Path, dst: Path):
+    """Move *src* to *dst* with SHA-256 verification.
 
-    On each attempt the function:
-      1. Computes the SHA-256 hash of the source file.
-      2. Copies the file using shutil.copy2 (preserves metadata).
-      3. Verifies the destination exists.
-      4. Checks the file size matches the source.
-      5. Computes the SHA-256 hash of the destination and compares.
+    1. Hash the source file.
+    2. Move it (os.rename when same drive, shutil.move otherwise).
+    3. Verify the destination hash matches the original.
 
-    If any check fails the destination is removed and the copy is retried
-    up to *max_retries* times with a 1-second pause between attempts.
+    This saves disk space because the source is removed as part of
+    the operation rather than duplicated.
     """
     src = Path(src)
     dst = Path(dst)
@@ -487,82 +469,31 @@ def _verified_copy(src: Path, dst: Path, max_retries: int = 3):
     print(f"  Size   : {src_size / (1024*1024):.1f} MB")
     print(f"  SHA-256: {src_hash[:16]}…")
 
-    for attempt in range(1, max_retries + 1):
-        print(f"Copy attempt {attempt}/{max_retries} → {dst}")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        dst.unlink()
 
-        # Ensure destination directory exists
-        dst.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Moving → {dst}")
+    shutil.move(str(src), str(dst))
 
-        # Remove stale destination if present
-        if dst.exists():
-            try:
-                dst.unlink()
-            except OSError as e:
-                print(f"  WARNING: Could not remove stale dest: {e}")
+    # Verify
+    if not dst.exists():
+        raise RuntimeError(f"{dst} does not exist after move")
 
-        # Perform the copy
-        try:
-            shutil.copy2(src, dst)
-        except Exception as e:
-            print(f"  FAILED: shutil.copy2 raised {type(e).__name__}: {e}")
-            if attempt < max_retries:
-                time.sleep(1)
-                continue
-            raise RuntimeError(
-                f"Failed to copy {src.name} after {max_retries} attempts"
-            ) from e
+    dst_size = dst.stat().st_size
+    if dst_size != src_size:
+        raise RuntimeError(
+            f"Size mismatch after move: src={src_size}, dst={dst_size}"
+        )
 
-        # ── Verification ──────────────────────────────────────────────
-        # 1. File must exist
-        if not dst.exists():
-            print("  FAILED: destination file does not exist after copy")
-            if attempt < max_retries:
-                time.sleep(1)
-                continue
-            raise RuntimeError(
-                f"{dst} does not exist after copy (attempt {attempt})"
-            )
+    dst_hash = _sha256(dst)
+    if dst_hash != src_hash:
+        raise RuntimeError(
+            f"SHA-256 mismatch after move: src={src_hash}, dst={dst_hash}"
+        )
 
-        # 2. Size must match
-        dst_size = dst.stat().st_size
-        if dst_size != src_size:
-            print(f"  FAILED: size mismatch — src={src_size}, dst={dst_size}")
-            try:
-                dst.unlink()
-            except OSError:
-                pass
-            if attempt < max_retries:
-                time.sleep(1)
-                continue
-            raise RuntimeError(
-                f"Size mismatch after {max_retries} attempts: "
-                f"src={src_size}, dst={dst_size}"
-            )
-
-        # 3. SHA-256 hash must match
-        dst_hash = _sha256(dst)
-        if dst_hash != src_hash:
-            print(f"  FAILED: hash mismatch — src={src_hash[:16]}…, "
-                  f"dst={dst_hash[:16]}…")
-            try:
-                dst.unlink()
-            except OSError:
-                pass
-            if attempt < max_retries:
-                time.sleep(1)
-                continue
-            raise RuntimeError(
-                f"SHA-256 mismatch after {max_retries} attempts: "
-                f"src={src_hash}, dst={dst_hash}"
-            )
-
-        # All checks passed
-        print(f"  OK: copy verified (SHA-256={dst_hash[:12]}…, "
-              f"{dst_size / (1024*1024):.1f} MB)")
-        return
-
-    # Should not reach here, but just in case
-    raise RuntimeError(f"Failed to copy {src.name} after {max_retries} attempts")
+    print(f"  OK: move verified (SHA-256={dst_hash[:12]}…, "
+          f"{dst_size / (1024*1024):.1f} MB)")
 
 
 if __name__ == "__main__":

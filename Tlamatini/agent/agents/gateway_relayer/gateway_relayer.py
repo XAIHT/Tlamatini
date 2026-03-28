@@ -337,6 +337,60 @@ def forward_to_gatewayer(payload: bytes, config: dict, correlation_id: str) -> d
 
 
 # ---------------------------------------------------------------------------
+# Payload logging for downstream agents (Forker / Summarizer / Parametrizer)
+# ---------------------------------------------------------------------------
+
+def _log_relay_payload(event_type: str, delivery_id: str, upstream_body: dict):
+    """Log relayed event payload in two formats for downstream consumption.
+
+    1. **Flat key-value lines** (``MESSAGE_<KEY>: <VALUE>``) — one per
+       top-level body field.  Forker can pattern-match these directly
+       (e.g. ``MESSAGE_REF: refs/heads/main``).
+
+    2. **Structured output block** wrapped in
+       ``INI_RELAY_EVENT<<< … >>>END_RELAY_EVENT`` delimiters with one
+       ``key: value`` per line.  Parametrizer parses individual fields;
+       Summarizer can feed the whole block to an LLM.
+    """
+    # ── 1) Flat key-value lines for Forker ───────────────────────────
+    logging.info(f"MESSAGE_EVENT_TYPE: {event_type}")
+    if delivery_id:
+        logging.info(f"MESSAGE_DELIVERY_ID: {delivery_id}")
+
+    # Log selected top-level fields that are common routing criteria
+    for key in ('action', 'ref', 'ref_type', 'sender', 'repository'):
+        if key in upstream_body:
+            value = upstream_body[key]
+            if isinstance(value, dict):
+                # For nested objects log the most useful sub-field
+                value = value.get('full_name', value.get('login', value.get('name', json.dumps(value, ensure_ascii=False))))
+            logging.info(f"MESSAGE_{key.upper()}: {value}")
+
+    # ── 2) Structured block for Summarizer / Parametrizer ────────────
+    # Extract human-readable values from nested objects for structured fields
+    action = upstream_body.get('action', '')
+    ref = upstream_body.get('ref', '')
+    repo = upstream_body.get('repository', {})
+    repo_name = repo.get('full_name', '') if isinstance(repo, dict) else str(repo)
+    sender = upstream_body.get('sender', {})
+    sender_login = sender.get('login', '') if isinstance(sender, dict) else str(sender)
+
+    block = (
+        f"event_type: {event_type}\n"
+        f"delivery_id: {delivery_id}\n"
+        f"action: {action}\n"
+        f"ref: {ref}\n"
+        f"repository: {repo_name}\n"
+        f"sender: {sender_login}\n"
+        f"body: {json.dumps(upstream_body, ensure_ascii=False)}"
+    )
+
+    logging.info(
+        f"INI_RELAY_EVENT<<<\n{block}\n>>>END_RELAY_EVENT"
+    )
+
+
+# ---------------------------------------------------------------------------
 # HTTP Handler
 # ---------------------------------------------------------------------------
 
@@ -426,6 +480,9 @@ class RelayHandler(BaseHTTPRequestHandler):
                 return
 
         logging.info(f"{log_cfg.get('accepted_word', 'RELAY_ACCEPTED')} event={event_type} delivery={delivery_id}")
+
+        # Log upstream payload for downstream agents (Forker, Summarizer, Parametrizer)
+        _log_relay_payload(event_type, delivery_id, upstream_body)
 
         # Transform payload
         payload = transform_payload(event_type, delivery_id, upstream_body)

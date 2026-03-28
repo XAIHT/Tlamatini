@@ -228,6 +228,54 @@ def parse_kyber_decipher_output(log_text):
     return blocks
 
 
+def _parse_kv_block(content):
+    """Parse a block of ``key: value`` lines into a dictionary.
+
+    Lines are split on the first ``: `` so that values can contain colons
+    (e.g. URLs, JSON strings).  Empty values are included as empty strings.
+    """
+    result = {}
+    for line in content.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        sep_idx = line.find(': ')
+        if sep_idx == -1:
+            # Bare key with no value
+            result[line.rstrip(':')] = ''
+        else:
+            result[line[:sep_idx]] = line[sep_idx + 2:]
+    return result
+
+
+def parse_gatewayer_output(log_text):
+    """Gatewayer: INI_GATEWAY_EVENT<<<\\nkey: value\\n...\\n>>>END_GATEWAY_EVENT
+
+    Extracted fields: event_id, event_type, session_id, correlation_id,
+    content_type, method, path, body.
+    """
+    blocks = []
+    pattern = r'INI_GATEWAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_GATEWAY_EVENT'
+    for match in re.finditer(pattern, log_text, re.DOTALL):
+        fields = _parse_kv_block(match.group('content'))
+        blocks.append(fields)
+    return blocks
+
+
+def parse_gateway_relayer_output(log_text):
+    """Gateway-Relayer: INI_RELAY_EVENT<<<\\nkey: value\\n...\\n>>>END_RELAY_EVENT
+
+    Extracted fields: event_type, delivery_id, action, ref, repository,
+    sender, body.
+    """
+    blocks = []
+    pattern = r'INI_RELAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_RELAY_EVENT'
+    for match in re.finditer(pattern, log_text, re.DOTALL):
+        fields = _parse_kv_block(match.group('content'))
+        blocks.append(fields)
+    return blocks
+
+
 # Registry mapping source agent base name -> parser function
 OUTPUT_PARSERS = {
     'apirer': parse_apirer_output,
@@ -243,6 +291,8 @@ OUTPUT_PARSERS = {
     'kyber_keygen': parse_kyber_keygen_output,
     'kyber_cipher': parse_kyber_cipher_output,
     'kyber_decipher': parse_kyber_decipher_output,
+    'gatewayer': parse_gatewayer_output,
+    'gateway_relayer': parse_gateway_relayer_output,
 }
 
 

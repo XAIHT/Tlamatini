@@ -7334,6 +7334,8 @@ PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
     'kyber_keygen': ['public_key', 'private_key'],
     'kyber_cipher': ['encapsulation', 'initialization_vector', 'cipher_text'],
     'kyber_decipher': ['deciphered_buffer'],
+    'gatewayer': ['event_id', 'event_type', 'session_id', 'correlation_id', 'content_type', 'method', 'path', 'body'],
+    'gateway_relayer': ['event_type', 'delivery_id', 'action', 'ref', 'repository', 'sender', 'body'],
 }
 
 # Allowed source agent base names
@@ -7424,7 +7426,8 @@ def get_parametrizer_dialog_data_view(request, agent_name):
                 "message": f"Source agent '{source_agent}' does not produce structured output. "
                            "Only Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, "
                            "Image-Interpreter, File-Extractor, Prompter, FlowCreator, "
-                           "Kyber-KeyGen, Kyber-Cipher, and Kyber-DeCipher are allowed."
+                           "Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, "
+                           "and Gateway-Relayer are allowed."
             }), content_type='application/json', status=400)
 
         # Get source output field names
