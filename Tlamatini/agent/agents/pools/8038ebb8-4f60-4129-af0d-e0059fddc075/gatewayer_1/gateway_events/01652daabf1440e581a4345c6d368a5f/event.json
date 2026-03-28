@@ -1,0 +1,25 @@
+{
+  "event_id": "01652daabf1440e581a4345c6d368a5f",
+  "received_at": "2026-03-28T22:56:36.905068+00:00",
+  "event_type": "OPTION_A",
+  "session_id": "",
+  "correlation_id": "",
+  "body_hash": "12ff39c4a0747c45cf513156c8327f602dfb21c8c313d96a58fda55d7d315aca",
+  "content_type": "application/json",
+  "method": "POST",
+  "path": "/gatewayer",
+  "query_params": {},
+  "headers": {
+    "Accept-Encoding": "identity",
+    "Content-Length": "87",
+    "Host": "127.0.0.1:8787",
+    "User-Agent": "Python-urllib/3.12",
+    "Content-Type": "application/json",
+    "Connection": "close"
+  },
+  "body": {
+    "event_type": "OPTION_A",
+    "message": "User selected Option A - Telegram notification"
+  },
+  "raw_body": "{\"event_type\": \"OPTION_A\", \"message\": \"User selected Option A - Telegram notification\"}"
+}

@@ -1,0 +1,4 @@
+target_agents:
+- asker_1
+- gatewayer_1
+exit_after_start: true

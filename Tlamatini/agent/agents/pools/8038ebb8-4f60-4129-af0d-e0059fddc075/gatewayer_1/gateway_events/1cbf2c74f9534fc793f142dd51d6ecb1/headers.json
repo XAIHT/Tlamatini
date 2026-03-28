@@ -1,0 +1,8 @@
+{
+  "Accept-Encoding": "identity",
+  "Content-Length": "87",
+  "Host": "127.0.0.1:8787",
+  "User-Agent": "Python-urllib/3.12",
+  "Content-Type": "application/json",
+  "Connection": "close"
+}

@@ -205,7 +205,7 @@ If you are setting up from source (manual setup), you will create your own super
 - 52 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
-- Real-time LED status indicators (red/green/yellow)
+- Real-time LED status indicators: green (running), red (stopped/paused), gray (idle)
 - Undo/Redo support (1024 actions)
 - Workflow save/load as `.flw` files
 - Canvas auto-configuration of agent connections
@@ -1046,6 +1046,7 @@ Access via `/agentic_control_panel/` URL. Features:
 - Drag-and-drop agent placement from sidebar
 - Visual connection drawing between agents
 - Start/Stop/Pause controls
+- **Pause/Resume**: Pause captures running agents to `paused_agents.reanim` file, kills processes preserving all logs and state files, shows red LEDs. Resume reanimates agents from the file with `AGENT_REANIMATED=1` env var so they continue from their exact state
 - Real-time LED status indicators (red/green/yellow)
 - Log viewer for debugging
 - Save/Load workflows as `.flw` files
@@ -1191,7 +1192,7 @@ All workflow agents follow a common structural pattern:
 1. **Config loading**: Read `config.yaml` from the agent's pool directory
 2. **PID management**: Write `agent.pid` for process tracking; remove on exit
 3. **Logging**: `FlushingFileHandler` writes to `<agent_name>.log` with immediate flush for real-time visibility
-4. **Reanimation**: `.pos` files store file offsets to survive restarts without re-reading old data
+4. **Reanimation**: All agents detect the `AGENT_REANIMATED=1` environment variable. On fresh start, agents truncate their own log files and log a "STARTED" marker. On reanimation (resume from pause), agents preserve their log files, log a "🔄 REANIMATED" marker, and load `reanim*` state files (e.g., `reanim.pos` for file offsets, `reanim.counter` for counter state) to resume from exactly where they were paused
 5. **Pool navigation**: Agents resolve sibling agent directories relative to their pool root (supports both frozen/PyInstaller and development modes)
 6. **Subprocess spawning**: Target agents are started as new processes using the resolved Python command
 7. **Concurrency guard**: Before starting any target agents, the caller waits until ALL targets have stopped running. If they are still running after 10 seconds, an ERROR is logged every 10 seconds until they stop. The agent NEVER proceeds to start targets while any of them are still alive — this prevents duplicate/orphaned processes in looping flows
@@ -2061,6 +2062,10 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/cleanup_session/` | POST | Full session cleanup |
 | `/clear_agent_logs/` | POST | Clear all agent log files |
 | `/clear_pos_files/` | POST | Clear all reanimation position files |
+| `/reanimate_agents/` | POST | Reanimate agents from pause with AGENT_REANIMATED=1 env var |
+| `/save_paused_agents/` | POST | Save running agents list to paused_agents.reanim |
+| `/load_paused_agents/` | GET | Load paused agents list from paused_agents.reanim |
+| `/delete_paused_agents/` | POST | Delete paused_agents.reanim after successful resume |
 | `/delete_agent_pool_dir/<agent_name>/` | POST | Delete specific agent from pool |
 | `/get_session_running_processes/` | GET | List running agent processes |
 | `/kill_session_processes/` | POST | Kill all session agent processes |

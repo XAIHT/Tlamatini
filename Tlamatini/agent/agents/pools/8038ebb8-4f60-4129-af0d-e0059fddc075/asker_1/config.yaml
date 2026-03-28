@@ -1,0 +1,8 @@
+target_agents_a:
+- pythonxer_1
+target_agents_b:
+- pythonxer_2
+legend_path_a: Send Telegram notification (Option A)
+legend_path_b: Crawl Banxico transparency data (Option B)
+source_agents:
+- starter_1

@@ -1,0 +1,13 @@
+target_agents:
+- starter_1
+- asker_1
+- pythonxer_1
+- pythonxer_2
+- gatewayer_1
+- forker_1
+- telegramer_1
+- crawler_1
+source_agents:
+- telegramer_1
+- crawler_1
+output_agents: []

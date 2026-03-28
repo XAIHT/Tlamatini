@@ -1,0 +1,15 @@
+url: https://www.banxico.org.mx
+system_prompt: Search for and extract all content related to transparency on this
+  website. Identify transparency reports, data disclosures, governance information,
+  and any sections dedicated to institutional transparency.
+content_mode: raw
+include_headers: true
+crawl_type: medium-range
+depth: 1
+llm:
+  host: http://localhost:11434
+  model: gpt-oss:120b-cloud
+target_agents:
+- ender_1
+source_agents:
+- forker_1

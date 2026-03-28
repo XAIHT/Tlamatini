@@ -1,0 +1,13 @@
+flow_filename: Test0N
+prompt: 'Create a flow to process between to options chosen by the user through an
+  Asker, the first option executes a Telegrammer to send a message that option A was
+  taken, and the second a Crawler to search in www.banxico.org.mx the topic transparency
+  in a medium-range approach, the options taken must be handled by Pythonexer agents
+  and their corresponding messages must be sent to a Gatewayer agent, whereas this
+  Gatewayer agent must process the messages (through the API of gatewayer not jut
+  on its log!) from Pyrthonxers and a forker to decide Telegrammer or Crawler, very
+  important: dont include any Cleaner agent ''cause I need never the log files to
+  be erased, please, go!.'
+llm:
+  host: http://localhost:11434
+  model: qwen3.5:397b-cloud
