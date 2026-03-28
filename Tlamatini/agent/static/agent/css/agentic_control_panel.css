@@ -1194,10 +1194,22 @@ body.resizing-vertical {
     box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
-/* LED Paused State (Agent paused - Orange with glow) */
+/* LED Paused State (Agent paused - Yellow with blinking glow) */
 .canvas-item-led.led-paused {
-    background: radial-gradient(circle at 30% 30%, #ffaa44, #F59E0B);
-    box-shadow: 0 0 8px #F59E0B, 0 0 12px #F59E0B, 0 0 4px rgba(245, 158, 11, 0.5);
+    background: radial-gradient(circle at 30% 30%, #ffff44, #cccc00);
+    box-shadow: 0 0 8px #cccc00, 0 0 12px #cccc00, 0 0 4px rgba(204, 204, 0, 0.5);
+    animation: led-paused-blink 1s ease-in-out infinite;
+}
+
+@keyframes led-paused-blink {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 8px #cccc00, 0 0 12px #cccc00, 0 0 4px rgba(204, 204, 0, 0.5);
+    }
+    50% {
+        opacity: 0.35;
+        box-shadow: 0 0 2px #999900;
+    }
 }
 
 /* LED Pulse Animation for running state */

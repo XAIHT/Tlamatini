@@ -1,7 +1,0 @@
-llm:
-  host: http://127.0.0.1:11434
-  model: glm-5:cloud
-  temperature: 0
-monitoring_poll_time: 10
-user_instructions: |
-  Check if the processing of any agent takes longer than it must, the complete flow must stay running for at most 1 minute.

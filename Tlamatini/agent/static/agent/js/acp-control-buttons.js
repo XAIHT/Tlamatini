@@ -740,7 +740,7 @@ async function pauseExecution() {
             console.warn('--- [Pause] Kill operation reported issues:', killResult.message);
         }
 
-        // Step 5: Set PAUSED state (LEDs go red for paused agents)
+        // Step 5: Set PAUSED state (all LEDs go yellow blinking)
         setGlobalRunningState(GLOBAL_STATE.PAUSED);
 
     } catch (error) {
