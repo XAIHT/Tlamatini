@@ -189,6 +189,7 @@ _CODE_GEN = re.compile(
     r'\b(?:create|generate|write|build|implement)\s+'
     r'(?:a\s+|an\s+|the\s+|a\s+new\s+)?'
     r'(?:implementation|web\s*page|version|program|code|script'
+    r'|command|query|snippet|function|method'
     r'|application|app|document|documentation)\b',
     re.IGNORECASE
 )
@@ -211,6 +212,16 @@ _EXEC_SCRIPT = re.compile(
 
 _VIEW_IMAGE = re.compile(
     r'\b(?:view|show|display|open)\s+image\b',
+    re.IGNORECASE
+)
+
+_URL_OR_DOWNLOAD = re.compile(
+    r'(?:'
+    r'https?://|ftp://|www\.'               # explicit URL
+    r'|\b(?:curl|wget|fetch|download\s+from)\b'  # download commands/intent
+    r'|\bdownload\b.*\b(?:url|link|site|endpoint|server|web|internet|api)\b'
+    r'|\b(?:url|link|site|endpoint|server|web|internet|api)\b.*\bdownload\b'
+    r')',
     re.IGNORECASE
 )
 
@@ -387,11 +398,27 @@ def _indirect_file_access_prompt(question: str) -> bool:
             "You are a security classifier for a local computer assistant. "
             "Determine whether the user's question tries to ACCESS, EXECUTE, "
             "RUN, OPEN, READ, WRITE, MOVE, COPY, DELETE, LIST, SEARCH, UNZIP, "
-            "or MANIPULATE a specific file or folder on the local computer, "
+            "or MANIPULATE a specific file or folder on the LOCAL computer, "
             "but WITHOUT providing an explicit absolute file system path "
             "(e.g. C:\\\\Users\\\\... or /home/user/...).\n\n"
+            "CRITICAL RULES — answer NO for ALL of the following:\n"
+            "- The user asks to download from a URL or the internet "
+            "(e.g. curl, wget, download from http/https/ftp).\n"
+            "- The user asks to ACCESS, FETCH, or READ a remote URL or web "
+            "resource (API calls, web scraping, browsing).\n"
+            "- The user asks to GENERATE a command, script, or code snippet "
+            "(even if it involves files — the user wants the command text, "
+            "not for you to touch local files).\n"
+            "- The user asks a general/conceptual question about files, "
+            "formats, tools, or best practices.\n"
+            "- The user asks about already loaded/provided context, "
+            "documents, or code.\n"
+            "- The user asks to explain, summarize, or analyze something.\n\n"
+            "Only answer YES when the user is clearly requesting the system "
+            "to directly touch, open, read, write, move, copy, delete, or "
+            "execute a SPECIFIC LOCAL file or folder using a relative or "
+            "ambiguous local reference (not an absolute path).\n\n"
             "Examples of INDIRECT access (answer YES):\n"
-            "- 'Execute cat_art.py, located in the root of this application.'\n"
             "- 'Open the config file in the downloads folder.'\n"
             "- 'Run the script on my desktop.'\n"
             "- 'Show me the logs from the server folder.'\n"
@@ -402,15 +429,16 @@ def _indirect_file_access_prompt(question: str) -> bool:
             "- 'How do I unzip a file?'\n"
             "- 'What are the best practices for logging?'\n"
             "- 'Summarize the project source code in the provided context.'\n"
-            "- 'Analyze the code in the loaded context.'\n"
-            "- 'Explain this project based on the given documents.'\n"
-            "- 'What does the provided code do?'\n\n"
-            "**IMPORTANT: If the user is asking about already loaded/provided "
-            "context, documents, or code (not requesting to access NEW files), "
-            "answer NO.**\n\n"
+            "- 'Create a curl command to download a file.'\n"
+            "- 'Download this file from https://example.com/data.zip'\n"
+            "- 'Fetch the API response from the endpoint.'\n"
+            "- 'Generate a script that reads a CSV file.'\n"
+            "- 'Write me a Python program to process images.'\n"
+            "- 'How do I read a file in Python?'\n\n"
             f"Question: {question}\n\n"
-            "Does this question attempt to access or manipulate a specific "
-            "file or folder WITHOUT providing an explicit absolute path?\n"
+            "Does this question attempt to directly access or manipulate a "
+            "specific LOCAL file or folder WITHOUT providing an explicit "
+            "absolute path?\n"
             "Answer ONLY with: YES or NO"
         )
 
@@ -494,6 +522,11 @@ def _validate_accesses_in_prompt(question: str):
         # View / search image in allowed locations → tool-routed.
         if _VIEW_IMAGE.search(question):
             print("--- _validate_accesses_in_prompt: image view request → proceed")
+            return None
+
+        # URL / remote download requests → not local file access.
+        if _URL_OR_DOWNLOAD.search(question):
+            print("--- _validate_accesses_in_prompt: URL/download request → proceed")
             return None
 
         if bool(_RELATIVE_PATH_PATTERN.search(question)) and deterministic_intent:
