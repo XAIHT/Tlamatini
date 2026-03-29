@@ -39,6 +39,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [RAG Chain Types](#rag-chain-types)
   - [Unified Agent with Tools](#unified-agent-with-tools)
   - [Agentic Workflow Designer](#agentic-workflow-designer)
+    - [Pause, Stop, and Reanimation of a Flow](#pause-stop-and-reanimation-of-a-flow)
   - [Database Models](#database-models)
   - [Design Patterns](#design-patterns)
   - [MCP Integration](#mcp-integration)
