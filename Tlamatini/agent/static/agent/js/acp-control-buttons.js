@@ -496,9 +496,48 @@ async function pollForEnderLogFiles(enderInfo, justBeforeEndingTimestamp, dialog
 }
 
 /**
- * Show the result in the ender dialog (success or failure).
+ * Collect all "shutdown chain" agents downstream from Ender output connections.
+ * Traverses the canvas connection graph:
+ *   Ender --output--> FlowBacker / Cleaner
+ *   FlowBacker --output--> Cleaner
+ *
+ * @returns {Array<string>} Canvas IDs of all agents in the shutdown chain
  */
-function showEnderResult(success, failedAgentNames, dialog) {
+function collectEnderOutputChainAgents() {
+    const enderNodes = document.querySelectorAll('#submonitor-container .canvas-item.ender-agent');
+    const chainIds = new Set();
+    const flowBackerNodes = [];
+
+    // Step 1: Direct outputs from Enders (FlowBackers and/or Cleaners)
+    for (const enderNode of enderNodes) {
+        for (const conn of ACP.connections) {
+            if (conn.source === enderNode) {
+                chainIds.add(conn.target.id);
+                const targetAgentName = (conn.target.dataset.agentName || '').toLowerCase();
+                if (targetAgentName === 'flowbacker') {
+                    flowBackerNodes.push(conn.target);
+                }
+            }
+        }
+    }
+
+    // Step 2: Outputs from FlowBackers (typically Cleaners)
+    for (const fbNode of flowBackerNodes) {
+        for (const conn of ACP.connections) {
+            if (conn.source === fbNode) {
+                chainIds.add(conn.target.id);
+            }
+        }
+    }
+
+    return Array.from(chainIds);
+}
+
+/**
+ * Finalize the stop sequence: transition to STOPPED, clean up, and show dialog result.
+ * @param {Object} dialog - jQuery dialog reference
+ */
+function finalizeStopSequence(dialog) {
     const titleEl = document.getElementById('ender-execution-title');
     const spinnerContainer = document.getElementById('ender-execution-spinner-container');
     const resultContainer = document.getElementById('ender-execution-result');
@@ -509,7 +548,151 @@ function showEnderResult(success, failedAgentNames, dialog) {
     spinnerContainer.style.display = 'none';
     resultContainer.style.display = 'block';
 
+    titleEl.innerText = "Termination Complete";
+    iconEl.innerHTML = '✅';
+    iconEl.className = 'success';
+    messageEl.innerText = 'All agents (including output chain) have completed!';
+    messageEl.className = 'success';
+    failedListEl.innerHTML = '';
+
+    setGlobalRunningState(GLOBAL_STATE.STOPPED);
+    stopSystemManagedFlowHypervisor();
+
+    // Clear .pos (reanimation position) files
+    try {
+        fetch('/agent/clear_pos_files/', {
+            method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+        }).then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    console.log(`--- Cleared ${result.cleared_count} .pos file(s)`);
+                } else {
+                    console.warn('--- Warning: Could not clear .pos files:', result.message);
+                }
+            }).catch(err => {
+                console.warn('--- Warning: Error clearing .pos files:', err);
+            });
+    } catch (clearPosError) {
+        console.warn('--- Warning: Error initiating .pos file cleanup:', clearPosError);
+    }
+
+    isBusyProcessing = false;
+    updateControlButtonStates();
+
+    dialog.dialog("option", "buttons", [{
+        text: "Continue!",
+        click: function () { $(this).dialog("close"); }
+    }]);
+
+    const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
+    buttonPane.find('button:contains("Continue")').css({
+        'background-color': '#8B5CF6',
+        'color': 'white', 'border': 'none', 'border-radius': '6px',
+        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
+    });
+}
+
+/**
+ * Poll until all output chain agents (FlowBackers, Cleaners) have finished.
+ * Also waits for the Ender agents themselves to finish first (they launch the
+ * output agents before exiting).
+ *
+ * Uses a confirmation re-check: after all agents appear stopped, waits 2 s and
+ * checks once more to guard against the brief window between a FlowBacker
+ * exiting and its downstream Cleaner's PID file appearing.
+ *
+ * @param {Array<string>} chainAgentIds - Canvas IDs of output chain agents
+ * @param {Array<string>} enderIds - Canvas IDs of the Ender agents
+ * @param {Object} dialog - jQuery dialog reference
+ */
+function pollForOutputChainCompletion(chainAgentIds, enderIds, dialog) {
+    const POLL_INTERVAL = 1500;
+    const MAX_POLL_TIME = 300000; // 5 minutes
+    const CONFIRM_DELAY = 2000;   // re-check after 2 s of "all stopped"
+    const startTime = Date.now();
+    const allWatchIds = [...new Set([...enderIds, ...chainAgentIds])];
+    let confirmPending = false;
+
+    const titleEl = document.getElementById('ender-execution-title');
+
+    const poll = async () => {
+        const elapsed = Date.now() - startTime;
+
+        try {
+            const response = await fetch('/agent/check_all_agents_status/', {
+                method: 'GET', headers: getHeaders(), credentials: 'same-origin'
+            });
+            const result = await response.json();
+            const runningAgents = result.agents || {};
+
+            const stillRunning = allWatchIds.filter(id => runningAgents[id] === true);
+
+            if (stillRunning.length === 0) {
+                if (!confirmPending) {
+                    // First time all appear stopped — schedule confirmation re-check
+                    confirmPending = true;
+                    console.log('--- Output chain: all agents appear stopped, confirming in 2 s...');
+                    titleEl.innerText = "Confirming all output agents have stopped...";
+                    setTimeout(poll, CONFIRM_DELAY);
+                    return;
+                }
+                // Confirmation passed — truly done
+                console.log('--- Output chain: confirmed all agents stopped');
+                finalizeStopSequence(dialog);
+                return;
+            }
+
+            // Still running — reset confirmation flag
+            confirmPending = false;
+            const names = stillRunning.join(', ');
+            console.log(`--- Output chain: ${stillRunning.length} agent(s) still running [${names}] (elapsed: ${elapsed}ms)`);
+            titleEl.innerText = `Waiting for output agents: ${names}...`;
+        } catch (error) {
+            console.warn('--- Error polling output chain status:', error);
+        }
+
+        if (elapsed >= MAX_POLL_TIME) {
+            console.warn('--- Output chain polling timeout (5 min), finalizing anyway');
+            finalizeStopSequence(dialog);
+            return;
+        }
+
+        setTimeout(poll, POLL_INTERVAL);
+    };
+
+    poll();
+}
+
+/**
+ * Show the result in the ender dialog (success or failure).
+ */
+function showEnderResult(success, failedAgentNames, dialog) {
+    const titleEl = document.getElementById('ender-execution-title');
+    const spinnerContainer = document.getElementById('ender-execution-spinner-container');
+    const resultContainer = document.getElementById('ender-execution-result');
+    const iconEl = document.getElementById('ender-execution-icon');
+    const messageEl = document.getElementById('ender-execution-message');
+    const failedListEl = document.getElementById('ender-execution-failed-list');
+
     if (success) {
+        // Collect output chain agents BEFORE deciding whether to finalize
+        const chainAgentIds = collectEnderOutputChainAgents();
+        const enderNodes = document.querySelectorAll('#submonitor-container .canvas-item.ender-agent');
+        const enderIds = Array.from(enderNodes).map(n => n.id);
+
+        if (chainAgentIds.length > 0) {
+            // Output chain exists — keep spinner, enter output-chain polling phase
+            console.log(`--- Enders verified. Waiting for output chain: ${chainAgentIds.join(', ')}`);
+            titleEl.innerText = "Enders done. Waiting for output agents to complete...";
+            // Spinner stays visible; result stays hidden — user sees continued progress
+            pollForOutputChainCompletion(chainAgentIds, enderIds, dialog);
+            return; // Do NOT finalize yet
+        }
+
+        // No output chain — finalize immediately (original behavior)
+        spinnerContainer.style.display = 'none';
+        resultContainer.style.display = 'block';
+
         titleEl.innerText = "Termination Complete";
         iconEl.innerHTML = '✅';
         iconEl.className = 'success';
@@ -538,6 +721,9 @@ function showEnderResult(success, failedAgentNames, dialog) {
             console.warn('--- Warning: Error initiating .pos file cleanup:', clearPosError);
         }
     } else {
+        spinnerContainer.style.display = 'none';
+        resultContainer.style.display = 'block';
+
         titleEl.innerText = "Termination Failed";
         iconEl.innerHTML = '❌';
         iconEl.className = 'error';
