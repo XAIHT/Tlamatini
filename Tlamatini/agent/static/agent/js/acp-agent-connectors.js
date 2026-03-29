@@ -1076,3 +1076,22 @@ async function updateFlowBackerConnection(agentId, targetAgentId, action, type =
         console.error(`--- Error updating FlowBacker ${agentId}:`, error);
     }
 }
+
+async function updateBarrierConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_barrier_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Barrier ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Barrier ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Barrier ${agentId}:`, error);
+    }
+}

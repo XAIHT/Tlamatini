@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, FlowBacker.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, FlowBacker, Barrier.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -1119,6 +1119,23 @@ system_prompt: |
   - Copies the complete deployed session directory, not just individual agent folders
   - If the destination session folder already exists, it is removed and recreated so the backup is a full overwrite
   - Refuses to back up into a directory inside the live session tree to avoid recursive self-copying
+
+### 53. Barrier
+- **Purpose**: Short-running passive utility flow-control agent that acts as a synchronization barrier. It waits for ALL configured source agents to start before triggering downstream target agents. Each source agent starts a separate barrier process ("input sub-process") that creates a flag file; the first arrival also becomes the "output sub-process" that polls until all flags are present, then fires.
+- **Used for**: Synchronizing parallel branches in a flow. When multiple agents must all reach a certain point before the next stage can begin, Barrier ensures no downstream agent is started prematurely.
+- **Aimed at**: Implementing join/rendezvous patterns in complex workflows where several independent agents must complete their startup before a common successor can proceed.
+- **Application example**: Three parallel branches (executer_1, pythonxer_1, gitter_1) each have barrier_1 in their target_agents. When all three start barrier_1, the barrier detects all three flag files and then starts summarizer_1 connected to its output.
+- **Pool name pattern**: `barrier_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `source_agents`: [] (upstream agents whose startup is awaited — auto-populated by canvas connections)
+  - `target_agents`: [] (downstream agents to start once all source agents have checked in)
+- **Special behavior**:
+  - Each source agent starts a separate barrier process; coordination uses cross-process file-based locking
+  - Flag files (`started_flag-<source>.flg`) track which sources have arrived
+  - Only the output sub-process (the first arrival) deletes flag files and starts targets
+  - Supports cyclic use: after firing, the barrier cleans up and is ready for the next cycle
+  - On manual/direct start (no caller), cleans stale flags from previous runs
 
 ---
 
