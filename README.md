@@ -205,7 +205,7 @@ If you are setting up from source (manual setup), you will create your own super
 - 53 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
-- Real-time LED status indicators: green (running), red (stopped/paused), gray (idle)
+- Real-time LED status indicators: green (running), red (agent down while the flow is active), yellow blinking (paused), gray (stopped/idle)
 - Undo/Redo support (1024 actions)
 - Workflow save/load as `.flw` files
 - Canvas auto-configuration of agent connections
@@ -1047,8 +1047,8 @@ Access via `/agentic_control_panel/` URL. Features:
 - Drag-and-drop agent placement from sidebar
 - Visual connection drawing between agents
 - Start/Stop/Pause controls
-- **Pause/Resume**: Pause captures running agents to `paused_agents.reanim` file, kills processes preserving all logs and state files, shows red LEDs. Resume reanimates agents from the file with `AGENT_REANIMATED=1` env var so they continue from their exact state
-- Real-time LED status indicators (red/green/yellow)
+- **Pause/Resume**: Pause stores the session's running agents in `paused_agents.reanim`, kills the active processes without clearing logs or `.pos` reanimation files, and moves the ACP into the paused state. Resume reanimates the stored agents with `AGENT_REANIMATED=1` so they preserve logs and reload their `reanim*` state files
+- Real-time LED status indicators: green (running), red (not running while the flow is active), yellow blinking (paused), gray (stopped/idle)
 - Log viewer for debugging
 - Save/Load workflows as `.flw` files
 - Undo/Redo with 1024 action history
@@ -1056,6 +1056,17 @@ Access via `/agentic_control_panel/` URL. Features:
 - Session-scoped pool directories
 - Canvas auto-configuration (connections auto-populate agent configs)
 - Flow validation with detailed error reporting
+
+#### Pause, Stop, and Reanimation
+
+The Agentic Control Panel entry point is `agentic_control_panel.html`. Its execution controls are stateful, and the three actions do not mean the same thing:
+
+- **Fresh start (`STOPPED` -> `RUNNING`)**: Pressing Start from a stopped flow triggers a new execution. The frontend first kills leftover session processes, ensures every canvas agent exists in the session pool, clears agent logs, and then launches the Starter agents.
+- **Pause (`RUNNING` -> `PAUSED`)**: The ACP reads the currently running session processes, writes that list to `paused_agents.reanim`, keeps the same list in browser memory for paused-state tracking, and then kills the session processes through `/kill_session_processes/`. This path preserves logs and existing `reanim*` artifacts so the flow can be resumed.
+- **Resume / reanimation (`PAUSED` -> `RUNNING`)**: Pressing Start while paused, or pressing Pause again while already paused, uses the same resume path. The frontend loads `paused_agents.reanim` (falling back to its in-memory copy if needed), deduplicates the stored agent list, and posts it to `/reanimate_agents/`. The backend relaunches those agents with `AGENT_REANIMATED=1`, which is how agent templates know to preserve logs and reload resume-state files such as `reanim.pos` or `reanim.counter`. After the reanimation request returns, the frontend deletes `paused_agents.reanim` through `/delete_paused_agents/` and moves the ACP back to `RUNNING`.
+- **Stop (`RUNNING` -> `STOPPED`)**: Stop is the graceful shutdown path, and it is driven by Ender agents rather than by the pause file. The ACP requires at least one Ender agent on the canvas, executes all Enders in parallel, polls until each Ender's log file is seen as modified after the stop request, then marks the flow as stopped, stops the system-managed FlowHypervisor, and calls `/clear_pos_files/` to remove `.pos` reanimation-position files for the current session.
+- **Stop after a pause (`PAUSED` -> `STOPPED`)**: A paused flow has already had its processes killed. If the user presses Stop from that state, the ACP resolves to a full stopped state and clears `.pos` files, so the next Start follows the fresh-start path instead of the reanimation path.
+- **LED semantics**: During normal execution, each canvas LED is green when that canvas agent is running and red when the flow is active but that agent is not running. In the stopped state all LEDs are gray. In the paused state all canvas agents switch to a yellow blinking LED, regardless of which ones were running at the moment of pause.
 
 #### Flow Validation
 
@@ -1193,7 +1204,7 @@ All workflow agents follow a common structural pattern:
 1. **Config loading**: Read `config.yaml` from the agent's pool directory
 2. **PID management**: Write `agent.pid` for process tracking; remove on exit
 3. **Logging**: `FlushingFileHandler` writes to `<agent_name>.log` with immediate flush for real-time visibility
-4. **Reanimation**: All agents detect the `AGENT_REANIMATED=1` environment variable. On fresh start, agents truncate their own log files and log a "STARTED" marker. On reanimation (resume from pause), agents preserve their log files, log a "🔄 REANIMATED" marker, and load `reanim*` state files (e.g., `reanim.pos` for file offsets, `reanim.counter` for counter state) to resume from exactly where they were paused
+4. **Reanimation**: All agents detect the `AGENT_REANIMATED=1` environment variable. On fresh start, agents truncate their own log files and log a "STARTED" marker. On reanimation (resume from pause), agents preserve their log files, log a "🔄 REANIMATED" marker, and load `reanim*` state files (e.g., `reanim.pos` for file offsets, `reanim.counter` for counter state) to continue from the saved state each agent persists
 5. **Pool navigation**: Agents resolve sibling agent directories relative to their pool root (supports both frozen/PyInstaller and development modes)
 6. **Subprocess spawning**: Target agents are started as new processes using the resolved Python command
 7. **Concurrency guard**: Before starting any target agents, the caller waits until ALL targets have stopped running. If they are still running after 10 seconds, an ERROR is logged every 10 seconds until they stop. The agent NEVER proceeds to start targets while any of them are still alive — this prevents duplicate/orphaned processes in looping flows
@@ -2067,7 +2078,7 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/reanimate_agents/` | POST | Reanimate agents from pause with AGENT_REANIMATED=1 env var |
 | `/save_paused_agents/` | POST | Save running agents list to paused_agents.reanim |
 | `/load_paused_agents/` | GET | Load paused agents list from paused_agents.reanim |
-| `/delete_paused_agents/` | POST | Delete paused_agents.reanim after successful resume |
+| `/delete_paused_agents/` | POST | Delete paused_agents.reanim after the reanimation request returns |
 | `/delete_agent_pool_dir/<agent_name>/` | POST | Delete specific agent from pool |
 | `/get_session_running_processes/` | GET | List running agent processes |
 | `/kill_session_processes/` | POST | Kill all session agent processes |
