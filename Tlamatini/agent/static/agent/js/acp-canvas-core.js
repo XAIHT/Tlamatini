@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -85,6 +85,7 @@ function applyAgentTypeClass(el, agentName) {
         'kyber-cipher': 'kybercipher-agent',
         'kyber-decipher': 'kyberdecipher-agent',
         'parametrizer': 'parametrizer-agent',
+        'flowbacker': 'flowbacker-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -688,6 +689,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'kyber-decipher') updateKyberDecipherConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -783,6 +786,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'kyber-decipher' && !sourceBeingDeleted) updateKyberDecipherConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'parametrizer' && !targetBeingDeleted) updateParametrizerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'parametrizer' && !sourceBeingDeleted) updateParametrizerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'flowbacker' && !targetBeingDeleted) updateFlowBackerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'flowbacker' && !sourceBeingDeleted) updateFlowBackerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -908,6 +913,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'kyber-keygen' || lowerDesc === 'kyber keygen') iconDiv.style.background = 'linear-gradient(135deg, #7B2FBE 0%, #00BFA5 50%, #FFD740 100%)';
         else if (lowerDesc === 'kyber-cipher' || lowerDesc === 'kyber cipher') iconDiv.style.background = 'linear-gradient(135deg, #D35400 0%, #1ABC9C 50%, #8E44AD 100%)';
         else if (lowerDesc === 'kyber-decipher' || lowerDesc === 'kyber decipher') iconDiv.style.background = 'linear-gradient(135deg, #4A90D9 0%, #D94F7A 50%, #82C91E 100%)';
+        else if (lowerDesc === 'flowbacker') iconDiv.style.background = 'linear-gradient(135deg, #0F4C5C 0%, #E36414 50%, #FB8B24 100%)';
         else if (lowerDesc === 'parametrizer') iconDiv.style.background = 'linear-gradient(135deg, #311B92 0%, #AA00FF 33%, #FF6D00 66%, #00E5FF 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
@@ -1107,22 +1113,39 @@ function initCanvasEvents() {
                     const sourceAgentName = ACP.sourceNode.dataset.agentName || '';
                     const isTargetCleaner = targetAgentName.toLowerCase() === 'cleaner';
                     const isSourceEnder = sourceAgentName.toLowerCase() === 'ender';
+                    const isSourceFlowBacker = sourceAgentName.toLowerCase() === 'flowbacker';
+                    const isTargetFlowBacker = targetAgentName.toLowerCase() === 'flowbacker';
 
-                    if (isTargetCleaner && !isSourceEnder) {
-                        alert('Invalid Connection: Cleaner Agent only accepts input from Ender Agents.');
+                    if (isTargetCleaner && !isSourceEnder && !isSourceFlowBacker) {
+                        alert('Invalid Connection: Cleaner Agent only accepts input from Ender or FlowBacker Agents.');
                         ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                         isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                     }
-                    if (isTargetCleaner && isSourceEnder) {
+                    if (isTargetCleaner && (isSourceEnder || isSourceFlowBacker)) {
                         const existingInputs = ACP.connections.filter(c => c.target === targetNode);
                         if (existingInputs.length >= 1) {
-                            alert('Invalid Connection: Cleaner Agent can only accept ONE Ender Agent connection.');
+                            alert('Invalid Connection: Cleaner Agent can only accept ONE input connection.');
                             ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                             isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                         }
                     }
-                    if (isSourceEnder && !isTargetCleaner) {
-                        alert('Invalid Connection: Ender Agent outputs can ONLY connect to Cleaner Agents.');
+                    if (isSourceEnder && !isTargetCleaner && !isTargetFlowBacker) {
+                        alert('Invalid Connection: Ender Agent outputs can ONLY connect to Cleaner or FlowBacker Agents.');
+                        ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
+                        isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                    }
+                    // FlowBacker input restriction: only Starter, Ender, Forker, Asker can connect to it
+                    if (isTargetFlowBacker) {
+                        const allowedSources = ['starter', 'ender', 'forker', 'asker'];
+                        if (!allowedSources.includes(sourceAgentName.toLowerCase())) {
+                            alert('Invalid Connection: FlowBacker Agent only accepts input from Starter, Ender, Forker, or Asker Agents.');
+                            ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
+                            isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                        }
+                    }
+                    // FlowBacker output restriction: can only connect to Cleaner
+                    if (isSourceFlowBacker && !isTargetCleaner) {
+                        alert('Invalid Connection: FlowBacker Agent outputs can ONLY connect to Cleaner Agents.');
                         ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                         isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                     }
@@ -1272,6 +1295,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'kyber-decipher') updateKyberDecipherConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);
@@ -1320,4 +1345,3 @@ window.clearAllCanvasItems = function () {
     markClean();
     console.log('--- All canvas items, connections and counters cleared');
 };
-

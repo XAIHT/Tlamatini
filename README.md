@@ -89,7 +89,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 52 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 53 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -202,14 +202,14 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 52 pre-built agent types for diverse automation tasks
+- 53 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators: green (running), red (stopped/paused), gray (idle)
 - Undo/Redo support (1024 actions)
 - Workflow save/load as `.flw` files
 - Canvas auto-configuration of agent connections
-- Flow validation with 6-point structural verification before execution
+- Flow validation with structural verification before execution
 
 ### Multi-Model Support
 - **Ollama**: Local LLM inference (default)
@@ -331,7 +331,7 @@ Tlamatini/
 │   ├── agent/                       # Core application
 │   │   ├── apps.py                  # App config (MCP startup, signal handlers, cleanup)
 │   │   ├── admin.py                 # Django admin model registration
-│   │   ├── views.py                # HTTP request handlers (83 endpoints)
+│   │   ├── views.py                # HTTP request handlers (100 endpoints)
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
 │   │   ├── models.py               # Database models (12 models)
 │   │   ├── urls.py                 # URL routing definitions
@@ -393,7 +393,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (45 types)
+│   │   ├── agents/                 # Workflow agent templates (53 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -441,6 +441,7 @@ Tlamatini/
 │   │   │   ├── kyber_cipher/  # CRYSTALS-Kyber encryption agent
 │   │   │   ├── kyber_decipher/ # CRYSTALS-Kyber decryption agent
 │   │   │   ├── parametrizer/  # Utility interconnection agent (maps outputs to inputs)
+│   │   │   ├── flowbacker/    # Session backup and cleanup handoff agent
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -476,14 +477,14 @@ Tlamatini/
 │   │           ├── acp-globals.js          # ACP shared global state & constants
 │   │           ├── acp-canvas-core.js      # ACP canvas rendering & drag-and-drop
 │   │           ├── acp-canvas-undo.js      # ACP undo/redo state management
-│   │           ├── acp-agent-connectors.js # ACP agent connection logic (43 types)
+│   │           ├── acp-agent-connectors.js # ACP agent connection logic (50 handlers)
 │   │           ├── acp-control-buttons.js  # ACP start/stop/pause/hypervisor controls
 │   │           ├── acp-file-io.js          # ACP workflow save/load (.flw files)
 │   │           ├── acp-running-state.js    # ACP LED indicators & process monitoring
 │   │           ├── acp-session.js          # ACP session pool management
 │   │           ├── acp-layout.js           # ACP canvas layout utilities
 │   │           ├── acp-undo-manager.js     # ACP undo stack manager
-│   │           ├── acp-validate.js         # Flow validation engine (6-point check)
+│   │           ├── acp-validate.js         # Flow validation engine (structural rules)
 │   │           ├── canvas_item_dialog.js   # Agent config dialog on canvas
 │   │           ├── contextual_menus.js     # Right-click menus
 │   │           └── tools_dialog.js         # Tool enable/disable dialog
@@ -1183,7 +1184,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **46 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **53 agent types** total.
 
 ### Agent Architecture
 
@@ -1199,7 +1200,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `kyber_keygen`, `kyber_cipher`, `parametrizer`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `flowbacker`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1207,7 +1208,7 @@ Agents are classified as:
 | Agent | Purpose | Key Configuration |
 |-------|---------|-------------------|
 | **starter** | Initiates workflow execution | `target_agents`: List of agents to start<br>`exit_after_start`: Boolean |
-| **ender** | Terminates all agents in target_agents, then launches Cleaners | `target_agents`: Agents to KILL<br>`source_agents`: Graphical input connections only (never killed/started)<br>`output_agents`: Agents to LAUNCH after termination (typically Cleaners). Also auto-discovers Cleaners in pool. |
+| **ender** | Terminates all agents in target_agents, then launches post-termination agents such as FlowBackers or Cleaners | `target_agents`: Agents to KILL<br>`source_agents`: Graphical input connections only (never killed/started)<br>`output_agents`: Agents to LAUNCH after termination (typically FlowBackers and/or Cleaners). Also auto-discovers Cleaners in pool. |
 | **stopper** | Single-threaded pattern-based agent terminator. Monitors source agent logs and kills agents when patterns are detected. Sequential polling of all source agents. Does NOT start downstream agents. | `source_agents`: Agents to monitor and terminate<br>`patterns`: One pattern per source agent<br>`poll_interval`: Check frequency<br>`output_agents`: Canvas wiring only (not used for starting agents) |
 
 ### Monitoring Agents
@@ -1286,7 +1287,8 @@ Agents are classified as:
 | **raiser** | Event-driven launcher. Primary bridge between monitoring agents and action agents. | `source_agents`: Agents whose logs to monitor<br>`pattern`: Text to detect<br>`target_agents`: Agents to start on detection<br>`poll_interval`: Check frequency |
 | **sleeper** | Delay execution | `duration_ms`: Wait time in milliseconds<br>`target_agents`: Trigger after delay |
 | **croner** | Time-scheduled trigger | `trigger_time`: HH:MM format<br>`target_agents`: Agents to trigger<br>`poll_interval`: Check frequency |
-| **cleaner** | Post-termination cleanup. Deletes .log and .pid files for specified agents, then launches agents in `output_agents`. Only accepts input from Ender (auto-discovered). | `agents_to_clean`: Agent pool names to clean (auto-populated by Ender/dialog)<br>`cleaned_agents`: Pre-configured agent pool names to always clean on execution<br>`output_agents`: Agents to start after cleanup |
+| **cleaner** | Post-termination cleanup. Deletes .log and .pid files for specified agents, then launches agents in `output_agents`. Accepts input from Ender or FlowBacker. | `agents_to_clean`: Agent pool names to clean (auto-populated by Ender/dialog)<br>`cleaned_agents`: Pre-configured agent pool names to always clean on execution<br>`output_agents`: Agents to start after cleanup |
+| **flowbacker** | Short-running passive utility batch backing agent. Copies the entire deployed session directory to a configured backup root, overwriting any previous backup for the same session, then launches connected Cleaner agents. Accepts input only from Starter, Ender, Forker, or Asker; outputs only to Cleaner. | `target_directory`: Backup root directory<br>`source_agents`: Upstream trigger agents<br>`target_agents`: Cleaner agents to launch after backup |
 | **flowcreator** | LLM-powered AI flow designer. Reads `agentic_skill.md` and generates complete flow configurations from natural language descriptions. | `llm.base_url`: Ollama URL<br>`llm.model`: Model for flow design |
 | **gatewayer** | Inbound gateway agent. Receives external events via HTTP webhook or folder-drop, normalizes into canonical envelopes, persists to disk, queues, and dispatches to downstream agents. HTTP ingress performs authentication/validation and optional dedup; folder-drop performs best-effort parsing plus persistence/dispatch. Long-running active ingress agent. | `http.port`: 8787<br>`auth.mode`: bearer<br>`storage.output_dir`: Event artifact path<br>`target_agents`: Downstream agents |
 | **gateway_relayer** | Long-running deterministic ingress relay that bridges provider-native webhooks (e.g. GitHub) into Gatewayer's canonical timestamp+body HMAC format. Validates upstream signatures, transforms payloads, HMAC-signs the forwarded body, and relays to a configured Gatewayer endpoint. Does NOT use any LLM. | `listen_port`: 9090<br>`provider_mode`: github<br>`forward_url`: Gatewayer endpoint<br>`forward_hmac_secret`: Gatewayer HMAC secret<br>`target_agents`: Downstream agents |
@@ -2447,7 +2449,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Added Image-Interpreter Agent** - Non-deterministic LLM vision agent that analyzes images in 12+ formats (jpg, png, gif, bmp, tiff, webp, svg, ico, heic, avif), supports wildcards, directories, or File-Interpreter coupling, logs structured INI_IMAGE_FILE/END_FILE blocks, and triggers downstream agents
 - **Added File-Interpreter Agent** - Hybrid deterministic/non-deterministic agent for document parsing with three reading modes (fast/complete/summarized), support for DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, and more file formats, optional image extraction, and LLM-powered summarization
 - **Added Counter Agent** - Deterministic persistent counter with threshold-based L/G routing, overflow protection, and reanimation support
-- **Added Flow Validation System** - Comprehensive 6-point structural verification engine (`acp-validate.js`) that builds an NxN adjacency matrix from agent connections and validates: no inputs to Starters, Ender-only connections to Cleaners, Cleaner-only inputs from Enders, no self-connections, all non-Starters have inputs, and all referenced agents exist with appropriate input types. Results shown with per-agent error details and suggestions
+- **Added Flow Validation System** - Structural verification engine (`acp-validate.js`) that builds an NxN adjacency matrix from agent connections and validates: no inputs to Starters, Ender outputs only to Cleaner/FlowBacker, Cleaner inputs only from Ender/FlowBacker, FlowBacker inputs only from Starter/Ender/Forker/Asker, FlowBacker outputs only to Cleaner, no self-connections, all non-Starters have inputs, and all referenced agents exist with appropriate input types. Results shown with per-agent error details and suggestions
 - **Added FlowHypervisor Agent** - System-managed LLM-powered anomaly detector that monitors all running agents in a flow. Features include: reanimation support via `reanim.json` for crash recovery, incremental log reading (only processes new content), NxN connection matrix analysis, `hypervisor_alert.json` generation for frontend alerts, and smart exit logic (stops after 3 consecutive cycles with no running agents)
 - **Added Mouser Agent** - Mouse pointer movement agent using PyAutoGUI, supporting two modes: random (moves across screen for configurable duration) and localized (smooth easing movement from initial to final coordinates). Includes fail-safe exception handling and downstream agent triggering
 - **Improved Gitter Agent Content Reporting** - Now produces structured response format: `<git {command}> RESPONSE { ... }` with stdout/stderr capture and per-line logging
@@ -2455,7 +2457,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **jd-cli Bundled in Installation** - The Java decompiler CLI tool (`jd-cli/`) is now included in `pkg.zip` during the build process, available at the application root alongside `agents/`, `application/`, etc.
 - **FlowCreator Skill Enhancements** - Updated `agentic_skill.md` with Mouser agent documentation, improved validation instructions for agent connection rules, and enhanced button behavior for the Validate flow action
 - **Added PyAutoGUI Dependency** - `PyAutoGUI==0.9.54` added to `requirements.txt` for Mouser agent mouse control
-- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), `/update_mouser_connection/<agent_name>/` (POST), `/update_counter_connection/<agent_name>/` (POST), `/update_file_interpreter_connection/<agent_name>/` (POST), and `/update_image_interpreter_connection/<agent_name>/` (POST). Total endpoints now at 83
+- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), `/update_mouser_connection/<agent_name>/` (POST), `/update_counter_connection/<agent_name>/` (POST), `/update_file_interpreter_connection/<agent_name>/` (POST), `/update_image_interpreter_connection/<agent_name>/` (POST), and `/update_flowbacker_connection/<agent_name>/` (POST). Total endpoints now at 100
 - **P0/P1/P2 Security Hardening** - Comprehensive, tiered security test suite covering user isolation, CSRF, login enforcement (P0), path traversal prevention and safe path joining (P1), and prompt injection defense with indirect file access detection (P2)
 - **Added Path Guard Module** (`path_guard.py`) - Centralized path validation layer that resolves Windows known folders, enforces `allowed_paths` from config, and prevents directory traversal across all file operations
 - **Improved File Search Chain** - `chain_files_search_lcel.py` now integrates with `path_guard.py` for secure path validation, supports non-explicit lookup crawling, and validates all gRPC results against path escaping
@@ -2498,7 +2500,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Tools Dialog** - Per-tool enable/disable via the chat interface
 - **Image Format Conversion** - Added `converter.py` module for image format transformations and base64 encoding
 - **Chat History Management** - Added `chat_history_loader.py` for persistent conversation history
-- **83 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
+- **100 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
 
 ---
 

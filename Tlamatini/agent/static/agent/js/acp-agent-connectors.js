@@ -1057,3 +1057,22 @@ async function updateParametrizerConnection(agentId, targetAgentId, action, type
         console.error(`--- Error updating Parametrizer ${agentId}:`, error);
     }
 }
+
+async function updateFlowBackerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_flowbacker_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- FlowBacker ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update FlowBacker ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating FlowBacker ${agentId}:`, error);
+    }
+}

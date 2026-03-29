@@ -38,22 +38,23 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Connection Rules
 - A **Starter** agent has NO inputs and one or more outputs. It is the entry point of a flow.
-- An **Ender** agent has one or more inputs and does NOT start downstream agents (except Cleaners via `output_agents`). It auto-discovers Cleaner agents in the pool. **Important**: The Ender's `target_agents` are agents it will KILL. The Ender's `source_agents` are graphical input connections only — they are never killed and never started. The Ender's `output_agents` are agents to LAUNCH after killing (typically Cleaners). After Ender resolves a target (terminated or already stopped), it also clears that target's `reanim*` restart-state files. No other agent should list `ender_<n>` in its own `target_agents`.
+- An **Ender** agent has one or more inputs and does NOT start regular downstream work agents. It only launches post-termination agents via `output_agents` (typically FlowBackers and/or Cleaners). **Important**: The Ender's `target_agents` are agents it will KILL. The Ender's `source_agents` are graphical input connections only — they are never killed and never started. The Ender's `output_agents` are agents to LAUNCH after killing. After Ender resolves a target (terminated or already stopped), it also clears that target's `reanim*` restart-state files. No other agent should list `ender_<n>` in its own `target_agents`. If an Ender launches a FlowBacker, do NOT also connect that same Ender directly to a Cleaner. Use `Ender -> FlowBacker -> Cleaner` so logs are backed up before Cleaner deletes them.
 - **OR/AND** agents have exactly TWO inputs (source_agent_1, source_agent_2) and one output.
 - **Asker/Forker** agents have one input and TWO outputs (target_agents_a, target_agents_b).
 - **Counter** agent has one input and TWO outputs (target_agents_l, target_agents_g). Routes based on counter vs threshold.
+- **FlowBacker** agents can accept one or more inputs only from Starter, Ender, Forker, or Asker agents. They can start zero or more Cleaner agents through `target_agents`. When a FlowBacker is used in a shutdown path, it owns the handoff to Cleaner; do NOT also trigger that Cleaner directly from Ender.
 - Most other agents have one input and one output (source_agents, target_agents).
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, FlowBacker.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
 ### Key Concepts
 
 - **`target_agents`**: Agents to start AFTER this agent finishes. Used by active agents to chain execution. **Concurrency guard**: Before starting any target agents, the calling agent waits until ALL of them have stopped running. If they are still running after 10 seconds, an ERROR is logged every 10 seconds until they stop. The agent NEVER proceeds to start targets while any of them are still alive. This prevents duplicate/orphaned processes in looping flows.
-- **`output_agents`**: Used by Stopper and Ender for downstream canvas autoconfiguration. For Ender, `output_agents` contains agents to LAUNCH after killing (typically Cleaners). Ender uses `target_agents` for agents to KILL, and `source_agents` for graphical input connections only (never killed, never started). Ender also clears `reanim*` restart-state files for targets it successfully stops or finds already stopped. Manual single-agent restart from the contextual menu must preserve `reanim*` files.
+- **`output_agents`**: Used by Stopper and Ender for downstream canvas autoconfiguration. For Ender, `output_agents` contains agents to LAUNCH after killing (typically FlowBackers and/or Cleaners). Ender uses `target_agents` for agents to KILL, and `source_agents` for graphical input connections only (never killed, never started). Ender also clears `reanim*` restart-state files for targets it successfully stops or finds already stopped. Manual single-agent restart from the contextual menu must preserve `reanim*` files. Critical shutdown rule: never let the same Ender launch both a FlowBacker and a Cleaner in parallel, because Cleaner can erase logs before FlowBacker copies the session.
 - **`source_agents`**: Agents whose log files this agent monitors. Used by Raiser, Emailer, Forker, Stopper, Notifier, etc.
 - **`pattern`/`patterns`**: Text strings to search for in source agent logs. When detected, they trigger an action (e.g., start downstream, send email, terminate). Choose patterns that match what the upstream agent writes to its log.
 - **`outcome_word`**: A word that the monitoring agent writes to its OWN log when it detects a match. Downstream agents (like Raiser) then watch for this outcome_word in the monitor's log.
@@ -1101,6 +1102,24 @@ system_prompt: |
   - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI
   - When multiple output elements exist in the source log, iterates over each one sequentially
 
+### 52. FlowBacker
+- **Purpose**: Short-running passive utility batch backing agent that copies the entire deployed session directory for the current flow into a configured target directory, preserving the full session-id folder structure. It overwrites any previous backup for that same session and then starts connected Cleaner agents.
+- **Used for**: Creating full flow backups before cleanup. It is intended for shutdown or checkpoint workflows where the whole session folder, including every deployed agent directory, log, config, and state file, must be copied elsewhere before Cleaner runs.
+- **Aimed at**: Preserving the exact runtime artifact tree of a flow for auditing, rollback, forensics, or external archival without changing the original session layout.
+- **Application example**: An Ender kills the active flow, then launches a FlowBacker. FlowBacker copies the complete `pools/<session_id>/` directory tree to `D:\\flow_backups\\<session_id>\\`, overwriting the previous copy if it exists, and then starts one or more Cleaner agents to remove local logs and PID files.
+- **Pool name pattern**: `flowbacker_<n>`
+- **Starts other agents**: YES (Cleaner agents only)
+- **Config parameters**:
+  - `target_directory`: "" (root directory where the full session-id backup directory will be created)
+  - `source_agents`: [] (upstream trigger agents for canvas connection tracking; can contain multiple agents)
+  - `target_agents`: [] (downstream Cleaner agents to start after backup; can contain multiple agents)
+- **Special behavior**:
+  - Only accepts input from Starter, Ender, Forker, or Asker agents
+  - Can only connect its output to Cleaner agents
+  - Copies the complete deployed session directory, not just individual agent folders
+  - If the destination session folder already exists, it is removed and recreated so the backup is a full overwrite
+  - Refuses to back up into a directory inside the live session tree to avoid recursive self-copying
+
 ---
 
 ## Output Format
@@ -1534,13 +1553,13 @@ For every pair of agents (A, B), determine whether there is a directed connectio
 For every agent of type `starter`: confirm that NO other agent connects to it (no agent lists this starter in its `target_agents`/`output_agents`, and the starter itself has no `source_agents`).
 - **If violated**: Remove the incoming connection or change the target agent type. A Starter is always the entry point; nothing should point to it.
 
-#### Check 2: Ender agents can ONLY connect their output to Cleaner agents
-For every agent of type `ender`: confirm that every agent in its `output_agents` is of type `cleaner`, and ONLY of type `cleaner`. Note: the Ender's `target_agents` (kill list) can contain ANY agent type including Starters — this is correct because target_agents are agents to KILL, not agents to start.
-- **If violated**: Remove any non-Cleaner agent from the Ender's `output_agents`. Ender terminates the flow; it should only trigger cleanup via Cleaners.
+#### Check 2: Ender agents may output only to Cleaner or FlowBacker, but never to both in parallel
+For every agent of type `ender`: confirm that every agent in its `output_agents` is of type `cleaner` or `flowbacker`. Also confirm that if an Ender outputs to any `flowbacker`, that same Ender does NOT also output directly to any `cleaner`. Note: the Ender's `target_agents` (kill list) can contain ANY agent type including Starters — this is correct because target_agents are agents to KILL, not agents to start.
+- **If violated**: Remove any invalid output type. If backup is required, route cleanup as `Ender -> FlowBacker -> Cleaner`. If backup is not required, use `Ender -> Cleaner` only.
 
-#### Check 3: Cleaner agents can ONLY receive input from Ender agents
-For every agent of type `cleaner`: confirm that every agent connecting to it (the agents that list this cleaner in their outputs, or the cleaner's own `source_agents`) is of type `ender`.
-- **If violated**: Remove any non-Ender input to the Cleaner. Cleaner is exclusively triggered by Ender.
+#### Check 3: Cleaner agents may receive input from Ender or FlowBacker, but never from both at the same time
+For every agent of type `cleaner`: confirm that every agent connecting to it (the agents that list this cleaner in their outputs, or the cleaner's own `source_agents`) is of type `ender` or `flowbacker`. Also confirm that a given Cleaner is triggered by only one of those types in the same branch: either directly from Ender, or downstream from FlowBacker, but not both.
+- **If violated**: Remove the mixed trigger path. If a FlowBacker exists in that shutdown branch, Cleaner must be connected only from FlowBacker.
 
 #### Check 4: No agent may connect to itself (no self-loops)
 For every agent: confirm it does NOT list its own pool name in any of its `target_agents`, `target_agents_a`, `target_agents_b`, `target_agents_l`, `target_agents_g`, `output_agents`, or `source_agents`.
@@ -1578,7 +1597,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 
 5. **In cases where the flow can be solved with an infinite loop the ender can be placed disconnected from the flow.** For example, if the flow can be solved with an infinite loop that checks a file every 10 seconds, the ender can be placed disconnected from the flow (with `target_agents` listing all agents to kill) and can be triggered manually.
 
-6. **Cleaner agent must always be connected in its source to the output of an Ender agent.** Output of Ender agent can only be connected to a Cleaner agent's input, and input of Cleaner agent can only be connected to the output of an Ender agent.
+6. **Cleaner agent must be connected from exactly one shutdown trigger path.** Use either `Ender -> Cleaner` or `Ender -> FlowBacker -> Cleaner`. Never connect the same shutdown branch so that Ender and FlowBacker can both trigger Cleaner, because Cleaner can delete logs before FlowBacker finishes backing them up.
 
 7. **Preffer to use Summarizer agent to summarize logs instead of using Pythonxer agent to parse logs or Monitor Log agent to monitor logs if you need the flow to be less complex and more efficient respect to the avoidance of to many agents: DUE TO ITS CAPABILITY OF STARTING OTHER AGENTS.** Summarizer agent is more adequate for keeping the flow simple and efficient when after the log summary there is needed to start other agents.
 
@@ -1613,3 +1632,5 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
     Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
               |
               -->Emailer (1)->X.
+
+8. **❌ Never make Ender launch Cleaner in parallel with FlowBacker.** Do not wire `Ender -> Cleaner` and `Ender -> FlowBacker` in the same shutdown branch, and do not let the same Cleaner be triggered by both Ender and FlowBacker. That can delete logs such as `crawler_1.log` before FlowBacker copies the session backup.
