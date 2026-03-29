@@ -1034,6 +1034,23 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(101, 31, 255, 0.5);
 }
 
+/* FlowBacker Agent Styles - Infrastructure backup (3-color: Deep-Teal / Burnt-Orange / Amber gradient) */
+.canvas-item.flowbacker-agent {
+    background-color: #0F4C5C;
+    color: white;
+    background: linear-gradient(135deg, #0F4C5C 0%, #E36414 50%, #FB8B24 100%);
+}
+
+.canvas-item.flowbacker-agent:hover {
+    background: linear-gradient(135deg, #16697A 0%, #F57C1F 50%, #FDB14B 100%);
+    box-shadow: 0 6px 15px rgba(227, 100, 20, 0.5);
+}
+
+/* FlowBacker agent icon in sidebar */
+.agent-tool-item[data-content="FlowBacker"] .agent-tool-icon {
+    background: linear-gradient(135deg, #0F4C5C 0%, #E36414 50%, #FB8B24 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

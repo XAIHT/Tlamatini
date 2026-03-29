@@ -160,6 +160,15 @@ async function runFlowValidation() {
 
     // Step D: Run verification checks
     const errors = [];
+    const ENDER_OUTPUT_TYPES = ['cleaner', 'flowbacker'];
+    const CLEANER_INPUT_TYPES = ['ender', 'flowbacker'];
+    const FLOWBACKER_INPUT_TYPES = ['starter', 'ender', 'forker', 'asker'];
+    const getOutgoingIndices = (row) => matrix[row]
+        .map((value, idx) => (value === 1 ? idx : -1))
+        .filter(idx => idx !== -1);
+    const getIncomingIndices = (col) => matrix
+        .map((rowValues, idx) => (rowValues[col] === 1 ? idx : -1))
+        .filter(idx => idx !== -1);
 
     // i) Verify Starter columns have only zeros (no incoming connections)
     const starterErrors = [];
@@ -179,12 +188,12 @@ async function runFlowValidation() {
         });
     }
 
-    // ii) Verify Ender rows have only 1s in Cleaner columns
+    // ii) Verify Ender rows have only 1s in Cleaner/FlowBacker columns
     const enderOutputErrors = [];
     for (let row = 0; row < N; row++) {
         if (agentTypes[row] !== 'ender') continue;
         for (let col = 0; col < N; col++) {
-            if (matrix[row][col] === 1 && agentTypes[col] !== 'cleaner') {
+            if (matrix[row][col] === 1 && !ENDER_OUTPUT_TYPES.includes(agentTypes[col])) {
                 enderOutputErrors.push(agentNames[row]);
                 break;
             }
@@ -192,30 +201,94 @@ async function runFlowValidation() {
     }
     if (enderOutputErrors.length > 0) {
         errors.push({
-            message: 'Ender agents can only have output_agents of type Cleaner',
+            message: 'Ender agents can only have output_agents of type Cleaner or FlowBacker',
             agents: enderOutputErrors
         });
     }
 
-    // iii) Verify Cleaner columns have only 1s from Ender rows
+    // ii.b) Verify Ender does not launch Cleaner in parallel with FlowBacker
+    const enderParallelCleanupErrors = [];
+    for (let row = 0; row < N; row++) {
+        if (agentTypes[row] !== 'ender') continue;
+        const outputTypes = new Set(getOutgoingIndices(row).map(col => agentTypes[col]));
+        if (outputTypes.has('flowbacker') && outputTypes.has('cleaner')) {
+            enderParallelCleanupErrors.push(agentNames[row]);
+        }
+    }
+    if (enderParallelCleanupErrors.length > 0) {
+        errors.push({
+            message: 'Ender agents must not launch Cleaner directly when they also launch FlowBacker. Route Cleaner only from FlowBacker so backup completes before logs are deleted',
+            agents: enderParallelCleanupErrors
+        });
+    }
+
+    // iii) Verify Cleaner columns have only 1s from Ender/FlowBacker rows
     const cleanerInputErrors = [];
+    const cleanerMixedInputErrors = [];
     for (let col = 0; col < N; col++) {
         if (agentTypes[col] !== 'cleaner') continue;
-        for (let row = 0; row < N; row++) {
-            if (matrix[row][col] === 1 && agentTypes[row] !== 'ender') {
+        const incomingRows = getIncomingIndices(col);
+        const incomingTypes = new Set(incomingRows.map(row => agentTypes[row]));
+        for (const row of incomingRows) {
+            if (!CLEANER_INPUT_TYPES.includes(agentTypes[row])) {
                 cleanerInputErrors.push(agentNames[col]);
                 break;
             }
         }
+        if (incomingTypes.has('ender') && incomingTypes.has('flowbacker')) {
+            cleanerMixedInputErrors.push(agentNames[col]);
+        }
     }
     if (cleanerInputErrors.length > 0) {
         errors.push({
-            message: 'Cleaner agents can only be connected from source_agents of type Ender',
+            message: 'Cleaner agents can only be connected from source_agents of type Ender or FlowBacker',
             agents: cleanerInputErrors
         });
     }
+    if (cleanerMixedInputErrors.length > 0) {
+        errors.push({
+            message: 'Cleaner agents must be triggered by either Ender or FlowBacker, but never by both in the same flow branch',
+            agents: cleanerMixedInputErrors
+        });
+    }
 
-    // iv) Verify main diagonal is all zeros (no self-connections)
+    // iv) Verify FlowBacker columns have only Starter/Ender/Forker/Asker inputs
+    const flowBackerInputErrors = [];
+    for (let col = 0; col < N; col++) {
+        if (agentTypes[col] !== 'flowbacker') continue;
+        for (let row = 0; row < N; row++) {
+            if (matrix[row][col] === 1 && !FLOWBACKER_INPUT_TYPES.includes(agentTypes[row])) {
+                flowBackerInputErrors.push(agentNames[col]);
+                break;
+            }
+        }
+    }
+    if (flowBackerInputErrors.length > 0) {
+        errors.push({
+            message: 'FlowBacker agents can only be connected from Starter, Ender, Forker, or Asker source_agents',
+            agents: flowBackerInputErrors
+        });
+    }
+
+    // v) Verify FlowBacker rows have only Cleaner outputs
+    const flowBackerOutputErrors = [];
+    for (let row = 0; row < N; row++) {
+        if (agentTypes[row] !== 'flowbacker') continue;
+        for (let col = 0; col < N; col++) {
+            if (matrix[row][col] === 1 && agentTypes[col] !== 'cleaner') {
+                flowBackerOutputErrors.push(agentNames[row]);
+                break;
+            }
+        }
+    }
+    if (flowBackerOutputErrors.length > 0) {
+        errors.push({
+            message: 'FlowBacker agents can only have target_agents of type Cleaner',
+            agents: flowBackerOutputErrors
+        });
+    }
+
+    // vi) Verify main diagonal is all zeros (no self-connections)
     const selfLoopErrors = [];
     for (let i = 0; i < N; i++) {
         if (matrix[i][i] === 1) {
@@ -229,7 +302,7 @@ async function runFlowValidation() {
         });
     }
 
-    // v) Verify all non-Starter columns have at least one incoming connection
+    // vii) Verify all non-Starter columns have at least one incoming connection
     const noInputErrors = [];
     for (let col = 0; col < N; col++) {
         if (agentTypes[col] === 'starter') continue;
@@ -251,7 +324,7 @@ async function runFlowValidation() {
         });
     }
 
-    // vi) Verify all referenced agents (target_agents, output_agents, source_agents)
+    // viii) Verify all referenced agents (target_agents, output_agents, source_agents)
     //     exist in the flow. Target/output agents must also have an input triangle.
     // Agent types without input triangles: starter (flowcreator/flowhypervisor are already excluded)
     const TYPES_WITHOUT_INPUT = ['starter'];

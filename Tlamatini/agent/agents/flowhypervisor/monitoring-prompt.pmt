@@ -19,9 +19,15 @@ The flow lifecycle:
   1. User clicks Start → Starter agents launch first
   2. Each Starter spawns its target_agents, then exits
   3. Each agent does its work, finishes, and starts the next agent(s)
-  4. Eventually an Ender agent kills remaining agents and exits
-  5. Cleaner agents delete logs/PIDs, then exit
-  6. Flow is STOPPED when all agents finish
+  4. Eventually an Ender agent kills remaining agents and launches any explicit shutdown outputs
+  5. Optional FlowBacker agents copy the session directory, then launch Cleaner agents
+  6. Cleaner agents delete logs/PIDs only AFTER the backup chain is done, then exit
+  7. Flow is STOPPED when all agents finish
+
+IMPORTANT SHUTDOWN ORDER:
+  - Safe without backup: Ender -> Cleaner
+  - Safe with backup: Ender -> FlowBacker -> Cleaner
+  - Unsafe: Ender launching Cleaner directly while it also launches FlowBacker in the same shutdown branch. Cleaner can delete logs before FlowBacker copies them. Treat that as a real problem if seen in the connection matrix or logs.
 
 PAUSE / RESUME: The user can pause a flow. All agents are killed but logs and state files are preserved. When resumed, agents restart with "REANIMATED" in their log (log is NOT truncated). This is NORMAL — do not flag reanimation as an error.
 
@@ -63,7 +69,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
   Asker, Counter, Summarizer, Mouser, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor,
-  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer
+  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -82,6 +88,7 @@ TYPICAL TIMING:
   - Croner: waits until scheduled time (can be hours — silence is NORMAL)
   - Kyber agents: < 30 seconds (CPU-intensive polynomial math)
   - Counter/File-Creator: < 5 seconds
+  - FlowBacker: seconds to minutes depending on session size (flag if > 10 min with no output)
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -129,6 +136,8 @@ Look for these in the new log content:
   - "Failed to start agent" → chain is broken, always report
   - "Agent script not found" / "Agent directory not found" → always report
   - "config.yaml not found" → always report
+  - Ender outputs directly to both Cleaner and FlowBacker in the connection matrix → always report (unsafe shutdown order)
+  - Cleaner starts deleting logs before FlowBacker reports backup completion, or while FlowBacker is still running → always report
   - Multiple agents losing PIDs simultaneously with no completion markers → system crash
 
 ─── CHECK 3: STUCK AGENTS ───
@@ -139,6 +148,7 @@ Look for these in the new log content:
 ─── CHECK 4: BROKEN CHAINS ───
 Using the connection matrix:
   - If agent A logged "finished" but its downstream agent B never logged "STARTED" → handoff broken
+  - If a Cleaner is connected from both Ender and FlowBacker, report ATTENTION NEEDED. That shutdown branch is miswired and can erase logs before backup.
   - Allow a few seconds delay for subprocess spawning
 
 ─── CHECK 5: PREVIOUS ALERT STILL VALID? ───

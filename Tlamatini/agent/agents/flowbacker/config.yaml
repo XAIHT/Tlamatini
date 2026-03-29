@@ -1,0 +1,10 @@
+# FlowBacker Agent Configuration
+
+# Directory to copy the session backup to (absolute path)
+target_directory: ""
+
+# Source agents that trigger this agent (auto-populated by canvas wiring)
+source_agents: []
+
+# Agents to start after backup completes (canvas wiring only — typically Cleaner)
+target_agents: []

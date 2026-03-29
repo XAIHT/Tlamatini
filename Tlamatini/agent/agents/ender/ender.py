@@ -159,6 +159,12 @@ def is_deployed_agent(agent_name: str) -> bool:
     return False
 
 
+def is_flowbacker_agent(agent_name: str) -> bool:
+    """Return True when the provided agent name refers to FlowBacker."""
+    normalized_name = (agent_name or "").strip().lower().replace("-", "_")
+    return normalized_name == "flowbacker" or normalized_name.startswith("flowbacker_")
+
+
 def get_agent_directory(agent_name: str) -> str:
     """
     Get the full path to an agent's directory.
@@ -496,7 +502,7 @@ def main():
             kill_agents = config.get('source_agents', [])
             if kill_agents:
                 logging.warning("⚠️ Using legacy 'source_agents' as kill list. Please update your flow to use 'target_agents'.")
-        output_agents: List[str] = config.get('output_agents', [])
+        output_agents: List[str] = config.get('output_agents', []) or []
 
         if not kill_agents and not output_agents:
             logging.error("❌ No target or output agents configured.")
@@ -513,11 +519,24 @@ def main():
                 corrected_kills.append(agent)
         kill_agents = corrected_kills
 
-        # 2. Auto-Discover all Cleaner agents in the pool
-        # Ender should always launch any Cleaner present in the current session.
+        # 2. Auto-discover Cleaner agents only for legacy flows with no explicit outputs.
+        # If Ender already has outputs configured, respect that wiring and do not add
+        # Cleaner in parallel. This is critical for FlowBacker -> Cleaner chains because
+        # Cleaner would otherwise delete logs before the backup copy completes.
         try:
             pool_path = get_pool_path()
-            if os.path.exists(pool_path):
+            if output_agents:
+                if any(is_flowbacker_agent(agent) for agent in output_agents):
+                    logging.info(
+                        "ℹ️ Skipping Cleaner auto-discovery because FlowBacker is already "
+                        "configured as an explicit output."
+                    )
+                else:
+                    logging.info(
+                        "ℹ️ Skipping Cleaner auto-discovery because explicit output_agents "
+                        "are already configured."
+                    )
+            elif os.path.exists(pool_path):
                 seen_outputs = set(output_agents)
                 for item in os.listdir(pool_path):
                     # Check for cleaner folders (e.g., cleaner_1)

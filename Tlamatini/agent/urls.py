@@ -115,6 +115,7 @@ urlpatterns = [
     path('update_parametrizer_connection/<str:agent_name>/', secure_post(views.update_parametrizer_connection_view), name='update_parametrizer_connection'),
     path('get_parametrizer_dialog_data/<str:agent_name>/', secure_get(views.get_parametrizer_dialog_data_view), name='get_parametrizer_dialog_data'),
     path('save_parametrizer_scheme/<str:agent_name>/', secure_post(views.save_parametrizer_scheme_view), name='save_parametrizer_scheme'),
+    path('update_flowbacker_connection/<str:agent_name>/', secure_post(views.update_flowbacker_connection_view), name='update_flowbacker_connection'),
     path('detect_installed_apps/', secure_get(views.detect_installed_apps_view), name='detect_installed_apps'),
     path('open_in_app/', secure_post(views.open_in_app_view), name='open_in_app'),
 ]
