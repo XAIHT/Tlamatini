@@ -280,7 +280,12 @@ def main():
 
     try:
         if not destination:
-            logging.error("❌ No destination folder configured. Exiting.")
+            logging.error("❌ No destination folder configured.")
+            if target_agents:
+                wait_for_agents_to_stop(target_agents)
+                logging.info(f"🚀 Triggering {len(target_agents)} downstream agents despite error...")
+                for target in target_agents:
+                    start_agent(target)
             return  # Will trigger finally block
 
         if trigger_mode.lower() == 'immediate':
@@ -311,7 +316,12 @@ def main():
             log_paths = resolve_log_paths(source_agents)
             
             if not log_paths:
-                logging.error("❌ No valid source agent logs found for event mode. Exiting.")
+                logging.error("❌ No valid source agent logs found for event mode.")
+                if target_agents:
+                    wait_for_agents_to_stop(target_agents)
+                    logging.info(f"🚀 Triggering {len(target_agents)} downstream agents despite error...")
+                    for target in target_agents:
+                        start_agent(target)
                 return  # Will trigger finally block
                  
             logging.info(f"👀 Monitoring {len(log_paths)} log(s)")

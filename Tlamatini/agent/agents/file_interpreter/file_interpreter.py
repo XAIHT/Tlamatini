@@ -901,17 +901,18 @@ def main():
         # Validate reading_type
         if reading_type not in ('fast', 'complete', 'summarized'):
             logging.error(f"❌ Invalid reading_type: '{reading_type}'. Must be 'fast', 'complete', or 'summarized'.")
-            return
+            logging.warning("⚠️ Skipping processing but still triggering downstream agents.")
+            files = []
+        else:
+            # Resolve files
+            files = resolve_files(path_filenames, recursive=recursive)
+            excl_exts, excl_names = parse_exclusions(filetype_exclusions)
+            files = apply_exclusions(files, excl_exts, excl_names)
+            if not files:
+                logging.warning("⚠️ No files found to process.")
 
-        # Resolve files
-        files = resolve_files(path_filenames, recursive=recursive)
-        excl_exts, excl_names = parse_exclusions(filetype_exclusions)
-        files = apply_exclusions(files, excl_exts, excl_names)
-        if not files:
-            logging.error("❌ No files to process. Agent stopping.")
-            return
-
-        logging.info(f"📄 Processing {len(files)} file(s)...")
+        if files:
+            logging.info(f"📄 Processing {len(files)} file(s)...")
 
         # Set up images directory for 'complete' mode
         images_dir = os.path.join(script_dir, 'images')
@@ -936,7 +937,8 @@ def main():
                     f"END_FILE"
                 )
 
-        logging.info(f"✅ All {len(files)} file(s) processed.")
+        if files:
+            logging.info(f"✅ All {len(files)} file(s) processed.")
 
         # Trigger downstream agents
         total_triggered = 0

@@ -1110,121 +1110,126 @@ def main():
         logging.info(f"Model context window: {ctx_tokens} tokens (~{tokens_to_chars(ctx_tokens)} chars)")
         logging.info("=" * 60)
 
+        _skip_processing = False
+
         if content_mode not in ('raw', 'text'):
             logging.error(f"Invalid content_mode: {content_mode}. Use 'raw' or 'text'.")
-            return
+            _skip_processing = True
 
-        if not url.strip():
+        if not _skip_processing and not url.strip():
             logging.error("No URL configured. Set the 'url' field in config.yaml.")
-            return
+            _skip_processing = True
 
-        if not system_prompt.strip():
+        if not _skip_processing and not system_prompt.strip():
             logging.error("No system_prompt configured. Set the 'system_prompt' field in config.yaml.")
-            return
+            _skip_processing = True
 
-        proc_kwargs = {
-            'content_mode': content_mode,
-            'include_headers': include_headers,
-        }
+        if not _skip_processing:
+            proc_kwargs = {
+                'content_mode': content_mode,
+                'include_headers': include_headers,
+            }
 
-        if crawl_type == 'small-range':
-            # Small-range: access every link within the same domain (not recursively)
-            logging.info("Small-range crawl: fetching same-domain links...")
-            try:
-                main_html = fetch_page(url)
-            except Exception as e:
-                logging.error(f"Failed to fetch main page {url}: {e}")
-                return
+            if crawl_type == 'small-range':
+                # Small-range: access every link within the same domain (not recursively)
+                logging.info("Small-range crawl: fetching same-domain links...")
+                try:
+                    main_html = fetch_page(url)
+                except Exception as e:
+                    logging.error(f"Failed to fetch main page {url}: {e}")
+                    main_html = None
 
-            all_links = extract_links(main_html, url)
-            same_domain_links = filter_same_domain(all_links, url)
-            logging.info(f"Found {len(same_domain_links)} same-domain links")
+                if main_html is not None:
+                    all_links = extract_links(main_html, url)
+                    same_domain_links = filter_same_domain(all_links, url)
+                    logging.info(f"Found {len(same_domain_links)} same-domain links")
 
-            for i, link in enumerate(same_domain_links):
-                link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                logging.info(f"Processing link {i + 1}/{len(same_domain_links)}: {link}")
-                process_url_with_llm(link, host, model, system_prompt, 'small', link_ts,
-                                     **proc_kwargs)
+                    for i, link in enumerate(same_domain_links):
+                        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                        logging.info(f"Processing link {i + 1}/{len(same_domain_links)}: {link}")
+                        process_url_with_llm(link, host, model, system_prompt, 'small', link_ts,
+                                             **proc_kwargs)
 
-        elif crawl_type == 'medium-range':
-            # Medium-range: access every link regardless of domain (not recursively)
-            logging.info("Medium-range crawl: fetching ALL links (cross-domain)...")
-            try:
-                main_html = fetch_page(url)
-            except Exception as e:
-                logging.error(f"Failed to fetch main page {url}: {e}")
-                return
+            elif crawl_type == 'medium-range':
+                # Medium-range: access every link regardless of domain (not recursively)
+                logging.info("Medium-range crawl: fetching ALL links (cross-domain)...")
+                try:
+                    main_html = fetch_page(url)
+                except Exception as e:
+                    logging.error(f"Failed to fetch main page {url}: {e}")
+                    main_html = None
 
-            all_links = extract_links(main_html, url)
-            logging.info(f"Found {len(all_links)} total links (cross-domain)")
+                if main_html is not None:
+                    all_links = extract_links(main_html, url)
+                    logging.info(f"Found {len(all_links)} total links (cross-domain)")
 
-            for i, link in enumerate(all_links):
-                link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                logging.info(f"Processing link {i + 1}/{len(all_links)}: {link}")
-                process_url_with_llm(link, host, model, system_prompt, 'medium', link_ts,
-                                     **proc_kwargs)
+                    for i, link in enumerate(all_links):
+                        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                        logging.info(f"Processing link {i + 1}/{len(all_links)}: {link}")
+                        process_url_with_llm(link, host, model, system_prompt, 'medium', link_ts,
+                                             **proc_kwargs)
 
-        elif crawl_type == 'large-range':
-            # Large-range: access every link regardless of domain, RECURSIVELY up to depth
-            depth = config.get('depth', 1)
-            if not isinstance(depth, int) or depth < 1:
-                logging.warning(f"Invalid depth value: {depth}. Defaulting to 1.")
-                depth = 1
-            logging.info(f"Large-range crawl: fetching ALL links recursively (depth={depth})...")
+            elif crawl_type == 'large-range':
+                # Large-range: access every link regardless of domain, RECURSIVELY up to depth
+                depth = config.get('depth', 1)
+                if not isinstance(depth, int) or depth < 1:
+                    logging.warning(f"Invalid depth value: {depth}. Defaulting to 1.")
+                    depth = 1
+                logging.info(f"Large-range crawl: fetching ALL links recursively (depth={depth})...")
 
-            visited = set()
-            visited.add(url)  # Don't revisit the starting URL
+                visited = set()
+                visited.add(url)  # Don't revisit the starting URL
 
-            def _crawl_level(urls_to_process, current_depth):
-                """Process URLs at the current depth level and recurse if needed."""
-                if current_depth > depth:
-                    return
+                def _crawl_level(urls_to_process, current_depth):
+                    """Process URLs at the current depth level and recurse if needed."""
+                    if current_depth > depth:
+                        return
 
-                next_level_urls = []
+                    next_level_urls = []
 
-                for i, link in enumerate(urls_to_process):
-                    if link in visited:
-                        continue
-                    visited.add(link)
+                    for i, link in enumerate(urls_to_process):
+                        if link in visited:
+                            continue
+                        visited.add(link)
 
-                    link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                    logging.info(
-                        f"[depth={current_depth}/{depth}] Processing link "
-                        f"{i + 1}/{len(urls_to_process)}: {link}"
-                    )
-                    process_url_with_llm(link, host, model, system_prompt, 'large', link_ts,
-                                         **proc_kwargs)
+                        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                        logging.info(
+                            f"[depth={current_depth}/{depth}] Processing link "
+                            f"{i + 1}/{len(urls_to_process)}: {link}"
+                        )
+                        process_url_with_llm(link, host, model, system_prompt, 'large', link_ts,
+                                             **proc_kwargs)
 
-                    # If we need to go deeper, fetch and extract links for next level
-                    if current_depth < depth:
-                        try:
-                            link_html = fetch_page(link)
-                            nested_links = extract_links(link_html, link)
-                            next_level_urls.extend(nested_links)
-                        except Exception as e:
-                            logging.error(f"Failed to fetch {link} for deeper crawl: {e}")
+                        # If we need to go deeper, fetch and extract links for next level
+                        if current_depth < depth:
+                            try:
+                                link_html = fetch_page(link)
+                                nested_links = extract_links(link_html, link)
+                                next_level_urls.extend(nested_links)
+                            except Exception as e:
+                                logging.error(f"Failed to fetch {link} for deeper crawl: {e}")
 
-                if next_level_urls and current_depth < depth:
-                    logging.info(
-                        f"Recursing to depth {current_depth + 1}: "
-                        f"{len(next_level_urls)} candidate links"
-                    )
-                    _crawl_level(next_level_urls, current_depth + 1)
+                    if next_level_urls and current_depth < depth:
+                        logging.info(
+                            f"Recursing to depth {current_depth + 1}: "
+                            f"{len(next_level_urls)} candidate links"
+                        )
+                        _crawl_level(next_level_urls, current_depth + 1)
 
-            try:
-                main_html = fetch_page(url)
-            except Exception as e:
-                logging.error(f"Failed to fetch main page {url}: {e}")
-                return
+                try:
+                    main_html = fetch_page(url)
+                except Exception as e:
+                    logging.error(f"Failed to fetch main page {url}: {e}")
+                    main_html = None
 
-            all_links = extract_links(main_html, url)
-            logging.info(f"Found {len(all_links)} links from starting page")
+                if main_html is not None:
+                    all_links = extract_links(main_html, url)
+                    logging.info(f"Found {len(all_links)} links from starting page")
 
-            _crawl_level(all_links, 1)
+                    _crawl_level(all_links, 1)
 
-        else:
-            logging.error(f"Unknown crawl_type: {crawl_type}. Use small-range, medium-range, or large-range.")
-            return
+            else:
+                logging.error(f"Unknown crawl_type: {crawl_type}. Use small-range, medium-range, or large-range.")
 
         logging.info("Crawl processing complete.")
 

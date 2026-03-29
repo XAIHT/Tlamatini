@@ -331,24 +331,22 @@ def main():
 
         if not prompt_text.strip():
             logging.error("❌ No prompt configured. Set the 'prompt' field in config.yaml.")
-            return
+        else:
+            # Log the prompt being sent
+            logging.info(f"📝 Sending prompt ({len(prompt_text)} chars) to {model}...")
 
-        # Log the prompt being sent
-        logging.info(f"📝 Sending prompt ({len(prompt_text)} chars) to {model}...")
+            # Query Ollama
+            try:
+                response_text = query_ollama(host, model, prompt_text)
 
-        # Query Ollama
-        try:
-            response_text = query_ollama(host, model, prompt_text)
-        except RuntimeError as e:
-            logging.error(f"❌ LLM query failed: {e}")
-            return
+                # Log the response in the required format
+                logging.info(f"--------------------LLM Response (model: {model})------------------ INI_RESPONSE<<<")
+                logging.info(response_text)
+                logging.info(">>>END_RESPONSE")
 
-        # Log the response in the required format
-        logging.info(f"--------------------LLM Response (model: {model})------------------ INI_RESPONSE<<<")
-        logging.info(response_text)
-        logging.info(">>>END_RESPONSE")
-
-        logging.info(f"✅ LLM response received ({len(response_text)} chars)")
+                logging.info(f"✅ LLM response received ({len(response_text)} chars)")
+            except RuntimeError as e:
+                logging.error(f"❌ LLM query failed: {e}")
 
         # Trigger downstream agents
         total_triggered = 0

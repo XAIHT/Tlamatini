@@ -1902,6 +1902,60 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
               (IMAP inbox monitor)  (WhatsApp alert)
 ```
 
+### Example 9: Parallel Processing with Barrier Synchronization
+
+Run multiple file-processing agents in parallel and synchronize them through a Barrier before continuing. The Barrier waits until **all** upstream agents have reported in, then unlocks and triggers the next stage. This is the fundamental fan-out / fan-in pattern.
+
+```
+                    ┌─────────────────┐
+               ┌───>│ File Creator_1  │───┐
+               │    └─────────────────┘   │
+               │    ┌─────────────────┐   │
+               ├───>│File Extractor_1 │───┤
+┌─────────┐    │    └─────────────────┘   │    ┌───────────┐    ┌────────────┐    ┌────────┐    ┌────────────┐    ┌───────────┐
+│ Starter │────┤                          ├───>│ Barrier_1 │───>│ Notifier_1 │───>│Ender_1 │───>│Flowbacker_1│───>│ Cleaner_1 │
+└─────────┘    │    ┌─────────────────┐   │    └───────────┘    └────────────┘    └────────┘    └────────────┘    └───────────┘
+               ├───>│File Interpreter_1│──┤     (waits for      (watches barrier   (stops all
+               │    └─────────────────┘   │      all 4 flags)    log for unlock)    agents)
+               │    ┌──────────────────┐  │
+               └───>│Image Interpreter_1│─┘
+                    └──────────────────┘
+```
+
+**Flow description:**
+
+1. **Starter** launches four agents in parallel: File Creator, File Extractor, File Interpreter, and Image Interpreter.
+2. Each agent processes its task independently (create files, extract content, interpret documents, analyze images).
+3. When each agent finishes, it triggers `barrier_1` as its target. The Barrier creates a flag file for that agent.
+4. The **last agent to arrive** detects all 4/4 flags present, deletes all flags, and fires `notifier_1`.
+5. **Notifier** monitors the Barrier log for `"All flags present"`, triggers a browser notification, then starts the **Ender**.
+6. **Ender** gracefully stops all running agents, then **Flowbacker** backs up the flow, and **Cleaner** removes temporary files.
+
+**Barrier_1 config.yaml:**
+```yaml
+source_agents:
+  - file_creator_1
+  - file_extractor_1
+  - file_interpreter_1
+  - image_interpreter_1
+target_agents:
+  - notifier_1
+```
+
+**Notifier_1 config.yaml:**
+```yaml
+target:
+  search_strings: "All flags present"
+  outcome_detail: "Barrier passed!!"
+  poll_interval: 2
+source_agents:
+  - barrier_1
+target_agents:
+  - ender_1
+```
+
+> **Key point:** The Barrier agent has no long-running process. Each input sub-process is short-lived: it creates its flag, atomically checks if all flags are present, and the *last arrival* fires the downstream targets. This avoids deadlocks with the `wait_for_agents_to_stop` pattern used by all agents.
+
 ---
 
 ## API Reference
