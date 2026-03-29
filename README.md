@@ -1068,6 +1068,17 @@ The Agentic Control Panel entry point is `agentic_control_panel.html`. Its execu
 - **Stop after a pause (`PAUSED` -> `STOPPED`)**: A paused flow has already had its processes killed. If the user presses Stop from that state, the ACP resolves to a full stopped state and clears `.pos` files, so the next Start follows the fresh-start path instead of the reanimation path.
 - **LED semantics**: During normal execution, each canvas LED is green when that canvas agent is running and red when the flow is active but that agent is not running. In the stopped state all LEDs are gray. In the paused state all canvas agents switch to a yellow blinking LED, regardless of which ones were running at the moment of pause.
 
+#### Reanimation Process
+
+Reanimation in Tlamatini is a specific pause-resume mechanism, not a generic restart:
+
+1. **Capture phase**: When Pause is pressed, the frontend asks `/get_session_running_processes/` for the current session's live agents and sends that list to `/save_paused_agents/`. The backend stores the result as `paused_agents.reanim` inside the current session pool directory, under a `paused_agents` key.
+2. **Resume trigger**: Reanimation is only available while the ACP is still in `PAUSED`. If the user presses Start, or presses Pause again while already paused, the frontend loads `paused_agents.reanim` through `/load_paused_agents/`. If that file is missing, the frontend falls back to its in-memory paused-process list. If neither source has agents, the ACP returns to `STOPPED` instead of inventing a restart path.
+3. **Relaunch request**: Before calling the backend, the frontend reduces the stored process list to unique `{canvas_id, folder_name, script_name}` records. Those records are sent to `/reanimate_agents/`, so the server relaunches only the paused canvas agents rather than replaying the full Start sequence.
+4. **Backend reanimation contract**: The backend resolves each `folder_name` under the current session pool, verifies that the corresponding `script_name` still exists, starts that script as a detached subprocess, and rewrites the agent's `agent.pid` file. If a script no longer exists, that canvas agent is reported as failed in the JSON response instead of being silently skipped.
+5. **Agent-side resume behavior**: Reanimated subprocesses receive `AGENT_REANIMATED=1` in their environment. Agent templates use that flag to preserve existing log files and to reload whatever `reanim*` artifacts they implement, such as `reanim.pos` or `reanim.counter`, instead of behaving like a fresh launch.
+6. **Lifecycle boundary**: After the reanimation request returns, the frontend calls `/delete_paused_agents/` to remove `paused_agents.reanim` and marks the flow as `RUNNING`. If the user presses Stop instead of resuming, the ACP exits the reanimation path, clears `.pos` files with `/clear_pos_files/`, and the next Start is treated as a fresh run.
+
 #### Flow Validation
 
 Before executing a workflow, the Validate button performs a comprehensive 6-point structural verification by building an NxN adjacency matrix from all agent connections and checking:
