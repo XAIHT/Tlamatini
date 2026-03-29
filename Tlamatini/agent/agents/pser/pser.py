@@ -423,20 +423,20 @@ def main():
 
         if not likely_process_name.strip():
             logging.error("❌ No likely_process_name configured. Set it in config.yaml.")
-            return
+        else:
+            # Step 1: Get process list (no admin needed)
+            logging.info("📋 Collecting process list (no admin privileges required)...")
+            try:
+                process_list = get_process_list()
+                line_count = len(process_list.split('\n'))
+                logging.info(f"📋 Got {line_count} lines of process data.")
+            except RuntimeError as e:
+                logging.error(f"❌ Failed to get process list: {e}")
+                process_list = None
 
-        # Step 1: Get process list (no admin needed)
-        logging.info("📋 Collecting process list (no admin privileges required)...")
-        try:
-            process_list = get_process_list()
-            line_count = len(process_list.split('\n'))
-            logging.info(f"📋 Got {line_count} lines of process data.")
-        except RuntimeError as e:
-            logging.error(f"❌ Failed to get process list: {e}")
-            return
-
-        # Step 2: Ask LLM to find the best matching process
-        prompt = f"""You are a process-matching expert. I need you to find the SINGLE best matching process from the list below.
+            if process_list is not None:
+                # Step 2: Ask LLM to find the best matching process
+                prompt = f"""You are a process-matching expert. I need you to find the SINGLE best matching process from the list below.
 
 I am looking for a process whose name is most similar to: "{likely_process_name}"
 
@@ -457,28 +457,29 @@ Respond with ONLY a JSON object (no markdown, no explanation) in this exact form
 If no matching process is found:
 {{"process_name": "UNKNOWN", "pid": "N/A", "cpu_usage": "N/A", "memory_usage": "N/A", "user": "N/A", "found": false}}"""
 
-        logging.info(f"📝 Sending process list + query to {model}...")
+                logging.info(f"📝 Sending process list + query to {model}...")
 
-        try:
-            response_text = query_ollama(host, model, prompt)
-        except RuntimeError as e:
-            logging.error(f"❌ LLM query failed: {e}")
-            return
+                try:
+                    response_text = query_ollama(host, model, prompt)
+                except RuntimeError as e:
+                    logging.error(f"❌ LLM query failed: {e}")
+                    response_text = None
 
-        logging.info(f"✅ LLM response received ({len(response_text)} chars)")
+                if response_text is not None:
+                    logging.info(f"✅ LLM response received ({len(response_text)} chars)")
 
-        # Step 3: Parse the LLM response
-        result = parse_llm_response(response_text)
+                    # Step 3: Parse the LLM response
+                    result = parse_llm_response(response_text)
 
-        if result['found']:
-            # Log in the required format
-            logging.info(
-                f"PROCESS FOUND: {result['process_name']}, {result['pid']}, "
-                f"{result['cpu_usage']}, {result['memory_usage']}, {result['user']}"
-            )
-        else:
-            logging.warning(f"⚠️ No process matching '{likely_process_name}' was found.")
-            logging.info(f"LLM raw response: {response_text[:500]}")
+                    if result['found']:
+                        # Log in the required format
+                        logging.info(
+                            f"PROCESS FOUND: {result['process_name']}, {result['pid']}, "
+                            f"{result['cpu_usage']}, {result['memory_usage']}, {result['user']}"
+                        )
+                    else:
+                        logging.warning(f"⚠️ No process matching '{likely_process_name}' was found.")
+                        logging.info(f"LLM raw response: {response_text[:500]}")
 
         # Trigger downstream agents
         total_triggered = 0

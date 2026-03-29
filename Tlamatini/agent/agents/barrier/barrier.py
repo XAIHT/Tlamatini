@@ -1,8 +1,8 @@
 # Barrier Agent - OS-process-level synchronization barrier for flow control
 # Each source agent STARTS a separate barrier process ("input sub-process").
-# Each input sub-process creates a flag file for its caller.
-# The FIRST input sub-process also becomes the "output sub-process" that
-# polls until ALL flags are present, then erases them and starts target agents.
+# Each input sub-process creates a flag file for its caller, then atomically
+# checks whether ALL flags are now present.  The LAST arrival fires the
+# downstream target agents and exits.  No long-running polling process.
 # Cross-process synchronization uses file-based locking (no threading).
 
 import os
@@ -30,8 +30,8 @@ LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
 
 # Reanimation detection: AGENT_REANIMATED=1 means resume from pause
 _IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
-if not _IS_REANIMATED:
-    open(LOG_FILE_PATH, 'w').close()
+# Log clearing is handled inside main() — only manual/direct starts clear.
+# Input sub-processes always append so we never lose sibling entries.
 logging.basicConfig(
     filename=LOG_FILE_PATH,
     level=logging.INFO,
@@ -44,9 +44,6 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
-
-# Marker file that signals an output sub-process is active (cross-process gate)
-OUTPUT_MARKER = os.path.join(script_dir, "barrier_output.running")
 
 # Windows file-locking helpers for cross-process mutual exclusion
 if sys.platform.startswith('win'):
@@ -315,7 +312,7 @@ def _count_existing_flags(source_agents: list) -> int:
 
 
 def _delete_all_flags(source_agents: list):
-    """Delete all flag files (called ONLY by the output sub-process)."""
+    """Delete all flag files."""
     for s in source_agents:
         fp = _flag_path(s)
         try:
@@ -346,61 +343,9 @@ def _detect_caller() -> str:
 
 
 # ---------------------------------------------------------------------------
-# CROSS-PROCESS CRITICAL SECTION
-# ---------------------------------------------------------------------------
-
-def _create_flag_and_check_first(caller: str) -> bool:
-    """Atomically create a flag file for `caller` and determine if this
-    process is the first arrival (i.e., should become the output sub-process).
-
-    Uses a file-based lock for cross-process mutual exclusion.
-
-    Returns True if this process should become the output sub-process.
-    """
-    become_output = False
-
-    # Open (or create) the lock file and hold an exclusive lock
-    with open(CROSS_PROCESS_LOCK_FILE, 'a+') as lf:
-        _lock_file(lf)
-        try:
-            flag = _flag_path(caller)
-
-            # Do NOT recreate/overwrite if flag already exists
-            if os.path.exists(flag):
-                logging.info(f"🏳️ Flag already exists for {caller} — skipping")
-                return False
-
-            # Create flag file atomically within the locked section
-            with open(flag, 'w') as ff:
-                ff.write(caller)
-            logging.info(f"🏳️ Flag created for {caller}")
-
-            # Check if the output sub-process marker exists
-            if not os.path.exists(OUTPUT_MARKER):
-                # This is the first arrival — claim the output role
-                with open(OUTPUT_MARKER, 'w') as mf:
-                    mf.write(str(os.getpid()))
-                become_output = True
-                logging.info("📡 First arrival — this process becomes the output sub-process")
-            else:
-                logging.info("📡 Output sub-process already active — exiting after flag creation")
-        finally:
-            _unlock_file(lf)
-
-    return become_output
-
-
-def _remove_output_marker():
-    """Remove the output sub-process marker file."""
-    try:
-        if os.path.exists(OUTPUT_MARKER):
-            os.remove(OUTPUT_MARKER)
-    except Exception as e:
-        logging.warning(f"⚠️ Could not remove output marker: {e}")
-
-
-# ---------------------------------------------------------------------------
-# MAIN
+# MAIN — no long-running process, no polling.
+# Each input sub-process creates its flag, checks if ALL are present.
+# The LAST arrival fires the targets and exits.
 # ---------------------------------------------------------------------------
 
 def main():
@@ -420,6 +365,17 @@ def main():
                 logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
                 logging.info("=" * 60)
 
+            # Clear log for fresh manual/direct starts
+            if not _IS_REANIMATED:
+                for handler in logging.getLogger().handlers[:]:
+                    if isinstance(handler, logging.FileHandler):
+                        handler.close()
+                        logging.getLogger().removeHandler(handler)
+                open(LOG_FILE_PATH, 'w').close()
+                fh = logging.FileHandler(LOG_FILE_PATH, encoding='utf-8')
+                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                logging.getLogger().addHandler(fh)
+
             logging.info("🚧 BARRIER AGENT STARTED (manual/direct)")
             logging.info(f"👀 Source agents (inputs): {source_agents}")
             logging.info(f"🎯 Target agents (outputs): {target_agents}")
@@ -427,13 +383,18 @@ def main():
             # Clean up stale state from previous run
             if source_agents:
                 _delete_all_flags(source_agents)
-            _remove_output_marker()
-            logging.info("🗑️ Cleaned stale flags and markers from previous run")
+            logging.info("🗑️ Cleaned stale flags from previous run")
             logging.info("🏁 Barrier agent finished (no caller specified).")
             return
 
         # --- INPUT SUB-PROCESS ---
-        logging.info(f"🚧 BARRIER AGENT STARTED (input sub-process for {caller})")
+        # Immediately remove agent.pid that our calling source agent wrote.
+        # Other source agents call wait_for_agents_to_stop("barrier_1")
+        # before starting their own barrier process — if agent.pid lingers
+        # they deadlock.
+        remove_pid_file()
+
+        logging.info(f"🚧 BARRIER INPUT for {caller}")
         logging.info(f"👀 Source agents: {source_agents}")
         logging.info(f"🎯 Target agents: {target_agents}")
 
@@ -444,59 +405,48 @@ def main():
         if caller not in source_agents:
             logging.warning(f"⚠️ Caller '{caller}' not in source_agents — registering anyway")
 
-        # Atomically create flag and determine role
-        is_output = _create_flag_and_check_first(caller)
+        # Atomically: create flag → check if ALL flags present → fire if so
+        should_fire = False
+        with open(CROSS_PROCESS_LOCK_FILE, 'a+') as lf:
+            _lock_file(lf)
+            try:
+                flag = _flag_path(caller)
 
-        if not is_output:
-            # Input-only process: flag created, exit quickly
-            logging.info(f"🏁 Input sub-process for {caller} done — exiting")
-            return
+                # Do NOT recreate/overwrite if flag already exists
+                if not os.path.exists(flag):
+                    with open(flag, 'w') as ff:
+                        ff.write(caller)
+                    logging.info(f"🏳️ Flag created for {caller}")
+                else:
+                    logging.info(f"🏳️ Flag already exists for {caller} — skipping")
 
-        # --- OUTPUT SUB-PROCESS ---
-        # This process is now the output sub-process; claim PID ownership
-        write_pid_file()
-        logging.info(f"📡 Output sub-process polling for {len(source_agents)} flags...")
-
-        poll_interval = 0.3
-        heartbeat_count = 0
-
-        while True:
-            # Check flags under lock to avoid races with flag deletion
-            with open(CROSS_PROCESS_LOCK_FILE, 'a+') as lf:
-                _lock_file(lf)
-                try:
-                    all_present = _all_flags_present(source_agents)
-                    if all_present:
-                        logging.info("🔓 All flags present — barrier unlocked!")
-                        _delete_all_flags(source_agents)
-                        logging.info("🗑️ All flag files deleted")
-                        _remove_output_marker()
-                finally:
-                    _unlock_file(lf)
-
-            if all_present:
-                break
-
-            heartbeat_count += 1
-            if heartbeat_count % 33 == 0:  # ~every 10 seconds
                 present = _count_existing_flags(source_agents)
-                logging.info(
-                    f"💓 Output heartbeat — {present}/{len(source_agents)} flags present"
-                )
 
-            time.sleep(poll_interval)
+                if _all_flags_present(source_agents):
+                    logging.info(f"🔓 All flags present ({present}/{len(source_agents)}) — barrier UNLOCKED!")
+                    _delete_all_flags(source_agents)
+                    logging.info("🗑️ All flag files deleted")
+                    should_fire = True
+                else:
+                    logging.info(f"⏳ {present}/{len(source_agents)} flags — waiting for more arrivals")
+            finally:
+                _unlock_file(lf)
 
-        # Fire downstream agents
-        if target_agents:
-            wait_for_agents_to_stop(target_agents)
-            logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
-            total = 0
-            for target in target_agents:
-                if start_agent(target):
-                    total += 1
-            logging.info(f"🏁 Barrier fired. Triggered {total}/{len(target_agents)} agents.")
+        if should_fire:
+            # This is the last arrival — fire downstream agents
+            write_pid_file()
+            if target_agents:
+                wait_for_agents_to_stop(target_agents)
+                logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
+                total = 0
+                for target in target_agents:
+                    if start_agent(target):
+                        total += 1
+                logging.info(f"🏁 Barrier fired. Triggered {total}/{len(target_agents)} agents.")
+            else:
+                logging.info("🏁 Barrier fired (no target agents configured).")
         else:
-            logging.info("🏁 Barrier fired (no target agents configured).")
+            logging.info(f"🏁 Input sub-process for {caller} done — exiting")
 
     finally:
         time.sleep(0.4)

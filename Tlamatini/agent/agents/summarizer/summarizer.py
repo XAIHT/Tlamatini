@@ -441,18 +441,17 @@ def main():
         logging.info(f"Targets: {target_agents}")
         logging.info("=" * 60)
 
+        event_triggered = False
+
         if not source_agents:
             logging.error("No source_agents configured. Connect source agents on the canvas.")
-            return
-
-        if not system_prompt.strip():
+        elif not system_prompt.strip():
             logging.error("No system_prompt configured. Set the 'system_prompt' field in config.yaml.")
-            return
-
-        # Poll source agent logs and detect events via LLM
-        event_triggered = poll_source_agents(
-            source_agents, system_prompt, host, model, poll_interval
-        )
+        else:
+            # Poll source agent logs and detect events via LLM
+            event_triggered = poll_source_agents(
+                source_agents, system_prompt, host, model, poll_interval
+            )
 
         if event_triggered:
             logging.info("[EVENT_TRIGGERED] detected — starting target agents...")
