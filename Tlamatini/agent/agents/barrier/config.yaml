@@ -1,0 +1,8 @@
+# Barrier Agent Configuration
+# Synchronization barrier: waits for ALL source agents to start before triggering targets
+
+# Informative: source agents that feed into this barrier (auto-populated by canvas)
+source_agents: []
+
+# Downstream agents to start when all source agents have reported in
+target_agents: []

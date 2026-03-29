@@ -69,7 +69,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
   Asker, Counter, Summarizer, Mouser, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor,
-  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker
+  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -89,6 +89,7 @@ TYPICAL TIMING:
   - Kyber agents: < 30 seconds (CPU-intensive polynomial math)
   - Counter/File-Creator: < 5 seconds
   - FlowBacker: seconds to minutes depending on session size (flag if > 10 min with no output)
+  - Barrier: waits for all source agents to check in (duration depends on source agents; flag if > 10 min with no output)
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════

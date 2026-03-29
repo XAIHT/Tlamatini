@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -86,6 +86,7 @@ function applyAgentTypeClass(el, agentName) {
         'kyber-decipher': 'kyberdecipher-agent',
         'parametrizer': 'parametrizer-agent',
         'flowbacker': 'flowbacker-agent',
+        'barrier': 'barrier-agent',
     };
     const cls = classMap[normalizedName];
     if (cls) el.classList.add(cls);
@@ -691,6 +692,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'barrier') updateBarrierConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'barrier') updateBarrierConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -788,6 +791,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'parametrizer' && !sourceBeingDeleted) updateParametrizerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'flowbacker' && !targetBeingDeleted) updateFlowBackerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'flowbacker' && !sourceBeingDeleted) updateFlowBackerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'barrier' && !targetBeingDeleted) updateBarrierConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'barrier' && !sourceBeingDeleted) updateBarrierConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -914,6 +919,7 @@ async function populateAgentsList() {
         else if (lowerDesc === 'kyber-cipher' || lowerDesc === 'kyber cipher') iconDiv.style.background = 'linear-gradient(135deg, #D35400 0%, #1ABC9C 50%, #8E44AD 100%)';
         else if (lowerDesc === 'kyber-decipher' || lowerDesc === 'kyber decipher') iconDiv.style.background = 'linear-gradient(135deg, #4A90D9 0%, #D94F7A 50%, #82C91E 100%)';
         else if (lowerDesc === 'flowbacker') iconDiv.style.background = 'linear-gradient(135deg, #0F4C5C 0%, #E36414 50%, #FB8B24 100%)';
+        else if (lowerDesc === 'barrier') iconDiv.style.background = 'linear-gradient(135deg, #E84393 0%, #00B894 50%, #FDCB6E 100%)';
         else if (lowerDesc === 'parametrizer') iconDiv.style.background = 'linear-gradient(135deg, #311B92 0%, #AA00FF 33%, #FF6D00 66%, #00E5FF 100%)';
         else iconDiv.style.backgroundColor = '#ccc'; // Default color
 
@@ -1297,6 +1303,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'parametrizer') updateParametrizerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'flowbacker') updateFlowBackerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'barrier') updateBarrierConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'barrier') updateBarrierConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

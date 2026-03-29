@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection */
 
 // ========================================
 // SAVE BUTTON
@@ -423,6 +423,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kyber-cipher': await updateKyberCipherConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kyber-decipher': await updateKyberDecipherConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'flowbacker': await updateFlowBackerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'barrier': await updateBarrierConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'parametrizer': await updateParametrizerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
@@ -484,6 +485,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kyber-cipher': await updateKyberCipherConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kyber-decipher': await updateKyberDecipherConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'flowbacker': await updateFlowBackerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'barrier': await updateBarrierConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'parametrizer': await updateParametrizerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }

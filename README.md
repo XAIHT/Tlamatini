@@ -124,7 +124,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 53 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 54 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -237,7 +237,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 53 pre-built agent types for diverse automation tasks
+- 54 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators: green (running), red (agent down while the flow is active), yellow blinking (paused), gray (stopped/idle)
@@ -428,7 +428,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (53 types)
+│   │   ├── agents/                 # Workflow agent templates (54 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -477,6 +477,7 @@ Tlamatini/
 │   │   │   ├── kyber_decipher/ # CRYSTALS-Kyber decryption agent
 │   │   │   ├── parametrizer/  # Utility interconnection agent (maps outputs to inputs)
 │   │   │   ├── flowbacker/    # Session backup and cleanup handoff agent
+│   │   │   ├── barrier/       # Synchronization barrier for flow control
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1231,7 +1232,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **53 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **54 agent types** total.
 
 ### Agent Architecture
 
@@ -1247,7 +1248,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `flowbacker`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1346,6 +1347,7 @@ Agents are classified as:
 | **kyber_cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR. Logs encapsulation, IV, and cipher text in base64. | `kyber_variant`: kyber-768<br>`public_key`: Base64 public key<br>`buffer`: Plaintext to encrypt<br>`target_agents`: Downstream agents |
 | **kyber_decipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR. Logs deciphered buffer in original format. | `kyber_variant`: kyber-768<br>`private_key`: Base64 private key<br>`encapsulation`: Base64 encapsulation<br>`initialization_vector`: Base64 IV<br>`cipher_text`: Base64 cipher text<br>`target_agents`: Downstream agents |
 | **parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via an interconnection-scheme.csv. When multiple output elements exist, iterates sequentially: fill config, start target, wait, repeat. Only connects to agents with structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher). | `source_agent`: Source agent name<br>`target_agent`: Target agent name<br>`source_agents`: [] (max 1)<br>`target_agents`: [] (max 1) |
+| **barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Each source agent starts a separate barrier process (input sub-process) that creates a flag file; the first arrival becomes the output sub-process that polls until all flags are present, then fires. Uses cross-process file-based locking to avoid race conditions. | `source_agents`: Upstream agents whose startup is awaited<br>`target_agents`: Downstream agents to start when all sources have checked in |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -2099,6 +2101,7 @@ Monitor incoming emails and send WhatsApp notifications on keyword matches.
 | `/update_parametrizer_connection/<agent_name>/` | POST | Update parametrizer connections |
 | `/get_parametrizer_dialog_data/<agent_name>/` | GET | Get Parametrizer mapping dialog data |
 | `/save_parametrizer_scheme/<agent_name>/` | POST | Save Parametrizer interconnection scheme |
+| `/update_barrier_connection/<agent_name>/` | POST | Update barrier connections |
 
 #### Session & Pool Management
 
@@ -2428,6 +2431,7 @@ Enable verbose logging in config.json:
 | **Kyber-Cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR, logs encapsulation/IV/ciphertext in base64, and triggers downstream agents |
 | **Kyber-DeCipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer, and triggers downstream agents |
 | **Parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via interconnection-scheme.csv, supporting iterative execution for multiple output elements |
+| **Barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier, waiting for ALL configured source agents to start before triggering downstream target agents via cross-process file-based locking and flag files |
 
 ---
 
@@ -2474,6 +2478,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added Barrier Agent** - Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Uses cross-process file-based locking and flag files to coordinate multiple separate barrier processes started by source agents
 - **Added Parametrizer Agent** - Short-running active utility interconnection agent that maps structured outputs from source agent logs to target agent config.yaml parameters via a visual mapping dialog and interconnection-scheme.csv. Supports iterative execution for multiple output elements, connecting agents that produce structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher) to any target agent
 - **Added Kyber-DeCipher Agent** - Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer in original format
 - **Added Kyber-Cipher Agent** - Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via Kyber encapsulation + AES-256-CTR, logs encapsulation, initialization vector, and cipher text in base64 format
