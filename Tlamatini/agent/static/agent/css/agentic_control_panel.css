@@ -1069,6 +1069,23 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #E84393 0%, #00B894 50%, #FDCB6E 100%);
 }
 
+/* J-Decompiler Agent Styles - Java decompiler (3-color: Steel Blue / Burnt Sienna / Lime Green gradient) */
+.canvas-item.jdecompiler-agent {
+    background-color: #2C3E50;
+    color: white;
+    background: linear-gradient(135deg, #2C3E50 0%, #E74C3C 50%, #27AE60 100%);
+    font-size: smaller;
+}
+.canvas-item.jdecompiler-agent:hover {
+    background: linear-gradient(135deg, #3D566E 0%, #FF6B5A 50%, #2ECC71 100%);
+    box-shadow: 0 6px 15px rgba(231, 76, 60, 0.5);
+}
+
+/* J-Decompiler agent icon in sidebar */
+.agent-tool-item[data-content="J-Decompiler"] .agent-tool-icon {
+    background: linear-gradient(135deg, #2C3E50 0%, #E74C3C 50%, #27AE60 100%);
+}
+
 /* ========================================
    STARTER EXECUTION DIALOG STYLES
    ======================================== */

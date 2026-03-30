@@ -68,7 +68,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Starter, Ender, Cleaner, Executer, Pythonxer, Shoter, Sleeper, Ssher, Scper,
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
   Asker, Counter, Summarizer, Mouser, Telegramer, FlowCreator,
-  File-Interpreter, Image-Interpreter, File-Creator, File-Extractor,
+  File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
@@ -88,6 +88,7 @@ TYPICAL TIMING:
   - Croner: waits until scheduled time (can be hours — silence is NORMAL)
   - Kyber agents: < 30 seconds (CPU-intensive polynomial math)
   - Counter/File-Creator: < 5 seconds
+  - J-Decompiler: seconds to several minutes depending on archive size and file count
   - FlowBacker: seconds to minutes depending on session size (flag if > 10 min with no output)
   - Barrier: waits for all source agents to check in (duration depends on source agents; flag if > 10 min with no output)
   - Ender: should complete kill sequence in < 30 seconds
@@ -99,11 +100,13 @@ SECTION 4 — IMPORTANT LOG MARKERS TO KNOW
 STARTUP markers (each agent logs one of these when it starts):
   "STARTED" — agent began fresh
   "REANIMATED (resuming from pause)" — agent resumed after pause (NORMAL)
+  "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
   "STARTUP COMPLETE" — Starter finished launching targets
   "TERMINATION COMPLETE" — Ender finished killing targets
+  "Decompilation complete:" — J-Decompiler finished processing all matched artifacts
 
 ERROR markers (look for these):
   "❌" prefix or "ERROR" / "FATAL" / "CRASH" in the log line
@@ -168,6 +171,7 @@ DO NOT report these as problems:
   - Long-running agents (Raiser, Monitor_Log, Gatewayer, etc.) running for a long time with no completion → they are designed to run indefinitely
   - "WAITING FOR AGENTS TO STOP" in a looping flow → normal concurrency guard
   - "No files found for pattern" → Deleter/Mover found nothing to process
+  - "No files found matching the patterns — nothing to decompile." → J-Decompiler found no matching Java artifacts
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

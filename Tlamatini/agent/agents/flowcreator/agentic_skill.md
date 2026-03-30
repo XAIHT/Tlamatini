@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, FlowBacker, Barrier.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -1136,6 +1136,24 @@ system_prompt: |
   - Only the output sub-process (the first arrival) deletes flag files and starts targets
   - Supports cyclic use: after firing, the barrier cleans up and is ready for the next cycle
   - On manual/direct start (no caller), cleans stale flags from previous runs
+
+### 54. J-Decompiler
+- **Purpose**: Short-running deterministic action agent that decompiles Java `.class`, `.jar`, `.war`, and `.ear` artifacts using the bundled `jd-cli` tool, then starts downstream agents.
+- **Used for**: Turning compiled Java artifacts back into readable source trees inside a workflow. It can scan a directory or wildcard pattern, generate `.java` files beside `.class` files, and unpack archives into sibling directories containing the decompiled sources.
+- **Aimed at**: Automating reverse-engineering and inspection tasks so later agents can review, package, move, summarize, or analyze the generated Java source code without manual decompilation steps.
+- **Application example**: A Starter launches `j_decompiler_1` against `D:\\drops\\*.jar,*.war`. J-Decompiler decompiles each artifact into sibling source folders, logs the success/failure count, and then starts `file_interpreter_1` to process the generated `.java` output.
+- **Pool name pattern**: `j_decompiler_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `directory`: `"C:\\Temp\\*.class,*.jar,*.war,*.ear"` (base directory or wildcard pattern describing which Java artifacts to decompile)
+  - `recursive`: false (when true, expands the search through subdirectories)
+  - `source_agents`: [] (upstream agents — informative canvas connection tracking only)
+  - `target_agents`: [] (downstream agents to start after decompilation completes)
+- **Special behavior**:
+  - Accepts wildcard input patterns for `.class`, `.jar`, `.war`, and `.ear` files
+  - For `.class`, writes the generated `.java` beside the original file
+  - For `.jar`, `.war`, and `.ear`, creates a sibling directory named after the archive and decompiles recursively into it
+  - Uses the bundled `jd-cli/` asset instead of calling the unified tool layer directly
 
 ---
 
