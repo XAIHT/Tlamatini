@@ -117,7 +117,7 @@ def run_test():
     all_ok = True
     for r in results:
         if r is None:
-            print(f"  FAIL: Thread did not complete")
+            print("  FAIL: Thread did not complete")
             all_ok = False
         elif r.get("error") == "TIMEOUT":
             print(f"  FAIL: {r['caller']} TIMED OUT (deadlock?)")
@@ -147,15 +147,15 @@ def run_test():
     # Read barrier log
     log_path = os.path.join(test_dir, "barrier_test_1.log")
     if os.path.exists(log_path):
-        print(f"\n  --- Barrier Log ---")
+        print("\n  --- Barrier Log ---")
         with open(log_path, "r", encoding="utf-8") as f:
             for line in f:
                 print(f"  {line.rstrip().encode('ascii', 'replace').decode()}")
 
     if all_ok and target_fired and not remaining_flags and not pid_exists:
-        print(f"\n  PASS: TEST 1 PASSED")
+        print("\n  PASS: TEST 1 PASSED")
     else:
-        print(f"\n  FAIL: TEST 1 FAILED")
+        print("\n  FAIL: TEST 1 FAILED")
         all_ok = False
 
     # --- TEST 2: Staggered arrivals (large delay) ---
@@ -188,7 +188,7 @@ def run_test():
     all_ok2 = True
     for r in results2:
         if r is None:
-            print(f"  FAIL: Thread did not complete")
+            print("  FAIL: Thread did not complete")
             all_ok2 = False
         elif r.get("error") == "TIMEOUT":
             print(f"  FAIL: {r['caller']} TIMED OUT")
@@ -207,15 +207,15 @@ def run_test():
 
     log_path2 = os.path.join(test_dir, "barrier_test_1.log")
     if os.path.exists(log_path2):
-        print(f"\n  --- Barrier Log ---")
+        print("\n  --- Barrier Log ---")
         with open(log_path2, "r", encoding="utf-8") as f:
             for line in f:
                 print(f"  {line.rstrip().encode('ascii', 'replace').decode()}")
 
     if all_ok2 and target_fired2 and not remaining_flags2:
-        print(f"\n  PASS: TEST 2 PASSED")
+        print("\n  PASS: TEST 2 PASSED")
     else:
-        print(f"\n  FAIL: TEST 2 FAILED")
+        print("\n  FAIL: TEST 2 FAILED")
 
     # Cleanup
     try:
