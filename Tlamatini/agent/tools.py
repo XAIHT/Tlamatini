@@ -1441,7 +1441,7 @@ def agent_starter(request: str) -> str:
         process = subprocess.Popen(
             [python_exe, script_path],
             cwd=template_agent['agent_dir'],
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0,
         )
 
         process_label = _get_agent_process_label(template_agent)
