@@ -100,6 +100,7 @@ def is_valid_prompt(text: str) -> bool:
         'modify', 'update', 'change', 'improve', 'optimize', 'refactor', 'enhance',
         'document', 'comment', 'annotate', 'summarize', 'outline', 'help', 'assist', 'stop', 'terminate', 'kill',
         'unzip', 'decompile', 'decompress',
+        'parametrize', 'parametrise', 'start', 'start-up', 'get',
     ]
 
     multiword_patterns = [
@@ -227,6 +228,17 @@ _URL_OR_DOWNLOAD = re.compile(
 
 _CONCEPTUAL_PROMPT_START = re.compile(
     r'^\s*(?:what|why|how|explain|describe|summarize|analyse|analyze|review|discuss|compare)\b',
+    re.IGNORECASE
+)
+
+_AGENT_OPERATION = re.compile(
+    r'(?:'
+    r'parametri[sz]e\s+the\s+template\b'
+    r'|start[\s\-]*up\s+the\s+agent\b'
+    r'|(?:start|stop|terminate|kill|raise|shut\s*down)\s+(?:the\s+)?agent\b'
+    r'|(?:get|check|show|what\s+is)\s+the\s+(?:status|state)\s+of\s+(?:the\s+)?agent\b'
+    r'|is\s+the\s+agent\b.*\brunning\b'
+    r')',
     re.IGNORECASE
 )
 
@@ -527,6 +539,11 @@ def _validate_accesses_in_prompt(question: str):
         # URL / remote download requests → not local file access.
         if _URL_OR_DOWNLOAD.search(question):
             print("--- _validate_accesses_in_prompt: URL/download request → proceed")
+            return None
+
+        # Agent operation commands (parametrize, start, stop, status) → tool-routed.
+        if _AGENT_OPERATION.search(question):
+            print("--- _validate_accesses_in_prompt: agent operation command → proceed")
             return None
 
         if bool(_RELATIVE_PATH_PATTERN.search(question)) and deterministic_intent:
