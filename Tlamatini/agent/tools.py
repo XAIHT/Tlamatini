@@ -1,19 +1,66 @@
+import ast
 from datetime import datetime
+import difflib
 from langchain.tools import tool
 import os
+import re
 import sys
 import subprocess
 import threading
 import pathlib
 import webbrowser
 import shlex
-import signal
 import psutil
+import yaml
 from .imaging.image_interpreter import opus_analyze_image, qwen_analyze_image
 from .global_state import global_state
 from .models import Agent, AgentProcess
 import zipfile
 from .path_guard import validate_tool_path
+
+
+_FLOW_ONLY_PARAM_PREFIXES = (
+    'source_agent',
+    'source_agents',
+    'target_agent',
+    'target_agents',
+    'output_agent',
+    'output_agents',
+)
+
+_PARAMETRIZE_AGENT_PATTERNS = [
+    r'\bparametriz(?:e|ing)?\s+(?:the\s+)?(?:template\s+)?(?P<name>[a-z0-9 _-]+?)\s+agent\b',
+    r'\bconfigure\s+(?:the\s+)?(?:template\s+)?(?P<name>[a-z0-9 _-]+?)\s+agent\b',
+    r'\btemplate\s+(?P<name>[a-z0-9 _-]+?)\s+agent\b',
+]
+
+_START_AGENT_PATTERNS = [
+    r'\bstart(?:-?up)?\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\braise\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\bexecute\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\brun\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+]
+
+_STOP_AGENT_PATTERNS = [
+    r'\bstop\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\bterminate\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\bkill\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\bshut\s+down\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+]
+
+_STATUS_AGENT_PATTERNS = [
+    r'\b(?:get|check|show)\s+(?:the\s+)?(?:status|state)\s+(?:of\s+)?(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\bwhat(?:\'?s| is)\s+(?:the\s+)?(?:status|state)\s+(?:of\s+)?(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\b(?:[.!?]|$)',
+    r'\bis\s+(?:the\s+)?(?:agent\s+)?(?P<name>[a-z0-9 _-]+?)\s+(?:running|alive|up)\b(?:[.!?]|$)',
+]
+
+_COMMENT_REQUIRED_HINTS = (
+    'required',
+    'replace with',
+    'at least one',
+    'must use',
+    'must instruct',
+)
 
 
 def launch_in_new_terminal(script_pathfilename, arguments=None):
@@ -51,6 +98,783 @@ def _resolve_script_path(script_path):
         if os.path.exists(frozen_path):
             return frozen_path
     return None
+
+
+def _normalize_identifier(value):
+    return re.sub(r'[^a-z0-9]+', '', str(value).lower())
+
+
+def _normalize_param_name(value):
+    return re.sub(r'[^a-z0-9]+', '_', str(value).lower()).strip('_')
+
+
+def _is_flow_only_param_name(param_name):
+    normalized = _normalize_param_name(param_name)
+    if not normalized:
+        return False
+    return any(
+        normalized == prefix or normalized.startswith(prefix + '_')
+        for prefix in _FLOW_ONLY_PARAM_PREFIXES
+    )
+
+
+def _is_path_within_base(base_path, candidate_path):
+    try:
+        normalized_base = os.path.realpath(os.path.abspath(base_path))
+        normalized_candidate = os.path.realpath(os.path.abspath(candidate_path))
+        return os.path.commonpath([normalized_base, normalized_candidate]) == normalized_base
+    except Exception:
+        return False
+
+
+def _safe_join_under(base_path, *parts):
+    candidate = os.path.realpath(os.path.abspath(os.path.join(base_path, *parts)))
+    if _is_path_within_base(base_path, candidate):
+        return candidate
+    return None
+
+
+def _get_template_agents_roots():
+    candidates = []
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.realpath(os.path.abspath(os.path.dirname(sys.executable)))
+        candidates.extend([
+            os.path.join(exe_dir, 'agents'),
+            os.path.join(exe_dir, 'Tlamatini', 'agent', 'agents'),
+        ])
+    else:
+        module_dir = os.path.realpath(os.path.abspath(os.path.dirname(__file__)))
+        candidates.append(os.path.join(module_dir, 'agents'))
+
+    roots = []
+    for candidate in candidates:
+        resolved = os.path.realpath(os.path.abspath(candidate))
+        if os.path.isdir(resolved) and resolved not in roots:
+            roots.append(resolved)
+    return roots
+
+
+def _discover_template_agents():
+    agents = {}
+    for root in _get_template_agents_roots():
+        try:
+            with os.scandir(root) as entries:
+                for entry in entries:
+                    if not entry.is_dir():
+                        continue
+                    config_path = os.path.join(entry.path, 'config.yaml')
+                    if not os.path.isfile(config_path):
+                        continue
+                    resolved_dir = os.path.realpath(os.path.abspath(entry.path))
+                    agents[resolved_dir] = {
+                        'root': root,
+                        'dir_name': entry.name,
+                        'normalized_name': _normalize_identifier(entry.name),
+                        'agent_dir': resolved_dir,
+                        'config_path': os.path.realpath(os.path.abspath(config_path)),
+                    }
+        except OSError:
+            continue
+    return sorted(agents.values(), key=lambda item: item['dir_name'])
+
+
+def _extract_agent_name_fragment(request_text, patterns=None):
+    active_patterns = patterns or _PARAMETRIZE_AGENT_PATTERNS
+    for pattern in active_patterns:
+        match = re.search(pattern, request_text, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            candidate = ' '.join(match.group('name').split())
+            candidate = re.sub(
+                r'(?:\b(?:please|now|immediately)\b|\bfor\s+me\b)\s*$',
+                '',
+                candidate,
+                flags=re.IGNORECASE,
+            ).strip(" \t\r\n,;:!?\"'")
+            if candidate:
+                return candidate
+    return None
+
+
+def _resolve_template_agent(request_text, patterns=None, action_label='use'):
+    available_agents = _discover_template_agents()
+    if not available_agents:
+        return None, (
+            "Error: No template agent directories were found. "
+            "Expected either '<install_dir>\\agents\\<agent>' in frozen mode or "
+            "'Tlamatini\\agent\\agents\\<agent>' in source mode."
+        )
+
+    fragment = _extract_agent_name_fragment(request_text, patterns=patterns)
+    if fragment:
+        fragment_key = _normalize_identifier(fragment)
+        direct_matches = [
+            agent for agent in available_agents
+            if agent['normalized_name'] == fragment_key
+        ]
+        if len(direct_matches) == 1:
+            return direct_matches[0], None
+        close_matches = difflib.get_close_matches(
+            fragment_key,
+            [agent['normalized_name'] for agent in available_agents],
+            n=1,
+            cutoff=0.72,
+        )
+        if close_matches:
+            for agent in available_agents:
+                if agent['normalized_name'] == close_matches[0]:
+                    return agent, None
+
+    normalized_request = _normalize_identifier(request_text)
+    request_matches = [
+        agent for agent in available_agents
+        if agent['normalized_name'] and agent['normalized_name'] in normalized_request
+    ]
+    if len(request_matches) == 1:
+        return request_matches[0], None
+
+    available_names = ', '.join(agent['dir_name'] for agent in available_agents)
+    return None, (
+        f"Error: Could not determine which template agent to {action_label} from the request. "
+        f"Available template agents: {available_names}."
+    )
+
+
+def _find_first_assignment_index(request_text):
+    match = re.search(r'[A-Za-z_][A-Za-z0-9_.-]*\s*=', request_text)
+    if match:
+        return match.start()
+    return -1
+
+
+def _split_assignment_segments(assignments_text):
+    segments = []
+    current = []
+    quote_char = None
+    escape_next = False
+    bracket_stack = []
+
+    for char in assignments_text:
+        if quote_char:
+            current.append(char)
+            if escape_next:
+                escape_next = False
+            elif char == '\\':
+                escape_next = True
+            elif char == quote_char:
+                quote_char = None
+            continue
+
+        if char in ('"', "'"):
+            quote_char = char
+            current.append(char)
+            continue
+
+        if char in '[{(':
+            bracket_stack.append(char)
+            current.append(char)
+            continue
+
+        if char in ']})':
+            if bracket_stack:
+                bracket_stack.pop()
+            current.append(char)
+            continue
+
+        if char in ',;\n' and not bracket_stack:
+            segment = ''.join(current).strip()
+            if segment:
+                segments.append(segment)
+            current = []
+            continue
+
+        current.append(char)
+
+    tail = ''.join(current).strip()
+    if tail:
+        segments.append(tail)
+
+    return segments
+
+
+def _split_assignment_segment(segment):
+    current = []
+    quote_char = None
+    escape_next = False
+    bracket_stack = []
+
+    for idx, char in enumerate(segment):
+        if quote_char:
+            current.append(char)
+            if escape_next:
+                escape_next = False
+            elif char == '\\':
+                escape_next = True
+            elif char == quote_char:
+                quote_char = None
+            continue
+
+        if char in ('"', "'"):
+            quote_char = char
+            current.append(char)
+            continue
+
+        if char in '[{(':
+            bracket_stack.append(char)
+            current.append(char)
+            continue
+
+        if char in ']})':
+            if bracket_stack:
+                bracket_stack.pop()
+            current.append(char)
+            continue
+
+        if char == '=' and not bracket_stack:
+            key = ''.join(current).strip()
+            value = segment[idx + 1:].strip()
+            return key, value
+
+        current.append(char)
+
+    return None, None
+
+
+def _coerce_assignment_value(raw_value):
+    value_text = raw_value.strip()
+    if value_text == '':
+        return ''
+
+    if (
+        len(value_text) >= 2
+        and value_text[0] == value_text[-1]
+        and value_text[0] in ('"', "'")
+    ):
+        try:
+            return ast.literal_eval(value_text)
+        except Exception:
+            return value_text[1:-1]
+
+    if value_text[0] in '[{(' and value_text[-1] in ']})':
+        try:
+            return ast.literal_eval(value_text)
+        except Exception:
+            try:
+                return yaml.safe_load(value_text)
+            except Exception:
+                return value_text
+
+    lowered = value_text.lower()
+    if lowered == 'true':
+        return True
+    if lowered == 'false':
+        return False
+    if lowered in ('none', 'null'):
+        return None
+    if re.fullmatch(r'[+-]?\d+', value_text):
+        return int(value_text)
+    if re.fullmatch(r'[+-]?\d+\.\d+', value_text):
+        return float(value_text)
+
+    return value_text
+
+
+def _parse_requested_assignments(request_text):
+    start_index = _find_first_assignment_index(request_text)
+    if start_index < 0:
+        return [], "Error: No parameter assignments were found. Use key=value pairs."
+
+    assignments_text = request_text[start_index:]
+    parsed = []
+    ignored = []
+
+    for raw_segment in _split_assignment_segments(assignments_text):
+        segment = re.sub(r'^(and|with)\s+', '', raw_segment.strip(), flags=re.IGNORECASE)
+        key, value = _split_assignment_segment(segment)
+        if not key:
+            continue
+        clean_key = key.strip().strip('"').strip("'")
+        if not clean_key:
+            continue
+        if _is_flow_only_param_name(clean_key):
+            ignored.append(clean_key)
+            continue
+        parsed.append({
+            'requested_key': clean_key,
+            'value': _coerce_assignment_value(value),
+        })
+
+    if not parsed and ignored:
+        return [], (
+            "Error: Only flow-wiring parameters were provided. "
+            "source_agent/source_agents/target_agent/target_agents/output_agent/output_agents "
+            "are ignored by this tool."
+        )
+
+    if not parsed:
+        return [], "Error: No valid parameter assignments were found after parsing the request."
+
+    return {'assignments': parsed, 'ignored': ignored}, None
+
+
+def _collect_config_paths(node, prefix=()):
+    all_paths = {}
+    leaf_paths = {}
+
+    if not isinstance(node, dict):
+        return all_paths, leaf_paths
+
+    def walk(current_node, current_prefix):
+        for key, value in current_node.items():
+            path = current_prefix + (str(key),)
+            all_paths[path] = value
+            if isinstance(value, dict):
+                walk(value, path)
+            else:
+                leaf_paths[path] = value
+
+    walk(node, prefix)
+    return all_paths, leaf_paths
+
+
+def _format_config_path(path_parts):
+    return '.'.join(path_parts)
+
+
+def _resolve_config_path(requested_key, all_paths, leaf_paths):
+    if _is_flow_only_param_name(requested_key):
+        return {'ignored': True}
+
+    key_parts = [part for part in re.split(r'[./\\]+', requested_key.strip()) if part]
+    normalized_parts = tuple(_normalize_identifier(part) for part in key_parts)
+
+    if len(normalized_parts) > 1:
+        exact_path_matches = [
+            path for path in all_paths
+            if tuple(_normalize_identifier(part) for part in path) == normalized_parts
+            and not _is_flow_only_param_name(path[-1])
+        ]
+        if len(exact_path_matches) == 1:
+            return {'path': exact_path_matches[0]}
+        if len(exact_path_matches) > 1:
+            options = ', '.join(_format_config_path(path) for path in exact_path_matches)
+            return {
+                'error': (
+                    f"Parameter '{requested_key}' is ambiguous. "
+                    f"Use one of these dotted paths: {options}."
+                )
+            }
+
+    normalized_key = _normalize_identifier(requested_key)
+    leaf_matches = [
+        path for path in leaf_paths
+        if _normalize_identifier(path[-1]) == normalized_key
+        and not _is_flow_only_param_name(path[-1])
+    ]
+    if len(leaf_matches) == 1:
+        return {'path': leaf_matches[0]}
+    if len(leaf_matches) > 1:
+        options = ', '.join(_format_config_path(path) for path in leaf_matches)
+        return {
+            'error': (
+                f"Parameter '{requested_key}' is ambiguous for this agent. "
+                f"Use one of these dotted paths instead: {options}."
+            )
+        }
+
+    candidate_names = sorted({
+        _format_config_path(path)
+        for path in all_paths
+        if path and not _is_flow_only_param_name(path[-1])
+    })
+    suggestions = difflib.get_close_matches(requested_key, candidate_names, n=3, cutoff=0.55)
+    suggestion_suffix = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ''
+    return {
+        'error': (
+            f"Parameter '{requested_key}' was not found in the target agent config."
+            f"{suggestion_suffix}"
+        )
+    }
+
+
+def _set_config_value(config, path_parts, value):
+    current = config
+    for key in path_parts[:-1]:
+        next_value = current.get(key)
+        if not isinstance(next_value, dict):
+            next_value = {}
+            current[key] = next_value
+        current = next_value
+    current[path_parts[-1]] = value
+
+
+def _extract_string_key_from_get_call(node):
+    if not isinstance(node, ast.Call):
+        return None
+    if not isinstance(node.func, ast.Attribute) or node.func.attr != 'get':
+        return None
+    if not node.args:
+        return None
+    key_node = node.args[0]
+    if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str):
+        return key_node.value
+    return None
+
+
+def _safe_literal_eval(node):
+    try:
+        return ast.literal_eval(node)
+    except Exception:
+        return None
+
+
+class _ConfigRequirementAnalyzer(ast.NodeVisitor):
+    def __init__(self):
+        self.variable_to_key = {}
+        self.required_keys = set()
+
+    def visit_Assign(self, node):
+        key_name = _extract_string_key_from_get_call(node.value)
+        if key_name:
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    self.variable_to_key[target.id] = key_name
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node):
+        key_name = _extract_string_key_from_get_call(node.value)
+        if key_name and isinstance(node.target, ast.Name):
+            self.variable_to_key[node.target.id] = key_name
+        self.generic_visit(node)
+
+    def visit_If(self, node):
+        self.required_keys.update(self._extract_required_keys(node.test))
+        self.generic_visit(node)
+
+    def _extract_required_keys(self, node):
+        if isinstance(node, ast.BoolOp):
+            required = set()
+            for value in node.values:
+                required.update(self._extract_required_keys(value))
+            return required
+
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            return self._extract_keys_from_reference(node.operand)
+
+        if isinstance(node, ast.Compare) and len(node.ops) == 1 and len(node.comparators) == 1:
+            if isinstance(node.ops[0], (ast.Eq, ast.Is)) and self._is_empty_literal(node.comparators[0]):
+                return self._extract_keys_from_reference(node.left)
+
+        return set()
+
+    def _extract_keys_from_reference(self, node):
+        if isinstance(node, ast.Name):
+            return {self.variable_to_key.get(node.id, node.id)}
+
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id == 'len' and node.args:
+                return self._extract_keys_from_reference(node.args[0])
+
+            if isinstance(node.func, ast.Attribute):
+                if node.func.attr == 'get':
+                    key_name = _extract_string_key_from_get_call(node)
+                    if key_name:
+                        return {key_name}
+                if node.func.attr in ('strip', 'lower', 'upper', 'rstrip', 'lstrip'):
+                    return self._extract_keys_from_reference(node.func.value)
+
+        return set()
+
+    def _is_empty_literal(self, node):
+        literal = _safe_literal_eval(node)
+        return literal in (None, '', [], {}, ())
+
+
+def _extract_required_key_names(agent_script_path):
+    try:
+        script_text = pathlib.Path(agent_script_path).read_text(encoding='utf-8')
+    except OSError:
+        return set()
+
+    try:
+        tree = ast.parse(script_text)
+    except SyntaxError:
+        return set()
+
+    analyzer = _ConfigRequirementAnalyzer()
+    analyzer.visit(tree)
+    return {_normalize_identifier(key) for key in analyzer.required_keys if key}
+
+
+def _extract_config_comment_hints(config_path):
+    comment_hints = {}
+    try:
+        lines = pathlib.Path(config_path).read_text(encoding='utf-8').splitlines()
+    except OSError:
+        return comment_hints
+
+    pending_comments = []
+    path_stack = []
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        if stripped.startswith('#'):
+            pending_comments.append(stripped.lstrip('#').strip())
+            continue
+
+        match = re.match(r'^(?P<indent>\s*)(?P<key>[A-Za-z0-9_]+):', line)
+        if not match:
+            pending_comments = []
+            continue
+
+        indent = len(match.group('indent').replace('\t', '    '))
+        key_name = match.group('key')
+
+        while path_stack and path_stack[-1][0] >= indent:
+            path_stack.pop()
+        path_stack.append((indent, key_name))
+
+        if pending_comments:
+            path = tuple(item[1] for item in path_stack)
+            comment_hints[path] = ' '.join(comment for comment in pending_comments if comment).strip()
+            pending_comments = []
+
+    return comment_hints
+
+
+def _comment_requires_value(comment_text):
+    if not comment_text:
+        return False
+    lowered = comment_text.lower()
+    return any(hint in lowered for hint in _COMMENT_REQUIRED_HINTS)
+
+
+def _is_effectively_empty_value(value):
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == ''
+    if isinstance(value, dict):
+        return len(value) == 0
+    if isinstance(value, (list, tuple, set)):
+        if len(value) == 0:
+            return True
+        return all(_is_effectively_empty_value(item) for item in value)
+    return False
+
+
+def _find_missing_required_config_paths(config, config_path, agent_script_path):
+    all_paths, _leaf_paths = _collect_config_paths(config)
+    required_keys = _extract_required_key_names(agent_script_path)
+    comment_hints = _extract_config_comment_hints(config_path)
+    missing_items = []
+
+    for path_parts, value in all_paths.items():
+        if not _is_effectively_empty_value(value):
+            continue
+
+        normalized_leaf = _normalize_identifier(path_parts[-1])
+        comment_text = comment_hints.get(path_parts, '')
+        if normalized_leaf not in required_keys and not _comment_requires_value(comment_text):
+            continue
+
+        missing_items.append({
+            'path': path_parts,
+            'comment': comment_text,
+        })
+
+    missing_items.sort(key=lambda item: _format_config_path(item['path']))
+    return missing_items
+
+
+def _resolve_template_agent_script_path(template_agent):
+    primary_script = _safe_join_under(template_agent['agent_dir'], f"{template_agent['dir_name']}.py")
+    if primary_script and os.path.isfile(primary_script):
+        return primary_script
+
+    candidates = []
+    try:
+        with os.scandir(template_agent['agent_dir']) as entries:
+            for entry in entries:
+                if entry.is_file() and entry.name.endswith('.py') and entry.name != '__init__.py':
+                    candidates.append(os.path.realpath(os.path.abspath(entry.path)))
+    except OSError:
+        return None
+
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def _resolve_python_executable():
+    python_home = os.environ.get('PYTHON_HOME', '')
+    if python_home:
+        python_exe = os.path.join(python_home, 'python.exe')
+        if os.path.isfile(python_exe):
+            return python_exe, None
+        return None, f"PYTHON_HOME is set to '{python_home}' but python.exe was not found there."
+
+    if getattr(sys, 'frozen', False):
+        return 'python', None
+
+    return sys.executable, None
+
+
+def _get_agent_process_label(template_agent):
+    for agent in get_all_agents():
+        description = agent.get('agentDescription', '')
+        if _normalize_identifier(description) == template_agent['normalized_name']:
+            return description
+    return template_agent['dir_name']
+
+
+def _read_running_pid(agent_dir):
+    pid_path = os.path.join(agent_dir, 'agent.pid')
+    if not os.path.exists(pid_path):
+        return None
+
+    try:
+        with open(pid_path, 'r', encoding='utf-8') as file_handle:
+            pid = int(file_handle.read().strip())
+    except (OSError, ValueError):
+        return None
+
+    try:
+        process = psutil.Process(pid)
+        if process.status() == psutil.STATUS_ZOMBIE:
+            return None
+        return pid
+    except Exception:
+        return None
+
+
+def _remove_pid_file(agent_dir):
+    pid_path = os.path.join(agent_dir, 'agent.pid')
+    if not os.path.exists(pid_path):
+        return False
+    try:
+        os.remove(pid_path)
+        return True
+    except OSError:
+        return False
+
+
+def _get_live_process(pid):
+    try:
+        process = psutil.Process(pid)
+        if process.status() == psutil.STATUS_ZOMBIE:
+            return None
+        return process
+    except Exception:
+        return None
+
+
+def _find_processes_by_script(script_path):
+    if not script_path or not os.path.isfile(script_path):
+        return []
+
+    normalized_script = os.path.normcase(os.path.realpath(os.path.abspath(script_path)))
+    matches = {}
+
+    for process in psutil.process_iter(['pid', 'cmdline']):
+        try:
+            cmdline = process.info.get('cmdline') or []
+        except Exception:
+            continue
+
+        for arg in cmdline:
+            if not arg:
+                continue
+            try:
+                normalized_arg = os.path.normcase(os.path.realpath(os.path.abspath(arg)))
+            except Exception:
+                continue
+            if normalized_arg == normalized_script:
+                matches[process.pid] = process
+                break
+
+    return [matches[pid] for pid in sorted(matches)]
+
+
+def _get_template_agent_runtime_state(template_agent, script_path=None):
+    process_label = _get_agent_process_label(template_agent)
+    processes_by_pid = {}
+    stale_pid_file = False
+    stale_registry = False
+
+    running_pid = _read_running_pid(template_agent['agent_dir'])
+    pid_path = os.path.join(template_agent['agent_dir'], 'agent.pid')
+    if running_pid:
+        process = _get_live_process(running_pid)
+        if process:
+            processes_by_pid[process.pid] = process
+    elif os.path.exists(pid_path):
+        stale_pid_file = True
+
+    tracked_process = get_agent_process_by_description(process_label)
+    if tracked_process:
+        process = _get_live_process(tracked_process.agentProcessPid)
+        if process:
+            processes_by_pid[process.pid] = process
+        else:
+            stale_registry = True
+            delete_agent_process_by_description(process_label)
+
+    for process in _find_processes_by_script(script_path):
+        processes_by_pid[process.pid] = process
+
+    if stale_pid_file and not processes_by_pid:
+        _remove_pid_file(template_agent['agent_dir'])
+
+    return {
+        'label': process_label,
+        'processes': [processes_by_pid[pid] for pid in sorted(processes_by_pid)],
+        'stale_pid_file': stale_pid_file,
+        'stale_registry': stale_registry,
+    }
+
+
+def _terminate_process_tree(process):
+    targeted = {}
+    try:
+        for child in process.children(recursive=True):
+            targeted[child.pid] = child
+    except Exception:
+        pass
+    targeted[process.pid] = process
+
+    ordered_processes = [targeted[pid] for pid in sorted(targeted, reverse=True)]
+    errors = []
+
+    for current in ordered_processes:
+        try:
+            current.terminate()
+        except psutil.NoSuchProcess:
+            continue
+        except Exception as exc:
+            errors.append(f"{current.pid}: {exc}")
+
+    _gone, alive = psutil.wait_procs(ordered_processes, timeout=3)
+    if alive:
+        for current in alive:
+            try:
+                current.kill()
+            except psutil.NoSuchProcess:
+                continue
+            except Exception as exc:
+                errors.append(f"{current.pid}: {exc}")
+        _gone, alive = psutil.wait_procs(alive, timeout=3)
+
+    surviving_pids = {current.pid for current in alive}
+    stopped_pids = sorted(pid for pid in targeted if pid not in surviving_pids)
+
+    return {
+        'stopped_pids': stopped_pids,
+        'surviving_pids': sorted(surviving_pids),
+        'errors': errors,
+    }
 
 def get_all_agents():
     """Return all Agent records (name, content) as list of dicts."""
@@ -212,194 +1036,6 @@ def execute_netstat() -> str:
             return f"Command '{command}' executed successfully. Output: {result.stdout}"
     except Exception as e:
         return f"Error executing command '{command}': {e}"
-
-@tool
-def execute_agent(agent_name: str) -> str:
-    """
-    Start the execution of an agent by name.
-    
-    CRITICAL: Pass the COMPLETE agent name exactly as the user specified.
-    
-    Examples of what to pass:
-    - User says "Start agent Agent-Name" → Pass "Agent-Name".
-    - User says "Execute agent Agent-Name" → Pass "Agent-Name".
-    - User says "Run agent Agent-Name" → Pass "Agent-Name".
-    - User says "Re-start agent Agent-Name" → Pass "Agent-Name".
-    - User says "Re-execute agent Agent-Name" → Pass "Agent-Name".
-    - User says "Re-run agent Agent-Name" → Pass "Agent-Name".
-    
-    Input:
-    - agent_name: The complete agent name to execute
-               (e.g., "Agent-Name")
-    
-    The agent will be launched as a secon plane process.
-    """
-    foundAgent = False
-    agentDescription = ""
-    agents = get_all_agents()
-    for agent in agents:
-        agentDescription = agent['agentDescription']
-        if agentDescription == agent_name:
-            print(f"Agent to be executed found: {agentDescription}")
-            foundAgent = True
-            break
-    
-    if not foundAgent:
-        return f"Agent '{agent_name}' not found."
-    
-    application_path = ""
-    if getattr(sys, 'frozen', False):
-        application_path = os.path.dirname(sys.executable)
-    else:
-        application_path = os.path.dirname(os.path.abspath(__file__))
-
-    agentDir = os.path.join(application_path, 'agents', agentDescription.lower().replace("-", "_"))
-    
-    if not os.path.exists(agentDir):
-        return f"Agent '{agentDescription}' not found in directory: {agentDir}."
-
-    agentScript = agentDescription.lower().replace("-", "_") + ".py"
-    agentScript = os.path.join(agentDir, agentScript)
-    if not os.path.exists(agentScript):
-        return f"Agent '{agentDescription}' script not found in directory: {agentScript}."
-
-    # Use the Python interpreter from PYTHON_HOME user environment variable
-    python_home = os.environ.get('PYTHON_HOME', '')
-    if python_home:
-        python_exe = os.path.join(python_home, 'python.exe')
-        if not os.path.isfile(python_exe):
-            return f"PYTHON_HOME is set to '{python_home}' but python.exe not found there."
-    else:
-        python_exe = 'python'
-
-    agentCommand = f'"{python_exe}" "{agentScript}"'
-    agentProcess = subprocess.Popen(agentCommand)
-    save_agent_process(agentDescription, agentProcess.pid)
-    returnString = f"Agent '{agentDescription}' started successfully with process ID: {agentProcess.pid}."
-    return returnString
-
-@tool
-def stop_agent(agent_name: str) -> str:
-    """
-    Stop the execution of an agent by name.
-    
-    CRITICAL: Pass the COMPLETE agent name exactly as the user specified.
-    
-    Examples of what to pass:
-    - User says "Stop agent Agent-Name" → Pass "Agent-Name".
-    - User says "Kill agent Agent-Name" → Pass "Agent-Name".
-    - User says "Terminate agent Agent-Name" → Pass "Agent-Name".
-    - User says "Stop again agent Agent-Name" → Pass "Agent-Name".
-    - User says "Kill again agent Agent-Name" → Pass "Agent-Name".
-    - User says "Terminate again agent Agent-Name" → Pass "Agent-Name".
-    - If under your process to answer the user you need to stop an agent that is in certain directory you MUST pass the agent name with its complete path.
-
-    
-    Input:
-    - agent_name: The complete agent name to stop
-               (e.g., "Agent-Name")
-    
-    The agent will be terminated.
-    """
-    foundAgent = False
-    agentProcessDescription = ""
-    returnString = ""
-    agents = get_all_agents()
-    for agent in agents:
-        agentProcessDescription = agent['agentDescription']
-        if agentProcessDescription == agent_name:
-            print(f"Agent to look for: {agentProcessDescription}")
-            foundAgent = True
-            break
-    if not foundAgent:
-        returnString = f"Agent '{agent_name}': NAME IS NOT Valid!."
-        return returnString
-    
-    agentProcess = get_agent_process_by_description(agentProcessDescription)
-    if agentProcess:
-        print(f"--- Getting status of agent {agent_name}, with Pid: {agentProcess.agentProcessPid} from OS...")
-        try:
-            process = psutil.Process(agentProcess.agentProcessPid)
-            processStatus = process.status()
-            if processStatus == psutil.STATUS_RUNNING or processStatus == psutil.STATUS_SLEEPING or processStatus == psutil.STATUS_STOPPED:
-                print(f"Sending Kill to agent '{agentProcessDescription}' with process ID: {agentProcess.agentProcessPid}...")
-                processPid = int(agentProcess.agentProcessPid)
-                os.kill(processPid, signal.SIGTERM)
-                delete_agent_process_by_description(agentProcess.agentProcessDescription)
-                returnString = f"Agent '{agentProcessDescription}' WAS Stopped successfully with process ID: {agentProcess.agentProcessPid}."
-            else:
-                returnString = f"Agent '{agentProcessDescription}' WAS NOT Stopped, its state is invalid: {processStatus}."
-        except psutil.NoSuchProcess:
-            returnString = f"Agent '{agentProcessDescription}' WAS NOT running."
-            return returnString
-        except psutil.AccessDenied:
-            returnString = f"Agent '{agent_name}' WAS NOT stopped,FORBIDDEN TO KILL IT!, with process ID: [{agentProcess.agentProcessPid}]."
-            return returnString
-        except Exception:
-            returnString = f"Agent '{agentProcessDescription}' WAS NOT stopped, KILL FAILED!, with process ID: {agentProcess.agentProcessPid}."
-            return returnString
-    else:
-        returnString = f"Agent '{agentProcessDescription}' WAS NOT stopped, NOT FOUND!."
-    return returnString
-
-@tool
-def agent_status(agent_name: str) -> str:
-    """
-    Get the execution status of the process related to the agent provided name.
-    
-    CRITICAL: Pass the COMPLETE agent name exactly as the user specified.
-    
-    Examples of what to pass:
-    - User says "Get agent Agent-Name status" → Pass "Agent-Name".
-    - User says "Get agent Agent-Name status again" → Pass "Agent-Name".
-    - If under your process to answer the user you need to get the status of an agent that is in certain directory you MUST pass the agent name with its complete path.    
-    
-    Input:
-    - agent_name: The complete agent name to get status
-               (e.g., "Agent-Name")
-    
-    The status of the process pid related to the agent will be returned.
-    """
-    foundAgent = False
-    agentProcessDescription = ""
-    returnString = ""
-    agents = get_all_agents()
-    for agent in agents:
-        agentProcessDescription = agent['agentDescription']
-        if agentProcessDescription == agent_name:
-            print(f"Agent to look for: {agentProcessDescription}")
-            foundAgent = True
-            break
-    if not foundAgent:
-        returnString = f"Agent '{agent_name}': NAME IS NOT Valid!."
-        return returnString
-    
-    agentProcess = get_agent_process_by_description(agentProcessDescription)
-    if agentProcess:
-        print(f"--- Getting status of agent {agent_name}, with Pid: {agentProcess.agentProcessPid} from OS...")
-        try:
-            process = psutil.Process(agentProcess.agentProcessPid)
-            processStatus = process.status()
-            if processStatus == psutil.STATUS_RUNNING:
-                returnString = f"Agent '{agentProcessDescription}' STATUS: IS RUNNING with process ID: {agentProcess.agentProcessPid}."
-            elif processStatus == psutil.STATUS_SLEEPING:
-                returnString = f"Agent '{agentProcessDescription}' STATUS: IS SLEEPING with process ID: {agentProcess.agentProcessPid}."
-            elif processStatus == psutil.STATUS_STOPPED:
-                returnString = f"Agent '{agentProcessDescription}' STATUS: IS STOPPED with process ID: {agentProcess.agentProcessPid}."
-            else:
-                returnString = f"Agent '{agentProcessDescription}' STATUS: HAS AN UNKNOWN STATUS with process ID: {agentProcess.agentProcessPid} and status: {processStatus}."
-        except psutil.NoSuchProcess:
-            returnString = f"Agent '{agentProcessDescription}' STATUS: IS NOT running."
-            return returnString
-        except psutil.AccessDenied:
-            returnString = f"Agent '{agent_name}' STATUS: FORBIDDEN TO GET ITS STATUS with process ID: [{agentProcess.agentProcessPid}]."
-            return returnString
-        except Exception:
-            returnString = f"Agent '{agentProcessDescription}' STATUS: UNKNOWN STATUS with process ID: {agentProcess.agentProcessPid}."
-            return returnString
-    else:
-        returnString = f"Agent '{agent_name}' STATUS CAN NOT BE DETERMINED (Process not currently running)."
-    return returnString
 
 @tool
 def launch_view_image(path_filename: str) -> str:
@@ -604,6 +1240,388 @@ def decompile_java(path_filename: str) -> str:
         return f"Error decompiling file '{path_filename}': {e}"
 
 
+@tool
+def agent_parametrizer(request: str) -> str:
+    """
+    Parametrize a template agent by updating its config.yaml without starting it.
+
+    CRITICAL: Pass the COMPLETE instruction, including the target template agent name
+    and every parameter assignment as key=value pairs.
+
+    Rules:
+    - This tool only changes template-agent config files under:
+      - source mode: Tlamatini\\agent\\agents\\<agent_name>
+      - frozen mode: <install_dir>\\agents\\<agent_name>
+    - This tool NEVER starts the agent.
+    - Do NOT send source_agent/source_agents/target_agent/target_agents/output_agent/output_agents.
+      Those flow-only parameters are ignored.
+    - If a parameter name is ambiguous, use its dotted config path.
+
+    Examples of what to pass:
+    - Parametrize the template Telegramer agent to set api_id=123456, api_hash='adcb5adcbbad6676adc98112345678910', chat_id='Angela-Bennet', message='Telegramer parametrized and launched'
+    - Parametrize the template Emailer agent to set host='smtp.gmail.com', port=587, username='user@gmail.com', password='secret', from_address='user@gmail.com', to_addresses=['ops@example.com','soc@example.com'], subject='Alert generated', body='Emailer parametrized'
+    - Parametrize the template Gatewayer agent to set http.host='0.0.0.0', http.port=8787, auth.mode='bearer', auth.bearer_token='super-secret-token', payload.required_fields=['event_type','session_id']
+    - Parametrize the template J-Decompiler agent to set directory='C:\\Temp\\*.class,*.jar,*.war,*.ear', recursive=true
+
+    Input:
+    - request: A full natural-language parametrization instruction.
+    """
+    try:
+        if not request or not request.strip():
+            return "Error: No parametrization request was provided."
+
+        template_agent, resolve_error = _resolve_template_agent(
+            request,
+            patterns=_PARAMETRIZE_AGENT_PATTERNS,
+            action_label='parametrize',
+        )
+        if resolve_error:
+            return resolve_error
+
+        config_path = template_agent['config_path']
+        if not _is_path_within_base(template_agent['root'], config_path):
+            return (
+                "Error: Resolved template agent config escaped the template agents directory. "
+                "No changes were written."
+            )
+
+        parse_result, parse_error = _parse_requested_assignments(request)
+        if parse_error:
+            return parse_error
+
+        with open(config_path, 'r', encoding='utf-8') as file_handle:
+            config = yaml.safe_load(file_handle) or {}
+
+        if not isinstance(config, dict):
+            return (
+                f"Error: Agent config '{config_path}' is not a YAML mapping. "
+                "No changes were written."
+            )
+
+        all_paths, leaf_paths = _collect_config_paths(config)
+        if not all_paths:
+            return (
+                f"Error: Agent '{template_agent['dir_name']}' has no assignable parameters "
+                "in config.yaml."
+            )
+
+        pending_updates = []
+        resolution_errors = []
+        ignored_params = list(parse_result['ignored'])
+
+        for assignment in parse_result['assignments']:
+            requested_key = assignment['requested_key']
+            resolution = _resolve_config_path(requested_key, all_paths, leaf_paths)
+            if resolution.get('ignored'):
+                ignored_params.append(requested_key)
+                continue
+            if resolution.get('error'):
+                resolution_errors.append(resolution['error'])
+                continue
+            pending_updates.append({
+                'path': resolution['path'],
+                'value': assignment['value'],
+            })
+
+        if resolution_errors:
+            return "Error parametrizing agent config: " + " ".join(resolution_errors)
+
+        if not pending_updates:
+            if ignored_params:
+                ignored_summary = ', '.join(sorted(set(ignored_params)))
+                return (
+                    "Error: No assignable parameters were left after ignoring flow-only fields. "
+                    f"Ignored: {ignored_summary}."
+                )
+            return "Error: No matching config parameters were resolved."
+
+        changed_paths = []
+        for update in pending_updates:
+            _set_config_value(config, update['path'], update['value'])
+            changed_paths.append(_format_config_path(update['path']))
+
+        with open(config_path, 'w', encoding='utf-8') as file_handle:
+            yaml.safe_dump(
+                config,
+                file_handle,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False,
+            )
+
+        changed_summary = ', '.join(changed_paths)
+        ignored_suffix = ''
+        if ignored_params:
+            ignored_summary = ', '.join(sorted(set(ignored_params)))
+            ignored_suffix = f" Ignored flow-only parameters: {ignored_summary}."
+
+        return (
+            f"Template agent '{template_agent['dir_name']}' parametrized successfully. "
+            f"Updated config keys: {changed_summary}. Config path: '{config_path}'."
+            f"{ignored_suffix}"
+        )
+    except Exception as e:
+        return f"Error parametrizing template agent: {e}"
+
+
+@tool
+def agent_starter(request: str) -> str:
+    """
+    Start a template agent only after validating that its mandatory config values are not empty.
+
+    CRITICAL: Pass the COMPLETE instruction exactly as the user requested, including the
+    agent name.
+
+    Rules:
+    - This tool starts template agents only, never pool instances.
+    - Before starting, it validates the template config.yaml and blocks startup if required
+      values are still empty.
+    - It auto-detects the template agents directory in both source and frozen installs.
+
+    Examples of what to pass:
+    - Start-up the agent Telegrammer
+    - Start-up the agent Crawler
+    - Raise the agent Summarizer
+    - Execute the agent Telegramrx
+    - Run the agent J-Decompiler
+
+    Input:
+    - request: A full natural-language startup instruction.
+    """
+    try:
+        if not request or not request.strip():
+            return "Error: No startup request was provided."
+
+        template_agent, resolve_error = _resolve_template_agent(
+            request,
+            patterns=_START_AGENT_PATTERNS,
+            action_label='start',
+        )
+        if resolve_error:
+            return resolve_error
+
+        script_path = _resolve_template_agent_script_path(template_agent)
+        if not script_path or not os.path.isfile(script_path):
+            return (
+                f"Error: Could not resolve the startup script for template agent "
+                f"'{template_agent['dir_name']}'."
+            )
+
+        config_path = template_agent['config_path']
+        with open(config_path, 'r', encoding='utf-8') as file_handle:
+            config = yaml.safe_load(file_handle) or {}
+
+        if not isinstance(config, dict):
+            return (
+                f"Error: Agent config '{config_path}' is not a YAML mapping. "
+                "The agent was not started."
+            )
+
+        missing_items = _find_missing_required_config_paths(config, config_path, script_path)
+        if missing_items:
+            missing_summary = ', '.join(_format_config_path(item['path']) for item in missing_items)
+            return (
+                f"Template agent '{template_agent['dir_name']}' was not started because "
+                f"mandatory config values are still empty: {missing_summary}. "
+                f"Config path: '{config_path}'."
+            )
+
+        runtime_state = _get_template_agent_runtime_state(template_agent, script_path)
+        if runtime_state['processes']:
+            running_pid = runtime_state['processes'][0].pid
+            return (
+                f"Template agent '{template_agent['dir_name']}' is already running with "
+                f"process ID: {running_pid}."
+            )
+
+        python_exe, python_error = _resolve_python_executable()
+        if python_error:
+            return python_error
+
+        process = subprocess.Popen(
+            [python_exe, script_path],
+            cwd=template_agent['agent_dir'],
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+
+        process_label = _get_agent_process_label(template_agent)
+        save_agent_process(process_label, process.pid)
+
+        return (
+            f"Template agent '{template_agent['dir_name']}' started successfully with "
+            f"process ID: {process.pid}. Script path: '{script_path}'."
+        )
+    except Exception as e:
+        return f"Error starting template agent: {e}"
+
+
+@tool
+def agent_stopper(request: str) -> str:
+    """
+    Stop a running template agent and clean stale runtime tracking if needed.
+
+    CRITICAL: Pass the COMPLETE instruction exactly as the user requested, including the
+    agent name.
+
+    Rules:
+    - This tool stops template agents only, never pool instances.
+    - It auto-detects the template agents directory in both source and frozen installs.
+    - It reconciles PID files, AgentProcess rows, and real OS processes before stopping.
+
+    Examples of what to pass:
+    - Stop the agent Telegrammer
+    - Stop the agent Crawler
+    - Terminate the agent Summarizer
+    - Shut down the agent Telegramrx
+    - Kill the agent Sleeper
+
+    Input:
+    - request: A full natural-language stop instruction.
+    """
+    try:
+        if not request or not request.strip():
+            return "Error: No stop request was provided."
+
+        template_agent, resolve_error = _resolve_template_agent(
+            request,
+            patterns=_STOP_AGENT_PATTERNS,
+            action_label='stop',
+        )
+        if resolve_error:
+            return resolve_error
+
+        script_path = _resolve_template_agent_script_path(template_agent)
+        runtime_state = _get_template_agent_runtime_state(template_agent, script_path)
+        processes = runtime_state['processes']
+
+        if not processes:
+            cleanup_notes = []
+            if runtime_state['stale_pid_file']:
+                cleanup_notes.append('removed a stale agent.pid file')
+            if runtime_state['stale_registry']:
+                cleanup_notes.append('removed a stale AgentProcess row')
+
+            cleanup_suffix = ''
+            if cleanup_notes:
+                cleanup_suffix = ' Runtime cleanup: ' + ', '.join(cleanup_notes) + '.'
+
+            return (
+                f"Template agent '{template_agent['dir_name']}' is not currently running."
+                f"{cleanup_suffix}"
+            )
+
+        stopped_pids = []
+        surviving_pids = []
+        errors = []
+
+        for process in processes:
+            termination_result = _terminate_process_tree(process)
+            stopped_pids.extend(termination_result['stopped_pids'])
+            surviving_pids.extend(termination_result['surviving_pids'])
+            errors.extend(termination_result['errors'])
+
+        delete_agent_process_by_description(runtime_state['label'])
+        _remove_pid_file(template_agent['agent_dir'])
+
+        surviving_pids = sorted(set(surviving_pids))
+        stopped_pids = sorted(set(stopped_pids))
+
+        if surviving_pids:
+            error_suffix = ''
+            if errors:
+                error_suffix = f" Errors: {'; '.join(errors)}."
+            return (
+                f"Template agent '{template_agent['dir_name']}' could not be fully stopped. "
+                f"Still running process IDs: {', '.join(str(pid) for pid in surviving_pids)}."
+                f"{error_suffix}"
+            )
+
+        details = ''
+        if errors:
+            details = f" Notes: {'; '.join(errors)}."
+
+        stopped_summary = ', '.join(str(pid) for pid in stopped_pids) if stopped_pids else 'unknown'
+        return (
+            f"Template agent '{template_agent['dir_name']}' stopped successfully. "
+            f"Terminated process IDs: {stopped_summary}.{details}"
+        )
+    except Exception as e:
+        return f"Error stopping template agent: {e}"
+
+
+@tool
+def agent_stat_getter(request: str) -> str:
+    """
+    Report whether a template agent is currently running.
+
+    CRITICAL: Pass the COMPLETE instruction exactly as the user requested, including the
+    agent name.
+
+    Rules:
+    - This tool checks template agents only, never pool instances.
+    - It auto-detects the template agents directory in both source and frozen installs.
+    - It reconciles PID files, AgentProcess rows, and real OS processes before answering.
+
+    Examples of what to pass:
+    - Get the status of agent Telegrammer
+    - Check the status of agent Crawler
+    - Show the state of agent Summarizer
+    - Is the agent Telegramrx running
+    - What is the status of agent Sleeper
+
+    Input:
+    - request: A full natural-language status instruction.
+    """
+    try:
+        if not request or not request.strip():
+            return "Error: No status request was provided."
+
+        template_agent, resolve_error = _resolve_template_agent(
+            request,
+            patterns=_STATUS_AGENT_PATTERNS,
+            action_label='inspect',
+        )
+        if resolve_error:
+            return resolve_error
+
+        script_path = _resolve_template_agent_script_path(template_agent)
+        runtime_state = _get_template_agent_runtime_state(template_agent, script_path)
+        processes = runtime_state['processes']
+
+        if not processes:
+            cleanup_notes = []
+            if runtime_state['stale_pid_file']:
+                cleanup_notes.append('removed a stale agent.pid file')
+            if runtime_state['stale_registry']:
+                cleanup_notes.append('removed a stale AgentProcess row')
+
+            cleanup_suffix = ''
+            if cleanup_notes:
+                cleanup_suffix = ' Runtime cleanup: ' + ', '.join(cleanup_notes) + '.'
+
+            return (
+                f"Template agent '{template_agent['dir_name']}' is not currently running."
+                f"{cleanup_suffix}"
+            )
+
+        pid_list = []
+        status_list = []
+        for process in processes:
+            pid_list.append(str(process.pid))
+            try:
+                status_list.append(f"{process.pid}:{process.status()}")
+            except Exception:
+                status_list.append(f"{process.pid}:unknown")
+
+        return (
+            f"Template agent '{template_agent['dir_name']}' is currently running. "
+            f"Process IDs: {', '.join(pid_list)}. "
+            f"Observed states: {', '.join(status_list)}."
+        )
+    except Exception as e:
+        return f"Error getting template agent status: {e}"
+
+
 def get_mcp_tools():
     """
     Returns a list of all tools available to the MCP.
@@ -624,16 +1642,18 @@ def get_mcp_tools():
         tools.append(opus_analyze_image)
     if global_state.get_state('tool_qwen-analyze-image_status', 'enabled') == 'enabled': 
         tools.append(qwen_analyze_image)
-    if global_state.get_state('tool_execute-agent_status', 'enabled') == 'enabled': 
-        tools.append(execute_agent)
-    if global_state.get_state('tool_stop-agent_status', 'enabled') == 'enabled': 
-        tools.append(stop_agent)
-    if global_state.get_state('tool_agent-status_status', 'enabled') == 'enabled': 
-        tools.append(agent_status)
     if global_state.get_state('tool_execute-netstat_status', 'enabled') == 'enabled': 
         tools.append(execute_netstat)
     if global_state.get_state('tool_unzip-file_status', 'enabled') == 'enabled': 
         tools.append(unzip_file)
     if global_state.get_state('tool_decompile-java_status', 'enabled') == 'enabled': 
         tools.append(decompile_java)
+    if global_state.get_state('tool_agent-parametrizer_status', 'enabled') == 'enabled':
+        tools.append(agent_parametrizer)
+    if global_state.get_state('tool_agent-starter_status', 'enabled') == 'enabled':
+        tools.append(agent_starter)
+    if global_state.get_state('tool_agent-stopper_status', 'enabled') == 'enabled':
+        tools.append(agent_stopper)
+    if global_state.get_state('tool_agent-stat-getter_status', 'enabled') == 'enabled':
+        tools.append(agent_stat_getter)
     return tools

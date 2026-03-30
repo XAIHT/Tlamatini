@@ -239,7 +239,7 @@ def populate_initial_values(apps, schema_editor):
         idTool=6,
         defaults={
             'toolName': 'tool-6',
-            'toolDescription': 'Execute-Agent',
+            'toolDescription': 'Monitor-Netstat',
             'toolContent': 'true'
         }
     )
@@ -248,7 +248,7 @@ def populate_initial_values(apps, schema_editor):
         idTool=7,
         defaults={
             'toolName': 'tool-7',
-            'toolDescription': 'Stop-Agent',
+            'toolDescription': 'Unzip-File',
             'toolContent': 'true'
         }
     )
@@ -257,7 +257,7 @@ def populate_initial_values(apps, schema_editor):
         idTool=8,
         defaults={
             'toolName': 'tool-8',
-            'toolDescription': 'Agent-Status',
+            'toolDescription': 'Decompile-Java',
             'toolContent': 'true'
         }
     )
@@ -266,33 +266,6 @@ def populate_initial_values(apps, schema_editor):
         idTool=9,
         defaults={
             'toolName': 'tool-9',
-            'toolDescription': 'Monitor-Netstat',
-            'toolContent': 'true'
-        }
-    )
-
-    Tool.objects.get_or_create(
-        idTool=10,
-        defaults={
-            'toolName': 'tool-10',
-            'toolDescription': 'Unzip-File',
-            'toolContent': 'true'
-        }
-    )
-
-    Tool.objects.get_or_create(
-        idTool=11,
-        defaults={
-            'toolName': 'tool-11',
-            'toolDescription': 'Decompile-Java',
-            'toolContent': 'true'
-        }
-    )
-
-    Tool.objects.get_or_create(
-        idTool=12,
-        defaults={
-            'toolName': 'tool-12',
             'toolDescription': 'Qwen-Analyze-Image',
             'toolContent': 'true'
         }

@@ -87,6 +87,10 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Using the `create_new_agent` Skill](#using-the-create_new_agent-skill)
     - [In Antigravity IDE / Gemini CLI](#in-antigravity-ide--gemini-cli)
     - [In Claude CLI (claude-code) / Cursor](#in-claude-cli-claude-code--cursor)
+- [Custom MCP Development](#custom-mcp-development)
+  - [Using the `create_new_mcp` Skill](#using-the-create_new_mcp-skill)
+    - [Antigravity IDE / Gemini CLI Example](#antigravity-ide--gemini-cli-example)
+    - [Claude CLI (claude-code) / Cursor Example](#claude-cli-claude-code--cursor-example)
 - [Workflow Examples](#workflow-examples)
 - [API Reference](#api-reference)
   - [WebSocket Protocol](#websocket-protocol)
@@ -355,6 +359,11 @@ Tlamatini/
 ├── Tlamatini/                      # Django project root
 │   ├── manage.py                    # Django CLI utility
 │   ├── db.sqlite3                   # SQLite database
+│   ├── .agents/                     # AI workflow docs for agent scaffolding
+│   │   └── workflows/
+│   │       └── create_new_agent.md  # Skill for creating new workflow agents
+│   ├── .mcps/                       # AI workflow docs for MCP/tool extensions
+│   │   └── create_new_mcp.md        # Skill for adding MCP-backed capabilities and tool wiring
 │   │
 │   ├── tlamatini/                 # Django project configuration
 │   │   ├── settings.py             # Django settings (Channels, WhiteNoise)
@@ -1730,6 +1739,47 @@ Reference the file directly so the LLM reads the constraints before generating c
 > "Please read `Tlamatini/.agents/workflows/create_new_agent.md` first. Then, create an agent named `MyAgent` that takes a screenshot."
 
 The AI will automatically follow the 4-step checklist (Backend Script, Django Integration, Frontend CSS, Frontend JS) handling all connections and migrations seamlessly.
+
+## Custom MCP Development
+
+Tlamatini also includes a dedicated MCP/tool-extension workflow document for AI assistants. Use this skill when the work is not "create a new workflow agent under `agent/agents/`", but instead "extend the MCP/tool/chain stack" by touching files such as `agent/tools.py`, `agent/mcp_agent.py`, `agent/rag/factory.py`, `chain_system_lcel.py`, `chain_files_search_lcel.py`, MCP startup code, database toggle rows, or the MCP frontend dialogs.
+
+This is important because Tlamatini separates four concerns that are easy to confuse:
+
+- persisted `Mcp` toggle rows in the database
+- runtime MCP-style services such as `System-Metrics` and `Files-Search`
+- sidecar context-fetch chains that inject `system_context` and `files_context`
+- unified-agent LangChain tools returned by `get_mcp_tools()`
+
+### Using the `create_new_mcp` Skill
+
+The core instruction set is located at:
+`Tlamatini/.mcps/create_new_mcp.md`
+
+Use this skill whenever you need an AI assistant to add or modify any of the following:
+
+- a new MCP-backed context provider
+- a new runtime service plus its chain wrapper
+- a new unified-agent tool in `agent/tools.py`
+- factory wiring in `agent/rag/factory.py`
+- MCP persistence, startup, or frontend toggle handling
+
+In other words:
+
+- use `create_new_agent.md` for new workflow nodes on the canvas
+- use `create_new_mcp.md` for MCP/tool/chain extensions behind the chat and context system
+
+### Antigravity IDE / Gemini CLI Example
+
+Load the skill file directly in the prompt and describe the MCP capability you want:
+
+> "Load the Skill @[c:\\Development\\Tlamatini\\Tlamatini\\.mcps\\create_new_mcp.md] and add a new MCP-backed capability named `Service-Health` that injects service status context into the RAG pipeline and adds the required frontend toggle."
+
+### Claude CLI (claude-code) / Cursor Example
+
+Reference the file explicitly so the assistant reads the architecture constraints before generating code:
+
+> "Please read `Tlamatini/.mcps/create_new_mcp.md` first. Then add a new MCP-backed capability for local service health checks, wire it through `factory.py`, and update the UI and database toggle path correctly."
 
 ## Workflow Examples
 
