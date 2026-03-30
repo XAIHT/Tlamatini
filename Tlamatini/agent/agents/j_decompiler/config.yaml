@@ -1,0 +1,11 @@
+# J-Decompiler Agent Configuration
+
+# Directory to scan for .class, .jar, .war, .ear files (supports wildcards)
+directory: "C:\\Temp\\*.class,*.jar,*.war,*.ear"
+
+# Recursive mode: scan subdirectories recursively
+recursive: false
+
+# Connection fields
+source_agents: []
+target_agents: []

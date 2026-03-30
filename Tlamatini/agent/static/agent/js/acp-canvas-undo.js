@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -360,6 +360,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'barrier') {
                 await updateBarrierConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'j-decompiler') {
+                await updateJDecompilerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'j-decompiler') {
+                await updateJDecompilerConnection(sourceId, targetId, 'remove', 'target');
+            }
 
             conn.path.remove();
             ACP.connections.splice(i, 1);
@@ -634,6 +640,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'barrier') {
         await updateBarrierConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'j-decompiler') {
+        await updateJDecompilerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'j-decompiler') {
+        await updateJDecompilerConnection(sourceId, targetId, 'add', 'target');
     }
 
     console.log(`[Undo] Recreated connection: ${state.sourceId} -> ${state.targetId}`);

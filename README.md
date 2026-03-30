@@ -124,7 +124,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 54 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 55 pre-built agent types.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -237,7 +237,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 54 pre-built agent types for diverse automation tasks
+- 55 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - Real-time LED status indicators: green (running), red (agent down while the flow is active), yellow blinking (paused), gray (stopped/idle)
@@ -366,7 +366,7 @@ Tlamatini/
 │   ├── agent/                       # Core application
 │   │   ├── apps.py                  # App config (MCP startup, signal handlers, cleanup)
 │   │   ├── admin.py                 # Django admin model registration
-│   │   ├── views.py                # HTTP request handlers (100 endpoints)
+│   │   ├── views.py                # HTTP request handlers (102 endpoints)
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
 │   │   ├── models.py               # Database models (12 models)
 │   │   ├── urls.py                 # URL routing definitions
@@ -472,6 +472,7 @@ Tlamatini/
 │   │   │   ├── node_manager/     # Infrastructure registry and node supervision agent
 │   │   │   ├── file_creator/    # File creation utility agent
 │   │   │   ├── file_extractor/  # File text extraction utility agent
+│   │   │   ├── j_decompiler/    # Java artifact decompiler using bundled jd-cli
 │   │   │   ├── kyber_keygen/   # CRYSTALS-Kyber key pair generation agent
 │   │   │   ├── kyber_cipher/  # CRYSTALS-Kyber encryption agent
 │   │   │   ├── kyber_decipher/ # CRYSTALS-Kyber decryption agent
@@ -1232,7 +1233,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **54 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **55 agent types** total.
 
 ### Agent Architecture
 
@@ -1248,7 +1249,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `j_decompiler`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1312,6 +1313,7 @@ Agents are classified as:
 | **summarizer** | Log monitoring with LLM event detection — continuously polls source agent log files and sends content to an LLM with a configurable system prompt. When the LLM detects a positive event ([EVENT_TRIGGERED]), starts all configured downstream target agents | `source_agents`: Agents to monitor<br>`system_prompt`: LLM analysis prompt<br>`llm.host`: Ollama URL<br>`llm.model`: Model name<br>`poll_interval`: Seconds between polls<br>`target_agents`: Downstream agents |
 | **file_interpreter** | Reads and interprets documents (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, etc.), extracting text and optionally images. Supports three reading modes: `fast` (text only), `complete` (text + image extraction to images/ subdirectory), and `summarized` (text + LLM summarization). Outputs structured INI/END_FILE blocks. Supports wildcards for batch processing | `path_filenames`: File path or wildcard pattern<br>`reading_type`: fast / complete / summarized<br>`recursive`: false (scan subdirs)<br>`filetype_exclusions`: "" (exclude extensions/filenames)<br>`llm.host`: Ollama URL (for summarized mode)<br>`llm.model`: Model name (for summarized mode)<br>`target_agents`: Downstream agents |
 | **image_interpreter** | Analyzes and describes images using an LLM vision model. Converts images to base64 for LLM transmission. Supports 12+ image formats (jpg, png, gif, bmp, tiff, webp, svg, ico, heic, avif). Can accept wildcards, directories, File-Interpreter pool names, or single files. Outputs structured INI_IMAGE_FILE/END_FILE blocks | `images_pathfilenames`: Wildcards, directory, File-Interpreter pool name, or file<br>`recursive`: false (scan subdirs)<br>`filetype_exclusions`: "" (exclude extensions/filenames)<br>`llm.host`: Ollama URL<br>`llm.model`: Vision model name<br>`system_prompt`: Custom analysis prompt (default: "Describe this image in detail.")<br>`target_agents`: Downstream agents |
+| **j_decompiler** | Java artifact decompiler that scans wildcard-enabled directories for `.class`, `.jar`, `.war`, and `.ear` files, uses the bundled `jd-cli` asset to generate Java sources beside classes or into sibling archive directories, and then starts downstream agents | `directory`: Base path or wildcard list for Java artifacts<br>`recursive`: false (scan subdirs when enabled)<br>`source_agents`: Informative upstream connections<br>`target_agents`: Downstream agents |
 
 ### Logic Gates
 
@@ -2149,6 +2151,7 @@ target_agents:
 | `/update_node_manager_connection/<agent_name>/` | POST | Update node_manager connections |
 | `/update_file_creator_connection/<agent_name>/` | POST | Update file_creator connections |
 | `/update_file_extractor_connection/<agent_name>/` | POST | Update file_extractor connections |
+| `/update_j_decompiler_connection/<agent_name>/` | POST | Update j_decompiler connections |
 | `/update_kyber_keygen_connection/<agent_name>/` | POST | Update kyber_keygen connections |
 | `/update_kyber_cipher_connection/<agent_name>/` | POST | Update kyber_cipher connections |
 | `/update_kyber_decipher_connection/<agent_name>/` | POST | Update kyber_decipher connections |
@@ -2481,6 +2484,7 @@ Enable verbose logging in config.json:
 | **NodeManager** | Long-running infrastructure agent that maintains a live registry of local/remote nodes, probes health, classifies state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, and triggers downstream agents on node events |
 | **File-Creator** | Short-running infrastructure agent that creates a file with specified content (path + filename, raw content), triggers downstream agents regardless of file creation result, then stops |
 | **File-Extractor** | Short-running infrastructure agent that reads/loads files (supports wildcards), extracts text content for all file types supported by File-Interpreter, uses strings extraction for unknown binary types, triggers downstream agents regardless of result, then stops |
+| **J-Decompiler** | Short-running deterministic action agent that decompiles `.class`, `.jar`, `.war`, and `.ear` artifacts using the bundled `jd-cli`, generating source trees beside the original files and triggering downstream agents afterward |
 | **Kyber-KeyGen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512/768/1024) in base64 format, logs keys, and triggers downstream agents |
 | **Kyber-Cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR, logs encapsulation/IV/ciphertext in base64, and triggers downstream agents |
 | **Kyber-DeCipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer, and triggers downstream agents |
@@ -2532,6 +2536,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Added J-Decompiler Agent** - Short-running deterministic action agent that decompiles `.class`, `.jar`, `.war`, and `.ear` artifacts using the bundled `jd-cli`, supports wildcard and recursive scans, writes Java sources beside the original artifacts, and triggers downstream agents after completion
 - **Added Barrier Agent** - Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Uses cross-process file-based locking and flag files to coordinate multiple separate barrier processes started by source agents
 - **Added Parametrizer Agent** - Short-running active utility interconnection agent that maps structured outputs from source agent logs to target agent config.yaml parameters via a visual mapping dialog and interconnection-scheme.csv. Supports iterative execution for multiple output elements, connecting agents that produce structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher) to any target agent
 - **Added Kyber-DeCipher Agent** - Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer in original format
@@ -2606,7 +2611,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Tools Dialog** - Per-tool enable/disable via the chat interface
 - **Image Format Conversion** - Added `converter.py` module for image format transformations and base64 encoding
 - **Chat History Management** - Added `chat_history_loader.py` for persistent conversation history
-- **100 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
+- **102 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
 
 ---
 
