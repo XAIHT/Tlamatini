@@ -7,6 +7,7 @@ import concurrent.futures
 from typing import List
 from ..global_state import global_state
 from ..models import LLMProgram
+from ..chat_agent_registry import get_wrapped_agent_security_hints
 from .. import inet_determiner
 from .. import web_search_llm
 from ..path_guard import is_path_allowed, REJECTION_MESSAGE
@@ -241,6 +242,15 @@ _AGENT_OPERATION = re.compile(
     r')',
     re.IGNORECASE
 )
+
+_WRAPPED_CHAT_AGENT_HINTS = tuple(
+    sorted(get_wrapped_agent_security_hints(), key=len, reverse=True)
+)
+
+_WRAPPED_CHAT_AGENT_OPERATION = re.compile(
+    r'\b(?:' + '|'.join(re.escape(hint) for hint in _WRAPPED_CHAT_AGENT_HINTS) + r')\b',
+    re.IGNORECASE,
+) if _WRAPPED_CHAT_AGENT_HINTS else re.compile(r'^\b$')
 
 _DIRECT_FILESYSTEM_ACTION = re.compile(
     r'^\s*(?:please\s+)?'
@@ -546,6 +556,12 @@ def _validate_accesses_in_prompt(question: str):
             print("--- _validate_accesses_in_prompt: agent operation command → proceed")
             return None
 
+        # Wrapped chat-agent requests are trusted tool-routed operations and are
+        # intentionally allowed to carry their own filesystem or command scope.
+        if _WRAPPED_CHAT_AGENT_OPERATION.search(question):
+            print("--- _validate_accesses_in_prompt: wrapped chat-agent request → proceed")
+            return None
+
         if bool(_RELATIVE_PATH_PATTERN.search(question)) and deterministic_intent:
             print("--- _validate_accesses_in_prompt: deterministic relative-path access request → reject")
             return _relative_path_rejection_message()
@@ -569,6 +585,10 @@ def _validate_accesses_in_prompt(question: str):
         return None          # all paths are allowed → proceed normally
 
     print(f"--- _validate_accesses_in_prompt: paths outside allowed: {outside_paths}")
+
+    if _WRAPPED_CHAT_AGENT_OPERATION.search(question):
+        print("--- _validate_accesses_in_prompt: outside paths allowed for wrapped chat-agent request → proceed")
+        return None
 
     deterministic_intent = _has_deterministic_filesystem_intent(question)
     if deterministic_intent:

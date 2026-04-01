@@ -1,7 +1,8 @@
 import ast
 from datetime import datetime
 import difflib
-from langchain.tools import tool
+import json
+from langchain.tools import Tool, tool
 import os
 import re
 import sys
@@ -12,6 +13,23 @@ import webbrowser
 import shlex
 import psutil
 import yaml
+from django.utils import timezone
+
+from .chat_agent_registry import (
+    WRAPPED_CHAT_AGENT_SPECS,
+)
+from .chat_agent_runtime import (
+    create_isolated_runtime_copy,
+    get_chat_agent_run,
+    list_chat_agent_runs,
+    register_chat_agent_run,
+    resolve_runtime_script_path,
+    serialize_chat_agent_run,
+    start_chat_agent_subprocess,
+    stop_chat_agent_run,
+    tail_runtime_log,
+    wait_briefly_for_initial_state,
+)
 from .imaging.image_interpreter import opus_analyze_image, qwen_analyze_image
 from .global_state import global_state
 from .models import Agent, AgentProcess
@@ -906,6 +924,259 @@ def get_agent_process_by_description(description):
 def delete_agent_process_by_description(description):
     AgentProcess.objects.filter(agentProcessDescription=description).delete()
 
+
+def _tool_status_key(tool_description):
+    return f"tool_{str(tool_description).lower()}_status"
+
+
+def _tool_output(payload):
+    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def _find_template_agent_by_dir_name(dir_name):
+    normalized = _normalize_identifier(dir_name)
+    for agent in _discover_template_agents():
+        if agent['normalized_name'] == normalized:
+            return agent
+    return None
+
+
+def _maybe_parse_requested_assignments(request_text):
+    if _find_first_assignment_index(request_text) < 0:
+        return {'assignments': [], 'ignored': []}, None
+    return _parse_requested_assignments(request_text)
+
+
+def _apply_requested_assignments_to_config(config, request_text):
+    parse_result, parse_error = _maybe_parse_requested_assignments(request_text)
+    if parse_error:
+        return None, parse_error, []
+
+    if not isinstance(parse_result, dict):
+        return None, "Error: Could not parse agent parameter assignments.", []
+
+    all_paths, leaf_paths = _collect_config_paths(config)
+    pending_updates = []
+    resolution_errors = []
+    ignored_params = list(parse_result.get('ignored', []))
+
+    if all_paths:
+        for assignment in parse_result.get('assignments', []):
+            requested_key = assignment['requested_key']
+            resolution = _resolve_config_path(requested_key, all_paths, leaf_paths)
+            if resolution.get('ignored'):
+                ignored_params.append(requested_key)
+                continue
+            if resolution.get('error'):
+                resolution_errors.append(resolution['error'])
+                continue
+            pending_updates.append({
+                'path': resolution['path'],
+                'value': assignment['value'],
+            })
+    elif parse_result.get('assignments'):
+        resolution_errors.append("The target agent config has no assignable YAML keys.")
+
+    if resolution_errors:
+        return None, " ".join(resolution_errors), ignored_params
+
+    changed_paths = []
+    for update in pending_updates:
+        _set_config_value(config, update['path'], update['value'])
+        changed_paths.append(_format_config_path(update['path']))
+
+    return config, None, ignored_params + changed_paths
+
+
+def _non_flow_missing_required_paths(config, config_path, script_path):
+    missing_items = _find_missing_required_config_paths(config, config_path, script_path)
+    filtered = []
+    for item in missing_items:
+        path = item.get('path') or ()
+        if not path:
+            continue
+        if _is_flow_only_param_name(path[-1]):
+            continue
+        filtered.append(item)
+    return filtered
+
+
+def _launch_wrapped_chat_agent(spec, request):
+    if not request or not str(request).strip():
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": f"No request was provided to {spec.display_name}.",
+        })
+
+    template_agent = _find_template_agent_by_dir_name(spec.template_dir)
+    if template_agent is None:
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": (
+                f"Template agent directory '{spec.template_dir}' was not found. "
+                "The wrapped chat agent could not be launched."
+            ),
+        })
+
+    try:
+        run_id, runtime_dir, log_path = create_isolated_runtime_copy(
+            template_agent['agent_dir'],
+            spec.template_dir,
+        )
+    except Exception as exc:
+        return _tool_output({
+            "status": "error",
+            "retryable": True,
+            "message": f"Failed to create the isolated runtime copy for {spec.display_name}: {exc}",
+        })
+
+    runtime_config_path = os.path.join(runtime_dir, "config.yaml")
+    try:
+        with open(runtime_config_path, "r", encoding="utf-8") as file_handle:
+            runtime_config = yaml.safe_load(file_handle) or {}
+    except Exception as exc:
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": f"Failed to load runtime config.yaml for {spec.display_name}: {exc}",
+            "runtime_dir": runtime_dir,
+        })
+
+    if not isinstance(runtime_config, dict):
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": "The runtime config.yaml is not a YAML mapping.",
+            "runtime_dir": runtime_dir,
+        })
+
+    runtime_config, assignment_error, assignment_notes = _apply_requested_assignments_to_config(
+        runtime_config,
+        str(request),
+    )
+    if assignment_error:
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": assignment_error,
+            "runtime_dir": runtime_dir,
+        })
+
+    try:
+        with open(runtime_config_path, "w", encoding="utf-8") as file_handle:
+            yaml.safe_dump(
+                runtime_config,
+                file_handle,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False,
+            )
+    except Exception as exc:
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": f"Failed to write runtime config.yaml for {spec.display_name}: {exc}",
+            "runtime_dir": runtime_dir,
+        })
+
+    runtime_script_path = resolve_runtime_script_path(runtime_dir, spec.template_dir)
+    if not runtime_script_path:
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": f"Could not resolve the runtime startup script for {spec.display_name}.",
+            "runtime_dir": runtime_dir,
+        })
+
+    missing_required = _non_flow_missing_required_paths(runtime_config, runtime_config_path, runtime_script_path)
+    if missing_required:
+        return _tool_output({
+            "status": "error",
+            "retryable": False,
+            "message": (
+                f"{spec.display_name} is still missing mandatory non-flow parameters: "
+                + ", ".join(_format_config_path(item['path']) for item in missing_required)
+            ),
+            "runtime_dir": runtime_dir,
+            "log_path": log_path,
+        })
+
+    run = register_chat_agent_run(
+        run_id=run_id,
+        tool_description=spec.tool_description,
+        template_dir=spec.template_dir,
+        runtime_dir=runtime_dir,
+        log_path=log_path,
+        request_text=str(request),
+    )
+
+    try:
+        start_chat_agent_subprocess(run, runtime_script_path)
+    except Exception as exc:
+        run.status = "failed"
+        run.finishedAt = timezone.now()
+        run.save(update_fields=["status", "finishedAt"])
+        return _tool_output({
+            "status": "error",
+            "retryable": True,
+            "message": f"Failed to start {spec.display_name}: {exc}",
+            "run_id": run.runId,
+            "runtime_dir": runtime_dir,
+            "log_path": log_path,
+        })
+
+    run = wait_briefly_for_initial_state(run, seconds=spec.poll_window_seconds)
+    payload = serialize_chat_agent_run(run, include_log_excerpt=True)
+    payload["tool"] = spec.tool_name
+    payload["display_name"] = spec.display_name
+    payload["assignment_notes"] = assignment_notes
+    payload["long_running"] = spec.long_running
+
+    if run.status == "running":
+        payload["message"] = (
+            f"{spec.display_name} started in an isolated runtime copy and is still running. "
+            "Use chat_agent_run_status, chat_agent_run_log, and chat_agent_run_stop with this run_id."
+        )
+    elif run.status == "completed":
+        payload["message"] = f"{spec.display_name} completed in the isolated runtime copy."
+    elif run.status == "failed":
+        payload["message"] = f"{spec.display_name} finished with a failure state. Inspect the log excerpt."
+        payload["retryable"] = False
+    else:
+        payload["message"] = f"{spec.display_name} ended with status '{run.status}'."
+
+    return _tool_output(payload)
+
+
+_WRAPPED_CHAT_AGENT_TOOLS = {}
+
+
+def _build_wrapped_chat_agent_tool(spec):
+    cached = _WRAPPED_CHAT_AGENT_TOOLS.get(spec.tool_name)
+    if cached is not None:
+        return cached
+
+    def _runner(request: str) -> str:
+        return _launch_wrapped_chat_agent(spec, request)
+
+    _runner.__name__ = spec.tool_name
+    description = (
+        f"Launch the {spec.display_name} template agent in an isolated subprocess runtime copy. "
+        f"Use it when you need to {spec.purpose.lower()} "
+        f"Pass the full natural-language intent plus explicit key=value assignments when needed. "
+        f"Example: {spec.example_request}. "
+        "The template directory is never mutated; the tool returns JSON with run_id, status, runtime_dir, log_path, and log_excerpt."
+    )
+    wrapped_tool = Tool.from_function(
+        func=_runner,
+        name=spec.tool_name,
+        description=description,
+    )
+    _WRAPPED_CHAT_AGENT_TOOLS[spec.tool_name] = wrapped_tool
+    return wrapped_tool
+
 @tool
 def get_current_time() -> str:
     """
@@ -1622,6 +1893,79 @@ def agent_stat_getter(request: str) -> str:
         return f"Error getting template agent status: {e}"
 
 
+def _normalize_run_id(run_id):
+    if run_id is None:
+        return ""
+    return str(run_id).strip().strip('"').strip("'")
+
+
+@tool
+def chat_agent_run_list() -> str:
+    """
+    List recent wrapped chat-agent runs.
+
+    Use this tool when you need the latest run IDs before checking status,
+    reading logs, or stopping a running isolated chat-agent subprocess.
+    """
+    runs = list_chat_agent_runs(limit=20)
+    return _tool_output({
+        "status": "ok",
+        "runs": [serialize_chat_agent_run(run, include_log_excerpt=False) for run in runs],
+    })
+
+
+@tool
+def chat_agent_run_status(run_id: str) -> str:
+    """
+    Get the current status of a wrapped chat-agent runtime by run_id.
+    """
+    normalized = _normalize_run_id(run_id)
+    run = get_chat_agent_run(normalized)
+    if run is None:
+        return _tool_output({
+            "status": "error",
+            "message": f"Wrapped chat-agent run '{normalized}' was not found.",
+        })
+    return _tool_output(serialize_chat_agent_run(run, include_log_excerpt=True))
+
+
+@tool
+def chat_agent_run_log(run_id: str) -> str:
+    """
+    Read the latest log excerpt of a wrapped chat-agent runtime by run_id.
+    """
+    normalized = _normalize_run_id(run_id)
+    run = get_chat_agent_run(normalized)
+    if run is None:
+        return _tool_output({
+            "status": "error",
+            "message": f"Wrapped chat-agent run '{normalized}' was not found.",
+        })
+    payload = serialize_chat_agent_run(run, include_log_excerpt=False)
+    payload["log_excerpt"] = tail_runtime_log(run.logPath)
+    return _tool_output(payload)
+
+
+@tool
+def chat_agent_run_stop(run_id: str) -> str:
+    """
+    Stop a wrapped chat-agent runtime by run_id.
+    """
+    normalized = _normalize_run_id(run_id)
+    run = get_chat_agent_run(normalized)
+    if run is None:
+        return _tool_output({
+            "status": "error",
+            "message": f"Wrapped chat-agent run '{normalized}' was not found.",
+        })
+    termination = stop_chat_agent_run(run)
+    payload = serialize_chat_agent_run(run, include_log_excerpt=True)
+    payload["stopped_pids"] = termination["stopped_pids"]
+    payload["surviving_pids"] = termination["surviving_pids"]
+    payload["errors"] = termination["errors"]
+    return _tool_output(payload)
+
+
 def get_mcp_tools():
     """
     Returns a list of all tools available to the MCP.
@@ -1656,4 +2000,15 @@ def get_mcp_tools():
         tools.append(agent_stopper)
     if global_state.get_state('tool_agent-stat-getter_status', 'enabled') == 'enabled':
         tools.append(agent_stat_getter)
+    if global_state.get_state('tool_chat-agent-run-list_status', 'enabled') == 'enabled':
+        tools.append(chat_agent_run_list)
+    if global_state.get_state('tool_chat-agent-run-status_status', 'enabled') == 'enabled':
+        tools.append(chat_agent_run_status)
+    if global_state.get_state('tool_chat-agent-run-log_status', 'enabled') == 'enabled':
+        tools.append(chat_agent_run_log)
+    if global_state.get_state('tool_chat-agent-run-stop_status', 'enabled') == 'enabled':
+        tools.append(chat_agent_run_stop)
+    for spec in WRAPPED_CHAT_AGENT_SPECS:
+        if global_state.get_state(_tool_status_key(spec.tool_description), 'enabled') == 'enabled':
+            tools.append(_build_wrapped_chat_agent_tool(spec))
     return tools
