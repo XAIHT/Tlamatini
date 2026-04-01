@@ -476,12 +476,11 @@ async function loadMcps() {
 
 async function loadTools() {
     try {
-        for (let i = 1; i < MAX_TOOLS; i++) {
-            const toolNameIterator = "tool-" + i.toString();
-            const errorDetected = await loadTool(toolNameIterator);
-            if (errorDetected === true) {
-                break;
+        for (const tool of tools) {
+            if (!tool || !tool.name) {
+                continue;
             }
+            await loadTool(tool.name);
         }
     } catch (error) {
         console.error('Error in loadTools:', error);
@@ -490,12 +489,11 @@ async function loadTools() {
 
 async function loadAgents() {
     try {
-        for (let i = 1; i < MAX_AGENTS; i++) {
-            const agentNameIterator = "agent-" + i.toString();
-            const errorDetected = await loadAgent(agentNameIterator);
-            if (errorDetected === true) {
-                break;
+        for (const agent of agents) {
+            if (!agent || !agent.name) {
+                continue;
             }
+            await loadAgent(agent.name);
         }
     } catch (error) {
         console.error('Error in loadAgents:', error);

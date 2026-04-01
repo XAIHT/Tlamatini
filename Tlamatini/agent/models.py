@@ -89,6 +89,23 @@ class AgentProcess(models.Model):
     def __str__(self):
         return f'{self.agentProcessDescription} {self.agentProcessPid}'
 
+
+class ChatAgentRun(models.Model):
+    runId = models.CharField(primary_key=True, max_length=64)
+    toolDescription = models.CharField(max_length=200)
+    templateAgentDir = models.CharField(max_length=200)
+    runtimeDir = models.CharField(max_length=1000)
+    logPath = models.CharField(max_length=1000)
+    requestText = models.TextField(blank=True)
+    pid = models.IntegerField(null=True, blank=True)
+    status = models.CharField(max_length=32, default='created')
+    exitCode = models.IntegerField(null=True, blank=True)
+    startedAt = models.DateTimeField(auto_now_add=True)
+    finishedAt = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f'{self.toolDescription} [{self.runId}] {self.status}'
+
 class Asset(models.Model):
     idAsset = models.IntegerField(primary_key=True)
     assetName = models.CharField(max_length=200)

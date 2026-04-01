@@ -18,6 +18,8 @@ import yaml
 import subprocess
 import time
 
+from .chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
+
 def home(request):
     return HttpResponse("Hello, World!")
 
@@ -2766,6 +2768,8 @@ def check_all_agents_status_view(request):
             
             if not os.path.isdir(folder_path):
                 continue
+            if folder_name == CHAT_RUNTIME_ROOT_NAME:
+                continue
             
             # Convert pool folder name back to canvas ID
             # e.g., 'monitor_log_1' -> 'monitor-log-1'
@@ -3285,6 +3289,8 @@ def get_session_running_processes_view(request):
             
             if not os.path.isdir(folder_path):
                 continue
+            if folder_name == CHAT_RUNTIME_ROOT_NAME:
+                continue
             
             # Convert pool folder name back to canvas ID
             canvas_id = folder_name.replace('_', '-')
@@ -3389,7 +3395,8 @@ def kill_session_processes_view(request):
                 cmdline = proc.info.get('cmdline', [])
                 if cmdline:
                     cmdline_str = ' '.join(cmdline)
-                    if pool_base_path in cmdline_str:
+                    chat_runtime_root = os.path.join(pool_base_path, CHAT_RUNTIME_ROOT_NAME)
+                    if pool_base_path in cmdline_str and chat_runtime_root not in cmdline_str:
                         print(f"[PAUSE-KILL] Found target process PID {proc.info['pid']}: {cmdline_str[:80]}...")
                         killed_count += recursive_kill(proc.info['pid'])
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):

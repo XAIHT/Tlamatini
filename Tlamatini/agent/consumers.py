@@ -8,6 +8,7 @@ import re
 import sys
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import User
+from django.db.models import Max
 from .models import AgentMessage, LLMProgram, LLMSnippet, Omission, Mcp, Tool, Agent, AgentProcess, SessionState
 from channels.db import database_sync_to_async
 from asgiref.sync import sync_to_async
@@ -45,6 +46,30 @@ def _sanitize_context_filename(filename):
         return None
 
     return candidate
+
+
+def _normalize_toggle_record_name(prefix, raw_name):
+    if not isinstance(raw_name, str):
+        return None
+
+    candidate = raw_name.strip()
+    if not candidate:
+        return None
+
+    expected_prefix = f'{prefix}-'
+    if candidate.startswith(expected_prefix):
+        suffix = candidate[len(expected_prefix):]
+        return candidate if suffix.isdigit() else None
+
+    if candidate.isdigit():
+        return f'{expected_prefix}{candidate}'
+
+    return None
+
+
+def _get_next_integer_pk(model, pk_name):
+    max_value = model.objects.aggregate(max_value=Max(pk_name)).get('max_value')
+    return 1 if max_value is None else max_value + 1
 
 
 class AgentConsumer(AsyncWebsocketConsumer):
@@ -966,8 +991,14 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     if(tool == '' or tool.isspace()):
                         print("--- End of tools list.")
                         break
-                    descAndContent = tool.split('=')
-                    toolName = 'tool-' + descAndContent[0]
+                    descAndContent = tool.split('=', 2)
+                    if len(descAndContent) != 3:
+                        print(f"--- Skipping malformed tool toggle payload: {tool}")
+                        continue
+                    toolName = _normalize_toggle_record_name('tool', descAndContent[0])
+                    if toolName is None:
+                        print(f"--- Skipping invalid tool name in payload: {descAndContent[0]}")
+                        continue
                     toolDescription = descAndContent[1]
                     toolContent = descAndContent[2]
                     await self.save_tool(toolName, toolDescription, toolContent)
@@ -989,8 +1020,14 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     if(agent == '' or agent.isspace()):
                         print("--- End of agents list.")
                         break
-                    descAndContent = agent.split('=')
-                    agentName = 'agent-' + descAndContent[0]
+                    descAndContent = agent.split('=', 2)
+                    if len(descAndContent) != 3:
+                        print(f"--- Skipping malformed agent toggle payload: {agent}")
+                        continue
+                    agentName = _normalize_toggle_record_name('agent', descAndContent[0])
+                    if agentName is None:
+                        print(f"--- Skipping invalid agent name in payload: {descAndContent[0]}")
+                        continue
                     agentDescription = descAndContent[1]
                     agentContent = descAndContent[2]
                     await self.save_agent(agentName, agentDescription, agentContent)
@@ -1097,18 +1134,54 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_mcp(self, mcpName, mcpDescription, mcpContent):
-        Mcp.objects.filter(mcpName=mcpName).delete()
-        Mcp.objects.create(mcpName=mcpName, mcpDescription=mcpDescription, mcpContent=mcpContent)
+        existing = Mcp.objects.filter(mcpName=mcpName).order_by('idMcp').first()
+        if existing is None:
+            Mcp.objects.create(
+                idMcp=_get_next_integer_pk(Mcp, 'idMcp'),
+                mcpName=mcpName,
+                mcpDescription=mcpDescription,
+                mcpContent=mcpContent
+            )
+            return
+
+        Mcp.objects.filter(mcpName=mcpName).exclude(pk=existing.pk).delete()
+        existing.mcpDescription = mcpDescription
+        existing.mcpContent = mcpContent
+        existing.save(update_fields=['mcpDescription', 'mcpContent'])
 
     @database_sync_to_async
     def save_tool(self, toolName, toolDescription, toolContent):
-        Tool.objects.filter(toolName=toolName).delete()
-        Tool.objects.create(toolName=toolName, toolDescription=toolDescription, toolContent=toolContent)
+        existing = Tool.objects.filter(toolName=toolName).order_by('idTool').first()
+        if existing is None:
+            Tool.objects.create(
+                idTool=_get_next_integer_pk(Tool, 'idTool'),
+                toolName=toolName,
+                toolDescription=toolDescription,
+                toolContent=toolContent
+            )
+            return
+
+        Tool.objects.filter(toolName=toolName).exclude(pk=existing.pk).delete()
+        existing.toolDescription = toolDescription
+        existing.toolContent = toolContent
+        existing.save(update_fields=['toolDescription', 'toolContent'])
 
     @database_sync_to_async
     def save_agent(self, agentName, agentDescription, agentContent):
-        Agent.objects.filter(agentName=agentName).delete()
-        Agent.objects.create(agentName=agentName, agentDescription=agentDescription, agentContent=agentContent)
+        existing = Agent.objects.filter(agentName=agentName).order_by('idAgent').first()
+        if existing is None:
+            Agent.objects.create(
+                idAgent=_get_next_integer_pk(Agent, 'idAgent'),
+                agentName=agentName,
+                agentDescription=agentDescription,
+                agentContent=agentContent
+            )
+            return
+
+        Agent.objects.filter(agentName=agentName).exclude(pk=existing.pk).delete()
+        existing.agentDescription = agentDescription
+        existing.agentContent = agentContent
+        existing.save(update_fields=['agentDescription', 'agentContent'])
 
     @database_sync_to_async
     def save_agent_process(self, agentProcessDescription, agentProcessPid):
@@ -1157,17 +1230,17 @@ class AgentConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_all_mcps(self):
         """Return all Mcp records (name, description, content) as list of dicts."""
-        return list(Mcp.objects.values('mcpName', 'mcpDescription', 'mcpContent'))
+        return list(Mcp.objects.order_by('idMcp').values('mcpName', 'mcpDescription', 'mcpContent'))
 
     @database_sync_to_async
     def get_all_tools(self):
         """Return all Tool records (name, content) as list of dicts."""
-        return list(Tool.objects.values('toolName', 'toolDescription', 'toolContent'))
+        return list(Tool.objects.order_by('idTool').values('toolName', 'toolDescription', 'toolContent'))
 
     @database_sync_to_async
     def get_all_agents(self):
         """Return all Agent records (name, content) as list of dicts."""
-        return list(Agent.objects.values('agentName', 'agentDescription', 'agentContent'))
+        return list(Agent.objects.order_by('idAgent').values('agentName', 'agentDescription', 'agentContent'))
 
     @database_sync_to_async
     def get_all_agent_processes(self):

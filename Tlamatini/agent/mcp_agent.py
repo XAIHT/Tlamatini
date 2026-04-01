@@ -5,8 +5,7 @@ import re
 import json
 from typing import Dict, Any, Optional
 
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
@@ -71,16 +70,8 @@ def _load_config() -> Dict[str, Any]:
     return cfg
 
 
-def create_unified_agent(llm, preeliminary_prompt: str) -> AgentExecutor:
-    """
-    Build a single tool‑calling agent that can both chat and invoke MCP tools.
-    """
-    tools = get_mcp_tools()
-    print(f"--- create_unified_agent: {len(tools)} tools available:")
-    for t in tools:
-        print(f"    - {t.name}: {t.description[:50]}..." if len(t.description) > 50 else f"    - {t.name}: {t.description}")
-
-    # Convert a plain OllamaLLM into ChatOllama (which supports bind_tools)
+def _ensure_chat_tool_model(llm):
+    """Return a chat model that supports ``bind_tools`` when possible."""
     from langchain_ollama.llms import OllamaLLM
 
     if isinstance(llm, OllamaLLM) and ChatOllama is not None:
@@ -158,8 +149,106 @@ def create_unified_agent(llm, preeliminary_prompt: str) -> AgentExecutor:
         print(
             f"--- Converted OllamaLLM to ChatOllama for tool calling (model={model}, base_url={base_url}) ---"
         )
-    else:
-        getted_llm = llm
+        return getted_llm
+
+    return llm
+
+
+class MultiTurnToolAgentExecutor:
+    """
+    Explicit multi-turn tool-calling executor.
+
+    This avoids the opaque AgentExecutor path and gives the backend direct
+    control over tool-call / observation turns, which is required for the
+    wrapped chat-agent runtime tools.
+    """
+
+    def __init__(self, llm, system_prompt: str, tools, max_iterations: int = 20):
+        self.llm = llm
+        self.system_prompt = system_prompt
+        self.tools = list(tools)
+        self.tool_map = {tool.name: tool for tool in self.tools}
+        self.max_iterations = max_iterations
+        self.bound_llm = llm.bind_tools(self.tools)
+
+    def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
+        tool_name = tool_call.get("name", "")
+        tool = self.tool_map.get(tool_name)
+        if tool is None:
+            return json.dumps({
+                "status": "error",
+                "message": f"Tool '{tool_name}' is not available in this session.",
+                "retryable": False,
+            })
+
+        raw_args = tool_call.get("args", {})
+        tool_input = raw_args if raw_args not in (None, "") else {}
+
+        try:
+            result = tool.invoke(tool_input)
+        except Exception as exc:
+            return json.dumps({
+                "status": "error",
+                "message": f"Tool '{tool_name}' raised an exception: {exc}",
+                "retryable": False,
+            })
+
+        if isinstance(result, str):
+            return result
+        return json.dumps(result, ensure_ascii=False)
+
+    def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        input_text = payload.get("input", "")
+        messages = [
+            SystemMessage(content=self.system_prompt),
+            HumanMessage(content=input_text),
+        ]
+
+        for iteration in range(self.max_iterations):
+            response = self.bound_llm.invoke(messages)
+            messages.append(response)
+            tool_calls = getattr(response, "tool_calls", None) or []
+
+            print(f"--- MultiTurnToolAgentExecutor iteration {iteration + 1}/{self.max_iterations}")
+            if tool_calls:
+                print(f"--- Tool calls requested: {[call.get('name') for call in tool_calls]}")
+
+            if not tool_calls:
+                answer = getattr(response, "content", "") or ""
+                if not str(answer).strip():
+                    answer = "The tool-calling model returned an empty final response."
+                return {"output": str(answer)}
+
+            for tool_call in tool_calls:
+                tool_result = self._invoke_tool(tool_call)
+                messages.append(
+                    ToolMessage(
+                        tool_call_id=tool_call.get("id", ""),
+                        name=tool_call.get("name", ""),
+                        content=tool_result,
+                    )
+                )
+
+        return {
+            "output": (
+                "The tool-calling loop hit its iteration limit before producing a final answer. "
+                "Summarize the latest observed tool state or refine the request."
+            )
+        }
+
+
+def create_unified_agent(llm, preeliminary_prompt: str):
+    """
+    Build a single multi-turn tool‑calling agent that can both chat and invoke MCP tools.
+    """
+    tools = get_mcp_tools()
+    print(f"--- create_unified_agent: {len(tools)} tools available:")
+    for t in tools:
+        print(f"    - {t.name}: {t.description[:50]}..." if len(t.description) > 50 else f"    - {t.name}: {t.description}")
+
+    getted_llm = _ensure_chat_tool_model(llm)
+    if not hasattr(getted_llm, "bind_tools"):
+        raise RuntimeError("The configured unified agent model does not support bind_tools().")
 
     # Assemble a readable list of tool descriptions for the system prompt
     tool_descriptions = "\n".join(
@@ -194,7 +283,11 @@ File operations (reading files, listing files, searching for files) are **NOT** 
 4. **STRICT ADHERENCE**: Your answer must be based **EXCLUSIVELY** on the tool output and provided context. Do not add elements that are not there.
 5. **EXECUTION RULES OF 'execute_file' AND 'execute_command' TOOLS**: These tools should be executed **just once per ask of user** no matter its exit code.
 6. **NEVER TRUNCATE** the output content generated by the tools. It is not neccesary to do so 'cause this application is prepared to handle huge amounts of data (>>TBs).  
-7. **AVOID LOOPS**: If you have executed a tool and obtained a result, **DO NOT** execute the same tool again with the same parameters. Proceed to answer the user's question using the data obtained.
+7. **SMART LOOPING**: Avoid repeating the same raw tool call with the same parameters unless the tool output explicitly indicates a retryable state.
+8. **WRAPPED CHAT AGENT RUNS**: Tools named `chat_agent_*` launch isolated subprocess agents. When they return a `run_id` with `status="running"`, you may continue by calling `chat_agent_run_status`, `chat_agent_run_log`, or `chat_agent_run_stop`.
+9. **POLLING IS ALLOWED FOR RUN IDs**: It is valid to call the runtime status/log tools multiple times for the SAME `run_id` while you are monitoring progress. This is not considered a bad loop.
+10. **DO NOT CLAIM SUCCESS EARLY**: If a wrapped chat-agent run is still `running`, say that it is running and use the returned observations. Do not present the task as completed unless the runtime state or log proves it.
+11. **FOR TRUSTED WRAPPED AGENT TOOLS**: They manage their own isolated runtime directories and may legitimately operate outside the normal chat path restrictions.
 
 <question>
 {{input}}
@@ -204,23 +297,11 @@ File operations (reading files, listing files, searching for files) are **NOT** 
 Answer:
 
 """
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_prompt),
-            ("user", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ]
-    )
-
-    # Build the tool‑calling agent and its executor
-    agent = create_tool_calling_agent(getted_llm, tools, prompt)
-    executor = AgentExecutor(
-        agent=agent,
+    config = _load_config()
+    max_iterations = int(config.get("unified_agent_max_iterations", 20))
+    return MultiTurnToolAgentExecutor(
+        llm=getted_llm,
+        system_prompt=system_prompt,
         tools=tools,
-        verbose=True,
-        handle_parsing_errors=True,
-        max_iterations=10, # Stop infinite loops
-        early_stopping_method="generate" # Attempt to answer with what you have
+        max_iterations=max_iterations,
     )
-    return executor

@@ -260,9 +260,12 @@ function OpenMcpsDialog(e) { // eslint-disable-line no-unused-vars
         console.log("--->>> tools: ", tools);
         if (tools.length > 0) {
             let completeTools = "";
-            for (let i = 0; i < tools.length; i++) {
-                const checked = $("#tool-" + (i + 1)).is(":checked");
-                completeTools = completeTools + (i + 1) + "=" + tools[i].description + "=" + checked + ",";
+            for (const tool of tools) {
+                if (!tool || !tool.name) {
+                    continue;
+                }
+                const checked = $("#" + tool.name).is(":checked");
+                completeTools = completeTools + tool.name + "=" + tool.description + "=" + checked + ",";
             }
             console.log("--->>> complete tools: ", completeTools);
             sendChatSocketMessage(JSON.stringify({
@@ -295,9 +298,12 @@ function OpenAgentsDialog(e) { // eslint-disable-line no-unused-vars
         console.log("--->>> agents: ", agents);
         if (agents.length > 0) {
             let completeAgents = "";
-            for (let i = 0; i < agents.length; i++) {
-                const checked = $("#agent-" + (i + 1)).is(":checked");
-                completeAgents = completeAgents + (i + 1) + "=" + agents[i].description + "=" + checked + ",";
+            for (const agent of agents) {
+                if (!agent || !agent.name) {
+                    continue;
+                }
+                const checked = $("#" + agent.name).is(":checked");
+                completeAgents = completeAgents + agent.name + "=" + agent.description + "=" + checked + ",";
             }
             console.log("--->>> complete agents: ", completeAgents);
             sendChatSocketMessage(JSON.stringify({

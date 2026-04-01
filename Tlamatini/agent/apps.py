@@ -20,7 +20,7 @@ class AgentConfig(AppConfig):
             from .global_state import global_state
             from .mcp_system_server import main as mcp_main
             from .mcp_files_search_server import serve as files_serve
-            from .models import AgentProcess
+            from .models import AgentProcess, ChatAgentRun
 
             # Do not start multiple times
             if global_state.get_state('mcp_server_running'):
@@ -43,6 +43,12 @@ class AgentConfig(AppConfig):
                 print("--- Cleaned up all AgentProcess records on startup.")
             except Exception:
                 logging.exception("Failed to cleanup AgentProcess records")
+
+            try:
+                ChatAgentRun.objects.all().delete()
+                print("--- Cleaned up all ChatAgentRun records on startup.")
+            except Exception:
+                logging.exception("Failed to cleanup ChatAgentRun records")
 
             # Repopulate Agent table on startup to ensure all agents in the directory are discovered
             # This is critical for "frozen" mode where migrations might not reflect the actual file system state
