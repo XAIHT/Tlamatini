@@ -48,6 +48,9 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [RAG System](#rag-system)
   - [RAG Chain Types](#rag-chain-types)
   - [Unified Agent with Tools](#unified-agent-with-tools)
+    - [Multi-Turn Tool Loop](#multi-turn-tool-loop)
+    - [Wrapped Chat-Agent Runtime Tools](#wrapped-chat-agent-runtime-tools)
+    - [Runtime Isolation and Lifecycle](#runtime-isolation-and-lifecycle)
   - [Agentic Workflow Designer](#agentic-workflow-designer)
     - [Pause, Stop, and Reanimation of a Flow](#pause-stop-and-reanimation-of-a-flow)
     - [Flow Validation](#flow-validation)
@@ -57,6 +60,9 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Claude API Client](#claude-api-client)
   - [Image Analysis](#image-analysis)
 - [Available Tools](#available-tools)
+  - [Core Tools](#core-tools)
+  - [Wrapped Chat-Agent Tools](#wrapped-chat-agent-tools)
+    - [Wrapped Runtime Lifecycle Tools](#wrapped-runtime-lifecycle-tools)
 - [Workflow Agents](#workflow-agents)
   - [Agent Architecture](#agent-architecture)
   - [Control Agents](#control-agents)
@@ -130,6 +136,8 @@ The system leverages a highly advanced, custom-built **Retrieval-Augmented Gener
 
 Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 55 pre-built agent types.
 
+The main chat surface is now more agentic as well. The unified chat backend runs an explicit multi-turn tool loop and can launch isolated runtime copies of selected workflow-agent templates directly from chat, while persisting their run metadata in the database and exposing status/log/stop follow-up tools.
+
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
 ---
@@ -155,12 +163,15 @@ pip install -r requirements.txt
 
 ### 2. Configure LLM Backend
 
-Ensure [Ollama](https://ollama.ai/) is installed and running, then pull the required models:
+Edit `Tlamatini/agent/config.json` before first run. The current checked-in defaults are:
 
-```bash
-ollama pull bge-m3:latest         # Embedding model
-ollama pull llama3.1:8b           # Chat model (or your preferred model)
-```
+- `embeding-model`: `qwen3-embedding:8b`
+- `chained-model`: `glm-5:cloud`
+- `unified_agent_model`: `glm-5:cloud`
+- `image_interpreter_model`: `qwen3.5:cloud`
+- `internet_classifier_model`, `web_summarizer_model`, `mcp_files_search_model`: `glm-5:cloud`
+
+If you want a fully local Ollama setup, replace those values with locally available Ollama models and keep `ollama_base_url`, `unified_agent_base_url`, and `image_interpreter_base_url` pointed at your Ollama host.
 
 ### 3. Initialize Database
 
@@ -221,7 +232,7 @@ If you are setting up from source (manual setup), you will create your own super
 - Canvas area for viewing, editing, and copying generated code
 - Session persistence across browser reconnections (24-hour expiry)
 - Generation cancellation support
-- Modular frontend architecture (23 JS modules: 8 chat interface + 11 ACP workflow designer + 4 shared)
+- Modular frontend architecture (24 JS modules: 8 chat interface + 11 ACP workflow designer + 5 shared/auxiliary)
 
 ### Advanced RAG System
 - **Dynamic Context Loading**: Set local files or entire directories as context directly from the web interface
@@ -232,12 +243,14 @@ If you are setting up from source (manual setup), you will create your own super
 - **Metadata Enrichment**: Tracks cross-file references and dependency graphs
 
 ### Unified Agent with Tool Calling
+- Explicit multi-turn tool execution instead of a single opaque tool call pass
 - Execute Python scripts and shell commands
 - Image analysis with dual vision backends (Claude Opus and Qwen/Ollama)
 - Java decompilation (JAR/WAR files)
 - ZIP file extraction
-- Agent lifecycle management (start/stop/status)
-- Per-tool enable/disable via global state
+- Template-agent lifecycle management (`agent_parametrizer`, `agent_starter`, `agent_stopper`, `agent_stat_getter`)
+- 32 wrapped chat-agent launchers plus 4 wrapped-runtime follow-up tools
+- Per-tool enable/disable via global state and the chat Tools dialog
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
@@ -304,9 +317,9 @@ If you are setting up from source (manual setup), you will create your own super
 │    RAG Pipeline   │   │   Unified Agent   │   │   MCP Services    │
 │                   │   │                   │   │                   │
 │ - Document loader │   │ - Tool execution  │   │ - System metrics  │
-│ - Text splitters  │   │ - LangChain tools │   │   (WebSocket)     │
+│ - Text splitters  │   │ - Multi-turn loop │   │   (WebSocket)     │
 │ - FAISS + BM25    │   │ - Function calls  │   │ - File search     │
-│ - Context budget  │   │                   │   │   (gRPC)          │
+│ - Context budget  │   │ - Wrapped runtimes│   │   (gRPC)          │
 └───────────────────┘   └───────────────────┘   └───────────────────┘
             │                       │                       │
             └───────────────────────┼───────────────────────┘
@@ -329,9 +342,9 @@ If you are setting up from source (manual setup), you will create your own super
 3. **Context determination**: Check if RAG context is loaded
 4. **Internet check**: Classify if web search is needed
 5. **Chain selection**: Choose appropriate chain (RAG, Basic, or Unified Agent)
-6. **LLM invocation**: Send to configured backend with context
-7. **Streaming response**: Return chunks via WebSocket
-8. **Tool execution**: If tools requested, execute and continue
+6. **LLM invocation**: Send to the configured backend with context and enabled tool surface
+7. **Multi-turn tool loop**: If the unified agent is active, execute requested tools, append tool observations, and continue until a final answer or the iteration limit is reached
+8. **Streaming/broadcast**: Return the resulting answer and status messages via WebSocket
 
 ---
 
@@ -377,13 +390,15 @@ Tlamatini/
 │   │   ├── admin.py                 # Django admin model registration
 │   │   ├── views.py                # HTTP request handlers (102 endpoints)
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
-│   │   ├── models.py               # Database models (12 models)
+│   │   ├── models.py               # Database models (13 models)
 │   │   ├── urls.py                 # URL routing definitions
 │   │   ├── routing.py              # WebSocket URL patterns
 │   │   ├── config.json             # LLM and RAG configuration
 │   │   ├── prompt.pmt              # System prompt template
 │   │   ├── global_state.py         # Thread-safe singleton state (Singleton pattern)
 │   │   ├── constants.py            # Application constants and regex patterns
+│   │   ├── chat_agent_registry.py  # Wrapped chat-agent tool registry and metadata
+│   │   ├── chat_agent_runtime.py   # Isolated wrapped-runtime lifecycle helpers
 │   │   │
 │   │   ├── rag/                    # RAG system package
 │   │   │   ├── __init__.py        # Package exports
@@ -403,8 +418,8 @@ Tlamatini/
 │   │   │       └── unified.py     # Tool-enabled agent chains (LangGraph)
 │   │   │
 │   │   ├── rag_enhancements.py     # Advanced metadata extraction
-│   │   ├── mcp_agent.py            # MCP unified agent builder
-│   │   ├── tools.py                # LangChain tool definitions (12 tools)
+│   │   ├── mcp_agent.py            # MCP unified agent builder and multi-turn executor
+│   │   ├── tools.py                # LangChain tool definitions and wrapped chat-agent launchers
 │   │   ├── web_search_llm.py       # Internet search integration
 │   │   ├── inet_determiner.py      # Search requirement classifier
 │   │   │
@@ -437,7 +452,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (54 types)
+│   │   ├── agents/                 # Workflow agent templates (55 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -559,11 +574,9 @@ Tlamatini/
 ### Prerequisites
 
 - **Python 3.12+**
-- **Ollama** installed and running (for local LLM inference)
-- Required LLM models pulled in Ollama:
-  - Embedding model (e.g., `bge-m3:latest`)
-  - Chat model (e.g., `llama3.1:8b` or any preferred model)
-  - (Optional) Vision model for image analysis (e.g., `qwen3.5:cloud`)
+- Either:
+  - the current checked-in cloud/back-end configuration from `Tlamatini/agent/config.json`, or
+  - **Ollama** installed and running with your chosen local models configured in `config.json`
 
 ### Manual Setup from Source
 
@@ -594,11 +607,15 @@ Tlamatini/
    Edit `Tlamatini/agent/config.json`:
    ```json
    {
-     "embeding-model": "bge-m3:latest",
-     "chained-model": "your-preferred-model",
+     "embeding-model": "qwen3-embedding:8b",
+     "chained-model": "glm-5:cloud",
+     "unified_agent_model": "glm-5:cloud",
+     "image_interpreter_model": "qwen3.5:cloud",
      "ollama_base_url": "http://127.0.0.1:11434"
    }
    ```
+
+   Replace those defaults if you want a fully local Ollama configuration.
 
 5. **Apply database migrations**
    ```bash
@@ -633,13 +650,13 @@ The main configuration file is located at `Tlamatini/agent/config.json`:
 
 ```json
 {
-  "embeding-model": "bge-m3:latest",
-  "chained-model": "deepseek-v3.1:671b-cloud",
+  "embeding-model": "qwen3-embedding:8b",
+  "chained-model": "glm-5:cloud",
   "ollama_base_url": "http://127.0.0.1:11434",
   "ollama_token": "",
-  "ANTHROPIC_API_KEY": "",
+  "ANTHROPIC_API_KEY": "config you api key here by claude",
   "enable_unified_agent": true,
-  "unified_agent_model": "deepseek-v3.1:671b-cloud",
+  "unified_agent_model": "glm-5:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0
 }
@@ -647,13 +664,13 @@ The main configuration file is located at `Tlamatini/agent/config.json`:
 
 | Key | Description |
 |-----|-------------|
-| `embeding-model` | Ollama model for text embeddings |
-| `chained-model` | Primary chat model |
+| `embeding-model` | Embedding model for the retrieval pipeline |
+| `chained-model` | Primary chat model used by non-tool chat chains |
 | `ollama_base_url` | Ollama server URL |
 | `ollama_token` | Bearer token for authenticated Ollama instances (optional) |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude image analysis |
+| `ANTHROPIC_API_KEY` | Anthropic API key placeholder for Claude-backed image analysis |
 | `enable_unified_agent` | Enable tool-calling agent |
-| `unified_agent_model` | Model for the unified agent |
+| `unified_agent_model` | Model used by the unified agent multi-turn tool loop |
 | `unified_agent_base_url` | Base URL for the unified agent's LLM |
 | `unified_agent_temperature` | Temperature for agent responses (0.0 = deterministic) |
 
@@ -875,7 +892,7 @@ daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application
 When the application starts, the following sequence occurs automatically:
 
 1. **Django initialization** (`manage.py`) - Sets `FOR_DISABLE_CONSOLE_CTRL_HANDLER=1` (Intel Fortran runtime fix), loads settings
-2. **App ready hook** (`agent/apps.py`) - Cleans pools directory, clears `AgentProcess` records, registers signal handlers
+2. **App ready hook** (`agent/apps.py`) - Cleans pools directory, clears `AgentProcess` and `ChatAgentRun` records, repopulates the Agent table from the current `agent/agents/` directory, and registers signal handlers
 3. **MCP servers launch** - System metrics server (WebSocket:8765) and file search server (gRPC:50051) start in daemon threads
 4. **Web server** - Daphne ASGI server listens on `0.0.0.0:8000` (HTTP + WebSocket)
 
@@ -1087,6 +1104,80 @@ agent = create_unified_agent(llm, system_prompt)
 result = agent.invoke({"input": "Run the tests and show me the results"})
 ```
 
+The current implementation is no longer a single opaque agent-executor hop. `create_unified_agent()` now builds a `MultiTurnToolAgentExecutor` that binds the enabled MCP tools to a chat-capable model and explicitly controls the tool-call / observation loop.
+
+#### Multi-Turn Tool Loop
+
+The main chat path now behaves as follows:
+
+1. Build the enabled tool surface from `get_mcp_tools()`
+2. Bind those tools to the configured unified-agent model
+3. Send the user request plus the system prompt to the model
+4. If the model emits `tool_calls`, execute them directly in the backend
+5. Append each tool result as a `ToolMessage`
+6. Re-invoke the model until it returns a final answer or the iteration limit is reached
+
+The current default iteration limit is `20` turns unless `unified_agent_max_iterations` is explicitly set in `config.json`.
+
+#### Wrapped Chat-Agent Runtime Tools
+
+The April 1 chat-runtime update added a second execution layer on top of the classic MCP tools: the main chat can now launch isolated runtime copies of selected workflow-agent templates via `chat_agent_*` tools.
+
+The current wrapped launchers are:
+
+- `chat_agent_crawler`
+- `chat_agent_send_email`
+- `chat_agent_executer`
+- `chat_agent_gitter`
+- `chat_agent_sqler`
+- `chat_agent_ssher`
+- `chat_agent_scper`
+- `chat_agent_pythonxer`
+- `chat_agent_dockerer`
+- `chat_agent_kuberneter`
+- `chat_agent_jenkinser`
+- `chat_agent_mongoxer`
+- `chat_agent_file_creator`
+- `chat_agent_file_extractor`
+- `chat_agent_file_interpreter`
+- `chat_agent_image_interpreter`
+- `chat_agent_summarize_text`
+- `chat_agent_pser`
+- `chat_agent_notifier`
+- `chat_agent_shoter`
+- `chat_agent_telegramer`
+- `chat_agent_whatsapper`
+- `chat_agent_apirer`
+- `chat_agent_prompter`
+- `chat_agent_monitor_log`
+- `chat_agent_monitor_netstat`
+- `chat_agent_kyber_keygen`
+- `chat_agent_kyber_cipher`
+- `chat_agent_kyber_deciph`
+- `chat_agent_move_file`
+- `chat_agent_deleter`
+- `chat_agent_recmailer`
+
+#### Runtime Isolation and Lifecycle
+
+Wrapped chat-agent tools do **not** mutate the template agent directories in place. Instead, the backend:
+
+1. Copies the selected template agent into `agent/agents/pools/__chat_runs__/...`
+2. Parses natural-language `key=value` assignments from the request and applies them to the runtime `config.yaml`
+3. Rejects launches that are still missing mandatory non-flow parameters
+4. Starts the runtime copy as a detached subprocess
+5. Persists run metadata in the `ChatAgentRun` model
+6. Returns structured JSON including `run_id`, `status`, `runtime_dir`, `log_path`, and `log_excerpt`
+
+Follow-up inspection/control is exposed through four runtime tools:
+
+- `chat_agent_run_list`
+- `chat_agent_run_status`
+- `chat_agent_run_log`
+- `chat_agent_run_stop`
+
+These wrapped runtimes are intentionally isolated from ACP flow control. The current `/check_all_agents_status/`, `/get_session_running_processes/`, and `/kill_session_processes/` views skip the `__chat_runs__` pool subtree, so pausing or stopping a canvas flow does not accidentally kill chat-launched wrapped runtimes.
+
 ### Agentic Workflow Designer
 
 Access via `/agentic_control_panel/` URL. Features:
@@ -1117,18 +1208,22 @@ The Agentic Control Panel entry point is `agentic_control_panel.html`. These con
 
 #### Flow Validation
 
-Before executing a workflow, the Validate button performs a comprehensive 6-point structural verification by building an NxN adjacency matrix from all agent connections and checking:
+Before executing a workflow, the Validate button builds an NxN adjacency matrix from all deployed pool agents and applies the current structural rules implemented in `acp-validate.js`:
 
 | Check | Rule | Example Violation |
 |-------|------|-------------------|
 | **V1** | Starter agents have no incoming connections | Another agent targeting a Starter |
-| **V2** | Ender agents only connect to Cleaner agents | Ender targeting an Executer |
-| **V3** | Cleaner agents only receive input from Ender agents | Cleaner connected to a Monitor |
-| **V4** | No self-connections (diagonal must be zero) | Agent targeting itself |
-| **V5** | All non-Starter agents have at least one input | Orphaned agent with no upstream |
-| **V6** | Referenced agents exist and accept input connections | Dangling reference or targeting a Starter |
+| **V2** | Ender output agents can only be Cleaner or FlowBacker | Ender targeting an Executer |
+| **V2b** | Ender must not launch Cleaner directly when it also launches FlowBacker | Ender launching Cleaner and FlowBacker in parallel |
+| **V3** | Cleaner agents only receive input from Ender or FlowBacker | Cleaner connected to a Monitor |
+| **V3b** | Cleaner must be triggered by either Ender or FlowBacker, never both in the same branch | Mixed Ender and FlowBacker input into one Cleaner |
+| **V4** | FlowBacker agents only receive input from Starter, Ender, Forker, or Asker | FlowBacker connected from Monitor Log |
+| **V5** | FlowBacker output agents can only be Cleaner | FlowBacker targeting Executer |
+| **V6** | No self-connections (diagonal must be zero) | Agent targeting itself |
+| **V7** | All non-Starter agents have at least one input | Orphaned agent with no upstream |
+| **V8** | Referenced agents exist and accept input connections where required | Dangling reference or targeting a Starter |
 
-The validation endpoint (`/validate_flow/`) lists all deployed agents in the session pool, loads their configurations, builds the connection matrix, and runs all six checks. Results are displayed in a dialog with per-agent error details and suggestions.
+The validation endpoint (`/validate_flow/`) lists all deployed agents in the session pool, loads their configurations, builds the connection matrix, and runs the full rule set above. Results are displayed in a dialog with per-agent error details and suggestions.
 
 ### MCP Integration
 
@@ -1152,7 +1247,7 @@ Tlamatini implements two MCP servers that start automatically on application boo
 
 ### Database Models
 
-The application uses Django ORM with SQLite and defines the following models in `agent/models.py`:
+The application uses Django ORM with SQLite and currently defines 13 models in `agent/models.py`:
 
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
@@ -1166,6 +1261,7 @@ The application uses Django ORM with SQLite and defines the following models in 
 | **Tool** | Tool definitions for the unified agent | `toolName`, `toolDescription`, `toolContent` |
 | **Agent** | Agent metadata and configuration | `agentName`, `agentDescription`, `agentContent` |
 | **AgentProcess** | Running process tracking (PID registry) | `agentProcessDescription`, `agentProcessPid` |
+| **ChatAgentRun** | Runtime metadata for chat-launched wrapped template agents | `runId`, `toolDescription`, `templateAgentDir`, `runtimeDir`, `logPath`, `pid`, `status`, `exitCode`, `startedAt`, `finishedAt` |
 | **Asset** | Asset definitions | `assetName`, `assetDescription`, `assetContent` |
 | **SessionState** | Per-user session persistence (24-hour expiry) | `user` (1:1->User), `context_path`, `context_type`, `context_filename`, `last_active` |
 
@@ -1223,20 +1319,44 @@ Tlamatini supports two image analysis backends:
 
 Tools can be individually enabled/disabled via the Tools Dialog in the chat interface.
 
+### Core Tools
+
 | Tool | Description | Example Usage |
 |------|-------------|---------------|
 | `get_current_time` | Returns current datetime | "What time is it?" |
-| `execute_file` | Runs Python scripts in new terminal | "Run the test script at /path/script.py" |
+| `execute_file` | Runs Python scripts in a new terminal | "Run the test script at /path/script.py" |
 | `execute_command` | Executes shell commands | "List files in the current directory" |
 | `execute_netstat` | Network diagnostics | "Show network connections" |
-| `execute_agent` | Starts a workflow agent | "Start the monitor_log agent" |
-| `stop_agent` | Stops a running agent | "Stop the emailer agent" |
-| `agent_status` | Checks agent status | "Is the monitor running?" |
-| `launch_view_image` | Opens images in viewer | "Show me the screenshot" |
+| `launch_view_image` | Opens images in a viewer | "Show me the screenshot" |
 | `unzip_file` | Extracts ZIP archives | "Extract archive.zip to /output" |
 | `decompile_java` | Decompiles JAR/WAR files | "Decompile the application.jar" |
 | `opus_analyze_image` | Image analysis with Claude | "Describe with Opus the image photo.jpg" |
 | `qwen_analyze_image` | Image analysis with Qwen/Ollama | "Describe the image diagram.png" |
+| `agent_parametrizer` | Parametrize a template agent from chat | "Configure the template emailer agent with sender_email='ops@example.com'" |
+| `agent_starter` | Start a template workflow agent from chat | "Start the monitor_log agent" |
+| `agent_stopper` | Stop a template workflow agent from chat | "Stop the emailer agent" |
+| `agent_stat_getter` | Check template-agent runtime status | "Is the monitor_log agent running?" |
+
+### Wrapped Chat-Agent Tools
+
+Wrapped chat-agent launchers create isolated runtime copies of selected template agents under `agent/agents/pools/__chat_runs__/...` and return structured JSON with run metadata.
+
+| Family | Tool Names | Purpose |
+|--------|------------|---------|
+| Execution and file actions | `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_pser`, `chat_agent_move_file`, `chat_agent_deleter` | Command execution, inline Python, process inspection, and file movement/deletion |
+| DevOps and infrastructure | `chat_agent_gitter`, `chat_agent_dockerer`, `chat_agent_kuberneter`, `chat_agent_jenkinser`, `chat_agent_ssher`, `chat_agent_scper` | Git, Docker, Kubernetes, Jenkins, SSH, and SCP operations |
+| Data and interpretation | `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_file_creator`, `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`, `chat_agent_summarize_text` | SQL/MongoDB access, file creation/extraction, multimodal file interpretation, and summarization |
+| Notifications and comms | `chat_agent_send_email`, `chat_agent_notifier`, `chat_agent_telegramer`, `chat_agent_whatsapper`, `chat_agent_recmailer` | Outbound/inbound notification and messaging workflows |
+| Crawling, monitoring, APIs, prompting, and crypto | `chat_agent_crawler`, `chat_agent_monitor_log`, `chat_agent_monitor_netstat`, `chat_agent_shoter`, `chat_agent_apirer`, `chat_agent_prompter`, `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph` | Crawling, monitoring, screenshots, API calls, sub-prompts, and Kyber operations |
+
+#### Wrapped Runtime Lifecycle Tools
+
+| Tool | Description | Typical Follow-Up |
+|------|-------------|-------------------|
+| `chat_agent_run_list` | List recent wrapped chat-agent runs | Get a `run_id` to inspect |
+| `chat_agent_run_status` | Inspect the current status of a wrapped runtime | Poll a running wrapped agent |
+| `chat_agent_run_log` | Read the latest log excerpt for a wrapped runtime | Inspect progress or failure details |
+| `chat_agent_run_stop` | Stop a wrapped runtime by `run_id` | Cancel a long-running wrapped agent |
 
 ---
 
@@ -1357,7 +1477,7 @@ Agents are classified as:
 | **kyber_keygen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs in base64 format. Supports Kyber-512, Kyber-768, and Kyber-1024 variants. | `kyber_variant`: kyber-768<br>`source_agents`: Upstream agents<br>`target_agents`: Downstream agents |
 | **kyber_cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR. Logs encapsulation, IV, and cipher text in base64. | `kyber_variant`: kyber-768<br>`public_key`: Base64 public key<br>`buffer`: Plaintext to encrypt<br>`target_agents`: Downstream agents |
 | **kyber_decipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR. Logs deciphered buffer in original format. | `kyber_variant`: kyber-768<br>`private_key`: Base64 private key<br>`encapsulation`: Base64 encapsulation<br>`initialization_vector`: Base64 IV<br>`cipher_text`: Base64 cipher text<br>`target_agents`: Downstream agents |
-| **parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via an interconnection-scheme.csv. When multiple output elements exist, iterates sequentially: fill config, start target, wait, repeat. Only connects to agents with structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher). | `source_agent`: Source agent name<br>`target_agent`: Target agent name<br>`source_agents`: [] (max 1)<br>`target_agents`: [] (max 1) |
+| **parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via an interconnection scheme saved for the deployed pool instance. When multiple output elements exist, it iterates sequentially: fill config, start target, wait, repeat. Current structured-output sources are Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, and Gateway-Relayer. | `source_agent`: Source agent name<br>`target_agent`: Target agent name<br>`source_agents`: [] (max 1)<br>`target_agents`: [] (max 1) |
 | **barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Each source agent starts a separate barrier process (input sub-process) that creates a flag file; the first arrival becomes the output sub-process that polls until all flags are present, then fires. Uses cross-process file-based locking to avoid race conditions. | `source_agents`: Upstream agents whose startup is awaited<br>`target_agents`: Downstream agents to start when all sources have checked in |
 
 Each agent has a `config.yaml` file for customization.
@@ -1587,7 +1707,7 @@ In most workflow systems, data hand-off between stages is either hardcoded or re
 
 Tlamatini agents communicate through **log files** (structured output) and **config.yaml files** (input parameters). This is deliberate — each agent is a self-contained process with no shared memory, no message bus, and no coupling. But this design creates a gap: how does the response body from an API call (Apirer) become the `buffer` parameter for encryption (Kyber-Cipher)? How do Kyber-KeyGen's generated keys flow into Kyber-Cipher's `public_key` field?
 
-Before Parametrizer, the answer was: manually edit `config.yaml` between runs, or write a custom agent. Parametrizer turns this into a **zero-code, visual wiring operation** that works with any combination of the 13 agents that produce structured output.
+Before Parametrizer, the answer was: manually edit `config.yaml` between runs, or write a custom agent. Parametrizer turns this into a **zero-code, visual wiring operation** that works with any combination of the 15 source agents that currently produce structured output for it.
 
 ### How It Works
 
@@ -1601,11 +1721,11 @@ Parametrizer operates in five phases:
 └─────────────┘    └──────────────────┘    └──────────────────┘    └─────────────┘    └──────────┘
 ```
 
-**Phase 1 — Validate.** Confirms exactly one source and one target are connected, and that the source is one of the 13 recognized structured-output agents.
+**Phase 1 — Validate.** Confirms exactly one source and one target are connected, and that the source is one of the 15 recognized structured-output agents.
 
-**Phase 2 — Load Scheme.** Reads `interconnection-scheme.csv` from its own directory. This CSV is the single source of truth for which output fields map to which config parameters.
+**Phase 2 — Load Scheme.** Reads the saved interconnection scheme for the deployed pool instance. The backend persists the mapping as `interconnection-scheme.csv` inside the deployed Parametrizer pool directory, and that CSV is the single source of truth for which output fields map to which config parameters.
 
-**Phase 3 — Parse Source.** Reads the source agent's log file and runs the appropriate parser from the `OUTPUT_PARSERS` registry. Each of the 13 supported source agents has a dedicated regex-based parser that extracts structured blocks into dictionaries.
+**Phase 3 — Parse Source.** Reads the source agent's log file and runs the appropriate parser from the `OUTPUT_PARSERS` registry. Each of the 15 supported source agents has a dedicated parser that extracts structured blocks into dictionaries.
 
 **Phase 4 — Map & Write.** For each extracted output block, applies the CSV mappings: looks up each `source_field` in the parsed dictionary and writes the value into the corresponding `target_param` in the target agent's `config.yaml`.
 
@@ -1624,11 +1744,11 @@ public_key,public_key
 
 Each row is one wire: "take `source_field` from the parsed output and write it into `target_param` in the target's config.yaml." This file is created and managed through the visual mapping dialog on the canvas, but can also be edited by hand.
 
-The CSV lives inside the Parametrizer agent's own directory (`agents/parametrizer/interconnection-scheme.csv`) and is versioned with the flow when saved.
+In the current code, the CSV is not shipped as a static file inside `agents/parametrizer/`. It is saved at runtime for the deployed Parametrizer instance in the current session pool through `/save_parametrizer_scheme/<agent_name>/`.
 
 ### Supported Source Agents and Their Output Fields
 
-Parametrizer includes dedicated parsers for 13 agent types. Each parser understands the agent's unique log format and extracts named fields:
+Parametrizer includes dedicated parsers for 15 agent types. Each parser understands the agent's unique log format and extracts named fields:
 
 | Source Agent | Log Pattern | Extracted Fields |
 |---|---|---|
@@ -1645,6 +1765,8 @@ Parametrizer includes dedicated parsers for 13 agent types. Each parser understa
 | **Kyber-KeyGen** | `KYBER PUBLIC KEY {\n...\n}` + `KYBER PRIVATE KEY {\n...\n}` | `public_key`, `private_key` |
 | **Kyber-Cipher** | `KYBER GENERATED ENCAPSULATION/INIT VECTOR/CIPHER TEXT {\n...\n}` | `encapsulation`, `initialization_vector`, `cipher_text` |
 | **Kyber-DeCipher** | `KYBER DECIPHERED BUFFER {\n...\n}` | `deciphered_buffer` |
+| **Gatewayer** | `INI_GATEWAY_EVENT<<<\nkey: value\n...\n>>>END_GATEWAY_EVENT` | `event_id`, `event_type`, `session_id`, `correlation_id`, `content_type`, `method`, `path`, `body` |
+| **Gateway-Relayer** | `INI_RELAY_EVENT<<<\nkey: value\n...\n>>>END_RELAY_EVENT` | `event_type`, `delivery_id`, `action`, `ref`, `repository`, `sender`, `body` |
 
 ### Iterative Execution Model
 
@@ -1675,7 +1797,7 @@ On the canvas, double-clicking or right-clicking a Parametrizer agent opens its 
 2. **Shows two columns** — left column lists the source agent's available output fields (cyan theme), right column lists the target agent's config.yaml parameters (orange theme).
 3. **Click-to-wire** — click a source field, then click a target parameter to create a mapping. A curved SVG Bezier line (gradient from cyan to orange) visually confirms the connection.
 4. **Click-to-remove** — click any existing line to remove that mapping.
-5. **Save** — writes the `interconnection-scheme.csv` to the backend.
+5. **Save** — writes the interconnection scheme CSV for the deployed Parametrizer instance to the backend.
 
 The dialog dynamically adapts to whatever source and target agents are connected — the field lists are always current with the actual agent types.
 
@@ -1712,7 +1834,7 @@ Two Parametrizer instances chain the entire cryptographic lifecycle: the first m
 ### Design Constraints
 
 - **One-to-one only.** Exactly one source agent and one target agent per Parametrizer instance. For fan-out or fan-in patterns, use multiple Parametrizer instances.
-- **Source must produce structured output.** Only the 13 agents listed above are valid sources. Connecting an unsupported source (e.g., Starter, Sleeper) will fail validation at both dialog-open time and runtime.
+- **Source must produce structured output.** Only the 15 agents listed above are valid sources. Connecting an unsupported source (e.g., Starter, Sleeper) will fail validation at both dialog-open time and runtime.
 - **Target can be any agent.** The target side has no type restriction — Parametrizer writes into whatever fields exist in the target's `config.yaml`.
 - **Mappings are static per run.** The CSV is read once at startup. To change mappings, stop the flow, update via the dialog, and restart.
 - **Sequential, not parallel.** When iterating over multiple output blocks, the target agent runs one-at-a-time. This is by design — it prevents race conditions on the target's config file and ensures deterministic ordering.
@@ -2018,96 +2140,51 @@ target_agents:
 
 #### Client to Server Messages
 
-**Chat Message:**
+The current consumer accepts either a plain chat payload or one of the explicit control message types implemented in `agent/consumers.py`.
+
+**Plain chat request:**
 ```json
 {
-  "type": "chat_message",
   "message": "Your question here"
 }
 ```
 
-**Set Context (Directory):**
-```json
-{
-  "type": "set_context",
-  "path": "/path/to/project",
-  "context_type": "directory"
-}
-```
+**Current explicit control message types:**
 
-**Set Context (File):**
-```json
-{
-  "type": "set_context",
-  "path": "/path/to/file.py",
-  "context_type": "file",
-  "filename": "file.py"
-}
-```
-
-**Clear Context:**
-```json
-{
-  "type": "clear_context"
-}
-```
-
-**Cancel Generation:**
-```json
-{
-  "type": "cancel_generation"
-}
-```
-
-**Toggle Internet Search:**
-```json
-{
-  "type": "toggle_inet",
-  "enabled": true
-}
-```
+| Type | Purpose |
+|------|---------|
+| `set-canvas-as-context` | Use the current canvas file as context |
+| `unset-canvas-as-context` | Remove the canvas file from context |
+| `set-directory-as-context` | Load a directory as context |
+| `set-file-as-context` | Load a single file as context |
+| `cancel-current` | Cancel the current generation |
+| `reconnect-llm-agent` | Rebuild the current LLM/RAG chain |
+| `clean-history-and-reconnect` | Clear chat history and rebuild the chain |
+| `clear-context` | Remove persisted context and rebuild the chain |
+| `cancel-all` | Cancel all active generation work |
+| `save-files-from-db` | Persist canvas/database-backed files |
+| `enable-llm-internet-access` | Enable internet access for the LLM |
+| `disable-llm-internet-access` | Disable internet access for the LLM |
+| `view-context-dir-in-canvas` | Show the current context directory tree in the canvas |
+| `set-file-omissions` | Update file omission patterns |
+| `set-mcps` | Persist MCP enablement/configuration |
+| `set-tools` | Persist tool enablement/configuration |
+| `set-agents` | Persist agent enablement/configuration |
 
 #### Server to Client Messages
 
-**Chat Response (Streaming):**
+**Chat / status broadcast:**
 ```json
 {
-  "type": "chat_log",
-  "message": "Response text chunk",
-  "done": false
-}
-```
-
-**Code Canvas:**
-```json
-{
-  "type": "canvas",
-  "name": "program.py",
-  "content": "def hello():\n    print('Hello')",
-  "language": "python"
-}
-```
-
-**Status Update:**
-```json
-{
-  "type": "status",
-  "message": "Processing..."
-}
-```
-
-**Error:**
-```json
-{
-  "type": "error",
-  "message": "Error description"
+  "message": "Processing request...",
+  "username": "LLM_Bot"
 }
 ```
 
 **Session Restored:**
 ```json
 {
-  "type": "session_restored",
+  "type": "session-restored",
   "context_type": "directory",
   "context_path": "/path/to/project"
 }
@@ -2157,7 +2234,7 @@ target_agents:
 | `/asker_choice/<agent_name>/` | POST | Submit user choice for Asker agent |
 | `/execute_flowhypervisor/<agent_name>/` | POST | Start the FlowHypervisor agent |
 | `/check_flowhypervisor_alert/<agent_name>/` | GET | Check for FlowHypervisor alerts |
-| `/validate_flow/` | GET | Run 6-point flow structure validation |
+| `/validate_flow/` | GET | Run the current ACP structural flow validation rules |
 
 #### Connection Updates (Canvas Auto-Configuration)
 
@@ -2254,7 +2331,7 @@ When reconnecting:
 1. WebSocket connection established
 2. System checks for existing session state
 3. If valid (not expired), context is automatically restored
-4. User receives `session_restored` message
+4. User receives `session-restored` message
 5. RAG chain rebuilt with previous context
 
 ### Clearing Session
@@ -2515,7 +2592,7 @@ Enable verbose logging in config.json:
 | **File-Interpreter** | Hybrid agent that reads and parses document files, extracting text and images, with optional LLM-powered summarization |
 | **Image-Interpreter** | Non-deterministic agent that analyzes images using an LLM vision model, logging structured descriptions for each image |
 | **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery, user-configurable `user_instructions` for fine-tuning supervision, and dual-layer auto-stop |
-| **Flow Validation** | Pre-execution 6-point structural verification that builds an NxN adjacency matrix from agent connections and validates topology rules (Starter inputs, Ender outputs, self-connections, orphaned agents, dangling references) |
+| **Flow Validation** | Pre-execution structural verification that builds an NxN adjacency matrix from agent connections and validates the current Starter, Ender, Cleaner, FlowBacker, self-connection, orphan, and dangling-reference rules |
 | **jd-cli** | Java Decompiler CLI tool bundled with the application for decompiling JAR/WAR files to source code |
 | **PyAutoGUI** | Python library for programmatic mouse and keyboard control, used by the Mouser agent |
 | **Asker** | Deterministic agent that pauses workflow for interactive user A/B choice |
@@ -2538,7 +2615,7 @@ Enable verbose logging in config.json:
 | **Kyber-KeyGen** | Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512/768/1024) in base64 format, logs keys, and triggers downstream agents |
 | **Kyber-Cipher** | Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via encapsulation + AES-256-CTR, logs encapsulation/IV/ciphertext in base64, and triggers downstream agents |
 | **Kyber-DeCipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer, and triggers downstream agents |
-| **Parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via interconnection-scheme.csv, supporting iterative execution for multiple output elements |
+| **Parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via a deployed interconnection scheme CSV, supporting iterative execution for multiple output elements |
 | **Barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier, waiting for ALL configured source agents to start before triggering downstream target agents via cross-process file-based locking and flag files |
 
 ---
@@ -2586,9 +2663,12 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **Main Chat Multi-Turn Tool Loop** - `agent/mcp_agent.py` now builds a `MultiTurnToolAgentExecutor` for the unified chat path. Instead of a single opaque tool-call pass, the backend now iterates through model tool requests explicitly, executes them in-process, appends `ToolMessage` observations, and continues until a final answer or the iteration limit is reached
+- **Wrapped Chat-Agent Runtime Layer** - Added `chat_agent_registry.py`, `chat_agent_runtime.py`, migration `0064_add_chat_agent_run_model.py`, migration `0065_add_chat_wrapped_agent_tools.py`, and the `ChatAgentRun` model. The chat surface can now launch 32 isolated `chat_agent_*` runtime copies of template agents plus 4 run-management tools (`chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop`)
+- **Chat Runtime Isolation from ACP Flow Control** - ACP/session process scans now skip the `agent/agents/pools/__chat_runs__/` runtime root, so flow pause/status/kill logic tracks only deployed canvas agents and does not accidentally terminate chat-launched wrapped runtimes
 - **Added J-Decompiler Agent** - Short-running deterministic action agent that decompiles `.class`, `.jar`, `.war`, and `.ear` artifacts using the bundled `jd-cli`, supports wildcard and recursive scans, writes Java sources beside the original artifacts, and triggers downstream agents after completion
 - **Added Barrier Agent** - Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Uses cross-process file-based locking and flag files to coordinate multiple separate barrier processes started by source agents
-- **Added Parametrizer Agent** - Short-running active utility interconnection agent that maps structured outputs from source agent logs to target agent config.yaml parameters via a visual mapping dialog and interconnection-scheme.csv. Supports iterative execution for multiple output elements, connecting agents that produce structured output (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher) to any target agent
+- **Added Parametrizer Agent** - Short-running active utility interconnection agent that maps structured outputs from source agent logs to target agent config.yaml parameters via a visual mapping dialog and a deployed interconnection-scheme CSV saved for the current pool instance. Supports iterative execution for multiple output elements, connecting current structured-output sources (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, and Gateway-Relayer) to any target agent
 - **Added Kyber-DeCipher Agent** - Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer in original format
 - **Added Kyber-Cipher Agent** - Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key via Kyber encapsulation + AES-256-CTR, logs encapsulation, initialization vector, and cipher text in base64 format
 - **Added Kyber-KeyGen Agent** - Short-running infrastructure deterministic agent that generates CRYSTALS-Kyber public/private key pairs (Kyber-512, Kyber-768, Kyber-1024) in base64 format, logs keys in structured format, and triggers downstream agents
