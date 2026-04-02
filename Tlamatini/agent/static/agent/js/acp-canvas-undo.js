@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -16,6 +16,7 @@ function captureItemState(item) {
     return {
         id: item.id,
         agentName: item.dataset.agentName || '',
+        agentPurpose: item.dataset.agentPurpose || '',
         displayText: item.textContent.trim(),
         position: {
             x: parseFloat(item.style.left) || 0,
@@ -68,8 +69,12 @@ async function recreateCanvasItem(state) {
     const newItem = document.createElement('div');
     newItem.className = state.classes.join(' ');
     newItem.id = state.id;
-    newItem.dataset.agentName = state.agentName;
     newItem.textContent = state.displayText;
+    setCanvasItemMetadata(
+        newItem,
+        state.agentName,
+        state.agentPurpose || getAgentPurposeForName(state.agentName)
+    );
 
     const agentName = state.agentName.toLowerCase();
     appendInputTriangles(newItem, agentName);
@@ -854,4 +859,3 @@ window.addEventListener('keydown', async (e) => {
         markDirty();
     }
 });
-

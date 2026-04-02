@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // SAVE BUTTON
@@ -30,6 +30,7 @@ if (saveBtn) {
                 text: agentName,
                 left: node.style.left,
                 top: node.style.top,
+                agentPurpose: node.dataset.agentPurpose || getAgentPurposeForName(agentName),
                 configData: ACP.nodeConfigs.get(node.id) || null
             });
         });
@@ -201,18 +202,20 @@ async function loadDiagram(data) {
                 agentText = 'Flowcreator';
                 newItem.textContent = agentText;
                 newItem.id = 'flowcreator';
-                newItem.dataset.agentName = agentText;
             } else if (lowerName === 'flowhypervisor') {
                 agentText = 'FlowHypervisor';
                 newItem.textContent = agentText;
                 newItem.id = 'flowhypervisor';
-                newItem.dataset.agentName = agentText;
             } else {
                 const registration = registerItem(agentText);
                 newItem.textContent = `${agentText} (${registration.count})`;
                 newItem.id = registration.id;
-                newItem.dataset.agentName = agentText;
             }
+            setCanvasItemMetadata(
+                newItem,
+                agentText,
+                nodeData.agentPurpose || getAgentPurposeForName(agentText)
+            );
 
             applyAgentTypeClass(newItem, lowerName);
             appendInputTriangles(newItem, lowerName);

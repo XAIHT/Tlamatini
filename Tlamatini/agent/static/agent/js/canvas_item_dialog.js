@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+/* global setCanvasItemMetadata, getAgentPurposeForName */
 const canvasItemDialogMessage = document.getElementById('canvas-item-dialog-message');
 const canvasItemPrimaryDialogLegend = document.getElementById('canvas-item-primary-dialog-legend');
 const canvasItemList = document.getElementById('canvas-item-list');
@@ -1005,7 +1006,11 @@ async function _renderFlowCreatorResult(flowResult, flowCreatorId, flowCreatorIt
         const registration = registerItem(agentText);
         newItem.textContent = `${agentText} (${registration.count})`;
         newItem.id = registration.id;
-        newItem.dataset.agentName = agentText;
+        setCanvasItemMetadata(
+            newItem,
+            agentText,
+            nodeData.agentPurpose || getAgentPurposeForName(agentText)
+        );
 
         const lowerName = agentText.toLowerCase().replace(/\s+/g, '-');
         applyAgentTypeClass(newItem, lowerName);
@@ -1140,8 +1145,6 @@ function _closeFlowCreatorProgress(overlay) {
         overlay.parentNode.removeChild(overlay);
     }
 }
-
-
 
 
 

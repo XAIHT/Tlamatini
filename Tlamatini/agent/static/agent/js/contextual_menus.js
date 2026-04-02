@@ -18,6 +18,7 @@ let logViewerUserScrolledUp = false; // Track if user has scrolled up manually
 document.addEventListener('DOMContentLoaded', () => {
     initContextMenu();
     initLogViewerModal();
+    initDescriptionDialog();
 });
 
 function initContextMenu() {
@@ -56,6 +57,7 @@ function initContextMenu() {
         if (e.key === 'Escape') {
             hideContextMenu();
             hideLogViewer();
+            hideDescriptionDialog();
         }
     });
 
@@ -67,6 +69,19 @@ function initContextMenu() {
             e.stopPropagation();
             if (currentContextMenuItem) {
                 openConfigureDialog(currentContextMenuItem);
+            }
+            hideContextMenu();
+        });
+    }
+
+    // Menu item: Description
+    const descriptionMenuItem = document.getElementById('ctx-menu-description');
+    if (descriptionMenuItem) {
+        descriptionMenuItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentContextMenuItem) {
+                openDescriptionDialog(currentContextMenuItem);
             }
             hideContextMenu();
         });
@@ -189,6 +204,90 @@ function hideContextMenu() {
         contextMenu.style.display = 'none';
     }
     currentContextMenuItem = null;
+}
+
+function initDescriptionDialog() {
+    const descriptionDialog = document.getElementById('agent-description-dialog');
+    const closeBtn = document.getElementById('agent-description-close');
+    const overlay = document.getElementById('agent-description-overlay');
+
+    if (!descriptionDialog) {
+        console.warn('Agent description dialog not found');
+        return;
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            hideDescriptionDialog();
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            hideDescriptionDialog();
+        });
+    }
+
+    makeElementDraggable(descriptionDialog, document.getElementById('agent-description-header'));
+}
+
+function renderAgentDescriptionHtml(descriptionText) {
+    const escapedText = String(descriptionText || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    return escapedText
+        .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.+?)`/g, '<code>$1</code>');
+}
+
+window.renderAgentDescriptionHtml = renderAgentDescriptionHtml;
+
+function openDescriptionDialog(canvasItem) {
+    const agentName = canvasItem.dataset.agentName || canvasItem.textContent.trim() || canvasItem.id;
+    const descriptionDialog = document.getElementById('agent-description-dialog');
+    const descriptionOverlay = document.getElementById('agent-description-overlay');
+    const descriptionTitle = document.getElementById('agent-description-title');
+    const descriptionContent = document.getElementById('agent-description-content');
+    const purpose = canvasItem.dataset.agentPurpose || '';
+
+    if (!descriptionDialog || !descriptionOverlay || !descriptionContent) {
+        console.error('Agent description dialog elements not found');
+        return;
+    }
+
+    if (descriptionTitle) {
+        descriptionTitle.textContent = `Description: ${agentName}`;
+    }
+
+    if (purpose) {
+        descriptionContent.innerHTML = renderAgentDescriptionHtml(purpose);
+    } else {
+        descriptionContent.textContent = 'No description was found for this agent in README.md.';
+    }
+
+    descriptionOverlay.style.display = 'block';
+    descriptionDialog.style.display = 'flex';
+    descriptionDialog.style.top = '50%';
+    descriptionDialog.style.left = '50%';
+    descriptionDialog.style.transform = 'translate(-50%, -50%)';
+    descriptionDialog.style.margin = '';
+}
+
+function hideDescriptionDialog() {
+    const descriptionDialog = document.getElementById('agent-description-dialog');
+    const descriptionOverlay = document.getElementById('agent-description-overlay');
+
+    if (descriptionDialog) {
+        descriptionDialog.style.display = 'none';
+    }
+    if (descriptionOverlay) {
+        descriptionOverlay.style.display = 'none';
+    }
 }
 
 // ========================================

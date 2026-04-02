@@ -17,8 +17,62 @@ import traceback
 import yaml
 import subprocess
 import time
+import re
 
 from .chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
+
+
+def _normalize_agent_purpose_key(value: str) -> str:
+    """Normalize agent identifiers so README rows and canvas names resolve to the same key."""
+    return re.sub(r'[^a-z0-9]+', '', (value or '').lower())
+
+
+def _load_agent_purpose_map_from_readme() -> dict[str, str]:
+    """
+    Read the Workflow Agents tables from README.md and extract Purpose column text.
+    The resulting map is keyed by an alphanumeric-normalized agent identifier.
+    """
+    readme_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        'README.md',
+    )
+    purpose_map: dict[str, str] = {}
+
+    try:
+        with open(readme_path, 'r', encoding='utf-8') as readme_file:
+            lines = readme_file.readlines()
+    except OSError as exc:
+        print(f"Warning: Could not load agent purposes from README.md: {exc}")
+        return purpose_map
+
+    in_workflow_agents_section = False
+    row_pattern = re.compile(r'^\|\s*\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|')
+
+    for raw_line in lines:
+        line = raw_line.strip()
+
+        if line == '## Workflow Agents':
+            in_workflow_agents_section = True
+            continue
+
+        if in_workflow_agents_section and line.startswith('## ') and line != '## Workflow Agents':
+            break
+
+        if not in_workflow_agents_section:
+            continue
+
+        match = row_pattern.match(line)
+        if not match:
+            continue
+
+        agent_name = match.group(1).strip()
+        purpose = match.group(2).strip()
+        normalized_key = _normalize_agent_purpose_key(agent_name)
+
+        if normalized_key and purpose:
+            purpose_map[normalized_key] = purpose
+
+    return purpose_map
 
 def home(request):
     return HttpResponse("Hello, World!")
@@ -157,6 +211,7 @@ def agentic_control_panel(request):
 
     context = {
         'ollama_base_url': ollama_base_url,
+        'agent_purpose_map': _load_agent_purpose_map_from_readme(),
     }
 
     # --- .FLW File Association Support ---

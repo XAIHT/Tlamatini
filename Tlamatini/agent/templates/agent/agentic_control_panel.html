@@ -184,6 +184,11 @@
             <span>Configure</span>
         </div>
         <div class="context-menu-divider"></div>
+        <div class="context-menu-item" id="ctx-menu-description">
+            <span class="context-menu-icon">ℹ️</span>
+            <span>Description</span>
+        </div>
+        <div class="context-menu-divider"></div>
         <div class="context-menu-item" id="ctx-menu-view-log">
             <span class="context-menu-icon">📄</span>
             <span>See log</span>
@@ -210,10 +215,20 @@
             </div>
         </div>
     </div>
+    <!-- Agent Description Modal -->
+    <div id="agent-description-overlay"></div>
+    <div id="agent-description-dialog">
+        <div id="agent-description-header">
+            <h4 id="agent-description-title">Agent Description</h4>
+            <button id="agent-description-close" title="Close">&times;</button>
+        </div>
+        <div id="agent-description-content"></div>
+    </div>
     <form id="csrf-bootstrap-form" style="display: none;">
         {% csrf_token %}
     </form>
     {{ ollama_base_url|json_script:"ollama_config" }}
+    {{ agent_purpose_map|json_script:"agent-purpose-map" }}
     {% if flw_data %}
     {{ flw_data|json_script:"server-flw-data" }}
     {{ flw_filename|json_script:"server-flw-filename" }}
