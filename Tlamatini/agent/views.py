@@ -7682,7 +7682,21 @@ def get_parametrizer_dialog_data_view(request, agent_name):
             excluded_keys = {'source_agents', 'target_agents', 'output_agents',
                              'source_agent_1', 'source_agent_2',
                              'target_agents_a', 'target_agents_b'}
-            target_params = [k for k in target_config.keys() if k not in excluded_keys]
+                             
+            def get_flattened_keys(d, parent_key=''):
+                keys = []
+                if not isinstance(d, dict):
+                    return keys
+                for k, v in d.items():
+                    new_key = f"{parent_key}.{k}" if parent_key else k
+                    if not parent_key and new_key in excluded_keys:
+                        continue
+                    keys.append(new_key)
+                    if isinstance(v, dict):
+                        keys.extend(get_flattened_keys(v, new_key))
+                return keys
+                
+            target_params = get_flattened_keys(target_config)
 
         # Load existing interconnection scheme if present
         scheme_path = os.path.join(pool_base_path, pool_folder_name, 'interconnection-scheme.csv')

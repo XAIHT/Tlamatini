@@ -28,7 +28,7 @@ def _is_list_files_query(q: str) -> bool:
     cleaned_q = _CODE_BLOCK_RE.sub("", q)
 
     pat = r"(show|enlist|list|enumerate|display|print)\s+(all\s+)?(of\s+)?(the\s+)?(snippets|programs|files|documents|docs|file)"
-    extension_pat = r"(files?\s+with\s+(the\s+)?extension|files?\s+ending\s+in|\.\w+\s+files?|\*\.\w+)"
+    extension_pat = r"(files?\s+with\s+(the\s+)?extension|files?\s+ending\s+in|(?<!\w)\.\w+\s+files?|\*\.\w+)"
     detectedFilesPrompt = bool(re.search(pat, cleaned_q, flags=re.IGNORECASE))
     detectedExtensionQuery = bool(re.search(extension_pat, cleaned_q, flags=re.IGNORECASE))
 
@@ -446,7 +446,7 @@ class OptimizedHistoryAwareRAGChain:
             # Check if user is asking for files with a specific extension
             # Strip code blocks first to avoid matching extensions inside embedded code
             cleaned_question = _CODE_BLOCK_RE.sub("", question)
-            extension_match = re.search(r'\*\.(\w+)|\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', cleaned_question, flags=re.IGNORECASE)
+            extension_match = re.search(r'\*\.(\w+)|(?<!\w)\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', cleaned_question, flags=re.IGNORECASE)
             if extension_match:
                 # Extract extension (prioritize *.ext format, then .ext, then "ext files")
                 ext = extension_match.group(1) or extension_match.group(2) or extension_match.group(3)

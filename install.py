@@ -425,6 +425,18 @@ class FancyInstaller:
         except Exception as exc:
             self.root.after(0, self._show_error, str(exc))
 
+    @staticmethod
+    def _get_clean_env():
+        """Retrieve a clean environment without PyInstaller's DLL paths to prevent locking."""
+        clean_env = os.environ.copy()
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            meipass = sys._MEIPASS.lower()
+            paths = clean_env.get("PATH", "").split(os.pathsep)
+            # Remove any path that points inside the extracted PyInstaller bundle
+            paths = [p for p in paths if not p.lower().startswith(meipass)]
+            clean_env["PATH"] = os.pathsep.join(paths)
+        return clean_env
+
     # ─── PS1 helper ───────────────────────────────────────────────────
     def _run_ps1(self, filename: str, target_dir: str):
         """Run a PS1 script that was just extracted into target_dir."""
@@ -432,9 +444,11 @@ class FancyInstaller:
         if not os.path.isfile(dst):
              raise FileNotFoundError(f"{filename} not found at {dst}")
 
+        clean_env = self._get_clean_env()
         result = subprocess.run(
             ["powershell", "-ExecutionPolicy", "Bypass", "-NoProfile", "-File", dst],
             cwd=target_dir,
+            env=clean_env,
             capture_output=True, text=True, timeout=120,
         )
         if result.returncode != 0:
@@ -463,8 +477,10 @@ class FancyInstaller:
     @staticmethod
     def _restart_explorer():
         import time
+        clean_env = FancyInstaller._get_clean_env()
+        
         # Stop Explorer
-        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
+        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True, env=clean_env)
         time.sleep(0.5)
 
         # Clear icon cache (best-effort)
@@ -488,10 +504,10 @@ class FancyInstaller:
         # Start Explorer and ensure it is running
         retries = 5
         while retries > 0:
-            subprocess.Popen(["explorer.exe"])
+            subprocess.Popen(["explorer.exe"], env=clean_env)
             time.sleep(1.5)
             # Verify if it started
-            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True)
+            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True, env=clean_env)
             if "explorer.exe" in res.stdout:
                 break
             retries -= 1
