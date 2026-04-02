@@ -448,7 +448,7 @@ class UnifiedAgentRAGChain:
             # Check if user is asking for files with a specific extension
             # Strip code blocks first to avoid matching extensions inside embedded code
             cleaned_question = _CODE_BLOCK_RE.sub("", question)
-            extension_match = re.search(r'\*\.(\w+)|\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', cleaned_question, flags=re.IGNORECASE)
+            extension_match = re.search(r'\*\.(\w+)|(?<!\w)\.(\w+)(?:\s+files?|$)|(\w+)\s+files?\s+(?:with|ending|extension)', cleaned_question, flags=re.IGNORECASE)
             if extension_match:
                 # Extract extension (prioritize *.ext format, then .ext, then "ext files")
                 ext = extension_match.group(1) or extension_match.group(2) or extension_match.group(3)

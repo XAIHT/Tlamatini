@@ -249,7 +249,7 @@ def get_jd_cli_path() -> str:
     else:
         # In dev: j_decompiler.py is in agent/agents/j_decompiler/
         # jd-cli is in Tlamatini/jd-cli/ (3 levels up from agents dir)
-        application_path = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+        application_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))))
 
     jd_cli_dir = os.path.join(application_path, 'jd-cli')
     return jd_cli_dir

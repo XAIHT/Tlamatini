@@ -563,7 +563,19 @@ def apply_mappings_to_config(target_agent_name, mappings, output_block):
 
         if source_field in output_block:
             value = output_block[source_field]
-            config[target_param] = value
+            
+            # Handle nested parameters using dot notation (e.g., target.email)
+            if '.' in target_param:
+                keys = target_param.split('.')
+                current = config
+                for key in keys[:-1]:
+                    if key not in current or not isinstance(current[key], dict):
+                        current[key] = {}
+                    current = current[key]
+                current[keys[-1]] = value
+            else:
+                config[target_param] = value
+                
             logging.info(f"   Mapped: {source_field} -> {target_param} ({len(str(value))} chars)")
             applied_count += 1
         else:
