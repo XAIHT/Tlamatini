@@ -585,6 +585,17 @@ Add a row to the appropriate category table (Control, Monitoring, Notification, 
 | **<agent_name>** | <Description> | `<key_config>`: value<br>`target_agents`: Downstream agents |
 ```
 
+> **CRITICAL: ACP Description + Tooltip integration**
+> The ACP now exposes the same agent description in two UI surfaces:
+> - the canvas contextual menu action `Description`
+> - the hover tooltip shown in the left **Agents** sidebar for each `.agent-tool-item`
+>
+> Both texts are resolved automatically from the **`Purpose` column of this README table row**. That means:
+> - The `Purpose` sentence you write here is the exact user-facing description shown in both the canvas dialog and the sidebar tooltip.
+> - Keep it concise, accurate, and aligned with the real runtime behavior of the agent.
+> - Do **not** skip this row: if the row is missing, both the `Description` dialog and the sidebar tooltip will be empty/fallback-only for that agent.
+> - Use the normal agent identifier in the first column (`<agent_name>` with underscores if the folder uses underscores). The UI lookup normalizes case, spaces, hyphens, and underscores automatically.
+
 ### 7e. Add to Glossary
 Add a row to the Glossary table:
 ```markdown
@@ -659,6 +670,7 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
     [ ] 5e: /* global */ declarations updated in all 3 JS files
 [ ] Step 6: Add agent entry in agentic_skill.md (for FlowCreator AI)
 [ ] Step 7: Update README.md (count, structure, tables, glossary, changelog, API)
+    [ ] 7d: Workflow Agents table row added with the final `Purpose` text that both the ACP `Description` menu and the sidebar tooltip will display
 [ ] Step 8: Lint and fix:
     [ ] 8a: Run `python -m ruff check` and fix all issues
     [ ] 8b: Run `npm run lint` and fix only errors

@@ -20,6 +20,163 @@ function registerItem(text) {
     return { id: `${baseName}-${newCount}`, count: newCount, baseName: baseName };
 }
 
+let cachedAgentPurposeMap = null;
+let agentListTooltipsInitialized = false;
+
+function getAgentPurposeMap() {
+    if (cachedAgentPurposeMap !== null) {
+        return cachedAgentPurposeMap;
+    }
+
+    const script = document.getElementById('agent-purpose-map');
+    if (!script?.textContent) {
+        cachedAgentPurposeMap = {};
+        return cachedAgentPurposeMap;
+    }
+
+    try {
+        cachedAgentPurposeMap = JSON.parse(script.textContent);
+    } catch (error) {
+        console.error('Failed to parse agent purpose map:', error);
+        cachedAgentPurposeMap = {};
+    }
+
+    return cachedAgentPurposeMap;
+}
+
+function normalizeAgentPurposeKey(agentName) {
+    return String(agentName || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function getAgentPurposeForName(agentName) {
+    const purposeMap = getAgentPurposeMap();
+    return purposeMap[normalizeAgentPurposeKey(agentName)] || '';
+}
+
+function setCanvasItemMetadata(item, agentName, agentPurpose = null) {
+    item.dataset.agentName = agentName;
+
+    const resolvedPurpose = agentPurpose ?? getAgentPurposeForName(agentName);
+    if (resolvedPurpose) {
+        item.dataset.agentPurpose = resolvedPurpose;
+    } else {
+        delete item.dataset.agentPurpose;
+    }
+}
+
+function ensureAgentPurposeTooltip() {
+    let tooltip = document.getElementById('agent-purpose-tooltip');
+    if (tooltip) {
+        return tooltip;
+    }
+
+    tooltip = document.createElement('div');
+    tooltip.id = 'agent-purpose-tooltip';
+    document.body.appendChild(tooltip);
+    return tooltip;
+}
+
+function positionAgentPurposeTooltip(tooltip, clientX, clientY) {
+    const margin = 12;
+    const offset = 16;
+
+    tooltip.style.left = '0px';
+    tooltip.style.top = '0px';
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.display = 'block';
+
+    const rect = tooltip.getBoundingClientRect();
+    let left = clientX + offset;
+    let top = clientY + offset;
+
+    if (left + rect.width > window.innerWidth - margin) {
+        left = Math.max(margin, clientX - rect.width - offset);
+    }
+    if (top + rect.height > window.innerHeight - margin) {
+        top = Math.max(margin, window.innerHeight - rect.height - margin);
+    }
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.style.visibility = 'visible';
+}
+
+function hideAgentPurposeTooltip() {
+    const tooltip = document.getElementById('agent-purpose-tooltip');
+    if (!tooltip) {
+        return;
+    }
+
+    tooltip.style.display = 'none';
+    tooltip.style.visibility = 'hidden';
+}
+
+function showAgentPurposeTooltip(agentToolItem, clientX, clientY) {
+    const tooltip = ensureAgentPurposeTooltip();
+    const purpose = agentToolItem?.dataset.agentPurpose || 'No description was found for this agent in README.md.';
+    const formatter = typeof window.renderAgentDescriptionHtml === 'function'
+        ? window.renderAgentDescriptionHtml
+        : (text) => text;
+
+    tooltip.innerHTML = formatter(purpose);
+    positionAgentPurposeTooltip(tooltip, clientX, clientY);
+}
+
+function initAgentListTooltips() {
+    if (agentListTooltipsInitialized) {
+        return;
+    }
+
+    const agentsList = document.getElementById('agents-list');
+    const subagentsContainer = document.getElementById('subagents-container');
+    if (!agentsList) {
+        return;
+    }
+
+    agentsList.addEventListener('mouseover', (e) => {
+        const item = e.target.closest('.agent-tool-item');
+        if (!item || !agentsList.contains(item)) {
+            return;
+        }
+        showAgentPurposeTooltip(item, e.clientX, e.clientY);
+    });
+
+    agentsList.addEventListener('mousemove', (e) => {
+        const item = e.target.closest('.agent-tool-item');
+        const tooltip = document.getElementById('agent-purpose-tooltip');
+        if (!item || !agentsList.contains(item) || !tooltip || tooltip.style.display === 'none') {
+            return;
+        }
+        positionAgentPurposeTooltip(tooltip, e.clientX, e.clientY);
+    });
+
+    agentsList.addEventListener('mouseout', (e) => {
+        const item = e.target.closest('.agent-tool-item');
+        const relatedItem = e.relatedTarget?.closest?.('.agent-tool-item');
+        if (item && item !== relatedItem) {
+            hideAgentPurposeTooltip();
+        }
+    });
+
+    agentsList.addEventListener('dragstart', () => {
+        hideAgentPurposeTooltip();
+    });
+
+    if (subagentsContainer) {
+        subagentsContainer.addEventListener('scroll', () => {
+            hideAgentPurposeTooltip();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hideAgentPurposeTooltip();
+        }
+    });
+
+    agentListTooltipsInitialized = true;
+}
+
 // ========================================
 // AGENT TYPE CLASS HELPERS
 // ========================================
@@ -220,13 +377,12 @@ async function createCanvasItem(clientX, clientY, textContent) {
     if (textContent.toLowerCase() === 'flowcreator' || textContent.toLowerCase() === 'flowhypervisor') {
         newItem.textContent = textContent;
         newItem.id = textContent.toLowerCase();
-        newItem.dataset.agentName = textContent;
     } else {
         const registration = registerItem(textContent);
         newItem.textContent = `${textContent} (${registration.count})`;
         newItem.id = registration.id;
-        newItem.dataset.agentName = textContent;
     }
+    setCanvasItemMetadata(newItem, textContent);
 
     const lowerName = textContent.toLowerCase();
     applyAgentTypeClass(newItem, lowerName);
@@ -303,17 +459,15 @@ function cloneAndRegister(originalItem) {
     if (lowerName === 'flowcreator') { // This block is for creating the item, not preventing clone.
         newItem.textContent = agentName;
         newItem.id = 'flowcreator';
-        newItem.dataset.agentName = agentName;
     } else if (lowerName === 'flowhypervisor') {
         newItem.textContent = agentName;
         newItem.id = 'flowhypervisor';
-        newItem.dataset.agentName = agentName;
     } else {
         const registration = registerItem(agentName);
         newItem.textContent = `${agentName} (${registration.count})`;
         newItem.id = registration.id;
-        newItem.dataset.agentName = agentName;
     }
+    setCanvasItemMetadata(newItem, agentName, originalItem.dataset.agentPurpose || null);
     newItem.style.left = originalItem.style.left;
     newItem.style.top = originalItem.style.top;
 
@@ -852,6 +1006,7 @@ async function loadAgentDescription(agentName) {
 async function populateAgentsList() {
     const agentsList = document.getElementById('agents-list');
     if (!agentsList) return;
+    initAgentListTooltips();
     agentsList.innerHTML = '';
 
     for (let i = 1; i <= ACP.MAX_AGENTS; i++) {
@@ -863,6 +1018,7 @@ async function populateAgentsList() {
         atomDiv.classList.add('agent-tool-item');
         atomDiv.setAttribute('draggable', 'true');
         atomDiv.dataset.content = description;
+        atomDiv.dataset.agentPurpose = getAgentPurposeForName(description);
 
         const iconDiv = document.createElement('div');
         iconDiv.classList.add('agent-tool-icon');
