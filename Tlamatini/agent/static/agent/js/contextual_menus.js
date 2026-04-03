@@ -100,6 +100,32 @@ function initContextMenu() {
         });
     }
 
+    // Menu item: Explore agent instance directory
+    const explorerMenuItem = document.getElementById('ctx-menu-open-explorer');
+    if (explorerMenuItem) {
+        explorerMenuItem.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentContextMenuItem) {
+                await openInstancedAgentInApp(currentContextMenuItem, 'explorer');
+            }
+            hideContextMenu();
+        });
+    }
+
+    // Menu item: Open CMD in agent instance directory
+    const cmdMenuItem = document.getElementById('ctx-menu-open-cmd');
+    if (cmdMenuItem) {
+        cmdMenuItem.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentContextMenuItem) {
+                await openInstancedAgentInApp(currentContextMenuItem, 'cmd');
+            }
+            hideContextMenu();
+        });
+    }
+
     // Menu item: Restart
     const restartMenuItem = document.getElementById('ctx-menu-restart');
     if (restartMenuItem) {
@@ -112,6 +138,30 @@ function initContextMenu() {
             }
             hideContextMenu();
         });
+    }
+}
+
+async function openInstancedAgentInApp(canvasItem, appId) {
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('app_id', appId);
+    formData.append('agent_name', canvasItem.id);
+
+    try {
+        const response = await fetch('/agent/open_in_app/', {
+            method: 'POST',
+            body: formData,
+            headers: getHeaders(),
+            credentials: 'same-origin'
+        });
+
+        const result = await response.json();
+        if (!response.ok || result.error) {
+            throw new Error(result.error || `Failed to open ${canvasItem.id}`);
+        }
+    } catch (err) {
+        console.error(`[OPEN_IN_APP] Error opening ${canvasItem.id} in ${appId}:`, err);
+        alert(`Error opening ${canvasItem.id}: ${err.message}`);
     }
 }
 

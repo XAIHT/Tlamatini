@@ -1,6 +1,7 @@
 import importlib.util
 import ast
 import os
+import subprocess
 import shutil
 import tempfile
 from functools import lru_cache
@@ -447,3 +448,46 @@ class RestartAgentViewTests(TestCase):
         self.assertFalse(stop_ok)
         self.assertEqual(killed_count, 1)
         self.assertIn('Remaining PID(s): [7777]', error_message)
+
+
+class OpenAgentInstanceInAppTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='open-in-app-user', password='secret123')
+        self.client.force_login(self.user)
+
+    def test_open_in_app_resolves_agent_instance_directory_for_explorer(self):
+        with tempfile.TemporaryDirectory() as pool_dir:
+            agent_dir = os.path.join(pool_dir, 'counter_1')
+            os.makedirs(agent_dir, exist_ok=True)
+
+            with patch('agent.views.get_pool_path', return_value=pool_dir), \
+                    patch('agent.views.subprocess.Popen') as mock_popen:
+                response = self.client.post(reverse('open_in_app'), {
+                    'app_id': 'explorer',
+                    'agent_name': 'counter-1',
+                })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'success': True})
+        mock_popen.assert_called_once_with(['explorer', os.path.realpath(agent_dir)])
+
+    def test_open_in_app_opens_cmd_in_agent_instance_directory(self):
+        with tempfile.TemporaryDirectory() as pool_dir:
+            agent_dir = os.path.join(pool_dir, 'counter_1')
+            os.makedirs(agent_dir, exist_ok=True)
+
+            with patch('agent.views.get_pool_path', return_value=pool_dir), \
+                    patch('agent.views.os.name', 'nt'), \
+                    patch('agent.views.subprocess.Popen') as mock_popen:
+                response = self.client.post(reverse('open_in_app'), {
+                    'app_id': 'cmd',
+                    'agent_name': 'counter-1',
+                })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'success': True})
+        mock_popen.assert_called_once_with(
+            ['cmd.exe', '/K'],
+            cwd=os.path.realpath(agent_dir),
+            creationflags=getattr(subprocess, 'CREATE_NEW_CONSOLE', 0),
+        )
