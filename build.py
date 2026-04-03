@@ -413,10 +413,12 @@ def main():
     try:
         dist_manage.mkdir(parents=True, exist_ok=True)
 
-        # Individual files from Tlamatini/agent/
-        for fname in ("config.json", "prompt.pmt"):
-            src = Path("Tlamatini") / "agent" / fname
-            dst = dist_manage / fname
+        # Optional files copied to the installed application root
+        optional_file_copies = {
+            Path("Tlamatini") / "agent" / "config.json": dist_manage / "config.json",
+            Path("Tlamatini") / "agent" / "prompt.pmt": dist_manage / "prompt.pmt",
+        }
+        for src, dst in optional_file_copies.items():
             if src.exists():
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dst)
@@ -424,13 +426,23 @@ def main():
             else:
                 print(f"WARNING: {src} not found; skipping copy.")
 
-        # Full directory trees
-        dir_copies = {
+        # Required root-level assets for the installed application
+        required_file_copies = {
+            Path("README.md"): dist_manage / "README.md",
+        }
+        for src, dst in required_file_copies.items():
+            if not src.exists():
+                raise FileNotFoundError(f"Required file not found: {src}")
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            print(f"Copied required file: {src} -> {dst}")
+
+        # Optional directory trees
+        optional_dir_copies = {
             Path("Tlamatini") / "agent" / "images": dist_manage / "images",
             Path("Tlamatini") / "agent" / "agents": dist_manage / "agents",
-            Path("Tlamatini") / "jd-cli": dist_manage / "jd-cli",
         }
-        for src_dir, dst_dir in dir_copies.items():
+        for src_dir, dst_dir in optional_dir_copies.items():
             if src_dir.exists():
                 if dst_dir.exists():
                     shutil.rmtree(dst_dir)
@@ -438,6 +450,25 @@ def main():
                 print(f"Copied directory: {src_dir} -> {dst_dir}")
             else:
                 print(f"WARNING: Source directory not found: {src_dir}")
+
+        # Required directory trees
+        required_dir_copies = {
+            Path("Tlamatini") / "jd-cli": dist_manage / "jd-cli",
+        }
+        for src_dir, dst_dir in required_dir_copies.items():
+            if not src_dir.exists():
+                raise FileNotFoundError(f"Required directory not found: {src_dir}")
+            if dst_dir.exists():
+                shutil.rmtree(dst_dir)
+            shutil.copytree(src_dir, dst_dir)
+            print(f"Copied required directory: {src_dir} -> {dst_dir}")
+
+        jd_cli_bat = dist_manage / "jd-cli" / "jd-cli.bat"
+        if not jd_cli_bat.exists():
+            raise FileNotFoundError(
+                f"Required jd-cli payload is incomplete. Missing launcher: {jd_cli_bat}"
+            )
+        print(f"Verified jd-cli payload at: {jd_cli_bat.parent}")
 
         # Required empty directories (must survive in pkg.zip)
         empty_dirs = (
@@ -451,6 +482,7 @@ def main():
 
     except Exception as e:
         print(f"Post-build step error: {e}")
+        sys.exit(1)
 
     # ── 7) Remove PyInstaller spec file ──────────────────────────────
     try:
