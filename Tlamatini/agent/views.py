@@ -431,6 +431,51 @@ def get_pool_path(request):
         # Fallback for requests without session ID (e.g. legacy or direct browser access without JS)
         return os.path.join(pools_base, 'default')
 
+
+def _parse_canvas_agent_name(agent_name: str) -> tuple[str, str]:
+    """
+    Convert a canvas agent id like 'monitor-log-1' into:
+    ('monitor_log', 'monitor_log_1')
+    """
+    parts = (agent_name or '').split('-')
+    cardinal = None
+    if parts and parts[-1].isdigit():
+        cardinal = parts.pop()
+
+    base_folder_name = "_".join(part for part in parts if part)
+    pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+    if (
+        not base_folder_name
+        or '..' in pool_folder_name
+        or '/' in pool_folder_name
+        or '\\' in pool_folder_name
+    ):
+        raise ValueError("Invalid agent name")
+
+    return base_folder_name, pool_folder_name
+
+
+def _resolve_canvas_agent_directory(request, agent_name: str) -> str:
+    """
+    Resolve the deployed directory for a canvas agent instance in the current session.
+    Uses get_pool_path(), so frozen and non-frozen layouts are handled consistently.
+    """
+    _, pool_folder_name = _parse_canvas_agent_name(agent_name)
+    pool_path = os.path.realpath(get_pool_path(request))
+    agent_dir = os.path.realpath(os.path.join(pool_path, pool_folder_name))
+
+    try:
+        if os.path.commonpath([pool_path, agent_dir]) != pool_path:
+            raise ValueError("Invalid agent name")
+    except ValueError as exc:
+        raise ValueError("Invalid agent name") from exc
+
+    if not os.path.isdir(agent_dir):
+        raise FileNotFoundError(f"Agent directory not found: {pool_folder_name}")
+
+    return agent_dir
+
 def _kill_and_clear_path(target_path):
     """
     Helper to kill processes running from a path and then clear the path contents.
@@ -7868,21 +7913,38 @@ def detect_installed_apps_view(request):
 
 def open_in_app_view(request):
     """
-    Open the given directory in the specified application.
-    Expects POST with 'app_id' and 'directory' fields.
+    Open a directory in the specified application.
+    Expects POST with 'app_id' plus either:
+    - 'directory' for an explicit path, or
+    - 'agent_name' to resolve a deployed canvas-agent instance directory.
     """
     try:
         app_id = request.POST.get('app_id', '').strip()
         directory = request.POST.get('directory', '').strip()
+        agent_name = request.POST.get('agent_name', '').strip()
 
-        if not app_id or not directory:
+        if not app_id or (not directory and not agent_name):
             return HttpResponse(
-                json.dumps({"error": "app_id and directory are required"}),
+                json.dumps({"error": "app_id and directory or agent_name are required"}),
                 content_type='application/json', status=400
             )
 
-        # Security: resolve and validate directory exists
-        resolved = os.path.realpath(directory)
+        if directory:
+            resolved = os.path.realpath(directory)
+        else:
+            try:
+                resolved = _resolve_canvas_agent_directory(request, agent_name)
+            except ValueError as exc:
+                return HttpResponse(
+                    json.dumps({"error": str(exc)}),
+                    content_type='application/json', status=400
+                )
+            except FileNotFoundError as exc:
+                return HttpResponse(
+                    json.dumps({"error": str(exc)}),
+                    content_type='application/json', status=404
+                )
+
         if not os.path.isdir(resolved):
             return HttpResponse(
                 json.dumps({"error": "Directory does not exist"}),
@@ -7927,6 +7989,17 @@ def open_in_app_view(request):
                     content_type='application/json', status=404
                 )
             subprocess.Popen([ag_cmd, resolved])
+        elif app_id == 'cmd':
+            if os.name != 'nt':
+                return HttpResponse(
+                    json.dumps({"error": "CMD is only supported on Windows"}),
+                    content_type='application/json', status=400
+                )
+            subprocess.Popen(
+                ['cmd.exe', '/K'],
+                cwd=resolved,
+                creationflags=getattr(subprocess, 'CREATE_NEW_CONSOLE', 0),
+            )
         else:
             return HttpResponse(
                 json.dumps({"error": f"Unknown app: {app_id}"}),

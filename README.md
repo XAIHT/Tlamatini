@@ -2372,12 +2372,21 @@ Only applications that are actually installed on the system will appear in the d
 - **During long operations:** The dropdown is automatically disabled while the LLM is processing a request or a context is being loaded, and re-enabled once the operation completes.
 - **Reconnect / Clear context:** If the context is cleared or the session is reconnected, the dropdown returns to its disabled state.
 
+### Canvas Agent Instance Shortcuts
+
+The Agentic Control Panel canvas also exposes directory shortcuts for deployed agent instances through each node's right-click context menu:
+
+- **`Explore dir...`** opens Windows File Explorer directly in the selected agent instance directory.
+- **`Open cmd...`** opens a new `cmd.exe` window with its working directory set to the selected agent instance directory.
+
+These shortcuts operate on the current session's deployed pool instance, not the template agent under `agent/agents/`. Internally the backend resolves the canvas id (for example `flowcreator-1`) to the session pool folder name (for example `flowcreator_1`) through `get_pool_path()`, so the behavior stays correct in both development mode and frozen/installed builds.
+
 ### API Endpoints
 
 The feature relies on two HTTP endpoints:
 
 - **`GET /agent/detect_installed_apps/`** — Returns a JSON list of applications and whether each is available on the system.
-- **`POST /agent/open_in_app/`** — Accepts `app_id` and `directory` fields, validates the directory, and launches the requested application with that directory.
+- **`POST /agent/open_in_app/`** — Accepts `app_id` plus either `directory` or `agent_name`. When `directory` is provided, it validates and opens that explicit path. When `agent_name` is provided, it resolves the current session's deployed agent-instance directory and opens it there. The endpoint is used by both the navigation-bar **"Open in..."** dropdown and the ACP canvas shortcuts, and supports `explorer`, `vscode`, `antigravity`, and `cmd` (Windows).
 
 ---
 
