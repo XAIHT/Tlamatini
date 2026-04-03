@@ -52,6 +52,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
     - [Wrapped Chat-Agent Runtime Tools](#wrapped-chat-agent-runtime-tools)
     - [Runtime Isolation and Lifecycle](#runtime-isolation-and-lifecycle)
   - [Agentic Workflow Designer](#agentic-workflow-designer)
+    - [Canvas Context Menus and Agent Descriptions](#canvas-context-menus-and-agent-descriptions)
     - [Pause, Stop, and Reanimation of a Flow](#pause-stop-and-reanimation-of-a-flow)
     - [Flow Validation](#flow-validation)
   - [Database Models](#database-models)
@@ -257,6 +258,8 @@ If you are setting up from source (manual setup), you will create your own super
 - 55 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
+- README-backed agent purpose tooltips in the sidebar and per-node Description dialogs on the canvas
+- Right-click canvas shortcuts for logs, instance-directory exploration, and instance-scoped `cmd.exe`
 - Real-time LED status indicators: green (running), red (agent down while the flow is active), yellow blinking (paused), gray (stopped/idle)
 - Undo/Redo support (1024 actions)
 - Workflow save/load as `.flw` files
@@ -960,7 +963,7 @@ This is the main application build. It:
 2. Runs Django `collectstatic`
 3. Executes PyInstaller with all necessary configurations
 4. Creates required directories (`application`, `applications`, `content_generated`, etc.)
-5. Copies the `jd-cli/` directory (Java decompiler) into the distribution
+5. Copies required payloads into the installed application root, including `README.md` and the bundled `jd-cli/` directory, while still treating `config.json` and `prompt.pmt` as optional copies
 6. Runs database migrations
 7. Creates a default superuser
 8. Renames the executable to `Tlamatini.exe`
@@ -973,6 +976,8 @@ This is the main application build. It:
 11. Generates **`pkg.zip`** from the `dist/manage/` directory
 
 **Output:** `pkg.zip` at the project root (contains the entire packaged application).
+
+Current `build.py` is stricter than older builds: it now treats `README.md` and `jd-cli/` as required post-build assets, verifies that `jd-cli/jd-cli.bat` is present in the copied payload, and exits non-zero instead of silently shipping a partial package when those required artifacts are missing.
 
 ### Step 2: Build the Uninstaller (`build_uninstaller.py`)
 
@@ -1031,6 +1036,7 @@ When an end user runs `Installer.exe`, it:
 5. Copies `Uninstaller.exe` into the installed directory
 6. Creates desktop and local shortcuts (`Tlamatini.lnk`)
 7. Registers the `.flw` file extension to open with Tlamatini
+8. Runs its PowerShell helper scripts and Explorer restart logic with a cleaned environment when frozen, so PyInstaller bundle DLL paths do not stall or lock those helper subprocesses
 
 ### What the Uninstaller Does
 
@@ -1184,6 +1190,8 @@ Access via `/agentic_control_panel/` URL. Features:
 - Drag-and-drop agent placement from sidebar
 - Visual connection drawing between agents
 - Start/Stop/Pause controls
+- Hover tooltips in the sidebar that show each agent's purpose
+- Right-click canvas actions for Configure, Description, See log, Explore dir..., Open cmd..., and Restart (when enabled)
 - **Pause/Resume**: Pause stores the session's running agents in `paused_agents.reanim`, kills the active processes without clearing logs or `.pos` reanimation files, and moves the ACP into the paused state. Resume reanimates the stored agents with `AGENT_REANIMATED=1` so they preserve logs and reload their `reanim*` state files
 - Real-time LED status indicators: green (running), red (not running while the flow is active), yellow blinking (paused), gray (stopped/idle)
 - Log viewer for debugging
@@ -1193,6 +1201,23 @@ Access via `/agentic_control_panel/` URL. Features:
 - Session-scoped pool directories
 - Canvas auto-configuration (connections auto-populate agent configs)
 - Flow validation with detailed error reporting
+
+#### Canvas Context Menus and Agent Descriptions
+
+The ACP now uses the `Purpose` column text from the `## Workflow Agents` tables in this README as live UI content. On page render, `agentic_control_panel()` loads those Purpose values into an `agent_purpose_map`, injects that JSON into `agentic_control_panel.html`, and the frontend uses it in two places:
+
+1. **Sidebar hover tooltips**: Hovering an agent in the left-hand agent list shows the current README-backed purpose text in a floating tooltip.
+2. **Canvas Description dialog**: Right-clicking a deployed agent instance and selecting **`Description`** opens a draggable modal showing the same purpose text for that agent.
+
+The formatter is intentionally minimal and matches the current frontend code: inline code spans, `**bold**`, and `<br>` line breaks render, while arbitrary HTML remains escaped.
+
+The same right-click menu also exposes deployed-instance actions that operate on the current session pool rather than on template folders under `agent/agents/`:
+
+- **`See log`** tails the selected deployed agent's log.
+- **`Explore dir...`** opens File Explorer in the selected deployed agent-instance directory.
+- **`Open cmd...`** opens `cmd.exe` with its working directory set to that deployed agent-instance directory.
+
+Internally the backend converts a canvas id such as `counter-1` into its session-pool folder (for example `counter_1`) through `get_pool_path()` plus strict path validation. This keeps the context-menu actions tied to the correct deployed instance in both development mode and frozen/installed builds.
 
 #### Pause, Stop, and Reanimation of a Flow
 
@@ -1363,6 +1388,8 @@ Wrapped chat-agent launchers create isolated runtime copies of selected template
 ## Workflow Agents
 
 Pre-built agents for the visual workflow designer, organized by category. **55 agent types** total.
+
+The `Purpose` text in the agent tables below is no longer documentation-only. The ACP now parses these table rows from `README.md` and uses them as the live source for sidebar agent-purpose tooltips and the canvas **Description** dialog, so edits to a Purpose cell affect both the documentation and the UI text shown to users.
 
 ### Agent Architecture
 
@@ -1727,7 +1754,7 @@ Parametrizer operates in five phases:
 
 **Phase 3 — Parse Source.** Reads the source agent's log file and runs the appropriate parser from the `OUTPUT_PARSERS` registry. Each of the 15 supported source agents has a dedicated parser that extracts structured blocks into dictionaries.
 
-**Phase 4 — Map & Write.** For each extracted output block, applies the CSV mappings: looks up each `source_field` in the parsed dictionary and writes the value into the corresponding `target_param` in the target agent's `config.yaml`.
+**Phase 4 — Map & Write.** For each extracted output block, applies the CSV mappings: looks up each `source_field` in the parsed dictionary and writes the value into the corresponding `target_param` in the target agent's `config.yaml`. Target parameters may now be nested dot-notation keys (for example `target.smtp.username`); in that case the runtime creates or traverses nested dictionaries and writes the value at the leaf key.
 
 **Phase 5 — Launch.** Starts the target agent via subprocess and writes its PID file, exactly as Starter or Raiser would.
 
@@ -1800,6 +1827,8 @@ On the canvas, double-clicking or right-clicking a Parametrizer agent opens its 
 5. **Save** — writes the interconnection scheme CSV for the deployed Parametrizer instance to the backend.
 
 The dialog dynamically adapts to whatever source and target agents are connected — the field lists are always current with the actual agent types.
+
+For nested target configurations, the dialog now flattens the target `config.yaml` dictionary into dot-notation keys before rendering the right-hand column. That means mappings such as `response_body -> target.email.body` are represented explicitly in the dialog and then written back into the nested YAML structure at runtime.
 
 ### Practical Examples
 
@@ -2409,6 +2438,8 @@ The project includes a dedicated security test suite (`agent/tests.py`) with thr
 | **P1 (High)** | `P1HardeningTests` | Path traversal prevention (`../` sequences, encoded escapes), `safe_join_under()` validation, runtime agent path resolution safety |
 | **P2 (Prompt)** | `PromptPathHardeningTests` | Prompt injection defense — rejects absolute paths outside allowed directories, validates gRPC results against path escaping attempts |
 
+The same `agent/tests.py` module now also includes regression coverage for Ender cleanup/restart behavior, prompt-validation decision paths, and `open_in_app` resolution for deployed canvas-agent instances. On the April 3, 2026 rerun, the module contains **28 tests**: `27/28` pass in a UTF-8 console, while `24/28` pass in the default Windows console. The remaining failures are still one WebSocket event-loop error plus three CP1252 `UnicodeEncodeError` cases from `rag/interface.py` debug prints.
+
 ### Path Guard (`path_guard.py`)
 
 A centralized path validation module that protects all file operations:
@@ -2672,6 +2703,11 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ### Recent Updates
 
+- **ACP Agent Descriptions and Instance Context Menus** - `agentic_control_panel()` now parses the `## Workflow Agents` Purpose column from `README.md`, injects an `agent_purpose_map` into the ACP template, and the frontend uses it for sidebar hover tooltips and the new canvas **Description** dialog. The right-click menu for deployed agents now also exposes **`Explore dir...`** and **`Open cmd...`**, and `/agent/open_in_app/` accepts `agent_name` so those actions resolve the current session-pool instance directory instead of the template folder. `agent/tests.py` now includes regression coverage for those instance-directory actions
+- **Parametrizer Nested Target Mapping** - The Parametrizer dialog now flattens nested target `config.yaml` dictionaries into dot-notation keys, and runtime mapping now writes dot-notation targets back into nested YAML structures. This lets a source output field populate sub-config entries such as `target.smtp.username` instead of only top-level keys
+- **Build and Installer Robustness** - `build.py` now treats `README.md` and `jd-cli/` as required release payloads, verifies that `jd-cli.bat` is present after copy, and exits non-zero if those assets are missing instead of silently shipping a partial package. `install.py` now strips PyInstaller bundle paths from helper subprocess environments when running PS1 scripts or restarting Explorer, which is intended to prevent the frozen installer from stalling on locked DLL paths
+- **Extension Query Parsing Hardening** - `history_aware.py` and `unified.py` now require a non-word boundary before `.ext`-style extension matches, reducing false-positive "list .ext files" detection on dotted tokens and embedded code-like text
+- **J-Decompiler Development Path Fix** - `agent/agents/j_decompiler/j_decompiler.py` now climbs one more directory level before locating the bundled `jd-cli/` payload in development mode, so local-source runs resolve the decompiler asset from the project root correctly
 - **Main Chat Multi-Turn Tool Loop** - `agent/mcp_agent.py` now builds a `MultiTurnToolAgentExecutor` for the unified chat path. Instead of a single opaque tool-call pass, the backend now iterates through model tool requests explicitly, executes them in-process, appends `ToolMessage` observations, and continues until a final answer or the iteration limit is reached
 - **Wrapped Chat-Agent Runtime Layer** - Added `chat_agent_registry.py`, `chat_agent_runtime.py`, migration `0064_add_chat_agent_run_model.py`, migration `0065_add_chat_wrapped_agent_tools.py`, and the `ChatAgentRun` model. The chat surface can now launch 32 isolated `chat_agent_*` runtime copies of template agents plus 4 run-management tools (`chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop`)
 - **Chat Runtime Isolation from ACP Flow Control** - ACP/session process scans now skip the `agent/agents/pools/__chat_runs__/` runtime root, so flow pause/status/kill logic tracks only deployed canvas agents and does not accidentally terminate chat-launched wrapped runtimes
