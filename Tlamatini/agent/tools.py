@@ -1907,7 +1907,7 @@ def chat_agent_run_list() -> str:
     Use this tool when you need the latest run IDs before checking status,
     reading logs, or stopping a running isolated chat-agent subprocess.
     """
-    runs = list_chat_agent_runs(limit=20)
+    runs = list_chat_agent_runs()
     return _tool_output({
         "status": "ok",
         "runs": [serialize_chat_agent_run(run, include_log_excerpt=False) for run in runs],

@@ -9,11 +9,13 @@ from datetime import timedelta
 import psutil
 from django.utils import timezone
 
+from .config_loader import get_int_config_value
 from .global_state import global_state
 from .models import ChatAgentRun
 
 
 CHAT_RUNTIME_ROOT_NAME = "__chat_runs__"
+DEFAULT_CHAT_AGENT_LIMIT_RUNS = 100
 RUNNING_STATUSES = {"created", "running"}
 FINAL_STATUSES = {"completed", "failed", "stopped"}
 RUNTIME_IGNORE_FILES = {
@@ -294,8 +296,23 @@ def get_chat_agent_run(run_id: str) -> ChatAgentRun | None:
         return None
 
 
-def list_chat_agent_runs(*, limit: int = 20) -> list[ChatAgentRun]:
-    runs = list(ChatAgentRun.objects.order_by("-startedAt")[:limit])
+def get_chat_agent_limit_runs() -> int:
+    return get_int_config_value(
+        "chat_agent_limit_runs",
+        DEFAULT_CHAT_AGENT_LIMIT_RUNS,
+        minimum=1,
+    )
+
+
+def list_chat_agent_runs(*, limit: int | None = None) -> list[ChatAgentRun]:
+    if limit is None:
+        effective_limit = get_chat_agent_limit_runs()
+    else:
+        try:
+            effective_limit = max(int(limit), 1)
+        except (TypeError, ValueError):
+            effective_limit = get_chat_agent_limit_runs()
+    runs = list(ChatAgentRun.objects.order_by("-startedAt")[:effective_limit])
     return [reconcile_chat_agent_run(run) for run in runs]
 
 

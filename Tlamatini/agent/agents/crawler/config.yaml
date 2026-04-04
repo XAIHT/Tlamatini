@@ -1,66 +1,11 @@
-# Crawler Agent Configuration
-# This agent crawls web pages and captures FULL RAW content (HTML, JavaScript, CSS,
-# headers, meta tags, data attributes, API endpoints) for developer-oriented LLM analysis.
-#
-# BEHAVIOR:
-# When executed, this agent will:
-# 1. Fetch the page at 'url' via HTTP GET capturing the COMPLETE response
-# 2. In 'raw' mode (default): preserve ALL HTML/JS/CSS source code, extract a resource
-#    inventory (scripts, styles, forms, images, endpoints, data-* attrs), capture HTTP
-#    headers, and pass EVERYTHING to the LLM with a developer-oriented preamble
-# 3. In 'text' mode (legacy): strip HTML markup and send only visible text to the LLM
-# 4. Depending on 'crawl_type':
-#    - small-range: Follow all same-domain links on the page (not recursively) and process each
-#    - medium-range: Follow ALL links regardless of domain (not recursively) and process each
-#    - large-range: Follow ALL links regardless of domain RECURSIVELY up to 'depth' levels
-# 5. Save raw HTML and resource inventory to timestamped files
-# 6. Log the LLM response in a structured format
-# 7. Trigger any configured downstream agents
-# 8. Exit
-#
-# CANVAS AUTO-CONFIGURATION:
-# target_agents and source_agents are automatically populated
-# when you make connections on the canvas.
-
-# URL to crawl
-url: ""
-
-# Multi-line system prompt to send to the LLM along with the crawled content.
-# In 'raw' mode a developer-oriented preamble is automatically prepended that instructs
-# the LLM to analyze HTML structure, JavaScript logic, CSS, API endpoints, meta tags,
-# security patterns, framework signatures, and everything else in the source.
-system_prompt: ""
-
-# Content mode: raw | text
-#   raw  - (DEFAULT) Send the COMPLETE raw HTTP response body to the LLM including all
-#          HTML markup, inline/external JavaScript, CSS, meta tags, data-* attributes,
-#          JSON-LD, plus HTTP response headers and a resource inventory. This is the
-#          developer mode — nothing is stripped, the LLM sees everything the browser sees.
-#   text - Legacy mode. Strip all HTML markup and send only visible text content.
-content_mode: "raw"
-
-# Include HTTP response headers in the LLM context (only applies to raw mode)
-# Headers include Content-Type, Cache-Control, CSP, CORS, Set-Cookie, Server, X-Powered-By, etc.
+url: https://example.com
+system_prompt: Extract all visible text content from this page
+content_mode: raw
 include_headers: true
-
-# Crawl type: small-range | medium-range | large-range
-#   small-range  - Follow all same-domain links on the page (not recursively) and process each with the LLM.
-#   medium-range - Follow ALL links on the page regardless of domain (not recursively) and process each with the LLM.
-#   large-range  - Follow ALL links on the page regardless of domain RECURSIVELY up to 'depth' levels and process each with the LLM.
-crawl_type: "small-range"
-
-# Recursive depth (only used when crawl_type is "large-range")
-# depth=1 behaves like medium-range (one level of links).
-# depth=2 also processes links found in those linked pages, etc.
+crawl_type: small-range
 depth: 1
-
-# LLM connection settings (Ollama)
 llm:
-  host: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
-
-# Agents to start after crawling completes (auto-populated via canvas connections)
+  host: http://localhost:11434
+  model: gpt-oss:120b-cloud
 target_agents: []
-
-# Source agents (auto-populated via canvas connections)
 source_agents: []

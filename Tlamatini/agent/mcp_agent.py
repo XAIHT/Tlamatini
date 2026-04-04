@@ -1,12 +1,10 @@
 # MCP Agent (mcp_agent.py)
-import os
-import sys
 import re
-import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
+from .config_loader import get_int_config_value, load_config as _shared_load_config
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
 
@@ -19,55 +17,10 @@ except ImportError:
     except ImportError:  # pragma: no cover
         ChatOllama = None  # type: ignore
 
-_CONFIG_CACHE: Optional[Dict[str, Any]] = None
-
-
-def _find_config_path() -> Optional[str]:
-    """
-    Locate ``config.json`` in a robust way for both dev and PyInstaller builds.
-    Search order:
-    1) ``CONFIG_PATH`` env var (if set)
-    2) Directory of the executable when frozen (PyInstaller)
-    3) Directory of this module (agent package dir)
-    """
-    env_path = os.environ.get("CONFIG_PATH", "").strip()
-    if env_path and os.path.isfile(env_path):
-        return env_path
-
-    # PyInstaller executable directory
-    if getattr(sys, "frozen", False):
-        exe_dir = os.path.dirname(sys.executable)
-        p = os.path.join(exe_dir, "config.json")
-        if os.path.isfile(p):
-            return p
-
-    # Module directory (development)
-    module_dir = os.path.dirname(os.path.abspath(__file__))
-    p2 = os.path.join(module_dir, "config.json")
-    if os.path.isfile(p2):
-        return p2
-
-    return None
-
 
 def _load_config() -> Dict[str, Any]:
-    """Load ``config.json`` with a simple in‑memory cache."""
-    global _CONFIG_CACHE
-    if _CONFIG_CACHE is not None:
-        return _CONFIG_CACHE
-
-    path = _find_config_path()
-    cfg: Dict[str, Any] = {}
-    if path and os.path.isfile(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-        except Exception as e:  # pragma: no cover
-            print(f"--- Warning: Failed to load config.json: {e} ---")
-            cfg = {}
-
-    _CONFIG_CACHE = cfg
-    return cfg
+    """Load ``config.json`` using the shared frozen/source-aware loader."""
+    return _shared_load_config()
 
 
 def _ensure_chat_tool_model(llm):
@@ -163,7 +116,7 @@ class MultiTurnToolAgentExecutor:
     wrapped chat-agent runtime tools.
     """
 
-    def __init__(self, llm, system_prompt: str, tools, max_iterations: int = 20):
+    def __init__(self, llm, system_prompt: str, tools, max_iterations: int = 100):
         self.llm = llm
         self.system_prompt = system_prompt
         self.tools = list(tools)
@@ -297,8 +250,8 @@ File operations (reading files, listing files, searching for files) are **NOT** 
 Answer:
 
 """
-    config = _load_config()
-    max_iterations = int(config.get("unified_agent_max_iterations", 20))
+    max_iterations = get_int_config_value("unified_agent_max_iterations", 100, minimum=1)
+    print(f"--- Unified agent max iterations: {max_iterations} ---")
     return MultiTurnToolAgentExecutor(
         llm=getted_llm,
         system_prompt=system_prompt,
