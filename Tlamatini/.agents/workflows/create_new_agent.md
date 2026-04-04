@@ -327,30 +327,43 @@ python Tlamatini/manage.py migrate
 
 ## CRITICAL: Agent Naming Convention (READ THIS FIRST)
 
-The `agentDescription` from the database is the agent's display name (e.g., `"Shoter"`, `"Monitor Log"`, `"Node Manager"`, `"Gateway Relayer"`). This single value gets **transformed differently** in 3 contexts. Getting any of these wrong causes broken colors, broken connections, or invisible sidebar icons.
+The `agentDescription` from the database is the agent's display name (e.g., `"Shoter"`, `"Monitor Log"`, `"Node Manager"`, `"Gateway Relayer"`). This single value gets used in **two naming contexts plus one shared visual resolver**. Getting any of these wrong causes broken colors, broken connections, or invisible sidebar icons.
 
-### The 3 Name Forms
+### The 3 Resolution Contexts
 
 | Context | Transform | Example for `"Node Manager"` | Example for `"Shoter"` |
 |---|---|---|---|
 | **CSS classMap key** | `name.toLowerCase().replace(/\s+/g, '-')` | `'node-manager'` | `'shoter'` |
-| **Sidebar icon** (`lowerDesc`) | `name.toLowerCase()` (preserves spaces) | `'node manager'` | `'shoter'` |
+| **Sidebar visual resolver** | Uses the SAME normalized form as the classMap via `getAgentTypeClass()` / `applyAgentToolIconStyle()` | `'node-manager'` | `'shoter'` |
 | **Connection handlers** (`agentName.toLowerCase()`) | `name.toLowerCase()` (preserves spaces) | `'node manager'` | `'shoter'` |
 
 **For single-word agents** (e.g., `"Shoter"`, `"Emailer"`), all 3 forms are identical: `'shoter'`.
 
 **For multi-word agents** (e.g., `"Node Manager"`, `"Gateway Relayer"`), the forms DIFFER:
-- classMap key uses **hyphens**: `'node-manager'`
-- sidebar icon and connection handlers use **spaces**: `'node manager'`
+- classMap key and sidebar visual resolver use **hyphens**: `'node-manager'`
+- connection handlers use **spaces**: `'node manager'`
 
-> **WHY THIS MATTERS**: `applyAgentTypeClass()` normalizes with `replace(/\s+/g, '-')` before looking up the classMap. But `lowerDesc` in the sidebar and `agentName.toLowerCase()` in connection code keep the original spaces. If you use the wrong form, the gradient won't render or connections won't fire.
+> **WHY THIS MATTERS**: `applyAgentTypeClass()` and the shared sidebar visual helper normalize with `replace(/\s+/g, '-')` before looking up the classMap. Connection code still keeps spaces via `agentName.toLowerCase()`. If you mix these forms, the canvas may render but the sidebar icon may be wrong, or the connections may stop auto-configuring.
 
-### Multi-Word Agent Sidebar Icon — BOTH FORMS
+### Sidebar Color Rule — NEVER Duplicate Gradients In JavaScript
 
-For multi-word agents, you MUST check BOTH the spaced and hyphenated forms in the sidebar icon code, because some agents may be registered either way:
+The sidebar icon color is **NOT** a second palette definition. It must be resolved from the canvas CSS through the shared helper in `acp-canvas-core.js`.
+
+Do this:
+
 ```javascript
-else if (lowerDesc === 'node manager' || lowerDesc === 'node-manager') iconDiv.style.background = '...';
+const iconDiv = document.createElement('div');
+iconDiv.classList.add('agent-tool-icon');
+applyAgentToolIconStyle(iconDiv, description);
 ```
+
+Do **NOT** do this:
+
+```javascript
+else if (lowerDesc === 'node manager' || lowerDesc === 'node-manager') iconDiv.style.background = 'linear-gradient(...)';
+```
+
+If you type a gradient string directly inside `populateAgentsList()` for a specific agent, you are reintroducing the bug this skill is trying to prevent.
 
 ---
 
@@ -360,7 +373,7 @@ Edit `agent/static/agent/css/agentic_control_panel.css` and add gradient rules.
 
 ### 4a. Choose a UNIQUE 4-color gradient
 
-Every new agent MUST use a **4-color gradient** (`0%, 33%, 66%, 100%`) that is visually distinct from ALL existing agents. Before choosing colors, review the existing gradients in the CSS file and sidebar icon section of `acp-canvas-core.js` to avoid collisions.
+Every new agent MUST use a **4-color gradient** (`0%, 33%, 66%, 100%`) that is visually distinct from ALL existing agents. Before choosing colors, review the existing gradients in `agent/static/agent/css/agentic_control_panel.css` to avoid collisions. The sidebar icon will inherit this same style automatically through the shared helper in `acp-canvas-core.js`.
 
 **Existing 4-color gradients (DO NOT reuse these color families):**
 - Gatewayer: `#FF006E → #8338EC → #3A86FF → #00F5D4` (Pink → Purple → Blue → Cyan)
@@ -409,13 +422,21 @@ Use the CSS class name from the classMap value (typically `<agent_name_no_spaces
 }
 ```
 
-### 4c. Verify: The gradient string in CSS MUST be identical to the one used in the sidebar icon (Step 5b Location 3). Copy-paste it — do NOT retype.
+### 4c. Verify visual parity
+
+The gradient must exist in **one place only**: the CSS rule for `.canvas-item.<css_class_name>`.
+
+The sidebar icon must be resolved automatically from that canvas class through `applyAgentToolIconStyle()`. There must be **no second hard-coded gradient string** for that agent inside `populateAgentsList()`.
+
+Manual verification is REQUIRED after implementation:
+- confirm the agent icon in the left Agents sidebar matches the deployed canvas node
+- confirm the match holds for both newly dragged nodes and loaded `.flw` diagrams
 
 ---
 
 ## Step 5 · Frontend: JavaScript Integration
 
-You must edit **4 JavaScript files**. The most error-prone part is **getting the agent name form right** in each context. Refer to the Naming Convention table above for EVERY code snippet below.
+You must edit **4 JavaScript files**. The most error-prone parts are **getting the agent name form right** and **preserving sidebar/canvas visual parity**. Refer to the Naming Convention table above for EVERY code snippet below.
 
 ### 5a. `acp-agent-connectors.js` — Add fetch connector function
 
@@ -457,17 +478,19 @@ Add entry to the `classMap` object. The KEY must use the **hyphenated form** (ho
 **Location 2: `AGENTS_NEVER_START_OTHERS` array** (~line 94)
 If the agent does NOT start downstream agents, add the **hyphenated form** to this array.
 
-**Location 3: `populateAgentsList()` icon color** (~line 830)
+**Location 3: `populateAgentsList()` visual parity rule** (~line 830)
 
-Add an `else if` line using the **SAME 4-color gradient** from Step 4b. The match key uses `lowerDesc` which is `description.toLowerCase()` — this preserves spaces. For multi-word agents, check BOTH forms:
+Do **NOT** add a new per-agent `else if` gradient branch here.
+
+The sidebar icon must keep using the shared helper so it inherits the computed background from the same CSS class used by the canvas node:
+
 ```javascript
-// Single-word agent:
-else if (lowerDesc === 'shoter') iconDiv.style.background = 'linear-gradient(135deg, ...)';
-// Multi-word agent — MUST check BOTH spaced and hyphenated forms:
-else if (lowerDesc === 'node manager' || lowerDesc === 'node-manager') iconDiv.style.background = 'linear-gradient(135deg, #0D4F4F 0%, #00ACC1 33%, #76FF03 66%, #FFB300 100%)';
+const iconDiv = document.createElement('div');
+iconDiv.classList.add('agent-tool-icon');
+applyAgentToolIconStyle(iconDiv, description);
 ```
 
-> **CRITICAL**: The gradient string here MUST be identical to the one in the CSS (Step 4b). Copy-paste it.
+> **CRITICAL**: `agentic_control_panel.css` is the single source of truth for agent colors. `populateAgentsList()` must never become a second palette registry.
 
 **Location 4: `removeConnection()` function** (~line 600)
 
@@ -656,12 +679,12 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
 [ ] Step 4: CSS gradient styling in agentic_control_panel.css
     [ ] 4a: Choose a UNIQUE 4-color gradient (0%, 33%, 66%, 100%) — check existing gradients first!
     [ ] 4b: Add .canvas-item.<css_class>-agent rules (normal + hover)
-    [ ] 4c: VERIFY: gradient string matches what you'll use in Step 5b Location 3
+    [ ] 4c: VERIFY: the gradient exists only in CSS and the sidebar icon inherits it from `applyAgentToolIconStyle()`
 [ ] Step 5: JavaScript integration (USE CORRECT NAME FORM FOR EACH CONTEXT!):
     [ ] 5a: Add fetch connector in acp-agent-connectors.js
     [ ] 5b-1: classMap key in acp-canvas-core.js → HYPHENATED form (e.g., 'node-manager')
     [ ] 5b-2: AGENTS_NEVER_START_OTHERS → HYPHENATED form (if applicable)
-    [ ] 5b-3: Sidebar icon color → SPACED form + fallback (e.g., 'node manager' || 'node-manager')
+    [ ] 5b-3: Sidebar icon visual parity → keep `applyAgentToolIconStyle(iconDiv, description)` and do NOT add a new hard-coded gradient branch
     [ ] 5b-4: removeConnection() → SPACED form (e.g., 'node manager')
     [ ] 5b-5: removeConnectionsFor() → SPACED form with deletion guards
     [ ] 5b-6: mouseup handler → SPACED form
@@ -674,4 +697,5 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
 [ ] Step 8: Lint and fix:
     [ ] 8a: Run `python -m ruff check` and fix all issues
     [ ] 8b: Run `npm run lint` and fix only errors
+    [ ] 8c: Manual ACP check: sidebar icon color matches the deployed canvas node color for the new agent
 ```

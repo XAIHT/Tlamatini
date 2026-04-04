@@ -14,6 +14,10 @@ ini_posy: 0
 end_posx: 500
 end_posy: 500
 
+# Optional click to issue after the localized final position is effectively reached.
+# Supported values: none, left, right, middle, double-left, double-right, double-middle
+button_click: "none"
+
 # Total time in seconds for random mouse movement
 total_time: 30
 

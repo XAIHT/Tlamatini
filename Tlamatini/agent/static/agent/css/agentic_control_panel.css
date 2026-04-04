@@ -1992,3 +1992,15 @@ body.resizing-vertical {
 .agent-tool-item[data-content="OR"] .agent-tool-icon {
     background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
 }
+
+/* Keyboarder Agent */
+.canvas-item.keyboarder-agent {
+    background-color: #F44336;
+    background: linear-gradient(135deg, #F44336 0%, #FF9800 33%, #FFEB3B 66%, #4CAF50 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.keyboarder-agent:hover {
+    background: linear-gradient(135deg, #FF6659 0%, #FFB74D 33%, #FFF59D 66%, #81C784 100%);
+    box-shadow: 0 6px 15px rgba(255, 152, 0, 0.5);
+}
