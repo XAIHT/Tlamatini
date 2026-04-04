@@ -312,8 +312,66 @@ def move_mouse_random(total_time: float):
     logging.info("Random mouse movement completed.")
 
 
+def normalize_button_click(button_click: str) -> str:
+    normalized = str(button_click or 'none').strip().lower().replace('_', '-')
+    aliases = {
+        '': 'none',
+        'double': 'double-left',
+        'doubleclick': 'double-left',
+        'double-click': 'double-left',
+        'left-double': 'double-left',
+        'right-double': 'double-right',
+        'middle-double': 'double-middle',
+    }
+    normalized = aliases.get(normalized, normalized)
+
+    supported = {
+        'none',
+        'left',
+        'right',
+        'middle',
+        'double-left',
+        'double-right',
+        'double-middle',
+    }
+    return normalized if normalized in supported else 'none'
+
+
+def issue_click_after_reaching_target(end_posx: int, end_posy: int, button_click: str):
+    if pyautogui is None:
+        logging.error("pyautogui is not installed. Cannot issue click.")
+        return
+
+    normalized_click = normalize_button_click(button_click)
+    if normalized_click == 'none':
+        logging.info("No button_click configured. Skipping click at final position.")
+        return
+
+    current_x, current_y = pyautogui.position()
+    tolerance_pixels = 2
+    if abs(current_x - end_posx) > tolerance_pixels or abs(current_y - end_posy) > tolerance_pixels:
+        logging.warning(
+            f"Final position not effectively reached. Expected ({end_posx}, {end_posy}), "
+            f"current position is ({current_x}, {current_y}). Skipping configured click '{normalized_click}'."
+        )
+        return
+
+    try:
+        if normalized_click.startswith('double-'):
+            button = normalized_click.split('-', 1)[1]
+            pyautogui.doubleClick(button=button)
+            logging.info(f"Issued configured double {button} click at ({current_x}, {current_y}).")
+        else:
+            pyautogui.click(button=normalized_click)
+            logging.info(f"Issued configured {normalized_click} click at ({current_x}, {current_y}).")
+    except pyautogui.FailSafeException:
+        logging.warning("Fail-safe triggered during configured click, skipping click.")
+    except Exception as e:
+        logging.warning(f"Configured click '{normalized_click}' failed: {e}")
+
+
 def move_mouse_localized(ini_posx: int, ini_posy: int, end_posx: int, end_posy: int,
-                         use_actual_position: bool):
+                         use_actual_position: bool, button_click: str):
     """Move the mouse from an initial position to a final position."""
     if pyautogui is None:
         logging.error("pyautogui is not installed. Cannot move mouse.")
@@ -336,6 +394,7 @@ def move_mouse_localized(ini_posx: int, ini_posy: int, end_posx: int, end_posy: 
             tween=pyautogui.easeInOutQuad
         )
         logging.info(f"Mouse moved to ({end_posx}, {end_posy}).")
+        issue_click_after_reaching_target(end_posx, end_posy, button_click)
     except pyautogui.FailSafeException:
         logging.warning("Fail-safe triggered during localized movement, skipping movement.")
     except Exception as e:
@@ -354,14 +413,18 @@ def main():
     try:
         target_agents = config.get('target_agents', [])
         movement_type = config.get('movement_type', 'random')
+        button_click = config.get('button_click', 'none')
 
         logging.info("MOUSER AGENT STARTED")
         logging.info(f"Movement type: {movement_type}")
+        logging.info(f"Configured button click: {normalize_button_click(button_click)}")
         logging.info(f"Targets: {target_agents}")
 
         if movement_type == 'random':
             total_time = config.get('total_time', 30)
             logging.info(f"Total time: {total_time}s")
+            if normalize_button_click(button_click) != 'none':
+                logging.info("button_click is ignored when movement_type is random.")
             try:
                 move_mouse_random(float(total_time))
             except Exception as e:
@@ -378,12 +441,14 @@ def main():
             if not use_actual_position:
                 logging.info(f"Initial position: ({ini_posx}, {ini_posy})")
             logging.info(f"Final position: ({end_posx}, {end_posy})")
+            logging.info(f"Localized button_click: {normalize_button_click(button_click)}")
 
             try:
                 move_mouse_localized(
                     int(ini_posx), int(ini_posy),
                     int(end_posx), int(end_posy),
-                    bool(use_actual_position)
+                    bool(use_actual_position),
+                    button_click
                 )
             except Exception as e:
                 logging.warning(f"Localized mouse movement failed: {e}")

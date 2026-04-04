@@ -177,6 +177,129 @@ function initAgentListTooltips() {
     agentListTooltipsInitialized = true;
 }
 
+const AGENT_TYPE_CLASS_MAP = {
+    'ender': 'ender-agent',
+    'starter': 'starter-agent',
+    'or': 'or-agent',
+    'and': 'and-agent',
+    'croner': 'croner-agent',
+    'mover': 'mover-agent',
+    'cleaner': 'cleaner-agent',
+    'sleeper': 'sleeper-agent',
+    'shoter': 'shoter-agent',
+    'keyboarder': 'keyboarder-agent',
+    'recmailer': 'recmailer-agent',
+    'notifier': 'notifier-agent',
+    'deleter': 'deleter-agent',
+    'executer': 'executer-agent',
+    'stopper': 'stopper-agent',
+    'whatsapper': 'whatsapper-agent',
+    'telegramrx': 'telegramrx-agent',
+    'telegramer': 'telegramer-agent',
+    'pythonxer': 'pythonxer-agent',
+    'asker': 'asker-agent',
+    'forker': 'forker-agent',
+    'counter': 'counter-agent',
+    'raiser': 'raiser-agent',
+    'emailer': 'emailer-agent',
+    'mongoxer': 'mongoxer-agent',
+    'monitor-log': 'monitor-log-agent',
+    'monitor-netstat': 'monitor-netstat-agent',
+    'ssher': 'ssher-agent',
+    'scper': 'scper-agent',
+    'sqler': 'sqler-agent',
+    'prompter': 'prompter-agent',
+    'flowcreator': 'flowcreator-agent',
+    'gitter': 'gitter-agent',
+    'dockerer': 'dockerer-agent',
+    'pser': 'pser-agent',
+    'kuberneter': 'kuberneter-agent',
+    'apirer': 'apirer-agent',
+    'jenkinser': 'jenkinser-agent',
+    'crawler': 'crawler-agent',
+    'summarizer': 'summarizer-agent',
+    'flowhypervisor': 'flowhypervisor-agent',
+    'mouser': 'mouser-agent',
+    'file-interpreter': 'file-interpreter-agent',
+    'image-interpreter': 'image-interpreter-agent',
+    'gatewayer': 'gatewayer-agent',
+    'gateway-relayer': 'gateway-relayer-agent',
+    'node-manager': 'nodemanager-agent',
+    'file-creator': 'filecreator-agent',
+    'file-extractor': 'fileextractor-agent',
+    'kyber-keygen': 'kyberkeygen-agent',
+    'kyber-cipher': 'kybercipher-agent',
+    'kyber-decipher': 'kyberdecipher-agent',
+    'parametrizer': 'parametrizer-agent',
+    'flowbacker': 'flowbacker-agent',
+    'barrier': 'barrier-agent',
+    'j-decompiler': 'jdecompiler-agent',
+};
+
+const agentToolIconStyleCache = new Map();
+
+function normalizeAgentTypeName(agentName) {
+    return String(agentName || '').trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+function getAgentTypeClass(agentName) {
+    return AGENT_TYPE_CLASS_MAP[normalizeAgentTypeName(agentName)] || null;
+}
+
+function getAgentToolIconStyle(agentName) {
+    const agentClass = getAgentTypeClass(agentName);
+    if (!agentClass) {
+        return null;
+    }
+
+    if (agentToolIconStyleCache.has(agentClass)) {
+        return agentToolIconStyleCache.get(agentClass);
+    }
+
+    const probe = document.createElement('div');
+    probe.className = `canvas-item ${agentClass}`;
+    probe.style.position = 'absolute';
+    probe.style.left = '-9999px';
+    probe.style.top = '-9999px';
+    probe.style.pointerEvents = 'none';
+    probe.textContent = 'A';
+    document.body.appendChild(probe);
+
+    const computedStyle = window.getComputedStyle(probe);
+    const backgroundImage = computedStyle.backgroundImage;
+    const backgroundColor = computedStyle.backgroundColor;
+
+    document.body.removeChild(probe);
+
+    const resolvedStyle = {
+        backgroundImage: backgroundImage && backgroundImage !== 'none' ? backgroundImage : '',
+        backgroundColor: backgroundColor && backgroundColor !== 'rgba(0, 0, 0, 0)' ? backgroundColor : ''
+    };
+
+    agentToolIconStyleCache.set(agentClass, resolvedStyle);
+    return resolvedStyle;
+}
+
+function applyAgentToolIconStyle(iconEl, agentName) {
+    const resolvedStyle = getAgentToolIconStyle(agentName);
+    if (!resolvedStyle) {
+        iconEl.style.background = '';
+        iconEl.style.backgroundColor = '#ccc';
+        return;
+    }
+
+    if (resolvedStyle.backgroundImage) {
+        iconEl.style.background = resolvedStyle.backgroundImage;
+        if (resolvedStyle.backgroundColor) {
+            iconEl.style.backgroundColor = resolvedStyle.backgroundColor;
+        }
+        return;
+    }
+
+    iconEl.style.background = '';
+    iconEl.style.backgroundColor = resolvedStyle.backgroundColor || '#ccc';
+}
+
 // ========================================
 // AGENT TYPE CLASS HELPERS
 // ========================================
@@ -187,66 +310,7 @@ function initAgentListTooltips() {
  * @param {string} agentName - Lowercase agent name
  */
 function applyAgentTypeClass(el, agentName) {
-    // Normalize spaces to hyphens so "monitor log" matches "monitor-log"
-    const normalizedName = agentName.replace(/\s+/g, '-');
-    const classMap = {
-        'ender': 'ender-agent',
-        'starter': 'starter-agent',
-        'or': 'or-agent',
-        'and': 'and-agent',
-        'croner': 'croner-agent',
-        'mover': 'mover-agent',
-        'cleaner': 'cleaner-agent',
-        'sleeper': 'sleeper-agent',
-        'shoter': 'shoter-agent',
-        'recmailer': 'recmailer-agent',
-        'notifier': 'notifier-agent',
-        'deleter': 'deleter-agent',
-        'executer': 'executer-agent',
-        'stopper': 'stopper-agent',
-        'whatsapper': 'whatsapper-agent',
-        'telegramrx': 'telegramrx-agent',
-        'telegramer': 'telegramer-agent',
-        'pythonxer': 'pythonxer-agent',
-        'asker': 'asker-agent',
-        'forker': 'forker-agent',
-        'counter': 'counter-agent',
-        'raiser': 'raiser-agent',
-        'emailer': 'emailer-agent',
-        'mongoxer': 'mongoxer-agent',
-        'monitor-log': 'monitor-log-agent',
-        'monitor-netstat': 'monitor-netstat-agent',
-        'ssher': 'ssher-agent',
-        'scper': 'scper-agent',
-        'sqler': 'sqler-agent',
-        'prompter': 'prompter-agent',
-        'flowcreator': 'flowcreator-agent',
-        'gitter': 'gitter-agent',
-        'dockerer': 'dockerer-agent',
-        'pser': 'pser-agent',
-        'kuberneter': 'kuberneter-agent',
-        'apirer': 'apirer-agent',
-        'jenkinser': 'jenkinser-agent',
-        'crawler': 'crawler-agent',
-        'summarizer': 'summarizer-agent',
-        'flowhypervisor': 'flowhypervisor-agent',
-        'mouser': 'mouser-agent',
-        'file-interpreter': 'file-interpreter-agent',
-        'image-interpreter': 'image-interpreter-agent',
-        'gatewayer': 'gatewayer-agent',
-        'gateway-relayer': 'gateway-relayer-agent',
-        'node-manager': 'nodemanager-agent',
-        'file-creator': 'filecreator-agent',
-        'file-extractor': 'fileextractor-agent',
-        'kyber-keygen': 'kyberkeygen-agent',
-        'kyber-cipher': 'kybercipher-agent',
-        'kyber-decipher': 'kyberdecipher-agent',
-        'parametrizer': 'parametrizer-agent',
-        'flowbacker': 'flowbacker-agent',
-        'barrier': 'barrier-agent',
-        'j-decompiler': 'jdecompiler-agent',
-    };
-    const cls = classMap[normalizedName];
+    const cls = getAgentTypeClass(agentName);
     if (cls) el.classList.add(cls);
 }
 
@@ -1022,68 +1086,7 @@ async function populateAgentsList() {
 
         const iconDiv = document.createElement('div');
         iconDiv.classList.add('agent-tool-icon');
-
-        // Set icon color based on agent type — must match canvas CSS exactly
-        const lowerDesc = description.toLowerCase();
-        // Solid-color agents
-        if (lowerDesc === 'ender') iconDiv.style.background = 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)';
-        else if (lowerDesc === 'starter') iconDiv.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
-        else if (lowerDesc === 'or') iconDiv.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
-        else if (lowerDesc === 'cleaner') iconDiv.style.backgroundColor = '#00008B';
-        else if (lowerDesc === 'and') iconDiv.style.background = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)';
-        else if (lowerDesc === 'croner') iconDiv.style.background = 'linear-gradient(135deg, #F87171 0%, #EF4444 100%)';
-        else if (lowerDesc === 'mover') iconDiv.style.background = 'linear-gradient(135deg, #8D6E63 0%, #5D4037 100%)';
-        else if (lowerDesc === 'sleeper') iconDiv.style.background = 'linear-gradient(135deg, #78909c 0%, #455a64 100%)';
-        else if (lowerDesc === 'deleter') iconDiv.style.background = 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)';
-        else if (lowerDesc === 'recmailer') iconDiv.style.background = 'linear-gradient(135deg, #38BDF8 0%, #0284C7 100%)';
-        else if (lowerDesc === 'executer') iconDiv.style.background = 'linear-gradient(135deg, #FDE047 0%, #EAB308 100%)';
-        else if (lowerDesc === 'notifier') iconDiv.style.background = 'linear-gradient(135deg, #F472B6 0%, #DB2777 100%)';
-        else if (lowerDesc === 'stopper') iconDiv.style.background = 'linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%)';
-        else if (lowerDesc === 'whatsapper') iconDiv.style.background = 'linear-gradient(135deg, #006400 0%, #008000 100%)';
-        else if (lowerDesc === 'mongoxer') iconDiv.style.background = 'linear-gradient(135deg, #558B2F 0%, #33691E 100%)';
-        else if (lowerDesc === 'monitor log') iconDiv.style.background = 'linear-gradient(135deg, #FF6F00 0%, #E65100 100%)';
-        else if (lowerDesc === 'monitor netstat') iconDiv.style.background = 'linear-gradient(135deg, #00897B 0%, #00695C 100%)';
-        else if (lowerDesc === 'raiser') iconDiv.style.background = 'linear-gradient(135deg, #AD1457 0%, #880E4F 100%)';
-        else if (lowerDesc === 'emailer') iconDiv.style.background = 'linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%)';
-        // Two-color gradient agents
-        else if (lowerDesc === 'pythonxer') iconDiv.style.background = 'linear-gradient(135deg, #306998 0%, #FFD43B 100%)';
-        else if (lowerDesc === 'shoter') iconDiv.style.background = 'linear-gradient(135deg, #06b6d4 0%, #d946ef 100%)';
-        else if (lowerDesc === 'asker') iconDiv.style.background = 'linear-gradient(135deg, #EF4444 0%, #3B82F6 100%)';
-        else if (lowerDesc === 'forker') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #FFFFFF 100%)';
-        else if (lowerDesc === 'counter') iconDiv.style.background = 'linear-gradient(135deg, #FF8F00 0%, #00695C 100%)';
-        else if (lowerDesc === 'ssher') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #e53935 100%)';
-        else if (lowerDesc === 'scper') iconDiv.style.background = 'linear-gradient(135deg, #424242 0%, #e53935 100%)';
-        else if (lowerDesc === 'sqler') iconDiv.style.background = 'linear-gradient(135deg, #f97316 0%, #10b981 100%)';
-        else if (lowerDesc === 'telegramrx') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #000000 100%)';
-        else if (lowerDesc === 'telegramer') iconDiv.style.background = 'linear-gradient(135deg, #1a237e 0%, #10B981 100%)';
-        else if (lowerDesc === 'prompter') iconDiv.style.background = 'linear-gradient(135deg, #795548 0%, #1a237e 100%)';
-        else if (lowerDesc === 'gitter') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #000000 100%)';
-        else if (lowerDesc === 'dockerer') iconDiv.style.background = 'linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%)';
-        else if (lowerDesc === 'pser') iconDiv.style.background = 'linear-gradient(135deg, #E91E63 0%, #4CAF50 100%)';
-        else if (lowerDesc === 'kuberneter') iconDiv.style.background = 'linear-gradient(135deg, #000000 0%, #00008B 100%)';
-        else if (lowerDesc === 'apirer') iconDiv.style.background = 'linear-gradient(135deg, #3B0764 0%, #86EFAC 100%)';
-        else if (lowerDesc === 'jenkinser') iconDiv.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%)';
-        else if (lowerDesc === 'crawler') iconDiv.style.background = 'linear-gradient(135deg, #00BCD4 0%, #E91E63 100%)';
-        else if (lowerDesc === 'summarizer') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 100%)';
-        // Three-color gradient agents (DO NOT MODIFY these gradients)
-        else if (lowerDesc === 'flowhypervisor') iconDiv.style.background = 'linear-gradient(135deg, #FFD600 0%, #E91E63 50%, #00BCD4 100%)';
-        else if (lowerDesc === 'flowcreator') iconDiv.style.background = 'linear-gradient(135deg, #1565C0 0%, #C62828 50%, #2E7D32 100%)';
-        else if (lowerDesc === 'mouser') iconDiv.style.background = 'linear-gradient(135deg, #FF1744 0%, #651FFF 50%, #00E676 100%)';
-        else if (lowerDesc === 'file-interpreter' || lowerDesc === 'file interpreter') iconDiv.style.background = 'linear-gradient(135deg, #FF9A00 0%, #1B1464 50%, #00FFC8 100%)';
-        else if (lowerDesc === 'image-interpreter' || lowerDesc === 'image interpreter') iconDiv.style.background = 'linear-gradient(135deg, #C2185B 0%, #FFC107 50%, #009688 100%)';
-        else if (lowerDesc === 'gatewayer') iconDiv.style.background = 'linear-gradient(135deg, #FF006E 0%, #8338EC 33%, #3A86FF 66%, #00F5D4 100%)';
-        else if (lowerDesc === 'gateway relayer') iconDiv.style.background = 'linear-gradient(135deg, #264653 0%, #2A9D8F 33%, #E9C46A 66%, #E76F51 100%)';
-        else if (lowerDesc === 'node manager' || lowerDesc === 'nodemanager') iconDiv.style.background = 'linear-gradient(135deg, #0D4F4F 0%, #00ACC1 33%, #76FF03 66%, #FFB300 100%)';
-        else if (lowerDesc === 'file-creator' || lowerDesc === 'file creator') iconDiv.style.background = 'linear-gradient(135deg, #00897B 0%, #FF7043 100%)';
-        else if (lowerDesc === 'file-extractor' || lowerDesc === 'file extractor') iconDiv.style.background = 'linear-gradient(135deg, #3F51B5 0%, #FFB300 100%)';
-        else if (lowerDesc === 'kyber-keygen' || lowerDesc === 'kyber keygen') iconDiv.style.background = 'linear-gradient(135deg, #7B2FBE 0%, #00BFA5 50%, #FFD740 100%)';
-        else if (lowerDesc === 'kyber-cipher' || lowerDesc === 'kyber cipher') iconDiv.style.background = 'linear-gradient(135deg, #D35400 0%, #1ABC9C 50%, #8E44AD 100%)';
-        else if (lowerDesc === 'kyber-decipher' || lowerDesc === 'kyber decipher') iconDiv.style.background = 'linear-gradient(135deg, #4A90D9 0%, #D94F7A 50%, #82C91E 100%)';
-        else if (lowerDesc === 'flowbacker') iconDiv.style.background = 'linear-gradient(135deg, #0F4C5C 0%, #E36414 50%, #FB8B24 100%)';
-        else if (lowerDesc === 'barrier') iconDiv.style.background = 'linear-gradient(135deg, #E84393 0%, #00B894 50%, #FDCB6E 100%)';
-        else if (lowerDesc === 'j-decompiler' || lowerDesc === 'j decompiler') iconDiv.style.background = 'linear-gradient(135deg, #2C3E50 0%, #E74C3C 50%, #27AE60 100%)';
-        else if (lowerDesc === 'parametrizer') iconDiv.style.background = 'linear-gradient(135deg, #311B92 0%, #AA00FF 33%, #FF6D00 66%, #00E5FF 100%)';
-        else iconDiv.style.backgroundColor = '#ccc'; // Default color
+        applyAgentToolIconStyle(iconDiv, description);
 
         const span = document.createElement('span');
         span.textContent = description;

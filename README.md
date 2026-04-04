@@ -135,7 +135,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 55 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 56 pre-built agent types.
 
 The main chat surface is now more agentic as well. The unified chat backend runs an explicit multi-turn tool loop and can launch isolated runtime copies of selected workflow-agent templates directly from chat, while persisting their run metadata in the database and exposing status/log/stop follow-up tools.
 
@@ -255,7 +255,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 55 pre-built agent types for diverse automation tasks
+- 56 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - README-backed agent purpose tooltips in the sidebar and per-node Description dialogs on the canvas
@@ -500,6 +500,7 @@ Tlamatini/
 │   │   │   ├── file_creator/    # File creation utility agent
 │   │   │   ├── file_extractor/  # File text extraction utility agent
 │   │   │   ├── j_decompiler/    # Java artifact decompiler using bundled jd-cli
+│   │   │   ├── keyboarder/            # Simulates human keyboard typing
 │   │   │   ├── kyber_keygen/   # CRYSTALS-Kyber key pair generation agent
 │   │   │   ├── kyber_cipher/  # CRYSTALS-Kyber encryption agent
 │   │   │   ├── kyber_decipher/ # CRYSTALS-Kyber decryption agent
@@ -1454,7 +1455,7 @@ Agents are classified as:
 | **deleter** | Delete files by pattern | `files_to_delete`: List of patterns (supports wildcards)<br>`trigger_mode`: immediate / event<br>`recursive`: false (scan subdirs)<br>`filetype_exclusions`: "" (exclude extensions/filenames)<br>`source_agents`: For event mode |
 | **mover** | Move or copy files | `operation`: move / copy<br>`sources_list`: File patterns<br>`destination_folder`: Target directory<br>`recursive`: false (scan subdirs)<br>`filetype_exclusions`: "" (exclude extensions/filenames) |
 | **shoter** | Takes screenshots and saves to output directory | `output_dir`: Screenshot destination<br>`target_agents`: Downstream agents |
-| **mouser** | Moves the mouse pointer randomly for a duration or to a specific screen position. Starts downstream agents after completion | `movement_type`: "random"/"localized"<br>`actual_position`: true<br>`ini_posx`/`ini_posy`: Start coords<br>`end_posx`/`end_posy`: End coords<br>`total_time`: Duration (seconds)<br>`target_agents`: Downstream agents |
+| **mouser** | Moves the mouse pointer randomly for a duration or to a specific screen position. In localized mode it can also issue a configured click only after the destination has been effectively reached. Starts downstream agents after completion | `movement_type`: "random"/"localized"<br>`actual_position`: true<br>`ini_posx`/`ini_posy`: Start coords<br>`end_posx`/`end_posy`: End coords<br>`button_click`: none/left/right/middle/double-left/double-right/double-middle<br>`total_time`: Duration (seconds)<br>`target_agents`: Downstream agents |
 | **ssher** | SSH remote command execution. Requires pre-configured SSH keys. | `user`: SSH username<br>`ip`: Remote host<br>`script`: Command to execute<br>`target_agents`: Triggered on success |
 | **scper** | SCP file transfer to/from remote host | `user`: SSH username<br>`ip`: Remote host<br>`file`: Path to transfer<br>`direction`: send / receive<br>`target_agents`: Triggered on success |
 | **mongoxer** | Execute Python scripts against MongoDB using pre-connected `db` object | `mongo_connection`: Connection config map<br>`script`: Python script using `db`<br>`target_agents`: Success agents |
@@ -2617,11 +2618,12 @@ Enable verbose logging in config.json:
 | **Notifier** | LangGraph-based agent that monitors logs and triggers browser notifications |
 | **Stopper** | Single-threaded agent that sequentially polls and terminates other agents based on patterns. Uses `output_agents` (not `target_agents`) for canvas wiring |
 | **Pythonxer** | Agent that executes Python scripts with Ruff validation and boolean exit code |
+| **Keyboarder** | Issues a sequence of keys to emulate human typing on the keyboard. | `input_sequence`: string of keys and combos<br>`target_agents`: Downstream agents |
 | **Recmailer** | LangGraph agent that monitors IMAP email inbox with LLM-based keyword analysis |
 | **Whatsapper** | Agent that sends WhatsApp notifications via TextMeBot API with LLM summarization |
 | **Forker** | Deterministic agent that routes workflows to Path A or B based on log patterns |
 | **Gitter** | Deterministic agent that executes Git operations (clone, pull, push, commit, etc.) on local repositories |
-| **Mouser** | Deterministic agent that moves the mouse pointer randomly or to a specific position, then triggers downstream agents |
+| **Mouser** | Deterministic agent that moves the mouse pointer randomly or to a specific position and, in localized mode, can optionally issue a configured click after reaching the destination, then triggers downstream agents |
 | **Dockerer** | Manages Docker containers and docker-compose operations, starting downstream agents after execution |
 | **Pser** | LLM-powered agent that finds running processes by fuzzy name matching and logs the best match |
 | **Apirer** | HTTP/REST API agent that makes HTTP requests to any URL and starts downstream agents regardless of outcome |
@@ -2702,6 +2704,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Added Keyboarder Agent** - Issues a sequence of keys to emulate human typing on the keyboard.
 
 - **ACP Agent Descriptions and Instance Context Menus** - `agentic_control_panel()` now parses the `## Workflow Agents` Purpose column from `README.md`, injects an `agent_purpose_map` into the ACP template, and the frontend uses it for sidebar hover tooltips and the new canvas **Description** dialog. The right-click menu for deployed agents now also exposes **`Explore dir...`** and **`Open cmd...`**, and `/agent/open_in_app/` accepts `agent_name` so those actions resolve the current session-pool instance directory instead of the template folder. `agent/tests.py` now includes regression coverage for those instance-directory actions
 - **Parametrizer Nested Target Mapping** - The Parametrizer dialog now flattens nested target `config.yaml` dictionaries into dot-notation keys, and runtime mapping now writes dot-notation targets back into nested YAML structures. This lets a source output field populate sub-config entries such as `target.smtp.username` instead of only top-level keys
@@ -2791,3 +2794,28 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ---
 
 *For support or questions, please open an issue on GitHub.*
+
+
+### Keyboarder Supported Keys
+The **Keyboarder** agent simulates human keyboard inputs. The `input_sequence` parameter accepts a comma-separated list of strings or key commands. 
+
+- **Literal strings**: Must be enclosed in single or double quotes, e.g. `'Hello World'`. Commas inside quotes are ignored by the parser.
+- **Simultaneous keys**: Use the `+` operator, e.g. `ctrl+c`, `shift+alt+delete`.
+- **Sequential commands**: Separate them by commas, e.g. `escape, escape, ctrl+c, 'hello'`
+
+Below is a comprehensive table of special keys supported in Windows for the `input_sequence` field:
+
+| Category | Supported Keys |
+|---|---|
+| **Modifiers** | `ctrl`, `shift`, `alt`, `altgr`, `win`, `windows`, `command`, `option` |
+| **Arrows** | `left`, `<-(left arrow)`, `right`, `->(right arrow)`, `up`, `up arrow`, `down`, `down arrow` |
+| **Navigation** | `home`, `end`, `pageup`, `pgup`, `pagedown`, `pgdn` |
+| **Editing** | `enter`, `return`, `esc`, `escape`, `backspace`, `space`, `tab`, `del`, `delete`, `insert` |
+| **Locks** | `capslock`, `mayus`, `mayuscula`, `numlock`, `scrolllock` |
+| **Function Keys** | `f1`, `f2`, `f3`, `f4`, ... `f24` |
+| **Media & System**| `volumedown`, `volumeup`, `volumemute`, `playpause`, `nexttrack`, `printscreen`, `prtsc`, `pause`, `apps` |
+| **Symbols/Nums**| `	`, `
+`, `
+`, `!`, `"`, `#`, `$`, `%`, `&`, `'`, `(`, `)`, `*`, `+`, `,`, `-`, `.`, `/`, `0`-`9`, `<`, `=`, `>`, `?`, `@`, `[`, `\`, `]`, `^`, `_`, `` ` ``, `{`, `\|`, `}`, `~` |
+
+*Note: All commands are case-insensitive internally, but using literal strings requires matching accurate capitalization inside the quotes.*

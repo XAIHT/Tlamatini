@@ -1,0 +1,14 @@
+# Keyboarder Agent Configuration
+
+# Default configuration parameters
+stride_delay: 100
+
+# String and key sequences, described as normal strings.
+# Special keys should be typed normally, sequence separated by commas.
+# Simultaneous pressings indicated with `+` plus sign.
+# To type a string literally, wrap it in single or double quotes.
+input_sequence: "ESCAPE, ESCAPE, ctrl+c, ctrl+v, home, 'This is the input issued by the keyboard using Keyboarder', shift+left+left+left, ctrl+x"
+
+# Connection fields
+source_agents: []
+target_agents: []

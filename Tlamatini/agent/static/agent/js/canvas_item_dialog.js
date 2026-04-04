@@ -76,7 +76,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 fieldset.appendChild(legend);
                 renderFields(fieldset, val, fieldKey);
                 container.appendChild(fieldset);
-            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type' || key === 'reading_type' || key === 'kyber_variant') {
+            } else if (key === 'trigger_mode' || key === 'operation' || key === 'direction' || key === 'crawl_type' || key === 'movement_type' || key === 'reading_type' || key === 'kyber_variant' || key === 'button_click') {
                 // Custom rendering for trigger_mode, operation, direction, crawl_type, movement_type, reading_type - Radio Buttons
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
@@ -106,6 +106,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     options = ['fast', 'complete', 'summarized'];
                 } else if (key === 'kyber_variant') {
                     options = ['kyber-512', 'kyber-768', 'kyber-1024'];
+                } else if (key === 'button_click') {
+                    options = ['none', 'left', 'right', 'middle', 'double-left', 'double-right', 'double-middle'];
                 }
 
                 options.forEach(opt => {
@@ -132,6 +134,9 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 
                     const optLabel = document.createElement('label');
                     optLabel.innerText = opt.charAt(0).toUpperCase() + opt.slice(1);
+                    if (opt.startsWith('double-')) {
+                        optLabel.innerText = opt.replace('-', ' ').replace(/^./, (char) => char.toUpperCase());
+                    }
                     optLabel.htmlFor = radioRes.id;
                     optLabel.style.cursor = "pointer";
                     optLabel.style.color = "#fff";
@@ -364,7 +369,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const mouserLegend = document.createElement('p');
-        mouserLegend.innerHTML = '<strong>&#128433; Mouser</strong> — Move the mouse pointer randomly or to a specific screen position. <b>Random</b>: moves randomly for a duration. <b>Localized</b>: moves from one position to another.';
+        mouserLegend.innerHTML = '<strong>&#128433; Mouser</strong> — Move the mouse pointer randomly or to a specific screen position. <b>Random</b>: moves randomly for a duration. <b>Localized</b>: moves from one position to another and can optionally issue a configured click after the destination is reached.';
         mouserLegend.style.color = '#7C4DFF';
         mouserLegend.style.marginBottom = '12px';
         mouserLegend.style.padding = '8px';
@@ -384,6 +389,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
             const inputIniY = document.getElementById('prop-ini_posy');
             const inputEndX = document.getElementById('prop-end_posx');
             const inputEndY = document.getElementById('prop-end_posy');
+            const buttonClickInputs = Array.from(document.querySelectorAll('input[name="prop-button_click"]'));
             const inputTotalTime = document.getElementById('prop-total_time');
 
             function applyMouserState() {
@@ -400,6 +406,12 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 if (inputEndX) { inputEndX.disabled = !isLocalized; inputEndX.style.opacity = isLocalized ? '1' : '0.4'; }
                 if (inputEndY) { inputEndY.disabled = !isLocalized; inputEndY.style.opacity = isLocalized ? '1' : '0.4'; }
                 if (checkActualPos) { checkActualPos.disabled = !isLocalized; checkActualPos.style.opacity = isLocalized ? '1' : '0.4'; }
+                buttonClickInputs.forEach((input) => {
+                    input.disabled = !isLocalized;
+                    if (input.parentElement) {
+                        input.parentElement.style.opacity = isLocalized ? '1' : '0.4';
+                    }
+                });
 
                 // ini_posx/ini_posy: disabled when NOT localized OR when actual_position is checked
                 const disableIni = !isLocalized || isActualPos;

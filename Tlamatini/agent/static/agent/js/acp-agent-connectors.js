@@ -1114,3 +1114,22 @@ async function updateJDecompilerConnection(agentId, targetAgentId, action, type 
         console.error(`--- Error updating J-Decompiler ${agentId}:`, error);
     }
 }
+
+async function updateKeyboarderConnection(agentId, targetAgentId, action, type = 'target') {
+    try {
+        const response = await fetch(`/agent/update_keyboarder_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Keyboarder ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Keyboarder ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Keyboarder ${agentId}:`, error);
+    }
+}

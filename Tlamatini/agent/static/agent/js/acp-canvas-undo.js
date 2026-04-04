@@ -182,7 +182,10 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'sleeper') {
                 await updateSleeperConnection(sourceId, targetId, 'remove', 'target');
             }
-            if (sourceAgentName.toLowerCase() === 'shoter') {
+            if (sourceAgentName.toLowerCase() === 'keyboarder') {
+                    await updateKeyboarderConnection(sourceId, targetId, 'remove', 'target');
+                }
+                if (sourceAgentName.toLowerCase() === 'shoter') {
                 await updateShoterConnection(sourceId, targetId, 'remove');
             }
             if (targetAgentName.toLowerCase() === 'cleaner') {
@@ -446,7 +449,10 @@ async function recreateConnection(state) {
     if (sourceAgentName === 'sleeper') {
         await updateSleeperConnection(sourceId, targetId, 'add', 'target');
     }
-    if (sourceAgentName === 'shoter') {
+    if (sourceAgentName === 'keyboarder') {
+                await updateKeyboarderConnection(sourceId, targetId, 'add', 'target');
+            }
+            if (sourceAgentName === 'shoter') {
         await updateShoterConnection(sourceId, targetId, 'add');
     }
     if (targetAgentName === 'cleaner') {

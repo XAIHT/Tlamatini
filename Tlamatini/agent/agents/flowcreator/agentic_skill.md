@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -87,32 +87,32 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 Flows have three runtime states: **STOPPED**, **RUNNING**, and **PAUSED**. Understanding these transitions is critical for designing agents that behave correctly across interruptions.
 
-### Flow States
+### State Transitions
 
-| From | To | Trigger |
-|------|-----|---------|
-| STOPPED | RUNNING | User presses **Start** |
-| RUNNING | PAUSED | User presses **Pause** |
-| PAUSED | RUNNING | User presses **Start** or **Pause** (both act as Resume) |
-| RUNNING | STOPPED | Ender agent runs (normal termination) |
-| PAUSED | STOPPED | User presses **Stop** |
+| From | To | Trigger | What Happens |
+|------|----|---------|-------------|
+| STOPPED | RUNNING | User presses **Start** | Fresh start: agents launch normally, logs are truncated, and no pause reanimation state is reused |
+| RUNNING | PAUSED | User presses **Pause** | The current session's running agents are saved to `paused_agents.reanim`, their processes are killed, logs and `reanim*` state files are preserved, and all ACP LEDs switch to **yellow blinking** |
+| PAUSED | RUNNING | User presses **Start** or **Pause** | Resume: agents are reanimated from `paused_agents.reanim` with `AGENT_REANIMATED=1`, then the pause file is deleted |
+| RUNNING | STOPPED | User presses **Stop** | The ACP executes the Ender shutdown path, optional FlowBacker/Cleaner shutdown agents may run, and restart-state files are cleared for the next fresh start |
+| PAUSED | STOPPED | User presses **Stop** | The pause/resume path is discarded, reanimation position files are cleared, and the next Start is treated as a fresh run |
 
 ### Pause (RUNNING → PAUSED)
 
-1. The system captures the list of all currently running agent processes.
-2. Saves the list to `paused_agents.reanim` in the pool directory (YAML format).
-3. Kills all running agent processes but does **NOT** erase any logs or `reanim*` state files.
-4. All agent LEDs on the canvas turn **RED** (not gray). Red indicates paused, gray indicates stopped.
+1. The ACP captures the list of the current session's running agent processes.
+2. It saves that list to `paused_agents.reanim` inside the active session pool directory.
+3. It kills the running processes but does **NOT** erase logs or any existing `reanim*` state files.
+4. The flow enters the **PAUSED** state and all canvas LEDs switch to **yellow blinking**.
 
 ### Resume (PAUSED → RUNNING)
 
-1. The system loads the agent list from `paused_agents.reanim`.
-2. Starts each agent with the environment variable `AGENT_REANIMATED=1`.
+1. The system loads the paused agent list from `paused_agents.reanim`.
+2. It starts each paused agent with the environment variable `AGENT_REANIMATED=1`.
 3. Each agent detects the env var and adjusts its startup behavior:
    - Does **NOT** truncate its log file (appends instead).
    - Logs `🔄 <agent_name> REANIMATED (resuming from pause)` as the first line after resume.
    - Loads existing `reanim*` state files (e.g., `reanim.pos` for file offsets, `reanim.counter` for counters).
-4. The system deletes `paused_agents.reanim` after all agents have been successfully restarted.
+4. After a successful resume, the system deletes `paused_agents.reanim` and returns the flow to **RUNNING**.
 
 ### Fresh Start (STOPPED → RUNNING)
 
@@ -130,61 +130,12 @@ Pressing **Start** while the flow is PAUSED acts as **Resume** (identical to pre
 - **All agents have reanimation detection built in.** You do not need to add any special configuration for pause/resume support.
 - **Long-running agents with file offset tracking** (Monitor Log, Raiser, Forker, Gateway Relayer, etc.) use `reanim.pos` to resume reading from the exact byte position where they were paused.
 - **Counter agent** uses `reanim.counter` to preserve its count across pauses so loop iterations are not lost.
+- **Gatewayer** preserves pending ingress state through `reanim_queue.json` and `reanim_dedup.json`.
+- **NodeManager** preserves registry state through `reanim_registry.json`.
 - **Ender clears all `reanim*` files on stop**, ensuring a clean slate for the next fresh start.
 - **Pause preserves ALL `reanim*` files and logs.** This is the key difference between pause and stop — pause is non-destructive to state.
+- **Stop while paused is not a resume.** Once the user stops a paused flow, the saved paused session is discarded and the next Start must be designed as a fresh run.
 - When designing flows, assume that any agent may be paused and resumed at any point. Agents must be idempotent with respect to reanimation — resuming should produce the same behavior as if the agent had never been interrupted.
-
----
-
-## Pause, Resume & Reanimation Mechanics
-
-Flows have three runtime states: **STOPPED**, **RUNNING**, and **PAUSED**.
-
-### State Transitions
-
-| From | To | Trigger | What Happens |
-|------|----|---------|-------------|
-| STOPPED | RUNNING | Start button | Logs cleared, agents started fresh, reanim files absent (Ender cleaned them) |
-| RUNNING | PAUSED | Pause button | Running agents saved to `paused_agents.reanim`, processes killed, logs & reanim files preserved, LEDs turn RED |
-| PAUSED | RUNNING | Pause or Start button | Agents reanimated from `paused_agents.reanim` with `AGENT_REANIMATED=1` env var, file deleted after resume |
-| RUNNING | STOPPED | Stop button (Ender) | Agents terminated, reanim files cleared by Ender, Cleaners launched |
-| PAUSED | STOPPED | Stop button (Ender) | Same as RUNNING→STOPPED |
-
-### Pause (RUNNING → PAUSED)
-
-1. System captures the list of all running agent processes (canvas_id, folder_name, script_name, pid)
-2. Saves the list to `paused_agents.reanim` (YAML) in the pool directory
-3. Kills all running processes — but does **NOT** erase any log files or `reanim*` state files
-4. All agent LEDs on canvas turn **RED** (not gray)
-5. Flow state set to PAUSED
-
-### Resume (PAUSED → RUNNING)
-
-1. System loads agent list from `paused_agents.reanim`
-2. Starts each agent with environment variable `AGENT_REANIMATED=1`
-3. Each agent detects the env var and:
-   - Does **NOT** truncate its log file (appends to existing log)
-   - Logs `🔄 <agent_name> REANIMATED (resuming from pause)`
-   - Loads existing `reanim*` state files (e.g., `reanim.pos` for file offsets, `reanim.counter` for counter state)
-4. Deletes `paused_agents.reanim` after successful resume
-5. Flow state set to RUNNING, polling resumes
-
-### Fresh Start (STOPPED → RUNNING)
-
-1. No `AGENT_REANIMATED` env var is set
-2. Each agent truncates its own log file on startup (clean output)
-3. Logs standard "STARTED" marker
-4. No `reanim*` state files exist (Ender cleaned them on last stop)
-
-### Reanimation Rules for Flow Designers
-
-- **All agents** have reanimation detection built in — no special configuration needed
-- **Long-running polling agents** (Monitor Log, Raiser, Forker, Emailer, Notifier, Stopper, OR, AND, etc.) use `reanim.pos` to resume reading source logs from the exact byte offset where they were paused
-- **Counter** uses `reanim.counter` to preserve its count value across pauses
-- **Gatewayer** uses `reanim_queue.json` and `reanim_dedup.json` for pending event state
-- **NodeManager** uses `reanim_registry.json` for node registry state
-- **Ender** clears all `reanim*` files on stop (clean slate for next start)
-- **Pause preserves ALL** `reanim*` files and logs — nothing is deleted
 
 ---
 
@@ -880,10 +831,10 @@ system_prompt: |
   - `user_instructions`: "" (custom directives appended to the monitoring prompt)
 
 ### 40. Mouser
-- **Purpose**: Moves the mouse pointer either randomly for a specified duration or from one screen position to another. Useful for keeping sessions alive or simulating user activity.
-- **Used for**: Simulating mouse movement on the local system, either randomly across the screen for a set duration or in a directed path between two coordinates. It can prevent screen locks, session timeouts, or idle disconnections.
-- **Aimed at**: Keeping remote desktop sessions or VPN connections alive during long-running automated processes, or simulating basic user activity as part of UI automation workflows when combined with Pser (to verify an application is running) and Shoter (to capture the result).
-- **Application example**: In an RDP session keep-alive flow, a Starter launches a Mouser in random mode for 30 seconds, followed by a Sleeper (5 minutes), creating a continuous loop: Mouser → Sleeper → Mouser — ensuring the remote desktop session never times out during a long deployment.
+- **Purpose**: Moves the mouse pointer either randomly for a specified duration or from one screen position to another. In localized mode it can also issue a configured click only after the destination has been effectively reached.
+- **Used for**: Simulating mouse movement on the local system, either randomly across the screen for a set duration or in a directed path between two coordinates. In localized mode it can optionally perform a single or double click after arrival. This can prevent screen locks, session timeouts, or support basic UI automation.
+- **Aimed at**: Keeping remote desktop sessions or VPN connections alive during long-running automated processes, or simulating basic user activity as part of UI automation workflows when combined with Pser (to verify an application is running), Keyboarder, and Shoter (to capture the result).
+- **Application example**: In a UI automation flow, a Starter launches Mouser in localized mode to move to a button and issue a `left` click only after the destination is reached, then Keyboarder types into the focused application and Shoter captures the final screen state.
 - **Pool name pattern**: `mouser_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -893,6 +844,7 @@ system_prompt: |
   - `ini_posy`: 0 (initial Y position, used when actual_position is false)
   - `end_posx`: 500 (final X position for localized mode)
   - `end_posy`: 500 (final Y position for localized mode)
+  - `button_click`: "none" (optional click issued only after the localized final position is effectively reached. Supported values: `none`, `left`, `right`, `middle`, `double-left`, `double-right`, `double-middle`)
   - `total_time`: 30 (duration in seconds for random movement)
   - `target_agents`: [] (downstream agents to start after execution)
 
@@ -1097,7 +1049,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking, max 1)
   - `target_agents`: [] (downstream agents — for canvas connection tracking, max 1)
 - **Special behavior**:
-  - Only accepts input from agents that produce structured output: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher
+  - Only accepts input from agents that produce structured output: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer
   - Exactly one source and one target agent must be connected
   - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI
   - When multiple output elements exist in the source log, iterates over each one sequentially
@@ -1154,6 +1106,20 @@ system_prompt: |
   - For `.class`, writes the generated `.java` beside the original file
   - For `.jar`, `.war`, and `.ear`, creates a sibling directory named after the archive and decompiles recursively into it
   - Uses the bundled `jd-cli/` asset instead of calling the unified tool layer directly
+
+
+### 55. Keyboarder
+- **Purpose**: Issues a sequence of keys to emulate human typing on the keyboard.
+- **Used for**: Driving GUI applications or injecting text where standard programmatic interfaces are unavailable. Supports typing full literal strings, single keys, and simultaneous key sequences such as `CTRL+C`.
+- **Aimed at**: Enabling UI automation and emulation of user input within workflows.
+- **Application example**: After opening an application via Executer, Keyboarder types a password and presses Enter to automate login.
+- **Pool name pattern**: `keyboarder_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `input_sequence`: "" (strings and key sequences to be pressed, comma-separated. Special keys are written by name, simultaneous pressings use `+`, and literal text should be quoted, e.g. `ESCAPE, 'hello', CTRL+V`)
+  - `stride_delay`: 50 (Time in milliseconds to wait between hits of keys)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
 
 ---
 
