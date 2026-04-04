@@ -10,6 +10,7 @@
   "unified_agent_model": "glm-5:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
+  "unified_agent_max_iterations": 100,
   "_section_image_interpreter": "Image Interpreter Configuration",
   "image_interpreter_base_url": "http://127.0.0.1:11434",
   "image_interpreter_model": "qwen3.5:cloud",
@@ -82,6 +83,8 @@
   "history_summary_enable": true,
   "history_summary_trigger_tokens": 150,
   "history_keep_last_turns": 3,
+  "_section_chat_agent_runtime": "Wrapped Chat-Agent Runtime Management",
+  "chat_agent_limit_runs": 100,
   "_section_metadata": "Metadata Extraction",
   "metadata_extraction": {
     "enable_code_structure": true,

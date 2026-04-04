@@ -594,7 +594,8 @@ Tlamatini/
      "chained-model": "glm-5:cloud",
      "unified_agent_model": "glm-5:cloud",
      "image_interpreter_model": "qwen3.5:cloud",
-     "ollama_base_url": "http://127.0.0.1:11434"
+     "ollama_base_url": "http://127.0.0.1:11434",
+     "chat_agent_limit_runs": 100
    }
    ```
 
@@ -629,6 +630,8 @@ Tlamatini/
 
 The main configuration file is located at `Tlamatini/agent/config.json`:
 
+When running a frozen/PyInstaller build, the effective `config.json` is resolved from the install directory next to the executable. In source mode, it is resolved from `Tlamatini/agent/config.json`. If `CONFIG_PATH` is set, that file takes precedence.
+
 ### LLM Settings
 
 ```json
@@ -641,7 +644,8 @@ The main configuration file is located at `Tlamatini/agent/config.json`:
   "enable_unified_agent": true,
   "unified_agent_model": "glm-5:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
-  "unified_agent_temperature": 0.0
+  "unified_agent_temperature": 0.0,
+  "unified_agent_max_iterations": 100
 }
 ```
 
@@ -656,6 +660,7 @@ The main configuration file is located at `Tlamatini/agent/config.json`:
 | `unified_agent_model` | Model used by the unified agent multi-turn tool loop |
 | `unified_agent_base_url` | Base URL for the unified agent's LLM |
 | `unified_agent_temperature` | Temperature for agent responses (0.0 = deterministic) |
+| `unified_agent_max_iterations` | Maximum number of tool-call / observation turns the unified agent may execute before it must stop and summarize the latest state |
 
 ### Image Interpreter Settings
 
@@ -808,6 +813,17 @@ The context budget allocates token space to different document types:
   "history_keep_last_turns": 3
 }
 ```
+
+#### Wrapped Chat-Agent Runtime
+```json
+{
+  "chat_agent_limit_runs": 100
+}
+```
+
+| Key | Description |
+|-----|-------------|
+| `chat_agent_limit_runs` | Maximum number of recent wrapped chat-agent runs returned by `chat_agent_run_list`, and the default limit used by the runtime listing helper unless an explicit override is supplied |
 
 #### Performance Tuning
 ```json
@@ -1230,7 +1246,7 @@ The main chat path now behaves as follows:
 5. Append each tool result as a `ToolMessage`
 6. Re-invoke the model until it returns a final answer or the iteration limit is reached
 
-The current default iteration limit is `20` turns unless `unified_agent_max_iterations` is explicitly set in `config.json`.
+The current default iteration limit is `100` turns unless `unified_agent_max_iterations` is explicitly set in `config.json`.
 
 #### Wrapped Chat-Agent Runtime Tools
 
@@ -1485,7 +1501,7 @@ Wrapped chat-agent launchers create isolated runtime copies of selected template
 
 | Tool | Description | Typical Follow-Up |
 |------|-------------|-------------------|
-| `chat_agent_run_list` | List recent wrapped chat-agent runs | Get a `run_id` to inspect |
+| `chat_agent_run_list` | List recent wrapped chat-agent runs, capped by `chat_agent_limit_runs` from `config.json` | Get a `run_id` to inspect |
 | `chat_agent_run_status` | Inspect the current status of a wrapped runtime | Poll a running wrapped agent |
 | `chat_agent_run_log` | Read the latest log excerpt for a wrapped runtime | Inspect progress or failure details |
 | `chat_agent_run_stop` | Stop a wrapped runtime by `run_id` | Cancel a long-running wrapped agent |

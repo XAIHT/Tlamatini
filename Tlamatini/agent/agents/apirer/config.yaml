@@ -1,16 +1,10 @@
-# Apirer Agent Configuration - HTTP/REST API Agent
-
-# HTTP request settings
-url: "https://httpbin.org/get"
-method: "GET"
-headers: {
-  "Content-Type": "application/json",
-  "Authorization": ""
-}
-body: ""
+url: https://example.com
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: ''
+body: ''
 expected_status: 200
 timeout: 30
-
-# Connection fields
 source_agents: []
 target_agents: []
