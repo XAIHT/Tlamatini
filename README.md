@@ -125,6 +125,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Debug Mode](#debug-mode)
   - [Log Locations](#log-locations)
 - [Glossary](#glossary)
+- [Keyboarder Supported Keys](#keyboarder-supported-keys)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -158,30 +159,7 @@ python -m venv venv
 # Windows
 venv\Scripts\activate
 # Linux/macOS
-source venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-### 2. Configure LLM Backend
-
-Edit `Tlamatini/agent/config.json` before first run. The current checked-in defaults are:
-
-- `embeding-model`: `qwen3-embedding:8b`
-- `chained-model`: `glm-5:cloud`
-- `unified_agent_model`: `glm-5:cloud`
-- `image_interpreter_model`: `qwen3.5:cloud`
-- `internet_classifier_model`, `web_summarizer_model`, `mcp_files_search_model`: `glm-5:cloud`
-
-If you want a fully local Ollama setup, replace those values with locally available Ollama models and keep `ollama_base_url`, `unified_agent_base_url`, and `image_interpreter_base_url` pointed at your Ollama host.
-
-### 3. Initialize Database
-
-```bash
-cd Tlamatini
 python manage.py migrate
-python manage.py createsuperuser
-python manage.py collectstatic --noinput
 ```
 
 ### 4. Run the Application
@@ -2790,6 +2768,31 @@ Enable verbose logging in config.json:
 
 ---
 
+## Keyboarder Supported Keys
+
+The **Keyboarder** agent simulates human keyboard input through the `input_sequence` field.
+
+- **Literal strings**: Enclose them in single or double quotes, for example `'Hello World'`.
+- **Simultaneous keys**: Join keys with `+`, for example `ctrl+c` or `shift+alt+delete`.
+- **Sequential commands**: Separate each action with commas, for example `escape, escape, ctrl+c, 'hello'`.
+
+Below is the practical Windows-oriented key reference for `input_sequence`:
+
+| Category | Supported Keys |
+|---|---|
+| **Modifiers** | `ctrl`, `shift`, `alt`, `altgr`, `win`, `windows`, `command`, `option` |
+| **Arrows** | `left`, `<-(left arrow)`, `right`, `->(right arrow)`, `up`, `up arrow`, `down`, `down arrow` |
+| **Navigation** | `home`, `end`, `pageup`, `pgup`, `pagedown`, `pgdn` |
+| **Editing** | `enter`, `return`, `esc`, `escape`, `backspace`, `space`, `tab`, `del`, `delete`, `insert` |
+| **Locks** | `capslock`, `mayus`, `mayuscula`, `numlock`, `scrolllock` |
+| **Function Keys** | `f1` through `f24` |
+| **Media and System** | `volumedown`, `volumeup`, `volumemute`, `playpause`, `nexttrack`, `printscreen`, `prtsc`, `pause`, `apps` |
+| **Symbols and Numbers** | digits `0` through `9`, common punctuation, `tab`, newline-style escapes such as `\n` and `\r`, and standard symbol keys including `/`, `\\`, `[`, `]`, `-`, `=`, `,`, `.`, `;`, `'`, `` ` ``, `{`, `}`, `~`, `!`, `?`, `@`, `#`, `$`, `%`, `&`, `*`, `+`, `<`, `>` |
+
+*Note: Commands are case-insensitive internally, but literal quoted text preserves the exact capitalization you write.*
+
+---
+
 ## Contributing
 
 1. Fork the repository
@@ -2922,28 +2925,3 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ---
 
 *For support or questions, please open an issue on GitHub.*
-
-
-### Keyboarder Supported Keys
-The **Keyboarder** agent simulates human keyboard inputs. The `input_sequence` parameter accepts a comma-separated list of strings or key commands. 
-
-- **Literal strings**: Must be enclosed in single or double quotes, e.g. `'Hello World'`. Commas inside quotes are ignored by the parser.
-- **Simultaneous keys**: Use the `+` operator, e.g. `ctrl+c`, `shift+alt+delete`.
-- **Sequential commands**: Separate them by commas, e.g. `escape, escape, ctrl+c, 'hello'`
-
-Below is a comprehensive table of special keys supported in Windows for the `input_sequence` field:
-
-| Category | Supported Keys |
-|---|---|
-| **Modifiers** | `ctrl`, `shift`, `alt`, `altgr`, `win`, `windows`, `command`, `option` |
-| **Arrows** | `left`, `<-(left arrow)`, `right`, `->(right arrow)`, `up`, `up arrow`, `down`, `down arrow` |
-| **Navigation** | `home`, `end`, `pageup`, `pgup`, `pagedown`, `pgdn` |
-| **Editing** | `enter`, `return`, `esc`, `escape`, `backspace`, `space`, `tab`, `del`, `delete`, `insert` |
-| **Locks** | `capslock`, `mayus`, `mayuscula`, `numlock`, `scrolllock` |
-| **Function Keys** | `f1`, `f2`, `f3`, `f4`, ... `f24` |
-| **Media & System**| `volumedown`, `volumeup`, `volumemute`, `playpause`, `nexttrack`, `printscreen`, `prtsc`, `pause`, `apps` |
-| **Symbols/Nums**| `	`, `
-`, `
-`, `!`, `"`, `#`, `$`, `%`, `&`, `'`, `(`, `)`, `*`, `+`, `,`, `-`, `.`, `/`, `0`-`9`, `<`, `=`, `>`, `?`, `@`, `[`, `\`, `]`, `^`, `_`, `` ` ``, `{`, `\|`, `}`, `~` |
-
-*Note: All commands are case-insensitive internally, but using literal strings requires matching accurate capitalization inside the quotes.*
