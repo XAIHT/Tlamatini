@@ -14,6 +14,7 @@ from .prompts import get_contextualize_q_prompt
 from .chains.basic import BasicPromptOnlyChain
 from .chains.history_aware import HistoryAwareNoDocsChain, OptimizedHistoryAwareRAGChain
 from .chains.unified import UnifiedAgentChain, UnifiedAgentRAGChain
+from .utils import _pack_context, _unique_filenames_from_split
 
 # Try to import SystemRAGChain for system resource integration
 try:
@@ -89,7 +90,40 @@ def get_files_context_sync(payload):
         print(f"Error fetching files context: {e}")
         return payload
 
-def build_prompt_only_chain(config, prompt_template_string):
+
+def _build_loaded_documents_fallback_context(documents, config):
+    if not documents:
+        return ""
+
+    try:
+        docs_list = list(documents)
+    except TypeError:
+        docs_list = [documents]
+
+    docs_list = [doc for doc in docs_list if getattr(doc, "page_content", None)]
+    if not docs_list:
+        return ""
+
+    max_ctx_chars = int(config.get("max_context_chars", 24000))
+    redact = bool(config.get("redact_secrets_in_context", False))
+    use_hierarchical = bool(config.get("retrieval_strategy", {}).get("enable_hierarchical_context", True))
+
+    try:
+        packed_context = _pack_context(docs_list, max_ctx_chars, redact, use_hierarchical)
+    except Exception as exc:
+        print(f"Warning: failed to build loaded-documents fallback context ({exc})")
+        return ""
+
+    manifest = _unique_filenames_from_split(docs_list)
+    if manifest:
+        manifest_block = "FILE MANIFEST (loaded files):\n" + "\n".join(f"- {name}" for name in manifest)
+        if packed_context:
+            return f"{manifest_block}\n\n{packed_context}"
+        return manifest_block
+
+    return packed_context
+
+def build_prompt_only_chain(config, prompt_template_string, documents=None):
     """Builds a simple prompt-only chain with the same interface as the retrieval chain."""
     token = config.get('ollama_token')
     client_kwargs = {'headers': {'Authorization': f'Bearer {token}'}} if token else {}
@@ -130,6 +164,10 @@ def build_prompt_only_chain(config, prompt_template_string):
         "keep_last_turns": int(config.get("history_keep_last_turns", 6)),
     }
 
+    loaded_context = _build_loaded_documents_fallback_context(documents, config)
+    if loaded_context:
+        print(f"--- Loaded-documents fallback context prepared ({len(loaded_context)} chars) ---")
+
     contextualize_q_prompt = get_contextualize_q_prompt()
 
     # Create unified prompt that supports all contexts
@@ -154,7 +192,7 @@ def build_prompt_only_chain(config, prompt_template_string):
     
     if use_unified_agent:
         print("--- UnifiedAgentChain: Building tool-enabled chain ---")
-        chain = UnifiedAgentChain(llm, prompt_template_string, history_summary_cfg)
+        chain = UnifiedAgentChain(llm, prompt_template_string, history_summary_cfg, loaded_context=loaded_context)
     else:
         chain = BasicPromptOnlyChain(
             llm,
@@ -162,6 +200,7 @@ def build_prompt_only_chain(config, prompt_template_string):
             final_qa_prompt,
             prompt_template_string,
             history_summary_cfg
+            ,loaded_context=loaded_context
         )
     
     chain.setHttpxClientInstance(httpx_client_instance)
@@ -591,10 +630,10 @@ def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissi
     retrieval_chain = build_retrieval_chain(documents, config, prompt_template)
     if retrieval_chain is None:
         print("Error: RAG chain not built successfully; falling back to prompt-only mode.")
-        prompt_only_chain = build_prompt_only_chain(config, prompt_template)
+        prompt_only_chain = build_prompt_only_chain(config, prompt_template, documents=documents)
         if prompt_only_chain is None:
             return None
-        print("--- Prompt-only chain ready (no documents loaded).")
+        print("--- Prompt-only chain ready (loaded-documents fallback mode).")
         global_state.set_state('rag_chain_ready', True)
         return prompt_only_chain
     if isinstance(retrieval_chain, (OptimizedHistoryAwareRAGChain, UnifiedAgentRAGChain)):
@@ -708,10 +747,10 @@ def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
         retrieval_chain = build_retrieval_chain(documents, config, prompt_template)
         if retrieval_chain is None:
             print("Error: RAG chain not built successfully; falling back to prompt-only mode.")
-            prompt_only_chain = build_prompt_only_chain(config, prompt_template)
+            prompt_only_chain = build_prompt_only_chain(config, prompt_template, documents=documents)
             if prompt_only_chain is None:
                 return None
-            print("--- Prompt-only chain ready (no documents loaded).")
+            print("--- Prompt-only chain ready (loaded-documents fallback mode).")
             global_state.set_state('rag_chain_ready', True)
             return prompt_only_chain
         else:
@@ -724,7 +763,7 @@ def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
         print("No files found in ./application; starting in no-documents mode.")
         prompted_chain = build_retrieval_chain(documents, config, prompt_template)
         if prompted_chain is None:
-            prompt_only_chain = build_prompt_only_chain(config, prompt_template)
+            prompt_only_chain = build_prompt_only_chain(config, prompt_template, documents=documents)
             if prompt_only_chain is None:
                 return None
             print("--- Prompt-only chain ready (no documents loaded).")

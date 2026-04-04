@@ -13,7 +13,15 @@ class BasicPromptOnlyChain:
     Minimal chain that uses only the provided prompt template and LLM, but supports conversation history.
     Keeps the same .invoke(payload) -> {"answer": str} contract.
     """
-    def __init__(self, llm,  contextualize_q_prompt: ChatPromptTemplate, qa_prompt_no_ctx: ChatPromptTemplate,  prompt_template_string: str, history_summary_cfg: Dict[str, Any]):
+    def __init__(
+        self,
+        llm,
+        contextualize_q_prompt: ChatPromptTemplate,
+        qa_prompt_no_ctx: ChatPromptTemplate,
+        prompt_template_string: str,
+        history_summary_cfg: Dict[str, Any],
+        loaded_context: str = "",
+    ):
         self.llm = llm
         self.contextualize_chain = (contextualize_q_prompt | llm).with_config({"callbacks": [Callbacks()]})
         self.answer_chain = (qa_prompt_no_ctx | llm).with_config({"callbacks": [Callbacks()]})
@@ -21,6 +29,7 @@ class BasicPromptOnlyChain:
         self.prompt_template_string = prompt_template_string
         self.last_programs_name: List[str] = []  # avoid attribute errors
         self.httpx_client_instance = None
+        self.loaded_context = loaded_context or ""
 
     def setHttpxClientInstance(self, httpx_client_instance: httpx.Client):
         self.httpx_client_instance = httpx_client_instance
@@ -115,6 +124,7 @@ class BasicPromptOnlyChain:
             "external_sources": payload.get("external_sources", []),
             "system_context": payload.get("system_context", ""),
             "files_context": payload.get("files_context", ""), # <NEW>
+            "context": payload.get("context", ""),
         }
 
         if not payload["chat_history"]:
@@ -157,7 +167,7 @@ class BasicPromptOnlyChain:
         # Ensure all placeholders exist
         answer_payload["system_context"] = payload.get("system_context", "")
         answer_payload["files_context"] = payload.get("files_context", "") # <NEW>
-        answer_payload["context"] = ""
+        answer_payload["context"] = payload.get("context", "") or self.loaded_context
 
         answered = self.answer_chain.invoke(answer_payload)
         invokes_counter = global_state.get_state('chat_hist_summarizer_counter', 0)

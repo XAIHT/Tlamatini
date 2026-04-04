@@ -5,6 +5,7 @@ import subprocess
 import shutil
 import tempfile
 from functools import lru_cache
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, call, patch
 
 from asgiref.sync import async_to_sync
@@ -12,6 +13,7 @@ from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
+from langchain_core.documents import Document
 
 from agent import views
 from agent.consumers import AgentConsumer, _sanitize_context_filename
@@ -24,6 +26,9 @@ from agent.path_guard import (
     safe_join_under,
 )
 from agent.rag.interface import _validate_accesses_in_prompt
+from agent.rag.factory import _build_loaded_documents_fallback_context
+from agent.rag.chains.basic import BasicPromptOnlyChain
+from agent.rag.chains.unified import UnifiedAgentChain
 from agent.services.filesystem import generate_tree_view_content
 from tlamatini.asgi import application
 
@@ -306,6 +311,64 @@ class PromptValidationDecisionTests(TestCase):
 
         self.assertIsNone(result)
         mock_classifier.assert_called_once()
+
+
+class LoadedContextFallbackTests(TestCase):
+    def test_build_loaded_documents_fallback_context_includes_manifest_and_content(self):
+        config = {
+            'max_context_chars': 4000,
+            'redact_secrets_in_context': False,
+            'retrieval_strategy': {'enable_hierarchical_context': False},
+        }
+        documents = [
+            Document(
+                page_content='def example():\n    return 42\n',
+                metadata={'source': 'context_files/example.py', 'filename': 'example.py', 'file_role': 'other'},
+            )
+        ]
+
+        context_blob = _build_loaded_documents_fallback_context(documents, config)
+
+        self.assertIn('FILE MANIFEST (loaded files):', context_blob)
+        self.assertIn('context_files/example.py', context_blob)
+        self.assertIn('def example(): return 42', context_blob)
+
+    @patch('agent.rag.chains.basic.DBChatHistoryLoader.load', return_value=[])
+    def test_basic_prompt_only_chain_uses_loaded_context_in_answer_payload(self, _mock_history_load):
+        chain = BasicPromptOnlyChain.__new__(BasicPromptOnlyChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = 'FILE MANIFEST (loaded files):\n- example.py\n\n[1] example.py -- def example(): return 42'
+        chain.answer_chain = SimpleNamespace(invoke=lambda payload: payload)
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+        chain._to_text = lambda response: response
+
+        result = chain.invoke({'input': 'Summarize the loaded code', 'chat_history': []})
+
+        self.assertIn('example.py', result['answer']['context'])
+        self.assertIn('def example(): return 42', result['answer']['context'])
+
+    def test_unified_agent_chain_injects_loaded_context_into_agent_input(self):
+        captured = {}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = 'FILE MANIFEST (loaded files):\n- example.py\n\n[1] example.py -- def example(): return 42'
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        result = chain.invoke({'input': 'Summarize the loaded code', 'chat_history': [SimpleNamespace(content='prior turn')]})
+
+        self.assertEqual(result['answer'], 'ok')
+        self.assertIn('Loaded Context from Knowledge Base Fallback:', captured['payload']['input'])
+        self.assertIn('example.py', captured['payload']['input'])
+        self.assertIn('def example(): return 42', captured['payload']['input'])
 
 
 class EnderAgentTests(TestCase):
