@@ -1,4 +1,5 @@
 # MCP Agent (mcp_agent.py)
+import json
 import re
 from typing import Dict, Any
 
@@ -58,12 +59,14 @@ def _ensure_chat_tool_model(llm):
         # Authentication / extra client kwargs
         client_kwargs: Dict[str, Any] = {}
         token = config.get("ollama_token", "")
+        private_client_kwargs = getattr(llm, "_client_kwargs", None)
+        public_client_kwargs = getattr(llm, "client_kwargs", None)
         if token:
             client_kwargs["headers"] = {"Authorization": f"Bearer {token}"}
-        elif hasattr(llm, "_client_kwargs"):
-            client_kwargs = llm._client_kwargs or {}
-        elif hasattr(llm, "client_kwargs"):
-            client_kwargs = llm.client_kwargs or {}
+        elif private_client_kwargs:
+            client_kwargs = private_client_kwargs or {}
+        elif public_client_kwargs:
+            client_kwargs = public_client_kwargs or {}
 
         # Build kwargs accepted by ChatOllama
         chat_kwargs: Dict[str, Any] = {
