@@ -22,13 +22,20 @@ class UnifiedAgentChain:
     compatibility with the existing chain interface.
     Contract: .invoke(payload) -> {"answer": str}
     """
-    def __init__(self, llm, prompt_template_string: str, history_summary_cfg: Dict[str, Any]):
+    def __init__(
+        self,
+        llm,
+        prompt_template_string: str,
+        history_summary_cfg: Dict[str, Any],
+        loaded_context: str = "",
+    ):
         self.llm = llm
         self.prompt_template_string = prompt_template_string
         self.history_summary_cfg = history_summary_cfg
         self.last_programs_name: List[str] = []
         self.httpx_client_instance = None
         self.unified_agent = None
+        self.loaded_context = loaded_context or ""
         self._initialize_agent()
 
     def _initialize_agent(self):
@@ -121,6 +128,7 @@ class UnifiedAgentChain:
             "external_sources": payload.get("external_sources", []),
             "system_context": payload.get("system_context", ""),
             "files_context": payload.get("files_context", ""),
+            "context": payload.get("context", ""),
         }
 
         if not payload["chat_history"]:
@@ -131,6 +139,7 @@ class UnifiedAgentChain:
 
         # Build enhanced input with context
         original_input = payload["input"]
+        loaded_context = payload.get("context", "") or self.loaded_context
         
         # Incorporate system context and files context into the input if available
         enhanced_input = original_input
@@ -148,6 +157,16 @@ User Question: {enhanced_input}"""
         # Add system context
         if payload.get("system_context"):
             enhanced_input = f"System Context: {payload['system_context']}\n\n{enhanced_input}"
+
+        # Add loaded-document fallback context if retrieval/embeddings failed but documents were loaded.
+        if loaded_context:
+            enhanced_input = (
+                "Loaded Context from Knowledge Base Fallback:\n"
+                f"{loaded_context}\n\n"
+                "IMPORTANT: The loaded project/file context is already provided above even though vector retrieval is unavailable. "
+                "Use it directly to answer the user's question.\n\n"
+                f"User Question: {enhanced_input}"
+            )
         
         # Incorporate external web context
         ext_raw = payload.get("external_context", "")
@@ -182,7 +201,7 @@ User Question: {enhanced_input}"""
                     "chat_history": hist,
                     "system_context": payload.get("system_context", ""),
                     "files_context": payload.get("files_context", ""),
-                    "context": "",
+                    "context": loaded_context,
                 }
                 qa_prompt = ChatPromptTemplate.from_messages([
                     ("system", self.prompt_template_string),
@@ -199,7 +218,7 @@ User Question: {enhanced_input}"""
                 "chat_history": hist,
                 "system_context": payload.get("system_context", ""),
                 "files_context": payload.get("files_context", ""),
-                "context": "",
+                "context": loaded_context,
             }
             qa_prompt = ChatPromptTemplate.from_messages([
                 ("system", self.prompt_template_string),

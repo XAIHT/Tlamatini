@@ -47,6 +47,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [What the Uninstaller Does](#what-the-uninstaller-does)
 - [Core Components](#core-components)
   - [RAG System](#rag-system)
+    - [Memory-Insufficient Context Fallback](#memory-insufficient-context-fallback)
   - [RAG Chain Types](#rag-chain-types)
   - [Unified Agent with Tools](#unified-agent-with-tools)
     - [Multi-Turn Tool Loop](#multi-turn-tool-loop)
@@ -219,6 +220,7 @@ If you are setting up from source (manual setup), you will create your own super
 - **Code-Aware Analysis**: Parses source code to extract classes, functions, imports, and dependencies
 - **Architectural Classification**: Identifies file roles (controller, data_model, service_layer, etc.)
 - **Hybrid Retrieval**: Combines FAISS vector search with BM25 keyword matching via Reciprocal Rank Fusion
+- **Memory-Insufficient Context Fallback**: If embeddings or vector-store construction fail because the local model lacks RAM, Tlamatini preserves the already loaded source files and continues answering from a packed raw context instead of dropping to an empty-context chat
 - **Intelligent Context Budgeting**: Prioritizes and selects the most relevant document chunks within token limits
 - **Metadata Enrichment**: Tracks cross-file references and dependency graphs
 
@@ -1202,6 +1204,36 @@ response = ask_rag(rag_chain, "How does the authentication work?", chat_history=
 - HTML (`.html`) - Links, forms, structure
 - Configuration (`.json`, `.yaml`, `.xml`) - Dependencies, settings
 - Documentation (`.md`, `.txt`) - Content, headings
+
+#### Memory-Insufficient Context Fallback
+
+Tlamatini now treats low-memory embedding failures as a degraded-mode scenario rather than a hard loss of loaded context.
+
+When source files are loaded successfully but FAISS or embedding construction fails because the selected Ollama model cannot allocate enough memory, the system does **not** discard the loaded files. Instead, it:
+
+1. Preserves the already loaded documents in memory
+2. Builds a packed fallback context block directly from those loaded files
+3. Injects that fallback context into the prompt-only or unified-agent path
+4. Continues answering from the loaded project code even though semantic retrieval is temporarily unavailable
+
+This is important because it separates two failure domains:
+
+- **Document loading succeeded**: The project files were read correctly and remain usable
+- **Embedding/vector build failed**: Semantic retrieval could not start, usually because the local model exceeded available RAM
+
+In practical terms, this means Tlamatini can still summarize code, explain loaded files, and answer questions grounded in the already loaded context even during memory pressure. What degrades is retrieval quality and ranking depth, not total access to the loaded source code.
+
+Typical trigger example:
+
+- Ollama returns an error such as `model requires more system memory ... than is available`
+
+Expected behavior after this fallback:
+
+- The chat stays grounded in the loaded files instead of claiming the context is empty
+- File manifests and packed source excerpts remain available to the answering chain
+- The system continues operating in a reduced-capability mode until embeddings can be built again
+
+This fallback is especially valuable on constrained developer machines, remote desktops, or shared environments where larger embedding models may intermittently fail to initialize.
 
 ### RAG Chain Types
 
@@ -2641,6 +2673,7 @@ Add patterns in the `Omission` model via Django admin:
 2. Verify path permissions
 3. Ensure files are text-based (not binary)
 4. Check `max_doc_chars` limit in config
+5. If Ollama reports insufficient memory during embedding initialization, Tlamatini now falls back to a loaded-context mode; answers should still use the loaded files, but retrieval quality may be reduced until the embedding model can run normally
 
 #### WebSocket Disconnections
 
