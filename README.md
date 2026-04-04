@@ -34,6 +34,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
     - [Performance Tuning](#performance-tuning)
     - [Debugging](#debugging)
     - [Miscellaneous](#miscellaneous)
+- [Ollama Installation Without Administrative Rights](#ollama-installation-without-administrative-rights)
 - [Running the Application](#running-the-application)
 - [Building & Release Process](#building--release-process)
   - [Overview](#release-overview)
@@ -864,6 +865,133 @@ The context budget allocates token space to different document types:
   "keep_last_turns": 3
 }
 ```
+
+---
+
+## Ollama Installation Without Administrative Rights
+
+The official Windows PowerShell installer supports a per-user installation. You do not need to open PowerShell as Administrator, and you do not need to install Ollama into `Program Files`.
+
+If you want the safest no-admin path, follow these steps exactly.
+
+### 1. Open a normal PowerShell window
+
+Open PowerShell normally.
+
+- Do not right-click and choose Run as administrator.
+- A normal user shell is the correct choice for this setup.
+
+### 2. Install Ollama into your user profile
+
+Run this command exactly as shown:
+
+```powershell
+$env:OLLAMA_INSTALL_DIR = "$env:LOCALAPPDATA\Programs\Ollama"
+irm https://ollama.com/install.ps1 | iex
+```
+
+What this does:
+
+- Forces the install directory to a folder you already own: `%LOCALAPPDATA%\Programs\Ollama`
+- Avoids any machine-wide location that could require elevation
+- Uses Ollama's official Windows installer script
+
+If the install succeeds, the `ollama` executable will be available from your user account.
+
+### 3. Close and reopen PowerShell
+
+After installation finishes, close the PowerShell window and open a new one. This ensures the updated `PATH` is visible in the new session.
+
+### 4. Verify that Ollama is installed
+
+Run:
+
+```powershell
+ollama --version
+```
+
+If PowerShell says `ollama` is not recognized:
+
+1. Close PowerShell again and open a fresh window.
+2. Run `ollama --version` one more time.
+3. If it still fails, check that this folder exists:
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\Programs\Ollama"
+```
+
+If that command returns `True`, you can temporarily run Ollama directly like this:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" --version
+```
+
+### 5. Start the Ollama service if needed
+
+Tlamatini expects Ollama to answer on:
+
+```text
+http://127.0.0.1:11434
+```
+
+In many Windows installs, Ollama starts automatically. If it is not running, start it manually in a dedicated terminal:
+
+```powershell
+ollama serve
+```
+
+Leave that terminal open while you use the application.
+
+### 6. Verify the local API is responding
+
+Run:
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing
+```
+
+If you get an HTTP response instead of a connection error, Ollama is reachable and Tlamatini will be able to call it.
+
+### Pull All Default Ollama Models Used by Tlamatini
+
+If you want the application to work with the default model names shipped in this repository, pull the models below exactly as written.
+
+Run them one by one:
+
+```powershell
+ollama pull qwen3-embedding:8b
+ollama pull glm-5:cloud
+ollama pull qwen3.5:cloud
+ollama pull gpt-oss:120b-cloud
+ollama pull qwen3.5:397b-cloud
+ollama pull llama3.2-vision:11b
+```
+
+These model tags come from the default configuration files included with the project:
+
+- `qwen3-embedding:8b`: default embedding model in `Tlamatini/agent/config.json`
+- `glm-5:cloud`: default chained/chat, unified-agent, internet, and MCP file-search model in `Tlamatini/agent/config.json`
+- `qwen3.5:cloud`: default image interpreter model in `Tlamatini/agent/config.json`
+- `gpt-oss:120b-cloud`: default model in several shipped workflow-agent templates such as Monitor Log, Monitor Netstat, Notifier, Prompter, Summarizer, Pser, Recmailer, Whatsapper, File-Interpreter, and FlowHypervisor
+- `qwen3.5:397b-cloud`: default FlowCreator model in `Tlamatini/agent/agents/flowcreator/config.yaml`
+- `llama3.2-vision:11b`: default Image-Interpreter model in `Tlamatini/agent/agents/image_interpreter/config.yaml`
+
+Important notes:
+
+- Some default tags in this repository use `:cloud` variants. Pull them exactly as written if you want to keep the shipped defaults unchanged.
+- These models are not all small. Depending on your hardware, bandwidth, and Ollama account access, some pulls may take a long time.
+- `telegramrx` also uses a default `whisper.model` value of `medium`, but that is not an Ollama model, so it is not installed with `ollama pull`.
+
+### Quick Post-Install Checklist
+
+Before starting Tlamatini, confirm all of these are true:
+
+1. `ollama --version` works in a normal PowerShell window.
+2. `ollama serve` is running, or the Ollama background service is already active.
+3. `Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing` returns successfully.
+4. The required default models have been pulled.
+
+If all four checks pass, the Ollama side is ready.
 
 ---
 
