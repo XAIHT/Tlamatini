@@ -372,12 +372,13 @@ Tlamatini/
 │   ├── agent/                       # Core application
 │   │   ├── apps.py                  # App config (MCP startup, signal handlers, cleanup)
 │   │   ├── admin.py                 # Django admin model registration
-│   │   ├── views.py                # HTTP request handlers (102 endpoints)
+│   │   ├── views.py                # HTTP request handlers (103 endpoints)
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
 │   │   ├── models.py               # Database models (13 models)
 │   │   ├── urls.py                 # URL routing definitions
 │   │   ├── routing.py              # WebSocket URL patterns
 │   │   ├── config.json             # LLM and RAG configuration
+│   │   ├── config_loader.py        # Shared frozen/source-aware config reader
 │   │   ├── prompt.pmt              # System prompt template
 │   │   ├── global_state.py         # Thread-safe singleton state (Singleton pattern)
 │   │   ├── constants.py            # Application constants and regex patterns
@@ -436,7 +437,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (55 types)
+│   │   ├── agents/                 # Workflow agent templates (56 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -447,6 +448,7 @@ Tlamatini/
 │   │   │   ├── sqler/             # SQL Server query execution agent
 │   │   │   ├── mongoxer/          # MongoDB script execution agent
 │   │   │   ├── mouser/            # Mouse pointer movement agent
+│   │   │   ├── keyboarder/        # Keyboard typing / hotkey automation agent
 │   │   │   ├── deleter/           # File deletion agent
 │   │   │   ├── mover/             # File move/copy agent
 │   │   │   ├── shoter/            # Screenshot capture agent
@@ -1231,6 +1233,7 @@ Expected behavior after this fallback:
 
 - The chat stays grounded in the loaded files instead of claiming the context is empty
 - File manifests and packed source excerpts remain available to the answering chain
+- The packed fallback blob is propagated into both `BasicPromptOnlyChain` and `UnifiedAgentChain`, and the current test suite includes explicit regression coverage for both paths
 - The system continues operating in a reduced-capability mode until embeddings can be built again
 
 This fallback is especially valuable on constrained developer machines, remote desktops, or shared environments where larger embedding models may intermittently fail to initialize.
@@ -1542,7 +1545,7 @@ Wrapped chat-agent launchers create isolated runtime copies of selected template
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **55 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **56 agent types** total.
 
 The `Purpose` text in the agent tables below is no longer documentation-only. The ACP now parses these table rows from `README.md` and uses them as the live source for sidebar agent-purpose tooltips and the canvas **Description** dialog, so edits to a Purpose cell affect both the documentation and the UI text shown to users.
 
@@ -1560,7 +1563,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `j_decompiler`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `keyboarder`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `j_decompiler`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
 
 ### Control Agents
@@ -1610,6 +1613,7 @@ Agents are classified as:
 | **mover** | Move or copy files | `operation`: move / copy<br>`sources_list`: File patterns<br>`destination_folder`: Target directory<br>`recursive`: false (scan subdirs)<br>`filetype_exclusions`: "" (exclude extensions/filenames) |
 | **shoter** | Takes screenshots and saves to output directory | `output_dir`: Screenshot destination<br>`target_agents`: Downstream agents |
 | **mouser** | Moves the mouse pointer randomly for a duration or to a specific screen position. In localized mode it can also issue a configured click only after the destination has been effectively reached. Starts downstream agents after completion | `movement_type`: "random"/"localized"<br>`actual_position`: true<br>`ini_posx`/`ini_posy`: Start coords<br>`end_posx`/`end_posy`: End coords<br>`button_click`: none/left/right/middle/double-left/double-right/double-middle<br>`total_time`: Duration (seconds)<br>`target_agents`: Downstream agents |
+| **keyboarder** | Issues keyboard sequences through PyAutoGUI to emulate human typing, literal text entry, and hotkey chords, then triggers downstream agents after the sequence completes. The ACP auto-populates its `source_agents` / `target_agents` lists through the dedicated keyboarder connection endpoint. | `input_sequence`: Comma-separated sequence of keys, hotkeys, or quoted literal strings<br>`stride_delay`: Delay in milliseconds between sequence steps<br>`source_agents`: Upstream wiring / trigger sources<br>`target_agents`: Downstream agents |
 | **ssher** | SSH remote command execution. Requires pre-configured SSH keys. | `user`: SSH username<br>`ip`: Remote host<br>`script`: Command to execute<br>`target_agents`: Triggered on success |
 | **scper** | SCP file transfer to/from remote host | `user`: SSH username<br>`ip`: Remote host<br>`file`: Path to transfer<br>`direction`: send / receive<br>`target_agents`: Triggered on success |
 | **mongoxer** | Execute Python scripts against MongoDB using pre-connected `db` object | `mongo_connection`: Connection config map<br>`script`: Python script using `db`<br>`target_agents`: Success agents |
@@ -2441,6 +2445,7 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 | `/update_croner_connection/<agent_name>/` | POST | Update croner connections |
 | `/update_mover_connection/<agent_name>/` | POST | Update mover connections |
 | `/update_mouser_connection/<agent_name>/` | POST | Update mouser connections |
+| `/update_keyboarder_connection/<agent_name>/` | POST | Update keyboarder connections |
 | `/update_sleeper_connection/<agent_name>/` | POST | Update sleeper connections |
 | `/update_cleaner_connection/<agent_name>/` | POST | Update cleaner connections |
 | `/update_deleter_connection/<agent_name>/` | POST | Update deleter connections |
@@ -2467,6 +2472,7 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 | `/update_kyber_cipher_connection/<agent_name>/` | POST | Update kyber_cipher connections |
 | `/update_kyber_decipher_connection/<agent_name>/` | POST | Update kyber_decipher connections |
 | `/update_parametrizer_connection/<agent_name>/` | POST | Update parametrizer connections |
+| `/update_flowbacker_connection/<agent_name>/` | POST | Update flowbacker connections |
 | `/get_parametrizer_dialog_data/<agent_name>/` | GET | Get Parametrizer mapping dialog data |
 | `/save_parametrizer_scheme/<agent_name>/` | POST | Save Parametrizer interconnection scheme |
 | `/update_barrier_connection/<agent_name>/` | POST | Update barrier connections |
@@ -2518,6 +2524,8 @@ When reconnecting:
 4. User receives `session-restored` message
 5. RAG chain rebuilt with previous context
 
+The frontend now reapplies restored context through a shared UI-state helper, so both directory contexts and file contexts recover the correct top-bar state. For file contexts, the UI derives the parent directory when filename metadata is present, which keeps directory-oriented actions such as **Open in...** and **View context dir in canvas** in sync after restore.
+
 ### Clearing Session
 
 - Explicit: Use "Clear Context" button
@@ -2529,7 +2537,7 @@ When reconnecting:
 
 ## Open in... External Editors
 
-Tlamatini includes an **"Open in..."** dropdown button in the navigation bar that lets you open the currently loaded context directory directly in an external editor or file manager, without leaving the application.
+Tlamatini includes an **"Open in..."** dropdown button in the navigation bar that lets you open the currently loaded context directory, or the parent directory of a loaded file context, directly in an external editor or file manager without leaving the application.
 
 ### Supported Applications
 
@@ -2543,16 +2551,16 @@ Only applications that are actually installed on the system will appear in the d
 
 ### How to Use
 
-1. **Load a directory as context** using the **Context > Set directory as context** menu entry.
+1. **Load a directory or file as context** using the **Context** menu entries.
 2. Wait for the context to be fully loaded (the context bar at the top will display the directory path).
 3. The **"Open in..."** dropdown becomes enabled in the navigation bar (between the Context and MCPs menus).
 4. Click **"Open in..."** and select the desired application from the dropdown.
-5. The context directory will open in a new window of the selected application.
+5. The context directory, or the parent directory of the loaded file context, will open in a new window of the selected application.
 
 ### Behavior Details
 
 - **Visibility:** The dropdown only appears if at least one supported application is detected on the system (File Explorer is always detected on Windows, so the dropdown is always visible).
-- **Disabled state:** The dropdown is grayed out and non-interactive until a directory is successfully loaded as context. File-based contexts do not enable the dropdown.
+- **Disabled state:** The dropdown is grayed out and non-interactive until a directory or file context is successfully loaded. When the active context is a file, the frontend resolves the containing directory and uses that as the target for **Open in...**.
 - **During long operations:** The dropdown is automatically disabled while the LLM is processing a request or a context is being loaded, and re-enabled once the operation completes.
 - **Reconnect / Clear context:** If the context is cleared or the session is reconnected, the dropdown returns to its disabled state.
 
@@ -2593,7 +2601,7 @@ The project includes a dedicated security test suite (`agent/tests.py`) with thr
 | **P1 (High)** | `P1HardeningTests` | Path traversal prevention (`../` sequences, encoded escapes), `safe_join_under()` validation, runtime agent path resolution safety |
 | **P2 (Prompt)** | `PromptPathHardeningTests` | Prompt injection defense — rejects absolute paths outside allowed directories, validates gRPC results against path escaping attempts |
 
-The same `agent/tests.py` module now also includes regression coverage for Ender cleanup/restart behavior, prompt-validation decision paths, and `open_in_app` resolution for deployed canvas-agent instances. On the April 3, 2026 rerun, the module contains **28 tests**: `27/28` pass in a UTF-8 console, while `24/28` pass in the default Windows console. The remaining failures are still one WebSocket event-loop error plus three CP1252 `UnicodeEncodeError` cases from `rag/interface.py` debug prints.
+The same `agent/tests.py` module now also includes regression coverage for Ender cleanup/restart behavior, prompt-validation decision paths, loaded-documents fallback propagation into both prompt-only and unified chains, and `open_in_app` resolution for deployed canvas-agent instances. On the April 4, 2026 rerun, the module contains **31 tests**: `30/31` pass in a UTF-8 console, while `27/31` pass in the default Windows console. The remaining failures are still one WebSocket event-loop error plus three CP1252 `UnicodeEncodeError` cases from `rag/interface.py` debug prints.
 
 ### Path Guard (`path_guard.py`)
 
@@ -2773,7 +2781,7 @@ Enable verbose logging in config.json:
 | **Notifier** | LangGraph-based agent that monitors logs and triggers browser notifications |
 | **Stopper** | Single-threaded agent that sequentially polls and terminates other agents based on patterns. Uses `output_agents` (not `target_agents`) for canvas wiring |
 | **Pythonxer** | Agent that executes Python scripts with Ruff validation and boolean exit code |
-| **Keyboarder** | Issues a sequence of keys to emulate human typing on the keyboard. | `input_sequence`: string of keys and combos<br>`target_agents`: Downstream agents |
+| **Keyboarder** | Deterministic PyAutoGUI-based keyboard automation agent that parses comma-separated key sequences, hotkey chords joined with `+`, and quoted literal strings, then emits them step by step according to `stride_delay` before triggering downstream agents |
 | **Recmailer** | LangGraph agent that monitors IMAP email inbox with LLM-based keyword analysis |
 | **Whatsapper** | Agent that sends WhatsApp notifications via TextMeBot API with LLM summarization |
 | **Forker** | Deterministic agent that routes workflows to Path A or B based on log patterns |
@@ -2791,7 +2799,7 @@ Enable verbose logging in config.json:
 | **FlowHypervisor** | System-managed LLM anomaly detector that watches all running agents' processes and log files, builds NxN connection matrices, performs incremental log analysis, and alerts the user to anomalies. Supports reanimation via `reanim.json` for crash recovery, user-configurable `user_instructions` for fine-tuning supervision, and dual-layer auto-stop |
 | **Flow Validation** | Pre-execution structural verification that builds an NxN adjacency matrix from agent connections and validates the current Starter, Ender, Cleaner, FlowBacker, self-connection, orphan, and dangling-reference rules |
 | **jd-cli** | Java Decompiler CLI tool bundled with the application for decompiling JAR/WAR files to source code |
-| **PyAutoGUI** | Python library for programmatic mouse and keyboard control, used by the Mouser agent |
+| **PyAutoGUI** | Python library for programmatic mouse and keyboard control, used by the Mouser and Keyboarder agents |
 | **Asker** | Deterministic agent that pauses workflow for interactive user A/B choice |
 | **Workflow** | Connected sequence of agents performing automated tasks |
 | **Canvas** | UI area for displaying and editing generated code |
@@ -2884,6 +2892,11 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Main Chat Context UI State Sync** - `agent_page_ui.js` now centralizes restored context handling through `applyContextUiState()`, while `agent_page_chat.js` routes both `session-restored` and `context-path-set` through that shared helper. File contexts now recover a parent-directory-backed `actualContextDir`, which keeps **Open in...** and **View context dir in canvas** aligned after reconnects and context reloads
+- **RAG Loaded-Documents Fallback Hardening** - `rag/factory.py` now preserves successfully loaded documents as a packed fallback context with a file manifest when retrieval-chain construction fails. That fallback is propagated into both `BasicPromptOnlyChain` and `UnifiedAgentChain`, and `agent/tests.py` now includes `LoadedContextFallbackTests` to verify both code paths
+- **Configurable Runtime Limits and Demo Prompts** - `config.json` now sets `unified_agent_max_iterations` and `chat_agent_limit_runs` to `100`, `config_loader.py` centralizes frozen/source-aware config loading, `chat_agent_runtime.py` uses the configured run-list cap by default, and migrations `0002_populate_db.py` / `0067_add_multi_turn_demo_prompts.py` seed three multi-turn demo prompts (`idPrompt` 25-27)
+- **Keyboarder Canvas Wiring** - `keyboarder` is now a first-class ACP auto-configuration participant: the frontend styles it explicitly, `acp-agent-connectors.js` posts to `/update_keyboarder_connection/<agent_name>/`, and the backend updates its `source_agents` / `target_agents` lists in the deployed pool instance `config.yaml`
+- **Mouser Localized Click Actions** - Mouser now supports `button_click` values such as `left`, `right`, `middle`, and `double-left/right/middle`. The properties dialog only enables those options for localized movement, and the runtime only emits the configured click after the cursor has actually reached the intended destination
 - **Added Keyboarder Agent** - Issues a sequence of keys to emulate human typing on the keyboard.
 
 - **ACP Agent Descriptions and Instance Context Menus** - `agentic_control_panel()` now parses the `## Workflow Agents` Purpose column from `README.md`, injects an `agent_purpose_map` into the ACP template, and the frontend uses it for sidebar hover tooltips and the new canvas **Description** dialog. The right-click menu for deployed agents now also exposes **`Explore dir...`** and **`Open cmd...`**, and `/agent/open_in_app/` accepts `agent_name` so those actions resolve the current session-pool instance directory instead of the template folder. `agent/tests.py` now includes regression coverage for those instance-directory actions
@@ -2926,7 +2939,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **jd-cli Bundled in Installation** - The Java decompiler CLI tool (`jd-cli/`) is now included in `pkg.zip` during the build process, available at the application root alongside `agents/`, `application/`, etc.
 - **FlowCreator Skill Enhancements** - Updated `agentic_skill.md` with Mouser agent documentation, improved validation instructions for agent connection rules, and enhanced button behavior for the Validate flow action
 - **Added PyAutoGUI Dependency** - `PyAutoGUI==0.9.54` added to `requirements.txt` for Mouser agent mouse control
-- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), `/update_mouser_connection/<agent_name>/` (POST), `/update_counter_connection/<agent_name>/` (POST), `/update_file_interpreter_connection/<agent_name>/` (POST), `/update_image_interpreter_connection/<agent_name>/` (POST), and `/update_flowbacker_connection/<agent_name>/` (POST). Total endpoints now at 100
+- **New API Endpoints** - Added `/validate_flow/` (GET) for flow structure validation, `/execute_flowhypervisor/<agent_name>/` (POST), `/check_flowhypervisor_alert/<agent_name>/` (GET), `/update_mouser_connection/<agent_name>/` (POST), `/update_counter_connection/<agent_name>/` (POST), `/update_file_interpreter_connection/<agent_name>/` (POST), `/update_image_interpreter_connection/<agent_name>/` (POST), and `/update_flowbacker_connection/<agent_name>/` (POST). That earlier expansion brought the app route total to 100 at the time; the current code now exposes 103 app routes
 - **P0/P1/P2 Security Hardening** - Comprehensive, tiered security test suite covering user isolation, CSRF, login enforcement (P0), path traversal prevention and safe path joining (P1), and prompt injection defense with indirect file access detection (P2)
 - **Added Path Guard Module** (`path_guard.py`) - Centralized path validation layer that resolves Windows known folders, enforces `allowed_paths` from config, and prevents directory traversal across all file operations
 - **Improved File Search Chain** - `chain_files_search_lcel.py` now integrates with `path_guard.py` for secure path validation, supports non-explicit lookup crawling, and validates all gRPC results against path escaping
@@ -2969,7 +2982,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Tools Dialog** - Per-tool enable/disable via the chat interface
 - **Image Format Conversion** - Added `converter.py` module for image format transformations and base64 encoding
 - **Chat History Management** - Added `chat_history_loader.py` for persistent conversation history
-- **102 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
+- **103 HTTP Endpoints** - Comprehensive REST API for agent management, connection updates, session control
 
 ---
 
