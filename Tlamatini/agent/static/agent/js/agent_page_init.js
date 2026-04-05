@@ -1,6 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
+/* global syncClearContextMenuState */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -601,8 +602,8 @@ window.onload = () => {
             }));
         }
     });
-    clearContextEnabled = false;
-    clearContextButton.setAttribute("style", "display: none !important;");
+    syncClearContextMenuState();
+    updateViewContextDirMenuState();
 
     // Detect installed apps for "Open in..." dropdown
     detectInstalledApps();
