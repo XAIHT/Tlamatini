@@ -37,6 +37,6 @@ target_agents: []
 # LLM connection settings (vision model via Ollama-compatible API)
 llm:
   host: "http://localhost:11434"
-  model: "llama3.2-vision:11b"
+  model: "qwen3.5:cloud"
   prompt: "Describe this image in detail."
   token: ""

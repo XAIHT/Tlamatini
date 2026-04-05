@@ -70,7 +70,7 @@ class FileSearchRAGChain:
 
         # Initialize Ollama LLM with values from config
         ollama_base_url = config.get("ollama_base_url", "http://127.0.0.1:11434")
-        ollama_model = config.get("chained-model", "llama3")
+        ollama_model = config.get("chained-model", "gpt-oss:120b-cloud")
         ollama_token = config.get("ollama_token", "")
 
         client_kwargs = {}

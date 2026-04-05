@@ -825,7 +825,7 @@ system_prompt: |
 - **Starts other agents**: NO (System managed).
 - **Config parameters**:
   - `llm.host`: "http://localhost:11434"
-  - `llm.model`: "llama3.1:8b"
+  - `llm.model`: "gpt-oss:120b-cloud"
   - `llm.temperature`: 0.0
   - `monitoring_poll_time`: 10
   - `user_instructions`: "" (custom directives appended to the monitoring prompt)
@@ -879,7 +879,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after ALL images are processed)
   - `llm.host`: "http://localhost:11434" (Ollama-compatible API URL)
-  - `llm.model`: "llama3.2-vision:11b" (vision model name)
+  - `llm.model`: "qwen3.5:cloud" (vision model name)
   - `llm.prompt`: "Describe this image in detail." (prompt sent with each image)
   - `llm.token`: "" (optional bearer token for authentication)
 
