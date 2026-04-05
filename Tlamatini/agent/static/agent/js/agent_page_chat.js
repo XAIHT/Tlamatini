@@ -1,6 +1,7 @@
 // ============================================================
 // agent_page_chat.js  –  Chat messaging, WebSocket & form submit
 // ============================================================
+/* global applyContextUiState */
 
 const HTML_ENTITY_MAP = {
     '&amp;': '&',
@@ -338,13 +339,7 @@ chatSocket.onmessage = function (e) {
     if (data.type === 'session-restored') {
         console.log('--- Session restored from server:', data);
         if (data.context_path) {
-            setContextText('<<< ' + data.context_path + ' >>>');
-            contextInfoDiv.classList.remove('context-info-invisible');
-            contextInfoDiv.classList.add('context-info-visible');
-            actualContextDir = data.context_type === 'directory' ? data.context_path : null;
-            clearContextEnabled = true;
-            clearContextButton.removeAttribute('style');
-            updateViewContextDirMenuState();
+            applyContextUiState(data.context_path, data.context_type, data.context_filename);
             console.log('--- Context UI restored: ' + data.context_path);
         }
         return;
@@ -353,13 +348,7 @@ chatSocket.onmessage = function (e) {
     if (data.type === 'context-path-set') {
         console.log('--- Context path set by server:', data.context_path, 'type:', data.context_type);
         if (data.context_path) {
-            setContextText('<<< ' + data.context_path + ' >>>');
-            contextInfoDiv.classList.remove('context-info-invisible');
-            contextInfoDiv.classList.add('context-info-visible');
-            clearContextEnabled = true;
-            clearContextButton.removeAttribute('style');
-            actualContextDir = data.context_type === 'directory' ? data.context_path : null;
-            updateViewContextDirMenuState();
+            applyContextUiState(data.context_path, data.context_type, data.context_filename);
         }
         return;
     }

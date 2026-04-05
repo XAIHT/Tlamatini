@@ -30,6 +30,63 @@ function updateViewContextDirMenuState() {
     updateOpenInMenuState();
 }
 
+function syncClearContextMenuState() {
+    if (!clearContextButton) {
+        return;
+    }
+
+    if (clearContextEnabled) {
+        clearContextButton.removeAttribute('style');
+    } else {
+        clearContextButton.setAttribute('style', 'display: none !important;');
+    }
+}
+
+function resolveContextDirectory(contextPath, contextType, contextFilename) {
+    if (!contextPath) {
+        return null;
+    }
+
+    if (contextType === 'directory') {
+        return contextPath;
+    }
+
+    if (contextType === 'file') {
+        const fullPath = String(contextPath);
+        const safeFilename = contextFilename ? String(contextFilename) : '';
+
+        if (safeFilename) {
+            const fullPathLower = fullPath.toLowerCase();
+            const safeFilenameLower = safeFilename.toLowerCase();
+            if (fullPathLower.endsWith(`\\${safeFilenameLower}`) || fullPathLower.endsWith(`/${safeFilenameLower}`)) {
+                const lastSlash = Math.max(fullPath.lastIndexOf('\\'), fullPath.lastIndexOf('/'));
+                return lastSlash >= 0 ? fullPath.slice(0, lastSlash) : null;
+            }
+        }
+
+        return fullPath;
+    }
+
+    return null;
+}
+
+function applyContextUiState(contextPath, contextType, contextFilename = null) {
+    if (!contextPath) {
+        return;
+    }
+
+    setContextText(`<<< ${contextPath} >>>`);
+    if (contextInfoDiv) {
+        contextInfoDiv.classList.remove('context-info-invisible');
+        contextInfoDiv.classList.add('context-info-visible');
+    }
+
+    clearContextEnabled = true;
+    actualContextDir = resolveContextDirectory(contextPath, contextType, contextFilename);
+    syncClearContextMenuState();
+    updateViewContextDirMenuState();
+}
+
 // --- SVG icon data for "Open in..." menu items ---
 const openInAppIcons = {
     explorer: '<svg viewBox="0 0 16 16" class="open-in-app-icon" fill="#FFD75E"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.879a1.5 1.5 0 0 1 1.06.44l.44.439a.5.5 0 0 0 .354.146H13.5A1.5 1.5 0 0 1 15 4.5v1H1V3.5zM1 6h14v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5V6z"/></svg>',
