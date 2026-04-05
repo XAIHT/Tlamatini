@@ -972,7 +972,7 @@ These model tags come from the default configuration files included with the pro
 - `qwen3.5:cloud`: default image interpreter model in `Tlamatini/agent/config.json`
 - `gpt-oss:120b-cloud`: default model in several shipped workflow-agent templates such as Monitor Log, Monitor Netstat, Notifier, Prompter, Summarizer, Pser, Recmailer, Whatsapper, File-Interpreter, and FlowHypervisor
 - `qwen3.5:397b-cloud`: default FlowCreator model in `Tlamatini/agent/agents/flowcreator/config.yaml`
-- `llama3.2-vision:11b`: default Image-Interpreter model in `Tlamatini/agent/agents/image_interpreter/config.yaml`
+- `qwen3.5:cloud`: default Image-Interpreter model in `Tlamatini/agent/agents/image_interpreter/config.yaml`
 
 Important notes:
 
