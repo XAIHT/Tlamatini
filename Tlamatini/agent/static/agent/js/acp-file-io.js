@@ -12,8 +12,14 @@ if (saveBtn) {
         e.preventDefault();
         if (saveBtn.classList.contains('disabled')) return;
 
-        let filename = prompt("Enter filename to save:", "diagram");
+        const defaultFilename = typeof getDefaultDiagramSaveFilename === 'function'
+            ? getDefaultDiagramSaveFilename()
+            : 'diagram';
+
+        let filename = prompt("Enter filename to save:", defaultFilename);
         if (filename === null) return; // User cancelled
+        filename = filename.trim();
+        if (!filename) return;
 
         if (!filename.toLowerCase().endsWith('.flw')) {
             filename += '.flw';

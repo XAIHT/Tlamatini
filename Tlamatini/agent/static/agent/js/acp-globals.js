@@ -124,6 +124,51 @@ function updateFilenameDisplay(filename) {
     }
 }
 
+/**
+ * Read the currently displayed diagram filename from the ACP header.
+ * @returns {string} Filename including extension, or empty string when none is shown.
+ */
+function getDisplayedDiagramFilename() {
+    if (!filenameSpan) return '';
+    const rawText = String(filenameSpan.textContent || '').trim();
+    const match = rawText.match(/^<<\s*(.+?)\s*>>$/);
+    return match ? match[1].trim() : '';
+}
+
+/**
+ * Read the configured default filename from the FlowCreator node, if present.
+ * @returns {string} FlowCreator filename candidate, or empty string when unset.
+ */
+function getFlowCreatorConfiguredFilename() {
+    const flowCreatorConfig = ACP.nodeConfigs.get('flowcreator');
+    if (!flowCreatorConfig || typeof flowCreatorConfig.flow_filename !== 'string') {
+        return '';
+    }
+    return flowCreatorConfig.flow_filename.trim();
+}
+
+/**
+ * Resolve the default filename to show in the ACP Save As prompt.
+ * Priority:
+ * 1. FlowCreator's configured flow_filename
+ * 2. Currently displayed diagram filename
+ * 3. Generic fallback
+ * @returns {string} Default filename suggestion for Save As.
+ */
+function getDefaultDiagramSaveFilename() {
+    const flowCreatorFilename = getFlowCreatorConfiguredFilename();
+    if (flowCreatorFilename) {
+        return flowCreatorFilename;
+    }
+
+    const displayedFilename = getDisplayedDiagramFilename();
+    if (displayedFilename) {
+        return displayedFilename;
+    }
+
+    return 'diagram';
+}
+
 function markDirty() {
     hasUnsavedChanges = true;
     updateSaveButtonState();
