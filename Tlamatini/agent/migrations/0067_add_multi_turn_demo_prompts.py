@@ -10,7 +10,7 @@ def add_multi_turn_demo_prompts(apps, schema_editor):
             'promptName': 'prompt-25',
             'promptContent': (
                 "Run an end-to-end multi-turn local document demo, please: use File Creator "
-                "to create the file 'C:\\Temp\\tlamatini_multiturn_release_notes.txt' with a short "
+                "to create the file '----\\tlamatini_multiturn_release_notes.txt' with a short "
                 "fake release note for Tlamatini, then use File Extractor to read that same "
                 "file, then use Summarize Text to convert it into a 5-bullet executive "
                 "summary, and finally use Notifier to announce that the demo finished. If any "
@@ -30,7 +30,7 @@ def add_multi_turn_demo_prompts(apps, schema_editor):
                 "capture the page text, then use Summarize Text to produce a short "
                 "comparison between the HTTP response and the crawled content, and finally "
                 "use File Creator to save the final comparison into "
-                "'C:\\Temp\\tlamatini_example_comparison.md'. If any wrapped agent returns a "
+                "'----\\tlamatini_example_comparison.md'. If any wrapped agent returns a "
                 "running run_id, keep using chat_agent_run_status and chat_agent_run_log "
                 "until you have enough output to continue."
             ),
@@ -43,7 +43,7 @@ def add_multi_turn_demo_prompts(apps, schema_editor):
             'promptName': 'prompt-27',
             'promptContent': (
                 "Run a multi-turn monitoring demo, please: first use File Creator to "
-                "initialize 'C:\\Temp\\tlamatini_monitor_demo.log' with a starting line, then "
+                "initialize '----\\tlamatini_monitor_demo.log' with a starting line, then "
                 "start Monitor Log on that file watching for the keywords 'ERROR,FATAL', "
                 "then use Pythonxer to append several new log lines to the same file "
                 "including one line that contains the word 'ERROR', keep polling the "
