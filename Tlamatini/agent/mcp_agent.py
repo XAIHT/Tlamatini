@@ -7,6 +7,10 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 from .capability_registry import select_tools_for_request
 from .config_loader import get_int_config_value, load_config as _shared_load_config
+from .global_execution_planner import (
+    selected_tool_names_from_plan,
+    summarize_global_execution_plan,
+)
 from .global_state import scoped_request_state
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
@@ -127,7 +131,7 @@ class MultiTurnToolAgentExecutor:
         self.tools = list(tools)
         self.tool_map = {tool.name: tool for tool in self.tools}
         self.max_iterations = max_iterations
-        self.bound_llm = llm.bind_tools(self.tools)
+        self.bound_llm = llm.bind_tools(self.tools) if self.tools else None
 
     def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
         tool_name = tool_call.get("name", "")
@@ -157,10 +161,27 @@ class MultiTurnToolAgentExecutor:
 
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
+        planner_summary = str(payload.get("planner_summary", "") or "").strip()
         messages = [
             SystemMessage(content=self.system_prompt),
-            HumanMessage(content=input_text),
         ]
+        if planner_summary:
+            messages.append(SystemMessage(
+                content=(
+                    "REQUEST-SCOPED GLOBAL EXECUTION PLAN:\n"
+                    f"{planner_summary}\n\n"
+                    "Follow this planner output. Prefetch stages have already been applied before this executor runs. "
+                    "Use only the planned tool and monitor stages unless the plan is empty."
+                )
+            ))
+        messages.append(HumanMessage(content=input_text))
+
+        if not self.tools:
+            response = self.llm.invoke(messages)
+            answer = getattr(response, "content", "") or ""
+            if not str(answer).strip():
+                answer = "The planner selected no tools for this request, and the model returned an empty response."
+            return {"output": str(answer)}
 
         for iteration in range(self.max_iterations):
             response = self.bound_llm.invoke(messages)
@@ -274,6 +295,7 @@ class CapabilityAwareToolAgentExecutor:
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
+        global_execution_plan = payload.get("global_execution_plan")
 
         with scoped_request_state(
             multi_turn_enabled=multi_turn_enabled,
@@ -283,9 +305,21 @@ class CapabilityAwareToolAgentExecutor:
                 print("--- CapabilityAwareToolAgentExecutor: multi-turn disabled; using legacy full-tool binding ---")
                 return self.legacy_executor.invoke({"input": input_text})
 
-            selected_tools = select_tools_for_request(input_text, self.tools)
-            if not selected_tools:
-                selected_tools = self.tools
+            selected_tools = None
+            if global_execution_plan:
+                planned_tool_names = selected_tool_names_from_plan(global_execution_plan)
+                selected_tools = [
+                    tool for tool in self.tools
+                    if tool.name in set(planned_tool_names)
+                ]
+                print(
+                    "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
+                    f"with {len(selected_tools)} planned tools"
+                )
+            if selected_tools is None:
+                selected_tools = select_tools_for_request(input_text, self.tools)
+                if not selected_tools:
+                    selected_tools = self.tools
 
             selected_names = [tool.name for tool in selected_tools]
             print(
@@ -293,7 +327,14 @@ class CapabilityAwareToolAgentExecutor:
                 f"selected {len(selected_tools)}/{len(self.tools)} tools: {selected_names}"
             )
             executor = self._get_executor_for_tools(selected_tools)
-            return executor.invoke({"input": input_text})
+            executor_payload = {"input": input_text}
+            if global_execution_plan:
+                executor_payload["global_execution_plan"] = global_execution_plan
+                executor_payload["planner_summary"] = (
+                    payload.get("planner_summary")
+                    or summarize_global_execution_plan(global_execution_plan)
+                )
+            return executor.invoke(executor_payload)
 
 
 def create_unified_agent(llm, preeliminary_prompt: str):

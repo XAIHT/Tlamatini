@@ -144,6 +144,8 @@ class UnifiedAgentChain:
             "files_context": payload.get("files_context", ""),
             "context": payload.get("context", ""),
             "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+            "global_execution_plan": payload.get("global_execution_plan"),
+            "planner_summary": payload.get("planner_summary", ""),
         }
 
         if not payload["chat_history"]:
@@ -203,6 +205,8 @@ User Question: {enhanced_input}"""
                 result = self.unified_agent.invoke({
                     "input": enhanced_input,
                     "multi_turn_enabled": payload.get("multi_turn_enabled", False),
+                    "global_execution_plan": payload.get("global_execution_plan"),
+                    "planner_summary": payload.get("planner_summary", ""),
                 })
                 print(f"--- UnifiedAgentChain: Agent returned result type: {type(result)}")
                 if isinstance(result, dict):
@@ -641,6 +645,8 @@ User Question: {enhanced_input}"""
                 result = self.unified_agent.invoke({
                     "input": enhanced_input,
                     "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+                    "global_execution_plan": payload.get("global_execution_plan"),
+                    "planner_summary": payload.get("planner_summary", ""),
                 })
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
             except Exception as e:

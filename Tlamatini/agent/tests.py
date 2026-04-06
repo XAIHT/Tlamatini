@@ -1,5 +1,6 @@
 import importlib.util
 import ast
+import json
 import os
 import subprocess
 import shutil
@@ -28,6 +29,7 @@ from agent.path_guard import (
     safe_join_under,
 )
 from agent.capability_registry import select_context_capabilities_for_request, select_tools_for_request
+from agent.global_execution_planner import build_global_execution_plan
 from agent.rag.interface import _validate_accesses_in_prompt
 from agent.rag.interface import ask_rag
 from agent.rag.factory import _apply_context_prefetch, _build_loaded_documents_fallback_context
@@ -38,9 +40,11 @@ from agent import tools as agent_tools
 from tlamatini.asgi import application
 
 try:
+    import agent.chain_files_search_lcel as files_chain_module
     from agent.chain_files_search_lcel import FileSearchRAGChain
 except Exception:  # pragma: no cover - optional dependency path
     FileSearchRAGChain = None
+    files_chain_module = None
 from agent.rag.chains.unified import _has_explicit_file_listing_context, _should_include_file_manifest
 
 
@@ -156,8 +160,17 @@ class P0HardeningTests(TestCase):
         self.assertTrue(AgentMessage.objects.filter(conversation_user=self.other_user).exists())
 
     def test_anonymous_websocket_connection_is_rejected(self):
-        communicator = WebsocketCommunicator(application, '/ws/agent/')
-        connected, _subprotocol = async_to_sync(communicator.connect)()
+        async def _attempt_connect():
+            communicator = WebsocketCommunicator(application, '/ws/agent/')
+            connected = False
+            try:
+                connected, _subprotocol = await communicator.connect()
+                return connected
+            finally:
+                if connected:
+                    await communicator.disconnect()
+
+        connected = async_to_sync(_attempt_connect)()
         self.assertFalse(connected)
 
     def test_login_invalid_credentials_render_inline_feedback(self):
@@ -573,6 +586,117 @@ class ContextCapabilitySelectionTests(TestCase):
         self.assertEqual(selected, ('system_context', 'files_context'))
 
 
+class GlobalExecutionPlannerTests(TestCase):
+    def test_build_global_execution_plan_creates_context_only_dag_when_context_is_sufficient(self):
+        tools = [
+            SimpleNamespace(name='get_current_time', description='Return the current date and time.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+        ]
+
+        plan = build_global_execution_plan(
+            'Show me README.md in the project home and summarize it.',
+            tools,
+            system_enabled=True,
+            files_enabled=True,
+        )
+
+        self.assertEqual(plan.execution_mode, 'context_only')
+        self.assertEqual(plan.selected_contexts, ('files_context',))
+        self.assertEqual(plan.selected_tool_names, ())
+        self.assertEqual(plan.nodes[0].node_id, 'prefetch:files_context')
+        self.assertEqual(plan.nodes[-1].node_id, 'answer:final')
+
+    def test_build_global_execution_plan_creates_tool_and_monitor_nodes_for_wrapped_agent_requests(self):
+        tools = [
+            SimpleNamespace(name='chat_agent_gitter', description='Run git operations through the Gitter template agent.'),
+            SimpleNamespace(name='chat_agent_run_status', description='Get the current status of a wrapped run.'),
+            SimpleNamespace(name='chat_agent_run_log', description='Read the latest log excerpt of a wrapped run.'),
+            SimpleNamespace(name='chat_agent_run_stop', description='Stop a wrapped run by run id.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+        ]
+
+        plan = build_global_execution_plan(
+            'Check disk usage, then run git status in the repo and monitor the run status and logs.',
+            tools,
+            system_enabled=True,
+            files_enabled=True,
+        )
+
+        self.assertEqual(plan.execution_mode, 'tool_augmented')
+        self.assertIn('system_context', plan.selected_contexts)
+        self.assertIn('files_context', plan.selected_contexts)
+        self.assertIn('chat_agent_gitter', plan.selected_tool_names)
+        self.assertIn('chat_agent_run_status', plan.selected_tool_names)
+        self.assertIn('chat_agent_run_log', plan.selected_tool_names)
+        monitor_nodes = [node for node in plan.nodes if node.stage == 'monitor']
+        self.assertGreaterEqual(len(monitor_nodes), 1)
+
+
+class FrozenModeCompatibilityTests(TestCase):
+    def test_file_search_default_config_path_uses_executable_directory_when_frozen(self):
+        if files_chain_module is None:
+            self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fake_executable = os.path.join(temp_dir, 'Tlamatini.exe')
+            with open(fake_executable, 'w', encoding='utf-8') as handle:
+                handle.write('stub exe')
+
+            with patch.object(files_chain_module.sys, 'frozen', True, create=True), \
+                    patch.object(files_chain_module.sys, 'executable', fake_executable):
+                config_path = files_chain_module._get_default_config_path()
+                application_root = files_chain_module._get_application_root()
+
+        self.assertEqual(config_path, os.path.join(temp_dir, 'config.json'))
+        self.assertEqual(application_root, temp_dir)
+
+    def test_file_search_chain_loads_default_config_from_frozen_executable_directory(self):
+        if files_chain_module is None:
+            self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fake_executable = os.path.join(temp_dir, 'Tlamatini.exe')
+            with open(fake_executable, 'w', encoding='utf-8') as handle:
+                handle.write('stub exe')
+
+            config_path = os.path.join(temp_dir, 'config.json')
+            with open(config_path, 'w', encoding='utf-8') as handle:
+                json.dump({
+                    'ollama_base_url': 'http://frozen.example:11434',
+                    'chained-model': 'frozen-model',
+                    'mcp_files_search_grpc_target': 'frozen-host:50505',
+                }, handle)
+
+            fake_llm = SimpleNamespace()
+            with patch.object(files_chain_module.sys, 'frozen', True, create=True), \
+                    patch.object(files_chain_module.sys, 'executable', fake_executable), \
+                    patch('agent.chain_files_search_lcel.OllamaLLM', return_value=fake_llm) as mock_llm:
+                chain = FileSearchRAGChain()
+
+        self.assertIs(chain.llm, fake_llm)
+        self.assertEqual(chain.grpc_target, 'frozen-host:50505')
+        self.assertEqual(mock_llm.call_args.kwargs['base_url'], 'http://frozen.example:11434')
+        self.assertEqual(mock_llm.call_args.kwargs['model'], 'frozen-model')
+
+    def test_template_agent_roots_include_frozen_install_layouts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fake_executable = os.path.join(temp_dir, 'Tlamatini.exe')
+            with open(fake_executable, 'w', encoding='utf-8') as handle:
+                handle.write('stub exe')
+
+            direct_agents = os.path.join(temp_dir, 'agents')
+            nested_agents = os.path.join(temp_dir, 'Tlamatini', 'agent', 'agents')
+            os.makedirs(direct_agents, exist_ok=True)
+            os.makedirs(nested_agents, exist_ok=True)
+
+            with patch.object(agent_tools.sys, 'frozen', True, create=True), \
+                    patch.object(agent_tools.sys, 'executable', fake_executable):
+                roots = agent_tools._get_template_agents_roots()
+
+        self.assertIn(os.path.realpath(os.path.abspath(direct_agents)), roots)
+        self.assertIn(os.path.realpath(os.path.abspath(nested_agents)), roots)
+
+
 class ContextPrefetchGatingTests(TestCase):
     def setUp(self):
         global_state.set_state('mcp_system_status', 'enabled')
@@ -620,6 +744,33 @@ class ContextPrefetchGatingTests(TestCase):
         self.assertNotIn('system_context', result)
         self.assertEqual(result['files_context'], 'files')
 
+    def test_phase3_prefetch_attaches_global_execution_plan_when_multi_turn_enabled(self):
+        with patch('agent.rag.factory.SystemRAGChain', object()), \
+                patch('agent.rag.factory.FileSearchRAGChain', object()), \
+                patch(
+                    'agent.rag.factory.get_mcp_tools',
+                    return_value=[SimpleNamespace(name='get_current_time', description='Return the current date and time.')],
+                ), \
+                patch(
+                    'agent.rag.factory.get_system_context_sync',
+                    side_effect=lambda payload: {**payload, 'system_context': 'system'},
+                ) as mock_system, \
+                patch(
+                    'agent.rag.factory.get_files_context_sync',
+                    side_effect=lambda payload: {**payload, 'files_context': 'files'},
+                ) as mock_files:
+            result = _apply_context_prefetch(
+                {'input': 'Show me README.md in the project and summarize it.', 'multi_turn_enabled': True},
+                'phase3-plan-test',
+            )
+
+        mock_system.assert_not_called()
+        mock_files.assert_called_once()
+        self.assertIn('global_execution_plan', result)
+        self.assertEqual(result['global_execution_plan']['execution_mode'], 'context_only')
+        self.assertEqual(result['global_execution_plan']['selected_contexts'], ['files_context'])
+        self.assertIn('planner_summary', result)
+
 
 class AskRagMultiTurnTests(TestCase):
     def test_ask_rag_passes_multi_turn_flag_to_chain_payload(self):
@@ -639,6 +790,40 @@ class AskRagMultiTurnTests(TestCase):
 
         self.assertEqual(result, 'ok')
         self.assertTrue(captured['payload']['multi_turn_enabled'])
+
+    def test_unified_agent_chain_forwards_global_execution_plan_to_executor(self):
+        captured = {}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = ''
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        plan = {
+            'planner_version': 'phase3_global_dag_v1',
+            'execution_mode': 'context_only',
+            'selected_contexts': ['files_context'],
+            'selected_tool_names': [],
+            'nodes': [{'node_id': 'answer:final', 'stage': 'answer', 'capability_key': 'final_response'}],
+        }
+        result = chain.invoke({
+            'input': 'Show me README.md in the project.',
+            'chat_history': [SimpleNamespace(content='prior turn')],
+            'multi_turn_enabled': True,
+            'global_execution_plan': plan,
+            'planner_summary': 'planner summary here',
+        })
+
+        self.assertEqual(result['answer'], 'ok')
+        self.assertEqual(captured['payload']['global_execution_plan'], plan)
+        self.assertEqual(captured['payload']['planner_summary'], 'planner summary here')
 
     def test_ask_rag_bypasses_prompt_shape_validation_when_multi_turn_enabled(self):
         captured = {}
@@ -713,6 +898,138 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         self.assertEqual(result, {'output': 'ok'})
         self.assertEqual(observed, [True])
         self.assertFalse(get_request_state('suppress_visible_consoles', False))
+
+    def test_capability_executor_uses_global_plan_tool_subset_before_selector(self):
+        captured = {}
+
+        class _RecordingExecutor:
+            def __init__(self, tool_names):
+                self.tool_names = tool_names
+
+            def invoke(self, payload):
+                captured['tool_names'] = self.tool_names
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        executor = CapabilityAwareToolAgentExecutor.__new__(CapabilityAwareToolAgentExecutor)
+        executor.llm = object()
+        executor.preeliminary_prompt = ''
+        executor.tools = [
+            SimpleNamespace(name='get_current_time', description='Return current time.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+        ]
+        executor.max_iterations = 1
+        executor._executor_cache = {}
+        executor.legacy_executor = _RecordingExecutor(['legacy'])
+        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor([tool.name for tool in tools_subset])
+
+        with patch('agent.mcp_agent.select_tools_for_request', side_effect=AssertionError('selector should not run when a global plan is present')):
+            result = CapabilityAwareToolAgentExecutor.invoke(
+                executor,
+                {
+                    'input': 'Tell me the current time.',
+                    'multi_turn_enabled': True,
+                    'global_execution_plan': {
+                        'planner_version': 'phase3_global_dag_v1',
+                        'execution_mode': 'tool_augmented',
+                        'selected_tool_names': ['get_current_time'],
+                        'selected_contexts': [],
+                        'nodes': [],
+                    },
+                    'planner_summary': 'use get_current_time only',
+                },
+            )
+
+        self.assertEqual(result, {'output': 'ok'})
+        self.assertEqual(captured['tool_names'], ['get_current_time'])
+        self.assertEqual(captured['payload']['planner_summary'], 'use get_current_time only')
+
+    def test_capability_executor_allows_context_only_global_plan_with_no_tools(self):
+        captured = {}
+
+        class _RecordingExecutor:
+            def __init__(self, tool_names):
+                self.tool_names = tool_names
+
+            def invoke(self, payload):
+                captured['tool_names'] = self.tool_names
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        executor = CapabilityAwareToolAgentExecutor.__new__(CapabilityAwareToolAgentExecutor)
+        executor.llm = object()
+        executor.preeliminary_prompt = ''
+        executor.tools = [
+            SimpleNamespace(name='get_current_time', description='Return current time.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+        ]
+        executor.max_iterations = 1
+        executor._executor_cache = {}
+        executor.legacy_executor = _RecordingExecutor(['legacy'])
+        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor([tool.name for tool in tools_subset])
+
+        with patch('agent.mcp_agent.select_tools_for_request', side_effect=AssertionError('selector should not run when a global plan is present')):
+            result = CapabilityAwareToolAgentExecutor.invoke(
+                executor,
+                {
+                    'input': 'Show me README.md in the project home and summarize it.',
+                    'multi_turn_enabled': True,
+                    'global_execution_plan': {
+                        'planner_version': 'phase3_global_dag_v1',
+                        'execution_mode': 'context_only',
+                        'selected_tool_names': [],
+                        'selected_contexts': ['files_context'],
+                        'nodes': [],
+                    },
+                    'planner_summary': 'context only plan',
+                },
+            )
+
+        self.assertEqual(result, {'output': 'ok'})
+        self.assertEqual(captured['tool_names'], [])
+
+    def test_capability_executor_ignores_global_plan_when_multi_turn_disabled(self):
+        captured = {}
+
+        class _RecordingExecutor:
+            def __init__(self, label):
+                self.label = label
+
+            def invoke(self, payload):
+                captured['label'] = self.label
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        executor = CapabilityAwareToolAgentExecutor.__new__(CapabilityAwareToolAgentExecutor)
+        executor.llm = object()
+        executor.preeliminary_prompt = ''
+        executor.tools = [
+            SimpleNamespace(name='get_current_time', description='Return current time.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+        ]
+        executor.max_iterations = 1
+        executor._executor_cache = {}
+        executor.legacy_executor = _RecordingExecutor('legacy')
+        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor([tool.name for tool in tools_subset])
+
+        result = CapabilityAwareToolAgentExecutor.invoke(
+            executor,
+            {
+                'input': 'Tell me the current time.',
+                'multi_turn_enabled': False,
+                'global_execution_plan': {
+                    'planner_version': 'phase3_global_dag_v1',
+                    'execution_mode': 'tool_augmented',
+                    'selected_tool_names': ['get_current_time'],
+                    'selected_contexts': [],
+                    'nodes': [],
+                },
+            },
+        )
+
+        self.assertEqual(result, {'output': 'ok'})
+        self.assertEqual(captured['label'], 'legacy')
+        self.assertEqual(captured['payload'], {'input': 'Tell me the current time.'})
 
     def test_launch_in_new_terminal_keeps_legacy_shell_launch_when_not_suppressed(self):
         with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=1234)) as mock_popen:

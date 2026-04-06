@@ -83,6 +83,12 @@ def _get_application_root() -> str:
     return os.path.dirname(os.path.dirname(script_dir))
 
 
+def _get_default_config_path() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), "config.json")
+    return os.path.join(os.path.dirname(__file__), "config.json")
+
+
 def _looks_like_text_file(path: str) -> bool:
     mime, _ = mimetypes.guess_type(path)
     ext = os.path.splitext(path)[1].lower()
@@ -134,7 +140,7 @@ class FileSearchRAGChain:
     def __init__(self, config_path=None):
         # Load configuration from config.json
         if config_path is None:
-            config_path = os.path.join(os.path.dirname(__file__), "config.json")
+            config_path = _get_default_config_path()
 
         try:
             with open(config_path, 'r') as f:
