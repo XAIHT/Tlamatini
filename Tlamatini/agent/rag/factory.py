@@ -15,6 +15,12 @@ from .chains.basic import BasicPromptOnlyChain
 from .chains.history_aware import HistoryAwareNoDocsChain, OptimizedHistoryAwareRAGChain
 from .chains.unified import UnifiedAgentChain, UnifiedAgentRAGChain
 from ..capability_registry import select_context_capabilities_for_request
+from ..global_execution_planner import (
+    build_global_execution_plan,
+    selected_contexts_from_plan,
+    summarize_global_execution_plan,
+)
+from ..tools import get_mcp_tools
 from .utils import _pack_context, _unique_filenames_from_split
 
 # Try to import SystemRAGChain for system resource integration
@@ -103,6 +109,32 @@ def _files_context_enabled() -> bool:
     return FileSearchRAGChain is not None and global_state.get_state('mcp_files_search_status') == 'enabled'
 
 
+def _ensure_global_execution_plan(payload: dict) -> dict:
+    if not bool(payload.get("multi_turn_enabled", False)):
+        return payload
+
+    existing_plan = payload.get("global_execution_plan")
+    if existing_plan:
+        return payload
+
+    try:
+        plan = build_global_execution_plan(
+            str(payload.get("input", "") or ""),
+            get_mcp_tools(),
+            system_enabled=_system_context_enabled(),
+            files_enabled=_files_context_enabled(),
+        )
+        enhanced_payload = payload.copy()
+        enhanced_payload["global_execution_plan"] = plan.to_dict()
+        enhanced_payload["planner_summary"] = summarize_global_execution_plan(plan)
+        print("--- [Phase3 Planner] Global execution plan built ---")
+        print(enhanced_payload["planner_summary"])
+        return enhanced_payload
+    except Exception as exc:
+        print(f"--- [Phase3 Planner] Failed to build global execution plan: {exc} ---")
+        return payload
+
+
 def _apply_legacy_context_prefetch(payload: dict, warning_suffix: str) -> dict:
     if _system_context_enabled():
         print("--- [SystemRAGChain] Integration enabled - system context will be fetched when needed")
@@ -121,19 +153,22 @@ def _apply_legacy_context_prefetch(payload: dict, warning_suffix: str) -> dict:
 
 
 def _apply_phase2_context_prefetch(payload: dict) -> dict:
-    request_text = str(payload.get("input", "") or "")
-    selected_contexts = select_context_capabilities_for_request(
-        request_text,
-        system_enabled=_system_context_enabled(),
-        files_enabled=_files_context_enabled(),
-    )
+    planned_payload = _ensure_global_execution_plan(payload)
+    selected_contexts = selected_contexts_from_plan(planned_payload.get("global_execution_plan", {}))
+    if not selected_contexts:
+        request_text = str(planned_payload.get("input", "") or "")
+        selected_contexts = select_context_capabilities_for_request(
+            request_text,
+            system_enabled=_system_context_enabled(),
+            files_enabled=_files_context_enabled(),
+        )
 
     if not selected_contexts:
         print("--- [Phase2] No MCP-backed context capabilities selected for this request ---")
-        return payload
+        return planned_payload
 
     print(f"--- [Phase2] Selected context capabilities: {list(selected_contexts)}")
-    enhanced_payload = payload
+    enhanced_payload = planned_payload
 
     if "system_context" in selected_contexts:
         print("--- [Phase2] Fetching system context ---")
