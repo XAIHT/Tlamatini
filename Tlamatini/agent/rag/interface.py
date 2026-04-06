@@ -495,75 +495,75 @@ def _validate_accesses_in_prompt(question: str):
         # If the prompt references "allowed paths/locations" (or synonyms),
         # it is a valid way to indicate scope → skip indirect access check.
         if _ALLOWED_SYNONYMS.search(question):
-            print("--- _validate_accesses_in_prompt: prompt references allowed paths/locations → proceed")
+            print("--- _validate_accesses_in_prompt: prompt references allowed paths/locations -> proceed")
             return None
 
         # If the prompt refers to already-loaded context / documents,
         # it is NOT an indirect file access — the user is querying the RAG context.
         if _CONTEXT_REFS.search(question):
-            print("--- _validate_accesses_in_prompt: prompt references loaded context → proceed")
+            print("--- _validate_accesses_in_prompt: prompt references loaded context -> proceed")
             return None
 
         # System-metrics or time queries → tool-routed, not file access.
         if _SYSTEM_QUERY.search(question):
-            print("--- _validate_accesses_in_prompt: system/time query → proceed")
+            print("--- _validate_accesses_in_prompt: system/time query -> proceed")
             return None
 
         # Command execution requests (ping, netstat, ipconfig …) → tool-routed.
         if _RUN_COMMAND.search(question):
-            print("--- _validate_accesses_in_prompt: command execution → proceed")
+            print("--- _validate_accesses_in_prompt: command execution -> proceed")
             return None
 
         # Image description via a model (Qwen, Opus) → tool-routed.
         if _IMAGE_DESCRIBE.search(question):
-            print("--- _validate_accesses_in_prompt: image description via model → proceed")
+            print("--- _validate_accesses_in_prompt: image description via model -> proceed")
             return None
 
         # Code / web-page / documentation generation → creative output, not
         # file access.
         if _CODE_GEN.search(question):
-            print("--- _validate_accesses_in_prompt: code/content generation → proceed")
+            print("--- _validate_accesses_in_prompt: code/content generation -> proceed")
             return None
 
         # Listing available/configured directories → informational.
         if _LIST_DIRS.search(question):
-            print("--- _validate_accesses_in_prompt: listing available dirs → proceed")
+            print("--- _validate_accesses_in_prompt: listing available dirs -> proceed")
             return None
 
         # Decompilation requests → tool-routed.
         if _DECOMPILE.search(question):
-            print("--- _validate_accesses_in_prompt: decompile request → proceed")
+            print("--- _validate_accesses_in_prompt: decompile request -> proceed")
             return None
 
         # Execute / run a named script file → tool-routed
         # (e.g. "Execute cat_art.py, located in the root of this application.")
         if _EXEC_SCRIPT.search(question):
-            print("--- _validate_accesses_in_prompt: script execution → proceed")
+            print("--- _validate_accesses_in_prompt: script execution -> proceed")
             return None
 
         # View / search image in allowed locations → tool-routed.
         if _VIEW_IMAGE.search(question):
-            print("--- _validate_accesses_in_prompt: image view request → proceed")
+            print("--- _validate_accesses_in_prompt: image view request -> proceed")
             return None
 
         # URL / remote download requests → not local file access.
         if _URL_OR_DOWNLOAD.search(question):
-            print("--- _validate_accesses_in_prompt: URL/download request → proceed")
+            print("--- _validate_accesses_in_prompt: URL/download request -> proceed")
             return None
 
         # Agent operation commands (parametrize, start, stop, status) → tool-routed.
         if _AGENT_OPERATION.search(question):
-            print("--- _validate_accesses_in_prompt: agent operation command → proceed")
+            print("--- _validate_accesses_in_prompt: agent operation command -> proceed")
             return None
 
         # Wrapped chat-agent requests are trusted tool-routed operations and are
         # intentionally allowed to carry their own filesystem or command scope.
         if _WRAPPED_CHAT_AGENT_OPERATION.search(question):
-            print("--- _validate_accesses_in_prompt: wrapped chat-agent request → proceed")
+            print("--- _validate_accesses_in_prompt: wrapped chat-agent request -> proceed")
             return None
 
         if bool(_RELATIVE_PATH_PATTERN.search(question)) and deterministic_intent:
-            print("--- _validate_accesses_in_prompt: deterministic relative-path access request → reject")
+            print("--- _validate_accesses_in_prompt: deterministic relative-path access request -> reject")
             return _relative_path_rejection_message()
 
         # No explicit paths and no "allowed" reference — check for indirect access
@@ -587,12 +587,12 @@ def _validate_accesses_in_prompt(question: str):
     print(f"--- _validate_accesses_in_prompt: paths outside allowed: {outside_paths}")
 
     if _WRAPPED_CHAT_AGENT_OPERATION.search(question):
-        print("--- _validate_accesses_in_prompt: outside paths allowed for wrapped chat-agent request → proceed")
+        print("--- _validate_accesses_in_prompt: outside paths allowed for wrapped chat-agent request -> proceed")
         return None
 
     deterministic_intent = _has_deterministic_filesystem_intent(question)
     if deterministic_intent:
-        print("--- _validate_accesses_in_prompt: deterministic outside-path access intent detected → reject")
+        print("--- _validate_accesses_in_prompt: deterministic outside-path access intent detected -> reject")
         return REJECTION_MESSAGE
 
     # 3) Some paths are outside allowed → ask the LLM to classify intent
@@ -624,10 +624,13 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
 
     if isinstance(question, dict):
         raw_text = question.get("input", "")
+        multi_turn_enabled = bool(question.get("multi_turn_enabled", False))
     elif isinstance(question, str):
         raw_text = question
+        multi_turn_enabled = False
     else:
         raw_text = str(question)
+        multi_turn_enabled = False
 
     try:
         with open(os.path.join(application_path, 'config.json'), 'r', encoding='utf-8') as f:
@@ -642,11 +645,13 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         global_state.set_state('rag_chain_ready', True)
         return str(response)
 
-    if not is_valid_prompt(raw_text):
+    if not multi_turn_enabled and not is_valid_prompt(raw_text):
         response = ('Please rephrase your input as a clear question or command. '
                    'Examples: "How do I...?", "What is...?", "Show me...", "Create a...", or "Explain..."')
         global_state.set_state('rag_chain_ready', True)
         return str(response)
+    if multi_turn_enabled and not is_valid_prompt(raw_text):
+        print("--- ask_rag: multi-turn enabled; bypassing prompt-shape validation ---")
 
     # ── Parallel classifier execution with sequential evaluation ──
     # Both classifiers are independent and stateless: each receives only
@@ -680,7 +685,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     if isinstance(question, dict) and question.get("conversation_user_id") is not None:
         payload["conversation_user_id"] = question["conversation_user_id"]
     if isinstance(question, dict) and question.get("multi_turn_enabled") is not None:
-        payload["multi_turn_enabled"] = bool(question["multi_turn_enabled"])
+        payload["multi_turn_enabled"] = multi_turn_enabled
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException

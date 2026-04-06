@@ -630,14 +630,60 @@ class AskRagMultiTurnTests(TestCase):
                 captured['payload'] = payload
                 return {'answer': 'ok'}
 
-        result = ask_rag(
-            _FakeChain(),
-            {'input': 'What time is it?', 'multi_turn_enabled': True},
-            inet_enabled=False,
-        )
+        with patch('agent.rag.interface._validate_accesses_in_prompt', return_value=None):
+            result = ask_rag(
+                _FakeChain(),
+                {'input': 'What time is it?', 'multi_turn_enabled': True},
+                inet_enabled=False,
+            )
 
         self.assertEqual(result, 'ok')
         self.assertTrue(captured['payload']['multi_turn_enabled'])
+
+    def test_ask_rag_bypasses_prompt_shape_validation_when_multi_turn_enabled(self):
+        captured = {}
+
+        class _FakeChain:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {'answer': 'ok'}
+
+        with patch('agent.rag.interface._validate_accesses_in_prompt', return_value=None):
+            result = ask_rag(
+                _FakeChain(),
+                {
+                    'input': 'README.md located in the project home, then summary',
+                    'multi_turn_enabled': True,
+                },
+                inet_enabled=False,
+            )
+
+        self.assertEqual(result, 'ok')
+        self.assertEqual(
+            captured['payload']['input'],
+            'README.md located in the project home, then summary',
+        )
+        self.assertTrue(captured['payload']['multi_turn_enabled'])
+
+    def test_ask_rag_keeps_legacy_prompt_shape_validation_when_multi_turn_disabled(self):
+        class _FakeChain:
+            def invoke(self, payload):
+                raise AssertionError('legacy prompt validation should reject before chain invocation')
+
+        result = ask_rag(
+            _FakeChain(),
+            {
+                'input': 'README.md located in the project home, then summary',
+                'multi_turn_enabled': False,
+            },
+            inet_enabled=False,
+        )
+
+        self.assertEqual(
+            result,
+            'Please rephrase your input as a clear question or command. '
+            'Examples: "How do I...?", "What is...?", "Show me...", "Create a...", or "Explain..."',
+        )
 
 
 class MultiTurnBackgroundLaunchTests(TestCase):
