@@ -679,6 +679,8 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     payload = {"input": raw_text, "chat_history": chat_history}
     if isinstance(question, dict) and question.get("conversation_user_id") is not None:
         payload["conversation_user_id"] = question["conversation_user_id"]
+    if isinstance(question, dict) and question.get("multi_turn_enabled") is not None:
+        payload["multi_turn_enabled"] = bool(question["multi_turn_enabled"])
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException

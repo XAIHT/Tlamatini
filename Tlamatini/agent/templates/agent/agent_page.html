@@ -129,15 +129,19 @@
         <div id="chat-log"></div>
         <div id="vertical-drag-divider" tabindex="0"></div>
         <div id="tools-chat-form-container">
-          <div id="tools-div">
-            <div id="tools-left">
-              <button type="button" id="prompts-catalog">Catalog of prompts</button>
-              <button type="button" id="clean-history">Clear history</button>
-            </div>
-            <div id="tools-right">
-              <input id="internetEnabled" type="checkbox" />
-              <label for="internetEnabled">Add internet context</label>
-            </div>
+            <div id="tools-div">
+              <div id="tools-left">
+                <button type="button" id="prompts-catalog">Catalog of prompts</button>
+                <button type="button" id="clean-history">Clear history</button>
+                <label id="multi-turn-toggle" class="toolbar-toggle" for="multi-turn-enabled">
+                  <input id="multi-turn-enabled" type="checkbox" />
+                  <span>Multi-Turn</span>
+                </label>
+                <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
+                  <input id="internetEnabled" type="checkbox" />
+                  <span>Add internet context</span>
+                </label>
+              </div>
           </div>
           <form id="chat-form">
             {% csrf_token %}

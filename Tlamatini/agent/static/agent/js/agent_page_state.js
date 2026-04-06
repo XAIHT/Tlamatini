@@ -169,6 +169,7 @@ const loadCatalogOfPrompts = null; // eslint-disable-line no-unused-vars
 const spinnerId = 'wait-spinner';
 const maximalTheoricTokens = 12500;
 const MAX_MCPS = 32;
+const MULTI_TURN_STORAGE_KEY = 'multiTurnEnabled';
 
 // --- Static DOM references ---
 const textEditorPre = document.querySelector('#text-editor pre');
@@ -187,6 +188,7 @@ const confirmationPrimaryDialogLegend = document.getElementById('confirmation-pr
 const confirmationSecondaryDialogLegend = document.getElementById('confirmation-secondary-dialog-legend');
 const reConnectButton = document.getElementById('re-connect-button');
 const cleanHistoryButton = document.getElementById('clean-history');
+const multiTurnCheckbox = document.getElementById('multi-turn-enabled');
 const contextMenuButton = document.getElementById('context-menu-button');
 const mcpsMenuButton = document.getElementById('mcps-menu-button');
 const agentsMenuButton = document.getElementById('agents-menu-button');
@@ -217,6 +219,33 @@ const label_mcp1 = document.getElementById('label-mcp-1');
 const label_mcp2 = document.getElementById('label-mcp-2');
 const toolMcpsList = document.getElementById('tool-mcps-list');
 const agentsList = document.getElementById('agents-list');
+
+function isMultiTurnEnabled() { // eslint-disable-line no-unused-vars
+    return !!(multiTurnCheckbox && multiTurnCheckbox.checked);
+}
+
+function persistMultiTurnState(enabled) { // eslint-disable-line no-unused-vars
+    try {
+        sessionStorage.setItem(MULTI_TURN_STORAGE_KEY, enabled ? 'true' : 'false');
+    } catch (err) {
+        console.error('Failed to persist multi-turn state:', err);
+    }
+}
+
+function applyStoredMultiTurnState() { // eslint-disable-line no-unused-vars
+    if (!multiTurnCheckbox) {
+        return;
+    }
+
+    let enabled = false;
+    try {
+        enabled = sessionStorage.getItem(MULTI_TURN_STORAGE_KEY) === 'true';
+    } catch (err) {
+        console.error('Failed to restore multi-turn state:', err);
+    }
+
+    multiTurnCheckbox.checked = enabled;
+}
 
 // --- Open in... dropdown references ---
 const openInDropdownItem = document.getElementById('open-in-dropdown-item');

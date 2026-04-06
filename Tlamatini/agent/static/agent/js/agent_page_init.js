@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -394,7 +394,8 @@ document.getElementById('chat-form').onsubmit = function (e) {
         console.log("message: " + message);
         if (rawMessage.trim() === '') return;
         const messageSent = sendChatSocketMessage(JSON.stringify({
-            'message': rawMessage
+            'message': rawMessage,
+            'multi_turn_enabled': isMultiTurnEnabled()
         }));
         if (!messageSent) {
             return;
@@ -419,6 +420,7 @@ document.getElementById('chat-form').onsubmit = function (e) {
 window.onload = () => {
     chatLog.scrollTop = chatLog.scrollHeight;
     updateViewContextDirMenuState();
+    applyStoredMultiTurnState();
     if (openButton) {
         openButton.addEventListener('click', (e) => {
             e.preventDefault();
@@ -602,6 +604,11 @@ window.onload = () => {
             }));
         }
     });
+    if (multiTurnCheckbox) {
+        multiTurnCheckbox.addEventListener('change', function () {
+            persistMultiTurnState(!!this.checked);
+        });
+    }
     syncClearContextMenuState();
     updateViewContextDirMenuState();
 

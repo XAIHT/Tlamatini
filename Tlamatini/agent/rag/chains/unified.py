@@ -16,6 +16,20 @@ from agent.rag_enhancements import expand_query_with_context, allocate_context_b
 from .base import Callbacks
 from .history_aware import _is_list_files_query, _CODE_BLOCK_RE
 
+
+_FILE_LISTING_CONTEXT_RE = re.compile(
+    r"(^FILE MANIFEST\b|^Allowed Directories:\b|^Found \d+ files matching\b|^No files found matching\b)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _should_include_file_manifest(question: str, q_rewritten: str) -> bool:
+    return _is_list_files_query(question) or _is_list_files_query(q_rewritten)
+
+
+def _has_explicit_file_listing_context(context_blob: str) -> bool:
+    return bool(context_blob and _FILE_LISTING_CONTEXT_RE.search(context_blob))
+
 class UnifiedAgentChain:
     """
     Chain wrapper that uses the unified agent (with tool support) while maintaining
@@ -129,6 +143,7 @@ class UnifiedAgentChain:
             "system_context": payload.get("system_context", ""),
             "files_context": payload.get("files_context", ""),
             "context": payload.get("context", ""),
+            "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
         }
 
         if not payload["chat_history"]:
@@ -185,7 +200,10 @@ User Question: {enhanced_input}"""
         if self.unified_agent is not None:
             try:
                 print(f"--- UnifiedAgentChain: Invoking unified agent with input length: {len(enhanced_input)} chars")
-                result = self.unified_agent.invoke({"input": enhanced_input})
+                result = self.unified_agent.invoke({
+                    "input": enhanced_input,
+                    "multi_turn_enabled": payload.get("multi_turn_enabled", False),
+                })
                 print(f"--- UnifiedAgentChain: Agent returned result type: {type(result)}")
                 if isinstance(result, dict):
                     print(f"--- UnifiedAgentChain: Result keys: {list(result.keys())}")
@@ -543,8 +561,24 @@ class UnifiedAgentRAGChain:
                 merged = merged[: max_ctx_chars] + "…"
             context_blob = merged
 
-        # Always include file manifest in context for file-related queries or when files_context is available
-        if _is_list_files_query(question) or _is_list_files_query(q_rewritten) or payload.get("files_context", ""):
+        multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
+        if multi_turn_enabled:
+            should_include_manifest = _should_include_file_manifest(question, q_rewritten)
+            has_file_listing_context = _has_explicit_file_listing_context(context_blob)
+        else:
+            should_include_manifest = (
+                _is_list_files_query(question)
+                or _is_list_files_query(q_rewritten)
+                or bool(payload.get("files_context", ""))
+            )
+            has_file_listing_context = (
+                "FILE MANIFEST" in context_blob
+                or "files" in context_blob.lower()
+                or _is_list_files_query(question)
+            )
+
+        # Only include the global file manifest for explicit file-listing requests in multi-turn mode.
+        if should_include_manifest:
             manifest = _unique_filenames_from_split(self.split_docs)
             if manifest:
                 header = "FILE MANIFEST (all loaded files in knowledge base):\n" + "\n".join(f"- {f}" for f in manifest)
@@ -577,7 +611,7 @@ User Question: {enhanced_input}"""
         # Add retrieved context (contains file information from knowledge base)
         if context_blob:
             # Check if context contains file manifest or file listings
-            if "FILE MANIFEST" in context_blob or "files" in context_blob.lower() or _is_list_files_query(question):
+            if has_file_listing_context or should_include_manifest:
                 enhanced_input = f"""Retrieved Context from Knowledge Base:
 {context_blob}
 
@@ -604,7 +638,10 @@ User Question: {enhanced_input}"""
         # 7) Use unified agent if available, otherwise fall back to basic LLM
         if self.unified_agent is not None:
             try:
-                result = self.unified_agent.invoke({"input": enhanced_input})
+                result = self.unified_agent.invoke({
+                    "input": enhanced_input,
+                    "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+                })
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
             except Exception as e:
                 print(f"--- UnifiedAgentRAGChain: Agent invocation failed ({e}), falling back to basic LLM ---")
