@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-A sophisticated, locally-run AI developer assistant featuring an advanced Retrieval-Augmented Generation (RAG) system, real-time web interface, visual agentic workflow designer, and multi-model LLM support.
+A sophisticated, locally-run AI developer assistant featuring an advanced Retrieval-Augmented Generation (RAG) system, a request-scoped Multi-Turn orchestration layer, a real-time web interface, a visual agentic workflow designer, and multi-model LLM support.
 
 ## Table of Contents
 
@@ -10,6 +10,10 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 - [Quick Start](#quick-start)
 - [Default Login Credentials](#default-login-credentials)
 - [Key Features](#key-features)
+- [Multi-Turn Chat Mode](#multi-turn-chat-mode)
+  - [Toolbar Controls](#toolbar-controls)
+  - [Checked and Unchecked Paths](#checked-and-unchecked-paths)
+  - [Execution Stages](#execution-stages)
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
@@ -19,6 +23,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Using the GUI Installer](#using-the-gui-installer)
 - [Configuration](#configuration)
   - [LLM Settings](#llm-settings)
+  - [Multi-Turn Mode](#multi-turn-mode)
   - [Image Interpreter Settings](#image-interpreter-settings)
   - [RAG Settings](#rag-settings)
     - [Chunking](#chunking)
@@ -51,8 +56,12 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [RAG Chain Types](#rag-chain-types)
   - [Unified Agent with Tools](#unified-agent-with-tools)
     - [Multi-Turn Tool Loop](#multi-turn-tool-loop)
+    - [Capability Selection and Context Prefetch](#capability-selection-and-context-prefetch)
+    - [Global Execution Planner](#global-execution-planner)
     - [Wrapped Chat-Agent Runtime Tools](#wrapped-chat-agent-runtime-tools)
     - [Runtime Isolation and Lifecycle](#runtime-isolation-and-lifecycle)
+    - [Legacy Compatibility Guarantee](#legacy-compatibility-guarantee)
+    - [Frozen-Mode and Runtime Behavior](#frozen-mode-and-runtime-behavior)
   - [Agentic Workflow Designer](#agentic-workflow-designer)
     - [Canvas Context Menus and Agent Descriptions](#canvas-context-menus-and-agent-descriptions)
     - [Pause, Stop, and Reanimation of a Flow](#pause-stop-and-reanimation-of-a-flow)
@@ -118,6 +127,8 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Common Issues](#common-issues)
     - [Ollama Connection Failed](#ollama-connection-failed)
     - [RAG Context Not Loading](#rag-context-not-loading)
+    - [Multi-Turn Not Engaging](#multi-turn-not-engaging)
+    - [Frozen Build Uses Wrong Config](#frozen-build-uses-wrong-config)
     - [WebSocket Disconnections](#websocket-disconnections)
     - [Agent Not Starting](#agent-not-starting)
     - [Memory Issues](#memory-issues)
@@ -134,13 +145,22 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 ## Overview
 
-**Tlamatini** is a powerful, locally-deployed AI assistant built with Django that provides a real-time, web-based interface for interacting with Large Language Models (LLMs). Designed as a comprehensive developer assistant, it excels at answering questions, generating code, analyzing codebases, and performing complex tasks with full awareness of your local files and project context.
+**Tlamatini** is a powerful, locally-deployed AI assistant built with Django that provides a real-time, web-based interface for interacting with Large Language Models (LLMs). Designed as a comprehensive developer assistant, it answers questions, generates code, analyzes codebases, and performs local technical tasks with awareness of your files, project structure, runtime state, and selected tools.
 
-The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source code analysis including metadata extraction, architectural role classification, dependency mapping, and intelligent context budgeting to provide deeply context-aware responses.
+The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source-code analysis including metadata extraction, architectural role classification, dependency mapping, context budgeting, and controlled fallback behavior to provide deeply grounded responses.
 
 Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 56 pre-built agent types.
 
-The main chat surface is now more agentic as well. The unified chat backend runs an explicit multi-turn tool loop and can launch isolated runtime copies of selected workflow-agent templates directly from chat, while persisting their run metadata in the database and exposing status/log/stop follow-up tools.
+The main chat surface is now substantially more agentic as well. When **Multi-Turn** is enabled in the toolbar, the chat stack switches from the legacy one-shot tool exposure path to a request-scoped orchestration path that can:
+
+- score and select relevant MCP-backed contexts
+- score and bind only the relevant tool and wrapped-agent capabilities
+- build a real global execution plan/DAG for the current request
+- prefetch system/file context before tool execution
+- monitor wrapped agent runs through follow-up runtime tools
+- suppress visible console popups for chat-launched background work
+
+Just as important, when **Multi-Turn** is unchecked the chat path intentionally preserves the legacy one-shot behavior, including the original prompt-shape validation and full-tool binding surface.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
 
@@ -178,7 +198,9 @@ python manage.py runserver --noreload
 
 **First Steps:**
 - Click "Set Context" and select a project directory
+- Check **Multi-Turn** in the main chat toolbar if you want request-scoped planning, selective context prefetch, and dynamic tool binding
 - Ask questions about your code: "How does the authentication work?"
+- Try a checked Multi-Turn prompt such as: "Show me README.md in the project home and summarize it"
 - Try generating code: "Write a Python function to validate email addresses"
 - Access the workflow designer at `/agentic_control_panel/`
 
@@ -225,7 +247,10 @@ If you are setting up from source (manual setup), you will create your own super
 - **Metadata Enrichment**: Tracks cross-file references and dependency graphs
 
 ### Unified Agent with Tool Calling
-- Explicit multi-turn tool execution instead of a single opaque tool call pass
+- Explicit multi-turn tool execution instead of a single opaque tool-call pass
+- Request-scoped capability selection for tools, wrapped agents, and MCP-backed contexts
+- Global execution planner/DAG for checked Multi-Turn requests
+- Exact preservation of the legacy one-shot path when Multi-Turn is unchecked
 - Execute Python scripts and shell commands
 - Image analysis with dual vision backends (Claude Opus and Qwen/Ollama)
 - Java decompilation (JAR/WAR files)
@@ -233,6 +258,7 @@ If you are setting up from source (manual setup), you will create your own super
 - Template-agent lifecycle management (`agent_parametrizer`, `agent_starter`, `agent_stopper`, `agent_stat_getter`)
 - 32 wrapped chat-agent launchers plus 4 wrapped-runtime follow-up tools
 - Per-tool enable/disable via global state and the chat Tools dialog
+- Background/headless wrapped-runtime launch suppression for checked Multi-Turn requests
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
@@ -263,7 +289,7 @@ If you are setting up from source (manual setup), you will create your own super
 ### Open in External Editors
 - **"Open in..." dropdown** in the navigation bar to launch the context directory in an external editor
 - Auto-detects installed applications: VS Code, Antigravity IDE, and Windows File Explorer
-- Only enabled when a directory is fully loaded as context
+- Enabled for directory contexts and for file contexts through parent-directory resolution
 - Each entry displays the application's icon for quick recognition
 
 ### Enterprise Features
@@ -272,6 +298,54 @@ If you are setting up from source (manual setup), you will create your own super
 - Session-based multi-user isolation
 - Comprehensive logging and metrics
 - Process management with PID tracking and cleanup
+
+---
+
+## Multi-Turn Chat Mode
+
+The chat toolbar now exposes two session-scoped execution modifiers beside **Clear history**:
+
+- **Multi-Turn**: enables the request-scoped orchestration path described in this document
+- **Add internet context**: independently controls web-search/context enrichment
+
+The Multi-Turn toggle is intentionally narrow in scope. It changes how the unified chat stack plans and binds capabilities for the current request, but it does **not** rewrite the ACP/runtime model or replace the legacy chat path globally.
+
+### Toolbar Controls
+
+- The toggle is rendered directly in the main chat toolbar and persisted per browser session.
+- Frontend state is stored in `sessionStorage`, restored on load, and sent with each plain chat request as `multi_turn_enabled`.
+- The visual style is shared with the internet-context toggle so both controls read as request-execution modifiers rather than as modal settings.
+
+### Checked and Unchecked Paths
+
+When **Multi-Turn is checked**, the request uses the Phase 1 to Phase 3 orchestration path:
+
+1. `ask_rag()` bypasses only the prompt-shape rephrase gate.
+2. `rag/factory.py` builds a request-scoped global execution plan.
+3. MCP-backed contexts are prefetched selectively instead of indiscriminately.
+4. The unified agent binds only the planned tool subset for the current request.
+5. Wrapped agent subprocesses launch in background/headless mode to avoid console popups.
+
+When **Multi-Turn is unchecked**, the system deliberately preserves the legacy path:
+
+1. prompt-shape validation still runs
+2. legacy MCP context prefetch behavior is kept
+3. the legacy full-tool binding surface is exposed
+4. legacy visible-console launch behavior remains in place
+
+That separation is intentional. Multi-Turn is an opt-in execution mode, not a silent rewrite of the original chat behavior.
+
+### Execution Stages
+
+At a high level, a checked Multi-Turn request now moves through these stages:
+
+1. **Frontend flagging**: the browser sends `multi_turn_enabled: true`.
+2. **Prompt gate**: prompt-shape validation is skipped only for this mode.
+3. **Context planning**: file/system MCP contexts are selected based on the request.
+4. **Global planning**: a DAG is built with `prefetch`, `execute`, `monitor`, and `answer` nodes.
+5. **Dynamic binding**: only the relevant tools or wrapped agents are bound.
+6. **Multi-turn execution**: the backend loops through tool calls and observations until a final answer is produced.
+7. **Final synthesis**: the response is grounded in prefetched context, tool output, and any monitored wrapped-agent run data.
 
 ---
 
@@ -303,7 +377,8 @@ If you are setting up from source (manual setup), you will create your own super
 │ - Document loader │   │ - Tool execution  │   │ - System metrics  │
 │ - Text splitters  │   │ - Multi-turn loop │   │   (WebSocket)     │
 │ - FAISS + BM25    │   │ - Function calls  │   │ - File search     │
-│ - Context budget  │   │ - Wrapped runtimes│   │   (gRPC)          │
+│ - Context budget  │   │ - Planner / DAG   │   │   (gRPC)          │
+│ - Fallback mode   │   │ - Wrapped runtimes│   │                   │
 └───────────────────┘   └───────────────────┘   └───────────────────┘
             │                       │                       │
             └───────────────────────┼───────────────────────┘
@@ -321,14 +396,17 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Request Flow
 
-1. **User sends message** via WebSocket
-2. **AgentConsumer** receives and processes the message
-3. **Context determination**: Check if RAG context is loaded
-4. **Internet check**: Classify if web search is needed
-5. **Chain selection**: Choose appropriate chain (RAG, Basic, or Unified Agent)
-6. **LLM invocation**: Send to the configured backend with context and enabled tool surface
-7. **Multi-turn tool loop**: If the unified agent is active, execute requested tools, append tool observations, and continue until a final answer or the iteration limit is reached
-8. **Streaming/broadcast**: Return the resulting answer and status messages via WebSocket
+1. **User sends message** via WebSocket, optionally with `multi_turn_enabled`
+2. **AgentConsumer** receives the request and forwards the execution flag into the chat stack
+3. **Context determination**: Check whether local RAG context is already loaded
+4. **Internet check**: Classify whether live internet context is needed
+5. **Chain selection**: Choose the appropriate chain (RAG, Basic, or Unified Agent)
+6. **Multi-Turn gate**:
+   - unchecked: use the legacy one-shot/full-tool path
+   - checked: build a request-scoped planner, select contexts, and dynamically bind tools
+7. **Context prefetch**: selectively fetch system/file MCP context for checked requests
+8. **Execution loop**: run the multi-turn tool loop, optionally monitor wrapped agent runs, and synthesize the answer
+9. **Streaming/broadcast**: return the resulting answer and status messages via WebSocket
 
 ---
 
@@ -403,13 +481,15 @@ Tlamatini/
 │   │   │       └── unified.py     # Tool-enabled agent chains (LangGraph)
 │   │   │
 │   │   ├── rag_enhancements.py     # Advanced metadata extraction
+│   │   ├── capability_registry.py  # Request-scoped capability scoring and selection
 │   │   ├── mcp_agent.py            # MCP unified agent builder and multi-turn executor
+│   │   ├── global_execution_planner.py # Request-scoped DAG planner for Multi-Turn mode
 │   │   ├── tools.py                # LangChain tool definitions and wrapped chat-agent launchers
 │   │   ├── web_search_llm.py       # Internet search integration
 │   │   ├── inet_determiner.py      # Search requirement classifier
 │   │   │
 │   │   ├── path_guard.py           # Centralized path validation and traversal prevention
-│   │   ├── tests.py                # Security hardening test suite (P0/P1/P2)
+│   │   ├── tests.py                # Security, Multi-Turn, runtime, and frozen-mode regression suite
 │   │   ├── chat_history_loader.py  # Chat history management
 │   │   ├── chain_system_lcel.py    # System metrics chain
 │   │   ├── chain_files_search_lcel.py # File search chain (with path-safe lookups)
@@ -665,6 +745,22 @@ When running a frozen/PyInstaller build, the effective `config.json` is resolved
 | `unified_agent_base_url` | Base URL for the unified agent's LLM |
 | `unified_agent_temperature` | Temperature for agent responses (0.0 = deterministic) |
 | `unified_agent_max_iterations` | Maximum number of tool-call / observation turns the unified agent may execute before it must stop and summarize the latest state |
+
+### Multi-Turn Mode
+
+Multi-Turn mode is controlled from the chat toolbar rather than from `config.json`, but it depends on several configuration-backed behaviors:
+
+- `enable_unified_agent` must remain enabled for the unified tool-capable chat path
+- `unified_agent_model`, `unified_agent_base_url`, and `unified_agent_temperature` govern the model used by the explicit loop
+- `unified_agent_max_iterations` caps the maximum turn count of the explicit loop
+- `chat_agent_limit_runs` controls the default wrapped-run listing limit used by runtime follow-up tools
+
+Operationally:
+
+- **checked Multi-Turn** enables request-scoped capability selection, context prefetch, global planning, and headless wrapped-runtime launch behavior
+- **unchecked Multi-Turn** keeps the legacy prompt validation, legacy context prefetch, and full-tool binding behavior
+
+The frontend persists the toggle per browser session, not as a server-global setting.
 
 ### Image Interpreter Settings
 
@@ -1265,27 +1361,85 @@ The unified agent (`agent/mcp_agent.py`) enables tool calling:
 from agent.mcp_agent import create_unified_agent
 
 agent = create_unified_agent(llm, system_prompt)
-result = agent.invoke({"input": "Run the tests and show me the results"})
+result = agent.invoke({
+    "input": "Run the tests and show me the results",
+    "multi_turn_enabled": True,
+})
 ```
 
-The current implementation is no longer a single opaque agent-executor hop. `create_unified_agent()` now builds a `MultiTurnToolAgentExecutor` that binds the enabled MCP tools to a chat-capable model and explicitly controls the tool-call / observation loop.
+The current chat implementation is no longer a single opaque agent-executor hop. `create_unified_agent()` now builds a `CapabilityAwareToolAgentExecutor`, which can either:
+
+- preserve the legacy full-tool, one-shot-compatible execution path, or
+- switch into the Multi-Turn orchestration path with request-scoped context selection, dynamic tool binding, and planner guidance
+
+This separation is deliberate and is now one of the most important architectural guarantees in the repository.
 
 #### Multi-Turn Tool Loop
 
-The main chat path now behaves as follows:
+The explicit loop still remains the core execution primitive:
 
-1. Build the enabled tool surface from `get_mcp_tools()`
-2. Bind those tools to the configured unified-agent model
-3. Send the user request plus the system prompt to the model
-4. If the model emits `tool_calls`, execute them directly in the backend
-5. Append each tool result as a `ToolMessage`
-6. Re-invoke the model until it returns a final answer or the iteration limit is reached
+1. Build or select the tool surface for the current request.
+2. Bind those tools to the configured unified-agent model.
+3. Send the user request plus the system prompt to the model.
+4. If the model emits `tool_calls`, execute them directly in the backend.
+5. Append each tool result as a `ToolMessage`.
+6. Re-invoke the model until it returns a final answer or the iteration limit is reached.
+
+If the planner produces a `context_only` path with no selected tools, the executor still uses the same request-scoped pathway but falls back to a direct model answer with the planner summary injected as a system instruction.
 
 The current default iteration limit is `100` turns unless `unified_agent_max_iterations` is explicitly set in `config.json`.
 
+#### Capability Selection and Context Prefetch
+
+Checked Multi-Turn requests now use `capability_registry.py` as the Phase 1 and Phase 2 selector layer.
+
+For tools and wrapped agents, the selector:
+
+- scores normal tools, template-agent tools, wrapped chat-agent launchers, and run-control tools
+- uses aliases, example requests, security hints, and token overlap against the current request
+- automatically includes runtime follow-up tools when wrapped agents or `run_id`-style monitoring requests are detected
+
+For MCP-backed context prefetch, the selector currently supports:
+
+- `system_context`
+- `files_context`
+
+Those contexts are fetched selectively from `rag/factory.py` only when Multi-Turn is enabled. When Multi-Turn is disabled, the old prefetch behavior is preserved exactly.
+
+This is the key Phase 1 and Phase 2 shift: all capabilities remain available to the system, but only the relevant subset is surfaced and prefetched for the current request.
+
+#### Global Execution Planner
+
+Checked Multi-Turn requests also use `global_execution_planner.py`, which introduces a real request-scoped execution DAG.
+
+The planner produces:
+
+- a planner version identifier
+- an execution mode: `direct_model`, `context_only`, or `tool_augmented`
+- selected MCP contexts
+- selected tool/agent names
+- planner notes
+- explicit DAG nodes
+
+The current node stages are:
+
+1. `prefetch`
+2. `execute`
+3. `monitor`
+4. `answer`
+
+This means the request path is no longer just "LLM sees all tools and decides." Instead, a checked Multi-Turn request can now be pre-shaped into a concrete orchestration graph that says, in effect:
+
+- fetch these contexts first
+- execute these tool/agent stages next
+- monitor these wrapped runs if needed
+- then synthesize the final answer
+
+The planner summary is injected into the executor so the model is guided by the already-selected execution plan instead of re-discovering the whole capability surface from scratch.
+
 #### Wrapped Chat-Agent Runtime Tools
 
-The April 1 chat-runtime update added a second execution layer on top of the classic MCP tools: the main chat can now launch isolated runtime copies of selected workflow-agent templates via `chat_agent_*` tools.
+The wrapped runtime layer remains the second execution tier above classic MCP tools: the main chat can launch isolated runtime copies of selected workflow-agent templates via `chat_agent_*` tools.
 
 The current wrapped launchers are:
 
@@ -1341,6 +1495,36 @@ Follow-up inspection/control is exposed through four runtime tools:
 - `chat_agent_run_stop`
 
 These wrapped runtimes are intentionally isolated from ACP flow control. The current `/check_all_agents_status/`, `/get_session_running_processes/`, and `/kill_session_processes/` views skip the `__chat_runs__` pool subtree, so pausing or stopping a canvas flow does not accidentally kill chat-launched wrapped runtimes.
+
+For checked Multi-Turn requests, launch behavior was also hardened to suppress visible console popups. Request-scoped state flags now let the same runtime-launch helpers choose:
+
+- legacy visible console behavior when Multi-Turn is unchecked
+- detached/headless background launch behavior when Multi-Turn is checked
+
+#### Legacy Compatibility Guarantee
+
+The unchecked path is intentionally conservative.
+
+When `multi_turn_enabled` is false:
+
+- `ask_rag()` keeps the original prompt-shape validation
+- the legacy context prefetch path remains active
+- the executor binds the full enabled tool surface
+- planner output, if present, is ignored
+- visible console launch behavior remains unchanged
+
+This guarantee matters because the Multi-Turn implementation was added as an opt-in execution characteristic, not as a breaking rewrite of the original chat system.
+
+#### Frozen-Mode and Runtime Behavior
+
+The Multi-Turn implementation now also carries frozen-build awareness in the supporting runtime code:
+
+- `config_loader.py` resolves `CONFIG_PATH`, then executable-local `config.json`, then module-local `config.json`
+- `FileSearchRAGChain` resolves its default `config.json` from the executable directory in frozen mode
+- template-agent discovery checks both `<install_dir>/agents` and `<install_dir>/Tlamatini/agent/agents`
+- wrapped runtime/background launch helpers adapt correctly to frozen execution
+
+This matters because the Multi-Turn path depends on file context, wrapped runtimes, and config-driven behavior that must work both from source and from the packaged desktop build.
 
 ### Agentic Workflow Designer
 
@@ -2333,9 +2517,12 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 **Plain chat request:**
 ```json
 {
-  "message": "Your question here"
+  "message": "Your question here",
+  "multi_turn_enabled": true
 }
 ```
+
+`multi_turn_enabled` is optional. If omitted or `false`, the request follows the legacy one-shot-compatible path. If `true`, the request uses the request-scoped Multi-Turn planner/selector path.
 
 **Current explicit control message types:**
 
@@ -2507,6 +2694,7 @@ Tlamatini maintains session state for continuous user experience:
 - **Duration:** 24 hours from last activity
 - **Storage:** Database (`SessionState` model)
 - **Scope:** Per-user isolation
+- **UI toggle persistence:** The Multi-Turn checkbox state is preserved per browser session in `sessionStorage`
 
 ### What's Preserved
 
@@ -2601,7 +2789,19 @@ The project includes a dedicated security test suite (`agent/tests.py`) with thr
 | **P1 (High)** | `P1HardeningTests` | Path traversal prevention (`../` sequences, encoded escapes), `safe_join_under()` validation, runtime agent path resolution safety |
 | **P2 (Prompt)** | `PromptPathHardeningTests` | Prompt injection defense — rejects absolute paths outside allowed directories, validates gRPC results against path escaping attempts |
 
-The same `agent/tests.py` module now also includes regression coverage for Ender cleanup/restart behavior, prompt-validation decision paths, loaded-documents fallback propagation into both prompt-only and unified chains, and `open_in_app` resolution for deployed canvas-agent instances. On the April 4, 2026 rerun, the module contains **31 tests**: `30/31` pass in a UTF-8 console, while `27/31` pass in the default Windows console. The remaining failures are still one WebSocket event-loop error plus three CP1252 `UnicodeEncodeError` cases from `rag/interface.py` debug prints.
+The same `agent/tests.py` module now also includes regression coverage for:
+
+- Ender cleanup/restart behavior
+- prompt-validation decision paths
+- loaded-documents fallback propagation into both prompt-only and unified chains
+- `open_in_app` resolution for deployed canvas-agent instances
+- Multi-Turn capability selection
+- context-prefetch gating
+- global execution planner/DAG behavior
+- background console suppression for checked Multi-Turn launches
+- frozen-mode compatibility for config and template-agent discovery
+
+On the April 6, 2026 verification rerun in this workspace, `python Tlamatini/manage.py test agent.tests --verbosity 1` completed with **63/63 tests passing**.
 
 ### Path Guard (`path_guard.py`)
 
@@ -2682,6 +2882,27 @@ Add patterns in the `Omission` model via Django admin:
 3. Ensure files are text-based (not binary)
 4. Check `max_doc_chars` limit in config
 5. If Ollama reports insufficient memory during embedding initialization, Tlamatini now falls back to a loaded-context mode; answers should still use the loaded files, but retrieval quality may be reduced until the embedding model can run normally
+
+#### Multi-Turn Not Engaging
+
+**Symptom:** Requests still behave like the old one-shot chat path
+
+**Solutions:**
+1. Ensure the **Multi-Turn** checkbox beside **Clear history** is checked before sending the prompt
+2. Confirm the request payload is sending `multi_turn_enabled: true`
+3. Verify `enable_unified_agent` is enabled in `config.json`
+4. Check that the relevant MCPs/tools are enabled in the chat configuration dialogs
+5. Remember that unchecked mode intentionally preserves the old prompt validation and full-tool behavior
+
+#### Frozen Build Uses Wrong Config
+
+**Symptom:** The packaged build ignores expected config or Multi-Turn file-context behavior differs from source mode
+
+**Solutions:**
+1. Place the effective `config.json` beside the packaged executable, or set `CONFIG_PATH`
+2. Verify the packaged install includes the expected `agents/` directory structure
+3. Confirm the executable-local `config.json` contains the expected unified-agent and MCP settings
+4. Rebuild if the packaged payload omitted required runtime assets such as `README.md`, `jd-cli/`, or template-agent directories
 
 #### WebSocket Disconnections
 
@@ -2892,6 +3113,13 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Multi-Turn UI Toggle and Explicit Opt-In Path** - The main chat toolbar now includes a dedicated **Multi-Turn** checkbox beside **Clear history**, persists it per browser session, and forwards `multi_turn_enabled` with each request so the orchestration path is opt-in rather than silently forced on every chat turn
+- **Phase 1 Capability Selection** - `capability_registry.py` now scores request/tool affinity and lets checked Multi-Turn requests bind only the relevant tools or wrapped agents instead of exposing the entire enabled tool universe on every request
+- **Phase 2 Context Capability Selection** - `rag/factory.py` now selectively prefetches `system_context` and `files_context` for checked Multi-Turn requests, while unchecked requests still use the legacy context-prefetch behavior
+- **Phase 3 Global Execution Planner** - `global_execution_planner.py` now builds request-scoped execution DAGs with `prefetch`, `execute`, `monitor`, and `answer` nodes, plus `direct_model`, `context_only`, and `tool_augmented` execution modes
+- **Focused File-Context Hardening for Multi-Turn** - Project-home requests such as root `README.md` lookups are narrowed more deterministically, exact single-file reads no longer force unnecessary global file-manifest prompt bloat in checked mode, and the file-search chain now resolves default frozen-mode config from the executable directory
+- **Checked-Mode Runtime Hardening** - Checked Multi-Turn requests suppress visible console popups for wrapped/background launches, bypass only the prompt-shape validation gate, and preserve the legacy launch and validation behavior when unchecked
+- **Verification Status Raised to Full Green** - `agent/tests.py` now includes Multi-Turn planner, gating, background-launch, and frozen-mode regression coverage, and the current April 6 verification rerun completed with `63/63` passing tests
 - **Main Chat Context UI State Sync** - `agent_page_ui.js` now centralizes restored context handling through `applyContextUiState()`, while `agent_page_chat.js` routes both `session-restored` and `context-path-set` through that shared helper. File contexts now recover a parent-directory-backed `actualContextDir`, which keeps **Open in...** and **View context dir in canvas** aligned after reconnects and context reloads
 - **RAG Loaded-Documents Fallback Hardening** - `rag/factory.py` now preserves successfully loaded documents as a packed fallback context with a file manifest when retrieval-chain construction fails. That fallback is propagated into both `BasicPromptOnlyChain` and `UnifiedAgentChain`, and `agent/tests.py` now includes `LoadedContextFallbackTests` to verify both code paths
 - **Configurable Runtime Limits and Demo Prompts** - `config.json` now sets `unified_agent_max_iterations` and `chat_agent_limit_runs` to `100`, `config_loader.py` centralizes frozen/source-aware config loading, `chat_agent_runtime.py` uses the configured run-list cap by default, and migrations `0002_populate_db.py` / `0067_add_multi_turn_demo_prompts.py` seed three multi-turn demo prompts (`idPrompt` 25-27)
