@@ -543,7 +543,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message, conversation_user):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False):
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -558,7 +558,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
             llm_response = await ask_rag_async(
                 self.rag_chain,
-                {"input": message, "conversation_user_id": conversation_user.id},
+                {
+                    "input": message,
+                    "conversation_user_id": conversation_user.id,
+                    "multi_turn_enabled": bool(multi_turn_enabled),
+                },
                 inet_enabled=self.inet_enabled
             )
             await process_llm_response(
@@ -590,6 +594,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
         try:
             text_data_json = json.loads(text_data)
             message = text_data_json['message']
+            multi_turn_enabled = bool(text_data_json.get('multi_turn_enabled', False))
 
             if 'type' in text_data_json:
                 type = text_data_json['type']
@@ -1076,7 +1081,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {'type': 'agent_message', 'message': constants.MSG_PROCESSING_REQUEST, 'username': 'LLM_Bot'}
             )
             print("--- Bot message broadcast to room.")
-            asyncio.create_task(self.queue_llm_retrieval(message, user))
+            asyncio.create_task(self.queue_llm_retrieval(message, user, multi_turn_enabled=multi_turn_enabled))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")
             not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."

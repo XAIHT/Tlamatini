@@ -53,6 +53,81 @@ SYSTEM_POLICY = (
     "- User: 'list available dirs' -> Use list_dirs action.\n"
 )
 ALLOWED_KEYS = ["application", "docs", "downloads", "desktop", "pictures", "videos", "music"]
+_TEXT_LIKE_EXTENSIONS = {
+    '.txt', '.md', '.py', '.json', '.xml', '.html', '.css', '.js', '.yml', '.yaml',
+    '.toml', '.ini', '.cfg', '.csv', '.tsv', '.svg', '.log', '.bat', '.ps1', '.sh',
+}
+_PROJECT_HOME_HINTS = (
+    'project home',
+    'project root',
+    'repo root',
+    'repo home',
+    'repository root',
+    'repository home',
+    'application root',
+    'application home',
+    'app root',
+    'codebase root',
+)
+_DIRECT_FILE_ACTION_HINTS = (
+    'show', 'read', 'open', 'view', 'display', 'summarize', 'summarise',
+    'analyze', 'analyse', 'review', 'explain',
+)
+_EXACT_FILENAME_RE = re.compile(r"\b[\w.\-]+\.[A-Za-z0-9]{1,16}\b")
+
+
+def _get_application_root() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(os.path.dirname(script_dir))
+
+
+def _looks_like_text_file(path: str) -> bool:
+    mime, _ = mimetypes.guess_type(path)
+    ext = os.path.splitext(path)[1].lower()
+    return bool((mime and mime.startswith('text/')) or ext in _TEXT_LIKE_EXTENSIONS)
+
+
+def _extract_exact_filename(question: str) -> Optional[str]:
+    for match in _EXACT_FILENAME_RE.finditer(str(question or "")):
+        candidate = match.group(0).strip().strip("'\"")
+        if any(sep in candidate for sep in ('*', '?', '/', '\\', ':')):
+            continue
+        return candidate
+    return None
+
+
+def _mentions_project_home_scope(question: str) -> bool:
+    normalized = " ".join(str(question or "").lower().split())
+    return any(hint in normalized for hint in _PROJECT_HOME_HINTS)
+
+
+def _render_file_context(path: str, *, header: str, max_chars: int = 500000) -> str:
+    resolved_path = os.path.realpath(os.path.abspath(path))
+    if not is_path_allowed(resolved_path):
+        return REJECTION_MESSAGE
+
+    if _looks_like_text_file(resolved_path):
+        with open(resolved_path, "r", encoding="utf-8", errors="replace") as file_handle:
+            content = file_handle.read()
+        if len(content) > max_chars:
+            content = content[:max_chars] + "\n... [truncated]"
+        return (
+            f"{header}\n"
+            f"{resolved_path}\n\n"
+            "Full content of the file:\n"
+            f"<FILE_CONTENT_START>\n{content}\n<FILE_CONTENT_END>\n"
+        )
+
+    return (
+        f"{header}\n"
+        f"{resolved_path}\n\n"
+        "[INFO] The requested file appears to be binary (e.g., image/video/pdf). "
+        "Content is not embedded in context to avoid corruption.\n"
+        f"Suggested action: use tools like 'qwen_analyze_image', 'opus_analyze_image' or "
+        f"'launch_view_image' with path '{resolved_path}'."
+    )
 
 
 class FileSearchRAGChain:
@@ -296,6 +371,25 @@ User Query: {query}
             print(f"Error in file search routing: {e}")
             return False
 
+    def _build_deterministic_plan(self, question: str) -> Optional[Dict[str, Any]]:
+        normalized_question = " ".join(str(question or "").lower().split())
+        file_name = _extract_exact_filename(question)
+        if not file_name:
+            return None
+
+        if not any(hint in normalized_question for hint in _DIRECT_FILE_ACTION_HINTS):
+            return None
+
+        base_path_key = "application" if _mentions_project_home_scope(question) else None
+        return {
+            "action": "show",
+            "show": {
+                "file_name": file_name,
+                "base_path_key": base_path_key,
+                "include_hidden": False,
+            },
+        }
+
     async def plan_file_search(self, question: str):
         """Use LLM to generate a JSON plan for file searching"""
         planning_chain = self.planning_prompt | self.llm | StrOutputParser()
@@ -333,6 +427,7 @@ User Query: {query}
         - Otherwise, fall back to the LLM-generated plan (search/show/answer/clarify).
         """
         files_context = ""
+        multi_turn_enabled = bool(plan.get("__multi_turn_enabled", False))
 
         # --- 0. Direct path resolution from the original question (if available) ---
         raw_question = str(plan.get("__question", "") or "")
@@ -355,47 +450,15 @@ User Query: {query}
 
                 # If we can resolve a real file on disk from the question, use it directly.
                 if candidate_path and os.path.isfile(candidate_path):
-                    # Check if it's a text file before reading
-                    is_text_like = False
-                    mime, _ = mimetypes.guess_type(candidate_path)
-                    ext = os.path.splitext(candidate_path)[1].lower()
-                    
-                    if mime and mime.startswith('text/'):
-                        is_text_like = True
-                    # Fallback for common code/config files that might not have a mime type registry entry
-                    elif ext in {'.txt', '.md', '.py', '.json', '.xml', '.html', '.css', '.js', '.yml', '.yaml', 
-                               '.toml', '.ini', '.cfg', '.csv', '.tsv', '.svg', '.log', '.bat', '.ps1', '.sh'}:
-                        is_text_like = True
-
-                    if is_text_like:
-                        try:
-                            with open(candidate_path, "r", encoding="utf-8", errors="replace") as f:
-                                content = f.read()
-                            
-                            # Cap content length to avoid massive context
-                            max_chars = 100000
-                            if len(content) > max_chars:
-                                content = content[:max_chars] + "\n... [truncated]"
-                                
-                            return (
-                                "File resolved directly from user-specified path:\n"
-                                f"{candidate_path}\n\n"
-                                "Full content of the file:\n"
-                                f"<FILE_CONTENT_START>\n{content}\n<FILE_CONTENT_END>\n"
-                            )
-                        except Exception as e:
-                            # Fall through to normal behavior, but record the error
-                            files_context = (
-                                f"[WARNING] Failed to read file directly from '{candidate_path}': {e}\n"
-                            )
-                    else:
-                        # It's likely a binary file (image, pdf, etc.)
-                        return (
-                            "File resolved directly from user-specified path:\n"
-                            f"{candidate_path}\n\n"
-                            "[INFO] The requested file appears to be binary (e.g., image/video/pdf). "
-                            "Content is not embedded in context to avoid corruption.\n"
-                            f"Suggested action: use tools like 'qwen_analyze_image', 'opus_analyze_image' or 'launch_view_image' with path '{candidate_path}'."
+                    try:
+                        return _render_file_context(
+                            candidate_path,
+                            header="File resolved directly from user-specified path:",
+                            max_chars=100000,
+                        )
+                    except Exception as e:
+                        files_context = (
+                            f"[WARNING] Failed to read file directly from '{candidate_path}': {e}\n"
                         )
 
             except Exception:
@@ -428,6 +491,22 @@ User Query: {query}
                 if base_key is not None and base_key not in ALLOWED_KEYS:
                     return f"File search plan had an invalid base_path_key: {base_key}."
 
+                if (
+                    multi_turn_enabled
+                    and
+                    action == "show"
+                    and base_key == "application"
+                    and file_pattern == os.path.basename(file_pattern)
+                ):
+                    direct_candidate = os.path.realpath(
+                        os.path.abspath(os.path.join(_get_application_root(), file_pattern))
+                    )
+                    if is_path_allowed(direct_candidate) and os.path.isfile(direct_candidate):
+                        return _render_file_context(
+                            direct_candidate,
+                            header="File resolved directly from the application root:",
+                        )
+
                 # Fetch files (paths only) via gRPC
                 files_list = await self.async_call_grpc_server(
                     file_pattern=file_pattern,
@@ -448,18 +527,6 @@ User Query: {query}
                     files_context = f"No files found matching '{file_pattern}'."
                 else:
                     total = len(files_list)
-                    # Truncate list to avoid flooding context
-                    max_files_in_context = 20
-                    files_to_show = files_list[:max_files_in_context]
-                    
-                    files_context = f"Found {total} files matching '{file_pattern}':\n"
-                    files_context += "\n".join(f"- {f}" for f in files_to_show)
-                    if total > max_files_in_context:
-                        files_context += f"\n... and {total - max_files_in_context} more."
-
-                    # If the planner chose action="show", try to identify the *intended*
-                    # single file and include its full content in the context so the
-                    # higher-level RAG chains / unified agent can actually display it.
                     if action == "show":
                         raw_question = str(plan.get("__question", ""))  # may contain a full or partial path
                         target_path: Optional[str] = None
@@ -468,50 +535,96 @@ User Query: {query}
                         if total == 1:
                             target_path = files_list[0]
                         else:
+                            if multi_turn_enabled and base_key == "application":
+                                application_root = os.path.realpath(os.path.abspath(_get_application_root()))
+                                root_level_match = os.path.join(application_root, file_pattern)
+                                root_level_match = os.path.realpath(os.path.abspath(root_level_match))
+                                if root_level_match in files_list:
+                                    target_path = root_level_match
+
                             # 2) Try to disambiguate using the original question text:
                             #    pick the first candidate whose full path appears in the question.
-                            q_lower = raw_question.lower()
-                            for candidate in files_list:
-                                if candidate.lower() in q_lower:
-                                    target_path = candidate
-                                    break
+                            if target_path is None:
+                                q_lower = raw_question.lower()
+                                for candidate in files_list:
+                                    if candidate.lower() in q_lower:
+                                        target_path = candidate
+                                        break
 
                         if target_path:
                             target_path = os.path.realpath(os.path.abspath(target_path))
                             if not is_path_allowed(target_path):
                                 return REJECTION_MESSAGE
                             try:
-                                mime, _ = mimetypes.guess_type(target_path)
-                                ext = os.path.splitext(target_path)[1].lower()
-                                is_text_like = False
-                                if mime and mime.startswith('text/'):
-                                    is_text_like = True
-                                elif ext in {'.txt', '.md', '.py', '.json', '.xml', '.html', '.css', '.js', '.yml', '.yaml', '.toml', '.ini', '.cfg', '.csv', '.tsv', '.svg'}:
-                                    is_text_like = True
-
-                                if is_text_like:
-                                    try:
-                                        # Avoid huge context: cap to ~50k chars
-                                        with open(target_path, "r", encoding="utf-8", errors="replace") as f:
-                                            content = f.read()
-                                        max_chars = 500000
-                                        if len(content) > max_chars:
-                                            content = content[:max_chars] + "\n… [truncated]"
+                                if multi_turn_enabled:
+                                    files_context = f"Requested file resolved:\n{target_path}"
+                                    if total > 1:
                                         files_context += (
-                                            "\n\nFull content of the file:\n"
-                                            f"<FILE_CONTENT_START>\n{content}\n<FILE_CONTENT_END>\n"
+                                            "\n"
+                                            f"Additional matches with the same name in the selected scope: {total - 1}."
                                         )
-                                    except Exception as e:
-                                        files_context += f"\n\n[WARNING] Failed to read text content for '{target_path}': {e}"
-                                else:
-                                    # Do not inline binary (e.g., images). Provide guidance instead.
-                                    files_context += (
-                                        "\n\n[INFO] The requested file appears to be binary (e.g., image/video). "
-                                        "Content is not embedded in context to avoid corruption or token bloat.\n"
-                                        f"Suggested action: use the tool 'launch_view_image' with path '{target_path}'."
+                                    rendered = _render_file_context(
+                                        target_path,
+                                        header="",
                                     )
+                                    _, separator, remainder = rendered.partition("\n\n")
+                                    files_context += f"\n\n{remainder or rendered}"
+                                else:
+                                    mime, _ = mimetypes.guess_type(target_path)
+                                    ext = os.path.splitext(target_path)[1].lower()
+                                    is_text_like = False
+                                    if mime and mime.startswith('text/'):
+                                        is_text_like = True
+                                    elif ext in {'.txt', '.md', '.py', '.json', '.xml', '.html', '.css', '.js', '.yml', '.yaml', '.toml', '.ini', '.cfg', '.csv', '.tsv', '.svg'}:
+                                        is_text_like = True
+
+                                    max_files_in_context = 20
+                                    files_to_show = files_list[:max_files_in_context]
+                                    files_context = f"Found {total} files matching '{file_pattern}':\n"
+                                    files_context += "\n".join(f"- {f}" for f in files_to_show)
+                                    if total > max_files_in_context:
+                                        files_context += f"\n... and {total - max_files_in_context} more."
+
+                                    if is_text_like:
+                                        try:
+                                            with open(target_path, "r", encoding="utf-8", errors="replace") as f:
+                                                content = f.read()
+                                            max_chars = 500000
+                                            if len(content) > max_chars:
+                                                content = content[:max_chars] + "\n… [truncated]"
+                                            files_context += (
+                                                "\n\nFull content of the file:\n"
+                                                f"<FILE_CONTENT_START>\n{content}\n<FILE_CONTENT_END>\n"
+                                            )
+                                        except Exception as e:
+                                            files_context += f"\n\n[WARNING] Failed to read text content for '{target_path}': {e}"
+                                    else:
+                                        files_context += (
+                                            "\n\n[INFO] The requested file appears to be binary (e.g., image/video). "
+                                            "Content is not embedded in context to avoid corruption or token bloat.\n"
+                                            f"Suggested action: use the tool 'launch_view_image' with path '{target_path}'."
+                                        )
                             except Exception as e:
                                 files_context += f"\n\n[WARNING] Failed to process target file '{target_path}': {e}"
+                        else:
+                            max_files_in_context = 8 if multi_turn_enabled else 20
+                            files_to_show = files_list[:max_files_in_context]
+                            if multi_turn_enabled:
+                                files_context = (
+                                    f"Multiple files matched '{file_pattern}' and the intended file could not be resolved:\n"
+                                )
+                            else:
+                                files_context = f"Found {total} files matching '{file_pattern}':\n"
+                            files_context += "\n".join(f"- {f}" for f in files_to_show)
+                            if total > max_files_in_context:
+                                files_context += f"\n... and {total - max_files_in_context} more."
+                    else:
+                        max_files_in_context = 20
+                        files_to_show = files_list[:max_files_in_context]
+                        files_context = f"Found {total} files matching '{file_pattern}':\n"
+                        files_context += "\n".join(f"- {f}" for f in files_to_show)
+                        if total > max_files_in_context:
+                            files_context += f"\n... and {total - max_files_in_context} more."
             
             elif action == "answer":
                 files_context = f"File search was not needed. LLM Answer: {plan.get('answer', 'N/A')}"
@@ -534,6 +647,14 @@ User Query: {query}
         then plan and execute the search.
         """
         question = input_data.get('question', '')
+        multi_turn_enabled = bool(input_data.get('multi_turn_enabled', False))
+        deterministic_plan = self._build_deterministic_plan(question) if multi_turn_enabled else None
+        if deterministic_plan is not None:
+            print(f"[INFO] Using deterministic file plan for question: {question}")
+            deterministic_plan["__question"] = question
+            deterministic_plan["__multi_turn_enabled"] = multi_turn_enabled
+            files_context = await self.fetch_files_context(deterministic_plan)
+            return {**input_data, "files_context": files_context or ""}
         
         # 1. Route
         needs_context = await self.should_fetch_files_context(question)
@@ -549,6 +670,7 @@ User Query: {query}
         
         # 3. Fetch (pass original question through the plan for disambiguation)
         plan["__question"] = question
+        plan["__multi_turn_enabled"] = multi_turn_enabled
         files_context = await self.fetch_files_context(plan)
         
         return {**input_data, "files_context": files_context or ""}

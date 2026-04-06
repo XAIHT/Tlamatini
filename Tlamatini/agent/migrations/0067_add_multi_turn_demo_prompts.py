@@ -5,9 +5,9 @@ def add_multi_turn_demo_prompts(apps, schema_editor):
     Prompt = apps.get_model('agent', 'Prompt')
 
     Prompt.objects.get_or_create(
-        idPrompt=25,
+        idPrompt=20,
         defaults={
-            'promptName': 'prompt-25',
+            'promptName': 'prompt-20',
             'promptContent': (
                 "Run an end-to-end multi-turn local document demo, please: use File Creator "
                 "to create the file '----\\tlamatini_multiturn_release_notes.txt' with a short "
@@ -21,9 +21,9 @@ def add_multi_turn_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=26,
+        idPrompt=21,
         defaults={
-            'promptName': 'prompt-26',
+            'promptName': 'prompt-21',
             'promptContent': (
                 "Run a multi-turn web research demo, please: use Apirer to call the URL "
                 "'https://example.com' with GET, then use Crawler on that same URL to "
@@ -38,9 +38,9 @@ def add_multi_turn_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=27,
+        idPrompt=22,
         defaults={
-            'promptName': 'prompt-27',
+            'promptName': 'prompt-22',
             'promptContent': (
                 "Run a multi-turn monitoring demo, please: first use File Creator to "
                 "initialize '----\\tlamatini_monitor_demo.log' with a starting line, then "

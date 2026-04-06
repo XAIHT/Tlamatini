@@ -14,6 +14,7 @@ from .prompts import get_contextualize_q_prompt
 from .chains.basic import BasicPromptOnlyChain
 from .chains.history_aware import HistoryAwareNoDocsChain, OptimizedHistoryAwareRAGChain
 from .chains.unified import UnifiedAgentChain, UnifiedAgentRAGChain
+from ..capability_registry import select_context_capabilities_for_request
 from .utils import _pack_context, _unique_filenames_from_split
 
 # Try to import SystemRAGChain for system resource integration
@@ -79,7 +80,10 @@ def get_files_context_sync(payload):
     try:
         chain = FileSearchRAGChain()
         async_fetch = async_to_sync(chain.intelligent_context_fetch)
-        input_data = {"question": payload.get("input", "")}
+        input_data = {
+            "question": payload.get("input", ""),
+            "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+        }
         result = async_fetch(input_data)
         
         # FileSearchRAGChain returns {..., 'files_context': ...}
@@ -89,6 +93,78 @@ def get_files_context_sync(payload):
     except Exception as e:
         print(f"Error fetching files context: {e}")
         return payload
+
+
+def _system_context_enabled() -> bool:
+    return SystemRAGChain is not None and global_state.get_state('mcp_system_status') == 'enabled'
+
+
+def _files_context_enabled() -> bool:
+    return FileSearchRAGChain is not None and global_state.get_state('mcp_files_search_status') == 'enabled'
+
+
+def _apply_legacy_context_prefetch(payload: dict, warning_suffix: str) -> dict:
+    if _system_context_enabled():
+        print("--- [SystemRAGChain] Integration enabled - system context will be fetched when needed")
+        enhanced_payload = get_system_context_sync(payload)
+    else:
+        print(f"--- [SystemRAGChain] **WARNING({warning_suffix})** Integration disabled - SystemRAGChain not available")
+        enhanced_payload = payload
+
+    if _files_context_enabled():
+        print("--- [FileSearchRAGChain] Integration enabled - file search context will be fetched when needed")
+        enhanced_payload = get_files_context_sync(enhanced_payload)
+    else:
+        print(f"--- [FileSearchRAGChain] **WARNING({warning_suffix})** Integration disabled - FileSearchRAGChain not available")
+
+    return enhanced_payload
+
+
+def _apply_phase2_context_prefetch(payload: dict) -> dict:
+    request_text = str(payload.get("input", "") or "")
+    selected_contexts = select_context_capabilities_for_request(
+        request_text,
+        system_enabled=_system_context_enabled(),
+        files_enabled=_files_context_enabled(),
+    )
+
+    if not selected_contexts:
+        print("--- [Phase2] No MCP-backed context capabilities selected for this request ---")
+        return payload
+
+    print(f"--- [Phase2] Selected context capabilities: {list(selected_contexts)}")
+    enhanced_payload = payload
+
+    if "system_context" in selected_contexts:
+        print("--- [Phase2] Fetching system context ---")
+        enhanced_payload = get_system_context_sync(enhanced_payload)
+    else:
+        print("--- [Phase2] Skipping system context for this request ---")
+
+    if "files_context" in selected_contexts:
+        print("--- [Phase2] Fetching files context ---")
+        enhanced_payload = get_files_context_sync(enhanced_payload)
+    else:
+        print("--- [Phase2] Skipping files context for this request ---")
+
+    return enhanced_payload
+
+
+def _apply_context_prefetch(payload: dict, warning_suffix: str) -> dict:
+    if bool(payload.get("multi_turn_enabled", False)):
+        return _apply_phase2_context_prefetch(payload)
+    return _apply_legacy_context_prefetch(payload, warning_suffix)
+
+
+def _wrap_chain_with_context_prefetch(chain, warning_suffix: str):
+    original_invoke = chain.invoke
+
+    def invoke_with_system_context(payload: dict):
+        enhanced_payload = _apply_context_prefetch(payload, warning_suffix)
+        return original_invoke(enhanced_payload)
+
+    chain.invoke = invoke_with_system_context
+    return chain
 
 
 def _build_loaded_documents_fallback_context(documents, config):
@@ -207,26 +283,7 @@ def build_prompt_only_chain(config, prompt_template_string, documents=None):
 
     # Add system context preprocessing to the chain
     if SystemRAGChain is not None or FileSearchRAGChain is not None:
-        original_invoke = chain.invoke
-
-        def invoke_with_system_context(payload: dict):
-            if SystemRAGChain is not None and global_state.get_state('mcp_system_status') == 'enabled':
-                print("--- [SystemRAGChain] Integration enabled - system context will be fetched when needed")
-                enhanced_payload = get_system_context_sync(payload)
-            else:
-                print("--- [SystemRAGChain] **WARNING(1)** Integration disabled - SystemRAGChain not available")
-                enhanced_payload = payload
-            
-            if FileSearchRAGChain is not None and global_state.get_state('mcp_files_search_status') == 'enabled':
-                print("--- [FileSearchRAGChain] Integration enabled - file search context will be fetched when needed")
-                enhanced_payload = get_files_context_sync(enhanced_payload)
-            else:
-                print("--- [FileSearchRAGChain] **WARNING(1)** Integration disabled - FileSearchRAGChain not available")
-                enhanced_payload = enhanced_payload
-            
-            return original_invoke(enhanced_payload)            
-
-        chain.invoke = invoke_with_system_context
+        chain = _wrap_chain_with_context_prefetch(chain, "1")
 
     return chain
 
@@ -339,26 +396,7 @@ def build_retrieval_chain(documents, config, prompt_template_string):
             chain.setHttpxClientInstance(httpx_client_instance)
 
             if SystemRAGChain is not None or FileSearchRAGChain is not None:
-                original_invoke = chain.invoke
-
-                def invoke_with_system_context(payload: dict):
-                    if SystemRAGChain is not None and global_state.get_state('mcp_system_status') == 'enabled':
-                        print("--- [SystemRAGChain] Integration enabled - system context will be fetched when needed")
-                        enhanced_payload = get_system_context_sync(payload)
-                    else:
-                        print("--- [SystemRAGChain] **WARNING(2)** Integration disabled - SystemRAGChain not available")
-                        enhanced_payload = payload
-                    
-                    if FileSearchRAGChain is not None and global_state.get_state('mcp_files_search_status') == 'enabled':
-                        print("--- [FileSearchRAGChain] Integration enabled - file search context will be fetched when needed")
-                        enhanced_payload = get_files_context_sync(enhanced_payload)
-                    else:
-                        print("--- [FileSearchRAGChain] **WARNING(2)** Integration disabled - FileSearchRAGChain not available")
-                        enhanced_payload = enhanced_payload
-                    
-                    return original_invoke(enhanced_payload)
-
-                chain.invoke = invoke_with_system_context
+                chain = _wrap_chain_with_context_prefetch(chain, "2")
             return chain
 
         embeddings = OllamaEmbeddings(
@@ -457,26 +495,7 @@ def build_retrieval_chain(documents, config, prompt_template_string):
         chain.setHttpxClientInstance(httpx_client_instance)
 
         if SystemRAGChain is not None or FileSearchRAGChain is not None:
-            original_invoke = chain.invoke
-
-            def invoke_with_system_context(payload: dict):
-                if SystemRAGChain is not None and global_state.get_state('mcp_system_status') == 'enabled':
-                    print("--- [SystemRAGChain] Integration enabled - system context will be fetched when needed")
-                    enhanced_payload = get_system_context_sync(payload)
-                else:
-                    print("--- [SystemRAGChain] **WARNING(3)** Integration disabled - SystemRAGChain not available")
-                    enhanced_payload = payload
-                
-                if FileSearchRAGChain is not None and global_state.get_state('mcp_files_search_status') == 'enabled':
-                    print("--- [FileSearchRAGChain] Integration enabled - file search context will be fetched when needed")
-                    enhanced_payload = get_files_context_sync(enhanced_payload)
-                else:
-                    print("--- [FileSearchRAGChain] **WARNING(3)** Integration disabled - FileSearchRAGChain not available")
-                    enhanced_payload = enhanced_payload
-                
-                return original_invoke(enhanced_payload)
-
-            chain.invoke = invoke_with_system_context
+            chain = _wrap_chain_with_context_prefetch(chain, "3")
         return chain
 
     except Exception as e:

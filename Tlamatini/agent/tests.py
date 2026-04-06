@@ -17,6 +17,8 @@ from langchain_core.documents import Document
 
 from agent import views
 from agent.consumers import AgentConsumer, _sanitize_context_filename
+from agent.global_state import get_request_state, global_state
+from agent.mcp_agent import CapabilityAwareToolAgentExecutor
 from agent.models import AgentMessage
 from agent.path_guard import (
     REJECTION_MESSAGE,
@@ -25,17 +27,21 @@ from agent.path_guard import (
     resolve_runtime_agent_path,
     safe_join_under,
 )
+from agent.capability_registry import select_context_capabilities_for_request, select_tools_for_request
 from agent.rag.interface import _validate_accesses_in_prompt
-from agent.rag.factory import _build_loaded_documents_fallback_context
+from agent.rag.interface import ask_rag
+from agent.rag.factory import _apply_context_prefetch, _build_loaded_documents_fallback_context
 from agent.rag.chains.basic import BasicPromptOnlyChain
 from agent.rag.chains.unified import UnifiedAgentChain
 from agent.services.filesystem import generate_tree_view_content
+from agent import tools as agent_tools
 from tlamatini.asgi import application
 
 try:
     from agent.chain_files_search_lcel import FileSearchRAGChain
 except Exception:  # pragma: no cover - optional dependency path
     FileSearchRAGChain = None
+from agent.rag.chains.unified import _has_explicit_file_listing_context, _should_include_file_manifest
 
 
 def _load_seeded_prompt_contents():
@@ -265,6 +271,115 @@ class PromptPathHardeningTests(TestCase):
 
         self.assertEqual(result, REJECTION_MESSAGE)
 
+    def test_file_search_builds_application_plan_for_project_home_file_request(self):
+        chain = self._build_chain_without_init()
+
+        plan = chain._build_deterministic_plan(
+            "Show me README.md located in the project home, and summarize it."
+        )
+
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["action"], "show")
+        self.assertEqual(plan["show"]["file_name"], "README.md")
+        self.assertEqual(plan["show"]["base_path_key"], "application")
+
+    def test_file_search_show_prefers_application_root_and_compacts_context(self):
+        chain = self._build_chain_without_init()
+        runtime_root = get_runtime_agent_root()
+        with tempfile.TemporaryDirectory(dir=runtime_root) as temp_dir:
+            if not is_path_allowed(temp_dir):
+                self.skipTest('Runtime temporary directory unexpectedly falls outside allowed paths.')
+
+            root_readme = os.path.join(temp_dir, 'README.md')
+            nested_dir = os.path.join(temp_dir, 'docs')
+            nested_readme = os.path.join(nested_dir, 'README.md')
+            os.makedirs(nested_dir, exist_ok=True)
+
+            with open(root_readme, 'w', encoding='utf-8') as handle:
+                handle.write('root readme content')
+            with open(nested_readme, 'w', encoding='utf-8') as handle:
+                handle.write('nested readme content')
+
+            chain.async_call_grpc_server = AsyncMock(return_value=[nested_readme, root_readme])
+
+            with patch('agent.chain_files_search_lcel._get_application_root', return_value=temp_dir):
+                result = async_to_sync(chain.fetch_files_context)({
+                    "action": "show",
+                    "show": {"file_name": "README.md", "base_path_key": "application", "include_hidden": False},
+                    "__question": "Show me README.md located in the project home, and summarize it.",
+                    "__multi_turn_enabled": True,
+                })
+
+            self.assertIn('File resolved directly from the application root:', result)
+            self.assertIn(root_readme, result)
+            self.assertIn('root readme content', result)
+            self.assertNotIn("Found 2 files matching 'README.md':", result)
+            chain.async_call_grpc_server.assert_not_awaited()
+
+    def test_file_search_deterministic_plan_runs_only_when_multi_turn_enabled(self):
+        chain = self._build_chain_without_init()
+
+        with patch.object(
+            chain,
+            '_build_deterministic_plan',
+            side_effect=AssertionError('deterministic plan must not run in legacy mode'),
+        ), patch.object(chain, 'should_fetch_files_context', AsyncMock(return_value=False)) as mock_route:
+            result = async_to_sync(chain.intelligent_context_fetch)({
+                "question": "Show me README.md located in the project home, and summarize it.",
+                "multi_turn_enabled": False,
+            })
+
+        mock_route.assert_awaited_once()
+        self.assertEqual(result["files_context"], "")
+
+    def test_file_search_multi_turn_uses_deterministic_plan_for_project_home_request(self):
+        chain = self._build_chain_without_init()
+
+        with patch.object(
+            chain,
+            'fetch_files_context',
+            AsyncMock(return_value='resolved context'),
+        ) as mock_fetch, \
+                patch.object(
+                    chain,
+                    'should_fetch_files_context',
+                    AsyncMock(side_effect=AssertionError('route step should be skipped')),
+                ), \
+                patch.object(
+                    chain,
+                    'plan_file_search',
+                    AsyncMock(side_effect=AssertionError('planner step should be skipped')),
+                ):
+            result = async_to_sync(chain.intelligent_context_fetch)({
+                "question": "Show me README.md located in the project home, and summarize it.",
+                "multi_turn_enabled": True,
+            })
+
+        self.assertEqual(result["files_context"], 'resolved context')
+        passed_plan = mock_fetch.await_args.args[0]
+        self.assertEqual(passed_plan["action"], "show")
+        self.assertEqual(passed_plan["show"]["base_path_key"], "application")
+        self.assertTrue(passed_plan["__multi_turn_enabled"])
+
+
+class UnifiedFileContextGatingTests(TestCase):
+    def test_manifest_is_not_forced_for_exact_single_file_requests(self):
+        question = "Show me README.md located in the project home, and summarize it."
+
+        self.assertFalse(_should_include_file_manifest(question, question))
+
+    def test_explicit_file_listing_context_detector_ignores_generic_file_words(self):
+        self.assertFalse(
+            _has_explicit_file_listing_context(
+                "This README explains how files are organized in the project."
+            )
+        )
+        self.assertTrue(
+            _has_explicit_file_listing_context(
+                "FILE MANIFEST (all loaded files in knowledge base):\n- README.md"
+            )
+        )
+
 
 class PromptValidationDecisionTests(TestCase):
     def test_seeded_prompts_use_deterministic_validation_only(self):
@@ -369,6 +484,245 @@ class LoadedContextFallbackTests(TestCase):
         self.assertIn('Loaded Context from Knowledge Base Fallback:', captured['payload']['input'])
         self.assertIn('example.py', captured['payload']['input'])
         self.assertIn('def example(): return 42', captured['payload']['input'])
+
+    def test_unified_agent_chain_forwards_multi_turn_flag_to_executor(self):
+        captured = {}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = ''
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        result = chain.invoke({
+            'input': 'Check the available tools',
+            'chat_history': [],
+            'multi_turn_enabled': True,
+        })
+
+        self.assertEqual(result['answer'], 'ok')
+        self.assertTrue(captured['payload']['multi_turn_enabled'])
+
+
+class CapabilitySelectionTests(TestCase):
+    def test_select_tools_for_request_prefers_wrapped_agent_and_run_controls(self):
+        tools = [
+            SimpleNamespace(name='chat_agent_crawler', description='Crawl URLs and capture content.'),
+            SimpleNamespace(name='chat_agent_run_status', description='Get the current status of a wrapped run.'),
+            SimpleNamespace(name='chat_agent_run_log', description='Read the latest log excerpt of a wrapped run.'),
+            SimpleNamespace(name='chat_agent_run_stop', description='Stop a wrapped run by run id.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+        ]
+
+        selected = select_tools_for_request(
+            'Crawl https://example.com and keep checking the run status and logs.',
+            tools,
+            max_selected=2,
+        )
+        selected_names = [tool.name for tool in selected]
+
+        self.assertIn('chat_agent_crawler', selected_names)
+        self.assertIn('chat_agent_run_status', selected_names)
+        self.assertIn('chat_agent_run_log', selected_names)
+        self.assertIn('chat_agent_run_stop', selected_names)
+        self.assertNotIn('execute_command', selected_names)
+
+    def test_select_tools_for_request_falls_back_to_all_tools_when_uncertain(self):
+        tools = [
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+            SimpleNamespace(name='get_current_time', description='Return the current date and time.'),
+        ]
+
+        selected = select_tools_for_request('Investigate this carefully.', tools)
+
+        self.assertEqual([tool.name for tool in selected], [tool.name for tool in tools])
+
+
+class ContextCapabilitySelectionTests(TestCase):
+    def test_select_context_capabilities_for_system_request(self):
+        selected = select_context_capabilities_for_request(
+            'What is the current CPU usage and memory load?',
+            system_enabled=True,
+            files_enabled=True,
+        )
+
+        self.assertEqual(selected, ('system_context',))
+
+    def test_select_context_capabilities_for_file_request(self):
+        selected = select_context_capabilities_for_request(
+            'Show me README.md in the project and list related files.',
+            system_enabled=True,
+            files_enabled=True,
+        )
+
+        self.assertEqual(selected, ('files_context',))
+
+    def test_select_context_capabilities_can_choose_both(self):
+        selected = select_context_capabilities_for_request(
+            'Check disk usage and find README.md in the repo.',
+            system_enabled=True,
+            files_enabled=True,
+        )
+
+        self.assertEqual(selected, ('system_context', 'files_context'))
+
+
+class ContextPrefetchGatingTests(TestCase):
+    def setUp(self):
+        global_state.set_state('mcp_system_status', 'enabled')
+        global_state.set_state('mcp_files_search_status', 'enabled')
+
+    def test_legacy_prefetch_keeps_both_fetchers_when_multi_turn_disabled(self):
+        with patch('agent.rag.factory.SystemRAGChain', object()), \
+                patch('agent.rag.factory.FileSearchRAGChain', object()), \
+                patch(
+                    'agent.rag.factory.get_system_context_sync',
+                    side_effect=lambda payload: {**payload, 'system_context': 'system'},
+                ) as mock_system, \
+                patch(
+                    'agent.rag.factory.get_files_context_sync',
+                    side_effect=lambda payload: {**payload, 'files_context': 'files'},
+                ) as mock_files:
+            result = _apply_context_prefetch(
+                {'input': 'What is the current CPU usage?', 'multi_turn_enabled': False},
+                'legacy-test',
+            )
+
+        mock_system.assert_called_once()
+        mock_files.assert_called_once()
+        self.assertEqual(result['system_context'], 'system')
+        self.assertEqual(result['files_context'], 'files')
+
+    def test_phase2_prefetch_selects_only_matching_contexts(self):
+        with patch('agent.rag.factory.SystemRAGChain', object()), \
+                patch('agent.rag.factory.FileSearchRAGChain', object()), \
+                patch(
+                    'agent.rag.factory.get_system_context_sync',
+                    side_effect=lambda payload: {**payload, 'system_context': 'system'},
+                ) as mock_system, \
+                patch(
+                    'agent.rag.factory.get_files_context_sync',
+                    side_effect=lambda payload: {**payload, 'files_context': 'files'},
+                ) as mock_files:
+            result = _apply_context_prefetch(
+                {'input': 'Show me README.md in the project.', 'multi_turn_enabled': True},
+                'phase2-test',
+            )
+
+        mock_system.assert_not_called()
+        mock_files.assert_called_once()
+        self.assertNotIn('system_context', result)
+        self.assertEqual(result['files_context'], 'files')
+
+
+class AskRagMultiTurnTests(TestCase):
+    def test_ask_rag_passes_multi_turn_flag_to_chain_payload(self):
+        captured = {}
+
+        class _FakeChain:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {'answer': 'ok'}
+
+        result = ask_rag(
+            _FakeChain(),
+            {'input': 'What time is it?', 'multi_turn_enabled': True},
+            inet_enabled=False,
+        )
+
+        self.assertEqual(result, 'ok')
+        self.assertTrue(captured['payload']['multi_turn_enabled'])
+
+
+class MultiTurnBackgroundLaunchTests(TestCase):
+    def test_capability_executor_scopes_console_suppression_to_multi_turn_requests(self):
+        observed = []
+
+        class _RecordingExecutor:
+            def invoke(self, payload):
+                observed.append(get_request_state('suppress_visible_consoles', False))
+                return {'output': 'ok'}
+
+        executor = CapabilityAwareToolAgentExecutor.__new__(CapabilityAwareToolAgentExecutor)
+        executor.llm = object()
+        executor.preeliminary_prompt = ''
+        executor.tools = []
+        executor.max_iterations = 1
+        executor._executor_cache = {}
+        executor.legacy_executor = _RecordingExecutor()
+        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor()
+
+        with patch('agent.mcp_agent.select_tools_for_request', return_value=[]):
+            result = CapabilityAwareToolAgentExecutor.invoke(
+                executor,
+                {'input': 'run something', 'multi_turn_enabled': True},
+            )
+
+        self.assertEqual(result, {'output': 'ok'})
+        self.assertEqual(observed, [True])
+        self.assertFalse(get_request_state('suppress_visible_consoles', False))
+
+    def test_launch_in_new_terminal_keeps_legacy_shell_launch_when_not_suppressed(self):
+        with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=1234)) as mock_popen:
+            agent_tools.launch_in_new_terminal(r'C:\Temp\demo.py', '--flag "hello world"')
+
+        args, kwargs = mock_popen.call_args
+        self.assertTrue(kwargs['shell'])
+        self.assertIn('start "Tlamatini Console" cmd /k', args[0])
+
+    def test_launch_in_new_terminal_uses_headless_background_launch_when_suppressed(self):
+        with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=1234)) as mock_popen, \
+                patch('agent.tools.get_request_state', return_value=True):
+            agent_tools.launch_in_new_terminal(r'C:\Temp\demo.py', '--flag "hello world"')
+
+        args, kwargs = mock_popen.call_args
+        self.assertIsInstance(args[0], list)
+        self.assertEqual(args[0][1], r'C:\Temp\demo.py')
+        self.assertEqual(kwargs['stdout'], subprocess.DEVNULL)
+        self.assertEqual(kwargs['stderr'], subprocess.DEVNULL)
+        self.assertEqual(kwargs['stdin'], subprocess.DEVNULL)
+        self.assertFalse(kwargs.get('shell', False))
+        if os.name == 'nt':
+            self.assertNotEqual(kwargs.get('creationflags', 0), 0)
+        else:
+            self.assertTrue(kwargs.get('start_new_session'))
+
+    def test_start_template_agent_process_keeps_legacy_console_when_not_suppressed(self):
+        with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=4321)) as mock_popen:
+            agent_tools._start_template_agent_process('python.exe', r'C:\Temp\agent.py', r'C:\Temp')
+
+        args, kwargs = mock_popen.call_args
+        self.assertEqual(args[0], ['python.exe', r'C:\Temp\agent.py'])
+        self.assertEqual(kwargs['cwd'], r'C:\Temp')
+        if os.name == 'nt':
+            self.assertEqual(
+                kwargs.get('creationflags', 0),
+                getattr(subprocess, 'CREATE_NEW_CONSOLE', 0),
+            )
+        else:
+            self.assertNotIn('start_new_session', kwargs)
+
+    def test_start_template_agent_process_uses_headless_background_launch_when_suppressed(self):
+        with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=4321)) as mock_popen, \
+                patch('agent.tools.get_request_state', return_value=True):
+            agent_tools._start_template_agent_process('python.exe', r'C:\Temp\agent.py', r'C:\Temp')
+
+        args, kwargs = mock_popen.call_args
+        self.assertEqual(args[0], ['python.exe', r'C:\Temp\agent.py'])
+        self.assertEqual(kwargs['cwd'], r'C:\Temp')
+        self.assertEqual(kwargs['stdout'], subprocess.DEVNULL)
+        self.assertEqual(kwargs['stderr'], subprocess.DEVNULL)
+        self.assertEqual(kwargs['stdin'], subprocess.DEVNULL)
+        if os.name == 'nt':
+            self.assertNotEqual(kwargs.get('creationflags', 0), 0)
+        else:
+            self.assertTrue(kwargs.get('start_new_session'))
 
 
 class EnderAgentTests(TestCase):

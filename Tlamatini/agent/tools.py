@@ -31,7 +31,7 @@ from .chat_agent_runtime import (
     wait_briefly_for_initial_state,
 )
 from .imaging.image_interpreter import opus_analyze_image, qwen_analyze_image
-from .global_state import global_state
+from .global_state import get_request_state, global_state
 from .models import Agent, AgentProcess
 import zipfile
 from .path_guard import validate_tool_path
@@ -93,18 +93,73 @@ def launch_in_new_terminal(script_pathfilename, arguments=None):
         python_exe = sys.executable
 
     clean_path = script_path.strip('"')
+    if _suppress_visible_console_launches():
+        return _launch_python_in_background(python_exe, clean_path, arguments)
+
     quoted_path = f'"{clean_path}"'
-    
+
     if ' ' in python_exe and not python_exe.startswith('"'):
         python_exe = f'"{python_exe}"'
-    
+
     if arguments and arguments.strip():
         cmd_args = f'{quoted_path} {arguments}'
     else:
         cmd_args = f'{quoted_path}'
-    
+
     full_command = f'start "Tlamatini Console" cmd /k {python_exe} {cmd_args}'
-    subprocess.Popen(full_command, shell=True)
+    return subprocess.Popen(full_command, shell=True)
+
+
+def _suppress_visible_console_launches() -> bool:
+    return bool(get_request_state('suppress_visible_consoles', False))
+
+
+def _parse_script_arguments(arguments):
+    if not arguments or not arguments.strip():
+        return []
+    try:
+        return shlex.split(arguments, posix=not sys.platform.startswith('win'))
+    except ValueError:
+        return arguments.split()
+
+
+def _build_detached_subprocess_kwargs():
+    kwargs = {
+        'stdout': subprocess.DEVNULL,
+        'stderr': subprocess.DEVNULL,
+        'stdin': subprocess.DEVNULL,
+    }
+    if sys.platform.startswith('win'):
+        kwargs['creationflags'] = (
+            getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+            | getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+            | getattr(subprocess, 'DETACHED_PROCESS', 0)
+        )
+    else:
+        kwargs['start_new_session'] = True
+    return kwargs
+
+
+def _launch_python_in_background(python_exe, script_pathfilename, arguments=None, cwd=None):
+    command = [python_exe, script_pathfilename, *_parse_script_arguments(arguments)]
+    kwargs = _build_detached_subprocess_kwargs()
+    if cwd:
+        kwargs['cwd'] = cwd
+    return subprocess.Popen(command, **kwargs)
+
+
+def _start_template_agent_process(python_exe, script_path, agent_dir):
+    if _suppress_visible_console_launches():
+        return _launch_python_in_background(
+            python_exe,
+            script_path,
+            cwd=agent_dir,
+        )
+
+    kwargs = {'cwd': agent_dir}
+    if sys.platform == 'win32':
+        kwargs['creationflags'] = getattr(subprocess, 'CREATE_NEW_CONSOLE', 0)
+    return subprocess.Popen([python_exe, script_path], **kwargs)
 
 def _resolve_script_path(script_path):
     """Resolve script path, checking CWD and frozen/executable directory."""
@@ -1223,6 +1278,11 @@ def execute_file(command: str) -> str:
         if rejection:
             return rejection
         launch_in_new_terminal(script_path, arguments)
+        if _suppress_visible_console_launches():
+            return (
+                f"Command '{command}' executed successfully in the background without "
+                "opening a console window."
+            )
         return f"Command '{command}' executed successfully in a new terminal window."
     except Exception as e:
         return f"Error executing command '{command}': {e}"
@@ -1709,18 +1769,23 @@ def agent_starter(request: str) -> str:
         if python_error:
             return python_error
 
-        process = subprocess.Popen(
-            [python_exe, script_path],
-            cwd=template_agent['agent_dir'],
-            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0,
+        process = _start_template_agent_process(
+            python_exe,
+            script_path,
+            template_agent['agent_dir'],
         )
 
         process_label = _get_agent_process_label(template_agent)
         save_agent_process(process_label, process.pid)
 
+        launch_suffix = ""
+        if _suppress_visible_console_launches():
+            launch_suffix = " The process was launched in the background without opening a console window."
+
         return (
             f"Template agent '{template_agent['dir_name']}' started successfully with "
             f"process ID: {process.pid}. Script path: '{script_path}'."
+            f"{launch_suffix}"
         )
     except Exception as e:
         return f"Error starting template agent: {e}"

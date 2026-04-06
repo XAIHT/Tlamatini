@@ -5,7 +5,9 @@ from typing import Dict, Any
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
+from .capability_registry import select_tools_for_request
 from .config_loader import get_int_config_value, load_config as _shared_load_config
+from .global_state import scoped_request_state
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
 
@@ -193,31 +195,16 @@ class MultiTurnToolAgentExecutor:
         }
 
 
-def create_unified_agent(llm, preeliminary_prompt: str):
-    """
-    Build a single multi-turn tool‑calling agent that can both chat and invoke MCP tools.
-    """
-    tools = get_mcp_tools()
-    print(f"--- create_unified_agent: {len(tools)} tools available:")
-    for t in tools:
-        print(f"    - {t.name}: {t.description[:50]}..." if len(t.description) > 50 else f"    - {t.name}: {t.description}")
-
-    getted_llm = _ensure_chat_tool_model(llm)
-    if not hasattr(getted_llm, "bind_tools"):
-        raise RuntimeError("The configured unified agent model does not support bind_tools().")
-
-    # Assemble a readable list of tool descriptions for the system prompt
+def _build_system_prompt(preeliminary_prompt: str, tools) -> str:
     tool_descriptions = "\n".join(
         f"- {tool.name}: {tool.description}" for tool in tools
     )
 
-    # Escape placeholders that the unified agent does NOT use
     escaped_prompt = re.sub(r"\{context\}", "{{context}}", preeliminary_prompt)
     escaped_prompt = re.sub(r"\{files_context\}", "{{files_context}}", escaped_prompt)
     escaped_prompt = re.sub(r"\{system_context\}", "{{system_context}}", escaped_prompt)
 
-    # Full system prompt – includes the static tool list and the dynamic description block
-    system_prompt = f"""{escaped_prompt}
+    return f"""{escaped_prompt}
 
 You ALSO have access to a set of powerful local tools, their names are described below:
 {tool_descriptions}
@@ -253,11 +240,80 @@ File operations (reading files, listing files, searching for files) are **NOT** 
 Answer:
 
 """
+
+
+class CapabilityAwareToolAgentExecutor:
+    """
+    Delegates to the legacy full-tool executor by default and only applies
+    Phase 1 selective capability binding when the request explicitly enables it.
+    """
+
+    def __init__(self, llm, preeliminary_prompt: str, tools, max_iterations: int = 100):
+        self.llm = llm
+        self.preeliminary_prompt = preeliminary_prompt
+        self.tools = list(tools)
+        self.max_iterations = max_iterations
+        self._executor_cache: Dict[tuple[str, ...], MultiTurnToolAgentExecutor] = {}
+        self.legacy_executor = self._get_executor_for_tools(self.tools)
+
+    def _get_executor_for_tools(self, tools_subset):
+        key = tuple(tool.name for tool in tools_subset)
+        cached = self._executor_cache.get(key)
+        if cached is not None:
+            return cached
+
+        executor = MultiTurnToolAgentExecutor(
+            llm=self.llm,
+            system_prompt=_build_system_prompt(self.preeliminary_prompt, tools_subset),
+            tools=tools_subset,
+            max_iterations=self.max_iterations,
+        )
+        self._executor_cache[key] = executor
+        return executor
+
+    def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        input_text = payload.get("input", "")
+        multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
+
+        with scoped_request_state(
+            multi_turn_enabled=multi_turn_enabled,
+            suppress_visible_consoles=multi_turn_enabled,
+        ):
+            if not multi_turn_enabled:
+                print("--- CapabilityAwareToolAgentExecutor: multi-turn disabled; using legacy full-tool binding ---")
+                return self.legacy_executor.invoke({"input": input_text})
+
+            selected_tools = select_tools_for_request(input_text, self.tools)
+            if not selected_tools:
+                selected_tools = self.tools
+
+            selected_names = [tool.name for tool in selected_tools]
+            print(
+                "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; "
+                f"selected {len(selected_tools)}/{len(self.tools)} tools: {selected_names}"
+            )
+            executor = self._get_executor_for_tools(selected_tools)
+            return executor.invoke({"input": input_text})
+
+
+def create_unified_agent(llm, preeliminary_prompt: str):
+    """
+    Build a single multi-turn tool‑calling agent that can both chat and invoke MCP tools.
+    """
+    tools = get_mcp_tools()
+    print(f"--- create_unified_agent: {len(tools)} tools available:")
+    for t in tools:
+        print(f"    - {t.name}: {t.description[:50]}..." if len(t.description) > 50 else f"    - {t.name}: {t.description}")
+
+    getted_llm = _ensure_chat_tool_model(llm)
+    if not hasattr(getted_llm, "bind_tools"):
+        raise RuntimeError("The configured unified agent model does not support bind_tools().")
+
     max_iterations = get_int_config_value("unified_agent_max_iterations", 100, minimum=1)
     print(f"--- Unified agent max iterations: {max_iterations} ---")
-    return MultiTurnToolAgentExecutor(
+    return CapabilityAwareToolAgentExecutor(
         llm=getted_llm,
-        system_prompt=system_prompt,
+        preeliminary_prompt=preeliminary_prompt,
         tools=tools,
         max_iterations=max_iterations,
     )

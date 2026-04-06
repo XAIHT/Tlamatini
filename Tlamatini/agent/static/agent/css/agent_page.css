@@ -477,6 +477,33 @@ body.resizing-vertical {
     color: antiquewhite;
 }
 
+.toolbar-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 24px;
+    margin-top: 1px;
+    margin-left: 0.45rem;
+    padding: 0 0.45rem;
+    font-size: small;
+    color: antiquewhite;
+    border: 1px solid rgba(250, 235, 215, 0.25);
+    border-radius: 4px;
+    background-color: rgba(23, 60, 37, 0.7);
+    cursor: pointer;
+    user-select: none;
+}
+
+.toolbar-toggle input {
+    margin: 0;
+    accent-color: darkgreen;
+    cursor: pointer;
+}
+
+.toolbar-toggle span {
+    line-height: 1;
+}
+
 #contextInfo {
     flex: 1 1 auto;
     min-width: 0;
