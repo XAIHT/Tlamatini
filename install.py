@@ -532,36 +532,33 @@ class FancyInstaller:
             # Non-fatal: older release packages may not include it
             print(f"WARNING: Uninstaller.exe not found at {src} — skipping copy.")
 
-    # ─── Explorer restart robust helper ──────────────────────────────
+    # ─── Desktop refresh helper ──────────────────────────────────────
     @staticmethod
     def _restart_explorer():
-        """Refresh Explorer to pick up new shortcuts and file associations.
+        """Refresh the Windows desktop to pick up new shortcuts and file associations.
 
-        DESIGN — why a *deferred*, *detached* helper?
-        ──────────────────────────────────────────────
-        If we restart Explorer from inside the PyInstaller process, the new
-        explorer.exe inherits DLL handles (vcruntime140*.dll) from our
-        _internal/ directory.  Explorer is a persistent system process, so
-        those handles stay open until the next reboot — making it impossible
-        to delete the release folder.
+        DESIGN — non-destructive refresh via Win32 API
+        ───────────────────────────────────────────────
+        Previous versions killed explorer.exe and tried to restart it via a
+        detached cmd.exe script.  This was fragile: the ``timeout`` command
+        does not work reliably in non-interactive / no-window processes, so
+        explorer would die and never come back — leaving the user with a
+        blank desktop.
 
-        Instead we launch a small cmd.exe script that:
-          1. Waits 2 seconds for the installer to fully exit (and release
-             its own DLL handles).
-          2. Kills the current Explorer shell.
-          3. Clears the icon cache.
-          4. Restarts Explorer as a direct child of cmd.exe — which has
-             no ties to _internal/ whatsoever.
+        The correct approach is to **never kill explorer**.  Instead we:
+          1. Clear stale icon-cache files (best-effort).
+          2. Call ``SHChangeNotify(SHCNE_ASSOCCHANGED)`` — this is the
+             official Windows API to tell the shell that file-type
+             associations or icon overlays have changed.
+          3. Broadcast ``WM_SETTINGCHANGE`` so every top-level window
+             (including Explorer) re-reads environment variables and
+             registry settings.
 
-        FLAGS used:
-          - DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
-            → the helper process is fully independent of the installer.
-          - close_fds=True → no handle inheritance.
-          - cwd set to SystemRoot → child never sees _internal/.
+        Together these two calls make Explorer refresh its icon overlay,
+        file-association, and shortcut caches — without any restart.
         """
-        import time
 
-        # Clear icon cache from the installer process (files are ours to touch)
+        # ── 1. Best-effort icon-cache cleanup ────────────────────────
         try:
             local_appdata = os.environ.get("LOCALAPPDATA", "")
             if local_appdata:
@@ -581,46 +578,33 @@ class FancyInstaller:
         except Exception:
             pass
 
-        # Build the deferred restart script.
-        # "timeout /t 2 /nobreak" is a non-blocking wait that does NOT hold
-        # any file handles.
-        script = (
-            'timeout /t 2 /nobreak >nul 2>&1 '
-            '& taskkill /f /im explorer.exe >nul 2>&1 '
-            '& timeout /t 1 /nobreak >nul 2>&1 '
-            '& start "" explorer.exe'
-        )
-
-        clean_env = FancyInstaller._get_clean_env()
-        system_root = os.environ.get("SystemRoot", r"C:\Windows")
-
+        # ── 2. SHChangeNotify — tell the shell about association changes ─
         try:
-            subprocess.Popen(
-                ["cmd.exe", "/c", script],
-                env=clean_env,
-                cwd=system_root,                          # away from _internal/
-                close_fds=True,                           # no handle inheritance
-                creationflags=(
-                    subprocess.DETACHED_PROCESS
-                    | subprocess.CREATE_NEW_PROCESS_GROUP
-                    | subprocess.CREATE_NO_WINDOW
-                ),
+            SHCNE_ASSOCCHANGED = 0x08000000
+            SHCNF_IDLIST       = 0x0000
+            ctypes.windll.shell32.SHChangeNotify(
+                SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None,
             )
         except Exception:
-            # Absolute last resort: try a direct Popen — better than nothing.
-            try:
-                subprocess.Popen(
-                    ["explorer.exe"],
-                    env=clean_env,
-                    cwd=system_root,
-                    close_fds=True,
-                    creationflags=subprocess.DETACHED_PROCESS,
-                )
-            except Exception:
-                pass  # Explorer will auto-restart via Windows session management
+            pass
 
-        # Give the deferred script a moment to detach
-        time.sleep(0.3)
+        # ── 3. Broadcast WM_SETTINGCHANGE to all top-level windows ───
+        try:
+            HWND_BROADCAST   = 0xFFFF
+            WM_SETTINGCHANGE = 0x001A
+            SMTO_ABORTIFHUNG = 0x0002
+            result = ctypes.c_long(0)
+            ctypes.windll.user32.SendMessageTimeoutW(
+                HWND_BROADCAST,
+                WM_SETTINGCHANGE,
+                0,
+                "Environment",
+                SMTO_ABORTIFHUNG,
+                5000,           # 5-second timeout per window
+                ctypes.byref(result),
+            )
+        except Exception:
+            pass
 
     # ─── Environment Patching helper ──────────────────────────────────
     def _patch_agent_environments(self, tlamatini_dir: str):
