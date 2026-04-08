@@ -10,6 +10,7 @@ import sys
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
 import csv
+import copy
 import re
 import time
 import yaml
@@ -300,6 +301,8 @@ OUTPUT_PARSERS = {
     'gateway_relayer': parse_gateway_relayer_output,
 }
 
+PARAMETRIZER_MARKER_PATTERN = re.compile(r'\{([^{}\r\n]+)\}')
+
 
 def get_source_base_name(agent_pool_name):
     """Extract base agent name from pool name: 'apirer_1' -> 'apirer', 'file_interpreter_2' -> 'file_interpreter'."""
@@ -520,10 +523,12 @@ def load_interconnection_scheme(scheme_path="interconnection-scheme.csv"):
         for row in reader:
             source_field = row.get('source_field', '').strip()
             target_param = row.get('target_param', '').strip()
+            target_marker = normalize_target_marker_name(row.get('target_marker', ''))
             if source_field and target_param:
                 mappings.append({
                     'source_field': source_field,
-                    'target_param': target_param
+                    'target_param': target_param,
+                    'target_marker': target_marker,
                 })
     return mappings
 
@@ -544,45 +549,137 @@ def read_source_log(source_agent_name):
         return f.read()
 
 
-def apply_mappings_to_config(target_agent_name, mappings, output_block):
-    """Apply field mappings from a structured output block to the target agent's config.yaml."""
-    target_dir = get_agent_directory(target_agent_name)
-    config_path = os.path.join(target_dir, 'config.yaml')
+def normalize_target_marker_name(marker):
+    """Normalize a configured marker such as ``{content}`` to ``content``."""
+    marker_name = str(marker or '').strip()
+    if marker_name.startswith('{') and marker_name.endswith('}'):
+        marker_name = marker_name[1:-1].strip()
+    return marker_name
 
+
+def get_target_config_path(target_agent_name):
+    """Return the config.yaml path for the target agent instance."""
+    target_dir = get_agent_directory(target_agent_name)
+    return os.path.join(target_dir, 'config.yaml')
+
+
+def read_target_config(target_agent_name):
+    """Load the target agent config.yaml."""
+    config_path = get_target_config_path(target_agent_name)
     if not os.path.exists(config_path):
         logging.error(f"Target config not found: {config_path}")
-        return False
+        return None
 
     with open(config_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f) or {}
+        return yaml.safe_load(f) or {}
+
+
+def write_target_config(target_agent_name, config):
+    """Persist the target agent config.yaml."""
+    config_path = get_target_config_path(target_agent_name)
+    try:
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        return True
+    except Exception as exc:
+        logging.error(f"Failed to write target config '{config_path}': {exc}")
+        return False
+
+
+def _get_config_value(config, target_param):
+    """Read a config value from a top-level or dot-notation key."""
+    if '.' not in target_param:
+        return config.get(target_param)
+
+    current = config
+    for key in target_param.split('.'):
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def _set_config_value(config, target_param, value):
+    """Set a config value using a top-level or dot-notation key."""
+    if '.' not in target_param:
+        config[target_param] = value
+        return
+
+    keys = target_param.split('.')
+    current = config
+    for key in keys[:-1]:
+        if key not in current or not isinstance(current[key], dict):
+            current[key] = {}
+        current = current[key]
+    current[keys[-1]] = value
+
+
+def _apply_marker_mapping(config, target_param, target_marker, value):
+    """Replace a configured marker inside an existing target string value."""
+    marker_name = normalize_target_marker_name(target_marker)
+    token = '{' + marker_name + '}'
+    current_value = _get_config_value(config, target_param)
+
+    if current_value is None:
+        logging.warning(
+            f"   Target param '{target_param}' not found for marker-level mapping '{token}'"
+        )
+        return False
+
+    if not isinstance(current_value, str):
+        logging.warning(
+            f"   Target param '{target_param}' is not a string, so marker '{token}' cannot be replaced"
+        )
+        return False
+
+    if token not in current_value:
+        logging.warning(
+            f"   Marker '{token}' not found in target param '{target_param}'"
+        )
+        return False
+
+    _set_config_value(config, target_param, current_value.replace(token, str(value)))
+    return True
+
+
+def restore_target_config(target_agent_name, template_config):
+    """Restore the original target config template after marker-based execution."""
+    return write_target_config(target_agent_name, copy.deepcopy(template_config))
+
+
+def apply_mappings_to_config(target_agent_name, mappings, output_block, base_config=None):
+    """Apply field mappings from a structured output block to the target agent's config.yaml."""
+    config = copy.deepcopy(base_config) if base_config is not None else read_target_config(target_agent_name)
+    if config is None:
+        return False
 
     applied_count = 0
     for mapping in mappings:
         source_field = mapping['source_field']
         target_param = mapping['target_param']
+        target_marker = normalize_target_marker_name(mapping.get('target_marker', ''))
 
         if source_field in output_block:
             value = output_block[source_field]
-            
-            # Handle nested parameters using dot notation (e.g., target.email)
-            if '.' in target_param:
-                keys = target_param.split('.')
-                current = config
-                for key in keys[:-1]:
-                    if key not in current or not isinstance(current[key], dict):
-                        current[key] = {}
-                    current = current[key]
-                current[keys[-1]] = value
+
+            if target_marker:
+                applied = _apply_marker_mapping(config, target_param, target_marker, value)
+                if applied:
+                    logging.info(
+                        f"   Mapped: {source_field} -> {target_param} {{{target_marker}}} ({len(str(value))} chars)"
+                    )
             else:
-                config[target_param] = value
-                
-            logging.info(f"   Mapped: {source_field} -> {target_param} ({len(str(value))} chars)")
-            applied_count += 1
+                _set_config_value(config, target_param, value)
+                applied = True
+                logging.info(f"   Mapped: {source_field} -> {target_param} ({len(str(value))} chars)")
+
+            if applied:
+                applied_count += 1
         else:
             logging.warning(f"   Source field '{source_field}' not found in output block")
 
-    with open(config_path, 'w', encoding='utf-8') as f:
-        yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    if not write_target_config(target_agent_name, config):
+        return False
 
     logging.info(f"   Applied {applied_count}/{len(mappings)} mappings to {target_agent_name}")
     return True
@@ -652,7 +749,22 @@ def main():
 
         logging.info(f"Loaded {len(mappings)} field mappings from interconnection-scheme.csv")
         for m in mappings:
-            logging.info(f"   {m['source_field']} -> {m['target_param']}")
+            target_marker = normalize_target_marker_name(m.get('target_marker', ''))
+            if target_marker:
+                logging.info(f"   {m['source_field']} -> {m['target_param']} {{{target_marker}}}")
+            else:
+                logging.info(f"   {m['source_field']} -> {m['target_param']}")
+
+        marker_based_mappings = any(normalize_target_marker_name(m.get('target_marker', '')) for m in mappings)
+        target_config_template = None
+        if marker_based_mappings:
+            target_config_template = read_target_config(target_agent)
+            if target_config_template is None:
+                logging.error(f"Could not load target config template for '{target_agent}'")
+                sys.exit(1)
+            logging.info(
+                "Detected marker-level mappings; the original target config template will be restored after each run."
+            )
 
         # ===== PARSE SOURCE AGENT LOG =====
         log_text = read_source_log(source_agent)
@@ -676,7 +788,12 @@ def main():
             logging.info(f"--- Processing output element {block_num}/{len(output_blocks)} ---")
 
             # Apply mappings to target config
-            success = apply_mappings_to_config(target_agent, mappings, block)
+            success = apply_mappings_to_config(
+                target_agent,
+                mappings,
+                block,
+                base_config=target_config_template,
+            )
             if not success:
                 logging.error(f"Failed to apply mappings for element {block_num}")
                 continue
@@ -690,13 +807,24 @@ def main():
                 logging.info(f"Target agent '{target_agent}' started for element {block_num}")
             else:
                 logging.error(f"Failed to start target agent '{target_agent}' for element {block_num}")
+                if marker_based_mappings and target_config_template is not None:
+                    restore_target_config(target_agent, target_config_template)
                 continue
 
             # Wait for target agent to complete before processing next element
-            if block_num < len(output_blocks):
-                logging.info(f"Waiting for target agent '{target_agent}' to finish before next element...")
+            if marker_based_mappings or block_num < len(output_blocks):
+                logging.info(f"Waiting for target agent '{target_agent}' to finish...")
                 wait_for_agents_to_stop([target_agent])
                 logging.info(f"Target agent '{target_agent}' finished element {block_num}")
+                if marker_based_mappings and target_config_template is not None:
+                    if restore_target_config(target_agent, target_config_template):
+                        logging.info(
+                            f"Restored target config template for '{target_agent}' after element {block_num}"
+                        )
+                    else:
+                        logging.error(
+                            f"Failed to restore target config template for '{target_agent}' after element {block_num}"
+                        )
 
         logging.info(
             f"Parametrizer agent finished. Processed {len(output_blocks)} element(s) "

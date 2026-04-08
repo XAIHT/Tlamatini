@@ -74,6 +74,25 @@ function _showParametrizerError(message) {
 }
 
 
+function _normalizeParametrizerTargetMarker(marker) {
+    const normalized = String(marker || '').trim();
+    if (normalized.startsWith('{') && normalized.endsWith('}')) {
+        return normalized.slice(1, -1).trim();
+    }
+    return normalized;
+}
+
+
+function _buildParametrizerTargetSlotKey(targetParam, targetMarker = '') {
+    return `${targetParam}::${_normalizeParametrizerTargetMarker(targetMarker)}`;
+}
+
+
+function _buildParametrizerMappingKey(mapping) {
+    return `${mapping.source_field}=>${_buildParametrizerTargetSlotKey(mapping.target_param, mapping.target_marker)}`;
+}
+
+
 /**
  * Render the two-column mapping dialog with SVG curved connection lines.
  */
@@ -82,13 +101,30 @@ function _renderParametrizerMappingDialog(agentId, data) {
     const existing = document.getElementById('parametrizer-dialog-overlay');
     if (existing) existing.remove();
 
-    const { source_agent, target_agent, source_fields, target_params, existing_mappings } = data;
+    const {
+        source_agent,
+        target_agent,
+        source_fields,
+        target_params,
+        target_markers = {},
+        existing_mappings
+    } = data;
 
-    // Track current mappings: Map<sourceField, targetParam>
-    const mappings = new Map();
+    // Track current mappings as individual source -> target-slot records.
+    const mappings = [];
+    const seenMappings = new Set();
     if (existing_mappings) {
-        for (const m of existing_mappings) {
-            mappings.set(m.source_field, m.target_param);
+        for (const mapping of existing_mappings) {
+            const normalized = {
+                source_field: mapping.source_field,
+                target_param: mapping.target_param,
+                target_marker: _normalizeParametrizerTargetMarker(mapping.target_marker)
+            };
+            const mappingKey = _buildParametrizerMappingKey(normalized);
+            if (!seenMappings.has(mappingKey)) {
+                seenMappings.add(mappingKey);
+                mappings.push(normalized);
+            }
         }
     }
 
@@ -126,6 +162,10 @@ function _renderParametrizerMappingDialog(agentId, data) {
         <p style="margin:5px 0 0; color:#777; font-size:0.8em;">
             Click a source field (left), then click a target parameter (right) to create a mapping.
             Click an existing line to remove it.
+        </p>
+        <p style="margin:5px 0 0; color:#777; font-size:0.8em;">
+            If a target value already contains configured markers such as {content}, they appear as indented target slots
+            so Parametrizer can replace only that marker instead of overwriting the entire parameter.
         </p>
     `;
     dialog.appendChild(header);
@@ -170,17 +210,59 @@ function _renderParametrizerMappingDialog(agentId, data) {
 
     const targetItems = [];
     for (const param of target_params) {
+        const markers = Array.isArray(target_markers[param]) ? target_markers[param] : [];
+        const group = document.createElement('div');
+        group.style.marginBottom = '8px';
+
         const item = document.createElement('div');
         item.dataset.param = param;
+        item.dataset.marker = '';
         item.className = 'parametrizer-target-item';
         Object.assign(item.style, {
             padding: '8px 12px', margin: '5px 0', borderRadius: '6px',
             background: '#2a2a2e', border: '1px solid #444', cursor: 'pointer',
             transition: 'all 0.2s', fontSize: '0.85em'
         });
-        item.textContent = param;
-        rightCol.appendChild(item);
-        targetItems.push(item);
+        if (markers.length > 0) {
+            item.innerHTML = `
+                <span>${param}</span>
+                <span style="float:right; color:#AA00FF; font-size:0.75em;">${markers.length} marker${markers.length === 1 ? '' : 's'}</span>
+            `;
+        } else {
+            item.textContent = param;
+        }
+        group.appendChild(item);
+        targetItems.push({
+            element: item,
+            targetParam: param,
+            targetMarker: '',
+            slotKey: _buildParametrizerTargetSlotKey(param)
+        });
+
+        for (const rawMarker of markers) {
+            const marker = _normalizeParametrizerTargetMarker(rawMarker);
+            if (!marker) continue;
+
+            const markerItem = document.createElement('div');
+            markerItem.dataset.param = param;
+            markerItem.dataset.marker = marker;
+            markerItem.className = 'parametrizer-target-marker-item';
+            Object.assign(markerItem.style, {
+                padding: '6px 12px', margin: '4px 0 0 18px', borderRadius: '6px',
+                background: '#242428', border: '1px dashed #555', cursor: 'pointer',
+                transition: 'all 0.2s', fontSize: '0.8em', color: '#ddd'
+            });
+            markerItem.textContent = `{${marker}}`;
+            group.appendChild(markerItem);
+            targetItems.push({
+                element: markerItem,
+                targetParam: param,
+                targetMarker: marker,
+                slotKey: _buildParametrizerTargetSlotKey(param, marker)
+            });
+        }
+
+        rightCol.appendChild(group);
     }
 
     container.appendChild(leftCol);
@@ -238,16 +320,58 @@ function _renderParametrizerMappingDialog(agentId, data) {
     // ---- INTERACTION LOGIC ----
     let selectedSource = null;
 
+    function removeMappingByKey(mappingKey) {
+        const index = mappings.findIndex((mapping) => _buildParametrizerMappingKey(mapping) === mappingKey);
+        if (index >= 0) {
+            mappings.splice(index, 1);
+        }
+    }
+
+    function clearMappingsForTargetSlot(targetParam, targetMarker = '') {
+        const normalizedMarker = _normalizeParametrizerTargetMarker(targetMarker);
+        for (let index = mappings.length - 1; index >= 0; index -= 1) {
+            const mapping = mappings[index];
+            if (mapping.target_param !== targetParam) continue;
+
+            const mappingMarker = _normalizeParametrizerTargetMarker(mapping.target_marker);
+            if (!normalizedMarker) {
+                mappings.splice(index, 1);
+                continue;
+            }
+
+            if (!mappingMarker || mappingMarker === normalizedMarker) {
+                mappings.splice(index, 1);
+            }
+        }
+    }
+
     function updateLines() {
         // Clear existing lines
         while (svg.firstChild) svg.removeChild(svg.firstChild);
 
+        const defs = document.createElementNS(svgNS, 'defs');
+        const grad = document.createElementNS(svgNS, 'linearGradient');
+        grad.id = 'param-grad';
+        const start = document.createElementNS(svgNS, 'stop');
+        start.setAttribute('offset', '0%');
+        start.setAttribute('stop-color', '#00E5FF');
+        const end = document.createElementNS(svgNS, 'stop');
+        end.setAttribute('offset', '100%');
+        end.setAttribute('stop-color', '#FF6D00');
+        grad.appendChild(start);
+        grad.appendChild(end);
+        defs.appendChild(grad);
+        svg.appendChild(defs);
+
         const containerRect = container.getBoundingClientRect();
 
-        for (const [sf, tp] of mappings) {
-            const srcEl = sourceItems.find(el => el.dataset.field === sf);
-            const tgtEl = targetItems.find(el => el.dataset.param === tp);
-            if (!srcEl || !tgtEl) continue;
+        for (const mapping of mappings) {
+            const srcEl = sourceItems.find((el) => el.dataset.field === mapping.source_field);
+            const targetItem = targetItems.find((item) => item.slotKey === _buildParametrizerTargetSlotKey(mapping.target_param, mapping.target_marker));
+            if (!srcEl || !targetItem) continue;
+
+            const tgtEl = targetItem.element;
+            const mappingKey = _buildParametrizerMappingKey(mapping);
 
             const srcRect = srcEl.getBoundingClientRect();
             const tgtRect = tgtEl.getBoundingClientRect();
@@ -266,50 +390,41 @@ function _renderParametrizerMappingDialog(agentId, data) {
             path.setAttribute('fill', 'none');
             path.style.pointerEvents = 'stroke';
             path.style.cursor = 'pointer';
-            path.dataset.sourceField = sf;
-            path.dataset.targetParam = tp;
+            path.dataset.mappingKey = mappingKey;
 
             // Click to remove mapping
             path.addEventListener('click', () => {
-                mappings.delete(sf);
+                removeMappingByKey(mappingKey);
                 updateHighlights();
                 updateLines();
             });
 
             svg.appendChild(path);
         }
-
-        // Add gradient def if not present
-        if (!svg.querySelector('defs')) {
-            const defs = document.createElementNS(svgNS, 'defs');
-            const grad = document.createElementNS(svgNS, 'linearGradient');
-            grad.id = 'param-grad';
-            const s1 = document.createElementNS(svgNS, 'stop');
-            s1.setAttribute('offset', '0%');
-            s1.setAttribute('stop-color', '#00E5FF');
-            const s2 = document.createElementNS(svgNS, 'stop');
-            s2.setAttribute('offset', '100%');
-            s2.setAttribute('stop-color', '#FF6D00');
-            grad.appendChild(s1);
-            grad.appendChild(s2);
-            defs.appendChild(grad);
-            svg.appendChild(defs);
-        }
     }
 
     function updateHighlights() {
         for (const el of sourceItems) {
-            const isMapped = mappings.has(el.dataset.field);
+            const isMapped = mappings.some((mapping) => mapping.source_field === el.dataset.field);
             const isSelected = (selectedSource === el);
             el.style.border = isSelected ? '2px solid #00E5FF' :
                 (isMapped ? '1px solid #00E5FF' : '1px solid #444');
             el.style.background = isSelected ? '#1a3a4a' :
                 (isMapped ? '#1a2a2e' : '#2a2a2e');
         }
-        for (const el of targetItems) {
-            const isMapped = [...mappings.values()].includes(el.dataset.param);
-            el.style.border = isMapped ? '1px solid #FF6D00' : '1px solid #444';
-            el.style.background = isMapped ? '#2e2a1a' : '#2a2a2e';
+        for (const item of targetItems) {
+            const exactMapped = mappings.some((mapping) => item.slotKey === _buildParametrizerTargetSlotKey(mapping.target_param, mapping.target_marker));
+            const paramMapped = !item.targetMarker && mappings.some((mapping) => mapping.target_param === item.targetParam);
+
+            if (item.targetMarker) {
+                item.element.style.border = exactMapped ? '1px solid #FFB74D' : '1px dashed #555';
+                item.element.style.background = exactMapped ? '#362b18' : '#242428';
+            } else {
+                item.element.style.border = exactMapped ? '1px solid #FF6D00' :
+                    (paramMapped ? '1px solid #6D4C41' : '1px solid #444');
+                item.element.style.background = exactMapped ? '#2e2a1a' :
+                    (paramMapped ? '#26211d' : '#2a2a2e');
+            }
         }
     }
 
@@ -328,29 +443,25 @@ function _renderParametrizerMappingDialog(agentId, data) {
     }
 
     // Target item click
-    for (const el of targetItems) {
-        el.addEventListener('click', () => {
+    for (const item of targetItems) {
+        item.element.addEventListener('click', () => {
             if (!selectedSource) return;
             const sf = selectedSource.dataset.field;
-            const tp = el.dataset.param;
+            const tp = item.targetParam;
+            const tm = item.targetMarker;
 
-            // Remove any existing mapping TO this target param (one-to-one)
-            for (const [key, val] of mappings) {
-                if (val === tp) {
-                    mappings.delete(key);
-                    break;
-                }
-            }
-
-            mappings.set(sf, tp);
+            clearMappingsForTargetSlot(tp, tm);
+            mappings.push({ source_field: sf, target_param: tp, target_marker: tm });
             selectedSource = null;
             updateHighlights();
             updateLines();
         });
-        el.addEventListener('mouseenter', () => {
-            if (selectedSource) el.style.background = '#3e3a1a';
+        item.element.addEventListener('mouseenter', () => {
+            if (selectedSource) {
+                item.element.style.background = item.targetMarker ? '#3a311a' : '#3e3a1a';
+            }
         });
-        el.addEventListener('mouseleave', () => { updateHighlights(); });
+        item.element.addEventListener('mouseleave', () => { updateHighlights(); });
     }
 
     // Clear all
@@ -367,10 +478,11 @@ function _renderParametrizerMappingDialog(agentId, data) {
 
     // Save
     saveBtn.addEventListener('click', async () => {
-        const mappingsList = [];
-        for (const [sf, tp] of mappings) {
-            mappingsList.push({ source_field: sf, target_param: tp });
-        }
+        const mappingsList = mappings.map((mapping) => ({
+            source_field: mapping.source_field,
+            target_param: mapping.target_param,
+            target_marker: _normalizeParametrizerTargetMarker(mapping.target_marker)
+        }));
 
         try {
             const resp = await fetch(`/agent/save_parametrizer_scheme/${agentId}/`, {
@@ -383,7 +495,10 @@ function _renderParametrizerMappingDialog(agentId, data) {
             if (result.success) {
                 console.log('Parametrizer scheme saved:', result.message);
                 if (typeof ACP !== 'undefined' && ACP.nodeConfigs) {
-                    ACP.nodeConfigs.set(agentId, { _parametrizer_mappings: mappingsList });
+                    ACP.nodeConfigs.set(agentId, {
+                        ...(ACP.nodeConfigs.get(agentId) || {}),
+                        _parametrizer_mappings: mappingsList
+                    });
                 }
                 if (typeof markDirty === 'function') markDirty();
                 overlay.remove();

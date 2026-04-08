@@ -1,5 +1,6 @@
 import importlib.util
 import ast
+import csv
 import json
 import os
 import subprocess
@@ -15,6 +16,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 from langchain_core.documents import Document
+import yaml
 
 from agent import views
 from agent.consumers import AgentConsumer, _sanitize_context_filename
@@ -88,6 +90,27 @@ def _load_ender_module_for_tests():
     spec = importlib.util.spec_from_file_location('agent_ender_module_for_tests', module_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f'Unable to load Ender module from {module_path}')
+
+    module = importlib.util.module_from_spec(spec)
+    current_dir = os.getcwd()
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        os.chdir(current_dir)
+    return module
+
+
+@lru_cache(maxsize=1)
+def _load_parametrizer_module_for_tests():
+    module_path = os.path.join(
+        os.path.dirname(__file__),
+        'agents',
+        'parametrizer',
+        'parametrizer.py',
+    )
+    spec = importlib.util.spec_from_file_location('agent_parametrizer_module_for_tests', module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f'Unable to load Parametrizer module from {module_path}')
 
     module = importlib.util.module_from_spec(spec)
     current_dir = os.getcwd()
@@ -1271,3 +1294,128 @@ class OpenAgentInstanceInAppTests(TestCase):
             cwd=os.path.realpath(agent_dir),
             creationflags=getattr(subprocess, 'CREATE_NEW_CONSOLE', 0),
         )
+
+
+class ParametrizerMarkerMappingTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='parametrizer-marker-user', password='secret123')
+        self.client.force_login(self.user)
+
+    def test_get_parametrizer_dialog_data_includes_configured_markers(self):
+        with tempfile.TemporaryDirectory() as pool_dir:
+            parametrizer_dir = os.path.join(pool_dir, 'parametrizer_1')
+            target_dir = os.path.join(pool_dir, 'prompter_1')
+            os.makedirs(parametrizer_dir, exist_ok=True)
+            os.makedirs(target_dir, exist_ok=True)
+
+            with open(os.path.join(parametrizer_dir, 'config.yaml'), 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({
+                    'source_agent': 'file_extractor_1',
+                    'target_agent': 'prompter_1',
+                    'source_agents': ['file_extractor_1'],
+                    'target_agents': ['prompter_1'],
+                }, handle, sort_keys=False)
+
+            with open(os.path.join(target_dir, 'config.yaml'), 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({
+                    'prompt': 'Please summarize:\n\n{content}\n\nSource: {file_path}',
+                    'llm': {
+                        'host': 'http://localhost:11434',
+                        'model': 'gpt-oss:120b-cloud',
+                    },
+                }, handle, sort_keys=False)
+
+            with patch('agent.views.get_pool_path', return_value=pool_dir):
+                response = self.client.get(reverse('get_parametrizer_dialog_data', args=['parametrizer-1']))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertIn('prompt', payload['target_params'])
+        self.assertCountEqual(payload['target_markers']['prompt'], ['content', 'file_path'])
+        self.assertCountEqual(payload['source_fields'], ['file_path', 'response_body'])
+
+    def test_save_parametrizer_scheme_persists_target_marker_column(self):
+        with tempfile.TemporaryDirectory() as pool_dir:
+            parametrizer_dir = os.path.join(pool_dir, 'parametrizer_1')
+            os.makedirs(parametrizer_dir, exist_ok=True)
+
+            with patch('agent.views.get_pool_path', return_value=pool_dir):
+                response = self.client.post(
+                    reverse('save_parametrizer_scheme', args=['parametrizer-1']),
+                    data=json.dumps({
+                        'mappings': [{
+                            'source_field': 'response_body',
+                            'target_param': 'prompt',
+                            'target_marker': 'content',
+                        }]
+                    }),
+                    content_type='application/json',
+                )
+
+            self.assertEqual(response.status_code, 200)
+            scheme_path = os.path.join(parametrizer_dir, 'interconnection-scheme.csv')
+            with open(scheme_path, 'r', encoding='utf-8', newline='') as handle:
+                rows = list(csv.DictReader(handle))
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['source_field'], 'response_body')
+        self.assertEqual(rows[0]['target_param'], 'prompt')
+        self.assertEqual(rows[0]['target_marker'], 'content')
+
+    def test_apply_mappings_to_config_uses_marker_template_for_each_iteration(self):
+        parametrizer_module = _load_parametrizer_module_for_tests()
+
+        with tempfile.TemporaryDirectory() as pool_dir:
+            target_dir = os.path.join(pool_dir, 'prompter_1')
+            os.makedirs(target_dir, exist_ok=True)
+            config_path = os.path.join(target_dir, 'config.yaml')
+
+            template_config = {
+                'prompt': 'Please summarize:\n\n{content}\n\nSource: {file_path}',
+                'llm': {
+                    'host': 'http://localhost:11434',
+                    'model': 'gpt-oss:120b-cloud',
+                },
+            }
+
+            with open(config_path, 'w', encoding='utf-8') as handle:
+                yaml.safe_dump(template_config, handle, sort_keys=False)
+
+            mappings = [
+                {
+                    'source_field': 'response_body',
+                    'target_param': 'prompt',
+                    'target_marker': 'content',
+                },
+                {
+                    'source_field': 'file_path',
+                    'target_param': 'prompt',
+                    'target_marker': 'file_path',
+                },
+            ]
+
+            with patch.object(parametrizer_module, 'get_agent_directory', return_value=target_dir):
+                first_ok = parametrizer_module.apply_mappings_to_config(
+                    'prompter_1',
+                    mappings,
+                    {'response_body': 'First summary', 'file_path': 'alpha.md'},
+                    base_config=template_config,
+                )
+                with open(config_path, 'r', encoding='utf-8') as handle:
+                    first_config = yaml.safe_load(handle)
+
+                second_ok = parametrizer_module.apply_mappings_to_config(
+                    'prompter_1',
+                    mappings,
+                    {'response_body': 'Second summary', 'file_path': 'beta.md'},
+                    base_config=template_config,
+                )
+                with open(config_path, 'r', encoding='utf-8') as handle:
+                    second_config = yaml.safe_load(handle)
+
+        self.assertTrue(first_ok)
+        self.assertTrue(second_ok)
+        self.assertEqual(first_config['prompt'], 'Please summarize:\n\nFirst summary\n\nSource: alpha.md')
+        self.assertEqual(second_config['prompt'], 'Please summarize:\n\nSecond summary\n\nSource: beta.md')
+        self.assertEqual(template_config['prompt'], 'Please summarize:\n\n{content}\n\nSource: {file_path}')

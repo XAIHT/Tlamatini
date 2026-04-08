@@ -7679,6 +7679,61 @@ PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
 
 # Allowed source agent base names
 PARAMETRIZER_ALLOWED_SOURCES = set(PARAMETRIZER_SOURCE_OUTPUT_FIELDS.keys())
+PARAMETRIZER_MARKER_PATTERN = re.compile(r'\{([^{}\r\n]+)\}')
+
+
+def _normalize_parametrizer_marker_name(marker):
+    """Normalize a configured placeholder name to its bare marker form."""
+    marker_name = str(marker or '').strip()
+    if marker_name.startswith('{') and marker_name.endswith('}'):
+        marker_name = marker_name[1:-1].strip()
+    return marker_name
+
+
+def _extract_parametrizer_markers(value):
+    """Return placeholder names found in a scalar config value."""
+    if not isinstance(value, str):
+        return []
+
+    markers = []
+    seen = set()
+    for match in PARAMETRIZER_MARKER_PATTERN.finditer(value):
+        marker_name = _normalize_parametrizer_marker_name(match.group(1))
+        if marker_name and marker_name not in seen:
+            seen.add(marker_name)
+            markers.append(marker_name)
+    return markers
+
+
+def _flatten_parametrizer_target_config(config, excluded_keys, parent_key=''):
+    """Flatten target config keys and collect configured placeholders for each key."""
+    target_params = []
+    target_markers = {}
+
+    if not isinstance(config, dict):
+        return target_params, target_markers
+
+    for key, value in config.items():
+        new_key = f"{parent_key}.{key}" if parent_key else key
+        if not parent_key and new_key in excluded_keys:
+            continue
+
+        target_params.append(new_key)
+
+        markers = _extract_parametrizer_markers(value)
+        if markers:
+            target_markers[new_key] = markers
+
+        if isinstance(value, dict):
+            nested_params, nested_markers = _flatten_parametrizer_target_config(
+                value,
+                excluded_keys,
+                new_key,
+            )
+            target_params.extend(nested_params)
+            target_markers.update(nested_markers)
+
+    return target_params, target_markers
 
 
 def _get_source_base_name(agent_pool_name):
@@ -7782,21 +7837,13 @@ def get_parametrizer_dialog_data_view(request, agent_name):
             excluded_keys = {'source_agents', 'target_agents', 'output_agents',
                              'source_agent_1', 'source_agent_2',
                              'target_agents_a', 'target_agents_b'}
-                             
-            def get_flattened_keys(d, parent_key=''):
-                keys = []
-                if not isinstance(d, dict):
-                    return keys
-                for k, v in d.items():
-                    new_key = f"{parent_key}.{k}" if parent_key else k
-                    if not parent_key and new_key in excluded_keys:
-                        continue
-                    keys.append(new_key)
-                    if isinstance(v, dict):
-                        keys.extend(get_flattened_keys(v, new_key))
-                return keys
-                
-            target_params = get_flattened_keys(target_config)
+
+            target_params, target_markers = _flatten_parametrizer_target_config(
+                target_config,
+                excluded_keys,
+            )
+        else:
+            target_markers = {}
 
         # Load existing interconnection scheme if present
         scheme_path = os.path.join(pool_base_path, pool_folder_name, 'interconnection-scheme.csv')
@@ -7808,8 +7855,13 @@ def get_parametrizer_dialog_data_view(request, agent_name):
                 for row in reader:
                     sf = row.get('source_field', '').strip()
                     tp = row.get('target_param', '').strip()
+                    tm = _normalize_parametrizer_marker_name(row.get('target_marker', ''))
                     if sf and tp:
-                        existing_mappings.append({'source_field': sf, 'target_param': tp})
+                        existing_mappings.append({
+                            'source_field': sf,
+                            'target_param': tp,
+                            'target_marker': tm,
+                        })
 
         return HttpResponse(json.dumps({
             "success": True,
@@ -7817,6 +7869,7 @@ def get_parametrizer_dialog_data_view(request, agent_name):
             "target_agent": target_agent,
             "source_fields": source_fields,
             "target_params": target_params,
+            "target_markers": target_markers,
             "existing_mappings": existing_mappings
         }), content_type='application/json')
 
@@ -7849,17 +7902,24 @@ def save_parametrizer_scheme_view(request, agent_name):
 
         import csv
         with open(scheme_path, 'w', encoding='utf-8', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['source_field', 'target_param'])
+            writer = csv.DictWriter(f, fieldnames=['source_field', 'target_param', 'target_marker'])
             writer.writeheader()
+            saved_count = 0
             for m in mappings:
                 sf = m.get('source_field', '').strip()
                 tp = m.get('target_param', '').strip()
+                tm = _normalize_parametrizer_marker_name(m.get('target_marker', ''))
                 if sf and tp:
-                    writer.writerow({'source_field': sf, 'target_param': tp})
+                    writer.writerow({
+                        'source_field': sf,
+                        'target_param': tp,
+                        'target_marker': tm,
+                    })
+                    saved_count += 1
 
         return HttpResponse(json.dumps({
             "success": True,
-            "message": f"Saved {len(mappings)} mapping(s) to interconnection-scheme.csv"
+            "message": f"Saved {saved_count} mapping(s) to interconnection-scheme.csv"
         }), content_type='application/json')
 
     except Exception as e:
