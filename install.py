@@ -1,11 +1,57 @@
 import os
 import sys
 import json
+import ctypes
 import subprocess
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import zipfile
+
+
+# ─── DLL-locking prevention (PyInstaller --onedir) ────────────────────────────
+# When the installer runs as a frozen exe, vcruntime140.dll and
+# vcruntime140_1.dll live inside _internal/.  Any child process that
+# *inherits* DLL handles — or loads them from the DLL search path —
+# will keep those files locked even after the installer exits.
+# The three mitigations below prevent that.
+
+def _reset_dll_search_path():
+    """Remove the PyInstaller _internal/ dir from the Windows DLL search order.
+
+    Calling SetDllDirectoryW(NULL) tells the loader to stop searching the
+    app directory for DLLs, falling back to the standard search sequence
+    (System32, Windows, PATH).  This prevents child processes from picking
+    up vcruntime140*.dll from _internal/ via DLL search-order inheritance.
+    """
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.kernel32.SetDllDirectoryW(None)
+        except Exception:
+            pass  # non-fatal; best effort
+
+
+def _free_vc_runtime_handles():
+    """Explicitly unload bundled VC runtime DLLs so our reference count drops.
+
+    This is a belt-and-suspenders complement to the search-path fix above.
+    If any module in-process has bumped the DLL refcount (e.g. Tkinter or
+    subprocess internals), releasing it here helps Windows truly unlock the
+    file at installer-exit time.
+    """
+    if sys.platform != "win32":
+        return
+    k32 = ctypes.windll.kernel32
+    GetModuleHandleW = k32.GetModuleHandleW
+    GetModuleHandleW.restype = ctypes.c_void_p
+    FreeLibrary = k32.FreeLibrary
+    for dll_name in ("vcruntime140.dll", "vcruntime140_1.dll"):
+        try:
+            handle = GetModuleHandleW(dll_name)
+            if handle:
+                FreeLibrary(handle)
+        except Exception:
+            pass  # non-fatal
 
 
 # ─── Color Palette ────────────────────────────────────────────────────────────
@@ -429,11 +475,19 @@ class FancyInstaller:
     def _get_clean_env():
         """Retrieve a clean environment without PyInstaller's DLL paths to prevent locking."""
         clean_env = os.environ.copy()
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            meipass = sys._MEIPASS.lower()
+        if getattr(sys, 'frozen', False):
+            # Remove _MEIPASS and the exe directory from PATH so child
+            # processes never discover vcruntime140*.dll inside _internal/.
+            meipass = (sys._MEIPASS if hasattr(sys, '_MEIPASS') else "").lower()
+            exe_dir = os.path.dirname(sys.executable).lower()
+            internal_dir = os.path.join(exe_dir, "_internal").lower()
+            blocked = {meipass, exe_dir, internal_dir}
             paths = clean_env.get("PATH", "").split(os.pathsep)
-            # Remove any path that points inside the extracted PyInstaller bundle
-            paths = [p for p in paths if not p.lower().startswith(meipass)]
+            paths = [
+                p for p in paths
+                if p.lower() not in blocked
+                and not any(p.lower().startswith(b + os.sep) for b in blocked if b)
+            ]
             clean_env["PATH"] = os.pathsep.join(paths)
         return clean_env
 
@@ -445,11 +499,16 @@ class FancyInstaller:
              raise FileNotFoundError(f"{filename} not found at {dst}")
 
         clean_env = self._get_clean_env()
+        # close_fds=True  prevents the child from inheriting any open handles
+        #                 (e.g. vcruntime140.dll loaded by the PyInstaller bootloader).
+        # CREATE_NO_WINDOW avoids flashing a console window during install.
         result = subprocess.run(
             ["powershell", "-ExecutionPolicy", "Bypass", "-NoProfile", "-File", dst],
             cwd=target_dir,
             env=clean_env,
             capture_output=True, text=True, timeout=120,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         if result.returncode != 0:
             detail = result.stderr.strip() or result.stdout.strip()
@@ -476,21 +535,42 @@ class FancyInstaller:
     # ─── Explorer restart robust helper ──────────────────────────────
     @staticmethod
     def _restart_explorer():
-        import time
-        clean_env = FancyInstaller._get_clean_env()
-        
-        # Stop Explorer
-        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True, env=clean_env)
-        time.sleep(0.5)
+        """Refresh Explorer to pick up new shortcuts and file associations.
 
-        # Clear icon cache (best-effort)
+        DESIGN — why a *deferred*, *detached* helper?
+        ──────────────────────────────────────────────
+        If we restart Explorer from inside the PyInstaller process, the new
+        explorer.exe inherits DLL handles (vcruntime140*.dll) from our
+        _internal/ directory.  Explorer is a persistent system process, so
+        those handles stay open until the next reboot — making it impossible
+        to delete the release folder.
+
+        Instead we launch a small cmd.exe script that:
+          1. Waits 2 seconds for the installer to fully exit (and release
+             its own DLL handles).
+          2. Kills the current Explorer shell.
+          3. Clears the icon cache.
+          4. Restarts Explorer as a direct child of cmd.exe — which has
+             no ties to _internal/ whatsoever.
+
+        FLAGS used:
+          - DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
+            → the helper process is fully independent of the installer.
+          - close_fds=True → no handle inheritance.
+          - cwd set to SystemRoot → child never sees _internal/.
+        """
+        import time
+
+        # Clear icon cache from the installer process (files are ours to touch)
         try:
             local_appdata = os.environ.get("LOCALAPPDATA", "")
             if local_appdata:
                 icon_db = os.path.join(local_appdata, "IconCache.db")
                 if os.path.exists(icon_db):
                     os.remove(icon_db)
-                explorer_cache = os.path.join(local_appdata, "Microsoft", "Windows", "Explorer")
+                explorer_cache = os.path.join(
+                    local_appdata, "Microsoft", "Windows", "Explorer"
+                )
                 if os.path.exists(explorer_cache):
                     for f in os.listdir(explorer_cache):
                         if f.startswith("iconcache"):
@@ -501,16 +581,46 @@ class FancyInstaller:
         except Exception:
             pass
 
-        # Start Explorer and ensure it is running
-        retries = 5
-        while retries > 0:
-            subprocess.Popen(["explorer.exe"], env=clean_env)
-            time.sleep(1.5)
-            # Verify if it started
-            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True, env=clean_env)
-            if "explorer.exe" in res.stdout:
-                break
-            retries -= 1
+        # Build the deferred restart script.
+        # "timeout /t 2 /nobreak" is a non-blocking wait that does NOT hold
+        # any file handles.
+        script = (
+            'timeout /t 2 /nobreak >nul 2>&1 '
+            '& taskkill /f /im explorer.exe >nul 2>&1 '
+            '& timeout /t 1 /nobreak >nul 2>&1 '
+            '& start "" explorer.exe'
+        )
+
+        clean_env = FancyInstaller._get_clean_env()
+        system_root = os.environ.get("SystemRoot", r"C:\Windows")
+
+        try:
+            subprocess.Popen(
+                ["cmd.exe", "/c", script],
+                env=clean_env,
+                cwd=system_root,                          # away from _internal/
+                close_fds=True,                           # no handle inheritance
+                creationflags=(
+                    subprocess.DETACHED_PROCESS
+                    | subprocess.CREATE_NEW_PROCESS_GROUP
+                    | subprocess.CREATE_NO_WINDOW
+                ),
+            )
+        except Exception:
+            # Absolute last resort: try a direct Popen — better than nothing.
+            try:
+                subprocess.Popen(
+                    ["explorer.exe"],
+                    env=clean_env,
+                    cwd=system_root,
+                    close_fds=True,
+                    creationflags=subprocess.DETACHED_PROCESS,
+                )
+            except Exception:
+                pass  # Explorer will auto-restart via Windows session management
+
+        # Give the deferred script a moment to detach
+        time.sleep(0.3)
 
     # ─── Environment Patching helper ──────────────────────────────────
     def _patch_agent_environments(self, tlamatini_dir: str):
@@ -579,6 +689,11 @@ class FancyInstaller:
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    # ── Layer 1: reset DLL search path BEFORE anything else ──────────
+    # This prevents child processes from discovering vcruntime140*.dll
+    # inside PyInstaller's _internal/ directory.
+    _reset_dll_search_path()
+
     # Tell the PyInstaller bootloader splash that Python is now running.
     # This is a no-op when the script is run directly (not from a bundle).
     try:
@@ -609,3 +724,8 @@ if __name__ == "__main__":
         pass                    # window was destroyed during init (e.g. pkg.zip missing)
 
     root.mainloop()
+
+    # ── Layer 4: release VC runtime DLL handles before exit ──────────
+    # This drops our in-process reference count so Windows can truly
+    # unlock the files once the process terminates.
+    _free_vc_runtime_handles()

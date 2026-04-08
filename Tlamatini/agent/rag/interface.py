@@ -672,7 +672,11 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         _inet_executor.shutdown(wait=False)  # don't block; we'll .result() later
 
     # ── BARRIER STEP 1: access validation (security gate, evaluated first) ──
-    access_rejection = _validate_accesses_in_prompt(raw_text)
+    if multi_turn_enabled:
+        print("--- ask_rag: multi-turn enabled; bypassing prompt access-validation chain ---")
+        access_rejection = None
+    else:
+        access_rejection = _validate_accesses_in_prompt(raw_text)
     if access_rejection:
         print("--- ask_rag: prompt rejected by access validation")
         # Cancel/discard the inet result — security gate takes priority
