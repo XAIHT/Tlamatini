@@ -437,7 +437,13 @@ class OptimizedHistoryAwareRAGChain:
             print("--- User explicitly requested 'provided context', ignoring FileSearchRAGChain results ---")
             files_ctx = "" # Clear it so we proceed to knowledge base check
         
-        if _is_list_files_query(question) or _is_list_files_query(q_rewritten):
+        # In Multi-Turn mode, NEVER short-circuit with a file listing.
+        # Multi-Turn is LLM-free thinking: the user's request (e.g. "Make a .js
+        # file…") must always reach the LLM / agent pipeline, even if the
+        # regex accidentally matches an extension pattern in the prompt.
+        multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
+
+        if not multi_turn_enabled and (_is_list_files_query(question) or _is_list_files_query(q_rewritten)):
             self.retrieval_cfg["k_fused"] = max(30, int(self.retrieval_cfg.get("k_fused", 10)))
             files = _unique_filenames_from_split(self.split_docs)
             if not files:
@@ -467,6 +473,8 @@ class OptimizedHistoryAwareRAGChain:
             # No extension filter - return all files
             listing = f"Available files in knowledge base ({len(files)} total):\n" + "\n".join(f"• {f}" for f in files)
             return {"answer": listing}
+        elif multi_turn_enabled and (_is_list_files_query(question) or _is_list_files_query(q_rewritten)):
+            print("--- Multi-Turn mode: file-listing detection triggered but BYPASSED → request goes to LLM ---")
 
         # 3) Retrieve
         #docs = self._retrieve(original_input)
