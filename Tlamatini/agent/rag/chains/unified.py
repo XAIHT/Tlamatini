@@ -472,6 +472,7 @@ class UnifiedAgentRAGChain:
 
         # SPECIAL CASE: corpus catalog (bypass retrieval)
         files_ctx = payload.get("files_context", "")
+        multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
         
         # Check if user explicitly asks for "provided context" - if so, prioritize knowledge base
         explicit_kb_request = "provided context" in question.lower() or "provided context" in q_rewritten.lower()
@@ -480,7 +481,11 @@ class UnifiedAgentRAGChain:
             print("--- User explicitly requested 'provided context', ignoring FileSearchRAGChain results ---")
             files_ctx = "" # Clear it so we proceed to knowledge base check
         
-        if (_is_list_files_query(question) or _is_list_files_query(q_rewritten)) and not files_ctx:
+        # In Multi-Turn mode, NEVER short-circuit with a file listing.
+        # Multi-Turn is LLM-free thinking: the user's request (e.g. "Make a .js
+        # file…") must always reach the LLM / agent pipeline, even if the
+        # regex accidentally matches an extension pattern in the prompt.
+        if not multi_turn_enabled and (_is_list_files_query(question) or _is_list_files_query(q_rewritten)) and not files_ctx:
             self.retrieval_cfg["k_fused"] = max(30, int(self.retrieval_cfg.get("k_fused", 10)))
             files = _unique_filenames_from_split(self.split_docs)
             if not files:
@@ -510,6 +515,8 @@ class UnifiedAgentRAGChain:
             # No extension filter - return all files
             listing = f"Available files in knowledge base ({len(files)} total):\n" + "\n".join(f"• {f}" for f in files)
             return {"answer": listing}
+        elif multi_turn_enabled and (_is_list_files_query(question) or _is_list_files_query(q_rewritten)):
+            print("--- Multi-Turn mode: file-listing detection triggered but BYPASSED → request goes to LLM ---")
 
         # 3) Retrieve
         #docs = self._retrieve(original_input)
@@ -565,7 +572,6 @@ class UnifiedAgentRAGChain:
                 merged = merged[: max_ctx_chars] + "…"
             context_blob = merged
 
-        multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
         if multi_turn_enabled:
             should_include_manifest = _should_include_file_manifest(question, q_rewritten)
             has_file_listing_context = _has_explicit_file_listing_context(context_blob)
