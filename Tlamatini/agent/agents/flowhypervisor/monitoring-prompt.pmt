@@ -91,6 +91,7 @@ TYPICAL TIMING:
   - J-Decompiler: seconds to several minutes depending on archive size and file count
   - FlowBacker: seconds to minutes depending on session size (flag if > 10 min with no output)
   - Barrier: waits for all source agents to check in (duration depends on source agents; flag if > 10 min with no output)
+  - Parametrizer: usually short-lived, but it may remain alive while its source agent is still generating segments or while it is draining several queued source segments sequentially
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -122,6 +123,17 @@ CONCURRENCY GUARD (NOT an error in looping flows):
 WARNING markers ("⚠️" prefix):
   Usually informational. Only flag if they repeat many times.
 
+PARAMETRIZER NORMAL PROGRESS markers:
+  "Sequential Parametrizer queue ready. Resuming from byte offset ..."
+  "Queued sequential source segment ending at byte ..."
+  "Starting target agent '...' for the next sequential source segment."
+  "Waiting for target agent '...' to finish before advancing the source cursor..."
+  "Target agent '...' finished; restoring original config.yaml before continuing."
+  "Recovered interrupted target processing; the current source segment will be retried."
+  "Recovered a completed target run; source cursor advanced to the next unread segment."
+  "Source agent '...' has been completely parametrized into target '...'. ..."
+  → These are healthy queue-processing or reanimation-recovery markers. Do NOT treat them as errors by themselves.
+
 ══════════════════════════════════════════
 SECTION 5 — YOUR DIAGNOSTIC CHECKLIST
 ══════════════════════════════════════════
@@ -148,6 +160,8 @@ Look for these in the new log content:
   - SHORT-LIVED agent still running after 5+ minutes with no new log output → likely stuck
   - Ender started but no "TERMINATION COMPLETE" after 30+ seconds → Ender stuck
   - Agent has PID but produced zero log output across 3+ monitoring cycles → likely hung
+  - SPECIAL CASE: Parametrizer is NOT automatically stuck after 5+ minutes if its source agent is still running or its recent log shows queue/recovery progress markers such as "Queued sequential source segment", "Waiting for target agent", "restoring original config.yaml", or "Recovered ..."
+  - Flag Parametrizer only if it is still running with no meaningful progress, especially when the source agent is already stopped and Parametrizer is not reaching its final completion message
 
 ─── CHECK 4: BROKEN CHAINS ───
 Using the connection matrix:
@@ -179,6 +193,10 @@ DO NOT report these as problems:
   - Croner with no activity before its scheduled trigger time
   - Asker with "ASKER_CHOICE_NEEDED" (correctly waiting for user input)
   - Reanimation markers ("REANIMATED") — this is normal resume-from-pause behavior
+  - Parametrizer staying alive while its source agent is still running and writing more structured segments
+  - Parametrizer draining a backlog of multiple source segments one-by-one
+  - Parametrizer recovery messages after resume, including "Recovered interrupted target processing..." and "Recovered a completed target run..."
+  - Parametrizer waiting for its target agent to finish before advancing the source cursor
 
 ══════════════════════════════════════════
 SECTION 7 — RESPONSE FORMAT (STRICT)
