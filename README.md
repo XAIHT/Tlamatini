@@ -2100,8 +2100,8 @@ Parametrizer operates as a persistent single-threaded loop. The runtime is inten
 
 ```
 source log unread bytes -> next complete structured segment -> target config backup
--> apply mappings -> start target -> wait target finish -> restore original config
--> commit source cursor -> repeat
+-> apply mappings -> start target -> wait target finish -> archive target log
+-> restore original config -> commit source cursor -> repeat
 ```
 
 At startup Parametrizer does the following:
@@ -2128,11 +2128,14 @@ That segment-processing cycle is always:
 4. Apply the field mappings to the target config.
 5. Start the target agent.
 6. Wait until the target agent finishes.
-7. Restore the original target config from `config.yaml.bck`.
-8. Advance the committed source cursor to the byte immediately after the processed segment.
-9. Clear the in-flight state and continue with the next segment.
+7. Copy the target agent's current log into a preserved segment archive such as `prompter_1_segment_1.log` or `crawler_2_segment_3.log`.
+8. Restore the original target config from `config.yaml.bck`.
+9. Advance the committed source cursor to the byte immediately after the processed segment.
+10. Clear the in-flight state and continue with the next segment.
 
 This order is what guarantees deterministic behavior. Parametrizer never advances the cursor before the target has finished and the target configuration has been restored.
+
+The segment-log archive is important because many target agents reuse a single live log file name such as `prompter_1.log`. Without archiving, the result of segment 1 would be overwritten by segment 2, then by segment 3. Parametrizer now preserves each completed target outcome in its own file, named with the sequential segment number that was committed.
 
 ### The Interconnection Scheme
 
@@ -2204,9 +2207,10 @@ For each complete source segment:
    3. Fill mappings for that segment
    4. Start target
    5. Wait target finish
-   6. Restore original target config.yaml
-   7. Commit source byte cursor
-   8. Move to the next segment
+   6. Archive target log as <target_agent>_segment_<n>.log
+   7. Restore original target config.yaml
+   8. Commit source byte cursor
+   9. Move to the next segment
 ```
 
 Example:
@@ -2225,6 +2229,15 @@ Parametrizer is fully pause/resume aware. Its restart-safe behavior is built aro
 - `config.yaml.bck`: the original target configuration captured before the current segment is applied
 - `reanim_<source_agent>.pos`: a state file containing the committed source offset, file size, processed count, current stage, and any in-flight segment boundary
 
+In addition, every completed target execution now produces a preserved segment log in the target agent directory:
+
+- `<target_agent>_segment_1.log`
+- `<target_agent>_segment_2.log`
+- `<target_agent>_segment_3.log`
+- and so on
+
+These files are snapshots of the target agent's live log immediately after each segment finishes. They are not reanimation state; they are execution artifacts kept so each segment outcome remains inspectable even after the target agent runs again.
+
 Parametrizer tracks these runtime stages:
 
 - `idle`
@@ -2236,10 +2249,10 @@ Parametrizer tracks these runtime stages:
 On resume (`AGENT_REANIMATED=1`), Parametrizer inspects the saved stage and repairs the state before continuing:
 
 - If it was interrupted **before the target finished**, it restores `config.yaml.bck`, keeps the last committed source offset, clears the in-flight state, and retries that same segment.
-- If it was interrupted **after the target finished but before the cursor commit**, it restores `config.yaml.bck`, advances the source cursor to the saved segment end, increments the processed count, and continues with the next unread segment without replaying the already finished target run.
+- If it was interrupted **after the target finished but before the cursor commit**, it archives that finished target log into the correct `*_segment_N.log` file, restores `config.yaml.bck`, advances the source cursor to the saved segment end, increments the processed count, and continues with the next unread segment without replaying the already finished target run.
 - If it starts fresh and finds a stale backup, it restores the target to a clean baseline before doing any new work.
 
-This is why pause/resume does not duplicate already completed target runs and does not leave the target config permanently modified by an interrupted segment.
+This is why pause/resume does not duplicate already completed target runs, does not leave the target config permanently modified by an interrupted segment, and does not lose the finished target log of a segment that completed right before the pause.
 
 ### The Visual Mapping Dialog
 
@@ -2268,6 +2281,14 @@ There are two important edge cases:
 
 - If the source stops and no complete segment was ever available, Parametrizer stops without starting the target.
 - If the source stops with trailing log content that does not form a complete structured segment, Parametrizer logs a warning and stops at the last committed segment boundary.
+
+For every committed segment, the corresponding target log archive remains in the target directory. That means after a five-segment run you should expect files such as:
+
+- `prompter_1_segment_1.log`
+- `prompter_1_segment_2.log`
+- `prompter_1_segment_3.log`
+- `prompter_1_segment_4.log`
+- `prompter_1_segment_5.log`
 
 ### Practical Examples
 
@@ -2307,6 +2328,7 @@ Two Parametrizer instances chain the entire cryptographic lifecycle: the first m
 - **Mappings are static while the process is running.** The CSV is loaded on startup/resume, not continuously re-read during each segment.
 - **Strictly sequential.** Parametrizer is intentionally single-threaded and processes only one in-flight segment at a time.
 - **Target config is temporary per segment.** The live target config is modified only for the current segment and is then restored from `config.yaml.bck`.
+- **Target logs are preserved per segment.** After each finished target run, Parametrizer copies the live target log to `<target_agent>_segment_<n>.log` so earlier segment outcomes are not lost when the target runs again.
 - **The source log is authoritative.** Progress is tracked by byte offset in the source log, not by counting assumptions or external queues.
 
 ---
