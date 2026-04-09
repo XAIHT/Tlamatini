@@ -18,7 +18,6 @@ import time
 import yaml
 import logging
 import subprocess
-from typing import Dict, Optional, Tuple
 
 # Set working directory to script location
 try:
