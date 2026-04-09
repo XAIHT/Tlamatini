@@ -128,6 +128,7 @@ PARAMETRIZER NORMAL PROGRESS markers:
   "Queued sequential source segment ending at byte ..."
   "Starting target agent '...' for the next sequential source segment."
   "Waiting for target agent '...' to finish before advancing the source cursor..."
+  "Archived target log for segment ... to '..._segment_....log'"
   "Target agent '...' finished; restoring original config.yaml before continuing."
   "Recovered interrupted target processing; the current source segment will be retried."
   "Recovered a completed target run; source cursor advanced to the next unread segment."
@@ -195,6 +196,7 @@ DO NOT report these as problems:
   - Reanimation markers ("REANIMATED") — this is normal resume-from-pause behavior
   - Parametrizer staying alive while its source agent is still running and writing more structured segments
   - Parametrizer draining a backlog of multiple source segments one-by-one
+  - Parametrizer creating numbered target-log archives such as `prompter_1_segment_1.log` or `crawler_2_segment_3.log`
   - Parametrizer recovery messages after resume, including "Recovered interrupted target processing..." and "Recovered a completed target run..."
   - Parametrizer waiting for its target agent to finish before advancing the source cursor
 
