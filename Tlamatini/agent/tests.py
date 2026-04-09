@@ -1419,3 +1419,208 @@ class ParametrizerMarkerMappingTests(TestCase):
         self.assertEqual(first_config['prompt'], 'Please summarize:\n\nFirst summary\n\nSource: alpha.md')
         self.assertEqual(second_config['prompt'], 'Please summarize:\n\nSecond summary\n\nSource: beta.md')
         self.assertEqual(template_config['prompt'], 'Please summarize:\n\n{content}\n\nSource: {file_path}')
+
+
+class ParametrizerSequentialExecutionTests(TestCase):
+    def test_extract_next_output_block_returns_first_complete_segment_only(self):
+        parametrizer_module = _load_parametrizer_module_for_tests()
+
+        unread_log = (
+            "noise before blocks\n"
+            "<git status> RESPONSE {\n"
+            "first body\n"
+            "}\n"
+            "<git diff> RESPONSE {\n"
+            "second body\n"
+            "}\n"
+        )
+
+        output_block, end_bytes = parametrizer_module.extract_next_output_block('gitter', unread_log)
+
+        expected_prefix = (
+            "noise before blocks\n"
+            "<git status> RESPONSE {\n"
+            "first body\n"
+            "}"
+        )
+        self.assertEqual(output_block['git_command'], 'git status')
+        self.assertEqual(output_block['response_body'], 'first body')
+        self.assertEqual(end_bytes, len(expected_prefix.encode('utf-8')))
+
+    def test_process_output_block_restores_target_config_and_commits_offset(self):
+        parametrizer_module = _load_parametrizer_module_for_tests()
+
+        with tempfile.TemporaryDirectory() as pool_dir:
+            source_dir = os.path.join(pool_dir, 'gitter_1')
+            target_dir = os.path.join(pool_dir, 'prompter_1')
+            os.makedirs(source_dir, exist_ok=True)
+            os.makedirs(target_dir, exist_ok=True)
+
+            config_path = os.path.join(target_dir, 'config.yaml')
+            with open(config_path, 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({
+                    'prompt': 'Please summarize:\n\n{content}\n\nCommand: {command}',
+                }, handle, sort_keys=False)
+
+            mappings = [
+                {
+                    'source_field': 'response_body',
+                    'target_param': 'prompt',
+                    'target_marker': 'content',
+                },
+                {
+                    'source_field': 'git_command',
+                    'target_param': 'prompt',
+                    'target_marker': 'command',
+                },
+            ]
+            progress_state = parametrizer_module.default_progress_state()
+            saved_states = []
+
+            def _agent_dir(name):
+                if name == 'gitter_1':
+                    return source_dir
+                if name == 'prompter_1':
+                    return target_dir
+                raise AssertionError(f'unexpected agent lookup: {name}')
+
+            def _save_state(_source_agent, state):
+                saved_states.append({
+                    'stage': state.get('stage'),
+                    'offset': state.get('offset'),
+                    'processed_count': state.get('processed_count'),
+                    'inflight_end_offset': state.get('inflight_end_offset'),
+                })
+
+            with patch.object(parametrizer_module, 'get_agent_directory', side_effect=_agent_dir), \
+                    patch.object(parametrizer_module, 'wait_for_agents_to_stop') as mock_wait, \
+                    patch.object(parametrizer_module, 'start_agent', return_value=True) as mock_start, \
+                    patch.object(parametrizer_module, 'save_progress_state', side_effect=_save_state):
+                parametrizer_module.process_output_block(
+                    'gitter_1',
+                    'prompter_1',
+                    mappings,
+                    {'git_command': 'git status', 'response_body': 'clean'},
+                    block_end_offset=87,
+                    file_size=120,
+                    progress_state=progress_state,
+                )
+
+            with open(config_path, 'r', encoding='utf-8') as handle:
+                restored_config = yaml.safe_load(handle)
+
+            self.assertEqual(restored_config['prompt'], 'Please summarize:\n\n{content}\n\nCommand: {command}')
+            self.assertFalse(os.path.exists(config_path + '.bck'))
+            self.assertEqual(progress_state['offset'], 87)
+            self.assertEqual(progress_state['processed_count'], 1)
+            self.assertEqual(progress_state['stage'], parametrizer_module.STATE_STAGE_IDLE)
+            self.assertEqual(mock_wait.call_args_list, [call(['prompter_1']), call(['prompter_1'])])
+            mock_start.assert_called_once_with('prompter_1')
+            self.assertEqual(
+                [entry['stage'] for entry in saved_states],
+                [
+                    parametrizer_module.STATE_STAGE_BACKUP_READY,
+                    parametrizer_module.STATE_STAGE_CONFIG_APPLIED,
+                    parametrizer_module.STATE_STAGE_WAITING_TARGET,
+                    parametrizer_module.STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING,
+                    parametrizer_module.STATE_STAGE_IDLE,
+                ],
+            )
+
+    def test_reconcile_reanimation_state_retries_interrupted_segment_after_restoring_backup(self):
+        parametrizer_module = _load_parametrizer_module_for_tests()
+
+        with tempfile.TemporaryDirectory() as pool_dir:
+            source_dir = os.path.join(pool_dir, 'gitter_1')
+            target_dir = os.path.join(pool_dir, 'prompter_1')
+            os.makedirs(source_dir, exist_ok=True)
+            os.makedirs(target_dir, exist_ok=True)
+
+            config_path = os.path.join(target_dir, 'config.yaml')
+            backup_path = config_path + '.bck'
+            with open(config_path, 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({'prompt': 'mutated value'}, handle, sort_keys=False)
+            with open(backup_path, 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({'prompt': 'template value'}, handle, sort_keys=False)
+
+            progress_state = {
+                'offset': 14,
+                'file_size': 99,
+                'processed_count': 2,
+                'stage': parametrizer_module.STATE_STAGE_WAITING_TARGET,
+                'inflight_block': {'response_body': 'segment C'},
+                'inflight_end_offset': 33,
+            }
+            saved_states = []
+
+            def _agent_dir(name):
+                if name == 'prompter_1':
+                    return target_dir
+                if name == 'gitter_1':
+                    return source_dir
+                raise AssertionError(f'unexpected agent lookup: {name}')
+
+            with patch.object(parametrizer_module, 'get_agent_directory', side_effect=_agent_dir), \
+                    patch.object(parametrizer_module, 'save_progress_state', side_effect=lambda _src, state: saved_states.append(dict(state))):
+                recovered = parametrizer_module.reconcile_reanimation_state('gitter_1', 'prompter_1', progress_state)
+
+            with open(config_path, 'r', encoding='utf-8') as handle:
+                restored_config = yaml.safe_load(handle)
+
+            self.assertEqual(restored_config['prompt'], 'template value')
+            self.assertFalse(os.path.exists(backup_path))
+            self.assertEqual(recovered['offset'], 14)
+            self.assertEqual(recovered['processed_count'], 2)
+            self.assertEqual(recovered['stage'], parametrizer_module.STATE_STAGE_IDLE)
+            self.assertIsNone(recovered['inflight_block'])
+            self.assertIsNone(recovered['inflight_end_offset'])
+            self.assertEqual(saved_states[-1]['offset'], 14)
+
+    def test_reconcile_reanimation_state_commits_finished_segment_after_restore(self):
+        parametrizer_module = _load_parametrizer_module_for_tests()
+
+        with tempfile.TemporaryDirectory() as pool_dir:
+            source_dir = os.path.join(pool_dir, 'gitter_1')
+            target_dir = os.path.join(pool_dir, 'prompter_1')
+            os.makedirs(source_dir, exist_ok=True)
+            os.makedirs(target_dir, exist_ok=True)
+
+            config_path = os.path.join(target_dir, 'config.yaml')
+            backup_path = config_path + '.bck'
+            with open(config_path, 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({'prompt': 'mutated value'}, handle, sort_keys=False)
+            with open(backup_path, 'w', encoding='utf-8') as handle:
+                yaml.safe_dump({'prompt': 'template value'}, handle, sort_keys=False)
+
+            progress_state = {
+                'offset': 14,
+                'file_size': 120,
+                'processed_count': 2,
+                'stage': parametrizer_module.STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING,
+                'inflight_block': {'response_body': 'segment C'},
+                'inflight_end_offset': 48,
+            }
+            saved_states = []
+
+            def _agent_dir(name):
+                if name == 'prompter_1':
+                    return target_dir
+                if name == 'gitter_1':
+                    return source_dir
+                raise AssertionError(f'unexpected agent lookup: {name}')
+
+            with patch.object(parametrizer_module, 'get_agent_directory', side_effect=_agent_dir), \
+                    patch.object(parametrizer_module, 'save_progress_state', side_effect=lambda _src, state: saved_states.append(dict(state))):
+                recovered = parametrizer_module.reconcile_reanimation_state('gitter_1', 'prompter_1', progress_state)
+
+            with open(config_path, 'r', encoding='utf-8') as handle:
+                restored_config = yaml.safe_load(handle)
+
+            self.assertEqual(restored_config['prompt'], 'template value')
+            self.assertFalse(os.path.exists(backup_path))
+            self.assertEqual(recovered['offset'], 48)
+            self.assertEqual(recovered['processed_count'], 3)
+            self.assertEqual(recovered['stage'], parametrizer_module.STATE_STAGE_IDLE)
+            self.assertIsNone(recovered['inflight_block'])
+            self.assertIsNone(recovered['inflight_end_offset'])
+            self.assertEqual(saved_states[-1]['offset'], 48)

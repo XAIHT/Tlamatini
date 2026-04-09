@@ -11,11 +11,14 @@ os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
 import csv
 import copy
+import codecs
 import re
+import shutil
 import time
 import yaml
 import logging
 import subprocess
+from typing import Dict, Optional, Tuple
 
 # Set working directory to script location
 try:
@@ -302,6 +305,12 @@ OUTPUT_PARSERS = {
 }
 
 PARAMETRIZER_MARKER_PATTERN = re.compile(r'\{([^{}\r\n]+)\}')
+POLL_INTERVAL_SECONDS = 0.5
+STATE_STAGE_IDLE = 'idle'
+STATE_STAGE_BACKUP_READY = 'backup_ready'
+STATE_STAGE_CONFIG_APPLIED = 'config_applied'
+STATE_STAGE_WAITING_TARGET = 'waiting_target'
+STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING = 'target_finished_restore_pending'
 
 
 def get_source_base_name(agent_pool_name):
@@ -312,6 +321,188 @@ def get_source_base_name(agent_pool_name):
             if suffix == '' or (suffix.startswith('_') and suffix[1:].isdigit()):
                 return known_base
     return None
+
+
+def _parse_next_brace_response(log_text, label_field, content_field='response_body'):
+    pattern = r'<(?P<label>[^>]+)>\s*RESPONSE\s*\{\s*\n(?P<content>.*?)\n\}'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        label_field: match.group('label').strip(),
+        content_field: match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_apirer_output(log_text):
+    return _parse_next_brace_response(log_text, 'url')
+
+
+def parse_next_gitter_output(log_text):
+    return _parse_next_brace_response(log_text, 'git_command')
+
+
+def parse_next_kuberneter_output(log_text):
+    pattern = (
+        r'KUBECTL EXECUTION PARAMETERS:\s*(?P<params>[^,]+),\s*STATUS:\s*(?P<status>\d+)'
+        r'\s*\{\s*\n(?P<content>.*?)\n\}'
+    )
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'parameters': match.group('params').strip(),
+        'status': match.group('status').strip(),
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def _parse_next_ini_end_response(log_text, ini_marker, end_marker):
+    pattern = re.escape(ini_marker) + r'.*?\n(?P<content>.*?)\n.*?' + re.escape(end_marker)
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_crawler_output(log_text):
+    pattern = r'INI_RESPONSE_(?P<label>\w+)<<<\s*\n(?P<content>.*?)\n\s*>>>END_RESPONSE_(?P=label)'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'label': match.group('label').strip(),
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_summarizer_output(log_text):
+    return _parse_next_ini_end_response(log_text, 'INI_RESPONSE_SUMMARIZER<<<', '>>>END_RESPONSE_SUMMARIZER')
+
+
+def parse_next_prompter_output(log_text):
+    return _parse_next_ini_end_response(log_text, 'INI_RESPONSE<<<', '>>>END_RESPONSE')
+
+
+def parse_next_flowcreator_output(log_text):
+    pattern = r'INI_RESPONSE\s*\n(?P<content>.*?)\n\s*>>>END_RESPONSE'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_file_interpreter_output(log_text):
+    pattern = r'INI_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\((?P<mode>[^)]+)\)\s*\n(?P<content>.*?)\nEND_FILE'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'file_path': match.group('filepath').strip(),
+        'mode': match.group('mode').strip(),
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_image_interpreter_output(log_text):
+    pattern = r'INI_IMAGE_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\n(?P<content>.*?)\nEND_FILE'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'file_path': match.group('filepath').strip(),
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_file_extractor_output(log_text):
+    pattern = r'INI_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\(extracted\)\s*\n(?P<content>.*?)\nEND_FILE'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'file_path': match.group('filepath').strip(),
+        'response_body': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_kyber_keygen_output(log_text):
+    pattern = (
+        r'KYBER PUBLIC KEY\s*\{\s*\n(?P<public_key>.*?)\n\}'
+        r'.*?KYBER PRIVATE KEY\s*\{\s*\n(?P<private_key>.*?)\n\}'
+    )
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'public_key': match.group('public_key').strip(),
+        'private_key': match.group('private_key').strip(),
+    }, match.end())
+
+
+def parse_next_kyber_cipher_output(log_text):
+    pattern = (
+        r'KYBER GENERATED ENCAPSULATION\s*\{\s*\n(?P<encapsulation>.*?)\n\}'
+        r'.*?KYBER GENERATED INIT VECTOR\s*\{\s*\n(?P<initialization_vector>.*?)\n\}'
+        r'.*?KYBER GENERATED CIPHER TEXT\s*\{\s*\n(?P<cipher_text>.*?)\n\}'
+    )
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'encapsulation': match.group('encapsulation').strip(),
+        'initialization_vector': match.group('initialization_vector').strip(),
+        'cipher_text': match.group('cipher_text').strip(),
+    }, match.end())
+
+
+def parse_next_kyber_decipher_output(log_text):
+    pattern = r'KYBER DECIPHERED BUFFER\s*\{\s*\n(?P<content>.*?)\n\}'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return ({
+        'deciphered_buffer': match.group('content').strip(),
+    }, match.end())
+
+
+def parse_next_gatewayer_output(log_text):
+    pattern = r'INI_GATEWAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_GATEWAY_EVENT'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return (_parse_kv_block(match.group('content')), match.end())
+
+
+def parse_next_gateway_relayer_output(log_text):
+    pattern = r'INI_RELAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_RELAY_EVENT'
+    match = re.search(pattern, log_text, re.DOTALL)
+    if not match:
+        return None
+    return (_parse_kv_block(match.group('content')), match.end())
+
+
+NEXT_OUTPUT_PARSERS = {
+    'apirer': parse_next_apirer_output,
+    'gitter': parse_next_gitter_output,
+    'kuberneter': parse_next_kuberneter_output,
+    'crawler': parse_next_crawler_output,
+    'summarizer': parse_next_summarizer_output,
+    'file_interpreter': parse_next_file_interpreter_output,
+    'image_interpreter': parse_next_image_interpreter_output,
+    'file_extractor': parse_next_file_extractor_output,
+    'prompter': parse_next_prompter_output,
+    'flowcreator': parse_next_flowcreator_output,
+    'kyber_keygen': parse_next_kyber_keygen_output,
+    'kyber_cipher': parse_next_kyber_cipher_output,
+    'kyber_decipher': parse_next_kyber_decipher_output,
+    'gatewayer': parse_next_gatewayer_output,
+    'gateway_relayer': parse_next_gateway_relayer_output,
+}
 
 
 # ========================================
@@ -533,20 +724,206 @@ def load_interconnection_scheme(scheme_path="interconnection-scheme.csv"):
     return mappings
 
 
+def get_source_log_path(source_agent_name):
+    """Return the log path for the configured source agent instance."""
+    return os.path.join(get_agent_directory(source_agent_name), f"{source_agent_name}.log")
+
+
 def read_source_log(source_agent_name):
-    """Read the log file of the source agent."""
-    source_dir = get_agent_directory(source_agent_name)
-    log_file = os.path.join(source_dir, f"{source_agent_name}.log")
-    if not os.path.exists(log_file):
-        # Try base name for log file
-        parts = source_agent_name.rsplit('_', 1)
-        if len(parts) == 2 and parts[1].isdigit():
-            log_file = os.path.join(source_dir, f"{source_agent_name}.log")
+    """Read the full log file of the source agent."""
+    log_file = get_source_log_path(source_agent_name)
     if not os.path.exists(log_file):
         logging.error(f"Source agent log not found: {log_file}")
         return ""
     with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
         return f.read()
+
+
+def get_progress_state_path(source_agent_name):
+    """Return the persisted progress-state file for this source agent."""
+    safe_name = source_agent_name.replace('-', '_').replace(' ', '_')
+    return f"reanim_{safe_name}.pos"
+
+
+def default_progress_state():
+    return {
+        'offset': 0,
+        'file_size': -1,
+        'processed_count': 0,
+        'stage': STATE_STAGE_IDLE,
+        'inflight_block': None,
+        'inflight_end_offset': None,
+    }
+
+
+def _coerce_int(value, default):
+    try:
+        if value is None or value == '':
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_progress_state(data):
+    state = default_progress_state()
+    if isinstance(data, dict):
+        state.update({
+            'offset': _coerce_int(data.get('offset', 0), 0),
+            'file_size': _coerce_int(data.get('file_size', -1), -1),
+            'processed_count': _coerce_int(data.get('processed_count', 0), 0),
+            'stage': str(data.get('stage') or STATE_STAGE_IDLE),
+            'inflight_block': data.get('inflight_block'),
+            'inflight_end_offset': data.get('inflight_end_offset'),
+        })
+    if state['stage'] == 'target_finished_restore_pending':
+        state['stage'] = STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING
+    if state['stage'] not in {
+        STATE_STAGE_IDLE,
+        STATE_STAGE_BACKUP_READY,
+        STATE_STAGE_CONFIG_APPLIED,
+        STATE_STAGE_WAITING_TARGET,
+        STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING,
+    }:
+        state['stage'] = STATE_STAGE_IDLE
+    if state['inflight_end_offset'] is not None:
+        state['inflight_end_offset'] = _coerce_int(state['inflight_end_offset'], None)
+    return state
+
+
+def load_progress_state(source_agent_name):
+    state_path = get_progress_state_path(source_agent_name)
+    if not os.path.exists(state_path):
+        return default_progress_state()
+    try:
+        with open(state_path, 'r', encoding='utf-8') as handle:
+            return _normalize_progress_state(yaml.safe_load(handle) or {})
+    except Exception as exc:
+        logging.warning(f"Could not load progress state '{state_path}': {exc}")
+        return default_progress_state()
+
+
+def save_progress_state(source_agent_name, state):
+    state_path = get_progress_state_path(source_agent_name)
+    normalized_state = _normalize_progress_state(state)
+    try:
+        with open(state_path, 'w', encoding='utf-8') as handle:
+            yaml.safe_dump(normalized_state, handle, sort_keys=False)
+    except Exception as exc:
+        logging.warning(f"Could not save progress state '{state_path}': {exc}")
+
+
+def clear_progress_state(source_agent_name):
+    state_path = get_progress_state_path(source_agent_name)
+    try:
+        if os.path.exists(state_path):
+            os.remove(state_path)
+    except Exception as exc:
+        logging.warning(f"Could not delete progress state '{state_path}': {exc}")
+
+
+def clear_inflight_state(state):
+    state['stage'] = STATE_STAGE_IDLE
+    state['inflight_block'] = None
+    state['inflight_end_offset'] = None
+    return state
+
+
+def get_target_backup_path(target_agent_name):
+    return get_target_config_path(target_agent_name) + '.bck'
+
+
+def backup_target_config(target_agent_name):
+    config_path = get_target_config_path(target_agent_name)
+    backup_path = get_target_backup_path(target_agent_name)
+    if not os.path.exists(config_path):
+        logging.error(f"Target config not found for backup: {config_path}")
+        return False
+    try:
+        shutil.copy2(config_path, backup_path)
+        logging.info(f"Backed up target config to '{backup_path}'")
+        return True
+    except Exception as exc:
+        logging.error(f"Failed to back up target config '{config_path}': {exc}")
+        return False
+
+
+def restore_target_config_from_backup(target_agent_name, remove_backup=True):
+    backup_path = get_target_backup_path(target_agent_name)
+    config_path = get_target_config_path(target_agent_name)
+    if not os.path.exists(backup_path):
+        return False
+    try:
+        shutil.copy2(backup_path, config_path)
+        if remove_backup and os.path.exists(backup_path):
+            os.remove(backup_path)
+        logging.info(f"Restored target config from '{backup_path}'")
+        return True
+    except Exception as exc:
+        logging.error(f"Failed to restore target config from backup '{backup_path}': {exc}")
+        return False
+
+
+def _decode_incremental_log_bytes(log_bytes):
+    """Decode a live-growing UTF-8 log while tolerating incomplete trailing bytes."""
+    decoder = codecs.getincrementaldecoder('utf-8')('strict')
+    try:
+        text = decoder.decode(log_bytes, final=False)
+        buffered, _flag = decoder.getstate()
+        consumed_bytes = len(log_bytes) - len(buffered)
+        return text, consumed_bytes
+    except UnicodeDecodeError as exc:
+        if exc.start <= 0:
+            logging.warning("Source log contains undecodable bytes at the current offset; waiting for more data.")
+            return "", 0
+        valid_prefix = log_bytes[:exc.start]
+        text = valid_prefix.decode('utf-8', errors='replace')
+        logging.warning("Source log contains undecodable bytes; processing only the valid UTF-8 prefix.")
+        return text, len(valid_prefix)
+
+
+def read_source_log_delta(source_agent_name, state):
+    """
+    Read unread source-log content starting from the persisted byte offset.
+
+    Returns:
+        tuple[str, int, int, bool]: (decoded_text, effective_offset, current_file_size, log_exists)
+    """
+    log_path = get_source_log_path(source_agent_name)
+    if not os.path.exists(log_path):
+        return "", _coerce_int(state.get('offset', 0), 0), -1, False
+
+    current_size = os.path.getsize(log_path)
+    offset = _coerce_int(state.get('offset', 0), 0)
+    last_size = _coerce_int(state.get('file_size', -1), -1)
+
+    if current_size < offset or (last_size != -1 and current_size < last_size):
+        logging.info(
+            f"Source log '{log_path}' was truncated or recreated ({last_size} -> {current_size} bytes); "
+            "resetting sequential read offset to 0."
+        )
+        offset = 0
+        state['offset'] = 0
+
+    with open(log_path, 'rb') as handle:
+        handle.seek(offset)
+        unread_bytes = handle.read()
+
+    decoded_text, _consumed_bytes = _decode_incremental_log_bytes(unread_bytes)
+    state['file_size'] = current_size
+    return decoded_text, offset, current_size, True
+
+
+def extract_next_output_block(source_base, unread_text):
+    """Return the next complete structured output block plus its byte length within unread_text."""
+    parser = NEXT_OUTPUT_PARSERS[source_base]
+    parsed = parser(unread_text)
+    if not parsed:
+        return None, None
+
+    output_block, end_char_offset = parsed
+    end_bytes = len(unread_text[:end_char_offset].encode('utf-8'))
+    return output_block, end_bytes
 
 
 def normalize_target_marker_name(marker):
@@ -685,6 +1062,156 @@ def apply_mappings_to_config(target_agent_name, mappings, output_block, base_con
     return True
 
 
+def reconcile_reanimation_state(source_agent, target_agent, progress_state):
+    """
+    Restore a paused/in-flight parametrization state to a clean sequential baseline.
+
+    If the target had already completed, the current block is committed after restoration.
+    Otherwise the source offset remains at the last committed boundary and the block is retried.
+    """
+    stage = progress_state.get('stage') or STATE_STAGE_IDLE
+    inflight_end_offset = progress_state.get('inflight_end_offset')
+    backup_exists = os.path.exists(get_target_backup_path(target_agent))
+
+    if stage == STATE_STAGE_IDLE:
+        if backup_exists:
+            logging.warning(
+                f"Found stale backup for '{target_agent}' while Parametrizer is idle; restoring clean target config."
+            )
+            restore_target_config_from_backup(target_agent)
+        save_progress_state(source_agent, progress_state)
+        return progress_state
+
+    logging.info(
+        f"Reanimation recovery detected unfinished stage '{stage}' for source '{source_agent}' -> target '{target_agent}'."
+    )
+
+    if stage == STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING:
+        if backup_exists:
+            restore_target_config_from_backup(target_agent)
+        elif inflight_end_offset is not None:
+            logging.info(
+                f"Backup for '{target_agent}' was already removed before pause; assuming the target config was restored."
+            )
+
+        if inflight_end_offset is not None:
+            progress_state['offset'] = int(inflight_end_offset)
+            progress_state['processed_count'] = int(progress_state.get('processed_count', 0) or 0) + 1
+
+        progress_state['file_size'] = max(
+            int(progress_state.get('file_size', -1) or -1),
+            int(progress_state.get('offset', 0) or 0),
+        )
+        clear_inflight_state(progress_state)
+        save_progress_state(source_agent, progress_state)
+        logging.info("Recovered a completed target run; source cursor advanced to the next unread segment.")
+        return progress_state
+
+    if backup_exists:
+        restore_target_config_from_backup(target_agent)
+    else:
+        logging.warning(
+            f"Expected backup for interrupted stage '{stage}' was missing for '{target_agent}'. "
+            "The current source segment will be retried from the last committed offset."
+        )
+
+    clear_inflight_state(progress_state)
+    save_progress_state(source_agent, progress_state)
+    logging.info("Recovered interrupted target processing; the current source segment will be retried.")
+    return progress_state
+
+
+def process_output_block(source_agent, target_agent, mappings, output_block, block_end_offset, file_size, progress_state):
+    """
+    Process exactly one source segment in strict order:
+    backup target config -> fill parameters -> start target -> wait -> restore config -> commit cursor.
+    """
+    wait_for_agents_to_stop([target_agent])
+
+    if not backup_target_config(target_agent):
+        raise RuntimeError(f"Failed to back up config.yaml for target agent '{target_agent}'.")
+
+    progress_state['stage'] = STATE_STAGE_BACKUP_READY
+    progress_state['inflight_block'] = copy.deepcopy(output_block)
+    progress_state['inflight_end_offset'] = int(block_end_offset)
+    progress_state['file_size'] = int(file_size)
+    save_progress_state(source_agent, progress_state)
+
+    if not apply_mappings_to_config(target_agent, mappings, output_block):
+        restore_target_config_from_backup(target_agent)
+        clear_inflight_state(progress_state)
+        save_progress_state(source_agent, progress_state)
+        raise RuntimeError(f"Failed to apply mappings for source segment ending at byte {block_end_offset}.")
+
+    progress_state['stage'] = STATE_STAGE_CONFIG_APPLIED
+    save_progress_state(source_agent, progress_state)
+
+    logging.info(f"Starting target agent '{target_agent}' for the next sequential source segment.")
+    if not start_agent(target_agent):
+        restore_target_config_from_backup(target_agent)
+        clear_inflight_state(progress_state)
+        save_progress_state(source_agent, progress_state)
+        raise RuntimeError(f"Failed to start target agent '{target_agent}'.")
+
+    progress_state['stage'] = STATE_STAGE_WAITING_TARGET
+    save_progress_state(source_agent, progress_state)
+
+    logging.info(f"Waiting for target agent '{target_agent}' to finish before advancing the source cursor...")
+    wait_for_agents_to_stop([target_agent])
+    logging.info(f"Target agent '{target_agent}' finished; restoring original config.yaml before continuing.")
+
+    progress_state['stage'] = STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING
+    save_progress_state(source_agent, progress_state)
+
+    if not restore_target_config_from_backup(target_agent):
+        raise RuntimeError(f"Target agent '{target_agent}' finished, but config.yaml could not be restored from backup.")
+
+    progress_state['offset'] = int(block_end_offset)
+    progress_state['file_size'] = int(file_size)
+    progress_state['processed_count'] = int(progress_state.get('processed_count', 0) or 0) + 1
+    clear_inflight_state(progress_state)
+    save_progress_state(source_agent, progress_state)
+
+
+def poll_and_process_next_segment(source_agent, target_agent, source_base, mappings, progress_state):
+    """
+    Attempt to process the next complete source segment.
+
+    Returns:
+        tuple[bool, bool, bool]:
+            processed_segment,
+            source_running,
+            saw_unparsed_tail
+    """
+    unread_text, base_offset, current_file_size, log_exists = read_source_log_delta(source_agent, progress_state)
+    if not log_exists:
+        return False, is_agent_running(source_agent), False
+
+    output_block, relative_end_bytes = extract_next_output_block(source_base, unread_text)
+    if output_block is None:
+        source_running = is_agent_running(source_agent)
+        saw_unparsed_tail = bool(unread_text.strip())
+        progress_state['file_size'] = int(current_file_size)
+        save_progress_state(source_agent, progress_state)
+        return False, source_running, saw_unparsed_tail
+
+    block_end_offset = int(base_offset) + int(relative_end_bytes)
+    logging.info(
+        f"Queued sequential source segment ending at byte {block_end_offset} "
+        f"(current committed offset: {progress_state.get('offset', 0)})."
+    )
+    process_output_block(
+        source_agent,
+        target_agent,
+        mappings,
+        output_block,
+        block_end_offset,
+        current_file_size,
+        progress_state,
+    )
+    return True, is_agent_running(source_agent), False
+
+
 def main():
     config = load_config()
     write_pid_file()
@@ -754,82 +1281,63 @@ def main():
                 logging.info(f"   {m['source_field']} -> {m['target_param']} {{{target_marker}}}")
             else:
                 logging.info(f"   {m['source_field']} -> {m['target_param']}")
+        progress_state = default_progress_state()
+        if _IS_REANIMATED:
+            progress_state = load_progress_state(source_agent)
+        else:
+            clear_progress_state(source_agent)
+            if os.path.exists(get_target_backup_path(target_agent)):
+                logging.warning(
+                    f"Fresh Parametrizer start found leftover backup for '{target_agent}'; restoring clean config state."
+                )
+                restore_target_config_from_backup(target_agent)
 
-        marker_based_mappings = any(normalize_target_marker_name(m.get('target_marker', '')) for m in mappings)
-        target_config_template = None
-        if marker_based_mappings:
-            target_config_template = read_target_config(target_agent)
-            if target_config_template is None:
-                logging.error(f"Could not load target config template for '{target_agent}'")
-                sys.exit(1)
-            logging.info(
-                "Detected marker-level mappings; the original target config template will be restored after each run."
-            )
-
-        # ===== PARSE SOURCE AGENT LOG =====
-        log_text = read_source_log(source_agent)
-        if not log_text:
-            logging.error(f"Source agent '{source_agent}' log is empty or unreadable")
-            sys.exit(1)
-
-        parser = OUTPUT_PARSERS[source_base]
-        output_blocks = parser(log_text)
-
-        if not output_blocks:
-            logging.error(f"No structured output elements found in '{source_agent}' log")
-            sys.exit(1)
-
-        logging.info(f"Found {len(output_blocks)} structured output element(s) in source log")
-
-        # ===== ITERATE OVER OUTPUT BLOCKS =====
-        # For each structured output element: fill target config -> start target -> wait for completion
-        for idx, block in enumerate(output_blocks):
-            block_num = idx + 1
-            logging.info(f"--- Processing output element {block_num}/{len(output_blocks)} ---")
-
-            # Apply mappings to target config
-            success = apply_mappings_to_config(
-                target_agent,
-                mappings,
-                block,
-                base_config=target_config_template,
-            )
-            if not success:
-                logging.error(f"Failed to apply mappings for element {block_num}")
-                continue
-
-            # Wait for target to stop if still running from a previous iteration
-            wait_for_agents_to_stop([target_agent])
-
-            # Start the target agent
-            logging.info(f"Starting target agent '{target_agent}' for element {block_num}")
-            if start_agent(target_agent):
-                logging.info(f"Target agent '{target_agent}' started for element {block_num}")
-            else:
-                logging.error(f"Failed to start target agent '{target_agent}' for element {block_num}")
-                if marker_based_mappings and target_config_template is not None:
-                    restore_target_config(target_agent, target_config_template)
-                continue
-
-            # Wait for target agent to complete before processing next element
-            if marker_based_mappings or block_num < len(output_blocks):
-                logging.info(f"Waiting for target agent '{target_agent}' to finish...")
-                wait_for_agents_to_stop([target_agent])
-                logging.info(f"Target agent '{target_agent}' finished element {block_num}")
-                if marker_based_mappings and target_config_template is not None:
-                    if restore_target_config(target_agent, target_config_template):
-                        logging.info(
-                            f"Restored target config template for '{target_agent}' after element {block_num}"
-                        )
-                    else:
-                        logging.error(
-                            f"Failed to restore target config template for '{target_agent}' after element {block_num}"
-                        )
+        progress_state = reconcile_reanimation_state(source_agent, target_agent, progress_state)
 
         logging.info(
-            f"Parametrizer agent finished. Processed {len(output_blocks)} element(s) "
-            f"from '{source_agent}' into '{target_agent}'."
+            f"Sequential Parametrizer queue ready. Resuming from byte offset {progress_state.get('offset', 0)} "
+            f"with {progress_state.get('processed_count', 0)} committed segment(s)."
         )
+
+        ever_processed = int(progress_state.get('processed_count', 0) or 0) > 0
+
+        while True:
+            processed_segment, source_running, saw_unparsed_tail = poll_and_process_next_segment(
+                source_agent,
+                target_agent,
+                source_base,
+                mappings,
+                progress_state,
+            )
+
+            if processed_segment:
+                ever_processed = True
+                continue
+
+            if source_running:
+                time.sleep(POLL_INTERVAL_SECONDS)
+                continue
+
+            if saw_unparsed_tail:
+                logging.warning(
+                    f"Source agent '{source_agent}' stopped with trailing log content that did not form a complete "
+                    "structured segment. Parametrizer will stop at the last committed boundary."
+                )
+
+            if ever_processed:
+                logging.info(
+                    f"Source agent '{source_agent}' has been completely parametrized into target '{target_agent}'. "
+                    f"Processed {progress_state.get('processed_count', 0)} sequential segment(s). "
+                    f"The source is stopped, the log has been consumed, and Parametrizer will stop now."
+                )
+            else:
+                logging.info(
+                    f"Source agent '{source_agent}' is stopped and no complete structured segments were available. "
+                    "Parametrizer will stop without starting the target."
+                )
+
+            clear_progress_state(source_agent)
+            break
 
     finally:
         time.sleep(0.4)

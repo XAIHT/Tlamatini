@@ -81,6 +81,31 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 6. **Concurrency guard on target startup.** Every active agent enforces a mandatory wait before starting downstream agents: it checks whether ALL agents in its `target_agents` (or `target_agents_a`/`target_agents_b`/`target_agents_l`/`target_agents_g`/`output_agents`) are stopped. If any are still running, the caller blocks and logs `❌ WAITING FOR AGENTS TO STOP: [...]` every 10 seconds until all have exited. This prevents duplicate processes in looping flows (e.g., Starter → Mouser → Sleeper → Mouser cycles) where a fast upstream agent could re-trigger a target before its previous invocation has finished.
 
+### Parametrizer Thinking Rule
+
+When you design a flow with **Parametrizer**, think of it as a **strict single-lane queue between one source and one target**.
+
+Use this mental model:
+
+- The **source log is the queue**.
+- Each complete structured output segment in that log is **one queue item**.
+- Parametrizer processes **one queue item at a time**.
+- The target agent runs **once per queue item**.
+- Parametrizer does **not** parallelize those target runs.
+
+Important design rules:
+
+- Use Parametrizer only when structured output from one agent must be copied into another agent's `config.yaml`.
+- One Parametrizer instance supports **exactly one source and exactly one target**.
+- If one source must feed two different targets, use **two Parametrizers**, not one.
+- Do not add extra Sleeper, Raiser, or Barrier agents just to serialize the items emitted by a single source. Parametrizer already performs that serialization internally.
+- Do not assume Parametrizer consumes the whole source log at once. It reads only the **next complete unread segment**, runs the target for that segment, restores the target config, commits the source cursor, and then reads the next segment.
+- If the source writes segments `A`, `B`, `C`, and `D` very quickly, Parametrizer still handles them in the order `A -> B -> C -> D`, one target run at a time.
+- Parametrizer temporarily modifies the target `config.yaml`, but it always restores the original file from `config.yaml.bck` after each target run.
+- Parametrizer is pause/resume safe. It stores progress in `reanim_<source_agent>.pos` and can recover without duplicating already completed target executions.
+
+If you need **parallel fan-out**, **many targets from one source**, or **many sources merged into one target**, Parametrizer alone is not the answer. Compose multiple Parametrizers and other flow-control agents explicitly.
+
 ---
 
 ## Pause, Resume & Reanimation Mechanics
@@ -1037,10 +1062,10 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after decryption)
 
 ### 51. Parametrizer
-- **Purpose**: Short-running active utility interconnection agent that maps structured output elements from a source agent's log file into configuration parameters of a target agent's config.yaml. Uses a user-defined interconnection-scheme.csv to know which source output fields map to which target config params. When the source agent produces multiple structured output elements, Parametrizer iterates: fills the target config, starts the target, waits for completion, then repeats with the next element. Does NOT use any LLM.
-- **Used for**: Dynamically wiring structured output from one agent into the configuration of another agent at runtime. It reads structured output blocks from a source agent's log, maps specific fields to target config parameters via a CSV mapping, and iteratively executes the target agent for each output element. This is the primary mechanism for passing data between agents that produce structured output.
-- **Aimed at**: Enabling data-driven, iterative workflows where the output of one agent directly configures and triggers another. It is the interconnection engine that makes complex multi-step pipelines possible — such as processing each file from a batch, encrypting multiple items with different keys, or calling an API for each record extracted from a database.
-- **Application example**: A File-Interpreter processes 5 PDF documents and produces 5 structured output blocks. A Parametrizer maps each document's extracted text into a Prompter's `prompt` field, then starts the Prompter, waits for it to finish, and repeats with the next document — producing an LLM summary for each PDF sequentially.
+- **Purpose**: Short-running active utility interconnection agent that reads structured output segments from one source agent's log file and injects them into one target agent's `config.yaml` using `interconnection-scheme.csv`. It is a strict sequential queue processor: for each complete source segment it backs up the target config, applies the mappings, starts the target, waits for the target to finish, restores the original config, commits the source cursor, and only then moves to the next segment. Does NOT use any LLM.
+- **Used for**: Safely passing data from one structured-output agent to another agent's configuration at runtime without race conditions. Parametrizer is the standard way to turn source log segments into repeated target executions while preserving the target's original `config.yaml` between iterations.
+- **Aimed at**: Building deterministic data-driven pipelines where one upstream agent emits multiple items and each item must drive one isolated target-agent run. Typical uses include processing each extracted file separately, encrypting multiple records one-by-one, or feeding each API response into a downstream agent without manual edits.
+- **Application example**: A File-Interpreter processes 5 PDF documents and produces 5 structured output segments. A Parametrizer maps each document's extracted text into a Prompter's `prompt` field, starts the Prompter, waits for it to finish, restores the Prompter config, advances the source cursor, and then processes the next PDF. The result is 5 separate Prompter runs in strict order.
 - **Pool name pattern**: `parametrizer_<n>`
 - **Starts other agents**: YES (exactly one target agent, possibly multiple times)
 - **Config parameters**:
@@ -1051,8 +1076,13 @@ system_prompt: |
 - **Special behavior**:
   - Only accepts input from agents that produce structured output: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer
   - Exactly one source and one target agent must be connected
-  - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI
-  - When multiple output elements exist in the source log, iterates over each one sequentially
+  - The source log is treated as a queue of structured segments; Parametrizer reads only the next complete unread segment
+  - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI and can map whole fields or optional `{marker}` placeholders inside target strings
+  - Before each target run, Parametrizer creates `config.yaml.bck`, then restores it after the target finishes
+  - Progress is persisted in `reanim_<source_agent>.pos`, which stores the committed byte offset and in-flight stage for safe pause/resume
+  - If paused before the target finishes, Parametrizer restores the backup and retries that same source segment on resume
+  - If paused after the target finished but before the source cursor was committed, Parametrizer restores the backup and advances the cursor on resume so the completed segment is not replayed
+  - Parametrizer stops itself only when the source agent is no longer running and the source log has no more complete unread segments
 
 ### 52. FlowBacker
 - **Purpose**: Short-running passive utility batch backing agent that copies the entire deployed session directory for the current flow into a configured target directory, preserving the full session-id folder structure. It overwrites any previous backup for that same session and then starts connected Cleaner agents.

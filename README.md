@@ -98,7 +98,9 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [The Interconnection Scheme](#the-interconnection-scheme)
   - [Supported Source Agents and Their Output Fields](#supported-source-agents-and-their-output-fields)
   - [Iterative Execution Model](#iterative-execution-model)
+  - [Pause, Resume, and Reanimation](#pause-resume-and-reanimation)
   - [The Visual Mapping Dialog](#the-visual-mapping-dialog)
+  - [Completion Semantics](#completion-semantics)
   - [Practical Examples](#practical-examples)
   - [Design Constraints](#design-constraints)
 - [Custom Agent Development](#custom-agent-development)
@@ -2069,56 +2071,103 @@ Current folder-drop note: `payload.required_fields`, HTTP dedup, and queue overf
 
 ## Parametrizer: The Interconnection Engine
 
-Parametrizer is the **glue between agents** — a short-running utility agent that reads the structured output of one agent and writes it into the configuration of another, enabling fully automated data pipelines where no human touches a `config.yaml` between stages.
+Parametrizer is the **strict sequential hand-off agent** of Tlamatini. It reads structured output segments from exactly one source agent's log file, injects mapped values into exactly one target agent's `config.yaml`, runs that target, waits for it to finish, restores the target configuration, advances its source cursor, and only then moves to the next source segment.
 
-In most workflow systems, data hand-off between stages is either hardcoded or requires a scripting layer. Parametrizer eliminates that: you visually draw lines from output fields to config parameters, and at runtime the agent handles everything — parsing, mapping, writing, launching, waiting, and iterating.
+The key point is that **the source log itself becomes a queue**. Parametrizer does not batch all source results and it does not run the target in parallel. If the source agent emits segments `A`, `B`, `C`, and `D` very quickly, Parametrizer still processes them one by one in order:
+
+1. fully process `A`
+2. restore the target config
+3. commit the source cursor
+4. then begin `B`
+
+This is the mechanism that lets one agent safely feed another without race conditions or manual editing between stages.
 
 ### Why Parametrizer Exists
 
-Tlamatini agents communicate through **log files** (structured output) and **config.yaml files** (input parameters). This is deliberate — each agent is a self-contained process with no shared memory, no message bus, and no coupling. But this design creates a gap: how does the response body from an API call (Apirer) become the `buffer` parameter for encryption (Kyber-Cipher)? How do Kyber-KeyGen's generated keys flow into Kyber-Cipher's `public_key` field?
+Tlamatini agents communicate through **log files** and **`config.yaml` files**. This is deliberate: agents are independent processes with no shared memory and no hidden in-process coupling. The consequence is that a workflow still needs a disciplined way to move data from one agent's structured output into the next agent's input parameters.
 
-Before Parametrizer, the answer was: manually edit `config.yaml` between runs, or write a custom agent. Parametrizer turns this into a **zero-code, visual wiring operation** that works with any combination of the 15 source agents that currently produce structured output for it.
+Examples:
+
+- an Apirer response body must become the `buffer` of a Kyber-Cipher
+- a Kyber-KeyGen `public_key` must become the `public_key` of a Kyber-Cipher
+- each extracted file from File-Extractor must be fed one-at-a-time into a Summarizer or Prompter
+
+Before Parametrizer, that required manual `config.yaml` editing or custom scripting. Parametrizer turns it into a **visual mapping plus deterministic runtime queue**.
 
 ### How It Works
 
-Parametrizer operates in five phases:
+Parametrizer operates as a persistent single-threaded loop. The runtime is intentionally simple:
 
 ```
-┌─────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌─────────────┐    ┌──────────┐
-│  1. VALIDATE │───▶│ 2. LOAD SCHEME   │───▶│ 3. PARSE SOURCE  │───▶│ 4. MAP & WRITE│───▶│ 5. LAUNCH │
-│  connections │    │  (CSV mappings)  │    │  (read log, run  │    │  (fill target │    │  (start   │
-│  & agent type│    │                  │    │   parser)        │    │   config.yaml)│    │   target) │
-└─────────────┘    └──────────────────┘    └──────────────────┘    └─────────────┘    └──────────┘
+source log unread bytes -> next complete structured segment -> target config backup
+-> apply mappings -> start target -> wait target finish -> restore original config
+-> commit source cursor -> repeat
 ```
 
-**Phase 1 — Validate.** Confirms exactly one source and one target are connected, and that the source is one of the 15 recognized structured-output agents.
+At startup Parametrizer does the following:
 
-**Phase 2 — Load Scheme.** Reads the saved interconnection scheme for the deployed pool instance. The backend persists the mapping as `interconnection-scheme.csv` inside the deployed Parametrizer pool directory, and that CSV is the single source of truth for which output fields map to which config parameters.
+1. Validates that exactly one source agent and exactly one target agent are configured.
+2. Validates that the source agent belongs to the supported structured-output set.
+3. Loads `interconnection-scheme.csv`.
+4. Initializes or restores its persisted progress state from `reanim_<source_agent>.pos`.
+5. Restores any stale `config.yaml.bck` backup if needed.
+6. Enters a polling loop over the unread bytes of the source log.
 
-**Phase 3 — Parse Source.** Reads the source agent's log file and runs the appropriate parser from the `OUTPUT_PARSERS` registry. Each of the 15 supported source agents has a dedicated parser that extracts structured blocks into dictionaries.
+Inside that loop it always works on **the next complete segment only**:
 
-**Phase 4 — Map & Write.** For each extracted output block, applies the CSV mappings: looks up each `source_field` in the parsed dictionary and writes the value into the corresponding `target_param` in the target agent's `config.yaml`. Target parameters may now be nested dot-notation keys (for example `target.smtp.username`); in that case the runtime creates or traverses nested dictionaries and writes the value at the leaf key.
+1. Reads the source log starting from the last committed byte offset.
+2. Uses the source-specific `NEXT_OUTPUT_PARSERS` parser to extract only the next complete structured segment.
+3. If no complete segment exists yet and the source is still running, waits and polls again.
+4. If a complete segment exists, queues it and processes it immediately.
 
-**Phase 5 — Launch.** Starts the target agent via subprocess and writes its PID file, exactly as Starter or Raiser would.
+That segment-processing cycle is always:
+
+1. Wait until the target agent is stopped.
+2. Back up the target `config.yaml` as `config.yaml.bck`.
+3. Save in-flight state to `reanim_<source_agent>.pos`.
+4. Apply the field mappings to the target config.
+5. Start the target agent.
+6. Wait until the target agent finishes.
+7. Restore the original target config from `config.yaml.bck`.
+8. Advance the committed source cursor to the byte immediately after the processed segment.
+9. Clear the in-flight state and continue with the next segment.
+
+This order is what guarantees deterministic behavior. Parametrizer never advances the cursor before the target has finished and the target configuration has been restored.
 
 ### The Interconnection Scheme
 
-The mapping between source output fields and target config parameters is stored in a simple CSV file:
+The mapping between source output fields and target config parameters is stored in `interconnection-scheme.csv`. The file supports both whole-field assignment and marker-level substitution.
 
 ```csv
-source_field,target_param
-response_body,buffer
-url,api_endpoint
-public_key,public_key
+source_field,target_param,target_marker
+response_body,buffer,
+url,target.metadata.url,
+response_body,prompt_template,content
 ```
 
-Each row is one wire: "take `source_field` from the parsed output and write it into `target_param` in the target's config.yaml." This file is created and managed through the visual mapping dialog on the canvas, but can also be edited by hand.
+Each row means:
 
-In the current code, the CSV is not shipped as a static file inside `agents/parametrizer/`. It is saved at runtime for the deployed Parametrizer instance in the current session pool through `/save_parametrizer_scheme/<agent_name>/`.
+- `source_field`: the key extracted from the source segment
+- `target_param`: the target config key to write; dot notation is allowed
+- `target_marker`: optional placeholder name inside an existing target string value
+
+There are two mapping modes:
+
+- **Whole-value assignment**: if `target_marker` is empty, Parametrizer writes the entire source value into `target_param`
+- **Marker replacement**: if `target_marker` is present, Parametrizer replaces `{target_marker}` inside the existing target string
+
+That means Parametrizer can either overwrite a config field completely or inject data into a template string already present in the target config.
+
+This CSV is created from the visual mapping dialog and saved in the deployed Parametrizer pool directory. It is loaded once when the agent starts or resumes.
 
 ### Supported Source Agents and Their Output Fields
 
-Parametrizer includes dedicated parsers for 15 agent types. Each parser understands the agent's unique log format and extracts named fields:
+Parametrizer currently supports 15 structured-output source agent types. Each has both:
+
+- a full parser for understanding the source format
+- a "next segment" parser used by the sequential queue so the runtime can consume one complete segment at a time
+
+Supported sources and extracted fields:
 
 | Source Agent | Log Pattern | Extracted Fields |
 |---|---|---|
@@ -2140,24 +2189,57 @@ Parametrizer includes dedicated parsers for 15 agent types. Each parser understa
 
 ### Iterative Execution Model
 
-A critical capability of Parametrizer is its handling of **multiple structured output elements** in a single source log. This commonly happens when:
+A critical capability of Parametrizer is its handling of **multiple structured output segments** in a single source log. This happens when, for example:
 
 - An Apirer calls multiple API endpoints in sequence
 - A Crawler scrapes several pages
 - A File-Extractor processes a wildcard pattern matching many files
 
-When the parser returns N output blocks, Parametrizer does not batch them. Instead, it **iterates sequentially**:
+When the source produces `N` segments, Parametrizer does **not** batch them and does **not** launch `N` target processes in parallel. It treats the source log as an ordered queue:
 
 ```
-For each output block (1..N):
-   1. Write mapped fields into target's config.yaml
-   2. Wait for target agent to stop (if still running from previous iteration)
-   3. Start target agent
-   4. Wait for target agent to finish
-   → Next block
+For each complete source segment:
+   1. Wait target stopped
+   2. Back up target config.yaml
+   3. Fill mappings for that segment
+   4. Start target
+   5. Wait target finish
+   6. Restore original target config.yaml
+   7. Commit source byte cursor
+   8. Move to the next segment
 ```
 
-This guarantees that each output element gets its own full execution cycle in the target agent. For example, if Apirer hit 5 endpoints and the target is Kyber-Cipher, the Parametrizer will encrypt each response body individually, producing 5 separate cipher texts — one per API response.
+Example:
+
+- the source log already contains segments `A`, `B`, `C`, and `D`
+- Parametrizer detects `A`
+- while Parametrizer is running the target for `A`, the source may continue writing more data
+- Parametrizer still does **not** touch `B` until `A` has finished, the target config has been restored, and the byte cursor has been advanced past `A`
+
+This is the behavior that prevents race conditions on the target `config.yaml` and ensures each source segment gets its own isolated target execution.
+
+### Pause, Resume, and Reanimation
+
+Parametrizer is fully pause/resume aware. Its restart-safe behavior is built around two persisted artifacts:
+
+- `config.yaml.bck`: the original target configuration captured before the current segment is applied
+- `reanim_<source_agent>.pos`: a state file containing the committed source offset, file size, processed count, current stage, and any in-flight segment boundary
+
+Parametrizer tracks these runtime stages:
+
+- `idle`
+- `backup_ready`
+- `config_applied`
+- `waiting_target`
+- `target_finished_restore_pending`
+
+On resume (`AGENT_REANIMATED=1`), Parametrizer inspects the saved stage and repairs the state before continuing:
+
+- If it was interrupted **before the target finished**, it restores `config.yaml.bck`, keeps the last committed source offset, clears the in-flight state, and retries that same segment.
+- If it was interrupted **after the target finished but before the cursor commit**, it restores `config.yaml.bck`, advances the source cursor to the saved segment end, increments the processed count, and continues with the next unread segment without replaying the already finished target run.
+- If it starts fresh and finds a stale backup, it restores the target to a clean baseline before doing any new work.
+
+This is why pause/resume does not duplicate already completed target runs and does not leave the target config permanently modified by an interrupted segment.
 
 ### The Visual Mapping Dialog
 
@@ -2172,6 +2254,20 @@ On the canvas, double-clicking or right-clicking a Parametrizer agent opens its 
 The dialog dynamically adapts to whatever source and target agents are connected — the field lists are always current with the actual agent types.
 
 For nested target configurations, the dialog now flattens the target `config.yaml` dictionary into dot-notation keys before rendering the right-hand column. That means mappings such as `response_body -> target.email.body` are represented explicitly in the dialog and then written back into the nested YAML structure at runtime.
+
+### Completion Semantics
+
+Parametrizer stops only when **both** of these are true:
+
+1. the source agent is no longer running
+2. the source log has no more complete unread segments after the last committed byte offset
+
+At that point it writes a completion message to its own log and stops itself.
+
+There are two important edge cases:
+
+- If the source stops and no complete segment was ever available, Parametrizer stops without starting the target.
+- If the source stops with trailing log content that does not form a complete structured segment, Parametrizer logs a warning and stops at the last committed segment boundary.
 
 ### Practical Examples
 
@@ -2205,11 +2301,13 @@ Two Parametrizer instances chain the entire cryptographic lifecycle: the first m
 
 ### Design Constraints
 
-- **One-to-one only.** Exactly one source agent and one target agent per Parametrizer instance. For fan-out or fan-in patterns, use multiple Parametrizer instances.
-- **Source must produce structured output.** Only the 15 agents listed above are valid sources. Connecting an unsupported source (e.g., Starter, Sleeper) will fail validation at both dialog-open time and runtime.
-- **Target can be any agent.** The target side has no type restriction — Parametrizer writes into whatever fields exist in the target's `config.yaml`.
-- **Mappings are static per run.** The CSV is read once at startup. To change mappings, stop the flow, update via the dialog, and restart.
-- **Sequential, not parallel.** When iterating over multiple output blocks, the target agent runs one-at-a-time. This is by design — it prevents race conditions on the target's config file and ensures deterministic ordering.
+- **One-to-one only.** One Parametrizer instance supports exactly one source and one target. Use multiple Parametrizers for fan-out or fan-in designs.
+- **Source must be structured-output capable.** Only the supported 15 source agents can feed Parametrizer.
+- **Target can be any normal agent with a `config.yaml`.** Parametrizer writes only to fields that exist or can be created through dot-notation traversal.
+- **Mappings are static while the process is running.** The CSV is loaded on startup/resume, not continuously re-read during each segment.
+- **Strictly sequential.** Parametrizer is intentionally single-threaded and processes only one in-flight segment at a time.
+- **Target config is temporary per segment.** The live target config is modified only for the current segment and is then restored from `config.yaml.bck`.
+- **The source log is authoritative.** Progress is tracked by byte offset in the source log, not by counting assumptions or external queues.
 
 ---
 
