@@ -1457,10 +1457,13 @@ class ParametrizerSequentialExecutionTests(TestCase):
             os.makedirs(target_dir, exist_ok=True)
 
             config_path = os.path.join(target_dir, 'config.yaml')
+            target_log_path = os.path.join(target_dir, 'prompter_1.log')
             with open(config_path, 'w', encoding='utf-8') as handle:
                 yaml.safe_dump({
                     'prompt': 'Please summarize:\n\n{content}\n\nCommand: {command}',
                 }, handle, sort_keys=False)
+            with open(target_log_path, 'w', encoding='utf-8') as handle:
+                handle.write('target output for segment 1\n')
 
             mappings = [
                 {
@@ -1511,6 +1514,9 @@ class ParametrizerSequentialExecutionTests(TestCase):
 
             self.assertEqual(restored_config['prompt'], 'Please summarize:\n\n{content}\n\nCommand: {command}')
             self.assertFalse(os.path.exists(config_path + '.bck'))
+            with open(os.path.join(target_dir, 'prompter_1_segment_1.log'), 'r', encoding='utf-8') as handle:
+                archived_log = handle.read()
+            self.assertEqual(archived_log, 'target output for segment 1\n')
             self.assertEqual(progress_state['offset'], 87)
             self.assertEqual(progress_state['processed_count'], 1)
             self.assertEqual(progress_state['stage'], parametrizer_module.STATE_STAGE_IDLE)
@@ -1587,10 +1593,13 @@ class ParametrizerSequentialExecutionTests(TestCase):
 
             config_path = os.path.join(target_dir, 'config.yaml')
             backup_path = config_path + '.bck'
+            target_log_path = os.path.join(target_dir, 'prompter_1.log')
             with open(config_path, 'w', encoding='utf-8') as handle:
                 yaml.safe_dump({'prompt': 'mutated value'}, handle, sort_keys=False)
             with open(backup_path, 'w', encoding='utf-8') as handle:
                 yaml.safe_dump({'prompt': 'template value'}, handle, sort_keys=False)
+            with open(target_log_path, 'w', encoding='utf-8') as handle:
+                handle.write('target output for segment 3\n')
 
             progress_state = {
                 'offset': 14,
@@ -1618,6 +1627,9 @@ class ParametrizerSequentialExecutionTests(TestCase):
 
             self.assertEqual(restored_config['prompt'], 'template value')
             self.assertFalse(os.path.exists(backup_path))
+            with open(os.path.join(target_dir, 'prompter_1_segment_3.log'), 'r', encoding='utf-8') as handle:
+                archived_log = handle.read()
+            self.assertEqual(archived_log, 'target output for segment 3\n')
             self.assertEqual(recovered['offset'], 48)
             self.assertEqual(recovered['processed_count'], 3)
             self.assertEqual(recovered['stage'], parametrizer_module.STATE_STAGE_IDLE)

@@ -728,6 +728,11 @@ def get_source_log_path(source_agent_name):
     return os.path.join(get_agent_directory(source_agent_name), f"{source_agent_name}.log")
 
 
+def get_target_log_path(target_agent_name):
+    """Return the live log path for the target agent instance."""
+    return os.path.join(get_agent_directory(target_agent_name), f"{target_agent_name}.log")
+
+
 def read_source_log(source_agent_name):
     """Read the full log file of the source agent."""
     log_file = get_source_log_path(source_agent_name)
@@ -830,6 +835,44 @@ def clear_inflight_state(state):
 
 def get_target_backup_path(target_agent_name):
     return get_target_config_path(target_agent_name) + '.bck'
+
+
+def get_target_segment_log_path(target_agent_name, segment_number):
+    """Return the archived log path for one completed target segment."""
+    return os.path.join(
+        get_agent_directory(target_agent_name),
+        f"{target_agent_name}_segment_{int(segment_number)}.log",
+    )
+
+
+def backup_target_segment_log(target_agent_name, segment_number):
+    """
+    Archive the target agent's current log after one segment finishes.
+
+    This is intentionally best-effort: the sequential queue must still be able to
+    advance even if the target log is missing or cannot be copied.
+    """
+    source_log_path = get_target_log_path(target_agent_name)
+    segment_log_path = get_target_segment_log_path(target_agent_name, segment_number)
+
+    if not os.path.exists(source_log_path):
+        logging.warning(
+            f"Target log not found for segment backup: '{source_log_path}'. "
+            f"Segment {segment_number} will continue without an archived target log."
+        )
+        return False
+
+    try:
+        shutil.copy2(source_log_path, segment_log_path)
+        logging.info(
+            f"Archived target log for segment {segment_number} to '{segment_log_path}'"
+        )
+        return True
+    except Exception as exc:
+        logging.warning(
+            f"Failed to archive target log '{source_log_path}' for segment {segment_number}: {exc}"
+        )
+        return False
 
 
 def backup_target_config(target_agent_name):
@@ -1023,6 +1066,38 @@ def restore_target_config(target_agent_name, template_config):
     return write_target_config(target_agent_name, copy.deepcopy(template_config))
 
 
+def finalize_completed_target_segment(source_agent, target_agent, progress_state):
+    """
+    Archive the finished target log, restore the original config, and commit the source cursor.
+
+    This helper is shared by the normal path and the reanimation-recovery path so the
+    segment log archive is not skipped if Parametrizer resumes after the target already finished.
+    """
+    inflight_end_offset = progress_state.get('inflight_end_offset')
+    if inflight_end_offset is None:
+        raise RuntimeError(
+            f"Cannot finalize completed target segment for '{target_agent}' without inflight_end_offset."
+        )
+
+    segment_number = int(progress_state.get('processed_count', 0) or 0) + 1
+    backup_target_segment_log(target_agent, segment_number)
+
+    if not restore_target_config_from_backup(target_agent):
+        raise RuntimeError(
+            f"Target agent '{target_agent}' finished, but config.yaml could not be restored from backup."
+        )
+
+    progress_state['offset'] = int(inflight_end_offset)
+    progress_state['file_size'] = max(
+        int(progress_state.get('file_size', -1) or -1),
+        int(progress_state['offset']),
+    )
+    progress_state['processed_count'] = segment_number
+    clear_inflight_state(progress_state)
+    save_progress_state(source_agent, progress_state)
+    return progress_state
+
+
 def apply_mappings_to_config(target_agent_name, mappings, output_block, base_config=None):
     """Apply field mappings from a structured output block to the target agent's config.yaml."""
     config = copy.deepcopy(base_config) if base_config is not None else read_target_config(target_agent_name)
@@ -1086,23 +1161,22 @@ def reconcile_reanimation_state(source_agent, target_agent, progress_state):
     )
 
     if stage == STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING:
-        if backup_exists:
-            restore_target_config_from_backup(target_agent)
-        elif inflight_end_offset is not None:
+        if not backup_exists and inflight_end_offset is not None:
             logging.info(
                 f"Backup for '{target_agent}' was already removed before pause; assuming the target config was restored."
             )
-
-        if inflight_end_offset is not None:
             progress_state['offset'] = int(inflight_end_offset)
             progress_state['processed_count'] = int(progress_state.get('processed_count', 0) or 0) + 1
+            progress_state['file_size'] = max(
+                int(progress_state.get('file_size', -1) or -1),
+                int(progress_state.get('offset', 0) or 0),
+            )
+            clear_inflight_state(progress_state)
+            save_progress_state(source_agent, progress_state)
+            logging.info("Recovered a completed target run; source cursor advanced to the next unread segment.")
+            return progress_state
 
-        progress_state['file_size'] = max(
-            int(progress_state.get('file_size', -1) or -1),
-            int(progress_state.get('offset', 0) or 0),
-        )
-        clear_inflight_state(progress_state)
-        save_progress_state(source_agent, progress_state)
+        finalize_completed_target_segment(source_agent, target_agent, progress_state)
         logging.info("Recovered a completed target run; source cursor advanced to the next unread segment.")
         return progress_state
 
@@ -1162,14 +1236,7 @@ def process_output_block(source_agent, target_agent, mappings, output_block, blo
     progress_state['stage'] = STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING
     save_progress_state(source_agent, progress_state)
 
-    if not restore_target_config_from_backup(target_agent):
-        raise RuntimeError(f"Target agent '{target_agent}' finished, but config.yaml could not be restored from backup.")
-
-    progress_state['offset'] = int(block_end_offset)
-    progress_state['file_size'] = int(file_size)
-    progress_state['processed_count'] = int(progress_state.get('processed_count', 0) or 0) + 1
-    clear_inflight_state(progress_state)
-    save_progress_state(source_agent, progress_state)
+    finalize_completed_target_segment(source_agent, target_agent, progress_state)
 
 
 def poll_and_process_next_segment(source_agent, target_agent, source_base, mappings, progress_state):
