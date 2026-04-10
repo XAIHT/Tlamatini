@@ -121,5 +121,6 @@ urlpatterns = [
     path('detect_installed_apps/', secure_get(views.detect_installed_apps_view), name='detect_installed_apps'),
     path('open_in_app/', secure_post(views.open_in_app_view), name='open_in_app'),
     path('update_keyboarder_connection/<str:agent_name>/', secure_post(views.update_keyboarder_connection_view), name='update_keyboarder_connection'),
+    path('update_googler_connection/<str:agent_name>/', secure_post(views.update_googler_connection_view), name='update_googler_connection'),
 ]
 

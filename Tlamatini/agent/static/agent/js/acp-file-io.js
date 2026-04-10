@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
 
 // ========================================
 // SAVE BUTTON
@@ -435,6 +435,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'barrier': await updateBarrierConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'j-decompiler': await updateJDecompilerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'parametrizer': await updateParametrizerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'googler': await updateGooglerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
 
@@ -498,6 +499,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'barrier': await updateBarrierConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'j-decompiler': await updateJDecompilerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'parametrizer': await updateParametrizerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'googler': await updateGooglerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
 

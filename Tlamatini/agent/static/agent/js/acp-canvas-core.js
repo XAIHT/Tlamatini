@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -234,6 +234,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'flowbacker': 'flowbacker-agent',
     'barrier': 'barrier-agent',
     'j-decompiler': 'jdecompiler-agent',
+    'googler': 'googler-agent',
 };
 
 const agentToolIconStyleCache = new Map();
@@ -915,6 +916,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'barrier') updateBarrierConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'googler') updateGooglerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'googler') updateGooglerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'counter') {
             if (conn.outputSlot === 1) updateCounterConnection(sourceId, 'target_l', targetId, 'remove');
@@ -1016,6 +1019,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'barrier' && !sourceBeingDeleted) updateBarrierConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'j-decompiler' && !targetBeingDeleted) updateJDecompilerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'j-decompiler' && !sourceBeingDeleted) updateJDecompilerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'googler' && !targetBeingDeleted) updateGooglerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'googler' && !sourceBeingDeleted) updateGooglerConnection(sourceId, targetId, 'remove', 'target');
 
         if (targetAgentName.toLowerCase() === 'asker' && !targetBeingDeleted) updateAskerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'asker' && !sourceBeingDeleted) {
@@ -1472,6 +1477,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'barrier') updateBarrierConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'googler') updateGooglerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'googler') updateGooglerConnection(sourceId, targetId, 'add', 'target');
 
                     // Record undo action for connection creation
                     const connState = captureConnectionState(newConn);

@@ -2004,3 +2004,15 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #FF6659 0%, #FFB74D 33%, #FFF59D 66%, #81C784 100%);
     box-shadow: 0 6px 15px rgba(255, 152, 0, 0.5);
 }
+
+/* Googler Agent - Google brand-inspired 4-color gradient */
+.canvas-item.googler-agent {
+    background-color: #D32F2F;
+    background: linear-gradient(135deg, #D32F2F 0%, #F9A825 33%, #388E3C 66%, #1565C0 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.googler-agent:hover {
+    background: linear-gradient(135deg, #EF5350 0%, #FDD835 33%, #66BB6A 66%, #42A5F5 100%);
+    box-shadow: 0 6px 15px rgba(66, 165, 245, 0.5);
+}

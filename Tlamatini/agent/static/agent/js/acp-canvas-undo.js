@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateKeyboarderConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateKeyboarderConnection, updateGooglerConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -185,6 +185,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'keyboarder') {
                     await updateKeyboarderConnection(sourceId, targetId, 'remove', 'target');
                 }
+            if (targetAgentName.toLowerCase() === 'googler') {
+                await updateGooglerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'googler') {
+                await updateGooglerConnection(sourceId, targetId, 'remove', 'target');
+            }
                 if (sourceAgentName.toLowerCase() === 'shoter') {
                 await updateShoterConnection(sourceId, targetId, 'remove');
             }
@@ -452,6 +458,12 @@ async function recreateConnection(state) {
     if (sourceAgentName === 'keyboarder') {
                 await updateKeyboarderConnection(sourceId, targetId, 'add', 'target');
             }
+    if (targetAgentName === 'googler') {
+        await updateGooglerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'googler') {
+        await updateGooglerConnection(sourceId, targetId, 'add', 'target');
+    }
             if (sourceAgentName === 'shoter') {
         await updateShoterConnection(sourceId, targetId, 'add');
     }

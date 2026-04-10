@@ -46,15 +46,17 @@
         <span class="me-2">Context:</span>
         <span id="contextData" class="context-ellipsis" title=""></span>
         <div class="dropdown" id="open-in-dropdown-item" style="display: none;">
-          <button class="open-in-btn" type="button" id="open-in-menu-button"
-            data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="open-in-btn" type="button" id="open-in-menu-button" data-bs-toggle="dropdown"
+            aria-expanded="false">
             <svg class="open-in-icon" viewBox="0 0 16 16" fill="currentColor" width="12" height="12">
-              <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-              <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+              <path
+                d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
+              <path
+                d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
             </svg>
             Open in...
             <svg class="open-in-caret" viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
-              <path d="M3.204 5h9.592L8 10.481 3.204 5z"/>
+              <path d="M3.204 5h9.592L8 10.481 3.204 5z" />
             </svg>
           </button>
           <ul class="dropdown-menu dropdown-entry" aria-labelledby="open-in-menu-button" id="open-in-menu-list">
@@ -129,19 +131,19 @@
         <div id="chat-log"></div>
         <div id="vertical-drag-divider" tabindex="0"></div>
         <div id="tools-chat-form-container">
-            <div id="tools-div">
-              <div id="tools-left">
-                <button type="button" id="prompts-catalog">Catalog of prompts</button>
-                <button type="button" id="clean-history">Clear history</button>
-                <label id="multi-turn-toggle" class="toolbar-toggle" for="multi-turn-enabled">
-                  <input id="multi-turn-enabled" type="checkbox" />
-                  <span>Multi-Turn</span>
-                </label>
-                <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
-                  <input id="internetEnabled" type="checkbox" />
-                  <span>Add internet context</span>
-                </label>
-              </div>
+          <div id="tools-div">
+            <div id="tools-left">
+              <button type="button" id="prompts-catalog">Catalog of prompts</button>
+              <button type="button" id="clean-history">Clear history</button>
+              <label id="multi-turn-toggle" class="toolbar-toggle" for="multi-turn-enabled">
+                <input id="multi-turn-enabled" type="checkbox" />
+                <span>Multi-Turn</span>
+              </label>
+              <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
+                <input id="internetEnabled" type="checkbox" />
+                <span>Add internet context</span>
+              </label>
+            </div>
           </div>
           <form id="chat-form">
             {% csrf_token %}
@@ -231,7 +233,7 @@
         </video>
       </div>
       <div class="about-text">
-        <p class="about-company-name">XAIHT: eXtended Artificial Intelligence Humanly Tempered (Mexican company)</p>
+        <p class="about-company-name">XAIHT: eXtended Artificial Intelligence Humanly Tempered (a Mexican company)</p>
         <p class="about-version">Tlamatini v1.0.0</p>
         <p class="about-owner">A&amp;A's company.</p>
       </div>
