@@ -2031,6 +2031,311 @@ def chat_agent_run_stop(run_id: str) -> str:
     return _tool_output(payload)
 
 
+def _extract_readable_text(html_content):
+    """Extract readable text from HTML content, stripping tags, scripts, and styles."""
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html_content, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "noscript"]):
+            tag.decompose()
+        text = soup.get_text(separator="\n", strip=True)
+        lines = [line.strip() for line in text.splitlines()]
+        return "\n".join(line for line in lines if line)
+    except ImportError:
+        import html as html_mod
+        text = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = html_mod.unescape(text)
+        text = re.sub(r'[ \t]+', ' ', text)
+        lines = [line.strip() for line in text.splitlines()]
+        return "\n".join(line for line in lines if line)
+
+
+_GOOGLER_BROWSER_ARGS = [
+    '--disable-blink-features=AutomationControlled',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions',
+]
+
+_GOOGLER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
+
+_GOOGLER_RESULT_SELECTORS = [
+    '#rso a:has(h3)',
+    '#search a:has(h3)',
+    'div.g a[href^="http"]',
+    '#rso a[href^="http"]',
+    'div#search a[href^="http"]',
+]
+
+_GOOGLER_DDG_RESULT_SELECTORS = [
+    'article[data-testid="result"] a[data-testid="result-title-a"]',
+    'a.result__a',
+    'h2 a[href^="http"]',
+]
+
+_GOOGLER_BINARY_EXTENSIONS = {
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.zip', '.gz', '.tar', '.rar', '.7z', '.exe', '.dmg',
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp',
+    '.mp3', '.mp4', '.avi', '.mov', '.wav',
+}
+
+_GOOGLER_BINARY_CONTENT_TYPES = {
+    'application/pdf', 'application/octet-stream',
+    'application/zip', 'application/gzip',
+    'application/msword', 'application/vnd.ms-excel',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument',
+}
+
+
+def _dismiss_consent_banner(page) -> None:
+    """Try to dismiss Google's cookie consent banner if present."""
+    consent_selectors = [
+        'button:has-text("Accept all")',
+        'button:has-text("Accept")',
+        'button:has-text("Acepto")',
+        'button:has-text("Aceptar todo")',
+        'button:has-text("Tout accepter")',
+        'button:has-text("Alle akzeptieren")',
+        'button:has-text("Accetta tutto")',
+        'button#L2AGLb',
+        'button[aria-label="Accept all"]',
+        'div[role="dialog"] button:first-of-type',
+    ]
+    for selector in consent_selectors:
+        try:
+            btn = page.query_selector(selector)
+            if btn and btn.is_visible():
+                btn.click()
+                page.wait_for_timeout(1000)
+                return
+        except Exception:
+            continue
+
+
+def _googler_extract_links(page, selectors, skip_domains=None):
+    """Try each selector in order; return first non-empty list of unique URLs."""
+    from urllib.parse import urlparse as _urlparse
+    if skip_domains is None:
+        skip_domains = {'google.com', 'google.co', 'accounts.google', 'support.google',
+                        'maps.google', 'policies.google'}
+    for selector in selectors:
+        try:
+            elements = page.query_selector_all(selector)
+        except Exception:
+            continue
+        if not elements:
+            continue
+
+        urls, seen = [], set()
+        for elem in elements:
+            href = elem.get_attribute("href")
+            if not href or not href.startswith("http"):
+                continue
+            try:
+                domain = _urlparse(href).netloc.lower()
+            except Exception:
+                continue
+            if any(sd in domain for sd in skip_domains):
+                continue
+            if domain in seen:
+                continue
+            seen.add(domain)
+            urls.append(href)
+        if urls:
+            return urls
+    return []
+
+
+def _googler_is_binary(url: str, content_type: str = '') -> bool:
+    """Check if URL or Content-Type indicates binary content."""
+    from urllib.parse import urlparse as _urlparse
+    path = _urlparse(url).path.lower().split('?')[0]
+    if any(path.endswith(ext) for ext in _GOOGLER_BINARY_EXTENSIONS):
+        return True
+    if content_type:
+        ct = content_type.lower().split(';')[0].strip()
+        if ct in _GOOGLER_BINARY_CONTENT_TYPES:
+            return True
+        if ct.startswith(('image/', 'audio/', 'video/')):
+            return True
+        if 'officedocument' in ct:
+            return True
+    return False
+
+
+def _googler_fetch_page_text(page, url: str) -> dict:
+    """Navigate Playwright page to URL and extract rendered visible text.
+    Skips binary content (PDFs, images, etc.)."""
+    if _googler_is_binary(url):
+        return {"url": url, "error": "Binary file detected from URL extension, skipped"}
+
+    try:
+        response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
+    except Exception as e:
+        return {"url": url, "error": str(e)}
+
+    if not response:
+        return {"url": url, "error": "No response received"}
+
+    status = response.status
+    content_type = response.headers.get('content-type', '')
+    if _googler_is_binary('', content_type):
+        return {"url": url, "status_code": status,
+                "error": f"Binary content-type ({content_type}), skipped"}
+
+    try:
+        page.wait_for_load_state("networkidle", timeout=10000)
+    except Exception:
+        pass
+
+    try:
+        text = page.inner_text('body')
+    except Exception:
+        text = ""
+
+    if text:
+        lines = text.splitlines()
+        cleaned, blank_count = [], 0
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                blank_count += 1
+                if blank_count <= 1:
+                    cleaned.append('')
+            else:
+                blank_count = 0
+                cleaned.append(stripped)
+        text = '\n'.join(cleaned).strip()
+
+    max_chars = 50000
+    if len(text) > max_chars:
+        text = text[:max_chars] + "\n... [truncated]"
+
+    return {"url": url, "status_code": status, "content": text}
+
+
+@tool
+def googler(query: str, number_of_results: int = 5) -> str:
+    """
+    Search Google for a topic and return the top results with their readable text content.
+    Falls back to DuckDuckGo if Google returns no results.
+    Automatically skips binary content (PDFs, images, etc.).
+
+    Use this tool when the user asks to search the internet, Google something,
+    look up information online, or needs current real-time information.
+
+    Examples of what to pass:
+    - User says "Google Python asyncio tutorial" → pass query="Python asyncio tutorial"
+    - User says "Search the internet for Django 5.2 release notes" → pass query="Django 5.2 release notes"
+    - User says "Look up the latest CVE vulnerabilities" → pass query="latest CVE vulnerabilities 2026"
+    - User says "Find online info about Kubernetes ingress" → pass query="Kubernetes ingress controllers"
+    - User says "Google nginx reverse proxy, top 3" → pass query="nginx reverse proxy", number_of_results=3
+
+    Input:
+    - query: The search query or phrase to look up on Google.
+    - number_of_results: Number of top sites to fetch (default 5, max 10).
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return (
+            "Error: Playwright is not installed. "
+            "Install it with: pip install playwright && playwright install chromium"
+        )
+
+    if not query or not str(query).strip():
+        return "Error: No search query provided. Please specify what to search for."
+
+    number_of_results = max(1, min(int(number_of_results), 10))
+    outcomes = []
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=_GOOGLER_BROWSER_ARGS)
+            context = browser.new_context(
+                user_agent=_GOOGLER_USER_AGENT,
+                viewport={'width': 1920, 'height': 1080},
+                locale='en-US',
+            )
+            context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            page = context.new_page()
+
+            try:
+                # --- Google search ---
+                page.goto("https://www.google.com", wait_until="domcontentloaded", timeout=15000)
+                _dismiss_consent_banner(page)
+
+                search_box = page.wait_for_selector(
+                    'textarea[name="q"], input[name="q"]', timeout=10000
+                )
+                search_box.fill(str(query))
+                search_box.press("Enter")
+
+                try:
+                    page.wait_for_selector('#rso, #search, div.g', timeout=15000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(2000)
+
+                top_links = _googler_extract_links(page, _GOOGLER_RESULT_SELECTORS)
+
+                # --- DuckDuckGo fallback ---
+                if not top_links:
+                    page.goto(
+                        f"https://duckduckgo.com/?q={str(query).replace(' ', '+')}&t=h_&ia=web",
+                        wait_until="domcontentloaded", timeout=15000
+                    )
+                    try:
+                        page.wait_for_selector(
+                            'article[data-testid="result"], a.result__a, h2 a', timeout=15000
+                        )
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(2000)
+                    top_links = _googler_extract_links(
+                        page, _GOOGLER_DDG_RESULT_SELECTORS, skip_domains={'duckduckgo.com'}
+                    )
+
+                top_links = top_links[:number_of_results]
+
+                if not top_links:
+                    return f"No search results found for '{query}'."
+
+                # Fetch content using Playwright (handles JS-rendered pages)
+                for url in top_links:
+                    result = _googler_fetch_page_text(page, url)
+                    outcomes.append(result)
+
+            except Exception as e:
+                return f"Error during Google search: {e}"
+            finally:
+                browser.close()
+
+    except Exception as e:
+        return f"Error launching browser for Google search: {e}"
+
+    output_parts = [f"Google search for '{query}' - {len(outcomes)} results:\n"]
+    for i, outcome in enumerate(outcomes, 1):
+        output_parts.append(f"=== Result {i} ===")
+        output_parts.append(f"URL: {outcome.get('url', 'unknown')}")
+        if "error" in outcome:
+            output_parts.append(f"Fetch error: {outcome['error']}")
+        else:
+            output_parts.append(f"HTTP status: {outcome.get('status_code', 'unknown')}")
+            output_parts.append(outcome.get("content", "[empty page]"))
+        output_parts.append("")
+
+    return "\n".join(output_parts)
+
+
 def get_mcp_tools():
     """
     Returns a list of all tools available to the MCP.
@@ -2073,6 +2378,8 @@ def get_mcp_tools():
         tools.append(chat_agent_run_log)
     if global_state.get_state('tool_chat-agent-run-stop_status', 'enabled') == 'enabled':
         tools.append(chat_agent_run_stop)
+    if global_state.get_state('tool_googler_status', 'enabled') == 'enabled':
+        tools.append(googler)
     for spec in WRAPPED_CHAT_AGENT_SPECS:
         if global_state.get_state(_tool_status_key(spec.tool_description), 'enabled') == 'enabled':
             tools.append(_build_wrapped_chat_agent_tool(spec))

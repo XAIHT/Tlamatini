@@ -1153,6 +1153,22 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+
+### 56. Googler
+- **Purpose**: Searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content from each, and saves the combined results to an output file.
+- **Used for**: Automated internet research, gathering information from top search results, feeding web content into downstream analysis agents.
+- **Aimed at**: Enabling web-search-driven workflows where real-time Google results feed into further processing or analysis.
+- **Application example**: Googler searches for "latest Python security vulnerabilities 2026", extracts text from the top 5 results, saves them to a file, then triggers a Summarizer agent to produce a condensed report.
+- **Pool name pattern**: `googler_<n>`
+- **Starts other agents**: YES
+- **Config parameters**:
+  - `query`: "" (the search query to enter in Google)
+  - `number_of_results`: 5 (number of top results to fetch, max 10)
+  - `content_mode`: "text" (extraction mode: "text" for readable text only, "raw" for full HTML)
+  - `output_file`: "googler_results.txt" (file path to save search results)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after search completes)
+
 ---
 
 ## Output Format

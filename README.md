@@ -151,7 +151,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source-code analysis including metadata extraction, architectural role classification, dependency mapping, context budgeting, and controlled fallback behavior to provide deeply grounded responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 56 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 57 pre-built agent types.
 
 The main chat surface is now substantially more agentic as well. When **Multi-Turn** is enabled in the toolbar, the chat stack switches from the legacy one-shot tool exposure path to a request-scoped orchestration path that can:
 
@@ -264,7 +264,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 56 pre-built agent types for diverse automation tasks
+- 57 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - README-backed agent purpose tooltips in the sidebar and per-node Description dialogs on the canvas
@@ -572,6 +572,7 @@ Tlamatini/
 │   │   │   ├── parametrizer/  # Utility interconnection agent (maps outputs to inputs)
 │   │   │   ├── flowbacker/    # Session backup and cleanup handoff agent
 │   │   │   ├── barrier/       # Synchronization barrier for flow control
+│   │   │   ├── googler/       # Google search agent (Playwright + text extraction)
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1731,7 +1732,7 @@ Wrapped chat-agent launchers create isolated runtime copies of selected template
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **56 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **57 agent types** total.
 
 The `Purpose` text in the agent tables below is no longer documentation-only. The ACP now parses these table rows from `README.md` and uses them as the live source for sidebar agent-purpose tooltips and the canvas **Description** dialog, so edits to a Purpose cell affect both the documentation and the UI text shown to users.
 
@@ -1851,6 +1852,7 @@ Agents are classified as:
 | **kyber_decipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR. Logs deciphered buffer in original format. | `kyber_variant`: kyber-768<br>`private_key`: Base64 private key<br>`encapsulation`: Base64 encapsulation<br>`initialization_vector`: Base64 IV<br>`cipher_text`: Base64 cipher text<br>`target_agents`: Downstream agents |
 | **parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via an interconnection scheme saved for the deployed pool instance. When multiple output elements exist, it iterates sequentially: fill config, start target, wait, repeat. Current structured-output sources are Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, and Gateway-Relayer. | `source_agent`: Source agent name<br>`target_agent`: Target agent name<br>`source_agents`: [] (max 1)<br>`target_agents`: [] (max 1) |
 | **barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Each source agent starts a separate barrier process (input sub-process) that creates a flag file; the first arrival becomes the output sub-process that polls until all flags are present, then fires. Uses cross-process file-based locking to avoid race conditions. | `source_agents`: Upstream agents whose startup is awaited<br>`target_agents`: Downstream agents to start when all sources have checked in |
+| **googler** | Short-running web-search agent that searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content, and saves the combined results to an output file for downstream processing. | `query`: Search query<br>`number_of_results`: 5 (max 10)<br>`content_mode`: text or raw<br>`output_file`: googler_results.txt<br>`source_agents`: Upstream agents<br>`target_agents`: Downstream agents |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -2783,6 +2785,7 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 | `/get_parametrizer_dialog_data/<agent_name>/` | GET | Get Parametrizer mapping dialog data |
 | `/save_parametrizer_scheme/<agent_name>/` | POST | Save Parametrizer interconnection scheme |
 | `/update_barrier_connection/<agent_name>/` | POST | Update barrier connections |
+| `/update_googler_connection/<agent_name>/` | POST | Update googler connections |
 
 #### Session & Pool Management
 
@@ -3163,6 +3166,7 @@ Enable verbose logging in config.json:
 | **Kyber-DeCipher** | Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key via decapsulation + AES-256-CTR, logs deciphered buffer, and triggers downstream agents |
 | **Parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via a deployed interconnection scheme CSV, supporting iterative execution for multiple output elements |
 | **Barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier, waiting for ALL configured source agents to start before triggering downstream target agents via cross-process file-based locking and flag files |
+| **Googler** | Short-running web-search agent that searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content, and saves the combined results to an output file for downstream processing |
 
 ---
 
@@ -3246,6 +3250,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Keyboarder Canvas Wiring** - `keyboarder` is now a first-class ACP auto-configuration participant: the frontend styles it explicitly, `acp-agent-connectors.js` posts to `/update_keyboarder_connection/<agent_name>/`, and the backend updates its `source_agents` / `target_agents` lists in the deployed pool instance `config.yaml`
 - **Mouser Localized Click Actions** - Mouser now supports `button_click` values such as `left`, `right`, `middle`, and `double-left/right/middle`. The properties dialog only enables those options for localized movement, and the runtime only emits the configured click after the cursor has actually reached the intended destination
 - **Added Keyboarder Agent** - Issues a sequence of keys to emulate human typing on the keyboard.
+- **Added Googler Agent** - Searches Google for a configured query using Playwright, fetches top N result pages, extracts readable text, and saves results to an output file. Includes full ACP canvas wiring with Google brand-inspired 4-color gradient.
 
 - **ACP Agent Descriptions and Instance Context Menus** - `agentic_control_panel()` now parses the `## Workflow Agents` Purpose column from `README.md`, injects an `agent_purpose_map` into the ACP template, and the frontend uses it for sidebar hover tooltips and the new canvas **Description** dialog. The right-click menu for deployed agents now also exposes **`Explore dir...`** and **`Open cmd...`**, and `/agent/open_in_app/` accepts `agent_name` so those actions resolve the current session-pool instance directory instead of the template folder. `agent/tests.py` now includes regression coverage for those instance-directory actions
 - **Parametrizer Nested Target Mapping** - The Parametrizer dialog now flattens nested target `config.yaml` dictionaries into dot-notation keys, and runtime mapping now writes dot-notation targets back into nested YAML structures. This lets a source output field populate sub-config entries such as `target.smtp.username` instead of only top-level keys
