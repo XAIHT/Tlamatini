@@ -49,459 +49,122 @@ logging.getLogger().addHandler(console_handler)
 
 
 # ========================================
-# STRUCTURED OUTPUT PARSERS
+# UNIFIED STRUCTURED OUTPUT PARSER
 # ========================================
+#
+# Every section-generating agent writes its structured output to its log
+# file using one single, universal format:
+#
+#   INI_SECTION_<AGENT_TYPE><<<
+#   field1: value1
+#   field2: value2
+#
+#   multi-line body content (becomes 'response_body')
+#   >>>END_SECTION_<AGENT_TYPE>
+#
+# Format rules
+# ------------
+# 1. <AGENT_TYPE> is the UPPERCASE base name of the source agent
+#    (e.g. APIRER, CRAWLER, KYBER_KEYGEN, FILE_INTERPRETER).
+# 2. Lines before the FIRST blank line are key-value metadata.
+#    Each line is split on the first ': ' (colon-space) delimiter.
+# 3. Everything after the first blank line is stored under the key
+#    'response_body'.
+# 4. If there is NO blank line the entire content is key-value fields
+#    (no response_body is produced).
+# 5. Sections MUST be emitted as a SINGLE atomic logging.info() call
+#    so that concurrent log writes cannot corrupt the block.
 
-# Each source agent type has its own structured output pattern in its log file.
-# This registry maps agent base names to parser functions.
-
-def _parse_brace_blocks(log_text, pattern):
-    """Parse blocks of format: <label> {\n<content>\n}"""
-    results = []
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        label = match.group('label').strip()
-        content = match.group('content').strip()
-        results.append({'_label': label, '_content': content})
-    return results
-
-
-def parse_apirer_output(log_text):
-    """Apirer: <url> RESPONSE {\\n...\\n}"""
-    blocks = []
-    pattern = r'<(?P<label>[^>]+)>\s*RESPONSE\s*\{\s*\n(?P<content>.*?)\n\}'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'url': match.group('label').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_gitter_output(log_text):
-    """Gitter: <git command> RESPONSE {\\n...\\n}"""
-    blocks = []
-    pattern = r'<(?P<label>[^>]+)>\s*RESPONSE\s*\{\s*\n(?P<content>.*?)\n\}'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'git_command': match.group('label').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
+# All supported section-generating agent base names.
+SECTION_AGENT_TYPES = [
+    'apirer', 'gitter', 'kuberneter',
+    'crawler', 'summarizer', 'prompter', 'flowcreator',
+    'file_interpreter', 'image_interpreter', 'file_extractor',
+    'kyber_keygen', 'kyber_cipher', 'kyber_decipher',
+    'gatewayer', 'gateway_relayer',
+    'googler',
+]
 
 
-def parse_kuberneter_output(log_text):
-    """Kuberneter: KUBECTL EXECUTION PARAMETERS: ..., STATUS: code\\n{\\n...\\n}"""
-    blocks = []
-    pattern = (
-        r'KUBECTL EXECUTION PARAMETERS:\s*(?P<params>[^,]+),\s*STATUS:\s*(?P<status>\d+)'
-        r'\s*\{\s*\n(?P<content>.*?)\n\}'
-    )
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'parameters': match.group('params').strip(),
-            'status': match.group('status').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
+def _parse_section_content(raw_content):
+    """Parse a unified section block into a fields dictionary.
 
-
-def parse_ini_end_response(log_text, ini_marker, end_marker):
-    """Parse INI_RESPONSE<<<...>>>END_RESPONSE style blocks."""
-    blocks = []
-    pattern = re.escape(ini_marker) + r'.*?\n(?P<content>.*?)\n.*?' + re.escape(end_marker)
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_crawler_output(log_text):
-    """Crawler: INI_RESPONSE_<LABEL><<<\\n...\\n>>>END_RESPONSE_<LABEL>"""
-    blocks = []
-    pattern = r'INI_RESPONSE_(?P<label>\w+)<<<\s*\n(?P<content>.*?)\n\s*>>>END_RESPONSE_(?P=label)'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'label': match.group('label').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_summarizer_output(log_text):
-    """Summarizer: INI_RESPONSE_SUMMARIZER<<<\\n...\\n>>>END_RESPONSE_SUMMARIZER"""
-    return parse_ini_end_response(log_text, 'INI_RESPONSE_SUMMARIZER<<<', '>>>END_RESPONSE_SUMMARIZER')
-
-
-def parse_prompter_output(log_text):
-    """Prompter: INI_RESPONSE<<<\\n...\\n>>>END_RESPONSE"""
-    return parse_ini_end_response(log_text, 'INI_RESPONSE<<<', '>>>END_RESPONSE')
-
-
-def parse_flowcreator_output(log_text):
-    """FlowCreator: INI_RESPONSE\\n...\\n>>>END_RESPONSE"""
-    blocks = []
-    pattern = r'INI_RESPONSE\s*\n(?P<content>.*?)\n\s*>>>END_RESPONSE'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_file_interpreter_output(log_text):
-    """File-Interpreter: INI_FILE: [filepath] (mode)\\n...\\nEND_FILE"""
-    blocks = []
-    pattern = r'INI_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\((?P<mode>[^)]+)\)\s*\n(?P<content>.*?)\nEND_FILE'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'file_path': match.group('filepath').strip(),
-            'mode': match.group('mode').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_image_interpreter_output(log_text):
-    """Image-Interpreter: INI_IMAGE_FILE: [filepath]\\n...\\nEND_FILE"""
-    blocks = []
-    pattern = r'INI_IMAGE_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\n(?P<content>.*?)\nEND_FILE'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'file_path': match.group('filepath').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_file_extractor_output(log_text):
-    """File-Extractor: INI_FILE: [filepath] (extracted)\\n...\\nEND_FILE"""
-    blocks = []
-    pattern = r'INI_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\(extracted\)\s*\n(?P<content>.*?)\nEND_FILE'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'file_path': match.group('filepath').strip(),
-            'response_body': match.group('content').strip()
-        })
-    return blocks
-
-
-def parse_kyber_keygen_output(log_text):
-    """Kyber-KeyGen: KYBER PUBLIC KEY {\\n...\\n} and KYBER PRIVATE KEY {\\n...\\n}"""
-    blocks = []
-    pub_pattern = r'KYBER PUBLIC KEY\s*\{\s*\n(?P<content>.*?)\n\}'
-    priv_pattern = r'KYBER PRIVATE KEY\s*\{\s*\n(?P<content>.*?)\n\}'
-    pub_keys = [m.group('content').strip() for m in re.finditer(pub_pattern, log_text, re.DOTALL)]
-    priv_keys = [m.group('content').strip() for m in re.finditer(priv_pattern, log_text, re.DOTALL)]
-    for i in range(max(len(pub_keys), len(priv_keys))):
-        block = {}
-        if i < len(pub_keys):
-            block['public_key'] = pub_keys[i]
-        if i < len(priv_keys):
-            block['private_key'] = priv_keys[i]
-        blocks.append(block)
-    return blocks
-
-
-def parse_kyber_cipher_output(log_text):
-    """Kyber-Cipher: KYBER GENERATED ENCAPSULATION/INIT VECTOR/CIPHER TEXT {\\n...\\n}"""
-    blocks = []
-    enc_pattern = r'KYBER GENERATED ENCAPSULATION\s*\{\s*\n(?P<content>.*?)\n\}'
-    iv_pattern = r'KYBER GENERATED INIT VECTOR\s*\{\s*\n(?P<content>.*?)\n\}'
-    ct_pattern = r'KYBER GENERATED CIPHER TEXT\s*\{\s*\n(?P<content>.*?)\n\}'
-    encaps = [m.group('content').strip() for m in re.finditer(enc_pattern, log_text, re.DOTALL)]
-    ivs = [m.group('content').strip() for m in re.finditer(iv_pattern, log_text, re.DOTALL)]
-    cts = [m.group('content').strip() for m in re.finditer(ct_pattern, log_text, re.DOTALL)]
-    count = max(len(encaps), len(ivs), len(cts))
-    for i in range(count):
-        block = {}
-        if i < len(encaps):
-            block['encapsulation'] = encaps[i]
-        if i < len(ivs):
-            block['initialization_vector'] = ivs[i]
-        if i < len(cts):
-            block['cipher_text'] = cts[i]
-        blocks.append(block)
-    return blocks
-
-
-def parse_kyber_decipher_output(log_text):
-    """Kyber-DeCipher: KYBER DECIPHERED BUFFER {\\n...\\n}"""
-    blocks = []
-    pattern = r'KYBER DECIPHERED BUFFER\s*\{\s*\n(?P<content>.*?)\n\}'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        blocks.append({
-            'deciphered_buffer': match.group('content').strip()
-        })
-    return blocks
-
-
-def _parse_kv_block(content):
-    """Parse a block of ``key: value`` lines into a dictionary.
-
-    Lines are split on the first ``: `` so that values can contain colons
-    (e.g. URLs, JSON strings).  Empty values are included as empty strings.
+    KV header lines (before the first blank line) are split on the first
+    ``': '`` into key / value pairs.  Content after the first blank line
+    is stored under the key ``'response_body'``.
     """
-    result = {}
-    for line in content.split('\n'):
+    parts = raw_content.split('\n\n', 1)
+    header_text = parts[0]
+    body_text = parts[1].strip() if len(parts) > 1 else ''
+
+    fields = {}
+    for line in header_text.split('\n'):
         line = line.strip()
         if not line:
             continue
         sep_idx = line.find(': ')
-        if sep_idx == -1:
-            # Bare key with no value
-            result[line.rstrip(':')] = ''
-        else:
-            result[line[:sep_idx]] = line[sep_idx + 2:]
-    return result
+        if sep_idx != -1:
+            fields[line[:sep_idx]] = line[sep_idx + 2:]
+
+    if body_text:
+        fields['response_body'] = body_text
+
+    return fields
 
 
-def parse_gatewayer_output(log_text):
-    """Gatewayer: INI_GATEWAY_EVENT<<<\\nkey: value\\n...\\n>>>END_GATEWAY_EVENT
+def _section_regex(agent_type):
+    """Return the compiled regex that matches one section for *agent_type*."""
+    tag = re.escape(agent_type.upper())
+    return re.compile(
+        r'INI_SECTION_' + tag + r'<<<\s*\n(?P<content>.*?)\n\s*>>>END_SECTION_' + tag,
+        re.DOTALL,
+    )
 
-    Extracted fields: event_id, event_type, session_id, correlation_id,
-    content_type, method, path, body.
-    """
+
+def parse_unified_output(log_text, agent_type):
+    """Parse ALL section blocks for *agent_type* from *log_text*."""
     blocks = []
-    pattern = r'INI_GATEWAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_GATEWAY_EVENT'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        fields = _parse_kv_block(match.group('content'))
-        blocks.append(fields)
+    for match in _section_regex(agent_type).finditer(log_text):
+        blocks.append(_parse_section_content(match.group('content')))
     return blocks
 
 
-def parse_gateway_relayer_output(log_text):
-    """Gateway-Relayer: INI_RELAY_EVENT<<<\\nkey: value\\n...\\n>>>END_RELAY_EVENT
+def parse_next_unified_output(log_text, agent_type):
+    """Parse the first unread section block for *agent_type*.
 
-    Extracted fields: event_type, delivery_id, action, ref, repository,
-    sender, body.
+    Returns ``(fields_dict, end_offset)`` or ``None``.
     """
-    blocks = []
-    pattern = r'INI_RELAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_RELAY_EVENT'
-    for match in re.finditer(pattern, log_text, re.DOTALL):
-        fields = _parse_kv_block(match.group('content'))
-        blocks.append(fields)
-    return blocks
-
-
-# Registry mapping source agent base name -> parser function
-OUTPUT_PARSERS = {
-    'apirer': parse_apirer_output,
-    'gitter': parse_gitter_output,
-    'kuberneter': parse_kuberneter_output,
-    'crawler': parse_crawler_output,
-    'summarizer': parse_summarizer_output,
-    'file_interpreter': parse_file_interpreter_output,
-    'image_interpreter': parse_image_interpreter_output,
-    'file_extractor': parse_file_extractor_output,
-    'prompter': parse_prompter_output,
-    'flowcreator': parse_flowcreator_output,
-    'kyber_keygen': parse_kyber_keygen_output,
-    'kyber_cipher': parse_kyber_cipher_output,
-    'kyber_decipher': parse_kyber_decipher_output,
-    'gatewayer': parse_gatewayer_output,
-    'gateway_relayer': parse_gateway_relayer_output,
-}
-
-PARAMETRIZER_MARKER_PATTERN = re.compile(r'\{([^{}\r\n]+)\}')
-POLL_INTERVAL_SECONDS = 0.5
-STATE_STAGE_IDLE = 'idle'
-STATE_STAGE_BACKUP_READY = 'backup_ready'
-STATE_STAGE_CONFIG_APPLIED = 'config_applied'
-STATE_STAGE_WAITING_TARGET = 'waiting_target'
-STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING = 'target_finished_restore_pending'
-
-
-def get_source_base_name(agent_pool_name):
-    """Extract base agent name from pool name: 'apirer_1' -> 'apirer', 'file_interpreter_2' -> 'file_interpreter'."""
-    for known_base in OUTPUT_PARSERS:
-        if agent_pool_name == known_base or agent_pool_name.startswith(known_base + '_'):
-            suffix = agent_pool_name[len(known_base):]
-            if suffix == '' or (suffix.startswith('_') and suffix[1:].isdigit()):
-                return known_base
-    return None
-
-
-def _parse_next_brace_response(log_text, label_field, content_field='response_body'):
-    pattern = r'<(?P<label>[^>]+)>\s*RESPONSE\s*\{\s*\n(?P<content>.*?)\n\}'
-    match = re.search(pattern, log_text, re.DOTALL)
+    match = _section_regex(agent_type).search(log_text)
     if not match:
         return None
-    return ({
-        label_field: match.group('label').strip(),
-        content_field: match.group('content').strip(),
-    }, match.end())
+    return (_parse_section_content(match.group('content')), match.end())
 
 
-def parse_next_apirer_output(log_text):
-    return _parse_next_brace_response(log_text, 'url')
+# ---------------------------------------------------------------------------
+# Build the OUTPUT_PARSERS and NEXT_OUTPUT_PARSERS registries automatically
+# from the unified parser.  Each entry is a one-argument callable that
+# accepts log_text and delegates to the generic parser with the correct
+# agent type baked in.
+# ---------------------------------------------------------------------------
+
+def _make_output_parser(agent_type):
+    def _parser(log_text):
+        return parse_unified_output(log_text, agent_type)
+    _parser.__name__ = f'parse_{agent_type}_output'
+    _parser.__doc__ = f'Unified section parser for {agent_type}.'
+    return _parser
 
 
-def parse_next_gitter_output(log_text):
-    return _parse_next_brace_response(log_text, 'git_command')
+def _make_next_output_parser(agent_type):
+    def _parser(log_text):
+        return parse_next_unified_output(log_text, agent_type)
+    _parser.__name__ = f'parse_next_{agent_type}_output'
+    _parser.__doc__ = f'Unified next-section parser for {agent_type}.'
+    return _parser
 
 
-def parse_next_kuberneter_output(log_text):
-    pattern = (
-        r'KUBECTL EXECUTION PARAMETERS:\s*(?P<params>[^,]+),\s*STATUS:\s*(?P<status>\d+)'
-        r'\s*\{\s*\n(?P<content>.*?)\n\}'
-    )
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'parameters': match.group('params').strip(),
-        'status': match.group('status').strip(),
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def _parse_next_ini_end_response(log_text, ini_marker, end_marker):
-    pattern = re.escape(ini_marker) + r'.*?\n(?P<content>.*?)\n.*?' + re.escape(end_marker)
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_crawler_output(log_text):
-    pattern = r'INI_RESPONSE_(?P<label>\w+)<<<\s*\n(?P<content>.*?)\n\s*>>>END_RESPONSE_(?P=label)'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'label': match.group('label').strip(),
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_summarizer_output(log_text):
-    return _parse_next_ini_end_response(log_text, 'INI_RESPONSE_SUMMARIZER<<<', '>>>END_RESPONSE_SUMMARIZER')
-
-
-def parse_next_prompter_output(log_text):
-    return _parse_next_ini_end_response(log_text, 'INI_RESPONSE<<<', '>>>END_RESPONSE')
-
-
-def parse_next_flowcreator_output(log_text):
-    pattern = r'INI_RESPONSE\s*\n(?P<content>.*?)\n\s*>>>END_RESPONSE'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_file_interpreter_output(log_text):
-    pattern = r'INI_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\((?P<mode>[^)]+)\)\s*\n(?P<content>.*?)\nEND_FILE'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'file_path': match.group('filepath').strip(),
-        'mode': match.group('mode').strip(),
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_image_interpreter_output(log_text):
-    pattern = r'INI_IMAGE_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\n(?P<content>.*?)\nEND_FILE'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'file_path': match.group('filepath').strip(),
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_file_extractor_output(log_text):
-    pattern = r'INI_FILE:\s*\[(?P<filepath>[^\]]+)\]\s*\(extracted\)\s*\n(?P<content>.*?)\nEND_FILE'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'file_path': match.group('filepath').strip(),
-        'response_body': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_kyber_keygen_output(log_text):
-    pattern = (
-        r'KYBER PUBLIC KEY\s*\{\s*\n(?P<public_key>.*?)\n\}'
-        r'.*?KYBER PRIVATE KEY\s*\{\s*\n(?P<private_key>.*?)\n\}'
-    )
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'public_key': match.group('public_key').strip(),
-        'private_key': match.group('private_key').strip(),
-    }, match.end())
-
-
-def parse_next_kyber_cipher_output(log_text):
-    pattern = (
-        r'KYBER GENERATED ENCAPSULATION\s*\{\s*\n(?P<encapsulation>.*?)\n\}'
-        r'.*?KYBER GENERATED INIT VECTOR\s*\{\s*\n(?P<initialization_vector>.*?)\n\}'
-        r'.*?KYBER GENERATED CIPHER TEXT\s*\{\s*\n(?P<cipher_text>.*?)\n\}'
-    )
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'encapsulation': match.group('encapsulation').strip(),
-        'initialization_vector': match.group('initialization_vector').strip(),
-        'cipher_text': match.group('cipher_text').strip(),
-    }, match.end())
-
-
-def parse_next_kyber_decipher_output(log_text):
-    pattern = r'KYBER DECIPHERED BUFFER\s*\{\s*\n(?P<content>.*?)\n\}'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return ({
-        'deciphered_buffer': match.group('content').strip(),
-    }, match.end())
-
-
-def parse_next_gatewayer_output(log_text):
-    pattern = r'INI_GATEWAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_GATEWAY_EVENT'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return (_parse_kv_block(match.group('content')), match.end())
-
-
-def parse_next_gateway_relayer_output(log_text):
-    pattern = r'INI_RELAY_EVENT<<<\s*\n(?P<content>.*?)\n>>>END_RELAY_EVENT'
-    match = re.search(pattern, log_text, re.DOTALL)
-    if not match:
-        return None
-    return (_parse_kv_block(match.group('content')), match.end())
-
-
-NEXT_OUTPUT_PARSERS = {
-    'apirer': parse_next_apirer_output,
-    'gitter': parse_next_gitter_output,
-    'kuberneter': parse_next_kuberneter_output,
-    'crawler': parse_next_crawler_output,
-    'summarizer': parse_next_summarizer_output,
-    'file_interpreter': parse_next_file_interpreter_output,
-    'image_interpreter': parse_next_image_interpreter_output,
-    'file_extractor': parse_next_file_extractor_output,
-    'prompter': parse_next_prompter_output,
-    'flowcreator': parse_next_flowcreator_output,
-    'kyber_keygen': parse_next_kyber_keygen_output,
-    'kyber_cipher': parse_next_kyber_cipher_output,
-    'kyber_decipher': parse_next_kyber_decipher_output,
-    'gatewayer': parse_next_gatewayer_output,
-    'gateway_relayer': parse_next_gateway_relayer_output,
-}
+OUTPUT_PARSERS = {at: _make_output_parser(at) for at in SECTION_AGENT_TYPES}
+NEXT_OUTPUT_PARSERS = {at: _make_next_output_parser(at) for at in SECTION_AGENT_TYPES}
 
 
 # ========================================

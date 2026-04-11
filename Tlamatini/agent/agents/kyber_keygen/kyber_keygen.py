@@ -400,8 +400,12 @@ def main():
             logging.info(f"Key pair generated successfully for {kyber_variant}")
 
             # Log keys in the required format
-            logging.info(f"KYBER PUBLIC KEY {{\n{public_key_b64}\n}}")
-            logging.info(f"KYBER PRIVATE KEY {{\n{private_key_b64}\n}}")
+            logging.info(
+                f"INI_SECTION_KYBER_KEYGEN<<<\n"
+                f"public_key: {public_key_b64}\n"
+                f"private_key: {private_key_b64}\n"
+                f">>>END_SECTION_KYBER_KEYGEN"
+            )
 
         except Exception as e:
             logging.error(f"Key generation failed: {e}")

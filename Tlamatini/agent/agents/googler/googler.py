@@ -633,14 +633,14 @@ def save_results(results: List[Dict], output_file: str, query: str) -> str:
         f.write("=" * 60 + "\n\n")
 
         for result in results:
-            f.write(f"--- Result {result.get('index', '?')} ---\n")
+            f.write(f"=== HTTP RESPONSE METADATA (Result {result.get('index', '?')}) ===\n")
             f.write(f"URL: {result.get('url', 'N/A')}\n")
+            f.write(f"Status: {result.get('status_code', 'N/A')}\n")
+            f.write(f"Content Length: {result.get('content_length', 0)} chars\n")
 
             if 'error' in result:
                 f.write(f"ERROR: {result['error']}\n")
             else:
-                f.write(f"Status: {result.get('status_code', 'N/A')}\n")
-                f.write(f"Content Length: {result.get('content_length', 0)} chars\n")
                 f.write(f"\n{result.get('content', '')}\n")
 
             f.write("\n" + "=" * 60 + "\n\n")
@@ -684,6 +684,25 @@ def main():
                 if results:
                     saved_path = save_results(results, output_file, query)
                     logging.info(f"Results saved to: {saved_path}")
+
+                    # Emit structured sections to the log for Parametrizer consumption
+                    for result in results:
+                        r_url = result.get('url', 'N/A')
+                        r_status = result.get('status_code', 'N/A')
+                        r_length = result.get('content_length', 0)
+                        if 'error' in result:
+                            r_body = f"ERROR: {result['error']}"
+                        else:
+                            r_body = result.get('content', '')
+                        logging.info(
+                            f"INI_SECTION_GOOGLER<<<\n"
+                            f"url: {r_url}\n"
+                            f"status: {r_status}\n"
+                            f"content_length: {r_length}\n"
+                            f"\n"
+                            f"{r_body}\n"
+                            f">>>END_SECTION_GOOGLER"
+                        )
                 else:
                     logging.warning("No results obtained from Google search.")
 

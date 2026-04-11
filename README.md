@@ -96,6 +96,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Why Parametrizer Exists](#why-parametrizer-exists)
   - [How It Works](#how-it-works-1)
   - [The Interconnection Scheme](#the-interconnection-scheme)
+  - [Unified Section Format](#unified-section-format)
   - [Supported Source Agents and Their Output Fields](#supported-source-agents-and-their-output-fields)
   - [Iterative Execution Model](#iterative-execution-model)
   - [Pause, Resume, and Reanimation](#pause-resume-and-reanimation)
@@ -2165,32 +2166,84 @@ That means Parametrizer can either overwrite a config field completely or inject
 
 This CSV is created from the visual mapping dialog and saved in the deployed Parametrizer pool directory. It is loaded once when the agent starts or resumes.
 
+### Unified Section Format
+
+Every section-generating agent writes its structured output to its log file using **one single, universal format**. This is the only format that Parametrizer knows how to parse. Any agent that needs to produce data consumable by Parametrizer must emit sections in exactly this shape:
+
+```
+INI_SECTION_<AGENT_TYPE><<<
+field1: value1
+field2: value2
+
+multi-line body content (becomes 'response_body')
+>>>END_SECTION_<AGENT_TYPE>
+```
+
+**Rules (mandatory, no exceptions):**
+
+1. **`<AGENT_TYPE>`** is the UPPERCASE base name of the agent: `APIRER`, `CRAWLER`, `KYBER_KEYGEN`, `FILE_INTERPRETER`, `GOOGLER`, etc.
+2. **Start marker**: `INI_SECTION_<AGENT_TYPE><<<` on its own line, immediately followed by a newline.
+3. **End marker**: `>>>END_SECTION_<AGENT_TYPE>` on its own line.
+4. **KV header**: Lines before the **first blank line** are key-value metadata. Each line is split on the first `: ` (colon followed by a space). Keys must be single-line and must not contain `: `.
+5. **Body**: Everything **after** the first blank line is stored under the key `response_body`. The body can be arbitrarily large and multi-line.
+6. **No blank line → no body**: If the content between markers contains no blank line, the entire content is parsed as KV fields and no `response_body` is produced. This is the correct format for agents whose output is purely metadata (e.g., Kyber-KeyGen emitting `public_key` and `private_key`).
+7. **Single atomic call**: The section **must** be emitted as a **single** `logging.info()` call. Never split the section across multiple `logging.info()` calls — concurrent log writes from other threads could interleave and corrupt the block.
+8. **One section per output unit**: If the agent produces N results, emit N separate sections. Parametrizer processes them sequentially, one at a time.
+
+**Example — agent with KV metadata and body (Googler):**
+
+```
+INI_SECTION_GOOGLER<<<
+url: https://example.com
+status: 200
+content_length: 4523
+
+This is the extracted page text content.
+It can span multiple lines.
+>>>END_SECTION_GOOGLER
+```
+
+Parametrizer extracts: `{'url': 'https://example.com', 'status': '200', 'content_length': '4523', 'response_body': 'This is the extracted page text content.\nIt can span multiple lines.'}`
+
+**Example — agent with KV fields only (Kyber-KeyGen):**
+
+```
+INI_SECTION_KYBER_KEYGEN<<<
+public_key: MIIBIjANBgkq...
+private_key: MIIEvgIBADAN...
+>>>END_SECTION_KYBER_KEYGEN
+```
+
+Parametrizer extracts: `{'public_key': 'MIIBIjANBgkq...', 'private_key': 'MIIEvgIBADAN...'}`
+
+**The generic parser** in `parametrizer.py` handles all 16 agent types with a single regex and a single content-splitting function. No per-agent parser code exists. Adding a new section-generating agent requires only:
+
+1. Adding the agent's base name to the `SECTION_AGENT_TYPES` list in `parametrizer.py`
+2. Adding the agent's field list to `PARAMETRIZER_SOURCE_OUTPUT_FIELDS` in `views.py`
+3. Emitting sections in the agent's Python code using the format above
+
 ### Supported Source Agents and Their Output Fields
 
-Parametrizer currently supports 15 structured-output source agent types. Each has both:
+Parametrizer supports 16 structured-output source agent types. All use the unified `INI_SECTION / END_SECTION` format described above.
 
-- a full parser for understanding the source format
-- a "next segment" parser used by the sequential queue so the runtime can consume one complete segment at a time
-
-Supported sources and extracted fields:
-
-| Source Agent | Log Pattern | Extracted Fields |
+| Source Agent | KV Header Fields | Has Body (`response_body`)? |
 |---|---|---|
-| **Apirer** | `<url> RESPONSE {\n...\n}` | `url`, `response_body` |
-| **Gitter** | `<git command> RESPONSE {\n...\n}` | `git_command`, `response_body` |
-| **Kuberneter** | `KUBECTL EXECUTION PARAMETERS: ..., STATUS: code {\n...\n}` | `parameters`, `status`, `response_body` |
-| **Crawler** | `INI_RESPONSE_<LABEL><<<\n...\n>>>END_RESPONSE_<LABEL>` | `label`, `response_body` |
-| **Summarizer** | `INI_RESPONSE_SUMMARIZER<<<\n...\n>>>END_RESPONSE_SUMMARIZER` | `response_body` |
-| **File-Interpreter** | `INI_FILE: [path] (mode)\n...\nEND_FILE` | `file_path`, `mode`, `response_body` |
-| **Image-Interpreter** | `INI_IMAGE_FILE: [path]\n...\nEND_FILE` | `file_path`, `response_body` |
-| **File-Extractor** | `INI_FILE: [path] (extracted)\n...\nEND_FILE` | `file_path`, `response_body` |
-| **Prompter** | `INI_RESPONSE<<<\n...\n>>>END_RESPONSE` | `response_body` |
-| **FlowCreator** | `INI_RESPONSE\n...\n>>>END_RESPONSE` | `response_body` |
-| **Kyber-KeyGen** | `KYBER PUBLIC KEY {\n...\n}` + `KYBER PRIVATE KEY {\n...\n}` | `public_key`, `private_key` |
-| **Kyber-Cipher** | `KYBER GENERATED ENCAPSULATION/INIT VECTOR/CIPHER TEXT {\n...\n}` | `encapsulation`, `initialization_vector`, `cipher_text` |
-| **Kyber-DeCipher** | `KYBER DECIPHERED BUFFER {\n...\n}` | `deciphered_buffer` |
-| **Gatewayer** | `INI_GATEWAY_EVENT<<<\nkey: value\n...\n>>>END_GATEWAY_EVENT` | `event_id`, `event_type`, `session_id`, `correlation_id`, `content_type`, `method`, `path`, `body` |
-| **Gateway-Relayer** | `INI_RELAY_EVENT<<<\nkey: value\n...\n>>>END_RELAY_EVENT` | `event_type`, `delivery_id`, `action`, `ref`, `repository`, `sender`, `body` |
+| **Apirer** | `url` | Yes |
+| **Gitter** | `git_command` | Yes |
+| **Kuberneter** | `parameters`, `status` | Yes |
+| **Crawler** | `label`, `model`, `url`, `crawl_type`, `content_mode` | Yes |
+| **Summarizer** | `model`, `source` | Yes |
+| **File-Interpreter** | `file_path`, `mode` | Yes |
+| **Image-Interpreter** | `file_path` | Yes |
+| **File-Extractor** | `file_path` | Yes |
+| **Prompter** | `model` | Yes |
+| **FlowCreator** | `model` | Yes |
+| **Kyber-KeyGen** | `public_key`, `private_key` | No |
+| **Kyber-Cipher** | `encapsulation`, `initialization_vector`, `cipher_text` | No |
+| **Kyber-DeCipher** | `deciphered_buffer` | No |
+| **Gatewayer** | `event_id`, `event_type`, `session_id`, `correlation_id`, `content_type`, `method`, `path`, `body` | No |
+| **Gateway-Relayer** | `event_type`, `delivery_id`, `action`, `ref`, `repository`, `sender`, `body` | No |
+| **Googler** | `url`, `status`, `content_length` | Yes |
 
 ### Iterative Execution Model
 
@@ -2325,7 +2378,7 @@ Two Parametrizer instances chain the entire cryptographic lifecycle: the first m
 ### Design Constraints
 
 - **One-to-one only.** One Parametrizer instance supports exactly one source and one target. Use multiple Parametrizers for fan-out or fan-in designs.
-- **Source must be structured-output capable.** Only the supported 15 source agents can feed Parametrizer.
+- **Source must be structured-output capable.** Only the supported 16 source agents can feed Parametrizer. All must emit the unified `INI_SECTION / END_SECTION` format.
 - **Target can be any normal agent with a `config.yaml`.** Parametrizer writes only to fields that exist or can be created through dot-notation traversal.
 - **Mappings are static while the process is running.** The CSV is loaded on startup/resume, not continuously re-read during each segment.
 - **Strictly sequential.** Parametrizer is intentionally single-threaded and processes only one in-flight segment at a time.

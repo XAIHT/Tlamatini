@@ -353,7 +353,7 @@ def _log_relay_payload(event_type: str, delivery_id: str, upstream_body: dict):
        (e.g. ``MESSAGE_REF: refs/heads/main``).
 
     2. **Structured output block** wrapped in
-       ``INI_RELAY_EVENT<<< … >>>END_RELAY_EVENT`` delimiters with one
+       ``INI_SECTION_GATEWAY_RELAYER<<< … >>>END_SECTION_GATEWAY_RELAYER`` delimiters with one
        ``key: value`` per line.  Parametrizer parses individual fields;
        Summarizer can feed the whole block to an LLM.
     """
@@ -391,7 +391,7 @@ def _log_relay_payload(event_type: str, delivery_id: str, upstream_body: dict):
     )
 
     logging.info(
-        f"INI_RELAY_EVENT<<<\n{block}\n>>>END_RELAY_EVENT"
+        f"INI_SECTION_GATEWAY_RELAYER<<<\n{block}\n>>>END_SECTION_GATEWAY_RELAYER"
     )
 
 

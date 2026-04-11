@@ -1066,11 +1066,15 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
     type_label = crawl_type.replace('-range', '')
     upper_label = type_label.upper()
     logging.info(
-        f"INI_RESPONSE_{upper_label}<<<\n"
-        f"--------------------LLM Response (model: {model}, url: {page_url}, "
-        f"crawl_type: {{{type_label}}}, content_mode: {{{content_mode}}})------------------"
-        f" {{\n{response_text}\n}}\n"
-        f">>>END_RESPONSE_{upper_label}"
+        f"INI_SECTION_CRAWLER<<<\n"
+        f"label: {upper_label}\n"
+        f"model: {model}\n"
+        f"url: {page_url}\n"
+        f"crawl_type: {type_label}\n"
+        f"content_mode: {content_mode}\n"
+        f"\n"
+        f"{response_text}\n"
+        f">>>END_SECTION_CRAWLER"
     )
 
 

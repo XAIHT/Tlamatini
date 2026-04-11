@@ -565,9 +565,13 @@ def main() -> None:
             return
 
         # Log the response
-        logging.info(f"----LLM Response (model: {model})---- INI_RESPONSE")
-        logging.info(response_text)
-        logging.info(">>>END_RESPONSE")
+        logging.info(
+            f"INI_SECTION_FLOWCREATOR<<<\n"
+            f"model: {model}\n"
+            f"\n"
+            f"{response_text}\n"
+            f">>>END_SECTION_FLOWCREATOR"
+        )
         logging.info(f"LLM response received ({len(response_text)} chars)")
 
         # Write the raw intermediate script

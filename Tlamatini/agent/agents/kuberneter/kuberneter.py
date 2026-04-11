@@ -321,7 +321,14 @@ def main():
             exit_code = -1
             
         params_str = ", ".join(cmd)
-        logging.info(f"KUBECTL EXECUTION PARAMETERS: {params_str}, STATUS: {exit_code}\n{{\n{full_output}\n}}")
+        logging.info(
+            f"INI_SECTION_KUBERNETER<<<\n"
+            f"parameters: {params_str}\n"
+            f"status: {exit_code}\n"
+            f"\n"
+            f"{full_output}\n"
+            f">>>END_SECTION_KUBERNETER"
+        )
 
         # Trigger downstream agents (always, regardless of success or failure)
         total_triggered = 0

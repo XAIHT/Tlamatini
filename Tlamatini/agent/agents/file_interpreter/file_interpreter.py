@@ -779,11 +779,12 @@ def process_file_fast(file_path: str):
     raw_text = '\n'.join(text_parts)
 
     logging.info(
-        f"INI_FILE: [{file_path}] (fast)\n"
-        f"{{\n"
+        f"INI_SECTION_FILE_INTERPRETER<<<\n"
+        f"file_path: {file_path}\n"
+        f"mode: fast\n"
+        f"\n"
         f"{raw_text}\n"
-        f"}}\n"
-        f"END_FILE"
+        f">>>END_SECTION_FILE_INTERPRETER"
     )
 
 
@@ -814,11 +815,12 @@ def process_file_complete(file_path: str, images_dir: str):
 
     content = '\n'.join(output_parts)
     logging.info(
-        f"INI_FILE: [{file_path}] (complete)\n"
-        f"{{\n"
+        f"INI_SECTION_FILE_INTERPRETER<<<\n"
+        f"file_path: {file_path}\n"
+        f"mode: complete\n"
+        f"\n"
         f"{content}\n"
-        f"}}\n"
-        f"END_FILE"
+        f">>>END_SECTION_FILE_INTERPRETER"
     )
 
 
@@ -832,11 +834,12 @@ def process_file_summarized(file_path: str, host: str, model: str):
     if not raw_text.strip():
         logging.warning(f"⚠️ No text extracted from {file_path}, skipping summarization")
         logging.info(
-            f"INI_FILE: [{file_path}] (summarized)\n"
-            f"{{\n"
+            f"INI_SECTION_FILE_INTERPRETER<<<\n"
+            f"file_path: {file_path}\n"
+            f"mode: summarized\n"
+            f"\n"
             f"[No text content found in file]\n"
-            f"}}\n"
-            f"END_FILE"
+            f">>>END_SECTION_FILE_INTERPRETER"
         )
         return
 
@@ -856,11 +859,12 @@ def process_file_summarized(file_path: str, host: str, model: str):
         summary = f"[ERROR: LLM summarization failed: {e}]"
 
     logging.info(
-        f"INI_FILE: [{file_path}] (summarized)\n"
-        f"{{\n"
+        f"INI_SECTION_FILE_INTERPRETER<<<\n"
+        f"file_path: {file_path}\n"
+        f"mode: summarized\n"
+        f"\n"
         f"{summary}\n"
-        f"}}\n"
-        f"END_FILE"
+        f">>>END_SECTION_FILE_INTERPRETER"
     )
 
 
@@ -930,11 +934,12 @@ def main():
             except Exception as e:
                 logging.error(f"❌ Error processing {file_path}: {e}")
                 logging.info(
-                    f"INI_FILE: [{file_path}] ({reading_type})\n"
-                    f"{{\n"
+                    f"INI_SECTION_FILE_INTERPRETER<<<\n"
+                    f"file_path: {file_path}\n"
+                    f"mode: {reading_type}\n"
+                    f"\n"
                     f"[ERROR: {e}]\n"
-                    f"}}\n"
-                    f"END_FILE"
+                    f">>>END_SECTION_FILE_INTERPRETER"
                 )
 
         if files:

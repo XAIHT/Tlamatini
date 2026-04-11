@@ -7658,23 +7658,27 @@ def update_parametrizer_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
-# Structured output field definitions for each source agent type
+# Structured output field definitions for each source agent type.
+# Every section-generating agent uses the unified INI_SECTION / END_SECTION
+# format.  KV header fields appear before the first blank line; content
+# after the blank line is stored as 'response_body'.
 PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
     'apirer': ['url', 'response_body'],
     'gitter': ['git_command', 'response_body'],
     'kuberneter': ['parameters', 'status', 'response_body'],
-    'crawler': ['label', 'response_body'],
-    'summarizer': ['response_body'],
+    'crawler': ['label', 'model', 'url', 'crawl_type', 'content_mode', 'response_body'],
+    'summarizer': ['model', 'source', 'response_body'],
     'file_interpreter': ['file_path', 'mode', 'response_body'],
     'image_interpreter': ['file_path', 'response_body'],
     'file_extractor': ['file_path', 'response_body'],
-    'prompter': ['response_body'],
-    'flowcreator': ['response_body'],
+    'prompter': ['model', 'response_body'],
+    'flowcreator': ['model', 'response_body'],
     'kyber_keygen': ['public_key', 'private_key'],
     'kyber_cipher': ['encapsulation', 'initialization_vector', 'cipher_text'],
     'kyber_decipher': ['deciphered_buffer'],
     'gatewayer': ['event_id', 'event_type', 'session_id', 'correlation_id', 'content_type', 'method', 'path', 'body'],
     'gateway_relayer': ['event_type', 'delivery_id', 'action', 'ref', 'repository', 'sender', 'body'],
+    'googler': ['url', 'status', 'content_length', 'response_body'],
 }
 
 # Allowed source agent base names
