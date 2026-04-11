@@ -165,6 +165,119 @@ Pressing **Start** while the flow is PAUSED acts as **Resume** (identical to pre
 
 ---
 
+## Quick-Reference: Agent Capabilities at a Glance
+
+Use this table to quickly decide which agent to use. The **Starts Others** column tells you whether this agent can chain to the next agent via `target_agents`.
+
+| Agent | What It Does | Starts Others | Category |
+|-------|-------------|:---:|----------|
+| **starter** | Entry point — launches the first agent(s) in the flow | YES | Control |
+| **ender** | Terminates all listed agents and optionally launches FlowBacker/Cleaner | KILL+LAUNCH | Control |
+| **stopper** | Stops specific agents without ending the entire flow | NO | Control |
+| **sleeper** | Waits N milliseconds, then starts the next agent (use for delays/loops) | YES | Control |
+| **croner** | Waits until a cron schedule fires, then starts the next agent | YES | Control |
+| **raiser** | Watches a source agent's log for a keyword; starts next agent when found | YES | Routing |
+| **forker** | Watches a source log for two keywords; routes to path A or path B | YES (A or B) | Routing |
+| **asker** | Pauses for user choice (A or B), then routes accordingly | YES (A or B) | Routing |
+| **counter** | Counts invocations; routes "less" or "greater" based on threshold | YES (L or G) | Routing |
+| **or_gate** | Fires when ANY one of its 2 sources completes | YES | Logic |
+| **and_gate** | Fires when BOTH of its 2 sources complete | YES | Logic |
+| **barrier** | Fires when ALL N sources complete (generalized AND for N inputs) | YES | Logic |
+| **executer** | Runs a shell command | YES | Action |
+| **pythonxer** | Runs inline Python code | YES | Action |
+| **prompter** | Sends a prompt to an LLM and logs the response | YES | Action |
+| **summarizer** | Summarizes text/logs with an LLM (can start next agents) | YES | Action |
+| **crawler** | Crawls URLs and captures content with optional LLM analysis | YES | Action |
+| **googler** | Searches Google, fetches top N results, extracts text | YES | Action |
+| **apirer** | Calls HTTP REST APIs | YES | Action |
+| **gitter** | Runs git operations | YES | Action |
+| **ssher** | Runs commands on remote hosts via SSH | YES | Action |
+| **scper** | Transfers files via SCP | YES | Action |
+| **dockerer** | Runs Docker commands | YES | Action |
+| **kuberneter** | Runs kubectl commands | YES | Action |
+| **pser** | Runs PowerShell commands | YES | Action |
+| **jenkinser** | Triggers Jenkins jobs | YES | Action |
+| **sqler** | Runs SQL queries (opens external window) | YES | Action |
+| **mongoxer** | Runs MongoDB operations (opens external window) | YES | Action |
+| **mover** | Moves/renames files | YES | Action |
+| **deleter** | Deletes files | YES | Action |
+| **shoter** | Takes screenshots | YES | Action |
+| **mouser** | Simulates mouse/keyboard input | YES | Action |
+| **keyboarder** | Sends keyboard shortcuts | YES | Action |
+| **file_creator** | Creates files with specified content | YES | Action |
+| **file_interpreter** | Reads and interprets file contents with an LLM | YES | Action |
+| **file_extractor** | Extracts raw text from documents (PDF, DOCX, etc.) | YES | Action |
+| **image_interpreter** | Analyzes images with a vision LLM | YES | Action |
+| **j_decompiler** | Decompiles JAR/WAR files | YES | Action |
+| **kyber_keygen** | Generates post-quantum cryptographic key pairs | YES | Action |
+| **kyber_cipher** | Encrypts data with Kyber (PQC) | YES | Action |
+| **kyber_decipher** | Decrypts data with Kyber (PQC) | YES | Action |
+| **parametrizer** | Maps structured output from one agent into another's config | YES | Utility |
+| **node_manager** | Discovers and monitors network nodes | YES | Utility |
+| **flowbacker** | Backs up the current session's logs and configs | YES | Utility |
+| **monitor_log** | Monitors a log file continuously (long-running) | NO | Terminal |
+| **monitor_netstat** | Monitors network connections continuously (long-running) | NO | Terminal |
+| **emailer** | Sends email when a keyword appears in a source log | NO | Terminal |
+| **recmailer** | Checks received emails (IMAP) | NO | Terminal |
+| **notifier** | Shows desktop notification when keyword found | NO | Terminal |
+| **telegramer** | Sends a Telegram message | YES | Action |
+| **whatsapper** | Sends a WhatsApp message | NO | Terminal |
+| **telegramrx** | Receives Telegram messages (long-running) | NO | Terminal |
+| **cleaner** | Deletes logs and PIDs for listed agents | NO | Terminal |
+| **flowhypervisor** | LLM-powered flow health monitor (system agent) | NO | Monitoring |
+| **gatewayer** | HTTP webhook ingress + folder-drop watcher | YES | Utility |
+| **gateway_relayer** | Relays GitHub/GitLab webhooks with signature verification | YES | Utility |
+
+## Decision Guide: Common Objectives → Recommended Patterns
+
+Use these patterns to solve common flow design problems:
+
+**1. "Run task A, then task B, then task C" (simple linear chain)**
+```
+Starter → Agent_A → Agent_B → Agent_C → Ender
+```
+Each agent's `target_agents` points to the next one. Simplest pattern.
+
+**2. "Keep checking X every N seconds until Y happens, then alert" (polling loop with exception)**
+```
+Starter → Agent_A → Sleeper (N ms) → Agent_A  (loop)
+                  ↘ Raiser (watches for "Y") → Notifier → Ender
+```
+Agent_A's `target_agents` contains BOTH Sleeper (for looping) and Raiser (for exception detection). Raiser watches Agent_A's log.
+
+**3. "Process each result from agent A through agent B one at a time" (parametrized pipeline)**
+```
+Starter → Source_Agent → Parametrizer → Target_Agent → Ender
+```
+Parametrizer reads structured sections from Source_Agent's log and feeds them one-by-one into Target_Agent's config.
+
+**4. "Do A and B in parallel, then C when both are done" (fork-join)**
+```
+Starter → Agent_A → AND_Gate → Agent_C → Ender
+       ↘ Agent_B ↗
+```
+AND gate fires only when both Agent_A and Agent_B have completed.
+
+**5. "Do A, then decide: if success do B, if failure do C" (conditional branching)**
+```
+Starter → Agent_A → Forker → [path A] Agent_B → Ender
+                            → [path B] Agent_C → Ender
+```
+Forker watches Agent_A's log for two different keywords and routes accordingly.
+
+**6. "Run task every day at 3 AM" (scheduled execution)**
+```
+Starter → Croner (cron='0 3 * * *') → Agent_A → Ender
+```
+
+**7. "Clean shutdown with log backup"**
+```
+... → Ender → FlowBacker → Cleaner
+```
+Ender kills all agents, FlowBacker saves the session, Cleaner deletes logs.
+
+---
+
 ## Available Agents
 
 Below is the complete list of agents you can use. For each agent, the **config parameters** show ALL fields that go in its config.yaml file.

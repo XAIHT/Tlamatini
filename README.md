@@ -104,6 +104,13 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [Completion Semantics](#completion-semantics)
   - [Practical Examples](#practical-examples)
   - [Design Constraints](#design-constraints)
+- [Multi-Turn Chat Mode: The Agentic Execution Engine](#multi-turn-chat-mode-the-agentic-execution-engine)
+  - [What Multi-Turn Mode Enables](#what-multi-turn-mode-enables)
+  - [Architecture: The Complete Pipeline](#architecture-the-complete-pipeline)
+  - [Tool Categories](#tool-categories)
+  - [The Multi-Turn Tool Loop](#the-multi-turn-tool-loop)
+  - [Capability-Aware Tool Selection](#capability-aware-tool-selection)
+  - [Wrapped Chat-Agent Lifecycle](#wrapped-chat-agent-lifecycle)
 - [Custom Agent Development](#custom-agent-development)
   - [Using the `create_new_agent` Skill](#using-the-create_new_agent-skill)
     - [In Antigravity IDE / Gemini CLI](#in-antigravity-ide--gemini-cli)
@@ -2385,6 +2392,155 @@ Two Parametrizer instances chain the entire cryptographic lifecycle: the first m
 - **Target config is temporary per segment.** The live target config is modified only for the current segment and is then restored from `config.yaml.bck`.
 - **Target logs are preserved per segment.** After each finished target run, Parametrizer copies the live target log to `<target_agent>_segment_<n>.log` so earlier segment outcomes are not lost when the target runs again.
 - **The source log is authoritative.** Progress is tracked by byte offset in the source log, not by counting assumptions or external queues.
+
+---
+
+## Multi-Turn Chat Mode: The Agentic Execution Engine
+
+Multi-Turn mode transforms Tlamatini from a chat-based Q&A assistant into a fully autonomous agentic execution engine. When the user enables the **Multi-Turn** checkbox in the chat interface, the LLM gains access to 50+ local tools and can chain them across up to 100 iterations to complete complex, multi-step tasks.
+
+### What Multi-Turn Mode Enables
+
+In **standard chat** mode, the LLM answers questions using only the provided context (RAG documents, file search results, system metrics). In **Multi-Turn** mode, the LLM becomes an autonomous operator that can:
+
+- **Crawl websites** and extract content (JavaScript-rendered SPAs supported)
+- **Execute shell commands** and Python scripts
+- **Query databases** (SQL, MongoDB)
+- **Call HTTP APIs** (GET, POST, PUT, DELETE, PATCH)
+- **SSH into remote servers** and run commands
+- **Transfer files** via SCP
+- **Send messages** (Email, Telegram, WhatsApp, desktop notifications)
+- **Manage containers** (Docker, Kubernetes)
+- **Run git operations** (clone, pull, push, commit, etc.)
+- **Analyze images** with vision AI
+- **Encrypt/decrypt data** with post-quantum cryptography (Kyber)
+- **Search the web** via Google (with DuckDuckGo fallback)
+- **Create, read, and transform files**
+- **Monitor logs and network connections** in real time
+- **Chain all of the above** into multi-step workflows within a single conversation turn
+
+The key behavioral differences when Multi-Turn is enabled:
+
+| Behavior | Standard Chat | Multi-Turn |
+|----------|:---:|:---:|
+| Prompt shape validation (must be a question) | Enforced | Bypassed |
+| File-listing short-circuit (returns listing without LLM) | Active | Bypassed — request always reaches the LLM |
+| Tool binding | All tools (legacy mode) | Capability-aware selective binding |
+| Tool execution loop | Single LLM call | Up to 100 iterations with tool calls |
+| Console window suppression | Normal | Suppressed (agents run silently) |
+
+### Architecture: The Complete Pipeline
+
+When a user sends a message with Multi-Turn enabled, the request traverses the following pipeline:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ 1. FRONTEND                                                         │
+│    User types message + enables Multi-Turn checkbox                 │
+│    → WebSocket sends {message, multi_turn_enabled: true}            │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ 2. WEBSOCKET CONSUMER (consumers.py)                                │
+│    Receives JSON, extracts multi_turn_enabled flag                  │
+│    → Saves message to DB                                            │
+│    → Broadcasts user message to chat UI                             │
+│    → Queues async LLM retrieval task                                │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ 3. RAG INTERFACE (rag/interface.py)                                 │
+│    ask_rag() receives the payload                                   │
+│    → Bypasses prompt-shape validation (Multi-Turn allows ANY input) │
+│    → Bypasses path-access validation                                │
+│    → Passes multi_turn_enabled to the RAG chain                     │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ 4. UNIFIED RAG CHAIN (rag/chains/unified.py)                        │
+│    Retrieves relevant documents from the knowledge base             │
+│    → Builds enhanced input with context (RAG docs + file context)   │
+│    → Bypasses file-listing short-circuit in Multi-Turn              │
+│    → Invokes the Unified Agent with enhanced_input + tools          │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ 5. CAPABILITY-AWARE EXECUTOR (mcp_agent.py)                         │
+│    Receives enhanced_input + multi_turn_enabled flag                │
+│    → If execution plan exists: use ONLY planned tools               │
+│    → Otherwise: select_tools_for_request() (smart scoring)          │
+│    → Creates a MultiTurnToolAgentExecutor with selected tools       │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ 6. MULTI-TURN TOOL LOOP (mcp_agent.py)                              │
+│    Builds messages: [SystemMessage, HumanMessage]                   │
+│    → LOOP (up to 100 iterations):                                   │
+│       1. Call LLM with bound tools                                  │
+│       2. If LLM returns tool_calls:                                 │
+│          - Execute each tool                                        │
+│          - Append ToolMessage with result to message history        │
+│          - Continue loop (next iteration)                           │
+│       3. If LLM returns text (no tool_calls):                      │
+│          - Return final answer → stream to user                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Tool Categories
+
+Tools available in Multi-Turn mode fall into five categories:
+
+**Basic System Tools** — Direct operations on the local machine:
+`get_current_time`, `execute_file`, `execute_command`, `execute_netstat`, `launch_view_image`, `unzip_file`, `decompile_java`
+
+**Template Agent Management** — Configure and control template agents from the chat:
+`agent_parametrizer`, `agent_starter`, `agent_stopper`, `agent_stat_getter`
+
+**Wrapped Chat-Agent Tools** (~35 agents) — Each launches an isolated subprocess agent:
+`chat_agent_crawler`, `chat_agent_executer`, `chat_agent_ssher`, `chat_agent_sqler`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`, `chat_agent_apirer`, `chat_agent_gitter`, `chat_agent_file_creator`, `chat_agent_file_extractor`, `chat_agent_image_interpreter`, `chat_agent_summarize_text`, `chat_agent_prompter`, `chat_agent_send_email`, `chat_agent_telegramer`, `chat_agent_whatsapper`, `chat_agent_notifier`, `chat_agent_shoter`, `chat_agent_pser`, `chat_agent_scper`, `chat_agent_jenkinser`, `chat_agent_mongoxer`, `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph`, `chat_agent_monitor_log`, `chat_agent_monitor_netstat`, `chat_agent_recmailer`, `chat_agent_move_file`, `chat_agent_deleter`, `chat_agent_file_interpreter`
+
+**Runtime Management Tools** — Monitor and control running agent instances:
+`chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop`
+
+**Web Search** — Search the internet using Playwright browser automation:
+`googler`
+
+### The Multi-Turn Tool Loop
+
+The core execution engine is the `MultiTurnToolAgentExecutor`. It implements an explicit tool-calling loop (not using LangChain's opaque AgentExecutor) that gives the backend direct control over every tool-call/observation turn:
+
+1. **System prompt** is constructed from `prompt.pmt` + a tool selection guide + grounding rules.
+2. **User message** (enhanced with RAG context) is added as a `HumanMessage`.
+3. The LLM is called with `bind_tools(selected_tools)` so it can request tool invocations.
+4. If the LLM response contains `tool_calls`, each tool is executed and the result is appended as a `ToolMessage`.
+5. The loop continues — the LLM sees all prior tool results and can request more tools.
+6. When the LLM responds with pure text (no tool calls), that text is the final answer.
+7. The loop runs for up to `unified_agent_max_iterations` (default: 100) iterations.
+
+This architecture allows the LLM to orchestrate multi-step workflows: crawl a website, extract data, query a database, compose a report, and send it via email — all within a single conversation turn.
+
+### Capability-Aware Tool Selection
+
+When 50+ tools are available, binding all of them to the LLM wastes context and confuses smaller models. The `CapabilityAwareToolAgentExecutor` solves this with intelligent tool selection:
+
+1. **Global Execution Plan** (highest priority): If a planner has pre-selected tools for this request, use only those.
+2. **Smart Scoring** (`select_tools_for_request`): Each tool is scored against the user's input text using name matching, alias phrases, description tokens, and security hints. Only top-scoring tools are bound.
+3. **Fallback**: If no tools score above threshold, all tools are bound (safe default).
+
+This means a request like "crawl example.com and summarize it" binds only `chat_agent_crawler`, `chat_agent_summarize_text`, and runtime tools — not the 30+ irrelevant tools that would clutter the LLM's context.
+
+### Wrapped Chat-Agent Lifecycle
+
+When the LLM invokes a `chat_agent_*` tool, the following happens:
+
+1. **Template Copy**: The agent's template directory is copied to an isolated runtime directory under `pools/__chat_runs__/{template}__chat__{run_id}/`. The template is never mutated.
+2. **Config Parametrization**: The LLM's `key='value'` assignments are parsed and applied to the runtime copy's `config.yaml`.
+3. **Subprocess Launch**: The agent starts as an independent subprocess with its own PID. The tool waits briefly (default 8 seconds) for initial output.
+4. **JSON Response**: The tool returns a JSON object with `run_id`, `status`, `pid`, `runtime_dir`, `log_path`, and `log_excerpt`.
+5. **Monitoring**: If `status="running"`, the LLM can call `chat_agent_run_status` or `chat_agent_run_log` in subsequent iterations to check progress.
+6. **Completion**: When the agent finishes, its status transitions to `completed` or `failed`, and the full log is available via `chat_agent_run_log`.
+
+This design ensures that each tool invocation is isolated, traceable, and monitorable. The LLM never has to worry about cleanup — each run is self-contained.
 
 ---
 
