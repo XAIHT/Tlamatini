@@ -732,11 +732,11 @@ def main():
                 logging.info(f"📖 Extracting: {file_path}")
                 raw_text = extract_file(file_path)
                 logging.info(
-                    f"INI_FILE: [{file_path}] (extracted)\n"
-                    f"{{\n"
+                    f"INI_SECTION_FILE_EXTRACTOR<<<\n"
+                    f"file_path: {file_path}\n"
+                    f"\n"
                     f"{raw_text}\n"
-                    f"}}\n"
-                    f"END_FILE"
+                    f">>>END_SECTION_FILE_EXTRACTOR"
                 )
                 files_extracted += 1
             except Exception as e:

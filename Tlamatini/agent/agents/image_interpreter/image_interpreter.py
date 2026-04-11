@@ -569,12 +569,13 @@ def main():
                 description = analyze_image_with_llm(image_path, llm_config)
 
                 # Log in structured format
-                logging.info(f"INI_IMAGE_FILE: [{image_path}]")
-                logging.info("{")
-                for line in description.split('\n'):
-                    logging.info(f"    {line}")
-                logging.info("}")
-                logging.info("END_FILE")
+                logging.info(
+                    f"INI_SECTION_IMAGE_INTERPRETER<<<\n"
+                    f"file_path: {image_path}\n"
+                    f"\n"
+                    f"{description}\n"
+                    f">>>END_SECTION_IMAGE_INTERPRETER"
+                )
 
             logging.info(f"✅ All {len(image_files)} image(s) processed successfully.")
 

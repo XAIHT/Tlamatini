@@ -405,9 +405,14 @@ def main():
                 full_output += "\n"
             full_output += result.stderr
 
-        print(f"<git {command}> RESPONSE {{")
-        print(full_output if full_output else "(no output)")
-        print("}")
+        _git_body = full_output if full_output else "(no output)"
+        logging.info(
+            f"INI_SECTION_GITTER<<<\n"
+            f"git_command: git {command}\n"
+            f"\n"
+            f"{_git_body}\n"
+            f">>>END_SECTION_GITTER"
+        )
 
         if result.returncode != 0:
             logging.error(f"❌ Git command failed with exit code {result.returncode}")

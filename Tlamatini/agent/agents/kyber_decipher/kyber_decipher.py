@@ -437,7 +437,11 @@ def main():
             logging.info("Decryption completed successfully")
 
             # Log output in the required format
-            logging.info(f"KYBER DECIPHERED BUFFER {{\n{plaintext}\n}}")
+            logging.info(
+                f"INI_SECTION_KYBER_DECIPHER<<<\n"
+                f"deciphered_buffer: {plaintext}\n"
+                f">>>END_SECTION_KYBER_DECIPHER"
+            )
 
         except Exception as e:
             logging.error(f"Decryption failed: {e}")

@@ -393,11 +393,12 @@ def poll_source_agents(source_agents: List[str], system_prompt: str,
                 continue
 
             logging.info(
-                f"INI_RESPONSE_SUMMARIZER<<<\n"
-                f"--------------------LLM Response (model: {model}, "
-                f"source: {source})------------------"
-                f" {{\n{llm_response}\n}}\n"
-                f">>>END_RESPONSE_SUMMARIZER"
+                f"INI_SECTION_SUMMARIZER<<<\n"
+                f"model: {model}\n"
+                f"source: {source}\n"
+                f"\n"
+                f"{llm_response}\n"
+                f">>>END_SECTION_SUMMARIZER"
             )
 
             checked_with_content.add(source)

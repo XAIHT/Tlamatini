@@ -300,6 +300,12 @@ def main():
         else:
             print("WARNING: requirements.txt not found next to build.py. Skipping pip install.")
 
+        # 1c) Install Playwright browsers
+        print(f"  -> Installing Playwright browsers for {target_python} ...")
+        pw_result = subprocess.run([target_python, "-m", "playwright", "install"])
+        if pw_result.returncode != 0:
+            print(f"WARNING: playwright install failed for {target_python}. Continuing anyway.")
+
     # Ensure PyInstaller is available
     try:
         import PyInstaller  # noqa: F401

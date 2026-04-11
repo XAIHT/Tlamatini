@@ -340,9 +340,13 @@ def main():
                 response_text = query_ollama(host, model, prompt_text)
 
                 # Log the response in the required format
-                logging.info(f"--------------------LLM Response (model: {model})------------------ INI_RESPONSE<<<")
-                logging.info(response_text)
-                logging.info(">>>END_RESPONSE")
+                logging.info(
+                    f"INI_SECTION_PROMPTER<<<\n"
+                    f"model: {model}\n"
+                    f"\n"
+                    f"{response_text}\n"
+                    f">>>END_SECTION_PROMPTER"
+                )
 
                 logging.info(f"✅ LLM response received ({len(response_text)} chars)")
             except RuntimeError as e:

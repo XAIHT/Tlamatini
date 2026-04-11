@@ -496,9 +496,13 @@ def main():
             logging.info("Encryption completed successfully")
 
             # Log outputs in the required format
-            logging.info(f"KYBER GENERATED ENCAPSULATION {{\n{encapsulation_b64}\n}}")
-            logging.info(f"KYBER GENERATED INIT VECTOR {{\n{iv_b64}\n}}")
-            logging.info(f"KYBER GENERATED CIPHER TEXT {{\n{ciphertext_b64}\n}}")
+            logging.info(
+                f"INI_SECTION_KYBER_CIPHER<<<\n"
+                f"encapsulation: {encapsulation_b64}\n"
+                f"initialization_vector: {iv_b64}\n"
+                f"cipher_text: {ciphertext_b64}\n"
+                f">>>END_SECTION_KYBER_CIPHER"
+            )
 
         except Exception as e:
             logging.error(f"Encryption failed: {e}")

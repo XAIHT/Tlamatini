@@ -298,9 +298,13 @@ def make_http_request(config: dict) -> dict:
         logging.info(f"📄 Body length: {len(response_body)} chars")
 
         # Print the complete response in structured format
-        print(f"<{url}> RESPONSE {{")
-        print(response_body)
-        print("}")
+        logging.info(
+            f"INI_SECTION_APIRER<<<\n"
+            f"url: {url}\n"
+            f"\n"
+            f"{response_body}\n"
+            f">>>END_SECTION_APIRER"
+        )
 
         return {
             'success': True,
@@ -321,9 +325,14 @@ def make_http_request(config: dict) -> dict:
         logging.warning(f"⚠️ HTTP Error: {e.code} {e.reason} ({elapsed}ms)")
 
         # Print the complete error response in structured format
-        print(f"<{url}> RESPONSE {{")
-        print(error_body if error_body else f"HTTP {e.code}: {e.reason}")
-        print("}")
+        _err_body = error_body if error_body else f"HTTP {e.code}: {e.reason}"
+        logging.info(
+            f"INI_SECTION_APIRER<<<\n"
+            f"url: {url}\n"
+            f"\n"
+            f"{_err_body}\n"
+            f">>>END_SECTION_APIRER"
+        )
 
         return {
             'success': False,
@@ -338,9 +347,13 @@ def make_http_request(config: dict) -> dict:
         logging.error(f"❌ URL Error: {e.reason} ({elapsed}ms)")
 
         # Print the error in structured format
-        print(f"<{url}> RESPONSE {{")
-        print(f"URL Error: {e.reason}")
-        print("}")
+        logging.info(
+            f"INI_SECTION_APIRER<<<\n"
+            f"url: {url}\n"
+            f"\n"
+            f"URL Error: {e.reason}\n"
+            f">>>END_SECTION_APIRER"
+        )
 
         return {
             'success': False,
@@ -355,9 +368,13 @@ def make_http_request(config: dict) -> dict:
         logging.error(f"❌ Request failed: {e} ({elapsed}ms)")
 
         # Print the error in structured format
-        print(f"<{url}> RESPONSE {{")
-        print(str(e))
-        print("}")
+        logging.info(
+            f"INI_SECTION_APIRER<<<\n"
+            f"url: {url}\n"
+            f"\n"
+            f"{e}\n"
+            f">>>END_SECTION_APIRER"
+        )
 
         return {
             'success': False,

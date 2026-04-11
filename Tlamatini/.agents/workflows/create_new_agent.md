@@ -182,6 +182,80 @@ def get_reanim_offset(log_file_path):
 
 At startup, load the offset from the reanim file. In the polling loop, call `save_reanim_offset(offset)` after each read. For agents monitoring multiple sources, use per-source files: `reanim_<source>.pos`.
 
+### Structured Output Sections (REQUIRED if agent generates data for Parametrizer)
+
+If the new agent produces structured output that Parametrizer can consume (i.e., it generates results, responses, or data blocks that should flow into another agent's `config.yaml`), it **must** emit sections using the **unified section format**. This is the only format Parametrizer knows how to parse.
+
+**Format:**
+
+```
+INI_SECTION_<AGENT_TYPE><<<
+field1: value1
+field2: value2
+
+multi-line body content (becomes 'response_body')
+>>>END_SECTION_<AGENT_TYPE>
+```
+
+**Rules (mandatory, no exceptions):**
+
+1. `<AGENT_TYPE>` = the UPPERCASE base name of the agent (e.g., `APIRER`, `CRAWLER`, `GOOGLER`).
+2. Start marker: `INI_SECTION_<AGENT_TYPE><<<` followed by a newline.
+3. End marker: `>>>END_SECTION_<AGENT_TYPE>`.
+4. **KV header** (before the first blank line): key-value metadata lines, split on the first `: `.
+5. **Body** (after the first blank line): stored as `response_body`. Can be arbitrarily large and multi-line.
+6. **No blank line = no body**: if there are no blank lines, the content is parsed as KV fields only.
+7. **Single atomic call**: The entire section MUST be emitted in a single `logging.info()` call. Never split across multiple calls — concurrent log writes could interleave and corrupt the block.
+8. **One section per output unit**: if the agent produces N results, emit N separate sections.
+
+**Example — agent with KV metadata and body:**
+
+```python
+logging.info(
+    f"INI_SECTION_MY_AGENT<<<\n"
+    f"url: {url}\n"
+    f"status: {status_code}\n"
+    f"\n"
+    f"{response_content}\n"
+    f">>>END_SECTION_MY_AGENT"
+)
+```
+
+**Example — agent with KV fields only (no body):**
+
+```python
+logging.info(
+    f"INI_SECTION_MY_AGENT<<<\n"
+    f"public_key: {pub_key}\n"
+    f"private_key: {priv_key}\n"
+    f">>>END_SECTION_MY_AGENT"
+)
+```
+
+**Registration (3 locations):**
+
+After adding the section output to the agent's Python code, you must register it in 3 places:
+
+1. **`parametrizer.py`** — Add the agent's base name to the `SECTION_AGENT_TYPES` list:
+   ```python
+   SECTION_AGENT_TYPES = [
+       ...existing agents...,
+       'my_agent',
+   ]
+   ```
+   No per-agent parser code is needed — the unified parser handles all agents automatically.
+
+2. **`views.py`** — Add the agent's field list to `PARAMETRIZER_SOURCE_OUTPUT_FIELDS`:
+   ```python
+   PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
+       ...existing agents...,
+       'my_agent': ['url', 'status', 'response_body'],
+   }
+   ```
+   List only the KV header field names plus `response_body` if the agent has a body section.
+
+3. **`README.md`** — Add a row to the **Supported Source Agents** table in the Parametrizer section.
+
 ---
 
 ## Step 2 · Backend: Django View for Connection Updates
@@ -672,6 +746,12 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
     [ ] Add _IS_REANIMATED detection before logging setup
     [ ] Add reanimation marker log in main() after write_pid_file()
     [ ] If agent polls source logs: implement reanim offset save/load
+    [ ] If agent produces structured output for Parametrizer:
+        [ ] Emit INI_SECTION_<AGENT_TYPE><<< ... >>>END_SECTION_<AGENT_TYPE> sections
+        [ ] Use a SINGLE atomic logging.info() call per section (NEVER split)
+        [ ] Register base name in SECTION_AGENT_TYPES (parametrizer.py)
+        [ ] Register field list in PARAMETRIZER_SOURCE_OUTPUT_FIELDS (views.py)
+        [ ] Add row to Supported Source Agents table (README.md)
 [ ] Step 2: Add update_<agent_name>_connection_view in views.py + URL in urls.py
 [ ] Step 3: Create database migration and run `python manage.py migrate`
     [ ] Decide: is agentDescription single-word (e.g., "Shoter") or multi-word (e.g., "Node Manager")?

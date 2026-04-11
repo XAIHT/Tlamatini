@@ -425,7 +425,7 @@ def _log_event_payload(envelope: dict):
        on specific payload values (e.g. ``MESSAGE_TYPE: TELEGRAM``).
 
     2. **Structured output block** wrapped in
-       ``INI_GATEWAY_EVENT<<< … >>>END_GATEWAY_EVENT`` delimiters with one
+       ``INI_SECTION_GATEWAYER<<< … >>>END_SECTION_GATEWAYER`` delimiters with one
        ``key: value`` per line.  Parametrizer parses individual fields from
        these lines; Summarizer can feed the whole block to an LLM.
     """
@@ -458,7 +458,7 @@ def _log_event_payload(envelope: dict):
     )
 
     logging.info(
-        f"INI_GATEWAY_EVENT<<<\n{block}\n>>>END_GATEWAY_EVENT"
+        f"INI_SECTION_GATEWAYER<<<\n{block}\n>>>END_SECTION_GATEWAYER"
     )
 
 

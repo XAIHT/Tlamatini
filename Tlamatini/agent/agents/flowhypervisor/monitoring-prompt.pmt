@@ -109,6 +109,15 @@ COMPLETION markers (agent is done):
   "TERMINATION COMPLETE" — Ender finished killing targets
   "Decompilation complete:" — J-Decompiler finished processing all matched artifacts
 
+STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametrizer):
+  "INI_SECTION_<AGENT_TYPE><<<" — start of a unified structured output section
+  ">>>END_SECTION_<AGENT_TYPE>" — end of a unified structured output section
+  These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
+  FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
+  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer).
+  They are NOT errors — they are structured data blocks consumed by Parametrizer.
+  A single agent log may contain many such sections (one per result/response).
+
 ERROR markers (look for these):
   "❌" prefix or "ERROR" / "FATAL" / "CRASH" in the log line
   "Failed to start agent" — CRITICAL: downstream chain is broken
