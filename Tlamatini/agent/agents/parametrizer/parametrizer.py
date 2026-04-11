@@ -166,6 +166,42 @@ def _make_next_output_parser(agent_type):
 OUTPUT_PARSERS = {at: _make_output_parser(at) for at in SECTION_AGENT_TYPES}
 NEXT_OUTPUT_PARSERS = {at: _make_next_output_parser(at) for at in SECTION_AGENT_TYPES}
 
+# ---------------------------------------------------------------------------
+# Progress-state stage constants
+# ---------------------------------------------------------------------------
+STATE_STAGE_IDLE = 'idle'
+STATE_STAGE_BACKUP_READY = 'backup_ready'
+STATE_STAGE_CONFIG_APPLIED = 'config_applied'
+STATE_STAGE_WAITING_TARGET = 'waiting_target'
+STATE_STAGE_TARGET_FINISHED_RESTORE_PENDING = 'target_finished_restore_pending'
+
+# Polling interval (seconds) between checks on the source agent log
+POLL_INTERVAL_SECONDS = 2
+
+
+def get_source_base_name(source_agent_name):
+    """Extract the base agent type from a source agent name.
+
+    Agent names follow the pattern ``<base_type>`` or ``<base_type>_<N>``
+    (e.g. ``apirer``, ``crawler_2``).  Returns the matching base type from
+    ``SECTION_AGENT_TYPES``, or ``None`` if no match is found.
+    """
+    name = source_agent_name.strip().lower().replace('-', '_')
+    # Try exact match first
+    if name in OUTPUT_PARSERS:
+        return name
+    # Try stripping a trailing _N suffix (e.g. "apirer_2" -> "apirer")
+    parts = name.rsplit('_', 1)
+    if len(parts) == 2 and parts[1].isdigit() and parts[0] in OUTPUT_PARSERS:
+        return parts[0]
+    # Try matching two-word bases like "file_interpreter_3"
+    for base in SECTION_AGENT_TYPES:
+        if name == base or name.startswith(base + '_'):
+            suffix = name[len(base):]
+            if suffix == '' or (suffix.startswith('_') and suffix[1:].isdigit()):
+                return base
+    return None
+
 
 # ========================================
 # HELPER FUNCTIONS (from shoter.py boilerplate)
