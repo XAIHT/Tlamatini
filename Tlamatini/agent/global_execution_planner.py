@@ -114,14 +114,14 @@ def _select_planner_tool_names(
 
     positive.sort(key=lambda item: (-item[0], item[1], item[2].tool_name))
     top_score = positive[0][0]
-    threshold = 8 if selected_contexts else 4
+    threshold = 6 if selected_contexts else 2
     if top_score < threshold and not _RUN_ID_RE.search(normalized_request):
         notes = (
             "Context capabilities are sufficient for this request; the planner intentionally scheduled no tool or agent execution stage.",
         )
         return (), (), (), notes
 
-    dynamic_floor = max(4, top_score - 4)
+    dynamic_floor = max(2, top_score - 6)
     selected_names: list[str] = []
     for score, _index, capability in positive:
         if len(selected_names) >= max_selected:

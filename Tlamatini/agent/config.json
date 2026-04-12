@@ -84,7 +84,7 @@
   "history_summary_trigger_tokens": 150,
   "history_keep_last_turns": 3,
   "_section_chat_agent_runtime": "Wrapped Chat-Agent Runtime Management",
-  "chat_agent_limit_runs": 100,
+  "chat_agent_limit_runs": 256,
   "_section_metadata": "Metadata Extraction",
   "metadata_extraction": {
     "enable_code_structure": true,

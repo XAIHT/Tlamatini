@@ -1290,30 +1290,33 @@ def execute_file(command: str) -> str:
 @tool
 def execute_command(command: str) -> str:
     """
-    Execute a command in the current terminal window, exclusively for commands that cannot be executed by the execute_file tool.    
+    Execute a shell/system command. Use this for ANY command-line operation: installing packages,
+    building software, running scripts, checking system state, git, pip, npm, choco, winget, cmake, etc.
 
     CRITICAL: Pass the COMPLETE command exactly as the user specified, including all arguments.
-    
+
     Examples of what to pass:
-    - User asks 'Execute command dir *.log' →You MUST pass 'dir *.log'.
-    - User asks 'Execute command echo "Hello, World!"' → You MUST pass 'echo "Hello, World!"'.
-    - User asks 'Execute command python manage.py migrate' → You MUST pass 'python manage.py migrate'.
-    - User asks 'Run command dir *.log' → You MUST pass 'dir *.log'.
-    - User asks 'Run command echo "Hello, World!"' → You MUST pass 'echo "Hello, World!"'.
-    - User asks 'Run command python manage.py migrate' → You MUST pass 'python manage.py migrate'.
+    - 'pip install requests'
+    - 'git clone https://github.com/open-quantum-safe/liboqs.git'
+    - 'cmake -G "Visual Studio 17 2022" ..'
+    - 'dir *.log'
+    - 'python manage.py migrate'
+    - 'choco install cmake --yes'
     - If under your process to answer the user you need the execution of a command that is in certain directory you MUST pass the command with its complete path.
-    
+
     Input:
     - command: The complete command string to execute
-               (e.g., "ls -la", "echo 'Hello, World!'", "python myscript.py", "netstat -an", "ipconfig", "ping 8.8.8.8')
+               (e.g., "pip install flask", "git status", "cmake --build .", "dir /s", "ipconfig", "ping 8.8.8.8")
     """
     try:
         if not command or command.strip() == "":
             return "Error: No command provided. Please specify the command to execute."
-        
+
+        _is_windows = sys.platform.startswith("win")
+
         # ── Path guard: validate any path-like tokens in the command ──
         try:
-            tokens = shlex.split(command)
+            tokens = shlex.split(command, posix=not _is_windows)
         except ValueError:
             tokens = command.split()
         for token in tokens:
@@ -1329,16 +1332,29 @@ def execute_command(command: str) -> str:
                 if rejection:
                     return rejection
 
-        try:
-            cmd_list = shlex.split(command)
-            result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
-        except ValueError:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            return f"Error: Command '{command}' failed with return code {result.returncode}. Output: {result.stderr}"
+        # On Windows, always use shell=True so that builtins (dir, type, mkdir,
+        # echo, copy, move, del, set, cd) and commands with backslash paths work
+        # correctly.  On Unix, try non-shell first and fall back to shell=True.
+        if _is_windows:
+            result = subprocess.run(command, capture_output=True, text=True, shell=True)
         else:
-            return f"Command '{command}' executed successfully. Output: {result.stdout}"
+            try:
+                cmd_list = shlex.split(command)
+                result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
+            except (ValueError, FileNotFoundError):
+                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+        output = result.stdout or ""
+        error_output = result.stderr or ""
+        # Many CLI tools write progress/info to stderr even on success
+        combined = output
+        if error_output:
+            combined = f"{output}\nStderr: {error_output}" if output else f"Stderr: {error_output}"
+
+        if result.returncode != 0:
+            return f"Error: Command '{command}' failed with return code {result.returncode}. Output: {combined}"
+        else:
+            return f"Command '{command}' executed successfully. Output: {combined}"
     except Exception as e:
         return f"Error executing command '{command}': {e}"
 
