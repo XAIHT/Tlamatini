@@ -138,7 +138,7 @@ class P0HardeningTests(TestCase):
         self.assertEqual(response.context['initial_messages'][0]['message'], 'visible to alice')
 
     def test_agent_page_keeps_bot_history_for_current_user(self):
-        bot_user = User.objects.create_user(username='LLM_Bot', password='secret123')
+        bot_user = User.objects.create_user(username='Tlamatini', password='secret123')
         AgentMessage.objects.create(user=self.user, conversation_user=self.user, message='visible to alice')
         AgentMessage.objects.create(user=bot_user, conversation_user=self.user, message='assistant reply')
         AgentMessage.objects.create(user=bot_user, conversation_user=self.other_user, message='must stay private')
@@ -171,7 +171,7 @@ class P0HardeningTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_delete_messages_for_user_is_scoped(self):
-        bot_user = User.objects.create_user(username='LLM_Bot', password='secret123')
+        bot_user = User.objects.create_user(username='Tlamatini', password='secret123')
         AgentMessage.objects.create(user=self.user, conversation_user=self.user, message='delete me')
         AgentMessage.objects.create(user=bot_user, conversation_user=self.user, message='delete me too')
         AgentMessage.objects.create(user=self.other_user, conversation_user=self.other_user, message='keep me')

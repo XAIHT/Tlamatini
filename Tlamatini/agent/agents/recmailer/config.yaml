@@ -25,7 +25,7 @@ outcome_word: "PROCESSED"
   
 # System Prompt for Email Parsing
 system_prompt: |
-  You are a Email Monitoring Agent. 
+  You are a Email Monitoring Agent within the Tlamatini platform.
   Your job is to read the sender, subject, content, and the content attached from all the emails received in order to find certain keywords, and report it if you find one or some of them.
 
   Target Keywords: {keywords_or_phrases}

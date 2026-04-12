@@ -111,7 +111,7 @@ async def save_files_from_db(message, channel_layer, room_group_name):
                     {
                         'type': 'agent_message',
                         'message': 'File: <code>' + html.escape(destination) + '</code> saved!',
-                        'username': 'LLM_Bot'
+                        'username': 'Tlamatini'
                     }
                 )
             print("--- Bot message of file saving broadcasted to room.")

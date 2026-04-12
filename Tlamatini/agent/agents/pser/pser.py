@@ -436,7 +436,7 @@ def main():
 
             if process_list is not None:
                 # Step 2: Ask LLM to find the best matching process
-                prompt = f"""You are a process-matching expert. I need you to find the SINGLE best matching process from the list below.
+                prompt = f"""You are a Tlamatini process-matching expert agent. I need you to find the SINGLE best matching process from the list below.
 
 I am looking for a process whose name is most similar to: "{likely_process_name}"
 

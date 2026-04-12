@@ -174,9 +174,11 @@ Frozen builds resolve config from the install directory next to the executable. 
 
 ---
 
-## System Prompt
+## System Prompt & Identity
 
-The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. Key rules:
+The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. The LLM is given the identity **"Tlamatini"** (Nahuatl for "one who knows"). When users address "Tlamatini" in their prompts, the LLM understands they are speaking to the system itself. The bot username in chat messages and DB records is `Tlamatini`.
+
+Key rules:
 
 1. Referenced rephrases must be ignored
 2. System context (MCP metrics) is real-time
@@ -186,7 +188,8 @@ The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. Key rules:
 6. Tables must use HTML, not markdown pipe syntax
 7. Responses must end with `END-RESPONSE`
 8. Tool-usage rule: in Multi-Turn, the LLM is an OPERATOR, not just an advisor
-9. Up to 100 multi-turn iterations available
+9. Up to 256 multi-turn iterations available
+10. Identity rule: the LLM IS Tlamatini — it responds to its name and can describe its own capabilities
 
 ---
 

@@ -10,7 +10,7 @@
   "unified_agent_model": "glm-5:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
-  "unified_agent_max_iterations": 100,
+  "unified_agent_max_iterations": 256,
   "_section_image_interpreter": "Image Interpreter Configuration",
   "image_interpreter_base_url": "http://127.0.0.1:11434",
   "image_interpreter_model": "qwen3.5:cloud",

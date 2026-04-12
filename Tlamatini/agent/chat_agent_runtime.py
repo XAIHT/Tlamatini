@@ -15,7 +15,7 @@ from .models import ChatAgentRun
 
 
 CHAT_RUNTIME_ROOT_NAME = "__chat_runs__"
-DEFAULT_CHAT_AGENT_LIMIT_RUNS = 100
+DEFAULT_CHAT_AGENT_LIMIT_RUNS = 256
 RUNNING_STATUSES = {"created", "running"}
 FINAL_STATUSES = {"completed", "failed", "stopped"}
 RUNTIME_IGNORE_FILES = {

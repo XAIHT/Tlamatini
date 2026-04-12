@@ -260,7 +260,7 @@ def build_system_context(image_path: str, metadata: Dict) -> str:
     readable_name = name_without_ext.replace('_', ' ').replace('-', ' ').replace('.', ' ')
 
     parts = [
-        "You are an expert image analyst. You have been given an image to analyze along with contextual information derived from the file itself.",
+        "You are a Tlamatini expert image analyst agent. You have been given an image to analyze along with contextual information derived from the file itself.",
         "",
         "== FILE CONTEXT ==",
         f"File name: {filename}",

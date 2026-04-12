@@ -82,8 +82,8 @@ contextButton.addEventListener('click', (event) => {
         const tokensNumber = genericTokenCounting(content);
         console.log("--- The number of tokens in file is: " + tokensNumber);
         if (tokensNumber > maximalTheoricTokens) {
-            console.log("--- The number of tokens in file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
-            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+            console.log("--- The number of tokens in file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
+            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
         }
         console.log("--- The content is: " + content);
         if (!result) {

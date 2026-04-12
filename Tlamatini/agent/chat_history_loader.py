@@ -16,7 +16,7 @@ class DBChatHistoryLoader:
     converts it to LangChain messages (Human/AI), and lightly sanitizes HTML
     (your bot saves <br>, <strong>, etc.).
     """
-    BOT_USERNAME = "LLM_Bot"
+    BOT_USERNAME = "Tlamatini"
 
     @staticmethod
     def _sanitize(text: str) -> str:

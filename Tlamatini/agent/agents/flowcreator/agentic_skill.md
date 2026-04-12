@@ -340,7 +340,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
   - `system_prompt`: (Sometime you will need to modify the system_prompt, but always begin with the template below and modify the neccessary parts or add new instructions if needed)
 ```yaml
 system_prompt: |
-      You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+      You are a Log Monitoring Agent within the Tlamatini platform. Your job is to analyze pre-filtered log entries from a log file.
       
       Target Log File: {filepath}
       Target Keywords: {keywords}
@@ -389,7 +389,7 @@ system_prompt: |
   - `system_prompt`: (Sometime you will need to modify the system_prompt, but always begin with the template below and modify the neccessary parts or add new instructions if needed)
 ```yaml
   system_prompt: |
-  You are a Netstat Monitoring Agent. Your job is to analyze ports and their states.
+  You are a Netstat Monitoring Agent within the Tlamatini platform. Your job is to analyze ports and their states.
   
   Target Port: {port}
   Target Keywords: {keywords}
@@ -1522,7 +1522,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "outcome_word": "NormasDRM was successfully deployed"
       },
       "system_prompt": "|
-      You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+      You are a Log Monitoring Agent within the Tlamatini platform. Your job is to analyze pre-filtered log entries from a log file.
       
       Target Log File: {filepath}
       Target Keywords: {keywords}
@@ -1579,7 +1579,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
       "target_agents": [],
       "keywords": "NormasDRM was successfully deployed",
       "system_prompt": "|
-      You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+      You are a Log Monitoring Agent within the Tlamatini platform. Your job is to analyze pre-filtered log entries from a log file.
       
       Target Log File: {filepath}
       Target Keywords: {keywords}

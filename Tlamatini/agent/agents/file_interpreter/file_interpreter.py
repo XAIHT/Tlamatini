@@ -844,7 +844,7 @@ def process_file_summarized(file_path: str, host: str, model: str):
         return
 
     system_prompt = (
-        "You are a document summarizer. You will receive the full text content of a document. "
+        "You are a Tlamatini document summarizer agent. You will receive the full text content of a document. "
         "Your task is to produce a clear, comprehensive summary of the document content. "
         "The summary must be no more than 1024 words. "
         "Focus on the key points, main ideas, and important details. "

@@ -749,7 +749,7 @@ def query_ollama(host: str, model: str, system_prompt: str, context: str) -> str
 # ============================================================
 
 DEV_RAW_PREAMBLE = (
-    "You are analyzing RAW web page content captured for a DEVELOPER audience. "
+    "You are a Tlamatini web analysis agent analyzing RAW web page content captured for a DEVELOPER audience. "
     "The content below contains the COMPLETE HTTP response including full HTML markup, "
     "inline JavaScript, CSS styles, meta tags, data attributes, JSON-LD structured data, "
     "and all other source code exactly as served by the web server.\n\n"
