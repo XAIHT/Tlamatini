@@ -159,6 +159,25 @@ class MultiTurnToolAgentExecutor:
             return result
         return json.dumps(result, ensure_ascii=False)
 
+    # ------------------------------------------------------------------
+    # Repetition detection helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _call_signature(tool_calls) -> str:
+        """Return a deterministic string fingerprint for a list of tool calls."""
+        parts = []
+        for call in sorted(tool_calls, key=lambda c: c.get("name", "")):
+            name = call.get("name", "")
+            args = call.get("args") or {}
+            parts.append(f"{name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}")
+        return "|".join(parts)
+
+    # Maximum consecutive identical tool-call rounds before the loop is
+    # broken.  Keeping this small prevents runaway iteration while still
+    # allowing legitimate retries (e.g. polling a running agent twice).
+    _REPEAT_LIMIT = 3
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
@@ -183,6 +202,10 @@ class MultiTurnToolAgentExecutor:
                 answer = "The planner selected no tools for this request, and the model returned an empty response."
             return {"output": str(answer)}
 
+        # --- Repetition tracking state ---
+        last_signature: str | None = None
+        repeat_count: int = 0
+
         for iteration in range(self.max_iterations):
             response = self.bound_llm.invoke(messages)
             messages.append(response)
@@ -198,6 +221,64 @@ class MultiTurnToolAgentExecutor:
                     answer = "The tool-calling model returned an empty final response."
                 return {"output": str(answer)}
 
+            # --- Repetition detection ---
+            sig = self._call_signature(tool_calls)
+            if sig == last_signature:
+                repeat_count += 1
+            else:
+                last_signature = sig
+                repeat_count = 1
+
+            if repeat_count >= self._REPEAT_LIMIT:
+                # Give the LLM one chance to wrap up by injecting a
+                # nudge message instead of executing the duplicate calls.
+                tool_names = [c.get("name") for c in tool_calls]
+                print(
+                    f"--- Repetition breaker activated: '{tool_names}' "
+                    f"called {repeat_count} times with identical args. "
+                    "Injecting stop nudge."
+                )
+                # Append synthetic ToolMessage results so the message
+                # list stays schema-valid, then add a nudge.
+                for tool_call in tool_calls:
+                    messages.append(
+                        ToolMessage(
+                            tool_call_id=tool_call.get("id", ""),
+                            name=tool_call.get("name", ""),
+                            content=(
+                                "[REPETITION BREAKER] This exact tool call with identical "
+                                "parameters has already been executed and its output was "
+                                "returned in a previous iteration. Repeating it will not "
+                                "produce new information. You MUST now produce your final "
+                                "answer based on the results you already have. Do NOT call "
+                                "any more tools."
+                            ),
+                        )
+                    )
+                # Give the model one more chance to produce a final answer.
+                final_response = self.bound_llm.invoke(messages)
+                answer = getattr(final_response, "content", "") or ""
+                final_tool_calls = getattr(final_response, "tool_calls", None) or []
+                if final_tool_calls:
+                    # Model still insists on calling tools — force-stop.
+                    print("--- Repetition breaker: model still requesting tools after nudge. Force-stopping.")
+                    if not str(answer).strip():
+                        # Collect the last real tool result to include in the answer.
+                        last_real_results = []
+                        for msg in reversed(messages):
+                            if isinstance(msg, ToolMessage) and "[REPETITION BREAKER]" not in msg.content:
+                                last_real_results.append(msg.content)
+                                if len(last_real_results) >= 3:
+                                    break
+                        answer = (
+                            "The tool-calling loop was stopped because the model kept "
+                            "repeating the same tool call. Here are the last tool results "
+                            "before the loop was broken:\n\n"
+                            + "\n---\n".join(reversed(last_real_results))
+                        )
+                return {"output": str(answer)}
+
+            # --- Normal tool execution ---
             for tool_call in tool_calls:
                 tool_result = self._invoke_tool(tool_call)
                 messages.append(
