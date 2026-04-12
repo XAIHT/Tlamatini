@@ -2883,7 +2883,7 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 ```json
 {
   "message": "Processing request...",
-  "username": "LLM_Bot"
+  "username": "Tlamatini"
 }
 ```
 

@@ -161,7 +161,7 @@ function CleanHistory(e) {
     };
 
     confirmationByUser = false;
-    preRenderConfirmationDialog('Confirmation...', 'Are you sure you want to clean the history?', 'This will clear the current context followed by the LLM and reset the conversation.', callbackOnCont, callbackOnCanc);
+    preRenderConfirmationDialog('Confirmation...', 'Are you sure you want to clean the history?', 'This will clear the current context followed by Tlamatini and reset the conversation.', callbackOnCont, callbackOnCanc);
     renderConfirmationDialog();
 }
 
@@ -283,7 +283,7 @@ function OpenMcpsDialog(e) { // eslint-disable-line no-unused-vars
         return false;
     };
 
-    preRenderMcpsDialog("Configure Mcps...", "MCPs will be used to provide additional information to the LLM.", "Specify the Rag-MCPs to be used:", "Specify the Tool-MCPs to be used:", callbackOnCont, callbackOnCanc);
+    preRenderMcpsDialog("Configure Mcps...", "MCPs will be used to provide additional information to Tlamatini.", "Specify the Rag-MCPs to be used:", "Specify the Tool-MCPs to be used:", callbackOnCont, callbackOnCanc);
     renderMcpsDialog();
 }
 
@@ -321,7 +321,7 @@ function OpenAgentsDialog(e) { // eslint-disable-line no-unused-vars
         return false;
     };
 
-    preRenderAgentsDialog("Configure Agents...", "Agents will be used to provide additional information to the LLM.", "Specify the Rag-Agents to be used:", callbackOnCont, callbackOnCanc);
+    preRenderAgentsDialog("Configure Agents...", "Agents will be used to provide additional information to Tlamatini.", "Specify the Rag-Agents to be used:", callbackOnCont, callbackOnCanc);
     renderAgentsDialog();
 }
 
@@ -482,8 +482,8 @@ window.onload = () => {
                 const tokensNumber = genericTokenCounting(content);
                 console.log("--- The number of tokens in file is: " + tokensNumber);
                 if (tokensNumber > maximalTheoricTokens) {
-                    console.log("--- The number of tokens in file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
-                    alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+                    console.log("--- The number of tokens in file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
+                    alert("The number of tokens in the loaded file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
                 }
                 console.log("--- The content is: " + content);
                 if (result) {

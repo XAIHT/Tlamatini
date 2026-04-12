@@ -195,7 +195,7 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
         enableControlsAfterOperation();
     }
 
-    if (username === 'LLM_Bot') {
+    if (username === 'Tlamatini') {
         messageDiv.classList.add('bot-message');
         usernameDiv.style.color = '#55BBAA';
         messageContentDiv.appendChild(buildAutomatedMessageElement(message, addedContent));
@@ -325,10 +325,10 @@ function send2SaveFiles(files) {
 chatSocket.onmessage = function (e) {
     const data = JSON.parse(e.data);
 
-    if (data && data.username === 'LLM_Bot' && !isBusyMessageRequest(data.message)) {
+    if (data && data.username === 'Tlamatini' && !isBusyMessageRequest(data.message)) {
         setTitleBusy(false);
     }
-    if (data && data.username === 'LLM_Bot' && !isBusyMessageContext(data.message)) {
+    if (data && data.username === 'Tlamatini' && !isBusyMessageContext(data.message)) {
         setTitleBusy(false);
     }
     if (data.username === 'ping') {
@@ -403,7 +403,7 @@ chatSocket.onmessage = function (e) {
         }
         return;
     }
-    if (data && data.username === 'LLM_Bot' && data.message.startsWith('_tree_:') === true) {
+    if (data && data.username === 'Tlamatini' && data.message.startsWith('_tree_:') === true) {
         console.log("--- Received tree_view content message from server.");
         console.log("--- The message(tree_view content) is: " + data.message);
         const finalContent = data.message.substring(7);

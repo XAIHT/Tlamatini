@@ -142,7 +142,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 restore_message = constants.MSG_SESSION_RESTORED if hasattr(constants, 'MSG_SESSION_RESTORED') else 'Welcome back, session restored'
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': restore_message, 'username': 'LLM_Bot'}
+                {'type': 'agent_message', 'message': restore_message, 'username': 'Tlamatini'}
             )
             print("--- Session restored message broadcast to room.")
             
@@ -172,7 +172,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Send welcome message with context restored
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_SESSION_AND_CONTEXT_RESTORED if hasattr(constants, 'MSG_SESSION_AND_CONTEXT_RESTORED') else 'Welcome back, session and context restored.', 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_SESSION_AND_CONTEXT_RESTORED if hasattr(constants, 'MSG_SESSION_AND_CONTEXT_RESTORED') else 'Welcome back, session and context restored.', 'username': 'Tlamatini'}
                     )
                     print("--- Session with context restored message broadcast to room.")
                     # Restore the contextual RAG chain
@@ -281,7 +281,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': constants.MSG_AGENT_LOADING, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': constants.MSG_AGENT_LOADING, 'username': 'Tlamatini'}
                 )
                 print("--- Bot loading message broadcast to room.")
                 
@@ -301,7 +301,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     print("!!! RAG chain setup failed. Please check the config.json file and Ollama is running.")
                     await self.channel_layer.group_send(
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY, 'username': 'Tlamatini'}
                     )
                     print("--- Bot error message broadcast to room.")
                     return
@@ -317,18 +317,18 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     if isinstance(self.rag_chain, BasicPromptOnlyChain):
                         await self.channel_layer.group_send(   # type: ignore
                             self.room_group_name,
-                            {'type': 'agent_message', 'message': constants.MSG_AGENT_FALLBACK, 'username': 'LLM_Bot'}
+                            {'type': 'agent_message', 'message': constants.MSG_AGENT_FALLBACK, 'username': 'Tlamatini'}
                         )
                     else:
                         await self.channel_layer.group_send(   # type: ignore
                             self.room_group_name,
-                            {'type': 'agent_message', 'message': constants.MSG_AGENT_READY, 'username': 'LLM_Bot'}
+                            {'type': 'agent_message', 'message': constants.MSG_AGENT_READY, 'username': 'Tlamatini'}
                         )
                     if isinstance(self.rag_chain, OptimizedHistoryAwareRAGChain):
                         if self.rag_chain.getDetectedOversizedDocs():
                             await self.channel_layer.group_send(   # type: ignore
                                 self.room_group_name,
-                                {'type': 'agent_message', 'message': constants.MSG_OVERSIZED_DOCS_WARNING, 'username': 'LLM_Bot'}
+                                {'type': 'agent_message', 'message': constants.MSG_OVERSIZED_DOCS_WARNING, 'username': 'Tlamatini'}
                             )
                     print("--- Bot ready message broadcast to room.")
                     return
@@ -337,12 +337,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.rag_chain = None
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY, 'username': 'Tlamatini'}
                 )
                 errorDetail = "Error detail: " + str(e)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': errorDetail, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
                 )
                 print("--- Bot error message broadcast to room.")
 
@@ -401,7 +401,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': constants.MSG_AGENT_LOADING_CONTEXT, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': constants.MSG_AGENT_LOADING_CONTEXT, 'username': 'Tlamatini'}
                 )
                 print("--- Bot loading context broadcast to room.")
                 
@@ -423,7 +423,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
                     )
                     print("--- Bot error contextual_rag_chain message broadcast to room.")
                     return
@@ -439,20 +439,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
                         fallback_llm_response = "There was a problem, so the agent fell back to a Basic Prompt Only Chain (No context will be used)."
                         await self.channel_layer.group_send(   # type: ignore
                             self.room_group_name,
-                            {'type': 'agent_message', 'message': fallback_llm_response, 'username': 'LLM_Bot'}
+                            {'type': 'agent_message', 'message': fallback_llm_response, 'username': 'Tlamatini'}
                         )
                     else:
-                        ready_response = "Your agent is ready. You can now start chatting with the LLM."
+                        ready_response = "Your agent is ready. You can now start chatting with Tlamatini."
                         await self.channel_layer.group_send(   # type: ignore
                             self.room_group_name,
-                            {'type': 'agent_message', 'message': ready_response, 'username': 'LLM_Bot'}
+                            {'type': 'agent_message', 'message': ready_response, 'username': 'Tlamatini'}
                         )
                     if isinstance(self.rag_chain, OptimizedHistoryAwareRAGChain):
                         if self.rag_chain.getDetectedOversizedDocs():
-                            detected_oversized_docs_warning = "Your agent is ready. However, some documents are too large; please be aware that the LLM might not be able to load them completely."
+                            detected_oversized_docs_warning = "Your agent is ready. However, some documents are too large; please be aware that Tlamatini might not be able to load them completely."
                             await self.channel_layer.group_send(   # type: ignore
                                 self.room_group_name,
-                                {'type': 'agent_message', 'message': detected_oversized_docs_warning, 'username': 'LLM_Bot'}
+                                {'type': 'agent_message', 'message': detected_oversized_docs_warning, 'username': 'Tlamatini'}
                             )
                     print("--- Bot ready message broadcast to room.")
                     return
@@ -462,12 +462,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
                 )
                 errorDetail = "Error detail: " + str(e)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': errorDetail, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
                 )
                 print("--- Bot error message broadcast to room.")
 
@@ -550,7 +550,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("!!! ERROR: rag_chain is not initialized yet. Please wait for the agent to finish loading.")
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': 'The agent is still loading. Please wait a moment and try again.', 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': 'The agent is still loading. Please wait a moment and try again.', 'username': 'Tlamatini'}
                 )
                 return
             
@@ -579,12 +579,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
             not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
+                {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
             )
             errorDetail = "Error detail: " + str(e)
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': errorDetail, 'username': 'LLM_Bot'}
+                {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
             )
             print("--- Bot error message broadcast to room.")
 
@@ -616,7 +616,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("!!! User not authenticated. Message rejected.")
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': constants.ERROR_NOT_AUTHENTICATED, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': constants.ERROR_NOT_AUTHENTICATED, 'username': 'Tlamatini'}
                 )
                 return
         
@@ -630,7 +630,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     error_message = "Invalid canvas filename received."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': error_message, 'username': 'Tlamatini'}
                     )
                     return
 
@@ -640,7 +640,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     error_message = "Invalid canvas filename received."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': error_message, 'username': 'Tlamatini'}
                     )
                     return
 
@@ -675,7 +675,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     error_message = "Selected directory is outside the application root path and is not allowed."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': error_message, 'username': 'Tlamatini'}
                     )
                     return
 
@@ -683,13 +683,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     error_message = "Selected directory is not a valid directory."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': error_message, 'username': 'Tlamatini'}
                     )
                     return
 
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "Your request is being processed by the LLM. Please wait a moment.", 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "Your request is being processed by Tlamatini. Please wait a moment.", 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 print("--- Rebuilding contextual RAG chain....")
@@ -719,13 +719,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     error_message = "Selected file is outside the application root path and is not allowed."
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': error_message, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': error_message, 'username': 'Tlamatini'}
                     )
                     return
 
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "Your request is being processed by the LLM. Please wait a moment.", 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "Your request is being processed by Tlamatini. Please wait a moment.", 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 global_state.set_state('chat_hist_summarizer_counter', 0)
@@ -750,7 +750,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Step 2: Broadcast cancellation message immediately
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_LLM_CANCELLED, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_LLM_CANCELLED, 'username': 'Tlamatini'}
                     )
                     print("--- [CANCEL] Bot message broadcast to room ---")
                     
@@ -776,7 +776,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     if connection_destroyed:
                         await self.channel_layer.group_send(   # type: ignore
                             self.room_group_name,
-                            {'type': 'agent_message', 'message': constants.MSG_LLM_CONNECTION_DESTROYED, 'username': 'LLM_Bot'}
+                            {'type': 'agent_message', 'message': constants.MSG_LLM_CONNECTION_DESTROYED, 'username': 'Tlamatini'}
                         )
                         print("--- [CANCEL] Connection destruction confirmed to user ---")
                     
@@ -786,7 +786,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Step 7: Notify user we are rebuilding
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_LLM_REBUILDING, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_LLM_REBUILDING, 'username': 'Tlamatini'}
                     )
                     print("--- [CANCEL] Rebuilding notification sent ---")
                     
@@ -811,7 +811,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Note: actual ready message will come from setup_rag_chain when it completes
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_LLM_REESTABLISHED, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_LLM_REESTABLISHED, 'username': 'Tlamatini'}
                     )
                     print("--- [CANCEL] Agent rebuild scheduled, user notified ---")
                     
@@ -820,7 +820,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Still try to notify user of error
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': f'⚠ Cancellation completed with warning: {str(e)[:100]}', 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': f'⚠ Cancellation completed with warning: {str(e)[:100]}', 'username': 'Tlamatini'}
                     )
                 return
 
@@ -838,7 +838,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     print("--- LLM reconnected.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_LLM_RECONNECT, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_LLM_RECONNECT, 'username': 'Tlamatini'}
                     )
                     global_state.set_state('chat_hist_summarizer_counter', 0)                    
                     print("--- LLM reconnected message broadcasted to room.")
@@ -866,7 +866,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     print("--- LLM reconnected after history clean.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_LLM_HISTORY_CLEANED, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_LLM_HISTORY_CLEANED, 'username': 'Tlamatini'}
                     )
                     global_state.set_state('chat_hist_summarizer_counter', 0)
                 except Exception as e:
@@ -890,7 +890,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     print("--- LLM context cleaned and reconnected.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': constants.MSG_LLM_CLEARCONTEXT, 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': constants.MSG_LLM_CLEARCONTEXT, 'username': 'Tlamatini'}
                     )
                     global_state.set_state('chat_hist_summarizer_counter', 0)
                     print("--- LLM context cleaned and reconnected message broadcasted to room.")
@@ -940,7 +940,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     tree_view_content = generate_tree_view_content(resolved_directory)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "_tree_:"+tree_view_content, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "_tree_:"+tree_view_content, 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 return
@@ -952,7 +952,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     print("--- Error omissions are empty. Message rejected.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
-                        {'type': 'agent_message', 'message': "Omissions can't be empty, be sure you introduce extension in the format: jpg,bmp,etc.", 'username': 'LLM_Bot'}
+                        {'type': 'agent_message', 'message': "Omissions can't be empty, be sure you introduce extension in the format: jpg,bmp,etc.", 'username': 'Tlamatini'}
                     )
                     print("--- Bot message broadcast to room.")
                     return
@@ -960,7 +960,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.omissions = omissions
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "Files by extension that will be omitted during context loading saved: "+omissions+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "Files by extension that will be omitted during context loading saved: "+omissions+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 return
@@ -980,7 +980,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     await self.save_mcp(mcpName, mcpDescription, mcpContent)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "MCPs activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "MCPs activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 return
@@ -1009,7 +1009,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     await self.save_tool(toolName, toolDescription, toolContent)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "Tools activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "Tools activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 return
@@ -1038,7 +1038,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     await self.save_agent(agentName, agentDescription, agentContent)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': "Agents activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': "Agents activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 return
@@ -1052,7 +1052,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 )
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': constants.MSG_GREETING_RESPONSE, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': constants.MSG_GREETING_RESPONSE, 'username': 'Tlamatini'}
                 )
                 print("--- User question broadcasted to room.")
                 return
@@ -1062,7 +1062,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 bot_user, _ = await self.get_or_create_bot_user()
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY_SIMPLE, 'username': 'LLM_Bot'}
+                    {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY_SIMPLE, 'username': 'Tlamatini'}
                 )
                 print("--- Bot message broadcast to room.")
                 return
@@ -1078,7 +1078,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             print("--- User question is now being processed by the LLM.")
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': constants.MSG_PROCESSING_REQUEST, 'username': 'LLM_Bot'}
+                {'type': 'agent_message', 'message': constants.MSG_PROCESSING_REQUEST, 'username': 'Tlamatini'}
             )
             print("--- Bot message broadcast to room.")
             asyncio.create_task(self.queue_llm_retrieval(message, user, multi_turn_enabled=multi_turn_enabled))
@@ -1087,12 +1087,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
             not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': not_ready_response, 'username': 'LLM_Bot'}
+                {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
             )
             errorDetail = "Error detail: " + str(e)
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': errorDetail, 'username': 'LLM_Bot'}
+                {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
             )
             print("--- Bot error message broadcast to room.")
 
@@ -1254,7 +1254,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_or_create_bot_user(self):
-        return User.objects.get_or_create(username='LLM_Bot')
+        return User.objects.get_or_create(username='Tlamatini')
 
 
 

@@ -12,7 +12,7 @@ keywords: "error, critical, exception, fatal"
 
 # System Prompt for LLM Analysis
 system_prompt: |
-  You are a Log Analysis Agent for WhatsApp notifications.
+  You are a Log Analysis Agent for WhatsApp notifications within the Tlamatini platform.
   Analyze the provided log entry.
   If it contains any of the target keywords ({keywords}), summarize the issue in a short message suitable for WhatsApp.
   

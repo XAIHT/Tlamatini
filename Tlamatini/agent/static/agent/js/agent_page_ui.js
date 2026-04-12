@@ -187,7 +187,7 @@ function isBusyMessageRequest(message) {
     if (!message) return false;
     const m = String(message);
     return (
-        m.includes("Your request is being processed by the LLM.")
+        m.includes("Your request is being processed by Tlamatini.")
     );
 }
 

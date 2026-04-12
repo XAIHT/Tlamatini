@@ -29,7 +29,7 @@ def show_rephrased_question(rephrased_question, conversation_user_id=None):
         else:
             referencedRephrase = rephrased_question
 
-        bot_user, _ = User.objects.get_or_create(username='LLM_Bot')
+        bot_user, _ = User.objects.get_or_create(username='Tlamatini')
         result = AgentMessage.objects.create(
             user=bot_user,
             conversation_user_id=conversation_user_id,
@@ -45,7 +45,7 @@ def show_rephrased_question(rephrased_question, conversation_user_id=None):
                     {
                         'type': 'agent_message',
                         'message': referencedRephrase,
-                        'username': 'LLM_Bot'
+                        'username': 'Tlamatini'
                     }
                 )
         except Exception as e2:

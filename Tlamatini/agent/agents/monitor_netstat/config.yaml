@@ -11,7 +11,7 @@ target:
   outcome_word: "PORT EVENT DETECTED"
 
 system_prompt: |
-  You are a Netstat Monitoring Agent. Your job is to analyze ports and their states.
+  You are a Netstat Monitoring Agent within the Tlamatini platform. Your job is to analyze ports and their states.
   
   Target Port: {port}
   Target Keywords: {keywords}

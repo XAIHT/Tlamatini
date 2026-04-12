@@ -13,7 +13,7 @@ target:
   context_lines: 2
 
 system_prompt: |
-  You are a Log Monitoring Agent. Your job is to analyze pre-filtered log entries from a log file.
+  You are a Log Monitoring Agent within the Tlamatini platform. Your job is to analyze pre-filtered log entries from a log file.
   
   Target Log File: {filepath}
   Target Keywords: {keywords}

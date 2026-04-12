@@ -20,7 +20,7 @@ def save_snippet(snippetName, snippetLanguage, snippetContent):
 
 @sync_to_async
 def get_or_create_bot_user():
-    return User.objects.get_or_create(username='LLM_Bot')
+    return User.objects.get_or_create(username='Tlamatini')
 
 async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None):
     """
@@ -145,7 +145,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     if channel_layer:
         await channel_layer.group_send(
             room_group_name,
-            {'type': 'agent_message', 'message': llm_response, 'username': 'LLM_Bot'}
+            {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}
         )
     print("--- Bot message broadcast to room.")
     return llm_response

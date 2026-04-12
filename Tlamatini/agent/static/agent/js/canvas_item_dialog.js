@@ -343,7 +343,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const legend = document.createElement('p');
-        legend.innerHTML = '<strong>&#9889; FlowCreator</strong> — Design an agent flow using AI. Enter a prompt describing your flow objective, configure the LLM, and click <strong>Go!</strong> to generate the flow automatically.';
+        legend.innerHTML = '<strong>&#9889; FlowCreator</strong> — Design an agent flow using AI. Enter a prompt describing your flow objective, configure Tlamatini, and click <strong>Go!</strong> to generate the flow automatically.';
         legend.style.color = '#4FC3F7';
         legend.style.marginBottom = '12px';
         legend.style.padding = '8px';
@@ -432,7 +432,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const crawlerLegend = document.createElement('p');
-        crawlerLegend.innerHTML = '<strong>&#127760; Crawler</strong> — Crawl web pages and process their content with an LLM. <b>Small-range</b>: same-domain links only. <b>Medium-range</b>: all links (cross-domain). <b>Large-range</b>: all links recursively up to a configurable depth.';
+        crawlerLegend.innerHTML = '<strong>&#127760; Crawler</strong> — Crawl web pages and process their content with Tlamatini. <b>Small-range</b>: same-domain links only. <b>Medium-range</b>: all links (cross-domain). <b>Large-range</b>: all links recursively up to a configurable depth.';
         crawlerLegend.style.color = '#00BCD4';
         crawlerLegend.style.marginBottom = '12px';
         crawlerLegend.style.padding = '8px';
@@ -478,7 +478,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const hvLegend = document.createElement('p');
-        hvLegend.innerHTML = '<strong>&#128737; FlowHypervisor</strong> — LLM-powered flow monitoring. Configure the LLM and monitoring interval, then click <strong>Save</strong> to begin.';
+        hvLegend.innerHTML = '<strong>&#128737; FlowHypervisor</strong> — Tlamatini-powered flow monitoring. Configure Tlamatini and monitoring interval, then click <strong>Save</strong> to begin.';
         hvLegend.style.color = '#AB47BC';
         hvLegend.style.marginBottom = '12px';
         hvLegend.style.padding = '8px';
@@ -873,7 +873,7 @@ async function _executeFlowCreator(agentId) {
         }
 
         // 3. Start the FlowCreator agent
-        _updateFlowCreatorProgress(progressDialog, 'Starting FlowCreator agent... Sending prompt to LLM...');
+        _updateFlowCreatorProgress(progressDialog, 'Starting FlowCreator agent... Sending prompt to Tlamatini...');
         const execResponse = await fetch(`/agent/execute_flowcreator/${agentId}/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getHeaders() },
@@ -886,7 +886,7 @@ async function _executeFlowCreator(agentId) {
         }
 
         // 4. Poll for flow_result.json
-        _updateFlowCreatorProgress(progressDialog, 'Waiting for LLM response... This may take a minute...');
+        _updateFlowCreatorProgress(progressDialog, 'Waiting for Tlamatini response... This may take a minute...');
 
         // Show hourglass while waiting
         if (typeof isFlowCreatorWaiting !== 'undefined') {
@@ -991,7 +991,7 @@ async function _pollFlowCreatorResult(agentId, progressDialog) {
         elapsed += interval;
 
         const secs = Math.floor(elapsed / 1000);
-        _updateFlowCreatorProgress(progressDialog, `Waiting for LLM response... (${secs}s elapsed)`);
+        _updateFlowCreatorProgress(progressDialog, `Waiting for Tlamatini response... (${secs}s elapsed)`);
     }
 
     return null; // Timeout

@@ -10,7 +10,7 @@ def backfill_conversation_user(apps, schema_editor):
 
     for message in messages:
         sender_username = getattr(message.user, 'username', '')
-        if sender_username != 'LLM_Bot':
+        if sender_username != 'Tlamatini':
             last_human_user_id = message.user_id
             owner_user_id = message.user_id
         else:

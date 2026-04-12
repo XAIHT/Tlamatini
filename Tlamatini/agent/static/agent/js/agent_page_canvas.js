@@ -46,7 +46,7 @@ function replaceCodeElement(langClass, content) {
 
 function loadCanvas(filename) { // eslint-disable-line no-unused-vars
     if (contextEnabled === false) {
-        console.error("Lading canvas is not allowed while the LLM is processing a request, function will return false...");
+        console.error("Lading canvas is not allowed while Tlamatini is processing a request, function will return false...");
         return false;
     }
 
@@ -82,7 +82,7 @@ function loadCanvas(filename) { // eslint-disable-line no-unused-vars
 
 async function loadCanvasFromFileInContentGenerated(filename) { // eslint-disable-line no-unused-vars
     if (contextEnabled === false) {
-        console.error("Loading canvas is not allowed while the LLM is processing a request, function will return false...");
+        console.error("Loading canvas is not allowed while Tlamatini is processing a request, function will return false...");
         return false;
     }
 
@@ -160,8 +160,8 @@ function reopenCanvas() {
         const tokensNumber = genericTokenCounting(content);
         console.log("--- The number of tokens in file is: " + tokensNumber);
         if (tokensNumber > maximalTheoricTokens) {
-            console.log("--- The number of tokens in file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
-            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by the LLM, it wont fit the context window.");
+            console.log("--- The number of tokens in file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
+            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
         }
         console.log("--- The content is: " + content);
         if (result) {
