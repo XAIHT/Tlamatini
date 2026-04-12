@@ -35,7 +35,15 @@ _RUN_CONTROL_TOOL_NAMES = (
 _EXTRA_HINTS_BY_TOOL_NAME = {
     "get_current_time": ("time", "date", "day", "clock", "today", "now"),
     "execute_file": ("script", "python", "run file", "execute file", "launch script"),
-    "execute_command": ("command", "shell", "terminal", "cmd", "console", "powershell"),
+    "execute_command": (
+        "command", "shell", "terminal", "cmd", "console", "powershell",
+        "install", "uninstall", "download", "build", "compile", "make", "cmake",
+        "setup", "configure", "update", "upgrade", "deploy",
+        "pip install", "npm install", "choco install", "winget install",
+        "apt install", "brew install", "yarn add", "cargo install",
+        "git clone", "git pull", "mkdir", "execute",
+        "run command", "run script",
+    ),
     "execute_netstat": ("netstat", "port", "socket", "listen", "connection"),
     "launch_view_image": ("image", "show image", "view image", "open image", "picture"),
     "unzip_file": ("zip", "unzip", "extract archive", "decompress"),

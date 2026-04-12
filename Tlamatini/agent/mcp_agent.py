@@ -217,22 +217,70 @@ class MultiTurnToolAgentExecutor:
 
 
 def _build_system_prompt(preeliminary_prompt: str, tools) -> str:
+    import platform
+    import sys as _sys
+
     tool_descriptions = "\n".join(
         f"- {tool.name}: {tool.description}" for tool in tools
     )
 
-    escaped_prompt = re.sub(r"\{context\}", "{{context}}", preeliminary_prompt)
-    escaped_prompt = re.sub(r"\{files_context\}", "{{files_context}}", escaped_prompt)
-    escaped_prompt = re.sub(r"\{system_context\}", "{{system_context}}", escaped_prompt)
+    # Remove the empty placeholder blocks from the base prompt since context
+    # is injected into the user message by the chain, not into the system prompt.
+    cleaned_prompt = re.sub(
+        r"<system_context>\s*\{system_context\}\s*</system_context>",
+        "",
+        preeliminary_prompt,
+    )
+    cleaned_prompt = re.sub(
+        r"<files_context>\s*\{files_context\}\s*</files_context>",
+        "",
+        cleaned_prompt,
+    )
+    cleaned_prompt = re.sub(
+        r"<context>\s*\{context\}\s*</context>",
+        "",
+        cleaned_prompt,
+    )
+    # Escape any remaining curly braces that could break .format()
+    escaped_prompt = cleaned_prompt.replace("{", "{{").replace("}", "}}")
+
+    # Build a live platform information block
+    os_name = platform.system()  # 'Windows', 'Linux', 'Darwin'
+    os_version = platform.version()
+    os_arch = platform.machine()
+    is_windows = os_name == "Windows"
+    is_frozen = getattr(_sys, "frozen", False)
+
+    platform_block = (
+        f"**PLATFORM INFORMATION** (live detection — use the correct commands for this OS):\n"
+        f"- Operating System: {os_name} {platform.release()} ({os_version})\n"
+        f"- Architecture: {os_arch}\n"
+        f"- Runtime: {'Frozen executable' if is_frozen else 'Python source'}\n"
+    )
+    if is_windows:
+        platform_block += (
+            "- Shell: cmd.exe / PowerShell (Windows)\n"
+            "- Package managers: winget, choco, pip, npm (NOT apt, yum, pacman, brew)\n"
+            "- Path separator: backslash (\\)\n"
+            "- Use Windows-native commands: dir (not ls), type (not cat), mkdir, rmdir, copy, move, del\n"
+            "- NEVER use Linux/macOS commands (apt, sudo, chmod, chown, ln, grep) — they do not exist on this system\n"
+        )
+    else:
+        platform_block += (
+            "- Shell: bash / sh\n"
+            "- Use Unix-native commands: ls, cat, mkdir, rm, cp, mv\n"
+        )
 
     return f"""{escaped_prompt}
+
+{platform_block}
 
 You have access to the following tools. Use them proactively whenever the user's request can benefit from them:
 
 {tool_descriptions}
 
 **TOOL SELECTION GUIDE** (pick the right tool for the task):
-- **Run a shell/system command** → `execute_command`
+- **Run a shell/system command** → `execute_command` (install packages, build software, run any CLI command)
 - **Run a Python script file** → `execute_file`
 - **Run inline Python code** → `chat_agent_pythonxer` (with script='...')
 - **Crawl/scrape a website** → `chat_agent_crawler` (with url='...' and system_prompt='...')
@@ -274,25 +322,20 @@ You have access to the following tools. Use them proactively whenever the user's
 - **Stop a template agent** → `agent_stopper`
 - **Check template agent status** → `agent_stat_getter`
 
-**IMPORTANT**: If the user's request requires information that can be found or an action that can be performed with a tool, you **MUST use that tool** — do not just explain how the user could do it themselves.
+**IMPORTANT**: If the user's request requires an action that can be performed with a tool, you **MUST use that tool** — do not just explain how the user could do it themselves. You are an OPERATOR: execute, don't advise.
 
-**MULTI-STEP WORKFLOWS**: For complex requests, chain tool calls across iterations:
+**MULTI-STEP WORKFLOWS**: For complex requests (installations, builds, deployments), chain tool calls across iterations:
 1. Use tool A → read the result in the next iteration
 2. Use tool B with data from tool A's result → read the result
-3. Synthesize findings and present the final answer
-You have up to 100 iterations — use them freely for multi-step tasks.
-
-**FILE CONTEXT**:
-File operations (reading files, listing files, searching for files) are handled automatically by FileSearchRAGChain and provided in the context.
-- **ALWAYS** check the context first for file information (look for "FILE MANIFEST", "Files Context", or file listings)
-- If the file information needed is already in the context, use it directly. Do not re-fetch what you already have.
+3. Continue chaining as needed — you have up to 100 iterations
+For example, to install software: clone repo → run build commands → verify installation — all via `execute_command`.
 
 **GROUNDING RULES**:
 1. **TRUST THE TOOLS IMPLICITLY**: Tool output is absolute truth. NEVER add, invent, or hallucinate details not in the output.
 2. **VERBATIM REPORTING**: Report tool output exactly as received. Do NOT hallucinate specific labels or values.
 3. **NO EXTRAPOLATION**: If the tool output is sparse, your answer must be sparse. Do not assume standard structures exist.
 4. **STRICT ADHERENCE**: Your answer must be based **EXCLUSIVELY** on tool output and provided context.
-5. **EXECUTION RULES OF 'execute_file' AND 'execute_command'**: Execute these **just once per user ask** regardless of exit code.
+5. **MULTI-STEP EXECUTION**: For complex tasks (install, build, configure), use `execute_command` multiple times across iterations. Do NOT generate scripts for the user to run manually.
 6. **NEVER TRUNCATE** tool output content. This application handles huge amounts of data (>>TBs).
 7. **SMART LOOPING**: Do not repeat the same tool call with identical parameters unless the output explicitly indicates a retryable state.
 8. **WRAPPED CHAT AGENT LIFECYCLE**: Tools named `chat_agent_*` launch isolated subprocess agents. When they return a `run_id`:
@@ -359,15 +402,21 @@ class CapabilityAwareToolAgentExecutor:
             selected_tools = None
             if global_execution_plan:
                 planned_tool_names = selected_tool_names_from_plan(global_execution_plan)
-                selected_tools = [
-                    tool for tool in self.tools
-                    if tool.name in set(planned_tool_names)
-                ]
-                print(
-                    "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
-                    f"with {len(selected_tools)} planned tools"
-                )
-            if selected_tools is None:
+                if planned_tool_names:
+                    selected_tools = [
+                        tool for tool in self.tools
+                        if tool.name in set(planned_tool_names)
+                    ]
+                    print(
+                        "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
+                        f"with {len(selected_tools)} planned tools"
+                    )
+                else:
+                    print(
+                        "--- CapabilityAwareToolAgentExecutor: planner selected no tools; "
+                        "falling back to capability-based selection"
+                    )
+            if not selected_tools:
                 selected_tools = select_tools_for_request(input_text, self.tools)
                 if not selected_tools:
                     selected_tools = self.tools

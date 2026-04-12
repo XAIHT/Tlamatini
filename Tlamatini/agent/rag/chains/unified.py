@@ -161,13 +161,10 @@ class UnifiedAgentChain:
         # Incorporate system context and files context into the input if available
         enhanced_input = original_input
         
-        # Add files context first (from FileSearchRAGChain) with clear instructions
+        # Add files context first (from FileSearchRAGChain)
         if payload.get("files_context"):
-            enhanced_input = f"""Files Context (from FileSearchRAGChain - file system search results):
+            enhanced_input = f"""Files Context (file system search results):
 {payload['files_context']}
-
-IMPORTANT: File operations are handled by FileSearchRAGChain and provided above.
-You do NOT need to use any tools for file operations - the file information is already provided in the context.
 
 User Question: {enhanced_input}"""
         
@@ -574,17 +571,11 @@ class UnifiedAgentRAGChain:
 
         if multi_turn_enabled:
             should_include_manifest = _should_include_file_manifest(question, q_rewritten)
-            has_file_listing_context = _has_explicit_file_listing_context(context_blob)
         else:
             should_include_manifest = (
                 _is_list_files_query(question)
                 or _is_list_files_query(q_rewritten)
                 or bool(payload.get("files_context", ""))
-            )
-            has_file_listing_context = (
-                "FILE MANIFEST" in context_blob
-                or "files" in context_blob.lower()
-                or _is_list_files_query(question)
             )
 
         # Only include the global file manifest for explicit file-listing requests in multi-turn mode.
@@ -609,31 +600,14 @@ class UnifiedAgentRAGChain:
         
         # Add files context first (highest priority - from FileSearchRAGChain)
         if files_ctx:
-            enhanced_input = f"""Files Context (from FileSearchRAGChain - file system search results):
+            enhanced_input = f"""Files Context (file system search results):
 {files_ctx}
-
-CRITICAL: File operations (reading files, listing files, searching for files) are handled by FileSearchRAGChain and provided above.
-You do NOT need to use any tools for file operations - the file information is already provided in the context.
-File operations are NOT available as tools - they are handled automatically by FileSearchRAGChain.
 
 User Question: {enhanced_input}"""
         
         # Add retrieved context (contains file information from knowledge base)
         if context_blob:
-            # Check if context contains file manifest or file listings
-            if has_file_listing_context or should_include_manifest:
-                enhanced_input = f"""Retrieved Context from Knowledge Base:
-{context_blob}
-
-CRITICAL: File operations are handled by FileSearchRAGChain (see Files Context above if provided) or by the knowledge base context.
-- If file information is in the context above, extract and present it directly
-- You do NOT need to use any tools for file operations - file operations are NOT available as tools
-- File listings, file contents, and file search results are provided in the context automatically
-- Simply extract and format the file information from the context to answer file-related queries
-
-User Question: {enhanced_input}"""
-            else:
-                enhanced_input = f"Retrieved Context from Knowledge Base:\n{context_blob}\n\nUser Question: {enhanced_input}"
+            enhanced_input = f"Retrieved Context from Knowledge Base:\n{context_blob}\n\nUser Question: {enhanced_input}"
         
         # Add system context
         if sys_ctx:
