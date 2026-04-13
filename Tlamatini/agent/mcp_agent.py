@@ -218,7 +218,34 @@ class MultiTurnToolAgentExecutor:
             if not tool_calls:
                 answer = getattr(response, "content", "") or ""
                 if not str(answer).strip():
-                    answer = "The tool-calling model returned an empty final response."
+                    # The model finished tool-calling but returned empty content.
+                    # Nudge it once to produce a summary from the collected tool results.
+                    print("--- MultiTurnToolAgentExecutor: empty final response, nudging model to summarize ---")
+                    # response already appended at line 211 — just add the nudge
+                    messages.append(HumanMessage(content=(
+                        "You have finished executing tools but returned an empty response. "
+                        "Please now provide your final answer summarizing what you did and "
+                        "the results you obtained. Do NOT call any more tools."
+                    )))
+                    retry_response = self.bound_llm.invoke(messages)
+                    answer = getattr(retry_response, "content", "") or ""
+                    retry_tool_calls = getattr(retry_response, "tool_calls", None) or []
+                    if not str(answer).strip() or retry_tool_calls:
+                        # Nudge failed — collect last real tool results as fallback answer.
+                        print("--- MultiTurnToolAgentExecutor: nudge failed, collecting tool results as fallback ---")
+                        last_real_results = []
+                        for msg in reversed(messages):
+                            if isinstance(msg, ToolMessage) and "[REPETITION BREAKER]" not in msg.content:
+                                last_real_results.append(msg.content)
+                                if len(last_real_results) >= 5:
+                                    break
+                        if last_real_results:
+                            answer = (
+                                "Here are the results from the executed tool calls:\n\n"
+                                + "\n---\n".join(reversed(last_real_results))
+                            )
+                        else:
+                            answer = "The tool-calling model returned an empty final response."
                 return {"output": str(answer)}
 
             # --- Repetition detection ---
