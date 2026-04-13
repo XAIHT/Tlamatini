@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -10,6 +11,8 @@ from .capability_registry import (
     build_tool_capabilities,
     select_context_capabilities_for_request,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -90,7 +93,7 @@ def _select_planner_tool_names(
     tools: Iterable,
     *,
     selected_contexts: tuple[str, ...],
-    max_selected: int = 12,
+    max_selected: int = 50,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     tools_list = list(tools)
     if not tools_list:
@@ -104,6 +107,7 @@ def _select_planner_tool_names(
     for index, capability in enumerate(capabilities):
         score = _score_capability(capability, normalized_request, request_tokens)
         scored.append((score, index, capability))
+        logger.info("[Planner._select] tool=%s kind=%s score=%d", capability.tool_name, capability.kind, score)
 
     positive = [item for item in scored if item[0] > 0]
     if not positive:
@@ -113,7 +117,17 @@ def _select_planner_tool_names(
         return (), (), (), notes
 
     positive.sort(key=lambda item: (-item[0], item[1], item[2].tool_name))
-    top_score = positive[0][0]
+
+    # Run-control tools (list/status/log/stop) are auto-injected whenever
+    # wrapped agents are selected, so they must NOT inflate top_score or
+    # the dynamic floor — otherwise they crowd out the actual agent tools.
+    non_control_positive = [
+        item for item in positive
+        if item[2].tool_name not in _RUN_CONTROL_TOOL_NAMES
+    ]
+    top_score = non_control_positive[0][0] if non_control_positive else positive[0][0]
+    logger.info("[Planner._select] top_score=%d (excluding run-control)", top_score)
+
     threshold = 6 if selected_contexts else 2
     if top_score < threshold and not _RUN_ID_RE.search(normalized_request):
         notes = (
@@ -121,14 +135,25 @@ def _select_planner_tool_names(
         )
         return (), (), (), notes
 
-    dynamic_floor = max(2, top_score - 6)
+    # Every tool that scored above the entry threshold is selected.
+    # The old approach used a tight dynamic floor that aggressively
+    # cut tools when another tool scored very high — this broke
+    # multi-step requests where 4+ different agents were named
+    # using natural language (scoring ~20-24) while monitoring
+    # tools scored ~58.  Now we let scoring and the cap do the work.
+    logger.info("[Planner._select] threshold=%d, max_selected=%d", threshold, max_selected)
+
     selected_names: list[str] = []
     for score, _index, capability in positive:
         if len(selected_names) >= max_selected:
             break
-        if score < dynamic_floor and selected_names:
-            break
+        # Skip run-control tools here; they are auto-injected below.
+        if capability.tool_name in _RUN_CONTROL_TOOL_NAMES:
+            continue
+        if score < threshold:
+            continue
         selected_names.append(capability.tool_name)
+        logger.info("[Planner._select] SELECTED tool=%s score=%d", capability.tool_name, score)
 
     selected_wrapped_agent_names = tuple(
         capability.tool_name
@@ -165,7 +190,7 @@ def build_global_execution_plan(
     *,
     system_enabled: bool,
     files_enabled: bool,
-    max_selected_tools: int = 12,
+    max_selected_tools: int = 50,
 ) -> GlobalExecutionPlan:
     tools_list = list(tools)
     selected_contexts = select_context_capabilities_for_request(

@@ -2,6 +2,7 @@ import ast
 from datetime import datetime
 import difflib
 import json
+import logging
 from langchain.tools import Tool, tool
 import os
 import re
@@ -13,6 +14,7 @@ import webbrowser
 import shlex
 import psutil
 import yaml
+import zipfile
 from django.utils import timezone
 
 from .chat_agent_registry import (
@@ -33,8 +35,9 @@ from .chat_agent_runtime import (
 from .imaging.image_interpreter import opus_analyze_image, qwen_analyze_image
 from .global_state import get_request_state, global_state
 from .models import Agent, AgentProcess
-import zipfile
 from .path_guard import validate_tool_path
+
+logger = logging.getLogger(__name__)
 
 
 _FLOW_ONLY_PARAM_PREFIXES = (
@@ -215,15 +218,20 @@ def _get_template_agents_roots():
             os.path.join(exe_dir, 'agents'),
             os.path.join(exe_dir, 'Tlamatini', 'agent', 'agents'),
         ])
+        logger.info("[tools._get_template_agents_roots] FROZEN mode, exe_dir = %s, candidates = %s", exe_dir, candidates)
     else:
         module_dir = os.path.realpath(os.path.abspath(os.path.dirname(__file__)))
         candidates.append(os.path.join(module_dir, 'agents'))
+        logger.info("[tools._get_template_agents_roots] SOURCE mode, module_dir = %s, candidates = %s", module_dir, candidates)
 
     roots = []
     for candidate in candidates:
         resolved = os.path.realpath(os.path.abspath(candidate))
-        if os.path.isdir(resolved) and resolved not in roots:
+        exists = os.path.isdir(resolved)
+        logger.info("[tools._get_template_agents_roots] candidate = %s -> resolved = %s, exists? %s", candidate, resolved, exists)
+        if exists and resolved not in roots:
             roots.append(resolved)
+    logger.info("[tools._get_template_agents_roots] final roots = %s", roots)
     return roots
 
 
@@ -990,9 +998,15 @@ def _tool_output(payload):
 
 def _find_template_agent_by_dir_name(dir_name):
     normalized = _normalize_identifier(dir_name)
-    for agent in _discover_template_agents():
+    logger.info("[tools._find_template_agent_by_dir_name] Looking for dir_name = %s (normalized = %s)", dir_name, normalized)
+    discovered = _discover_template_agents()
+    logger.info("[tools._find_template_agent_by_dir_name] Discovered %d template agents", len(discovered))
+    for agent in discovered:
         if agent['normalized_name'] == normalized:
+            logger.info("[tools._find_template_agent_by_dir_name] FOUND: agent_dir = %s", agent['agent_dir'])
             return agent
+    logger.warning("[tools._find_template_agent_by_dir_name] NOT FOUND: %s (normalized: %s). Available: %s",
+                   dir_name, normalized, [a['dir_name'] for a in discovered])
     return None
 
 
@@ -1057,7 +1071,19 @@ def _non_flow_missing_required_paths(config, config_path, script_path):
 
 
 def _launch_wrapped_chat_agent(spec, request):
+    logger.info("=" * 80)
+    logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH START =====")
+    logger.info("[tools._launch_wrapped_chat_agent] spec.key = %s, spec.template_dir = %s, spec.display_name = %s",
+                spec.key, spec.template_dir, spec.display_name)
+    logger.info("[tools._launch_wrapped_chat_agent] request = %.300s", str(request))
+    logger.info("[tools._launch_wrapped_chat_agent] sys.frozen = %s", getattr(sys, 'frozen', False))
+    if getattr(sys, 'frozen', False):
+        logger.info("[tools._launch_wrapped_chat_agent] sys.executable = %s", sys.executable)
+    else:
+        logger.info("[tools._launch_wrapped_chat_agent] __file__ = %s", __file__)
+
     if not request or not str(request).strip():
+        logger.warning("[tools._launch_wrapped_chat_agent] No request provided, aborting")
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1066,6 +1092,7 @@ def _launch_wrapped_chat_agent(spec, request):
 
     template_agent = _find_template_agent_by_dir_name(spec.template_dir)
     if template_agent is None:
+        logger.error("[tools._launch_wrapped_chat_agent] Template agent NOT FOUND for dir_name = %s", spec.template_dir)
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1075,12 +1102,19 @@ def _launch_wrapped_chat_agent(spec, request):
             ),
         })
 
+    logger.info("[tools._launch_wrapped_chat_agent] template_agent found: agent_dir = %s", template_agent['agent_dir'])
+
     try:
         run_id, runtime_dir, log_path = create_isolated_runtime_copy(
             template_agent['agent_dir'],
             spec.template_dir,
         )
+        logger.info("[tools._launch_wrapped_chat_agent] Isolated copy created:")
+        logger.info("[tools._launch_wrapped_chat_agent]   run_id      = %s", run_id)
+        logger.info("[tools._launch_wrapped_chat_agent]   runtime_dir = %s", runtime_dir)
+        logger.info("[tools._launch_wrapped_chat_agent]   log_path    = %s", log_path)
     except Exception as exc:
+        logger.error("[tools._launch_wrapped_chat_agent] FAILED to create isolated runtime copy: %s", exc, exc_info=True)
         return _tool_output({
             "status": "error",
             "retryable": True,
@@ -1088,10 +1122,13 @@ def _launch_wrapped_chat_agent(spec, request):
         })
 
     runtime_config_path = os.path.join(runtime_dir, "config.yaml")
+    logger.info("[tools._launch_wrapped_chat_agent] runtime_config_path = %s, exists? %s", runtime_config_path, os.path.isfile(runtime_config_path))
     try:
         with open(runtime_config_path, "r", encoding="utf-8") as file_handle:
             runtime_config = yaml.safe_load(file_handle) or {}
+        logger.info("[tools._launch_wrapped_chat_agent] config.yaml loaded OK, keys: %s", list(runtime_config.keys()) if isinstance(runtime_config, dict) else type(runtime_config).__name__)
     except Exception as exc:
+        logger.error("[tools._launch_wrapped_chat_agent] FAILED to load config.yaml: %s", exc)
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1100,6 +1137,7 @@ def _launch_wrapped_chat_agent(spec, request):
         })
 
     if not isinstance(runtime_config, dict):
+        logger.error("[tools._launch_wrapped_chat_agent] config.yaml is not a dict, type = %s", type(runtime_config).__name__)
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1112,12 +1150,14 @@ def _launch_wrapped_chat_agent(spec, request):
         str(request),
     )
     if assignment_error:
+        logger.error("[tools._launch_wrapped_chat_agent] Config assignment error: %s", assignment_error)
         return _tool_output({
             "status": "error",
             "retryable": False,
             "message": assignment_error,
             "runtime_dir": runtime_dir,
         })
+    logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
 
     try:
         with open(runtime_config_path, "w", encoding="utf-8") as file_handle:
@@ -1128,7 +1168,9 @@ def _launch_wrapped_chat_agent(spec, request):
                 default_flow_style=False,
                 sort_keys=False,
             )
+        logger.info("[tools._launch_wrapped_chat_agent] config.yaml written back to: %s", runtime_config_path)
     except Exception as exc:
+        logger.error("[tools._launch_wrapped_chat_agent] FAILED to write config.yaml: %s", exc)
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1137,7 +1179,9 @@ def _launch_wrapped_chat_agent(spec, request):
         })
 
     runtime_script_path = resolve_runtime_script_path(runtime_dir, spec.template_dir)
+    logger.info("[tools._launch_wrapped_chat_agent] runtime_script_path = %s", runtime_script_path)
     if not runtime_script_path:
+        logger.error("[tools._launch_wrapped_chat_agent] Could not resolve startup script for %s in %s", spec.display_name, runtime_dir)
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1147,6 +1191,8 @@ def _launch_wrapped_chat_agent(spec, request):
 
     missing_required = _non_flow_missing_required_paths(runtime_config, runtime_config_path, runtime_script_path)
     if missing_required:
+        logger.error("[tools._launch_wrapped_chat_agent] Missing required params: %s",
+                     [_format_config_path(item['path']) for item in missing_required])
         return _tool_output({
             "status": "error",
             "retryable": False,
@@ -1158,6 +1204,7 @@ def _launch_wrapped_chat_agent(spec, request):
             "log_path": log_path,
         })
 
+    logger.info("[tools._launch_wrapped_chat_agent] All checks passed, registering run in DB...")
     run = register_chat_agent_run(
         run_id=run_id,
         tool_description=spec.tool_description,
@@ -1167,9 +1214,12 @@ def _launch_wrapped_chat_agent(spec, request):
         request_text=str(request),
     )
 
+    logger.info("[tools._launch_wrapped_chat_agent] Starting subprocess...")
     try:
         start_chat_agent_subprocess(run, runtime_script_path)
+        logger.info("[tools._launch_wrapped_chat_agent] Subprocess started OK, PID = %s", run.pid)
     except Exception as exc:
+        logger.error("[tools._launch_wrapped_chat_agent] FAILED to start subprocess: %s", exc, exc_info=True)
         run.status = "failed"
         run.finishedAt = timezone.now()
         run.save(update_fields=["status", "finishedAt"])
@@ -1189,6 +1239,23 @@ def _launch_wrapped_chat_agent(spec, request):
     payload["assignment_notes"] = assignment_notes
     payload["long_running"] = spec.long_running
 
+    logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH RESULT =====")
+    logger.info("[tools._launch_wrapped_chat_agent]   run_id      = %s", run.runId)
+    logger.info("[tools._launch_wrapped_chat_agent]   status      = %s", run.status)
+    logger.info("[tools._launch_wrapped_chat_agent]   PID         = %s", run.pid)
+    logger.info("[tools._launch_wrapped_chat_agent]   runtime_dir = %s", runtime_dir)
+    logger.info("[tools._launch_wrapped_chat_agent]   log_path    = %s", log_path)
+    logger.info("[tools._launch_wrapped_chat_agent]   runtime_dir exists? %s", os.path.isdir(runtime_dir))
+    logger.info("[tools._launch_wrapped_chat_agent]   log_path exists?    %s", os.path.isfile(log_path))
+
+    # List final runtime directory contents
+    if os.path.isdir(runtime_dir):
+        try:
+            final_contents = os.listdir(runtime_dir)
+            logger.info("[tools._launch_wrapped_chat_agent]   runtime_dir contents: %s", final_contents)
+        except Exception:
+            pass
+
     if run.status == "running":
         payload["message"] = (
             f"{spec.display_name} started in an isolated runtime copy and is still running. "
@@ -1202,6 +1269,8 @@ def _launch_wrapped_chat_agent(spec, request):
     else:
         payload["message"] = f"{spec.display_name} ended with status '{run.status}'."
 
+    logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH END =====")
+    logger.info("=" * 80)
     return _tool_output(payload)
 
 

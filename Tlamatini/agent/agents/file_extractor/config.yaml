@@ -1,16 +1,6 @@
-# File-Extractor Agent Configuration
-
-# File path or wildcard pattern (e.g. C:\temp\*.docx, /data/reports/*.pdf)
-path_filenames: ""
-
-# When true, scan subdirectories recursively from the base directory.
-# e.g. "C:\temp\*.docx" becomes "C:\temp\**\*.docx"
+path_filenames: C:\Development\Tlamatini\Tlamatini\agent\agents\pools\_chat_runs_\pythonxer\tlamatini_multiturn_release_notes.txt'
+  and filetype_exclusions='
 recursive: false
-
-# Comma-separated list of extensions and/or filenames to exclude from extraction.
-# Examples: "exe, msi, .profile, main.cpp"
-filetype_exclusions: ""
-
-# Connection fields
+filetype_exclusions: none
 source_agents: []
 target_agents: []
