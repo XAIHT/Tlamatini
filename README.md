@@ -190,13 +190,26 @@ python -m venv venv
 # Windows
 venv\Scripts\activate
 # Linux/macOS
-python manage.py migrate
+source venv/bin/activate
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Initialize Database
+
+```bash
+python Tlamatini/manage.py migrate
+python Tlamatini/manage.py createsuperuser
 ```
 
 ### 4. Run the Application
 
 ```bash
-python manage.py runserver --noreload
+python Tlamatini/manage.py runserver --noreload
 ```
 
 ### 5. Access the Interface
@@ -1409,6 +1422,8 @@ For tools and wrapped agents, the selector:
 - scores normal tools, template-agent tools, wrapped chat-agent launchers, and run-control tools
 - uses aliases, example requests, security hints, and token overlap against the current request
 - automatically includes runtime follow-up tools when wrapped agents or `run_id`-style monitoring requests are detected
+- run-control tools (`chat_agent_run_list/status/log/stop`) are excluded from scoring-floor calculations and auto-injected when wrapped agents are selected, preventing them from inflating the threshold and crowding out actual agent tools
+- up to 50 tools can be selected per request (matching the full agent catalogue), with the scoring threshold as the real filter rather than an artificial hard cap
 
 For MCP-backed context prefetch, the selector currently supports:
 
@@ -1447,6 +1462,13 @@ This means the request path is no longer just "LLM sees all tools and decides." 
 - then synthesize the final answer
 
 The planner summary is injected into the executor so the model is guided by the already-selected execution plan instead of re-discovering the whole capability surface from scratch.
+
+**Scoring and selection details:**
+
+- Each tool is scored against the request using name matching (+14 for exact tool-name match), alias/hint phrase matching (+10-12), example-request token overlap (+up to 3), and description token overlap (+up to 10)
+- Run-control tools are excluded from the scoring floor calculation since they are auto-injected whenever wrapped agents are selected
+- Every tool scoring above the entry threshold (6 when MCP contexts are active, 2 otherwise) is selected, up to a maximum of 50 tools per request
+- The planner, capability selector, and tool executor all emit detailed `INFO`-level logs (prefixed `[Planner._select]`, `[tools._launch_wrapped_chat_agent]`, etc.) visible in the Django console for debugging tool selection issues
 
 #### Wrapped Chat-Agent Runtime Tools
 
@@ -1491,12 +1513,25 @@ The current wrapped launchers are:
 
 Wrapped chat-agent tools do **not** mutate the template agent directories in place. Instead, the backend:
 
-1. Copies the selected template agent into `agent/agents/pools/__chat_runs__/...`
+1. Copies the selected template agent into a **unique, sequenced directory** under `agent/agents/pools/_chat_runs_/{agent}_{seq}_{id}/`
 2. Parses natural-language `key=value` assignments from the request and applies them to the runtime `config.yaml`
 3. Rejects launches that are still missing mandatory non-flow parameters
 4. Starts the runtime copy as a detached subprocess
 5. Persists run metadata in the `ChatAgentRun` model
 6. Returns structured JSON including `run_id`, `status`, `runtime_dir`, `log_path`, and `log_excerpt`
+
+**Sequenced runtime directories** ensure that every invocation — including retries and failures — is preserved for inspection. The naming format is `{agent_type}_{sequence:03d}_{short_run_id}`, for example:
+
+```
+_chat_runs_/
+├── executer_001_a1b2c3d4/    ← 1st try (failed)
+├── executer_002_e5f67890/    ← 2nd try (failed)
+├── file_creator_003_1234abcd/ ← 3rd overall (different agent)
+├── executer_004_deadbeef/    ← 3rd try of executer (succeeded)
+└── notifier_005_cafe0123/    ← 5th overall
+```
+
+The global sequence counter is thread-safe (monotonically increasing across all agent types) and re-seeds from existing directories on server restart so numbers never collide. Failed runs are **never overwritten**, allowing the user to inspect the full execution history, logs, and configs of every attempt.
 
 Follow-up inspection/control is exposed through four runtime tools:
 
@@ -1505,7 +1540,7 @@ Follow-up inspection/control is exposed through four runtime tools:
 - `chat_agent_run_log`
 - `chat_agent_run_stop`
 
-These wrapped runtimes are intentionally isolated from ACP flow control. The current `/check_all_agents_status/`, `/get_session_running_processes/`, and `/kill_session_processes/` views skip the `__chat_runs__` pool subtree, so pausing or stopping a canvas flow does not accidentally kill chat-launched wrapped runtimes.
+These wrapped runtimes are intentionally isolated from ACP flow control. The current `/check_all_agents_status/`, `/get_session_running_processes/`, and `/kill_session_processes/` views skip the `_chat_runs_` pool subtree, so pausing or stopping a canvas flow does not accidentally kill chat-launched wrapped runtimes.
 
 For checked Multi-Turn requests, launch behavior was also hardened to suppress visible console popups. Request-scoped state flags now let the same runtime-launch helpers choose:
 
@@ -1534,8 +1569,10 @@ The Multi-Turn implementation now also carries frozen-build awareness in the sup
 - `FileSearchRAGChain` resolves its default `config.json` from the executable directory in frozen mode
 - template-agent discovery checks both `<install_dir>/agents` and `<install_dir>/Tlamatini/agent/agents`
 - wrapped runtime/background launch helpers adapt correctly to frozen execution
+- `_get_agents_root()` in `chat_agent_runtime.py` resolves from `sys.executable` in frozen mode, from `__file__` in source mode — both paths are logged at `INFO` level with absolute paths for easy debugging
+- `_resolve_python_executable()` tries `PYTHON_HOME`, then bundled `python.exe` beside the frozen executable, then falls back to PATH — each decision is logged
 
-This matters because the Multi-Turn path depends on file context, wrapped runtimes, and config-driven behavior that must work both from source and from the packaged desktop build.
+This matters because the Multi-Turn path depends on file context, wrapped runtimes, and config-driven behavior that must work both from source and from the packaged desktop build. All path resolution decisions are now logged with absolute paths so that frozen-mode issues can be diagnosed from the console output alone.
 
 ### Agentic Workflow Designer
 
@@ -1717,7 +1754,7 @@ Tools can be individually enabled/disabled via the Tools Dialog in the chat inte
 
 ### Wrapped Chat-Agent Tools
 
-Wrapped chat-agent launchers create isolated runtime copies of selected template agents under `agent/agents/pools/__chat_runs__/...` and return structured JSON with run metadata.
+Wrapped chat-agent launchers create isolated, sequenced runtime copies of selected template agents under `agent/agents/pools/_chat_runs_/{agent}_{seq}_{id}/` and return structured JSON with run metadata. Each invocation gets its own directory — failed runs are preserved for inspection.
 
 | Family | Tool Names | Purpose |
 |--------|------------|---------|
@@ -2524,23 +2561,24 @@ This architecture allows the LLM to orchestrate multi-step workflows: crawl a we
 When 50+ tools are available, binding all of them to the LLM wastes context and confuses smaller models. The `CapabilityAwareToolAgentExecutor` solves this with intelligent tool selection:
 
 1. **Global Execution Plan** (highest priority): If a planner has pre-selected tools for this request, use only those.
-2. **Smart Scoring** (`select_tools_for_request`): Each tool is scored against the user's input text using name matching, alias phrases, description tokens, and security hints. Only top-scoring tools are bound.
-3. **Fallback**: If no tools score above threshold, all tools are bound (safe default).
+2. **Smart Scoring** (`select_tools_for_request`): Each tool is scored against the user's input text using name matching, alias phrases, description tokens, and security hints. Every tool scoring above the entry threshold is selected (up to 50 tools per request).
+3. **Run-Control Isolation**: Run-control tools (`chat_agent_run_list/status/log/stop`) are excluded from score-floor calculations and auto-injected whenever wrapped agents are selected. This prevents monitoring tools from inflating the threshold and crowding out the actual agent tools the user requested.
+4. **Fallback**: If no tools score above threshold, all tools are bound (safe default).
 
-This means a request like "crawl example.com and summarize it" binds only `chat_agent_crawler`, `chat_agent_summarize_text`, and runtime tools — not the 30+ irrelevant tools that would clutter the LLM's context.
+This means a request like "use File Creator to create a file, then File Extractor to read it, then Summarize Text to summarize it" correctly binds all three wrapped agent tools plus runtime monitoring — even though the user referred to them by natural name rather than their internal tool identifiers.
 
 ### Wrapped Chat-Agent Lifecycle
 
 When the LLM invokes a `chat_agent_*` tool, the following happens:
 
-1. **Template Copy**: The agent's template directory is copied to an isolated runtime directory under `pools/__chat_runs__/{template}__chat__{run_id}/`. The template is never mutated.
+1. **Template Copy**: The agent's template directory is copied to a **unique, sequenced** runtime directory under `pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/` (e.g. `executer_001_a1b2c3d4`). The template is never mutated. Previous runs are never overwritten — every attempt (including failures) is preserved.
 2. **Config Parametrization**: The LLM's `key='value'` assignments are parsed and applied to the runtime copy's `config.yaml`.
 3. **Subprocess Launch**: The agent starts as an independent subprocess with its own PID. The tool waits briefly (default 8 seconds) for initial output.
 4. **JSON Response**: The tool returns a JSON object with `run_id`, `status`, `pid`, `runtime_dir`, `log_path`, and `log_excerpt`.
 5. **Monitoring**: If `status="running"`, the LLM can call `chat_agent_run_status` or `chat_agent_run_log` in subsequent iterations to check progress.
 6. **Completion**: When the agent finishes, its status transitions to `completed` or `failed`, and the full log is available via `chat_agent_run_log`.
 
-This design ensures that each tool invocation is isolated, traceable, and monitorable. The LLM never has to worry about cleanup — each run is self-contained.
+This design ensures that each tool invocation is isolated, traceable, and monitorable. The global sequence number shows the exact execution order across all agent types, so the user can reconstruct the full timeline of what the LLM attempted — including retries and failures.
 
 ---
 
@@ -3217,7 +3255,7 @@ Add patterns in the `Omission` model via Django admin:
 
 #### Multi-Turn Not Engaging
 
-**Symptom:** Requests still behave like the old one-shot chat path
+**Symptom:** Requests still behave like the old one-shot chat path, or the LLM says tools are "not available"
 
 **Solutions:**
 1. Ensure the **Multi-Turn** checkbox beside **Clear history** is checked before sending the prompt
@@ -3225,6 +3263,8 @@ Add patterns in the `Omission` model via Django admin:
 3. Verify `enable_unified_agent` is enabled in `config.json`
 4. Check that the relevant MCPs/tools are enabled in the chat configuration dialogs
 5. Remember that unchecked mode intentionally preserves the old prompt validation and full-tool behavior
+6. Check the Django console for `[Planner._select]` log lines — they show which tools were scored and selected. If the tools you need were excluded, the planner's scoring threshold may need adjustment
+7. If the LLM reports "Tool X is not available in this session", look for `[Planner._select] SELECTED` lines to confirm which tools were actually bound. Run-control tools are auto-injected and should not inflate the scoring floor
 
 #### Frozen Build Uses Wrong Config
 
@@ -3289,7 +3329,7 @@ Add patterns in the `Omission` model via Django admin:
 
 ### Debug Mode
 
-Enable verbose logging in config.json:
+Enable verbose RAG logging in config.json:
 
 ```json
 {
@@ -3302,11 +3342,24 @@ Enable verbose logging in config.json:
 }
 ```
 
+**Multi-Turn and runtime logging** is configured via Django's `LOGGING` setting in `tlamatini/settings.py`. The following loggers emit `INFO`-level diagnostics to the console:
+
+| Logger | What it logs |
+|--------|-------------|
+| `agent.chat_agent_runtime` | Runtime directory creation, template copy, script resolution, subprocess launch, PID, Python executable selection (frozen vs source) |
+| `agent.tools` | Wrapped chat-agent launch lifecycle: template discovery, config.yaml load/write, parameter assignment, script resolution, final runtime directory contents |
+| `agent.mcp_agent` | Multi-turn tool invocation: which tools are called, arguments, return values for `chat_agent_*` tools |
+| `agent.global_execution_planner` | Planner scoring: per-tool score, selected tools, threshold, top score |
+| `agent.capability_registry` | Capability scoring details |
+
+All log lines are prefixed with timestamps and logger names (e.g. `2026-04-13 12:28:39 [agent.tools] INFO [tools._launch_wrapped_chat_agent] ...`).
+
 ### Log Locations
 
-- Django logs: Console output
-- Agent logs: `<pool_directory>/<agent_name>/<agent_name>.log`
-- System logs: `Tlamatini/logs/` (if configured)
+- **Django/Multi-Turn logs**: Console output (stdout) — includes planner scoring, tool selection, runtime creation, and subprocess launch diagnostics
+- **ACP workflow agent logs**: `<pool_directory>/<agent_name>/<agent_name>.log`
+- **Chat-launched wrapped agent logs**: `agent/agents/pools/_chat_runs_/<agent>_<seq>_<id>/<agent>_<seq>_<id>.log` — each run gets its own sequenced directory, failed runs are preserved
+- **System logs**: `Tlamatini/logs/` (if configured)
 
 ---
 
@@ -3446,6 +3499,9 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Sequenced Runtime Directories for Wrapped Chat-Agent Runs** - Each `chat_agent_*` tool invocation now creates a **unique, sequenced directory** under `_chat_runs_/{agent}_{seq:03d}_{short_id}/` (e.g. `executer_001_a1b2c3d4`, `executer_002_e5f67890`). Failed runs are never overwritten, preserving the full execution history including logs, configs, and exit codes from every attempt. The global sequence counter is thread-safe, monotonically increasing across all agent types, and re-seeds from existing directories on server restart
+- **Planner Tool Selection Fix** - Fixed a critical bug where the Global Execution Planner excluded wrapped agent tools from Multi-Turn requests. Run-control tools (`chat_agent_run_list/status/log/stop`) no longer inflate the scoring floor since they are auto-injected. The dynamic floor was replaced with a simple threshold filter, and the max tool selection cap was raised from 12 to 50 to match the full agent catalogue
+- **Comprehensive Multi-Turn Runtime Logging** - Added `INFO`-level logging across the entire wrapped chat-agent launch pipeline: `chat_agent_runtime.py` (directory creation, template copy, script resolution, subprocess launch, Python executable selection), `tools.py` (template discovery, config.yaml lifecycle, launch result), `mcp_agent.py` (tool invocation/result for `chat_agent_*` tools), and `global_execution_planner.py` (per-tool scoring, selection decisions). All loggers are configured in `tlamatini/settings.py` with timestamped console output
 - **Multi-Turn UI Toggle and Explicit Opt-In Path** - The main chat toolbar now includes a dedicated **Multi-Turn** checkbox beside **Clear history**, persists it per browser session, and forwards `multi_turn_enabled` with each request so the orchestration path is opt-in rather than silently forced on every chat turn
 - **Phase 1 Capability Selection** - `capability_registry.py` now scores request/tool affinity and lets checked Multi-Turn requests bind only the relevant tools or wrapped agents instead of exposing the entire enabled tool universe on every request
 - **Phase 2 Context Capability Selection** - `rag/factory.py` now selectively prefetches `system_context` and `files_context` for checked Multi-Turn requests, while unchecked requests still use the legacy context-prefetch behavior
@@ -3468,7 +3524,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **J-Decompiler Development Path Fix** - `agent/agents/j_decompiler/j_decompiler.py` now climbs one more directory level before locating the bundled `jd-cli/` payload in development mode, so local-source runs resolve the decompiler asset from the project root correctly
 - **Main Chat Multi-Turn Tool Loop** - `agent/mcp_agent.py` now builds a `MultiTurnToolAgentExecutor` for the unified chat path. Instead of a single opaque tool-call pass, the backend now iterates through model tool requests explicitly, executes them in-process, appends `ToolMessage` observations, and continues until a final answer or the iteration limit is reached
 - **Wrapped Chat-Agent Runtime Layer** - Added `chat_agent_registry.py`, `chat_agent_runtime.py`, migration `0064_add_chat_agent_run_model.py`, migration `0065_add_chat_wrapped_agent_tools.py`, and the `ChatAgentRun` model. The chat surface can now launch 32 isolated `chat_agent_*` runtime copies of template agents plus 4 run-management tools (`chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop`)
-- **Chat Runtime Isolation from ACP Flow Control** - ACP/session process scans now skip the `agent/agents/pools/__chat_runs__/` runtime root, so flow pause/status/kill logic tracks only deployed canvas agents and does not accidentally terminate chat-launched wrapped runtimes
+- **Chat Runtime Isolation from ACP Flow Control** - ACP/session process scans now skip the `agent/agents/pools/_chat_runs_/` runtime root, so flow pause/status/kill logic tracks only deployed canvas agents and does not accidentally terminate chat-launched wrapped runtimes. Each run now gets a unique sequenced directory (`{agent}_{seq:03d}_{short_id}`) instead of overwriting the previous run
 - **Added J-Decompiler Agent** - Short-running deterministic action agent that decompiles `.class`, `.jar`, `.war`, and `.ear` artifacts using the bundled `jd-cli`, supports wildcard and recursive scans, writes Java sources beside the original artifacts, and triggers downstream agents after completion
 - **Added Barrier Agent** - Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Uses cross-process file-based locking and flag files to coordinate multiple separate barrier processes started by source agents
 - **Added Parametrizer Agent** - Short-running active utility interconnection agent that maps structured outputs from source agent logs to target agent config.yaml parameters via a visual mapping dialog and a deployed interconnection-scheme CSV saved for the current pool instance. Supports iterative execution for multiple output elements, connecting current structured-output sources (Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, and Gateway-Relayer) to any target agent
