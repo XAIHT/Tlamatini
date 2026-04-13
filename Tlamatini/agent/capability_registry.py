@@ -1,8 +1,11 @@
 from dataclasses import dataclass
+import logging
 import re
 from typing import Iterable
 
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS
+
+logger = logging.getLogger(__name__)
 
 
 _TOKEN_RE = re.compile(r"[a-z0-9_]+")
@@ -225,7 +228,7 @@ def _score_context_capability(capability: ContextCapability, request_text: str, 
     return score
 
 
-def select_tools_for_request(request_text: str, tools: Iterable, max_selected: int = 12) -> list:
+def select_tools_for_request(request_text: str, tools: Iterable, max_selected: int = 50) -> list:
     tools_list = list(tools)
     if not tools_list:
         return []

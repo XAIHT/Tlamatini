@@ -1,5 +1,6 @@
 # MCP Agent (mcp_agent.py)
 import json
+import logging
 import re
 from typing import Dict, Any
 
@@ -14,6 +15,8 @@ from .global_execution_planner import (
 from .global_state import scoped_request_state
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
+
+logger = logging.getLogger(__name__)
 
 # Try to import ChatOllama (newer location) – fall back to the community package
 try:
@@ -137,6 +140,8 @@ class MultiTurnToolAgentExecutor:
         tool_name = tool_call.get("name", "")
         tool = self.tool_map.get(tool_name)
         if tool is None:
+            logger.warning("[MultiTurnExecutor._invoke_tool] Tool '%s' NOT FOUND in tool_map. Available: %s",
+                           tool_name, list(self.tool_map.keys()))
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' is not available in this session.",
@@ -145,15 +150,23 @@ class MultiTurnToolAgentExecutor:
 
         raw_args = tool_call.get("args", {})
         tool_input = raw_args if raw_args not in (None, "") else {}
+        is_chat_agent_tool = tool_name.startswith("chat_agent_")
+        if is_chat_agent_tool:
+            logger.info("[MultiTurnExecutor._invoke_tool] Invoking WRAPPED CHAT AGENT tool: %s with args: %.500s",
+                        tool_name, str(tool_input))
 
         try:
             result = tool.invoke(tool_input)
         except Exception as exc:
+            logger.error("[MultiTurnExecutor._invoke_tool] Tool '%s' raised exception: %s", tool_name, exc, exc_info=True)
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' raised an exception: {exc}",
                 "retryable": False,
             })
+
+        if is_chat_agent_tool:
+            logger.info("[MultiTurnExecutor._invoke_tool] WRAPPED CHAT AGENT tool '%s' returned: %.1000s", tool_name, str(result))
 
         if isinstance(result, str):
             return result

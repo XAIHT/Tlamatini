@@ -1,7 +1,10 @@
+import itertools
+import logging
 import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from datetime import timedelta
@@ -13,11 +16,20 @@ from .config_loader import get_int_config_value
 from .global_state import global_state
 from .models import ChatAgentRun
 
+logger = logging.getLogger(__name__)
+
 
 CHAT_RUNTIME_ROOT_NAME = "_chat_runs_"
 DEFAULT_CHAT_AGENT_LIMIT_RUNS = 256
 RUNNING_STATUSES = {"created", "running"}
 FINAL_STATUSES = {"completed", "failed", "stopped"}
+
+# Thread-safe global sequence counter so every runtime copy gets a unique,
+# monotonically increasing index that shows execution order at a glance.
+_run_sequence_lock = threading.Lock()
+_run_sequence_counter = itertools.count(1)
+_run_sequence_initialized = False
+
 RUNTIME_IGNORE_FILES = {
     "agent.pid",
     "agent.status",
@@ -28,18 +40,62 @@ RUNTIME_IGNORE_FILES = {
 
 def _get_agents_root() -> str:
     if getattr(sys, "frozen", False):
-        return os.path.join(os.path.dirname(sys.executable), "agents")
-    module_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(module_dir, "agents")
+        root = os.path.join(os.path.dirname(sys.executable), "agents")
+        logger.info("[ChatRuntime._get_agents_root] FROZEN mode -> agents_root = %s", root)
+    else:
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.join(module_dir, "agents")
+        logger.info("[ChatRuntime._get_agents_root] SOURCE mode -> module_dir = %s, agents_root = %s", module_dir, root)
+    logger.info("[ChatRuntime._get_agents_root] agents_root exists? %s", os.path.isdir(root))
+    return root
 
 
 def get_chat_runtime_root() -> str:
-    return os.path.join(_get_agents_root(), "pools", CHAT_RUNTIME_ROOT_NAME)
+    root = os.path.join(_get_agents_root(), "pools", CHAT_RUNTIME_ROOT_NAME)
+    logger.info("[ChatRuntime.get_chat_runtime_root] chat_runtime_root = %s", root)
+    logger.info("[ChatRuntime.get_chat_runtime_root] exists? %s", os.path.isdir(root))
+    return root
+
+
+def _initialize_sequence_from_existing(runtime_root: str) -> None:
+    """Seed the sequence counter from existing directories so that a server
+    restart never reuses a sequence number from a previous session."""
+    global _run_sequence_counter, _run_sequence_initialized
+    if _run_sequence_initialized:
+        return
+    with _run_sequence_lock:
+        if _run_sequence_initialized:
+            return
+        max_seq = 0
+        try:
+            if os.path.isdir(runtime_root):
+                import re
+                seq_pattern = re.compile(r"^.+_(\d{3,})_[0-9a-f]+$")
+                for entry in os.scandir(runtime_root):
+                    if entry.is_dir():
+                        match = seq_pattern.match(entry.name)
+                        if match:
+                            seq_val = int(match.group(1))
+                            if seq_val > max_seq:
+                                max_seq = seq_val
+        except Exception as exc:
+            logger.warning("[ChatRuntime._initialize_sequence] Could not scan existing dirs: %s", exc)
+        _run_sequence_counter = itertools.count(max_seq + 1)
+        _run_sequence_initialized = True
+        logger.info("[ChatRuntime._initialize_sequence] Sequence counter initialized to start at %d", max_seq + 1)
 
 
 def ensure_chat_runtime_root() -> str:
     runtime_root = get_chat_runtime_root()
-    os.makedirs(runtime_root, exist_ok=True)
+    already_exists = os.path.isdir(runtime_root)
+    logger.info("[ChatRuntime.ensure_chat_runtime_root] runtime_root = %s, already_exists = %s", runtime_root, already_exists)
+    try:
+        os.makedirs(runtime_root, exist_ok=True)
+        logger.info("[ChatRuntime.ensure_chat_runtime_root] os.makedirs OK -> directory now exists? %s", os.path.isdir(runtime_root))
+    except Exception as exc:
+        logger.error("[ChatRuntime.ensure_chat_runtime_root] FAILED to create runtime_root: %s -> %s", runtime_root, exc)
+        raise
+    _initialize_sequence_from_existing(runtime_root)
     return runtime_root
 
 
@@ -63,7 +119,9 @@ def _resolve_python_executable() -> str:
             "python.exe" if sys.platform.startswith("win") else "python3",
         )
         if os.path.isfile(candidate):
+            logger.info("[ChatRuntime._resolve_python_executable] Using PYTHON_HOME: %s", candidate)
             return candidate
+        logger.info("[ChatRuntime._resolve_python_executable] PYTHON_HOME set to %s but candidate %s not found", python_home, candidate)
 
     if getattr(sys, "frozen", False):
         bundled = os.path.join(
@@ -71,9 +129,13 @@ def _resolve_python_executable() -> str:
             "python.exe" if sys.platform.startswith("win") else "python3",
         )
         if os.path.isfile(bundled):
+            logger.info("[ChatRuntime._resolve_python_executable] FROZEN mode, using bundled: %s", bundled)
             return bundled
-        return "python" if sys.platform.startswith("win") else "python3"
+        fallback = "python" if sys.platform.startswith("win") else "python3"
+        logger.info("[ChatRuntime._resolve_python_executable] FROZEN mode, bundled not found at %s, falling back to PATH: %s", bundled, fallback)
+        return fallback
 
+    logger.info("[ChatRuntime._resolve_python_executable] SOURCE mode, using sys.executable: %s", sys.executable)
     return sys.executable
 
 
@@ -147,19 +209,68 @@ def _runtime_log_path(runtime_dir: str) -> str:
     return os.path.join(runtime_dir, f"{runtime_name}.log")
 
 
+def _next_run_sequence() -> int:
+    """Return the next globally unique run sequence number (thread-safe)."""
+    with _run_sequence_lock:
+        return next(_run_sequence_counter)
+
+
 def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str) -> tuple[str, str, str]:
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] CALLED with template_dir = %s, runtime_prefix = %s", template_dir, runtime_prefix)
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] template_dir exists? %s, is_dir? %s", os.path.exists(template_dir), os.path.isdir(template_dir))
+
+    # List template contents for debugging
+    if os.path.isdir(template_dir):
+        try:
+            template_contents = os.listdir(template_dir)
+            logger.info("[ChatRuntime.create_isolated_runtime_copy] template_dir contents: %s", template_contents)
+        except Exception as exc:
+            logger.warning("[ChatRuntime.create_isolated_runtime_copy] Could not list template_dir: %s", exc)
+
     runtime_root = ensure_chat_runtime_root()
     run_id = uuid.uuid4().hex
-    runtime_name = runtime_prefix
+    short_id = run_id[:8]
+    seq = _next_run_sequence()
+
+    # Build a unique directory name that preserves execution order:
+    #   {prefix}_{sequence:03d}_{short_run_id}
+    # e.g. executer_001_a1b2c3d4, executer_002_e5f6g7h8
+    # This ensures every run gets its own directory — failed runs are
+    # never overwritten, so the user can inspect the full history.
+    runtime_name = f"{runtime_prefix}_{seq:03d}_{short_id}"
     runtime_dir = os.path.join(runtime_root, runtime_name)
-    if os.path.exists(runtime_dir):
-        shutil.rmtree(runtime_dir)
-    shutil.copytree(template_dir, runtime_dir, ignore=_copytree_ignore)
-    return run_id, runtime_dir, _runtime_log_path(runtime_dir)
+    log_path = _runtime_log_path(runtime_dir)
+
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] runtime_root = %s", runtime_root)
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] run_id = %s (short: %s)", run_id, short_id)
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] sequence = %d", seq)
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] runtime_dir = %s", runtime_dir)
+    logger.info("[ChatRuntime.create_isolated_runtime_copy] log_path = %s", log_path)
+
+    try:
+        shutil.copytree(template_dir, runtime_dir, ignore=_copytree_ignore)
+        logger.info("[ChatRuntime.create_isolated_runtime_copy] shutil.copytree SUCCESS -> runtime_dir exists? %s", os.path.isdir(runtime_dir))
+    except Exception as exc:
+        logger.error("[ChatRuntime.create_isolated_runtime_copy] shutil.copytree FAILED: template=%s -> runtime=%s, error: %s", template_dir, runtime_dir, exc)
+        raise
+
+    # List the copied runtime contents for debugging
+    if os.path.isdir(runtime_dir):
+        try:
+            runtime_contents = os.listdir(runtime_dir)
+            logger.info("[ChatRuntime.create_isolated_runtime_copy] runtime_dir contents after copy: %s", runtime_contents)
+        except Exception as exc:
+            logger.warning("[ChatRuntime.create_isolated_runtime_copy] Could not list runtime_dir: %s", exc)
+    else:
+        logger.error("[ChatRuntime.create_isolated_runtime_copy] runtime_dir DOES NOT EXIST after copytree: %s", runtime_dir)
+
+    return run_id, runtime_dir, log_path
 
 
 def resolve_runtime_script_path(runtime_dir: str, template_dir_name: str) -> str | None:
+    logger.info("[ChatRuntime.resolve_runtime_script_path] runtime_dir = %s, template_dir_name = %s", runtime_dir, template_dir_name)
     primary = os.path.join(runtime_dir, f"{template_dir_name}.py")
+    logger.info("[ChatRuntime.resolve_runtime_script_path] primary script path = %s, exists? %s", primary, os.path.isfile(primary))
     if os.path.isfile(primary):
         return primary
 
@@ -168,8 +279,10 @@ def resolve_runtime_script_path(runtime_dir: str, template_dir_name: str) -> str
         for entry in entries:
             if entry.is_file() and entry.name.endswith(".py") and entry.name != "__init__.py":
                 candidates.append(os.path.abspath(entry.path))
+    logger.info("[ChatRuntime.resolve_runtime_script_path] fallback .py candidates: %s", candidates)
     if len(candidates) == 1:
         return candidates[0]
+    logger.warning("[ChatRuntime.resolve_runtime_script_path] Could not resolve script: primary not found, %d candidates", len(candidates))
     return None
 
 
@@ -182,6 +295,14 @@ def register_chat_agent_run(
     log_path: str,
     request_text: str,
 ) -> ChatAgentRun:
+    logger.info("[ChatRuntime.register_chat_agent_run] Registering run:")
+    logger.info("[ChatRuntime.register_chat_agent_run]   run_id            = %s", run_id)
+    logger.info("[ChatRuntime.register_chat_agent_run]   tool_description  = %s", tool_description)
+    logger.info("[ChatRuntime.register_chat_agent_run]   template_dir      = %s", template_dir)
+    logger.info("[ChatRuntime.register_chat_agent_run]   runtime_dir       = %s", runtime_dir)
+    logger.info("[ChatRuntime.register_chat_agent_run]   log_path          = %s", log_path)
+    logger.info("[ChatRuntime.register_chat_agent_run]   runtime_dir exists? %s", os.path.isdir(runtime_dir))
+    logger.info("[ChatRuntime.register_chat_agent_run]   request_text      = %.200s", request_text)
     return ChatAgentRun.objects.create(
         runId=run_id,
         toolDescription=tool_description,
@@ -195,6 +316,13 @@ def register_chat_agent_run(
 
 def start_chat_agent_subprocess(run: ChatAgentRun, script_path: str):
     python_executable = _resolve_python_executable()
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] python_executable = %s", python_executable)
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] python_executable exists? %s", os.path.isfile(python_executable) if os.path.isabs(python_executable) else "PATH-relative")
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] script_path = %s", script_path)
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] script_path exists? %s", os.path.isfile(script_path))
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] cwd (runtimeDir) = %s", run.runtimeDir)
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] cwd exists? %s", os.path.isdir(run.runtimeDir))
+
     child_env = _build_child_env()
     kwargs = {
         "cwd": run.runtimeDir,
@@ -213,11 +341,13 @@ def start_chat_agent_subprocess(run: ChatAgentRun, script_path: str):
     else:
         kwargs["start_new_session"] = True
 
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] Launching: %s %s (cwd=%s)", python_executable, script_path, run.runtimeDir)
     process = subprocess.Popen([python_executable, script_path], **kwargs)
     run.pid = process.pid
     run.status = "running"
     run.save(update_fields=["pid", "status"])
     _set_handle(run.runId, process)
+    logger.info("[ChatRuntime.start_chat_agent_subprocess] Process launched with PID = %d, run_id = %s", process.pid, run.runId)
     return process
 
 

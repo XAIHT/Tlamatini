@@ -170,3 +170,49 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
 }
+
+# Logging configuration – ensures that agent.chat_agent_runtime, agent.tools,
+# and agent.mcp_agent INFO-level messages are visible in the console.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "chat_runtime": {
+            "format": "%(asctime)s [%(name)s] %(levelname)s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "chat_runtime",
+        },
+    },
+    "loggers": {
+        "agent.chat_agent_runtime": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "agent.tools": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "agent.mcp_agent": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "agent.global_execution_planner": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "agent.capability_registry": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
