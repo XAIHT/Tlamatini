@@ -14,7 +14,7 @@ from .global_state import global_state
 from .models import ChatAgentRun
 
 
-CHAT_RUNTIME_ROOT_NAME = "__chat_runs__"
+CHAT_RUNTIME_ROOT_NAME = "_chat_runs_"
 DEFAULT_CHAT_AGENT_LIMIT_RUNS = 256
 RUNNING_STATUSES = {"created", "running"}
 FINAL_STATUSES = {"completed", "failed", "stopped"}
@@ -150,8 +150,10 @@ def _runtime_log_path(runtime_dir: str) -> str:
 def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str) -> tuple[str, str, str]:
     runtime_root = ensure_chat_runtime_root()
     run_id = uuid.uuid4().hex
-    runtime_name = f"{runtime_prefix}__chat__{run_id[:12]}"
+    runtime_name = runtime_prefix
     runtime_dir = os.path.join(runtime_root, runtime_name)
+    if os.path.exists(runtime_dir):
+        shutil.rmtree(runtime_dir)
     shutil.copytree(template_dir, runtime_dir, ignore=_copytree_ignore)
     return run_id, runtime_dir, _runtime_log_path(runtime_dir)
 
