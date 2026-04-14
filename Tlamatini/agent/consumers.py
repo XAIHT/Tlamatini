@@ -565,12 +565,21 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 },
                 inet_enabled=self.inet_enabled
             )
+            # Pick up tool-call metadata stored by the chain pipeline.
+            tool_calls_log = global_state.get_state('last_tool_calls_log')
+            multi_turn_used = global_state.get_state('last_multi_turn_used')
+            # Clear immediately to avoid leaking into the next request.
+            global_state.set_state('last_tool_calls_log', None)
+            global_state.set_state('last_multi_turn_used', None)
+
             await process_llm_response(
                 llm_response,
                 self.rag_chain,
                 self.channel_layer,
                 self.room_group_name,
                 conversation_user=conversation_user,
+                tool_calls_log=tool_calls_log,
+                multi_turn_used=multi_turn_used,
             )
         except Exception as e:
             print(f"!!! ERROR in queue_llm_retrieval method: {e}")
@@ -1100,10 +1109,15 @@ class AgentConsumer(AsyncWebsocketConsumer):
         message = event['message']
         username = event['username']
         print(f"--- Sending message to WebSocket: '{message}' from '{username}'")
-        await self.send(text_data=json.dumps({
+        ws_payload = {
             'message': message,
             'username': username
-        }))
+        }
+        if event.get('tool_calls_log'):
+            ws_payload['tool_calls_log'] = event['tool_calls_log']
+        if event.get('multi_turn_used'):
+            ws_payload['multi_turn_used'] = True
+        await self.send(text_data=json.dumps(ws_payload))
 
     @database_sync_to_async
     def save_message(self, user, message, conversation_user=None):

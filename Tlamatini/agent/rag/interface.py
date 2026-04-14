@@ -763,7 +763,19 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     global_state.set_state('rag_chain_ready', True)
 
     if isinstance(response, dict):
+        # Preserve tool-call metadata for the consumer to pick up and
+        # forward to the browser so the "Create Flow" button can work.
+        if response.get("tool_calls_log"):
+            global_state.set_state('last_tool_calls_log', response["tool_calls_log"])
+        else:
+            global_state.set_state('last_tool_calls_log', None)
+        if response.get("multi_turn_used"):
+            global_state.set_state('last_multi_turn_used', True)
+        else:
+            global_state.set_state('last_multi_turn_used', None)
         return response.get("answer", "I was unable to generate a response. Please try rephrasing your question or check the system status.")
-    
+
+    global_state.set_state('last_tool_calls_log', None)
+    global_state.set_state('last_multi_turn_used', None)
     global_state.set_state('rag_chain_ready', True)
     return str(response)

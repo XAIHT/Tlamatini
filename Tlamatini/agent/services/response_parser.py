@@ -22,7 +22,7 @@ def save_snippet(snippetName, snippetLanguage, snippetContent):
 def get_or_create_bot_user():
     return User.objects.get_or_create(username='Tlamatini')
 
-async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None):
+async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None):
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
@@ -143,9 +143,11 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     await save_message(bot_user, llm_response, conversation_user=conversation_user)
     
     if channel_layer:
-        await channel_layer.group_send(
-            room_group_name,
-            {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}
-        )
+        broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}
+        if tool_calls_log:
+            broadcast_msg['tool_calls_log'] = tool_calls_log
+        if multi_turn_used:
+            broadcast_msg['multi_turn_used'] = True
+        await channel_layer.group_send(room_group_name, broadcast_msg)
     print("--- Bot message broadcast to room.")
     return llm_response

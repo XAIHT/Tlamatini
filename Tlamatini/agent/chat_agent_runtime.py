@@ -420,12 +420,29 @@ def wait_briefly_for_initial_state(run: ChatAgentRun, *, seconds: int) -> ChatAg
 
 
 def get_chat_agent_run(run_id: str) -> ChatAgentRun | None:
+    """Look up a chat-agent run by exact or prefix match on *runId*.
+
+    The multi-turn executor often receives abbreviated IDs (the first 8
+    hex chars printed by the runtime).  When an exact match fails we
+    fall back to a ``startswith`` prefix search.  If the prefix is
+    ambiguous (matches more than one run) we return the most recent one.
+    """
     if not run_id:
         return None
+    # 1) Exact match (fast path)
     try:
         return ChatAgentRun.objects.get(runId=run_id)
     except ChatAgentRun.DoesNotExist:
-        return None
+        pass
+    # 2) Prefix match — only if the caller passed a plausible short ID
+    run_id_stripped = run_id.strip()
+    if len(run_id_stripped) >= 6:
+        candidates = ChatAgentRun.objects.filter(
+            runId__startswith=run_id_stripped,
+        ).order_by("-startedAt")
+        if candidates.exists():
+            return candidates.first()
+    return None
 
 
 def get_chat_agent_limit_runs() -> int:

@@ -81,6 +81,95 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 6. **Concurrency guard on target startup.** Every active agent enforces a mandatory wait before starting downstream agents: it checks whether ALL agents in its `target_agents` (or `target_agents_a`/`target_agents_b`/`target_agents_l`/`target_agents_g`/`output_agents`) are stopped. If any are still running, the caller blocks and logs `❌ WAITING FOR AGENTS TO STOP: [...]` every 10 seconds until all have exited. This prevents duplicate processes in looping flows (e.g., Starter → Mouser → Sleeper → Mouser cycles) where a fast upstream agent could re-trigger a target before its previous invocation has finished.
 
+### Agent Selection Priority Rules — Use the Right Agent for the Job
+
+When multiple agents COULD accomplish a task, you MUST follow these priority rules. Using the wrong agent wastes iterations, produces harder-to-maintain flows, and generates incorrect configurations.
+
+**RULE: Always prefer a specialized agent over Pythonxer or a generic workaround.**
+
+| Task | CORRECT Agent | WRONG Choice | Why It's Wrong |
+|------|---------------|-------------|---------------|
+| Analyze/describe images | **Image-Interpreter** | Pythonxer writing vision API scripts | Image-Interpreter handles base64 encoding, LLM vision calls, multi-image batching, and wildcard patterns internally. Pythonxer reinvents all of this. |
+| Read/interpret document files | **File-Interpreter** | Pythonxer with file-reading code | File-Interpreter supports 20+ formats (PDF, DOCX, XLSX, etc.) with structured output. Pythonxer requires manual parsing libraries. |
+| Extract raw text from documents | **File-Extractor** | Pythonxer with extraction code | File-Extractor handles the same formats deterministically without LLM overhead. |
+| Crawl/scrape a website | **Crawler** | Pythonxer with requests/BeautifulSoup | Crawler handles HTTP fetching, JavaScript rendering, multi-page crawling, and LLM analysis in one agent. |
+| Call an HTTP REST API | **Apirer** | Pythonxer with requests library | Apirer handles methods, headers, auth, timeouts, and produces structured output for Parametrizer. |
+| Run SQL queries | **SQLer** | Pythonxer with pyodbc/sqlite3 | SQLer provides pre-connected cursor, structured logging, and proper error handling. |
+| Run MongoDB operations | **Mongoxer** | Pythonxer with pymongo | Mongoxer injects a pre-connected `db` object into the script scope. |
+| Send a prompt to an LLM | **Prompter** | Pythonxer calling Ollama API | Prompter handles LLM connection, retry, and structured output for Parametrizer. |
+| Summarize text with LLM | **Summarizer** | Prompter or Pythonxer | Summarizer continuously polls source logs and triggers on LLM-detected events. |
+| Git operations | **Gitter** | Executer with `git` commands | Gitter provides structured output, exit-code gating, and Parametrizer compatibility. |
+| Docker operations | **Dockerer** | Executer with `docker` commands | Dockerer has fallback mechanisms, compose support, and structured logging. |
+| Create a file | **File-Creator** | Pythonxer writing to disk | File-Creator is purpose-built for single-file creation with configurable path and content. |
+| Take a screenshot | **Shoter** | Pythonxer with pyautogui | Shoter is a one-config agent with directory output and canvas integration. |
+| Google search | **Googler** | Crawler or Pythonxer | Googler uses Playwright to automate Google search and extract top N results. |
+
+**When IS Pythonxer the right choice?**
+- Custom data transformation or computation that no specialized agent covers
+- Conditional logic with exit-code-based flow branching (exit 0 = continue, exit 1 = stop)
+- Reading and comparing content from OTHER agents' output files (e.g., `../scper_1/state.txt`)
+- Glue logic between agents that requires parsing or reformatting data
+- One-off automation tasks with no matching specialized agent
+
+### Anti-Patterns — Common Flow Design Mistakes
+
+**1. Using Pythonxer as a universal tool**
+BAD: Pythonxer writes a script that calls the Ollama vision API to analyze images.
+GOOD: Image-Interpreter with `images_pathfilenames` set to the folder or wildcard.
+
+**2. Chaining Prompter for tasks that have dedicated agents**
+BAD: Prompter with prompt "Read the file at C:\data\report.pdf and summarize it".
+GOOD: File-Interpreter (reads the PDF) → Parametrizer → Prompter (summarizes extracted text).
+
+**3. Fan-out from Starter to many agents**
+BAD: Starter → [Executer, Crawler, Apirer, Gitter, Notifier] all in parallel.
+GOOD: Starter → Executer → Crawler → Apirer → Gitter → Notifier (sequential chain).
+
+**4. Creating redundant agents for the same image folder**
+BAD: One Image-Interpreter per image file when analyzing a folder of images.
+GOOD: One Image-Interpreter with `images_pathfilenames: "C:\Photos\*.jpg"` — it processes all matches automatically.
+
+**5. Missing Ender in flows that should be stoppable**
+BAD: Starter → Agent_A → Agent_B (no Ender — the flow cannot be cleanly stopped).
+GOOD: Starter → Agent_A → Agent_B → Ender (Ender can kill all agents).
+
+### Common Task Patterns — Expanded
+
+**8. "Analyze all images in a folder" (image analysis)**
+```
+Starter → Image-Interpreter (images_pathfilenames='C:\Photos\*.jpg', llm.prompt='Describe in detail') → Ender
+```
+Image-Interpreter handles wildcards, batch processing, and LLM vision calls internally. ONE agent does all the work.
+
+**9. "Read documents, then analyze content with LLM" (document processing pipeline)**
+```
+Starter → File-Interpreter (path_filenames='C:\Reports\*.pdf', reading_type='fast') → Parametrizer → Prompter (prompt mapped from extracted text) → Ender
+```
+File-Interpreter extracts text from all PDFs. Parametrizer feeds each document's text one-by-one into Prompter for LLM analysis.
+
+**10. "Crawl a website and summarize findings" (web intelligence)**
+```
+Starter → Crawler (url='https://example.com', system_prompt='Extract key information') → Ender
+```
+Crawler fetches the page, processes it with the LLM, and logs the analysis. One agent handles the full pipeline.
+
+**11. "Call an API, then process each result" (API-driven pipeline)**
+```
+Starter → Apirer (url='https://api.example.com/data', method='GET') → Parametrizer → File-Creator (content mapped from API response) → Ender
+```
+Apirer fetches data, Parametrizer extracts fields from the structured response, File-Creator writes each result to disk.
+
+**12. "Take screenshots and analyze them" (visual automation)**
+```
+Starter → Shoter → Image-Interpreter (images_pathfilenames='shoter_1') → Ender
+```
+Shoter captures the screen. Image-Interpreter can accept a Shoter pool name as input — it reads the Shoter's output directory to find the captured image.
+
+**13. "Search Google and send results via Telegram" (search-notify pipeline)**
+```
+Starter → Googler (query='latest security advisories') → Parametrizer → Telegramer (message mapped from search results) → Ender
+```
+
 ### Parametrizer Thinking Rule
 
 When you design a flow with **Parametrizer**, think of it as a **strict single-lane queue between one source and one target**.
@@ -460,9 +549,10 @@ system_prompt: |
 
 ### 8. Pythonxer
 - **Purpose**: Executes a Python script. Exit code 0 = success (triggers downstream), non-zero = failure (skips downstream).
-- **Used for**: Running inline Python code within a flow to perform data processing, file analysis, conditional logic, API calls, or any computation that benefits from Python's ecosystem. It validates code with Ruff linting before execution and only triggers downstream agents on success (exit code 0).
+- **Used for**: Running inline Python code within a flow for custom data processing, conditional logic, file comparison, or glue code between agents. It validates code with Ruff linting before execution and only triggers downstream agents on success (exit code 0).
 - **Aimed at**: Embedding custom logic directly into a workflow without needing external script files. Its exit-code-based gating makes it ideal for conditional flow progression — the flow only continues if the Python script succeeds.
 - **Application example**: A Pythonxer reads a remote state file copied by an SCP agent, checks whether the content contains "GENERAL_STATE=0", and prints either "STATE_ZERO" or "STATE_CHANGED" — allowing a downstream Raiser to branch the flow based on the detected state.
+- **WHEN NOT TO USE**: Do NOT use Pythonxer for tasks that have a specialized agent. See the **Agent Selection Priority Rules** section above. Specifically: do NOT use Pythonxer to analyze images (use Image-Interpreter), read documents (use File-Interpreter/File-Extractor), call APIs (use Apirer), crawl websites (use Crawler), run SQL (use SQLer), send prompts to LLMs (use Prompter), or create files (use File-Creator).
 - **Pool name pattern**: `pythonxer_<n>`
 - **Starts other agents**: YES (only on success, exit code 0)
 - **Config parameters**:
@@ -1009,6 +1099,7 @@ system_prompt: |
 - **Used for**: Analyzing images using an LLM vision model (e.g., Llama 3.2 Vision). It supports 12+ image formats, converts each to base64, sends them to the LLM with a configurable prompt, and logs structured descriptions. It can read images extracted by a File-Interpreter from documents (via pool name reference).
 - **Aimed at**: Enabling visual intelligence in workflows — such as analyzing screenshots for UI verification, interpreting charts and diagrams from reports, classifying product images, reading handwritten text from scanned documents, or verifying visual conditions on screen captures taken by Shoter.
 - **Application example**: After a Shoter captures a screenshot of a dashboard, an Image-Interpreter analyzes it with the prompt "Identify any error indicators, red alerts, or anomalous graphs in this monitoring dashboard". A Forker watches the output for "ANOMALY DETECTED" to decide whether to trigger an alert chain.
+- **IMPORTANT — This is THE agent for image analysis.** If the user's objective involves interpreting, describing, classifying, or analyzing images, ALWAYS use Image-Interpreter. NEVER use Pythonxer to write vision API scripts — Image-Interpreter handles all of that internally (base64 encoding, LLM vision calls, batch multi-image processing via wildcards, recursive folder scanning). One Image-Interpreter instance with `images_pathfilenames: "C:\Photos\*"` processes ALL images in a folder automatically.
 - **Pool name pattern**: `image_interpreter_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
