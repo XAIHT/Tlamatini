@@ -147,7 +147,7 @@ function buildAutomatedMessageElement(message, addedContent = null) {
     return automatedMessage;
 }
 
-function appendChatMessage(username, message, addedContent = null, timestampStr = null) {
+function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false) {
     const messageDiv = document.createElement('div');
     const messageContentDiv = document.createElement('div');
     const usernameDiv = document.createElement('div');
@@ -221,6 +221,20 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     usernameTextSpan.textContent = `${username} (${finalTimestamp})`;
     usernameDiv.appendChild(usernameTextSpan);
     usernameDiv.appendChild(copyBtn);
+
+    // --- "Create Flow" button: visible only for bot messages from a
+    //     successful multi-turn execution that used tools. ---
+    if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog) && _messageIndicatesSuccess(message)) {
+        const createFlowBtn = document.createElement('button');
+        createFlowBtn.classList.add('create-flow');
+        createFlowBtn.innerHTML = '<i class="bi bi-diagram-3"></i> Create Flow';
+        usernameDiv.appendChild(createFlowBtn);
+
+        createFlowBtn.addEventListener('click', () => {
+            _generateAndDownloadFlow(toolCallsLog);
+        });
+    }
+
     messageContentDiv.prepend(usernameDiv);
     messageDiv.appendChild(messageContentDiv);
     chatLog.appendChild(messageDiv);
@@ -253,6 +267,326 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
             }, 2000);
         });
     });
+}
+
+// ============================================================
+// Flow generation from multi-turn tool calls
+// ============================================================
+
+/**
+ * Check whether the tool calls log contains at least one successful
+ * tool call that maps to a known ACP agent type.
+ */
+function _hasSuccessfulToolCalls(toolCallsLog) {
+    if (!Array.isArray(toolCallsLog) || toolCallsLog.length === 0) return false;
+    return toolCallsLog.some(entry => entry.success && entry.agent_display_name);
+}
+
+/**
+ * Heuristic check: does the LLM response text indicate the task was
+ * completed successfully?
+ */
+function _messageIndicatesSuccess(message) {
+    if (!message) return false;
+    const lower = (typeof message === 'string' ? message : String(message)).toLowerCase();
+    const successPatterns = [
+        'successfully', 'completed', 'done', 'finished',
+        'succeeded', 'accomplished', 'executed successfully',
+        'has been created', 'has been installed', 'has been completed',
+        'was successful', 'worked correctly', 'no errors',
+        'all tasks completed', 'operation completed',
+        'here are the results', 'here is the result',
+        'task completed', 'build succeeded', 'build successful',
+    ];
+    return successPatterns.some(p => lower.includes(p));
+}
+
+/**
+ * Build a .flw JSON structure from the list of successful tool calls
+ * and trigger a browser file download.
+ *
+ * Flow layout: Starter → Agent1 → Agent2 → … → Ender
+ * Each agent node carries the configData derived from the tool call args.
+ */
+function _generateAndDownloadFlow(toolCallsLog) {
+    // 1) Collect unique successful agents (preserve execution order,
+    //    deduplicate by display name keeping the LAST config seen).
+    const agentMap = new Map();   // displayName → {args, tool_name}
+    const agentOrder = [];        // ordered unique display names
+    for (const entry of toolCallsLog) {
+        if (!entry.success || !entry.agent_display_name) continue;
+        const name = entry.agent_display_name;
+        if (!agentMap.has(name)) {
+            agentOrder.push(name);
+        }
+        agentMap.set(name, { args: entry.args || {}, tool_name: entry.tool_name });
+    }
+
+    if (agentOrder.length === 0) {
+        console.warn('--- Create Flow: no eligible agents found in tool_calls_log');
+        return;
+    }
+
+    // 2) Build nodes: Starter + each agent + Ender
+    const HORIZONTAL_GAP = 220;
+    const TOP_OFFSET = 80;
+    const nodes = [];
+
+    // Starter node
+    nodes.push({
+        text: 'Starter',
+        left: '50px',
+        top: TOP_OFFSET + 'px',
+        agentPurpose: 'Entry point, launches first agents',
+        configData: { target_agents: [_toPoolName(agentOrder[0])] }
+    });
+
+    // Agent nodes (one per unique successful agent type)
+    agentOrder.forEach((displayName, idx) => {
+        const info = agentMap.get(displayName);
+        const configData = _mapToolArgsToAgentConfig(displayName, info.args, info.tool_name);
+        // Wire target_agents to next agent or Ender
+        if (idx < agentOrder.length - 1) {
+            configData.target_agents = [_toPoolName(agentOrder[idx + 1])];
+        } else {
+            configData.target_agents = [_toPoolName('Ender')];
+        }
+        // Wire source_agents to previous agent or Starter
+        if (idx === 0) {
+            configData.source_agents = [_toPoolName('Starter')];
+        } else {
+            configData.source_agents = [_toPoolName(agentOrder[idx - 1])];
+        }
+
+        nodes.push({
+            text: displayName,
+            left: (50 + (idx + 1) * HORIZONTAL_GAP) + 'px',
+            top: TOP_OFFSET + 'px',
+            agentPurpose: _agentPurpose(displayName),
+            configData: configData
+        });
+    });
+
+    // Ender node
+    nodes.push({
+        text: 'Ender',
+        left: (50 + (agentOrder.length + 1) * HORIZONTAL_GAP) + 'px',
+        top: TOP_OFFSET + 'px',
+        agentPurpose: 'Terminates all agents, launches Cleaners',
+        configData: {
+            target_agents: agentOrder.map(n => _toPoolName(n)),
+            source_agents: [_toPoolName(agentOrder[agentOrder.length - 1])]
+        }
+    });
+
+    // 3) Build connections: linear chain Starter → A → B → … → Ender
+    const connections = [];
+    for (let i = 0; i < nodes.length - 1; i++) {
+        connections.push({
+            sourceIndex: i,
+            targetIndex: i + 1,
+            inputSlot: 0,
+            outputSlot: 0
+        });
+    }
+
+    const flowData = { nodes: nodes, connections: connections };
+
+    // 4) Prompt user for filename and trigger download
+    let filename = prompt('Enter a name for the flow file:', 'multi-turn-flow');
+    if (filename === null) return;
+    filename = filename.trim();
+    if (!filename) return;
+    if (!filename.toLowerCase().endsWith('.flw')) {
+        filename += '.flw';
+    }
+
+    const blob = new Blob([JSON.stringify(flowData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log('--- Create Flow: downloaded ' + filename);
+}
+
+/**
+ * Parse the raw tool-call args (which may contain an __arg1 request
+ * string with key='value' pairs) into a proper config.yaml-compatible
+ * dict for the given agent type.
+ *
+ * Wrapped chat-agent tools receive a single __arg1 string like:
+ *   "Crawl url='https://example.com' system_prompt='Extract links'"
+ * This function extracts the key='value' pairs and maps them to the
+ * config keys each agent actually expects.
+ */
+function _mapToolArgsToAgentConfig(displayName, rawArgs, _toolName) {
+    const config = {};
+
+    // Extract key='value' pairs from the __arg1 request string.
+    const requestStr = rawArgs.__arg1 || rawArgs.request || '';
+    const pairs = _parseKeyValuePairs(requestStr);
+
+    // Also include any direct key args (non __arg1) from the tool call.
+    for (const [k, v] of Object.entries(rawArgs)) {
+        if (k !== '__arg1' && k !== 'request') {
+            pairs[k] = v;
+        }
+    }
+
+    // Agent-specific config mapping.
+    const lower = displayName.toLowerCase();
+    if (lower === 'pythonxer') {
+        config.script = pairs.script || requestStr || '';
+        if (pairs.execute_forked_window !== undefined) {
+            config.execute_forked_window = pairs.execute_forked_window === 'true';
+        }
+    } else if (lower === 'image interpreter') {
+        config.images_pathfilenames = pairs.images_pathfilenames || pairs.path_filename || pairs.path || '';
+        if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
+        if (pairs.recursive) config.recursive = pairs.recursive === 'true';
+    } else if (lower === 'prompter') {
+        config.prompt = pairs.prompt || requestStr || '';
+    } else if (lower === 'crawler') {
+        config.url = pairs.url || '';
+        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
+        if (pairs.content_mode) config.content_mode = pairs.content_mode;
+    } else if (lower === 'executer') {
+        config.command = pairs.command || requestStr || '';
+        if (pairs.working_directory) config.working_directory = pairs.working_directory;
+    } else if (lower === 'gitter') {
+        config.repo_path = pairs.repo_path || '';
+        config.operation = pairs.operation || '';
+        if (pairs.args) config.args = pairs.args;
+    } else if (lower === 'apirer') {
+        config.url = pairs.url || '';
+        config.method = pairs.method || 'GET';
+        if (pairs.headers) config.headers = pairs.headers;
+        if (pairs.body) config.body = pairs.body;
+    } else if (lower === 'ssher') {
+        config.host = pairs.host || '';
+        config.command = pairs.command || '';
+        if (pairs.username) config.username = pairs.username;
+    } else if (lower === 'file creator') {
+        config.filepath = pairs.filepath || '';
+        config.content = pairs.content || '';
+    } else if (lower === 'file extractor') {
+        config.path = pairs.path || '';
+    } else if (lower === 'file interpreter') {
+        config.path = pairs.path || '';
+        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
+        if (pairs.reading_type) config.reading_type = pairs.reading_type;
+    } else if (lower === 'sqler') {
+        config.connection_string = pairs.connection_string || '';
+        config.query = pairs.query || '';
+    } else if (lower === 'summarize text' || lower === 'summarizer') {
+        config.input_text = pairs.input_text || '';
+        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
+    } else if (lower === 'dockerer') {
+        config.command = pairs.command || requestStr || '';
+    } else if (lower === 'kuberneter') {
+        config.command = pairs.command || requestStr || '';
+    } else if (lower === 'googler') {
+        config.query = pairs.query || requestStr || '';
+    } else if (lower === 'notifier') {
+        config.title = pairs.title || '';
+        config.message = pairs.message || '';
+    } else if (lower === 'send email' || lower === 'emailer') {
+        if (pairs['smtp.host']) config['smtp.host'] = pairs['smtp.host'];
+        if (pairs['smtp.username']) config['smtp.username'] = pairs['smtp.username'];
+        config.to = pairs.to || '';
+        config.subject = pairs.subject || '';
+        config.body = pairs.body || '';
+    } else {
+        // Fallback: copy all parsed pairs as-is.
+        Object.assign(config, pairs);
+    }
+
+    return config;
+}
+
+/**
+ * Parse key='value' and key="value" pairs from a request string.
+ * Handles single-quoted, double-quoted, and unquoted values.
+ * Also handles dotted keys like smtp.host='...'
+ */
+function _parseKeyValuePairs(str) {
+    const result = {};
+    if (!str || typeof str !== 'string') return result;
+
+    // Match: key='value' or key="value" (value can span multiple lines via \n)
+    const regex = /([\w.]+)\s*=\s*'((?:[^'\\]|\\.)*)'/g;
+    let match;
+    while ((match = regex.exec(str)) !== null) {
+        result[match[1]] = match[2].replace(/\\'/g, "'").replace(/\\n/g, '\n');
+    }
+
+    // Also match key="value"
+    const regex2 = /([\w.]+)\s*=\s*"((?:[^"\\]|\\.)*)"/g;
+    while ((match = regex2.exec(str)) !== null) {
+        if (!(match[1] in result)) {
+            result[match[1]] = match[2].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Convert an agent display name to its pool folder name convention.
+ * e.g. "File Creator" → "file_creator", "Executer" → "executer"
+ */
+function _toPoolName(displayName) {
+    return displayName.toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+/**
+ * Return a short purpose string for well-known agent types.
+ */
+function _agentPurpose(displayName) {
+    const purposes = {
+        'Starter': 'Entry point, launches first agents',
+        'Ender': 'Terminates all agents, launches Cleaners',
+        'Executer': 'Shell commands',
+        'Pythonxer': 'Inline Python execution',
+        'Crawler': 'Web crawling with LLM analysis',
+        'Googler': 'Google search and text extraction',
+        'Apirer': 'HTTP REST API calls',
+        'Gitter': 'Git operations',
+        'SSHer': 'SSH remote commands',
+        'SCPer': 'SCP file transfer',
+        'Dockerer': 'Docker commands',
+        'Kuberneter': 'kubectl commands',
+        'PSer': 'PowerShell commands',
+        'Jenkinser': 'Jenkins job triggers',
+        'SQLer': 'SQL queries',
+        'Mongoxer': 'MongoDB operations',
+        'Prompter': 'LLM prompt execution',
+        'Summarizer': 'LLM text summarization',
+        'File Creator': 'Creates files with specified content',
+        'File Interpreter': 'LLM reads and interprets file contents',
+        'File Extractor': 'Raw text extraction from documents',
+        'Image Interpreter': 'LLM vision analysis',
+        'Shoter': 'Screenshot capture',
+        'Notifier': 'Desktop notification with sound',
+        'Emailer': 'SMTP email sending',
+        'Recmailer': 'IMAP email receiver',
+        'Telegramer': 'Telegram messages',
+        'Whatsapper': 'WhatsApp messages',
+        'Monitor Log': 'LLM-powered log file monitor',
+        'Monitor Netstat': 'LLM-powered network port monitor',
+        'Parametrizer': 'Maps structured output between agents',
+        'J-Decompiler': 'JAR/WAR decompilation',
+        'Kyber Keygen': 'Post-quantum key pair generation',
+        'Kyber Cipher': 'Post-quantum encryption',
+        'Kyber Deciph': 'Post-quantum decryption',
+        'Deleter': 'File deletion',
+        'Move File': 'File move/rename',
+    };
+    return purposes[displayName] || displayName;
 }
 
 function renderInitialMessages(messages) {
@@ -417,7 +751,8 @@ chatSocket.onmessage = function (e) {
         console.log(filesAnchorElement.outerHTML);
         console.log(">>>>>>>>>>>>>>>>>");
     }
-    appendChatMessage(data.username, data.message, filesAnchorElement);
+    appendChatMessage(data.username, data.message, filesAnchorElement, null,
+        data.tool_calls_log || null, data.multi_turn_used || false);
     chatLog.scrollTop = chatLog.scrollHeight;
 };
 

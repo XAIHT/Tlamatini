@@ -1,0 +1,102 @@
+{
+  "nodes": [
+    {
+      "text": "Starter",
+      "left": "50px",
+      "top": "80px",
+      "agentPurpose": "Entry point, launches first agents",
+      "configData": {
+        "target_agents": [
+          "pythonxer"
+        ]
+      }
+    },
+    {
+      "text": "Pythonxer",
+      "left": "270px",
+      "top": "80px",
+      "agentPurpose": "Inline Python execution",
+      "configData": {
+        "__arg1": "Get detailed image analysis with script='\nimport requests\nimport base64\nimport os\nimport json\n\n# Images to analyze\nimages = [\n    (r\"C:\\Users\\angel\\OneDrive\\Pictures\\AA20ENDE.jpg\", \"AA20ENDE.jpg\"),\n    (r\"C:\\Users\\angel\\OneDrive\\Pictures\\k-da-all-out-group-fan-art-by-shirogahara.jpg\", \"k-da-all-out-group-fan-art-by-shirogahara.jpg\")\n]\n\n# Try cloud models that might support vision\nfor img_path, name in images:\n    print(f\"\\n{'='*70}\")\n    print(f\"ANALYZING: {name}\")\n    print(f\"{'='*70}\")\n    \n    try:\n        # Read and encode image\n        with open(img_path, \"rb\") as f:\n            img_data = base64.b64encode(f.read()).decode()\n        \n        # Try qwen3.5:cloud\n        model = \"qwen3.5:cloud\"\n        print(f\"Trying model: {model}...\")\n        \n        payload = {\n            \"model\": model,\n            \"prompt\": \"Describe this image in detail. Include: main subjects, colors, style, mood, any text visible, artistic elements, and overall composition. Be thorough and specific.\",\n            \"images\": [img_data],\n            \"stream\": False\n        }\n        \n        response = requests.post(\"http://localhost:11434/api/generate\", json=payload, timeout=120)\n        result = response.json()\n        \n        if \"response\" in result:\n            print(f\"\\nINTERPRETATION:\")\n            print(result[\"response\"])\n        elif \"error\" in result:\n            print(f\"Error: {result['error']}\")\n        else:\n            print(f\"Unexpected response: {result}\")\n            \n    except Exception as e:\n        print(f\"Error processing image: {e}\")\n\nprint(f\"\\n{'='*70}\")\nprint(\"ANALYSIS COMPLETE\")\nprint(f\"{'='*70}\")\n'",
+        "target_agents": [
+          "image_interpreter"
+        ],
+        "source_agents": [
+          "starter"
+        ]
+      }
+    },
+    {
+      "text": "Image Interpreter",
+      "left": "490px",
+      "top": "80px",
+      "agentPurpose": "LLM vision analysis",
+      "configData": {
+        "path_filename": "C:\\Users\\angel\\OneDrive\\Pictures\\k-da-all-out-group-fan-art-by-shirogahara.jpg",
+        "target_agents": [
+          "prompter"
+        ],
+        "source_agents": [
+          "pythonxer"
+        ]
+      }
+    },
+    {
+      "text": "Prompter",
+      "left": "710px",
+      "top": "80px",
+      "agentPurpose": "LLM prompt execution",
+      "configData": {
+        "__arg1": "prompt='Analyze these two images and describe what you see in each one:\n1. C:\\Users\\angel\\OneDrive\\Pictures\\AA20ENDE.jpg\n2. C:\\Users\\angel\\OneDrive\\Pictures\\k-da-all-out-group-fan-art-by-shirogahara.jpg\n\nFor each image, provide: main subjects, colors, style, mood, any text visible, artistic elements, and overall composition.'",
+        "target_agents": [
+          "ender"
+        ],
+        "source_agents": [
+          "image_interpreter"
+        ]
+      }
+    },
+    {
+      "text": "Ender",
+      "left": "930px",
+      "top": "80px",
+      "agentPurpose": "Terminates all agents, launches Cleaners",
+      "configData": {
+        "target_agents": [
+          "pythonxer",
+          "image_interpreter",
+          "prompter"
+        ],
+        "source_agents": [
+          "prompter"
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIndex": 0,
+      "targetIndex": 1,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 1,
+      "targetIndex": 2,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 2,
+      "targetIndex": 3,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 3,
+      "targetIndex": 4,
+      "inputSlot": 0,
+      "outputSlot": 0
+    }
+  ]
+}

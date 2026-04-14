@@ -7,6 +7,7 @@ from typing import Dict, Any
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 from .capability_registry import select_tools_for_request
+from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
 from .global_execution_planner import (
     selected_tool_names_from_plan,
@@ -15,6 +16,46 @@ from .global_execution_planner import (
 from .global_state import scoped_request_state
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
+
+
+# ── Tool-name → ACP agent display name mapping ─────────────────────────
+# Used to translate multi-turn tool calls into .flw workflow nodes.
+# Wrapped chat-agent tools are resolved dynamically from the registry;
+# this dict covers the non-wrapped tools.
+_TOOL_TO_AGENT_DISPLAY_NAME: Dict[str, str] = {
+    "execute_command": "Executer",
+    "execute_file": "Pythonxer",
+    "execute_netstat": "Monitor Netstat",
+    "googler": "Googler",
+    "agent_parametrizer": "Parametrizer",
+    "agent_starter": "Starter",
+    "agent_stopper": "Stopper",
+    "launch_view_image": "Image Interpreter",
+    "unzip_file": "Executer",
+    "decompile_java": "J-Decompiler",
+}
+
+# Tools that are management/monitoring only — never produce .flw nodes.
+_MANAGEMENT_TOOLS: set[str] = {
+    "agent_stat_getter",
+    "get_current_time",
+    "chat_agent_run_list",
+    "chat_agent_run_status",
+    "chat_agent_run_log",
+    "chat_agent_run_stop",
+}
+
+
+def _tool_name_to_agent_display(tool_name: str) -> str | None:
+    """Map a unified-agent tool name to the ACP agent display name, or None if skipped."""
+    if tool_name in _MANAGEMENT_TOOLS:
+        return None
+    if tool_name in _TOOL_TO_AGENT_DISPLAY_NAME:
+        return _TOOL_TO_AGENT_DISPLAY_NAME[tool_name]
+    spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME.get(tool_name)
+    if spec:
+        return spec.display_name
+    return None
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +176,8 @@ class MultiTurnToolAgentExecutor:
         self.tool_map = {tool.name: tool for tool in self.tools}
         self.max_iterations = max_iterations
         self.bound_llm = llm.bind_tools(self.tools) if self.tools else None
+        # Per-invocation log of every tool call (populated during invoke()).
+        self._tool_calls_log: list[Dict[str, Any]] = []
 
     def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
         tool_name = tool_call.get("name", "")
@@ -142,6 +185,12 @@ class MultiTurnToolAgentExecutor:
         if tool is None:
             logger.warning("[MultiTurnExecutor._invoke_tool] Tool '%s' NOT FOUND in tool_map. Available: %s",
                            tool_name, list(self.tool_map.keys()))
+            self._tool_calls_log.append({
+                "tool_name": tool_name,
+                "args": tool_call.get("args", {}),
+                "success": False,
+                "agent_display_name": _tool_name_to_agent_display(tool_name),
+            })
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' is not available in this session.",
@@ -159,6 +208,12 @@ class MultiTurnToolAgentExecutor:
             result = tool.invoke(tool_input)
         except Exception as exc:
             logger.error("[MultiTurnExecutor._invoke_tool] Tool '%s' raised exception: %s", tool_name, exc, exc_info=True)
+            self._tool_calls_log.append({
+                "tool_name": tool_name,
+                "args": dict(tool_input) if isinstance(tool_input, dict) else {},
+                "success": False,
+                "agent_display_name": _tool_name_to_agent_display(tool_name),
+            })
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' raised an exception: {exc}",
@@ -168,9 +223,28 @@ class MultiTurnToolAgentExecutor:
         if is_chat_agent_tool:
             logger.info("[MultiTurnExecutor._invoke_tool] WRAPPED CHAT AGENT tool '%s' returned: %.1000s", tool_name, str(result))
 
+        # Determine success: check for error/failure indicators in the result.
+        result_str = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+        call_success = True
+        try:
+            parsed = json.loads(result_str)
+            if isinstance(parsed, dict):
+                status = str(parsed.get("status", "")).lower()
+                if status in ("error", "failed"):
+                    call_success = False
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        self._tool_calls_log.append({
+            "tool_name": tool_name,
+            "args": dict(tool_input) if isinstance(tool_input, dict) else {},
+            "success": call_success,
+            "agent_display_name": _tool_name_to_agent_display(tool_name),
+        })
+
         if isinstance(result, str):
             return result
-        return json.dumps(result, ensure_ascii=False)
+        return result_str
 
     # ------------------------------------------------------------------
     # Repetition detection helpers
@@ -192,6 +266,9 @@ class MultiTurnToolAgentExecutor:
     _REPEAT_LIMIT = 3
 
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        # Reset per-invocation tool call log.
+        self._tool_calls_log = []
+
         input_text = payload.get("input", "")
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
         messages = [
@@ -213,7 +290,7 @@ class MultiTurnToolAgentExecutor:
             answer = getattr(response, "content", "") or ""
             if not str(answer).strip():
                 answer = "The planner selected no tools for this request, and the model returned an empty response."
-            return {"output": str(answer)}
+            return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
 
         # --- Repetition tracking state ---
         last_signature: str | None = None
@@ -259,7 +336,7 @@ class MultiTurnToolAgentExecutor:
                             )
                         else:
                             answer = "The tool-calling model returned an empty final response."
-                return {"output": str(answer)}
+                return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
 
             # --- Repetition detection ---
             sig = self._call_signature(tool_calls)
@@ -316,7 +393,7 @@ class MultiTurnToolAgentExecutor:
                             "before the loop was broken:\n\n"
                             + "\n---\n".join(reversed(last_real_results))
                         )
-                return {"output": str(answer)}
+                return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
 
             # --- Normal tool execution ---
             for tool_call in tool_calls:
@@ -333,7 +410,8 @@ class MultiTurnToolAgentExecutor:
             "output": (
                 "The tool-calling loop hit its iteration limit before producing a final answer. "
                 "Summarize the latest observed tool state or refine the request."
-            )
+            ),
+            "tool_calls_log": list(self._tool_calls_log),
         }
 
 
@@ -445,6 +523,14 @@ You have access to the following tools. Use them proactively whenever the user's
 
 **IMPORTANT**: If the user's request requires an action that can be performed with a tool, you **MUST use that tool** — do not just explain how the user could do it themselves. You are an OPERATOR: execute, don't advise.
 
+**TOOL ROUTING RULES** (MANDATORY — always prefer the specialized tool):
+- **Image analysis** → ALWAYS use `chat_agent_image_interpreter`. NEVER use `chat_agent_pythonxer` to write vision API scripts — the Image Interpreter agent already handles base64 encoding, LLM vision calls, and multi-image batch processing internally. Pass images_pathfilenames='<path or wildcard>' and optionally llm.prompt='<what to describe>'.
+- **File reading/interpretation** → use `chat_agent_file_interpreter`, NOT `chat_agent_pythonxer` with open().
+- **Text extraction from PDFs/DOCX** → use `chat_agent_file_extractor`, NOT `chat_agent_pythonxer`.
+- **Web crawling** → use `chat_agent_crawler`, NOT `chat_agent_pythonxer` with requests.
+- **API calls** → use `chat_agent_apirer`, NOT `chat_agent_pythonxer` with requests.
+- **Only use `chat_agent_pythonxer`** when no specialized tool exists for the task (data transformation, custom computation, file format conversion, etc.).
+
 **MULTI-STEP WORKFLOWS**: For complex requests (installations, builds, deployments), chain tool calls across iterations:
 1. Use tool A → read the result in the next iteration
 2. Use tool B with data from tool A's result → read the result
@@ -463,10 +549,12 @@ For example, to install software: clone repo → run build commands → verify i
    - `status="running"` → call `chat_agent_run_status` or `chat_agent_run_log` to monitor progress
    - `status="completed"` → read `log_excerpt` for the final result
    - `status="failed"` → read `log_excerpt` for the error, adjust parameters, retry if appropriate
-9. **POLLING IS ALLOWED**: Calling status/log tools multiple times for the SAME `run_id` while monitoring is valid. This is NOT a bad loop.
-10. **DO NOT CLAIM SUCCESS EARLY**: If a run is still `running`, say so. Only report completion when the runtime state or log proves it.
-11. **TRUSTED WRAPPED AGENTS**: They manage their own isolated runtime directories and may operate outside normal path restrictions.
-12. **PARAMETER FORMAT FOR chat_agent_* TOOLS**: Pass parameters as `key='value'` pairs in the request string. For nested config, use dotted notation: `llm.model='gpt-4'`, `smtp.username='user@example.com'`. Include ALL required parameters.
+9. **RUN_ID FORMAT**: When calling `chat_agent_run_status`, `chat_agent_run_log`, or `chat_agent_run_stop`, you may use either the **full run_id** (e.g. `0a6e7936751e44eca9f74e7069aab137`) or the **short prefix** (e.g. `0a6e7936`). Both are accepted. Always use the run_id exactly as returned by the launch tool.
+10. **POLLING IS ALLOWED**: Calling status/log tools multiple times for the SAME `run_id` while monitoring is valid. This is NOT a bad loop.
+11. **DO NOT CLAIM SUCCESS EARLY**: If a run is still `running`, say so. Only report completion when the runtime state or log proves it.
+12. **DO NOT SPAWN REDUNDANT AGENTS**: If you already launched a tool and it is still `running`, do NOT launch the same tool again with similar parameters. Wait for the first one to complete by polling its status/log. Only retry after a confirmed failure.
+13. **TRUSTED WRAPPED AGENTS**: They manage their own isolated runtime directories and may operate outside normal path restrictions.
+14. **PARAMETER FORMAT FOR chat_agent_* TOOLS**: Pass parameters as `key='value'` pairs in the request string. For nested config, use dotted notation: `llm.model='gpt-4'`, `smtp.username='user@example.com'`. Include ALL required parameters.
 
 <question>
 {{input}}

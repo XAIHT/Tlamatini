@@ -210,10 +210,12 @@ User Question: {enhanced_input}"""
                     print(f"--- UnifiedAgentChain: Result keys: {list(result.keys())}")
                     print(f"--- UnifiedAgentChain: output value: '{result.get('output', '<NOT PRESENT>')}' (length: {len(result.get('output', ''))})")
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
+                tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
                 if not answer or not answer.strip():
                     print(f"--- UnifiedAgentChain: WARNING - Empty answer received! Full result: {result}")
             except Exception as e:
                 print(f"--- UnifiedAgentChain: Agent invocation failed ({e}), falling back to basic LLM ---")
+                tool_calls_log = []
                 # Fallback to basic LLM call
                 answer_payload = {
                     "input": original_input,
@@ -231,6 +233,7 @@ User Question: {enhanced_input}"""
                 answered = answer_chain.invoke(answer_payload)
                 answer = getattr(answered, "content", str(answered))
         else:
+            tool_calls_log = []
             # Fallback to basic LLM call
             answer_payload = {
                 "input": original_input,
@@ -250,7 +253,12 @@ User Question: {enhanced_input}"""
 
         invokes_counter = global_state.get_state('chat_hist_summarizer_counter', 0)
         global_state.set_state('chat_hist_summarizer_counter', invokes_counter + 1)
-        return {"answer": answer}
+        result_dict = {"answer": answer}
+        if tool_calls_log:
+            result_dict["tool_calls_log"] = tool_calls_log
+        if payload.get("multi_turn_enabled"):
+            result_dict["multi_turn_used"] = True
+        return result_dict
 
 class UnifiedAgentRAGChain:
     """
@@ -620,6 +628,7 @@ User Question: {enhanced_input}"""
         print("--- Context blob saved with hash: " + hex_dig + " ---")
 
         # 7) Use unified agent if available, otherwise fall back to basic LLM
+        tool_calls_log = []
         if self.unified_agent is not None:
             try:
                 result = self.unified_agent.invoke({
@@ -629,6 +638,7 @@ User Question: {enhanced_input}"""
                     "planner_summary": payload.get("planner_summary", ""),
                 })
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
+                tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
             except Exception as e:
                 print(f"--- UnifiedAgentRAGChain: Agent invocation failed ({e}), falling back to basic LLM ---")
                 # Fallback to basic LLM call with context
@@ -669,4 +679,9 @@ User Question: {enhanced_input}"""
 
         invokes_counter = global_state.get_state('chat_hist_summarizer_counter', 0)
         global_state.set_state('chat_hist_summarizer_counter', invokes_counter + 1)
-        return {"answer": answer}
+        result_dict = {"answer": answer}
+        if tool_calls_log:
+            result_dict["tool_calls_log"] = tool_calls_log
+        if multi_turn_enabled:
+            result_dict["multi_turn_used"] = True
+        return result_dict
