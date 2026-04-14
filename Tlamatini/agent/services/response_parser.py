@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from ..models import LLMProgram, LLMSnippet, AgentMessage
 from .. import constants
 from .filesystem import get_time_stamp
+from .answer_analizer import analyze_answer_success
 
 # Database operations wrapped for async
 @sync_to_async
@@ -142,12 +143,23 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     bot_user, _ = await get_or_create_bot_user()
     await save_message(bot_user, llm_response, conversation_user=conversation_user)
     
+    # When multi-turn was used with tool calls, ask the LLM to classify
+    # the answer as success or failure so the frontend can decide whether
+    # to show the "Create Flow" button.
+    answer_success = None
+    if multi_turn_used and tool_calls_log:
+        print("--- AnswerAnalizer: classifying multi-turn answer...")
+        answer_success = await analyze_answer_success(llm_response)
+        print(f"--- AnswerAnalizer: verdict = {'SUCCESS' if answer_success else 'FAILURE'}")
+
     if channel_layer:
         broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}
         if tool_calls_log:
             broadcast_msg['tool_calls_log'] = tool_calls_log
         if multi_turn_used:
             broadcast_msg['multi_turn_used'] = True
+        if answer_success is not None:
+            broadcast_msg['answer_success'] = answer_success
         await channel_layer.group_send(room_group_name, broadcast_msg)
     print("--- Bot message broadcast to room.")
     return llm_response

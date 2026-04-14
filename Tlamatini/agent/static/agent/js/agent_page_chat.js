@@ -147,7 +147,7 @@ function buildAutomatedMessageElement(message, addedContent = null) {
     return automatedMessage;
 }
 
-function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false) {
+function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false, answerSuccess = null) {
     const messageDiv = document.createElement('div');
     const messageContentDiv = document.createElement('div');
     const usernameDiv = document.createElement('div');
@@ -223,8 +223,10 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     usernameDiv.appendChild(copyBtn);
 
     // --- "Create Flow" button: visible only for bot messages from a
-    //     successful multi-turn execution that used tools. ---
-    if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog) && _messageIndicatesSuccess(message)) {
+    //     successful multi-turn execution that used tools.
+    //     The `answerSuccess` flag is determined server-side by an LLM
+    //     sub-prompt that classifies the answer as SUCCESS or FAILURE. ---
+    if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog) && answerSuccess === true) {
         const createFlowBtn = document.createElement('button');
         createFlowBtn.classList.add('create-flow');
         createFlowBtn.innerHTML = '<i class="bi bi-diagram-3"></i> Create Flow';
@@ -280,25 +282,6 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
 function _hasSuccessfulToolCalls(toolCallsLog) {
     if (!Array.isArray(toolCallsLog) || toolCallsLog.length === 0) return false;
     return toolCallsLog.some(entry => entry.success && entry.agent_display_name);
-}
-
-/**
- * Heuristic check: does the LLM response text indicate the task was
- * completed successfully?
- */
-function _messageIndicatesSuccess(message) {
-    if (!message) return false;
-    const lower = (typeof message === 'string' ? message : String(message)).toLowerCase();
-    const successPatterns = [
-        'successfully', 'completed', 'done', 'finished',
-        'succeeded', 'accomplished', 'executed successfully',
-        'has been created', 'has been installed', 'has been completed',
-        'was successful', 'worked correctly', 'no errors',
-        'all tasks completed', 'operation completed',
-        'here are the results', 'here is the result',
-        'task completed', 'build succeeded', 'build successful',
-    ];
-    return successPatterns.some(p => lower.includes(p));
 }
 
 /**
@@ -752,7 +735,8 @@ chatSocket.onmessage = function (e) {
         console.log(">>>>>>>>>>>>>>>>>");
     }
     appendChatMessage(data.username, data.message, filesAnchorElement, null,
-        data.tool_calls_log || null, data.multi_turn_used || false);
+        data.tool_calls_log || null, data.multi_turn_used || false,
+        data.answer_success != null ? data.answer_success : null);
     chatLog.scrollTop = chatLog.scrollHeight;
 };
 
