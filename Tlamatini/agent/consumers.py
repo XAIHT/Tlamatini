@@ -1117,6 +1117,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
             ws_payload['tool_calls_log'] = event['tool_calls_log']
         if event.get('multi_turn_used'):
             ws_payload['multi_turn_used'] = True
+        if 'answer_success' in event:
+            ws_payload['answer_success'] = event['answer_success']
         await self.send(text_data=json.dumps(ws_payload))
 
     @database_sync_to_async

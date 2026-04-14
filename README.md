@@ -111,6 +111,29 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
   - [The Multi-Turn Tool Loop](#the-multi-turn-tool-loop)
   - [Capability-Aware Tool Selection](#capability-aware-tool-selection)
   - [Wrapped Chat-Agent Lifecycle](#wrapped-chat-agent-lifecycle)
+- [Flow Creation from Multi-Turn Answers](#flow-creation-from-multi-turn-answers)
+  - [Overview: Turning Conversations into Workflows](#overview-turning-conversations-into-workflows)
+  - [End-to-End Data Flow](#end-to-end-data-flow)
+    - [Phase 1: Tool Call Recording (Backend)](#phase-1-tool-call-recording-backend)
+    - [Phase 2: Answer Success Classification (Backend)](#phase-2-answer-success-classification-backend)
+    - [Phase 3: WebSocket Broadcast (Backend to Frontend)](#phase-3-websocket-broadcast-backend-to-frontend)
+    - [Phase 4: Button Rendering and Gate Conditions (Frontend)](#phase-4-button-rendering-and-gate-conditions-frontend)
+    - [Phase 5: Flow Generation and Download (Frontend)](#phase-5-flow-generation-and-download-frontend)
+  - [The Answer Analizer: LLM-Based Success Classification](#the-answer-analizer-llm-based-success-classification)
+    - [Why Not Regex or Keyword Matching](#why-not-regex-or-keyword-matching)
+    - [Classification Prompt Design](#classification-prompt-design)
+    - [Classification Rules](#classification-rules)
+    - [Error Handling and Defaults](#error-handling-and-defaults)
+  - [Tool-Call Log Structure](#tool-call-log-structure)
+    - [Log Entry Schema](#log-entry-schema)
+    - [Tool Name to Agent Display Name Mapping](#tool-name-to-agent-display-name-mapping)
+    - [Management Tools (Excluded from Flows)](#management-tools-excluded-from-flows)
+  - [Flow File (.flw) Generation](#flow-file-flw-generation)
+    - [Node Layout Strategy](#node-layout-strategy)
+    - [Connection Wiring](#connection-wiring)
+    - [Agent Config Mapping](#agent-config-mapping)
+  - [Complete Pipeline Diagram](#complete-pipeline-diagram)
+  - [Files Involved](#files-involved)
 - [Custom Agent Development](#custom-agent-development)
   - [Using the `create_new_agent` Skill](#using-the-create_new_agent-skill)
     - [In Antigravity IDE / Gemini CLI](#in-antigravity-ide--gemini-cli)
@@ -2579,6 +2602,532 @@ When the LLM invokes a `chat_agent_*` tool, the following happens:
 6. **Completion**: When the agent finishes, its status transitions to `completed` or `failed`, and the full log is available via `chat_agent_run_log`.
 
 This design ensures that each tool invocation is isolated, traceable, and monitorable. The global sequence number shows the exact execution order across all agent types, so the user can reconstruct the full timeline of what the LLM attempted — including retries and failures.
+
+---
+
+## Flow Creation from Multi-Turn Answers
+
+### Overview: Turning Conversations into Workflows
+
+One of Tlamatini's most powerful capabilities is the ability to **automatically convert a successful Multi-Turn chat session into a reusable `.flw` workflow file**. When the LLM uses tools during a Multi-Turn conversation — crawling websites, executing commands, creating files, querying APIs, etc. — the system records every tool invocation along with its arguments and success status. Once the LLM delivers its final answer, the system determines whether the overall task succeeded and, if so, presents a **"Create Flow"** button directly in the chat message header.
+
+Clicking this button generates a complete `.flw` workflow file that mirrors the exact sequence of agent operations the LLM performed. The user can then load this file in the **Agentic Workflow Designer (ACP)** and run the same pipeline as a repeatable, automated workflow — without involving the LLM again.
+
+This creates a unique feedback loop:
+
+```
+                        ┌───────────────────────────────┐
+                        │   User asks the LLM to do     │
+                        │   a multi-step task            │
+                        └───────────────┬───────────────┘
+                                        ↓
+                        ┌───────────────────────────────┐
+                        │   LLM autonomously uses tools  │
+                        │   (crawl, execute, create...)  │
+                        └───────────────┬───────────────┘
+                                        ↓
+                        ┌───────────────────────────────┐
+                        │   System records tool calls    │
+                        │   + classifies answer success  │
+                        └───────────────┬───────────────┘
+                                        ↓
+                        ┌───────────────────────────────┐
+                        │   "Create Flow" button appears │
+                        │   in the chat response         │
+                        └───────────────┬───────────────┘
+                                        ↓
+                        ┌───────────────────────────────┐
+                        │   User downloads .flw file     │
+                        │   → Loads it in ACP Designer   │
+                        │   → Runs it as a workflow      │
+                        └───────────────────────────────┘
+```
+
+### End-to-End Data Flow
+
+The "Create Flow" feature spans the full stack — from the Multi-Turn tool loop in Python to the browser-side flow generator in JavaScript. This section traces the complete path of data.
+
+#### Phase 1: Tool Call Recording (Backend)
+
+**File:** `agent/mcp_agent.py` — Class `MultiTurnToolAgentExecutor`
+
+Every time the LLM invokes a tool during the Multi-Turn execution loop, the executor appends a structured log entry to its internal `_tool_calls_log` list. This happens for **every** tool invocation — successful, failed, or unavailable:
+
+```python
+# Recorded after each tool invocation in mcp_agent.py
+self._tool_calls_log.append({
+    "tool_name": tool_name,              # Internal tool identifier
+    "args": dict(tool_input),            # Arguments passed to the tool
+    "success": call_success,             # Boolean: True if tool succeeded
+    "agent_display_name": _tool_name_to_agent_display(tool_name),
+                                         # ACP display name or None
+})
+```
+
+When the Multi-Turn loop finishes (the LLM emits a text response with no further tool calls), the executor returns the complete log:
+
+```python
+return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
+```
+
+The log then propagates upward through the chain hierarchy:
+
+```
+MultiTurnToolAgentExecutor.invoke()
+    → UnifiedAgentChain.invoke()           (unified.py)
+        → result_dict["tool_calls_log"]
+        → result_dict["multi_turn_used"] = True
+            → ask_rag()                    (interface.py)
+                → global_state['last_tool_calls_log']
+                → global_state['last_multi_turn_used']
+                    → AgentConsumer         (consumers.py)
+                        → picks up from global_state
+                        → passes to process_llm_response()
+```
+
+#### Phase 2: Answer Success Classification (Backend)
+
+**File:** `agent/services/answer_analizer.py`
+
+Before broadcasting the response to the browser, the system determines whether the LLM's answer indicates the task was completed successfully. This classification is **not** performed with regex or keyword matching — instead, it uses the same `chained-model` LLM configured in `config.json` as a sub-prompt classifier.
+
+This step runs only when **both** conditions are met:
+- `multi_turn_used` is `True` (the request went through the Multi-Turn pipeline)
+- `tool_calls_log` is non-empty (the LLM actually used tools)
+
+```python
+# In response_parser.py — after cleaning the LLM response
+answer_success = None
+if multi_turn_used and tool_calls_log:
+    answer_success = await analyze_answer_success(llm_response)
+```
+
+The `analyze_answer_success()` function:
+1. Creates a lightweight `OllamaLLM` instance using `chained-model` and `ollama_base_url` from config
+2. Sends the LLM response text (truncated to 4,000 characters) as context to a classification prompt
+3. The classifier LLM responds with exactly one word: `SUCCESS` or `FAILURE`
+4. Returns `True` for SUCCESS, `False` for FAILURE
+
+#### Phase 3: WebSocket Broadcast (Backend to Frontend)
+
+**Files:** `agent/services/response_parser.py` → `agent/consumers.py`
+
+The response parser builds the WebSocket broadcast message with all metadata:
+
+```python
+broadcast_msg = {
+    'type': 'agent_message',
+    'message': llm_response,             # The cleaned LLM answer text
+    'username': 'Tlamatini',             # Bot username
+    'tool_calls_log': tool_calls_log,    # Full list of tool call records
+    'multi_turn_used': True,             # Flag indicating Multi-Turn was active
+    'answer_success': answer_success,    # Boolean from LLM classifier
+}
+```
+
+The `AgentConsumer.agent_message()` handler forwards all fields to the browser:
+
+```python
+ws_payload = {'message': message, 'username': username}
+if event.get('tool_calls_log'):
+    ws_payload['tool_calls_log'] = event['tool_calls_log']
+if event.get('multi_turn_used'):
+    ws_payload['multi_turn_used'] = True
+if 'answer_success' in event:
+    ws_payload['answer_success'] = event['answer_success']
+await self.send(text_data=json.dumps(ws_payload))
+```
+
+#### Phase 4: Button Rendering and Gate Conditions (Frontend)
+
+**File:** `agent/static/agent/js/agent_page_chat.js`
+
+The WebSocket `onmessage` handler passes all received fields to `appendChatMessage()`:
+
+```javascript
+appendChatMessage(data.username, data.message, filesAnchorElement, null,
+    data.tool_calls_log || null, data.multi_turn_used || false,
+    data.answer_success != null ? data.answer_success : null);
+```
+
+Inside `appendChatMessage()`, the **"Create Flow"** button renders only when **all four conditions** are satisfied:
+
+| # | Condition | Purpose |
+|---|-----------|---------|
+| 1 | `username === 'Tlamatini'` | Only bot messages (not user messages) |
+| 2 | `multiTurnUsed === true` | Only Multi-Turn sessions (not standard chat) |
+| 3 | `_hasSuccessfulToolCalls(toolCallsLog)` | At least one tool call succeeded and maps to an ACP agent |
+| 4 | `answerSuccess === true` | The LLM classifier determined the answer indicates success |
+
+```javascript
+if (username === 'Tlamatini' && multiTurnUsed
+    && _hasSuccessfulToolCalls(toolCallsLog)
+    && answerSuccess === true) {
+    // Render the "Create Flow" button in the message header
+}
+```
+
+The `_hasSuccessfulToolCalls()` helper validates that the tool calls log contains at least one entry where both `success` is `true` and `agent_display_name` is non-null (meaning the tool maps to an ACP agent type, not a management-only tool):
+
+```javascript
+function _hasSuccessfulToolCalls(toolCallsLog) {
+    if (!Array.isArray(toolCallsLog) || toolCallsLog.length === 0) return false;
+    return toolCallsLog.some(entry => entry.success && entry.agent_display_name);
+}
+```
+
+#### Phase 5: Flow Generation and Download (Frontend)
+
+**File:** `agent/static/agent/js/agent_page_chat.js` — Function `_generateAndDownloadFlow()`
+
+When the user clicks "Create Flow", the following algorithm builds a `.flw` file:
+
+**Step 1 — Collect unique successful agents:**
+- Iterates through `toolCallsLog`, filters to `success === true && agent_display_name != null`
+- Deduplicates by display name, preserving execution order
+- Keeps the **last** config seen for each agent type (latest invocation wins)
+
+**Step 2 — Build nodes (Starter + Agents + Ender):**
+- **Starter** node at position `x=50px`, `y=80px` — its `target_agents` points to the first agent
+- **Agent nodes** laid out horizontally with 220px spacing — each carries `configData` mapped from the tool call arguments
+- **Ender** node at the end — its `target_agents` lists all agent pool names (for termination)
+
+**Step 3 — Build connections (linear chain):**
+```
+Starter → Agent₁ → Agent₂ → … → AgentN → Ender
+```
+Each connection links `sourceIndex → targetIndex` with `inputSlot: 0, outputSlot: 0`.
+
+**Step 4 — Prompt and download:**
+- Prompts the user for a filename (default: `multi-turn-flow`)
+- Appends `.flw` extension if missing
+- Triggers a browser file download with the JSON content
+
+**Example — Generated `.flw` structure for a 3-tool session:**
+```json
+{
+  "nodes": [
+    {
+      "text": "Starter",
+      "left": "50px",
+      "top": "80px",
+      "agentPurpose": "Entry point, launches first agents",
+      "configData": { "target_agents": ["crawler"] }
+    },
+    {
+      "text": "Crawler",
+      "left": "270px",
+      "top": "80px",
+      "agentPurpose": "Web crawling with LLM analysis",
+      "configData": {
+        "url": "https://example.com",
+        "system_prompt": "Extract all links",
+        "target_agents": ["file_creator"],
+        "source_agents": ["starter"]
+      }
+    },
+    {
+      "text": "File Creator",
+      "left": "490px",
+      "top": "80px",
+      "agentPurpose": "Creates files with specified content",
+      "configData": {
+        "filepath": "output.txt",
+        "content": "...",
+        "target_agents": ["ender"],
+        "source_agents": ["crawler"]
+      }
+    },
+    {
+      "text": "Ender",
+      "left": "710px",
+      "top": "80px",
+      "agentPurpose": "Terminates all agents, launches Cleaners",
+      "configData": {
+        "target_agents": ["crawler", "file_creator"],
+        "source_agents": ["file_creator"]
+      }
+    }
+  ],
+  "connections": [
+    { "sourceIndex": 0, "targetIndex": 1, "inputSlot": 0, "outputSlot": 0 },
+    { "sourceIndex": 1, "targetIndex": 2, "inputSlot": 0, "outputSlot": 0 },
+    { "sourceIndex": 2, "targetIndex": 3, "inputSlot": 0, "outputSlot": 0 }
+  ]
+}
+```
+
+### The Answer Analizer: LLM-Based Success Classification
+
+#### Why Not Regex or Keyword Matching
+
+Early implementations used a `_messageIndicatesSuccess()` function that scanned the LLM response text for hardcoded keywords like "successfully", "completed", "done", "finished", etc. This approach was **fundamentally unreliable** for several reasons:
+
+| Problem | Example |
+|---------|---------|
+| Synonyms and paraphrases | "Here is the full analysis" (success, but no keyword match) |
+| Partial word collisions | "Complete Image Summary" — "Complete" ≠ "completed" |
+| Language variation | "The file has been generated and saved" (no exact keyword match) |
+| False negatives | Image interpretations, data analysis, and informational responses rarely use "success" vocabulary |
+| False positives | "I'm done looking, but I couldn't find anything" — contains "done" but is a failure |
+| Multilingual answers | Non-English responses would never match English keywords |
+
+Using an LLM to classify the answer solves all of these problems at once: the classifier understands semantic meaning, not string patterns.
+
+#### Classification Prompt Design
+
+The Answer Analizer uses a strict binary classification prompt with the same `chained-model` configured in `config.json`. The prompt is intentionally narrow — one job, one word output:
+
+**System message:**
+```
+You are a strict binary classifier. Your ONLY job is to decide
+whether an AI assistant's answer indicates that the requested task
+was completed successfully or that it failed / could not be done.
+```
+
+**Human message template:**
+```
+Classify the following AI assistant answer as SUCCESS or FAILURE:
+
+--- BEGIN ANSWER ---
+{answer}
+--- END ANSWER ---
+```
+
+The classifier receives up to 4,000 characters of the LLM response as context. This cap keeps token usage bounded for very long responses while providing enough text for accurate classification.
+
+#### Classification Rules
+
+The classifier follows these explicit rules:
+
+| Verdict | Criteria |
+|---------|----------|
+| **SUCCESS** | Task was accomplished, results were delivered, information was provided, or the objective was met in any form |
+| **SUCCESS** | Partial results that still provide useful output |
+| **FAILURE** | Task failed, encountered unrecoverable errors, was refused, or the assistant could not fulfill the request |
+| **FAILURE** | A polite refusal or an apology for not being able to help |
+
+The classifier responds with exactly one word: `SUCCESS` or `FAILURE`. No explanation, no punctuation, no extra text.
+
+#### Error Handling and Defaults
+
+The Answer Analizer is designed to **never block or break the response pipeline**:
+
+| Scenario | Behavior |
+|----------|----------|
+| LLM returns `SUCCESS` | `answer_success = True` → button shown |
+| LLM returns `FAILURE` | `answer_success = False` → button hidden |
+| LLM returns unexpected text | Parsed as not-SUCCESS → `answer_success = False` |
+| Ollama is unreachable | Exception caught → defaults to `True` (show button) |
+| Empty response text | Returns `False` (no answer to classify) |
+| Multi-Turn not used | Classifier is **not called at all** → `answer_success = None` |
+| No tool calls | Classifier is **not called at all** → `answer_success = None` |
+
+The fail-open default (`True` on error) is a deliberate UX decision: it is better to show a "Create Flow" button unnecessarily than to hide it when the user expects it.
+
+### Tool-Call Log Structure
+
+#### Log Entry Schema
+
+Each entry in the `tool_calls_log` array follows this schema:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tool_name` | `string` | Internal tool identifier (e.g., `"chat_agent_crawler"`, `"execute_command"`) |
+| `args` | `object` | Arguments passed to the tool (may contain `__arg1` request string for wrapped agents) |
+| `success` | `boolean` | `true` if the tool executed without errors; `false` if it failed or was unavailable |
+| `agent_display_name` | `string\|null` | ACP agent display name (e.g., `"Crawler"`, `"Executer"`) or `null` for management tools |
+
+Only entries where **both** `success === true` and `agent_display_name !== null` are included in the generated flow.
+
+#### Tool Name to Agent Display Name Mapping
+
+Non-wrapped tools are mapped via a static dictionary in `mcp_agent.py`:
+
+| Tool Name | Display Name |
+|-----------|-------------|
+| `execute_command` | Executer |
+| `execute_file` | Pythonxer |
+| `execute_netstat` | Monitor Netstat |
+| `googler` | Googler |
+| `agent_parametrizer` | Parametrizer |
+| `agent_starter` | Starter |
+| `agent_stopper` | Stopper |
+| `launch_view_image` | Image Interpreter |
+| `unzip_file` | Executer |
+| `decompile_java` | J-Decompiler |
+
+Wrapped chat-agent tools (prefixed `chat_agent_*`) are resolved dynamically from the `WRAPPED_CHAT_AGENT_BY_TOOL_NAME` registry, using their `display_name` attribute.
+
+#### Management Tools (Excluded from Flows)
+
+The following tools are classified as management/monitoring-only and **never produce flow nodes** (their `agent_display_name` is always `null`):
+
+- `agent_stat_getter` — Agent status viewer
+- `get_current_time` — Clock utility
+- `chat_agent_run_list` — List running agent instances
+- `chat_agent_run_status` — Check agent run status
+- `chat_agent_run_log` — Read agent run log
+- `chat_agent_run_stop` — Stop a running agent
+
+### Flow File (.flw) Generation
+
+#### Node Layout Strategy
+
+The flow generator uses a **horizontal linear layout** with fixed spacing:
+
+| Property | Value |
+|----------|-------|
+| Starting X offset | `50px` |
+| Horizontal gap between nodes | `220px` |
+| Vertical position (all nodes) | `80px` |
+
+Nodes are laid out left-to-right in execution order:
+
+```
+ 50px     270px     490px     710px     930px
+  │         │         │         │         │
+  ▼         ▼         ▼         ▼         ▼
+┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
+│Start│→ │ A₁  │→ │ A₂  │→ │ A₃  │→ │Ender│
+└─────┘  └─────┘  └─────┘  └─────┘  └─────┘
+```
+
+#### Connection Wiring
+
+Connections form a **strict linear chain**. Each agent node includes:
+- `target_agents`: the pool name of the next agent (or `"ender"`)
+- `source_agents`: the pool name of the previous agent (or `"starter"`)
+
+The Ender node's `target_agents` lists **all** agent pool names (the agents it needs to terminate). Pool names are derived from display names by lowercasing and replacing spaces/hyphens with underscores (e.g., `"File Creator"` → `"file_creator"`).
+
+#### Agent Config Mapping
+
+The function `_mapToolArgsToAgentConfig()` translates raw tool-call arguments into `config.yaml`-compatible structures for each known agent type. It parses the `__arg1` request string (which contains `key='value'` pairs) and maps them to agent-specific config keys:
+
+| Agent Type | Mapped Config Keys |
+|------------|-------------------|
+| **Pythonxer** | `script`, `execute_forked_window` |
+| **Image Interpreter** | `images_pathfilenames`, `llm.prompt`, `recursive` |
+| **Prompter** | `prompt` |
+| **Crawler** | `url`, `system_prompt`, `content_mode` |
+| **Executer** | `command`, `working_directory` |
+| **Gitter** | `repo_path`, `operation`, `args` |
+| **Apirer** | `url`, `method`, `headers`, `body` |
+| **SSHer** | `host`, `command`, `username` |
+| **File Creator** | `filepath`, `content` |
+| **File Extractor** | `path` |
+| **File Interpreter** | `path`, `system_prompt`, `reading_type` |
+| **SQLer** | `connection_string`, `query` |
+| **Summarizer** | `input_text`, `system_prompt` |
+| **Dockerer** | `command` |
+| **Kuberneter** | `command` |
+| **Googler** | `query` |
+| **Notifier** | `title`, `message` |
+| **Emailer** | `smtp.host`, `smtp.username`, `to`, `subject`, `body` |
+| *(other)* | All parsed key-value pairs copied as-is (fallback) |
+
+### Complete Pipeline Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  MULTI-TURN TOOL LOOP (mcp_agent.py)                                    │
+│                                                                         │
+│  LLM calls tools → _invoke_tool() records each call:                   │
+│    { tool_name, args, success, agent_display_name }                     │
+│                                                                         │
+│  Loop ends → returns:                                                   │
+│    { "output": final_answer, "tool_calls_log": [...] }                 │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  UNIFIED RAG CHAIN (unified.py)                                         │
+│                                                                         │
+│  Attaches metadata to result:                                           │
+│    result_dict["tool_calls_log"] = tool_calls_log                       │
+│    result_dict["multi_turn_used"] = True                                │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  RAG INTERFACE (interface.py)                                            │
+│                                                                         │
+│  Stores in thread-safe global state:                                    │
+│    global_state['last_tool_calls_log'] = response["tool_calls_log"]    │
+│    global_state['last_multi_turn_used'] = True                          │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  WEBSOCKET CONSUMER (consumers.py)                                       │
+│                                                                         │
+│  Retrieves and clears from global state:                                │
+│    tool_calls_log = global_state.get('last_tool_calls_log')            │
+│    multi_turn_used = global_state.get('last_multi_turn_used')          │
+│                                                                         │
+│  Passes to process_llm_response()                                       │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  RESPONSE PARSER (response_parser.py)                                    │
+│                                                                         │
+│  1. Cleans and processes the LLM response text                          │
+│  2. If multi_turn_used AND tool_calls_log:                              │
+│     → Calls analyze_answer_success(llm_response)                        │
+│     → Returns answer_success: True/False                                │
+│  3. Builds broadcast message with all metadata                          │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  ANSWER ANALIZER (answer_analizer.py)                                    │
+│                                                                         │
+│  1. Creates lightweight OllamaLLM (chained-model, temperature=0)       │
+│  2. Sends classification prompt with answer text (max 4000 chars)       │
+│  3. LLM responds: "SUCCESS" or "FAILURE"                                │
+│  4. Returns True/False (defaults to True on error)                      │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  WEBSOCKET BROADCAST (consumers.py → browser)                            │
+│                                                                         │
+│  JSON payload:                                                           │
+│  {                                                                       │
+│    "message": "...",                                                     │
+│    "username": "Tlamatini",                                              │
+│    "tool_calls_log": [ {tool_name, args, success, agent_display_name} ],│
+│    "multi_turn_used": true,                                              │
+│    "answer_success": true/false                                          │
+│  }                                                                       │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  FRONTEND (agent_page_chat.js)                                           │
+│                                                                         │
+│  Gate check (ALL must be true):                                          │
+│    ✓ username === 'Tlamatini'                                           │
+│    ✓ multiTurnUsed === true                                              │
+│    ✓ _hasSuccessfulToolCalls(toolCallsLog)                              │
+│    ✓ answerSuccess === true                                              │
+│                                                                         │
+│  → Renders "Create Flow" button in message header                       │
+│  → On click: _generateAndDownloadFlow(toolCallsLog)                     │
+│    → Builds nodes: Starter → Agent₁ → Agent₂ → … → Ender              │
+│    → Maps tool args to agent config.yaml format                         │
+│    → Prompts for filename → downloads .flw file                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Files Involved
+
+| File | Role | Key Functions / Classes |
+|------|------|------------------------|
+| `agent/mcp_agent.py` | Tool call recording and name mapping | `MultiTurnToolAgentExecutor._invoke_tool()`, `_tool_name_to_agent_display()`, `_TOOL_TO_AGENT_DISPLAY_NAME`, `_MANAGEMENT_TOOLS` |
+| `agent/rag/chains/unified.py` | Attaches `tool_calls_log` and `multi_turn_used` to chain result | `UnifiedAgentChain.invoke()` |
+| `agent/rag/interface.py` | Stores metadata in thread-safe global state for consumer pickup | `ask_rag()` |
+| `agent/consumers.py` | Retrieves metadata from global state, forwards through WebSocket | `AgentConsumer.queue_llm_retrieval()`, `AgentConsumer.agent_message()` |
+| `agent/services/response_parser.py` | Triggers answer classification, builds broadcast message | `process_llm_response()` |
+| `agent/services/answer_analizer.py` | LLM-based success/failure classifier | `analyze_answer_success()`, `_classify_sync()`, `_build_llm()` |
+| `agent/static/agent/js/agent_page_chat.js` | Button rendering, flow generation, and download | `appendChatMessage()`, `_hasSuccessfulToolCalls()`, `_generateAndDownloadFlow()`, `_mapToolArgsToAgentConfig()`, `_toPoolName()`, `_agentPurpose()` |
+| `agent/static/agent/css/agent_page.css` | Button styling (`.create-flow`, `.create-flow:hover`, `.create-flow:active`) | CSS rules at lines 152–177 |
+| `agent/config.json` | Provides `chained-model` and `ollama_base_url` for the classifier LLM | Configuration keys |
 
 ---
 
