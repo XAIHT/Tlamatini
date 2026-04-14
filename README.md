@@ -437,7 +437,7 @@ At a high level, a checked Multi-Turn request now moves through these stages:
 
 | Category | Technologies |
 |----------|--------------|
-| **Backend** | Python 3.12+, Django 5.2.4, Django Channels 4.1, Daphne (ASGI) |
+| **Backend** | Python 3.12.10 (recommended), Django 5.2.4, Django Channels 4.1, Daphne (ASGI) |
 | **Frontend** | HTML5, Bootstrap 5, JavaScript (modular), jQuery, jQuery UI |
 | **AI/ML** | LangChain 0.3.27, LangGraph 0.2.74, Ollama (ollama 0.5.3), FAISS, rank-bm25, NumPy 2.3.4, PyAutoGUI 0.9.54 |
 | **LLM APIs** | Anthropic Claude (anthropic 0.74.1), Ollama REST API, MCP 1.25.0 |
@@ -664,7 +664,7 @@ Tlamatini/
 
 ### Prerequisites
 
-- **Python 3.12+**
+- **Python 3.12.10** (strongly recommended — this is the only version the project has been fully tested with)
 - Either:
   - the current checked-in cloud/back-end configuration from `Tlamatini/agent/config.json`, or
   - **Ollama** installed and running with your chosen local models configured in `config.json`
