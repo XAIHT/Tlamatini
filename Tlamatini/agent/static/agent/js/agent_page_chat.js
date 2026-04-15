@@ -276,12 +276,11 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
 // ============================================================
 
 /**
- * Check whether the tool calls log contains at least one successful
- * tool call that maps to a known ACP agent type.
+ * Check whether the tool calls log contains at least one successful tool call.
  */
 function _hasSuccessfulToolCalls(toolCallsLog) {
     if (!Array.isArray(toolCallsLog) || toolCallsLog.length === 0) return false;
-    return toolCallsLog.some(entry => entry.success && entry.agent_display_name);
+    return toolCallsLog.some(entry => entry.success);
 }
 
 /**
@@ -297,8 +296,14 @@ function _generateAndDownloadFlow(toolCallsLog) {
     const agentMap = new Map();   // displayName → {args, tool_name}
     const agentOrder = [];        // ordered unique display names
     for (const entry of toolCallsLog) {
-        if (!entry.success || !entry.agent_display_name) continue;
-        const name = entry.agent_display_name;
+        if (!entry.success) continue;
+        // Use agent_display_name when available; otherwise derive a
+        // human-readable name from the tool_name so every successful
+        // tool call is represented in the generated flow.
+        const name = entry.agent_display_name
+            || (entry.tool_name || 'Unknown')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase());
         if (!agentMap.has(name)) {
             agentOrder.push(name);
         }

@@ -31,6 +31,8 @@ _TOOL_TO_AGENT_DISPLAY_NAME: Dict[str, str] = {
     "agent_starter": "Starter",
     "agent_stopper": "Stopper",
     "launch_view_image": "Image Interpreter",
+    "opus_analyze_image": "Image Interpreter",
+    "qwen_analyze_image": "Image Interpreter",
     "unzip_file": "Executer",
     "decompile_java": "J-Decompiler",
 }
