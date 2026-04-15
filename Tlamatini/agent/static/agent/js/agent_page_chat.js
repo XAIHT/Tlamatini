@@ -284,6 +284,25 @@ function _hasSuccessfulToolCalls(toolCallsLog) {
 }
 
 /**
+ * Map wrapped-agent display names (from chat_agent_registry) to their
+ * canonical DB agentDescription.  Needed because some wrapped agents use
+ * display names that differ from the DB registration / template directory.
+ */
+const _DISPLAY_TO_CANONICAL = {
+    'Send Email':       'Emailer',
+    'Summarize Text':   'Summarizer',
+    'Move File':        'Mover',
+    'Kyber Deciph':     'Kyber-DeCipher',
+    'Kyber Keygen':     'Kyber-KeyGen',
+    'Kyber Cipher':     'Kyber-Cipher',
+};
+
+/** Resolve a display name to the canonical DB agent name. */
+function _canonicalAgentName(displayName) {
+    return _DISPLAY_TO_CANONICAL[displayName] || displayName;
+}
+
+/**
  * Build a .flw JSON structure from the list of successful tool calls
  * and trigger a browser file download.
  *
@@ -315,7 +334,10 @@ function _generateAndDownloadFlow(toolCallsLog) {
         return;
     }
 
-    // 2) Build nodes: Starter + each agent + Ender
+    // 2) Map display names to canonical DB names (for template resolution)
+    const canonicalOrder = agentOrder.map(n => _canonicalAgentName(n));
+
+    // 3) Build nodes: Starter + each agent + Ender
     const HORIZONTAL_GAP = 220;
     const TOP_OFFSET = 80;
     const nodes = [];
@@ -326,16 +348,17 @@ function _generateAndDownloadFlow(toolCallsLog) {
         left: '50px',
         top: TOP_OFFSET + 'px',
         agentPurpose: 'Entry point, launches first agents',
-        configData: { target_agents: [_toPoolName(agentOrder[0])] }
+        configData: { target_agents: [_toPoolName(canonicalOrder[0])] }
     });
 
     // Agent nodes (one per unique successful agent type)
     agentOrder.forEach((displayName, idx) => {
         const info = agentMap.get(displayName);
-        const configData = _mapToolArgsToAgentConfig(displayName, info.args, info.tool_name);
+        const canonical = canonicalOrder[idx];
+        const configData = _mapToolArgsToAgentConfig(canonical, info.args, info.tool_name);
         // Wire target_agents to next agent or Ender
         if (idx < agentOrder.length - 1) {
-            configData.target_agents = [_toPoolName(agentOrder[idx + 1])];
+            configData.target_agents = [_toPoolName(canonicalOrder[idx + 1])];
         } else {
             configData.target_agents = [_toPoolName('Ender')];
         }
@@ -343,14 +366,20 @@ function _generateAndDownloadFlow(toolCallsLog) {
         if (idx === 0) {
             configData.source_agents = [_toPoolName('Starter')];
         } else {
-            configData.source_agents = [_toPoolName(agentOrder[idx - 1])];
+            configData.source_agents = [_toPoolName(canonicalOrder[idx - 1])];
+        }
+
+        // Parametrizer uses singular source_agent / target_agent
+        if (canonical.toLowerCase() === 'parametrizer') {
+            configData.source_agent = configData.source_agents[0] || '';
+            configData.target_agent = configData.target_agents[0] || '';
         }
 
         nodes.push({
-            text: displayName,
+            text: canonical,
             left: (50 + (idx + 1) * HORIZONTAL_GAP) + 'px',
             top: TOP_OFFSET + 'px',
-            agentPurpose: _agentPurpose(displayName),
+            agentPurpose: _agentPurpose(canonical),
             configData: configData
         });
     });
@@ -362,12 +391,12 @@ function _generateAndDownloadFlow(toolCallsLog) {
         top: TOP_OFFSET + 'px',
         agentPurpose: 'Terminates all agents, launches Cleaners',
         configData: {
-            target_agents: agentOrder.map(n => _toPoolName(n)),
-            source_agents: [_toPoolName(agentOrder[agentOrder.length - 1])]
+            target_agents: canonicalOrder.map(n => _toPoolName(n)),
+            source_agents: [_toPoolName(canonicalOrder[canonicalOrder.length - 1])]
         }
     });
 
-    // 3) Build connections: linear chain Starter → A → B → … → Ender
+    // 4) Build connections: linear chain Starter → A → B → … → Ender
     const connections = [];
     for (let i = 0; i < nodes.length - 1; i++) {
         connections.push({
@@ -380,7 +409,7 @@ function _generateAndDownloadFlow(toolCallsLog) {
 
     const flowData = { nodes: nodes, connections: connections };
 
-    // 4) Prompt user for filename and trigger download
+    // 5) Prompt user for filename and trigger download
     let filename = prompt('Enter a name for the flow file:', 'multi-turn-flow');
     if (filename === null) return;
     filename = filename.trim();
@@ -410,8 +439,16 @@ function _generateAndDownloadFlow(toolCallsLog) {
  *   "Crawl url='https://example.com' system_prompt='Extract links'"
  * This function extracts the key='value' pairs and maps them to the
  * config keys each agent actually expects.
+ *
+ * IMPORTANT: The field names produced here MUST match the config.yaml
+ * template fields exactly.  A mismatch means the deep-merge in the
+ * backend adds an extra key while the template default stays unchanged.
+ *
+ * @param {string} canonicalName  Canonical DB agent name (e.g. "Executer")
+ * @param {Object} rawArgs        Tool-call args dict
+ * @param {string} _toolName      Raw tool name (unused, kept for API compat)
  */
-function _mapToolArgsToAgentConfig(displayName, rawArgs, _toolName) {
+function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     const config = {};
 
     // Extract key='value' pairs from the __arg1 request string.
@@ -425,71 +462,287 @@ function _mapToolArgsToAgentConfig(displayName, rawArgs, _toolName) {
         }
     }
 
-    // Agent-specific config mapping.
-    const lower = displayName.toLowerCase();
-    if (lower === 'pythonxer') {
-        config.script = pairs.script || requestStr || '';
-        if (pairs.execute_forked_window !== undefined) {
-            config.execute_forked_window = pairs.execute_forked_window === 'true';
+    // ── Helper: safely build a nested sub-object from dotted pairs ──
+    function collectDotted(prefix) {
+        const obj = {};
+        const dotPrefix = prefix + '.';
+        for (const [k, v] of Object.entries(pairs)) {
+            if (k.startsWith(dotPrefix)) {
+                obj[k.slice(dotPrefix.length)] = v;
+            }
         }
-    } else if (lower === 'image interpreter') {
-        config.images_pathfilenames = pairs.images_pathfilenames || pairs.path_filename || pairs.path || '';
-        if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
-        if (pairs.recursive) config.recursive = pairs.recursive === 'true';
-    } else if (lower === 'prompter') {
-        config.prompt = pairs.prompt || requestStr || '';
+        return obj;
+    }
+
+    // Agent-specific config mapping — field names match config.yaml templates.
+    const lower = canonicalName.toLowerCase();
+
+    // ── Executer ─────────────────────────────────────────────────────
+    // Template field: script (NOT "command")
+    if (lower === 'executer') {
+        config.script = pairs.command || pairs.script || requestStr || '';
+        if (pairs.non_blocking !== undefined) {
+            config.non_blocking = String(pairs.non_blocking) === 'true';
+        }
+        if (pairs.execute_forked_window !== undefined) {
+            config.execute_forked_window = String(pairs.execute_forked_window) === 'true';
+        }
+
+    // ── Pythonxer ────────────────────────────────────────────────────
+    // Template field: script
+    } else if (lower === 'pythonxer') {
+        config.script = pairs.script || pairs.command || requestStr || '';
+        if (pairs.execute_forked_window !== undefined) {
+            config.execute_forked_window = String(pairs.execute_forked_window) === 'true';
+        }
+
+    // ── SSHer (DB: "Ssher") ──────────────────────────────────────────
+    // Template fields: user, ip, script
+    } else if (lower === 'ssher') {
+        config.user = pairs.username || pairs.user || '';
+        config.ip = pairs.host || pairs.ip || '';
+        config.script = pairs.command || pairs.script || '';
+
+    // ── SCPer (DB: "Scper") ──────────────────────────────────────────
+    // Template fields: user, ip, file, direction
+    } else if (lower === 'scper') {
+        config.user = pairs.username || pairs.user || '';
+        config.ip = pairs.host || pairs.ip || '';
+        config.file = pairs.local_path || pairs.file || pairs.remote_path || '';
+        if (pairs.direction) config.direction = pairs.direction;
+
+    // ── SQLer (DB: "Sqler") ──────────────────────────────────────────
+    // Template fields: sql_connection (nested), script
+    } else if (lower === 'sqler') {
+        config.script = pairs.query || pairs.script || '';
+        const sqlConn = collectDotted('sql_connection');
+        if (pairs.connection_string) sqlConn.server = pairs.connection_string;
+        if (Object.keys(sqlConn).length > 0) config.sql_connection = sqlConn;
+
+    // ── Gitter ───────────────────────────────────────────────────────
+    // Template fields: repo_path, command, branch, commit_message, remote, custom_command
+    } else if (lower === 'gitter') {
+        config.repo_path = pairs.repo_path || '';
+        config.command = pairs.operation || pairs.command || '';
+        if (pairs.branch) config.branch = pairs.branch;
+        if (pairs.commit_message) config.commit_message = pairs.commit_message;
+        if (pairs.remote) config.remote = pairs.remote;
+        if (pairs.args) config.custom_command = pairs.args;
+
+    // ── Apirer ───────────────────────────────────────────────────────
+    // Template fields: url, method, headers (object), body
+    } else if (lower === 'apirer') {
+        config.url = pairs.url || '';
+        config.method = pairs.method || 'GET';
+        if (pairs.headers) {
+            try { config.headers = JSON.parse(pairs.headers); }
+            catch (_e) { config.headers = pairs.headers; }
+        }
+        if (pairs.body) config.body = pairs.body;
+
+    // ── Crawler ──────────────────────────────────────────────────────
+    // Template fields: url, system_prompt, content_mode
     } else if (lower === 'crawler') {
         config.url = pairs.url || '';
         if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
         if (pairs.content_mode) config.content_mode = pairs.content_mode;
-    } else if (lower === 'executer') {
-        config.command = pairs.command || requestStr || '';
-        if (pairs.working_directory) config.working_directory = pairs.working_directory;
-    } else if (lower === 'gitter') {
-        config.repo_path = pairs.repo_path || '';
-        config.operation = pairs.operation || '';
-        if (pairs.args) config.args = pairs.args;
-    } else if (lower === 'apirer') {
-        config.url = pairs.url || '';
-        config.method = pairs.method || 'GET';
-        if (pairs.headers) config.headers = pairs.headers;
-        if (pairs.body) config.body = pairs.body;
-    } else if (lower === 'ssher') {
-        config.host = pairs.host || '';
-        config.command = pairs.command || '';
-        if (pairs.username) config.username = pairs.username;
-    } else if (lower === 'file creator') {
-        config.filepath = pairs.filepath || '';
-        config.content = pairs.content || '';
-    } else if (lower === 'file extractor') {
-        config.path = pairs.path || '';
-    } else if (lower === 'file interpreter') {
-        config.path = pairs.path || '';
-        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
-        if (pairs.reading_type) config.reading_type = pairs.reading_type;
-    } else if (lower === 'sqler') {
-        config.connection_string = pairs.connection_string || '';
-        config.query = pairs.query || '';
-    } else if (lower === 'summarize text' || lower === 'summarizer') {
-        config.input_text = pairs.input_text || '';
-        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
-    } else if (lower === 'dockerer') {
-        config.command = pairs.command || requestStr || '';
-    } else if (lower === 'kuberneter') {
-        config.command = pairs.command || requestStr || '';
+
+    // ── Prompter ─────────────────────────────────────────────────────
+    // Template field: prompt
+    } else if (lower === 'prompter') {
+        config.prompt = pairs.prompt || requestStr || '';
+
+    // ── Googler ──────────────────────────────────────────────────────
+    // Template fields: query, number_of_results
     } else if (lower === 'googler') {
         config.query = pairs.query || requestStr || '';
+        if (pairs.number_of_results) {
+            config.number_of_results = parseInt(pairs.number_of_results, 10) || 5;
+        }
+
+    // ── Dockerer ─────────────────────────────────────────────────────
+    // Template field: command
+    } else if (lower === 'dockerer') {
+        config.command = pairs.command || requestStr || '';
+
+    // ── Kuberneter ───────────────────────────────────────────────────
+    // Template fields: command, namespace, extra_args, custom_command
+    } else if (lower === 'kuberneter') {
+        config.command = pairs.command || requestStr || '';
+        if (pairs.namespace) config.namespace = pairs.namespace;
+        if (pairs.extra_args) config.extra_args = pairs.extra_args;
+
+    // ── Jenkinser ────────────────────────────────────────────────────
+    // Template fields: jenkins_url, job_name, user, api_token
+    } else if (lower === 'jenkinser') {
+        if (pairs.jenkins_url) config.jenkins_url = pairs.jenkins_url;
+        if (pairs.job_name) config.job_name = pairs.job_name;
+        if (pairs.user) config.user = pairs.user;
+        if (pairs.api_token) config.api_token = pairs.api_token;
+
+    // ── Mongoxer ─────────────────────────────────────────────────────
+    // Template fields: mongo_connection (nested), script
+    } else if (lower === 'mongoxer') {
+        const mongoConn = collectDotted('mongodb');
+        if (pairs.connection_string) mongoConn.connection_string = pairs.connection_string;
+        if (pairs['mongodb.connection_string']) {
+            mongoConn.connection_string = pairs['mongodb.connection_string'];
+        }
+        if (Object.keys(mongoConn).length > 0) config.mongo_connection = mongoConn;
+        config.script = pairs['mongodb.operation'] || pairs.script || '';
+
+    // ── File Creator ─────────────────────────────────────────────────
+    // Template fields: file_path (with underscore!), content
+    } else if (lower === 'file creator') {
+        config.file_path = pairs.filepath || pairs.file_path || '';
+        config.content = pairs.content || '';
+
+    // ── File Extractor ───────────────────────────────────────────────
+    // Template field: path_filenames
+    } else if (lower === 'file extractor') {
+        config.path_filenames = pairs.path || pairs.path_filenames || '';
+
+    // ── File Interpreter ─────────────────────────────────────────────
+    // Template fields: path_filenames, reading_type, llm.prompt
+    } else if (lower === 'file interpreter') {
+        config.path_filenames = pairs.path || pairs.path_filenames || '';
+        if (pairs.reading_type) config.reading_type = pairs.reading_type;
+        if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
+
+    // ── Image Interpreter ────────────────────────────────────────────
+    // Template fields: images_pathfilenames, llm.prompt, recursive
+    } else if (lower === 'image interpreter') {
+        config.images_pathfilenames = pairs.images_pathfilenames
+            || pairs.path_filename || pairs.path || '';
+        if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
+        if (pairs.recursive) config.recursive = String(pairs.recursive) === 'true';
+
+    // ── Summarizer ───────────────────────────────────────────────────
+    // Template field: system_prompt (NO input_text field exists!)
+    } else if (lower === 'summarizer') {
+        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
+
+    // ── PSer (DB: "Pser") ────────────────────────────────────────────
+    // Template field: likely_process_name
+    } else if (lower === 'pser') {
+        config.likely_process_name = pairs.command || pairs.likely_process_name || requestStr || '';
+
+    // ── Emailer ──────────────────────────────────────────────────────
+    // Template fields: smtp (nested), email (nested), pattern
+    } else if (lower === 'emailer') {
+        const smtp = collectDotted('smtp');
+        if (smtp.port) smtp.port = parseInt(smtp.port, 10) || 587;
+        if (Object.keys(smtp).length > 0) config.smtp = smtp;
+
+        const email = {};
+        if (pairs.to) email.to_addresses = [pairs.to];
+        if (pairs.subject) email.subject = pairs.subject;
+        if (pairs.body) email.body = pairs.body;
+        if (pairs['email.from_address']) email.from_address = pairs['email.from_address'];
+        if (pairs['email.to_addresses']) email.to_addresses = [pairs['email.to_addresses']];
+        if (pairs['email.subject']) email.subject = pairs['email.subject'];
+        if (pairs['email.body']) email.body = pairs['email.body'];
+        if (Object.keys(email).length > 0) config.email = email;
+
+    // ── Notifier ─────────────────────────────────────────────────────
+    // Template fields: target (nested: search_strings, outcome_detail, sound_enabled)
     } else if (lower === 'notifier') {
-        config.title = pairs.title || '';
-        config.message = pairs.message || '';
-    } else if (lower === 'send email' || lower === 'emailer') {
-        if (pairs['smtp.host']) config['smtp.host'] = pairs['smtp.host'];
-        if (pairs['smtp.username']) config['smtp.username'] = pairs['smtp.username'];
-        config.to = pairs.to || '';
-        config.subject = pairs.subject || '';
-        config.body = pairs.body || '';
+        const target = collectDotted('target');
+        // Map friendly title/message to template fields
+        if (pairs.title && !target.search_strings) target.search_strings = pairs.title;
+        if (pairs.message && !target.outcome_detail) target.outcome_detail = pairs.message;
+        if (target.sound_enabled !== undefined) {
+            target.sound_enabled = String(target.sound_enabled) === 'true';
+        }
+        if (Object.keys(target).length > 0) config.target = target;
+
+    // ── Shoter ───────────────────────────────────────────────────────
+    // Template field: output_dir
+    } else if (lower === 'shoter') {
+        config.output_dir = pairs.output_path || pairs.output_dir || '';
+
+    // ── Telegramer ───────────────────────────────────────────────────
+    // Template field: telegram (nested)
+    } else if (lower === 'telegramer') {
+        const telegram = collectDotted('telegram');
+        if (Object.keys(telegram).length > 0) config.telegram = telegram;
+
+    // ── Whatsapper ───────────────────────────────────────────────────
+    // Template field: textmebot (nested)
+    } else if (lower === 'whatsapper') {
+        const textmebot = collectDotted('textmebot');
+        if (pairs.phone_number) textmebot.phone = pairs.phone_number;
+        if (pairs.message) textmebot.message = pairs.message;
+        if (Object.keys(textmebot).length > 0) config.textmebot = textmebot;
+
+    // ── Recmailer ────────────────────────────────────────────────────
+    // Template field: imap (nested)
+    } else if (lower === 'recmailer') {
+        const imap = collectDotted('imap');
+        if (pairs['mail.username']) imap.username = pairs['mail.username'];
+        if (pairs['mail.password']) imap.password = pairs['mail.password'];
+        if (Object.keys(imap).length > 0) config.imap = imap;
+
+    // ── Monitor Log ──────────────────────────────────────────────────
+    // Template field: target (nested: logfile_path, keywords, ...)
+    } else if (lower === 'monitor log' || lower === 'monitor-log') {
+        const target = collectDotted('target');
+        if (Object.keys(target).length > 0) config.target = target;
+
+    // ── Monitor Netstat ──────────────────────────────────────────────
+    // Template field: target (nested: port, keywords, ...)
+    } else if (lower === 'monitor netstat' || lower === 'monitor-netstat') {
+        const target = collectDotted('target');
+        if (Object.keys(target).length > 0) config.target = target;
+
+    // ── Mover ────────────────────────────────────────────────────────
+    // Template fields: source_files, destination_folder, operation
+    } else if (lower === 'mover') {
+        if (pairs.source_path || pairs.source_files) {
+            config.source_files = [pairs.source_path || pairs.source_files];
+        }
+        if (pairs.destination_path || pairs.destination_folder) {
+            config.destination_folder = pairs.destination_path || pairs.destination_folder;
+        }
+        if (pairs.operation) config.operation = pairs.operation;
+
+    // ── Deleter ──────────────────────────────────────────────────────
+    // Template field: files_to_delete (list)
+    } else if (lower === 'deleter') {
+        if (pairs.path || pairs.files_to_delete) {
+            config.files_to_delete = [pairs.path || pairs.files_to_delete];
+        }
+
+    // ── Kyber-KeyGen ─────────────────────────────────────────────────
+    } else if (lower === 'kyber-keygen') {
+        if (pairs.kyber_variant) config.kyber_variant = pairs.kyber_variant;
+        if (pairs.output_directory) config.output_directory = pairs.output_directory;
+
+    // ── Kyber-Cipher ─────────────────────────────────────────────────
+    } else if (lower === 'kyber-cipher') {
+        if (pairs.kyber_variant) config.kyber_variant = pairs.kyber_variant;
+        config.public_key = pairs.public_key || pairs.public_key_path || '';
+        config.buffer = pairs.buffer || pairs.input_data || '';
+
+    // ── Kyber-DeCipher ───────────────────────────────────────────────
+    } else if (lower === 'kyber-decipher') {
+        if (pairs.kyber_variant) config.kyber_variant = pairs.kyber_variant;
+        config.private_key = pairs.private_key || pairs.private_key_path || '';
+        if (pairs.ciphertext_path) config.cipher_text = pairs.ciphertext_path;
+
+    // ── J-Decompiler ─────────────────────────────────────────────────
+    // Template field: directory
+    } else if (lower === 'j-decompiler' || lower === 'j decompiler') {
+        config.directory = pairs.path_filename || pairs.directory || '';
+
+    // ── Parametrizer ─────────────────────────────────────────────────
+    // Only connection fields — no content params.  source_agent / target_agent
+    // are set by _generateAndDownloadFlow.
+    } else if (lower === 'parametrizer') {
+        // intentionally empty — avoid fallback copying garbage fields
+
+    // ── Fallback (unknown agents) ────────────────────────────────────
     } else {
-        // Fallback: copy all parsed pairs as-is.
         Object.assign(config, pairs);
     }
 
@@ -533,8 +786,9 @@ function _toPoolName(displayName) {
 
 /**
  * Return a short purpose string for well-known agent types.
+ * Keys are canonical DB agentDescription names.
  */
-function _agentPurpose(displayName) {
+function _agentPurpose(canonicalName) {
     const purposes = {
         'Starter': 'Entry point, launches first agents',
         'Ender': 'Terminates all agents, launches Cleaners',
@@ -544,13 +798,13 @@ function _agentPurpose(displayName) {
         'Googler': 'Google search and text extraction',
         'Apirer': 'HTTP REST API calls',
         'Gitter': 'Git operations',
-        'SSHer': 'SSH remote commands',
-        'SCPer': 'SCP file transfer',
+        'Ssher': 'SSH remote commands',
+        'Scper': 'SCP file transfer',
         'Dockerer': 'Docker commands',
         'Kuberneter': 'kubectl commands',
-        'PSer': 'PowerShell commands',
+        'Pser': 'PowerShell commands',
         'Jenkinser': 'Jenkins job triggers',
-        'SQLer': 'SQL queries',
+        'Sqler': 'SQL queries',
         'Mongoxer': 'MongoDB operations',
         'Prompter': 'LLM prompt execution',
         'Summarizer': 'LLM text summarization',
@@ -568,13 +822,21 @@ function _agentPurpose(displayName) {
         'Monitor Netstat': 'LLM-powered network port monitor',
         'Parametrizer': 'Maps structured output between agents',
         'J-Decompiler': 'JAR/WAR decompilation',
-        'Kyber Keygen': 'Post-quantum key pair generation',
-        'Kyber Cipher': 'Post-quantum encryption',
-        'Kyber Deciph': 'Post-quantum decryption',
+        'Kyber-KeyGen': 'Post-quantum key pair generation',
+        'Kyber-Cipher': 'Post-quantum encryption',
+        'Kyber-DeCipher': 'Post-quantum decryption',
         'Deleter': 'File deletion',
-        'Move File': 'File move/rename',
+        'Mover': 'File move/copy',
+        'Mouser': 'Mouse simulation',
+        'Keyboarder': 'Keyboard automation',
+        'Sleeper': 'Timed delay',
+        'Raiser': 'Pattern-based trigger',
+        'Forker': 'Conditional branching',
+        'Cleaner': 'Log/PID cleanup',
+        'Barrier': 'Synchronization barrier',
+        'Flowbacker': 'Session backup',
     };
-    return purposes[displayName] || displayName;
+    return purposes[canonicalName] || canonicalName;
 }
 
 function renderInitialMessages(messages) {
