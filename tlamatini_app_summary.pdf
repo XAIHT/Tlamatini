@@ -2,7 +2,7 @@
 %ìåãû ReportLab Generated PDF document (opensource)
 1 0 obj
 <<
-/F1 2 0 R /F2 3 0 R /F3 9 0 R
+/F1 2 0 R /F2 3 0 R /F3 4 0 R
 >>
 endobj
 2 0 obj
@@ -17,17 +17,12 @@ endobj
 endobj
 4 0 obj
 <<
-/Contents 26 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/BaseFont /Courier /Encoding /WinAnsiEncoding /Name /F3 /Subtype /Type1 /Type /Font
 >>
 endobj
 5 0 obj
 <<
-/Contents 27 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
+/Contents 29 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 28 0 R /Resources <<
 /Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >> /Rotate 0 /Trans <<
 
@@ -37,7 +32,7 @@ endobj
 endobj
 6 0 obj
 <<
-/Contents 28 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
+/Contents 30 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 28 0 R /Resources <<
 /Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >> /Rotate 0 /Trans <<
 
@@ -47,7 +42,7 @@ endobj
 endobj
 7 0 obj
 <<
-/Contents 29 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
+/Contents 31 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 28 0 R /Resources <<
 /Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >> /Rotate 0 /Trans <<
 
@@ -57,7 +52,7 @@ endobj
 endobj
 8 0 obj
 <<
-/Contents 30 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
+/Contents 32 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 28 0 R /Resources <<
 /Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >> /Rotate 0 /Trans <<
 
@@ -67,12 +62,17 @@ endobj
 endobj
 9 0 obj
 <<
-/BaseFont /Courier /Encoding /WinAnsiEncoding /Name /F3 /Subtype /Type1 /Type /Font
+/Contents 33 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 28 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
 >>
 endobj
 10 0 obj
 <<
-/Contents 31 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
+/Contents 34 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 28 0 R /Resources <<
 /Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >> /Rotate 0 /Trans <<
 
@@ -82,1262 +82,184 @@ endobj
 endobj
 11 0 obj
 <<
-/Contents 32 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Outlines 13 0 R /PageMode /UseNone /Pages 28 0 R /Type /Catalog
 >>
 endobj
 12 0 obj
 <<
-/Contents 33 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Author () /CreationDate (D:20260414175317-06'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20260414175317-06'00') /Producer (xhtml2pdf <https://github.com/xhtml2pdf/xhtml2pdf/>) 
+  /Subject () /Title (Document) /Trapped /False
 >>
 endobj
 13 0 obj
 <<
-/Contents 34 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Count 2 /First 14 0 R /Last 14 0 R /Type /Outlines
 >>
 endobj
 14 0 obj
 <<
-/Contents 35 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Count -13 /Dest [ 5 0 R /Fit ] /First 15 0 R /Last 27 0 R /Parent 13 0 R /Title (Tlamatini App Summary)
 >>
 endobj
 15 0 obj
 <<
-/Contents 36 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 5 0 R /Fit ] /Next 16 0 R /Parent 14 0 R /Title (Executive Summary)
 >>
 endobj
 16 0 obj
 <<
-/Contents 37 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 5 0 R /Fit ] /Next 17 0 R /Parent 14 0 R /Prev 15 0 R /Title (Refresh Window At A Glance)
 >>
 endobj
 17 0 obj
 <<
-/Contents 38 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 6 0 R /Fit ] /Next 18 0 R /Parent 14 0 R /Prev 16 0 R /Title (Commit Timeline Since The Last Documentation Refresh)
 >>
 endobj
 18 0 obj
 <<
-/Contents 39 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 6 0 R /Fit ] /Next 19 0 R /Parent 14 0 R /Prev 17 0 R /Title (Multi-Turn loop hardening)
 >>
 endobj
 19 0 obj
 <<
-/Contents 40 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 7 0 R /Fit ] /Next 20 0 R /Parent 14 0 R /Prev 18 0 R /Title (Wrapped runtime permanence and observability)
 >>
 endobj
 20 0 obj
 <<
-/Contents 41 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 7 0 R /Fit ] /Next 21 0 R /Parent 14 0 R /Prev 19 0 R /Title (Flow creation from successful answers)
 >>
 endobj
 21 0 obj
 <<
-/Contents 42 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 7 0 R /Fit ] /Next 22 0 R /Parent 14 0 R /Prev 20 0 R /Title (Answer Analizer based flow gating)
 >>
 endobj
 22 0 obj
 <<
-/Contents 43 0 R /MediaBox [ 0 0 612 792 ] /Parent 25 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Dest [ 8 0 R /Fit ] /Next 23 0 R /Parent 14 0 R /Prev 21 0 R /Title (Documentation expansion plus Gatewayer deep dive)
 >>
 endobj
 23 0 obj
 <<
-/PageMode /UseNone /Pages 25 0 R /Type /Catalog
+/Dest [ 8 0 R /Fit ] /Next 24 0 R /Parent 14 0 R /Prev 22 0 R /Title (Dependency and workflow support updates)
 >>
 endobj
 24 0 obj
 <<
-/Author (Codex) /CreationDate (D:20260411170449-06'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20260411170449-06'00') /Producer (ReportLab PDF Library - \(opensource\)) 
-  /Subject (\(unspecified\)) /Title (Tlamatini System Summary) /Trapped /False
+/Dest [ 9 0 R /Fit ] /Next 25 0 R /Parent 14 0 R /Prev 23 0 R /Title (Most Changed Files Since The Previous Docs Refresh)
 >>
 endobj
 25 0 obj
 <<
-/Count 18 /Kids [ 4 0 R 5 0 R 6 0 R 7 0 R 8 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R 
-  15 0 R 16 0 R 17 0 R 18 0 R 19 0 R 20 0 R 21 0 R 22 0 R ] /Type /Pages
+/Dest [ 9 0 R /Fit ] /Next 26 0 R /Parent 14 0 R /Prev 24 0 R /Title (Current Operator Takeaways)
 >>
 endobj
 26 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2682
+/Dest [ 9 0 R /Fit ] /Next 27 0 R /Parent 14 0 R /Prev 25 0 R /Title (Documentation Sync Notes)
 >>
-stream
-Gatm<>?BQM&q9"Fe73)+$f*JKZ/d[^8`h_bR<b3A@TdI#$Bj+W8J(UImoS>.CkHS42fQS";K^fr^FhNWj4D]YZ\mu(;`]9oOQ4c26&omZ2#U,:VC17sX=+DB-mgJ<!]TZ>)7s55dIi9YR_6QGabd!k+EF^nbE?a<H>,)A@h'a,Ehh:]*3q^*6^I1#;&GBuncl#$8;kF3MV_%MZqB)I/uX&/>#A/G<E6%?I\H!bRf:Gb[l+G>AD)Fen%D>[Jt+F<5N'`#l3GZJ3Bg\t8e9sLl1!J_[9c7ej#TJnOQAY]eL$o2S\96heU_eLX,[isOcQEhI+sDqj29-E&!LjJD<=cL!k1,P701>6BZre,D4OJKQt9]7XL]0_fbCPf&!Ql7(Nf?D4Xn`W91r+iQ*qm7Kp!1Y.m^:0ZWdtZfr9qF$?8\7bgM[BV7LNp.B#[`-Yerl8njj^I3lfg/W:O:Fi)LGP+X`XP>tVi%EVdpB:Vq^5dMpll5BQomc(@VM,G$jSf8XYP8!t\0R8sI=SQ<`"`/9t2k8Ma&k5W<DYrUG6C0W0M_;CZFC3P.]VeH[$&'CRnL@hJ7@b5ZcH#m,4E[39f0/<#iOQW:S\XfJ6$Kq=Z<OK?e4uS(4E/UEIbT$b@`u6A"t)sW'(;ss+:7p8r88WGT8kinmmY.+[M<;krOu'9lrp9(T0@:*CFj0]`".1<:66bMFBG1,,Ze;g`C%'HbFDH_Ve`?LMM>#-QK851@U7+]jPf)Cep!jQCS<.nR\FLp<8"o7b*LNQp01]Rj_=`dQ`IKr7G4%XL:gJ;\[X$B*]1d6;R\I-C0>(D/*eo!Dl-'LIo)iGk=$uTTXg6[NDPgag;'.nQ+$>J8!ZnR<fqsDDNubeSO,%_Us`PV-rE[KBSp@1DKKNl$?:ieKDjKj?ll,Aq.Kd[8kZ]?\_)_b=rPm7'PFL)dr(ZK>nj,cWu"hZn\;"=.W&A>ASn?liS:&2h7LdpDZtlja\cD?N5q\"8siPOZ$+FL-Ult6iN%mP%1a3TT-$sfmDMh(g`Zc*SKm[2YtWGb5gEuq%?sQ8Xnga>DWVJ@A,ASp/,;m^<liR\=E_j.eC$g!\"pImC3GJ.B".";d4n7.UoZ+U7?a][NFX.HC-7&=8_J-Ak7Ct:NnLmhP*O"F5,EHP8cX-=,>ZHM5*oDR_#nQ#BM#5X@Y*%75M6Bd::"^UTO6PY<=XXnQ_,r1I+s.uQ,>nT1i&3g$^;bFkn]%U:!4#cn8.MTpEqlgL!!Fb/%FfQF&*5^aBW])OSFAd+cYm&,R+H@ZUO+i3ZAgDRWI:*BfTmc8sffu3ji?hRN($K@fI58)i63fI!0uJ>cuN:"JeVljSElV+_A6'b[FthAl>YAW#=<.kqR`7FMM(TSOHe@8n:UQ!(SOZ3Lo8EKp.&a%s9ntB8mf[i87/8bo2)poVF(m@P[=M9bQCcMY?_`Vh9.iM=2J+`hoe9V%k'`s+/.i<99k:ia_+U+C#ZHZJhRuUqN$,]bl_oCZf`CGV8AY!Y!q4UjI+25N7QVli;5XbN7Ili7HH9EVSt?3/kJ5XfGlO1SOPJcc8b#inu,/)7(<u(^cTVY)hMgi`A\1hr/QcS&\:R5IQ`r%=mtL'&-aPo&l#q^u=^9?$TcO8pO0P<1`Kk:0nn[',SZlP86-uUj;qiI>n_.e!#DW\0,T_Le$'Elq[=10)8jBMH1Pjk5crj\O&dJ^XBFBB!jMRT[TUUMY+Qe=(MqISs`1H]<Fb"DVQO!S8Z>9N>T-O^3sC8_:7T=9Gb<Rarq$HaF6$/Wd,9s6jFI=Ia?J1?WAY4j+b60.Y$4m*HoYeHCjj<<ukP$26u%O0]Y%&HVV[2_"A3e8aOJY/oPX![t!0K*"j6:4i_Ki0:t0p3@8k'EmWM_loEoS(.&,?UESq30TQSM?Qh5Y_4gdo_GOR*S79K!U_TZ4@Cpi!=3*"(8>-1D-B@pYmL,RQU0Y6@q&PR@(N.5dA3n^JEBI@`:@DSpHA9Ul5ig&VBJd_8'>C\\qWH,$%V$o]aVWN6YgbgXau9H&^*qGFP2Q90bEhqlH6@7lgTdFXEuQI(!G3g0]((Z5UL@P>R_;(n[s6-GV`Pc_H>9h?c/@&LYo9UWS=YVg8-Q6i<3/P=n>)sk2,F;lL5<f6$fdfo`Zkq3?t`XN1iI?ggU;Pf^8EurLD7!hAi9A[a'O"O67^hU[5u%Z5PfkJ**9/u(G^*]c-7g2bafu'O^]>*pXkHMLkhn<)8?G84jWC>lIGn7SRL$#iTTY-7S:*kL\Rt"G'0IAh8ll!c&QRB^&ht,i=/J2?StnE4A/Ye>Wl-+k2k\)As`kg?_hXq@QZW;=ZGd<r`A@8Y;Z.?IQDA<dXbhHh_83027?ZRLY4tG9uqg]c'LOWhhsKbm*lF]4;Zr.>b:4PMe@Mc4$H%k<]?aa6N:6Iio\-KIR0[]DLHbu!*o$*US!e6l\c9EnBRDC/C"/Eou8XZ0a:4?jsjSbeJ-<d<dL+/S>YIMnO$h-)u13bM&IW$,IT./Vt6W6g4uk(/2=T4#L,Oj:5P,2[4g\Z<63C+pNh5e">boRq/3#[-Q?j#ae[@m@N6CO)BC0lYULq_hmPZ)NfS;dD<><HDbb@0W"/2f73g"3[r,Df^B17l!W6F$&L*9hD*WQg[>X+^J<.MN+8,HbUEM9"4Yb]T/M1iW>/$l&<WBk-+eANIr8a<c~>endstream
 endobj
 27 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2420
+/Dest [ 9 0 R /Fit ] /Parent 14 0 R /Prev 26 0 R /Title (Appendix: Exact Subjects In The Window)
 >>
-stream
-Gatm<>BcPr&:Vs/R)a**6]h?Nqm:(sG-`PjZaG.kD[sUh9a\tbV5a@XG9eGb*J<CY8PYfG0`!W$\S)f]2Z=?b).rs<BCP<k!CC5'"QET;b\gfD48\cro#%a"#@I^q7me*m#Lr8`q"!r+#:Hmu5Q]$Bo-l:Y154t\643p`OD(jLl3FIZ^iJKH==tcrfRmWZ((d=)KZ',n]U>Tn(0*qt5e/HsQ9eYd=]B3eK@qKnh?qKP6I5<VgC;Zd]4f06FsR)W>I:?pi>u;JG)A(aU[?fBJ2U;\3'M*>80`h#\QIdLXT2U]_Dub4@'G$::uYOa3)g9q"@3t=/+fh(L1#^dm=\I:n"PQTU<OUs60\HOB/W3N(L]q3?;0T!$A%;102pu!mMVbfWTD27SCS4qYoc0tYUb'%,f2:?M5k]D=J#@W"Gg4OKr;!sBhL1_,QZfnAb;?Lm&3Hl6rK$aj,X_:*F^^r",Vh2Z56F6LPLGM2S_)fK-nOoI,i3?A]gVFj!CnOSUfsZ9_cd-hOEGP-[0GlbBImnHW=`S0_>q?,UMYVm!2D8cc6m%bNL*\blIh@H]po6.j=%>=HVYp,k@tnWRgBp33Ei-]LM9i,KP,$<4n<7cDtKD`+Tt5b7Q:hf#M_(L)'R$`SED#-Mas'b,VE#W\2p0U3pCFj'oX"po9-.l`J]a,Tc^]k/JqIj?nKaZ;ufL6/\@T"0qp@/-a>WX7'uq8*3(.$'uBUMiHe[YSj&M1aM9^qL-2P8liaZCKU-/icS3,a$I+6+dBpk,%_MM//A/Eds<0($Hm*_7.GK0JA7ru6&ReCL_DJ6=el3RVc+I(j\Qf8MZ-4VE/4<[/"rh:.*;"PdrZub*<4NQ*/KH,3_:.=ApZaoL7Tn)=L#cGo3Hea.#P4(NL]cm,Y27jOLsnfednqfIA34<0&\%pN_t6QlT7Q:`f_eg6]NPdp%%X1a*!+K/2uD4.k8^FotpPR6C[qTL;Mp!4/+CWm_;FJY!,R]Ca&_$H#rNKWqk)SqKDFHIdqDu4.C_f>^l\EBl\QC0t[F44)GbTHo08r6[rJ4V]8`[Z=*W4S[te-nR0+@_)PdkZ&!p!pQ4nl\3;j,gKkWj"-8=n]M_--2HNgV=)3*-8->SKAqpHJ0Dp/:l<5cUQ_$6d>p^MfL)/$LgX'M$7e?#%-_E:Z\Q2;jj,!04k',D/L20$.EF1V?+,.>\d':+4ogACh7pFYT2NX*OHr"\A[Bd)FCq,Wb]A%)`N_[i*G.Xf#p@hlAWCGXN6<TkO5B6l!BWqg##rC,Ti%^3[N)@4/?+.S=S)s/Ur_-AY'`SBK\Rop:h>Du?P\%-XCgt%kUTrT_E9;[j*.NaOdGT5YHAqD0+2R&"b4-7c[c[i4pasT,ntYDg7e#BrH90#maK'I"2b?,`c`+GE7rXeagS[BR+l-2Lri4UQ8*nj6mZoLC/D(K!nkCIc7*\`T`8BMa<[(DSHUPaiEWiG-5=FbOI4Z1UK@:P\DP)Y>Cd6pj."lUEqmT<--58%ClN#R=XeRZIKhY%Zj!]VNRnmE1dLjDHY8<?>`A&mjQ3Yt&@+!r$P1$07n,gDf6o#92XA.5K(AnulcbCbd<o('p"HT+s(uK`OVi0kclI#W+Q^MTkApeZK,Q%o;$PpkMiL"dAd6L`sJ.0+I48A4e*u"[.n$]C4[pU#53[`q?iupN'KW!d+T+9k+hMHJP0Si6@M0QHjKL^V-rB^?IIh;':Ih68>+,$0J%q6(G,<4'kj$@U.-T]-_p;O`r:)`(NGU\!a!"H7rQ.[_n1HfdsX=8%2NN*DmDT9?7X-ZUrG1FBSiU"k["uS*o=A=)gI$iuG'!bP0Q)o"4YX))1:O4/j;'MmT*^hjE]ngoSBgf&%'q8[a>/bVq4dJ2P_JU1`A,H76lqQ0>7R<MdrQo%YM;2?C:2Ztn5s-CIO68PrAEYUVE"dlN^BkqHH(oaj)FQFArJ5Wq&R!,']_mH-\mB%_df#-/P*ccR[S-HorF^Cf4`4;QW+JUcWY[cb4`UVkP($Asm%_kZ5@Wcp(A!GN%M+aOSR:DMG)@:sp@E,"B:VJ:\t.0OMdlop=IW%XF&3JCBT<_*;bbSB"p*u9`$DeK"l(!L$pr]='/R">OEUpo6eLAF*;+H+26FJ*o6ct-XR*31LbEcHUM8uW1g=t66:L'?]K)^fG;M)rSRChMCTp\Ybt"dT/)tcojs&Q@*@X.?N]OM8G+Td,qM-ir`&WS9[+23=;S08mQIDBom*"eA,"-4LjH)-%f;s-WZIj=N/lIF^]sZiDV7E=sDRb9R>[J!_"D,*q/h8PPL?n'NKqJj@CAS0G\Cg7"/lH<,&np#&A[oIBe+fK%N9?S-NmjEGN6Rli[8"$+MG%.-6k?<-G&(<T9ab.J`nIY:CR:sDnjpe/`X*[QNUhB^j4JZE,:W$KAj-<0rrG_I*?k~>endstream
 endobj
 28 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 722
+/Count 6 /Kids [ 5 0 R 6 0 R 7 0 R 8 0 R 9 0 R 10 0 R ] /Type /Pages
 >>
-stream
-Gat$ubAQ&g&A7ljp=KQT_l$%2$a^(p*h$,R6Z?^?N[QE@ga%C,,t0Oh?obFt>O0t5iD:ed!QDmln&>BU.H'V5"3.%e!g?#=nIrVPX/?][Gt,1B@YEaO`2DQ\$2FIIeUY_4#0_T"V)a\mXPqJTWYmJP.n2,-[?6%A&`Eg[18Zi2h9H[9F;-!_l/5K;Q`_=.VLnfT+0:+okZlfSIYM;B`JrJ3+Y'GtPpUO$PrfB5V",SY16kIcF(A7Cj,NYGUm`ccCZL'RNQspoUj(C7JeT=2LKcC)Z`q,/+[;h\bJuHg0hl]5Q-=g?L5MMuk=gs-GD)BU;:ip$k)u0Bf;T(%8Ia($CtNe=L8]'EGhhr?%72nIrRN%DgY2Y5272K7p\]c?.=\/M3*j(?Zk'CCC($NKYo-;]1ls%+$oHAjoUWBU2%`-[m1-9>qR(`#?!CMg]F5Ui,U-GPK94PadFhfZLULE*lY"Z>$\VA9OVVN98?u%3WjBu/6iW;)6s>gT=f`I;X0sY8Frg#hBcjdMoFlRK+"q]bn#G1R?cLq\O&aYmG2X'p_MP]Lb^$9L2CLMKFo?l%+tUKeUj1/8WACiodJUfKr_i>5GibMqHZA"Jq8i<VWN3OrSM3)KQl2%%$$C<ts$nFn<RZWKGI,NZ\=ii&LJ3Y&I:;`)%#cMIHe&I30O^B+=Cr2#h.X_\Qn[kd,DJLQ78K-2R4J-r.Jg^g"'5F&+]F/?~>endstream
 endobj
 29 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2860
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 2685
 >>
 stream
-GatU6D0+IA&cV3*JM3QcDeL$hhn\s7V01MK35+CSR@F)<@jou=bSQOtm.c$X(Bh:A,Qj4lP)0>q+0>1P/f*(K)56PdNBbU@OS:8Go77Lnam+G]3/kuENnge?rc])hGtKkY64kM+O5X%,.#H"us12r:P_U\rJi"ap3)"p4:%#23D*fc%#brp2R><(W_J&j7_O.SZ9h>;_-a:^e;'jG&aLbGX1khs`M@?\@Opr:P9iL\fIjM.6AG(T+\X8c&=\*$Wc2CU(8eNe=T7P/oN>))IN2L''fk?C&UPSu24CV.lQ:3%?"3W*L[Ha4lS?Pskj&@g]GPgkP93",JEo69\;NeYlQ/k0sZYWXNBC4kl/(-Pg<i#44,9b<?A\]4](RuLK!U^Q>&-f1N4N9la5"`6Iem7)p^Aa+Vh6'`[H',dnEO4IM\L(TT<*tkc0N@VT+qI[*#E[N?+gF.E+>=B&]rZEn8\WbEq_ZEPG-.#e5j_b$1?*98q!QT]=O>@N?.;5sC'Fj*Mn4PK=a/u#qPnr`aDQM=U:M`*<e#Y+]Ct]h;]FC'pt!J+GYqtX8WOh`,5':8!2=UP[kL&=YAnrUVd#P(;[ri,,Oh/B";^Fa#>h8sc@AI0!1$?00[FtVk9S7TNH20dpN1G!1hC#ANA&i(7-<+C14$3#f[PA@;0oKBQClMqq5$,@i`DOSm%NKnK;-Qfj)ND4*'"U>@X%6+-6jLN=Yf-E]4i(oSb!\Z+;\/Pm<@XlV@dVF$iH[lrS(.D;_WTmF&!)QGUE.BX%jE&gX%@o(;TfA!A!c."dG%WH&3B[_JD>#hHV5VduhcEA'4>E%q<GYj7&Ge#D'*,]rQe$3"&j6]M!n0PQcY9ce;KsJ-=snk.lXtK)JY2(\]4$6'p14IDgou*'U"Y,EVfU,;'Mt4RnS).-!VQ-#\ob,!(r8K]RT5I4Y5mFnang]L@V#g.0s#>rEVd(7,6BjW[(J6:Ht]%RQVp"m2LLS]%jF6N,sDhTHdf@6&T2D36Fm)U8WK5tq6I(JnaTN1:IcL1F')M3q,SrV5p.9,`rOCXG-4cbp`q8a`F7\1DX=KHZ=?(1`q^86]ImKp-W&-Ife3-V,I;go(m^&aJ3*('^*N04tEbe.Ju2@t`6+\G%h@k?Ql[FnL2.CDRl+)tDm1E9,l42Br)3Nj+n_@`$J]@*3l(&Os[f&J.3sAf'QKM[pbV,.C+pa^f'0/93(b6e_Z`:C=QblIjZISXnS(<MH,rBsr/X]Jgh#'5ecX%0qHE<B%iJ.Wp!`n4"C^X)?XIJktR4cD'"DpHS]07hpSo=?E]D,?I9Z[ksh(m.Km_SE>\Wi9K+DaaB(N8`tMDjGL`Lq(JlVoMS*l@pZ/NkAr/JB^"19\e;9aXLb^<anm+6Q[@?X*,4H/E3!XILa1E]OV,RG#8P+'Zk5\nf3,:qh\54%TurApmQGXi>52kHIL];7o&aY>\al3"DP+ae^8?.tROOOMi3bM(:ZbjpaR^R=#L&g6Au'sHGii,=0pqKS$Y5SiU0Ap._7sp&7N^u>nq%=6Au]_@=EjYrnU"jsh364iC4?05I,.jiGpKJ]1Fn58b%Y\R0V7C;0f$rF)!.1a?9Lb<&4AO;;')Q7%V(a0gra&aEba2pO(Z!o:^k6ERTd"rjdK;OM.IT.U="SUK'(:?0`c9mH('k$?[_I'c'*-XT5_q"T:"$c$)IF^aZ*K!1$6K6n2X-+^Y*g@qIeJ$5D_d=T)@9ulWqn&b!D0?eC:!LY_VV*2iM6dG(p;M"pKi.mVE1rpl1=fC#85Q3,78TV@V\;V[pZ=149_c5(+"!([6RfpS^a(A_LO-GdKo+qSMKSZeBLPR[RBO$KX5OGoDHcJb1nnU+"hbT4kr-@QY>:IX"IjdS[>f#lK1=)mHYK2p[b:)4[fb6dX-Pp#?IoAJ6@&Y#A![pKL#s1C&$T*;S^ia+&QNF`r*Y@hJ-I,#.2PRMs%cZ^f7ID2fZ0gu`&ji,GYqf@;78)J>\Ie;N0OT(m.m-jQrcqbUDC+5/pX*,Zh_m\T8]Tt9*:Wq+@&<7UXjVkE%US:YDiUtd%Z$YYj<q^u!X*tfM,r)QS-Pf&$Yb-"`m=+Am=XfU@7[YZ*kG;eq;C'\A<+I]5PPR!G`WF94a'Q7r8Sr>UuI7Cm&c9i/>XtiB2G9=VQm_TjBCTggRJQ'_YF]l)t`Gf++]l`tZ%4P8'WqTtI+e/_k<VRJ9$Y873-8!pPLTDVoL0Xlbj9_`WK$unL-jqGIFfiSgY5h\%N`'n#hOibhnJ?.8gVPu%!A2&j;"o6QZ'@G)^LOMX[0;`(o&-745:bC1m_Ab4;[U0\Jm!3`J(b`O[dXeUFnOP.?L\OfN]N4@mQ0.$XBkP=9.g&:o0i6@o+-2$k)#iZ3*g"g,5.N`Ou*&H'#Bo,al^dX.dHHl<8_$tG?B$8pJYO2DD)f4>'+gk0C!na*\GQN/NYGl&S%CRcSWW4-p9&N[IgtJ*i2A<o-caORRcU>aZN1V$Kb33=>"CJ@BlnFLS_;B*>Ze$G$$(1j6*^+dBCcQAaMI_lOlX&H=B@%-Xn]kc"MRsB$h"9U%Wr9k[cS/:]>I`gQb3UrNgtOk1?bc)R`([rqf17g2Pp77Qbh+DKJT?as-?3l:"bqj@RKG;&`)+0-r'U>M60[n)U/mGJj(<&NhUfO>2(Vh7V2ON5C?U>seWnmeT5aItVmX9"7QXC*9aaARFX[Qlc+,+hp6BMU]Q:q"iG-+^&Zd5bb#6l`)&QRn=0dXp.%/UL/]&Y8hA*3U#(MC;#S1L601/]4Yh\PT)Uc+KaodHr_i[QF[8(CT4G!D-?,d-KC2*Vm\Z%OKKtbVQ*Y%Di5NTbr`.5^WiQ4`?B`[WmHZHq#1o:qEKEr#7g~>endstream
+Gau`VgN)%<&q/A5o\1iuEBH#W#(YUD?HYp_WerCrAfjpIJq0PN(q8EI9)8>Ui(APC0i2_DEnR+>5!>fjqD&MA!Q@:)rn!23rj@K)f*iLOo`gdT9NZdq:[<p'0>?FQek2DI0eCd-^p\'rn0;E:DDPD"ju8fL$[*>bQ1YN):7-!.*J;0IrU6mLE)Wl0W9$#6O\hB"<rbj]2AM<<^u[WJ@]p3(&3aVBgfAF]jj-0,q@?^.W$m+s.J=ZR_/7Z<X2,5!J8_&5(f=P$RRdi&22NW4MuSXl[RD8VBGd\)*]9%hNbR,N2EF5C6CEW^A9b^E&oeU7e7NmdEQ`Ioic8Ya[?]W[Q53nsk0K.49eM>U4NKqQ?7>tI'=9n5,?0!nS8nY[H>a\jlOEc)rGb70V<#E:7k>=>+O5hG,Hb`Xf)ak<C-1WUf>bL38.o4L%@^H."=JfS\A]9eBH/d^c&[383N7X_kn)>)#WIj1=KI$-RlD0R1uUd+5Z5m:/VZ\Ff0XE8VC4'e]qfZM.O\`L*2(@(T*u?`>Ofia=`5Ts\U4h7WW58Cj02MQ&YsjjbG<'5_,0CUB9VIS8&`)U"'h\uZKuVrcHEN*U<+^E"e/P1+E7]o&p,ic.-Qlb:B%G]8K`Yt%s]%169k+:]:Y9b7T"tmlcZo4Wn9t=kI\-\1RZF:A6J^bYtj@/21%('g)+Jh4gd?YQ[>tI@F?&Y[a1f@T&8#7<=#\8@0'@D?p^Q$?M+/^/3lDAr41U;ahs]/]hKqs.(<Lh=W/V5Ia$:+@G=`NX#rmjNu.i\dt`EKfJet6mS/T#B0u+^bFdfG:EL;j0.D'864jY7,`WYt<)FO9asp2[n@(0==)*X3P8'h2f_C18DEa2mhmpoHTlC81cNniYOgk#]n*Kcj!0')l/I$W/BjiX!:R%0B&AQ9iL.srkS[ceV[OEoXjFP)g)i,XW/F%I;?-;Iqq",j1WXL!2d=-%fU*X']R8.&>/L-:.(,-+IimoF'1^K^'"u"1Y"Q"B7$0X/6*sIC3;6K3O>;6>o2#e&ZWXG2C8_LH\%%JMh!\]mHn\1!V[>LY+9f(FJGp!cZSh&IT=;#/Kb,_<HA(_(ujt>f$b31A.7-Uji9<-EVnhc)qnpOXTRk!,nhZRn<"^f"!XR<bgj]28[<@\RjFkC$n$d#<JW<AiUps+5Pq7AI^.q';77Bq_s%uT"t+p__Vl;6INNUnms``\(cP3hunR]$YKTgK!g[>kBf!sX+M/V`CFmQ4A;2]4su_c%1pFW6/lFs)aM1bV"nAQ=:cZgmt)'Q-p1:n^i)6#V72Z1@\IEK^m@)LO2h"QKSW=A\fqAG_oL8hX6lFgNN,'C@-hTF0^?d-Bgm<D>Z&5$$W!NESf^Q`,Lb?ppAuEj$n_b/Z7d7s=NHg.5;SbE_gp.QI]]d?)D9%8j$)5U$0/<7hH&V?@$1/q"/K&3Iob/@U.&V78jPan5)LPjJJ=-$GDu0KuUZ?`kH.(#&8G9H`p<M9LPW&_bWF@c7qIU@8+`>JIRKoNR[ck`HD.+Q,%6BjYUr`=Iu_L[ZWDSG#A=iW7k3fD;H&*sS-#3(>R1E+m%>.BG3j<&h>nE=1N3AsCZ2+[WapLXorFmt[FY"A?ukL.fp"3o"_R0c@7HK&#!_n*=*;$>0hXNNS-8^eI=9ST))KK?<YJlJNgimI//__Q7YKkd@(K_2I<gFc+'GFpcHbDR3CteK*=iNWYtd)!>u^UDW*IBb/ML%\\,B?fJ\(am4?K?SAD`cb3;$`,eYo=Z@%6lXb*tNM#=HZjlre9bQ)b]5_:,a+o)o@XN2)7)#h!Z?A&h9q/*d:NL>agIb5n\3CQF2lkU70$'IT5d_KrQ>re8%HlY325fgP$p)\r=B;C!f$$@eP?U8OBt.9+l1lQPJ$>Ga^0nlBU[+8eq)K;<c,EkXju=!gH%LLH96pKcTN$t8G4e^-gXg)sbd@;i>U9-re?6[p:]/Ho&\QPkB-GR-WW?$/,i?6KYLCpXd$Zk;WhI/RG2ufYrfcAn;TkJ_HN%sq<sCFCb<1%SW[h[8/N;\:RD++*CjT-LHhBadNCnS8GFjMo@2_3+'Fo->RbD]9K:McUMma_R6.OE+D*nm)k*>*j:D<Du"b+"93";kk&U>/+gsg>?8PE4aSBI<BDf:tRpR):k8,.*!"\JW360rpW!;/r##8OnO#:&nWDdmpo]t:1Pn_jR+oa4r\(lf^I"mG/F&*O..22i(k2$9-C4oFU]m,=M*Y.bKEMa$"+%,u<.p<]UDK>=RC"3_CT\dK#+?;=SZ!E@eV']G#'Xdb>Qf1F3P(h8jeem<F5GCnNea&#JT-ud3Q<p-JSqZ_n&*=&6KI'qSmiIdf3`WN<N)76QaB'lWD#'L'S)FfOZCipO6i2rNP^(F2"^A;jb[\C2o9cMXkb\B,Q/7GQjhuN3,FS-Y>[8"G;ll(PcDOS#:Q^HAZ`[k]&]k3>o"gp4JTpeHDJ=shpldN4hK>bE_"4/g;g1q2f?;Okd!ERq`orcggG2oVJ#.=T>)FfOZCipO6i2rNP^(F2"4p>"!X"@,2G4kUmn70BLQC=lIfNq6MgDHk\Sq8YQd5YdmWp]j+IKWcm;ff>fgkf`[)r\0&X-6CD0ZC`d_7?GV5DL=*QE\kDD=8UsMJ6fE"#\1Zhe/fV/>=r14i(^B1fi9+NjY1=d<DnZ.3A:/pX]e_p`!9LB>a~>endstream
 endobj
 30 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 884
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 2762
 >>
 stream
-Gat%"9lJc?%)(h*n@04(W_Z:%%U0/H4fk.AJ`f"pM`C*5VaLI^-q@_d,Z^3LXbirG5*Dcm$/kT7iG[6JHnO@F?@\,6/4!sHTm2*k`U(p0ff\<G!HZE)>iXR1AJG(?2HtgV=U)`/$cYe\6?<=FAg*W7_)u3LMb36A'#<#d"&')21BX*omiXqd6V-iciBsk"gTkbK%<T4bY?U5!D-Ln$+/*q1il9"Y3>u`Pf.Qjt.%b6.,N^6%&ujTXL/A.2Y$,0W\(isE;(A7jAu:;,I:d8:O9/^t@M1jr%@\9%2]0\%JKUJB"CVC`j]3:j"3V]d\b,?19O[aRbAg5Bn[1)OFs3a(YE$_93i4^bL<Nm`U(Q!H<;Jr;Vk8aqLKTo#Ql/A#L1))5(5P*Eb;`N5Y>r,b\$CKI5D2#UIRatL^00"BH)f<8mhhdJBf9HJ+)!Ap!LDDI4.XXB)Q&63m&B65R1WBQAkj^0,HA+[@a!_p\u>O5YMYPl7!6d$Ko%5-7#!+k73J^>(\PFh?#1lM*V@H@g^9/i1H84/;T0'?%]&":B!k0%'9sqVM)O1.D?FItFQkGQbd?LYRXpt6`dIcoX30_<T$L?X`1Nu;02/H=?)usuD77XLHr*T&&ml!0;C:72QVA6\X&Z]9,ZT\jXHltPe`+-;N_d>Mp9s;QY.n4%q'PDSQCQ)`b0q@0YP7+G,rZUeVH\P56.b//>#,)B%Gr<ucB@co[!]g_2hUSoqi\PX0Ka:QdX@bt-]5D3Q"N7Y7$Jd%I)Lp.kPY99,3%H+g`H7I-6*[D*,WR_*^D^=K]DSu380&G),E6G&]^Y0_IuCqF+e.c:ig<,3E1Y:F%"D<e2&R%TFuH[2Y:R!*VuLp_sc_hp/YFD*$1LG"8qggGl~>endstream
+Gb!;g99Yi9'#+6EjKWo<<3?H?E:f1Xh:SqVClaTtTi%f.(kDmQ]6f#*B(78p>&'31YOU?*<h%5b1Fr8VX.W>l3;sZ;cX[RUcS`@a00i'1DaAWlKCoIo[sn#%X3^Q:FOHc,Pj^%)JW`][^5#f1k07jjpSui^)_KM&kj^j#4t+Zti4$e6JX+9eb:Eu`KeiC'UN!@CT4t-1]sf$i*(Tt04TqKJ`Zm)[%89=MMsqsS_@P!J\G9tXfC0^8r:UHr^&Id-C9p-8EG__*_"pi/s'ks)gs#H_fo2aL0OLf5]_3\bCE1-Z("kf9fXFY;orcB01k-Opdd0\7P@M.ba')eh:r7_/Ma(RR+OW@XJVD75Ob]R&<5*r;s2#rF8WF9o%s%aE3#fsb$?d4@p`5,[(\cj/S<2=LRFHm&%Q:p#43fKpGN2Ws0k-006u*:u`/*-e5bdk9#l?o(Un(<>:'BbU7Bk^#S>PC9hN!%+V2Hk43q=/4`O6j(YS,b,p,#FhW3*huWaNE_&ICe5)5?Xs!)2WR9DdsB>ddY<f^I9-f'2%%Bl;l'1f"O]G6U7L<=Nl)jCf2iY#ERB04nFWC,_:IDAJCFp:FH]CYJ@\ZeX[[IW?N[Z\sXQ<F0>d-$4sD9E_CKL8BIg0@*"4aGUc]/G'9b^iKkFX`pA?==AUG]PW')Qq!!3SJZ`Po2!NiEsae19a$#[q4L(m"s>3m1)(CFG$R))$E_d/e(gIY>tHKWDfM348[:D/FbMUq:s;kcP*,?!`dNP6P`)&h0F>_"^c<\o$XB0\/p-:1Y(TPqR-ue81j#*?9$%ap.F'+dkE4&(H!0LjA#ZJ_d%)V4Fu*^qjcA9\8M9[nHRj)QKCU9B-sh3`O)Qc$Ch[iA'*[(t7"<P1a!d29V$^=<$WpaS02;s,\+%C9;\2[I9*Cj60qXhtU[/VeJ"Jp?a(&/JX7`aA+Y/EP<-<SXAnh4b.,/YT7a1bg:Bn-S6Z[<oc>9lE"C=LW$lW`8)#>aA5t3C>il1!3QGq`.?gWc2J[.8p'.%IQZ?Q=\i"h;GT!EO*,*SaaM<*giA<O2>Bn&JrP71S^NW&TadlP1seL!L47o`h7%V^CTk]CT`n[GkR8S"!HB#/MQM+T+`S'.!e/"nna+Hf<N\GKEf9:t^qb`pungm@Qi?oCh&o,=7d*0GCnEiXS@38]733#%X/I=Y8=MS"a8/tXrgkH@iA2jYnYP(&Q^e7EQdi4jUu=Lo1O;oVA"eM^1,2Sl7]Lm/Jpq`eHs`QR?L'1Pk)4J<C"M9s#j1h=]=Nt3+E%0![iGs^7cMbl5/o<2FV2j\/M&8jVEh%JCM?O$^E\kK8:\64d-QTh#&EL-T@TKR.2b?&D@@_YE"26S4[jj!#tb1F->YH^@?pa1FO01NFMEumh1MO2Mm:&)f(i0MMD+daIOqQoeBaBRN6G`"o9X>m]p)^bCZ\*V?drKnk-Wj]qVG>m&*.4[s\\i:kpI@_2D-GI_51fmrkDqHt[mk,%RDrA>X^M^C;T!kd+&X,F@EsY#_cWdRJk*F%UhJ/\Q(DP![`P!p:?f2.G*b6'uN*H*FqQ6^4d`,-;0'a3qBf5;6K4Nq:?NDTN/l/;4f&Kq4GOmVO_uH(hXkg:j7;UM>292O=MlS>`VFc.2B:f=@]R08Dj1@SYq,kX\jr2ud*OE6<Du7q5?@S4*GnIqaVWK#rFMpb_nL=AQ1"+NrEIKAsa-K(R.@RCoDPXE+b8hbP2`X-o(fB$$,W2SMJJfcFgNGU8]tgFu&Ro&dM<5ef(F*Z6iFW:WBQZT7E`@Hs,V?GE9.%]J\K<*CVr&"\T[1U?7$(rX8+o7p:$80P@3aGE\j8A+R][6]&kUgpK*t;@A!]OKL*t=mH$\7:L)dE6,&%shAd"*(n"aToPG7:[j(P^9h-Y]!]4RoJ610LUd-'D0,"FE<,C:SsVK:+cY`\94BJ2g'21e[LM5-ZgU2I/S.E9:#'Rl"6a,XcT+e9<Af,-FkGVkTde;4dF4[Du@M@r7\Y)2^A^jCW(%3rg(3"jIrE%a]12T!]I,gkn-mcCDD`^j9Lm6d^ZZHp*T@35V!22i]","XWC@g=`_[P;`%(l;96G`\]cHNL$5(F?S'@@)M2,<n^mlPO-o`KP&aTq*0'h\\@0TN&f2g^0-$5/C-lbX$=4GKG+*"uq0*%3rg(GS89o?meFn2T!]I,gko(*oG.<oo5*@f_,dG(B_sT7h&pK+uZF57raE@6$QF4->d"*f>"><g9!$t8\t9Ih>60G`Ec_d9RbDB1t@b-:L8G1>4SG]I30;[>Xd'upUW!9iL)R/I8WkQKXG)W<m=F_X&r/jV!\*M6@O)Q6TXOI?Cp3MQfIVXgM?/V5[MC$^K'ro6q5n>WmX)9'41pt02EiTPC,6We'>*`>jif;+><0;`Z*ZSR[IO;s-SR/Q6p>EC\+"&\WgVOcEg$>bTSV!g:4#gRr)<pTggh,RGQWg;CHRlWcggjL?#j"`F&jf%V;*^D^fMO#?*o/QZiZ,1sk"*`*[@;7meP;'X+*3YW\"@HXlAe<A^q/@ckKPa1<[=3iF4:1SpX<Q;nJt@,`Z\/tDd%?3@[5X!O913s+Vd?I)Ns>C8I19#\=4<Qb$)PlA(:EC*"IWql?-*8Qb)krX=JCMtYISVcs6DuL;6d+gCh?P=ds,I]@'Jc12LW,8/Mrm5[b@4#m@]H_(H"UPq7D/V!$:4"6\<M`,j5n`@"T-AFFJLg_#muX`'C%KSYXeJZ+h!2i,Rl#m;Os8d)X2\+u3Hk3@"((pB#FqM#~>endstream
 endobj
 31 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 1455
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 2487
 >>
 stream
-GatU2=]=WE'Ro4HS<qOJ%LCg/D!-pI\<e)k;Fm-5<S30RO<n7:+_7H7^.6I8*(SAp$jl,ZbBHuIKE-M=p+rlPI\+@.<=!"9P:;/>M.(E,j2o^C,Ee(M+O,FIK4-TonN2X5_Z;lI3DqOJOT`N0.N##p.cI!4*fnn'12"g&XDF"Ic/M"pAC*M*i\4&i+dg\,KPO&Z8^sj"GTp;0XAAteARfuhc+L'D=oJ\jB:/VXD!i\]j-0[d[ar-)-&6#$ne[6r,8q*?7iE\p33QSG5oL.fN%l6(K+s^_g*$-W"V<cEB3,[uM$kmB>\(kk\uI'c*%$F%0>)f??L('_D3f,eUc[bP_kb=!)9)&L&q!S"_$KXbS3iS9Yf?p*Pca/&R,_3&U6a,9`aPmDe-hsB@!0^o+l5I@?kLL>D!d\Ye5<SD&X\9Uj7>n\`'!0J7c<!p\?\f,"qQ?H8cqa%^u'/m0CYUE>(`;0O)pW5p^'(-Ke,uli/S"Cq=:=]r9`M6<%,qL@M0#VG`MS4BLiI]FTFh:Chk9&JHeuF(&9hG@?t:B0Sr$L)a;dVHNu.Y1W(oG=PbHL8I`O6Jk8\r1e@=E07e@)FLcL-*C/nQRZVQSeP.ikD'SuEoFshFX=0>l]Q;jt:$Q<iOCBssPEMEQn6C5B/oJsa]c<69kai^</:X1(A+R5Wc](sIiH5fW@,=GU"2R#o77jNBVLt1<QcOh\H+hO99lp@0k5&P7pGhT2<I3M@>3XXf9R#OSl1p\9h1RtN0>?9!NpeUH-eI8D*r!RRZ+FtPqsi2@45)TW^G4?n`4jn7rdZSKgWQ&EV/%nTVfL2.aTH`l]dYc8q]%]+ilX/BGM>;),1dms\Lp%d^+6f].*aPQmls\de&2$Hs'a`N(%g9`0bq6,P$[198L[7O5#/l</#MBj:3]c[_m)^Iqpon(6s3u.T"00`)XeJYgRio0S'sTG3PNfMi8ZY8AgoNZfAHj"ZEEBr&;')4s#k/ml^TQ6H(!Xn4939&,]C_T.__RXV;2@/qS9Q6Gh>l;ZZ/7@[G"]*&B,q</>^%i2QB1lPS^Fe`eWZWAkt`#];2K:\7Y8ec>]o7G*CC01R$.`bdmXRI!#sL->6Hur?i;fU3M0DWaFsqaVc#74-`F_MXD\QLh`Fl<D]aD0WgtAc@g?egQgAn."2"lGA\>S,5=E2??,!?BM6\fJD_o`q@fP\Uea]F.9`0$pPG265N-M<D]C\UhQ=/N9IYI]CO(lhHE/;*\$Wqp$\Rj42hgk/*k;da3fTP#nSc>bDI,PN^[C..mB-V>((\)TL092%q#8Z.ig>](kDMnk#Y9:2`M>k((L28JX_)`Gb;hA4=/*B$8R3@.(rJtgeVrHUZF]rrArOa$;Pao4]^b;kXo/jUN?<K^I,P5Fr+We)AE@+!Sh"B1X24tQ$QQOeHZ?-qcB;2Un#+1W$hK4U<ouVkCKhU8rW_bKnGE~>endstream
+Gb"/(gN)=4&q0LUoV7VU+PndKO=DV>PM4_b2RCeK?D^<sOV!4$DZN*Rb1CPj85ZZ_Z6e7F-<2j#Q66fRJEYI[qg^:YptrKO=U"<^%&RrKE'9R?_$sKHZ[]f\fu:-2n*nXDH3YVb_nc!iN[!U4@=Vk^DS%TBq^Z>t]]c[54HCek$aZk*`PG2(O2iH5LH2?oV@bN6$\K/.;U5e^:rSj90AjB]r"[F>d`P^]"F_?-HEVI==Xd"KLBFlQT&.FEcEoh5"1-9R!nrgh[8?YSBukPB(UB9;"%j8*)mt6uWK!u@!N#n2iiU"#^NMr5M9_PjjL0^9bs8>J;OD9C"l_J'F[e:^Q$oO_f.bl^k%3)mdPOSI`>.l'a$78W'kkJmU"OSpm_h3Q_fnU5l/P6\nROlMJ*UnsZ5`ASMAt>C=dF"O7'".sP=ndBC]h/ZPW:,3fR7,*L?B6!1aO]kMVlQG?,:h5ZPE:6$[!sV/9l?EjsiUZafMIF[+@\-AC!\a^`n9o3Af>P:7=.klHsh8q&qrQ7GVmE"$u3--]1f<YS;!^=FP\=G/S>o'Djd,%72F:crfAI8V#]<'ZBF2dD3`HED-ju=Ftl^=CjR\4_DQ();`6U5o_ZK8LE5["a1W3'-8iH+"T^n]Hef-+;3K2+?lT^T];YR"%uc(rAXL*.sZh$X5t%jXZ"WXCZi.Fg<GC-?8"P-=-Us]Qh)r=k6#_V@@s"E1!+gd,`bWlGVPK),\kFWEPs@"6%I-^:V0d_V9#Xr-b*Zkh/HbY+*oC(]1%qps7uYGfmOll<=Sh?@9(1jV[O$*J;"+q)F"-[bJ`85cSBKQ"caUL/ES.C\O4R]mbe8mnW2.ubO,DZYo':L>Cku2]Jt=t@1`*FN::0_b`@q.U[K=J4H%3d'Q5F=W"'J6Kc*F[MV"TJKOpul6-M-8k>Y%[6]\(A;$r:&pFO0OGV5P[3M3-2&ObmZ>iP+[-j\;n8+1+>ER5/-NupA1M6M;POG*+#Z&aAu")WH]fkFo*)+ra_daCrNlS7:Ii0\r&0qrCl'bYAY"]Pp`Ba^95.>i!,0X?P[?UI>jQ-7D@7C`GjWCC[M9rA2?/QMDSW+")q1=lp]n:kO[&*rNt"beWKph1\Y"tLbA<;.M/F3(0j)3urqkis-\QOc5BfhXbJ0r+$uS=Xk`X4Hn,#@%9\3Dsh1I5nU;`&L-?(hdf@=t>H=lVCID$&meE3cKC=5E!_1YqXDrjO'l(=Qk2_pr6Hdib!lu`"F%eZ`u6<^G&Y'S^\?R"6?L0(PMU!$[d;P!Wh<e0t>S)fbpgSD$(IK_*TdkRFHI[_m3,VUfnu-F0XqF/=p,B&OWC%>hIC!5MXXT.7c\^h@!H/3cET8(I30r;5-Oo=Kg(egZncnXu(/SlVtRXcWh<_0YFq/-0EX.rbGMtOh&s&<IeKt7aB,Y9!G+PrZk8[?-@<EoCn<Y/t-XgYn>Qb,7X\Jna4(=V779%2Ci'MF`ag#8Q/?j-o";TfW&oV8_\iuXW/9Bc47DM;85(SMd5F$&PiFbVmB$VHfE/.&!e5KLaN`+f-?R(+!mOqP./^3!/2ZGKcm(M8g#puZnTGXqM:Q5`5$\MjH#`RPa8U_)d\d?M5t&%4U"G;UGu7,G6WO/;3+d$Id3TcEK5r*1s[093,-*sLjE8L+(\(:V`?ZOlRjEB?ZtOMU8C`JHJBO2l6K-8URkeF;"j!Hnc\dZ@e.PKh1MUbGMMjZ$G#$fc<_,*N]o7*gB=ho=b@?BdoiV)G[oR.RjGV6+rA^`2M.\l?@o+sb"@'RnKfM)=nfsdF<!s%k$*j7_iTmtNjA#j<lPl?N5L6\.O4fMhs9`[JmOsU/W'0ZPF>Q7O]%lBU.M<e[#;f(6<OFT9<c&eEB)9TNH7Jq,([]D0Z%I"nNN1N"&/3%$D)n$4>2@A]p!2<oj%aL>\sbn9jQ0d$I[cLluS+OGkiABU&ZCYiQfaJARA/1%AlOO2EH8aW5e,I5`,%9eT`Z2Pd7M>3X*mH]%R@Na@/;BI4MQ3kr%(SQ!A*O9Sn>3`rIJ'iL]4l$0SLJSiC2>'88O?fGqAUSd38]DSgc8Mn?h"$2W2VpO1A/kf.sOA'=ESaDA+pFW;DX)0.o=\u](gdQIt&%n&Xef.XmiCZ=7GQhpY^]5)<jkQg7T8)[Mt*6kMHGclq,U.XnDHaj!59@fuV%r!:B0d#IWO'iuQ\i+YoP_G_k/7/c)5O]S4-LJD;JVI(Zf[ItLA_'U`ff%!oSg(OUg-M_4&>=:h2<@ZYcPr+9=kOsjoHdeJ"l;Opg)Ncr4Mu4W<5I&5j%CAW>FXYeq:"66m9\WQaV2YR=>kIso\>dWI[V=Z4RWC?M217InbS8@f-R;dW=ldZC+\R"=*f+>pV8J9YfqhD+*HJVTnT_kg[(\!H$#qXLGSj"qR3]?f3n$;&=ac-..mb^kj':An"tJmJ^^YlN*qr8,XeCEWQbbI5@0.PpZ9[Xd[0kP)[fCe<A+jg$cPDHJrBX2IE'#H~>endstream
 endobj
 32 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 820
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 2705
 >>
 stream
-Gatn%?#SFN'Sc)J/'cD8DGj3!Df-r)]@dABEhAe.17't4N[]t;+$Tus8IMq)bs;K.*'`n=Naj/@nF[#.mNi,5R`"J%!tHG\"--1\q%*7dH[e2Cc4`Fe!+fRYbTm(U"^rCfYO>d"i>a.o1Z/hBJKCWef'qE5BNYl3,E=;hUfeC@5iLZ''OdLY1!$@:J-SRLU`RY:-Ed_'MDYgrY#U]R]AoF&mPEo7OFQM_UOdEL,!X5)YmXH,84Se,FY9T=.+T;FL='6RmsSA1\e\1:.Cr[o8Nc(S3_Q$E5PO\1!JHXboolj[2'Yjnh!<5Q6:guq1PGXIDa7[UVsj")OEO"Qm,[@&j)G@YG4,Xkl_%-4CK@-hnG7I$N`cuDR8%N(1?gqtd2RH^g8`$0m!1H7NQk[)kXeiE@5W7^\YrX[G)`g'RTbXNAupV1qq@Ip&SBT-f!8)<';heqL_[%kZYBt(URin,g2SH!cqK=]'BX-1#+/8k=ZKFH;+@Z8>4.nThhbrC>jM$?;Gs6B,LnNrW_B%L,c+`4(T(3'om=YY\m$k,WC@-#fIofVDGF9&AX]<sDjD28U'(Z"gI6b)n!^[;qU$e*A7j#7dYk$L'9-I4d;E&l,JJ1S;eL6BaZnUIb"($oGY'QV[SD10/;W/^'\\a@@qK!0%PB#BWnXWiI&kV[X7m8AdX"$E>gieu<6g@L\gLc,Bh^W)Z<*]r2rss1\D=;tUQ[95bVA3qh`A'%C-knF]']PSkqT?-^&&98!c.Ar:on?0=-1&S`gCF=VTjiQXY\WDcD8"Eh,4gKm'(Qn)-(lR.[sKQI-?1?r<"^\jP9~>endstream
+Gb"/)9lo&K(;0NG]\@b1/=>@n\2S?GSt4T2-Ae#Ab>qa[#t]q%OopeH[(h&/+@XD\CeL'APs^_?/5a=faS5OR2eYqrrc@t*/r9KeU@Tm1gniD_\BfO@]r0'$ae'rQnADlErIB0Ems,Um3!F4T(14C-EW\NQ((VE=G0TKLlNO(r-\WQY3'I_e0W*3.S<T]20DFI\/.-&u?b:i;i5@tc$Ctkoj*)46&RPbO4;L!j:A.&];XSWMg!KJ4FSX@0T4930IMa+ig5T7fcAm%[@Q]^=DeJeg2V^#,WSi2JJe7Z:VU5IE@6?5H3PY,52JHVqm-lt[`nS,OA![E4VP2Jd>YlT0PSAEm'W$)L[@Bk%<MIX"<+q^K=kC3W>Hq@t.\jOfPgm*72(`B&VhDEJb9E]*;6!mLqtD33:8>!LqLq\n\O^Y<SgQC,,*a%_/a&k",<fG4:@p+aC#(%[^*;C/W=YK=(_,[1"#?8k[E*%:Y3mVcP$Iu^-s!Iir=k/FCToiOMG2ct;i/uS(KA^\g!&e,CF.Gu`n+SS]t:qk*`K%OI!+uVq_+Qpa8L^%6<P(Pn4Jt(Wb1SCW:Nfn*a*#P7Vq8lDN)fm3qhe/D^WckVCgs7IV^=nFM6"f^AQ7&qcMK,69!f&8)KfgZ/\%87WoURbSdRG^&FJLJ@A%WWfqc\+P10lc:rlDro)dsko_U?JQdK56k;BVoY3MGCq>_/BCY*S+nO]L>R/Y]pCYR-]hfVnN+3G6Ya@r,"F9i]`/#5fMc"*?.??ORDD(dRMuB$A>,'Xs9hgT_djCt,"e,lu`$Bm=,qOW\:%kIV/`F'h6$IE,gZ]Re.KLrOE&u)uOH`U@-t)sJW+:L`VMWM9"Y;#nXJ%B$\rP7;VsOKYGhU1TH`HL1d/K)4GFR=^CCB&2A@\Xm1*(;6GBXA!mI8<fkbQ\'a_R,.8U=\qAMIs^AWCqng8W94Aj)\pjB\`Ap">YAXB/rhmnC)XV%bf3AVQTLVpGN!Di''Yn7D&'LcFP@0eLKVRC>O"Csr?2ZktOujN'^Np]g=eE0$C\a;_]['_78sh0=08[LCjg7ng)/oN'I@-*+[P5at;r/CM0cm.^Q5*V!9EeG:n78=+0?<J`I2:t)55)6db7[]-Yc>rM@:481?4WZf</^u_*/iXWLU[38Bsjg)Z/Pm6"2S(8_QESpK<H4SKiUSrcSopuWH9/b,LXdWQ+Z-dD@BC;feo[:u)3\P3VG1f'#LPO'^Iu>'6:+l0'BKXG$"k60gc]]4ZH&gD18X.Kq%eXqp/"EMmTtsfATuB`-#%lNJ=eP\7ZOfaD'Xl#Z[/9>m[r2h(->l`&6hXN@?_ap<6<\JTd?`0W@dBZu>E^*C@XloCKY1s4h']]ro:DXGc5p*n;fTh'/YIr(Sia\RfnXG3L%lGro>4r"RbrS\\@2*[/Q3q/W3'MUnZ>-KR<MZfB_i0$BUPs;7@=]%Ab&U_gI@-+Eqa>oJ#Qu^2]N8*\$M%W)ol(##K6>eQEdM6%Vdu%XA#`),_0/KBmgtKQ8*XB[51,[Ja]q#'0%^#e-@B63>aWRkWIRl/dFk&oXt?t_*g5iA@,uV8q5=JaVifq-C?uZ)k6Wuo&A73QhNKsfsZoB7cV-;H?@onJM.ho/%Ml7d:6ZtmDRS]/sH36pD.e4J@;_S]U[6NNjB2Zc:k"N!N^In!8029_IPQIebh7c4)rQT<T"B;jI\_B&?m9D-gD-d2s<Cu9tlSp\?K0s&#A6%%@\<DjrEH#lC'<1*?ro[#_Q[Bc8GQ92#=^O)QLHo1Oq;\AS#;*12e9fTbQ7pP-^_!+B=8iYAM5#6A*F;d2&:NfNV@%6dE=d]hH.AVG6O8U/o`j:$],'QA+!rlWg&=])WdnQ?p5!+:&;$NUG)GI%/9Hg"Ul-c"@+/;PBMID2+ddBa+5TMJ9%fOmSc2+3s+`*]J@D@L@e5EF2o_c/Id.NL&$n90\n691*I;;VbNs^*^[QiR>`<b9SAWUSA(PWqm%.0)f\J?"+6>r^h2+4f<aZV6`6lDrKo?gI?[+a24CAmU;DEE8E+@dC('2PmJAs0%XW@om,Gic_'LRcWR8#LoH6\#b4f#LLb_+De5N0iQ$9pS&_;b`uu$Q;]ZT[IhCZML]-hDh'W?Oe'B!0.8`B)MBZ>/[d;tUS#Rr<9hgnH8G'XC79OLG_>S6#Rr$(!o0KR#1)n`Xma9hpnj30djIOn?^R-qYEE1>Es"3Xar.(JGp]4NjXm6=mbg><7Qg5ocbSkruWI#iSg-0ACk-,nk2G,,\&,P-rbo2ur74O8\)<5C-XhNn,=;4S!#/=[AG/qb4G\)/-Zhdmcemj,R[bgPFJ2))LE@K`'la"aN*`*Cjp$Hl48gP(nKMV6B50Conn')a5aIS_d]F5$&3BtL-"r3[^ms5bC`\&_eF%g'ed!bDWHK;03V-,[>>c,1DBm$J)^hga09pg7)XP'oL'/<;NA@_`+20]#$LIpCp8Hae[ELa.$&XFr]gS9Q4Wl5#[$1\Z[+u.[,Tn,$>(f-R=:#!c.AX^dVqSPF819@m$EWrUW!WSLW;(drs[KjM<(rC7K?u$-`*?!,$;J"FH-4(V`pq$D[JtsMPQW7VV-`#]`lZ>naalkQQpQrJ/f^o7&H\Ksl!uAVqdu2JCI"ZmNk6;ns3:aVr%aqj??5FAb84$bZl!OhAf%0B6ZFt*F&]-gW[O+-e`;[+TKiU9]Xh(<lrr^4F'"7~>endstream
 endobj
 33 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 766
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 3456
 >>
 stream
-Gatn&:N)^V(l.R-MYAm*RoBXacZ#G^ma=J2ER2;9+g`(bj&TUBLS'.EZ8?P^od'r:`9ZUV%r>]'q"@.3rE98Mc=(][JHh3SJOUo:r"d$-hLe=#QM<!7P(mt<7J8MH_Dm5;?bIApN$LYeO:\b62R6[?pu*6,Bb0M[7MZ;4)MJkr3,Ci(8m)dZ0)>eEd%^VU>=uEJ.k\@]lOqpS2*sY,-mdL$8'(-As3ri;%HE6V5=uH'Qb3lkc76T^/5p6s>=ZmM'&)j3LSYbjV6.mrc&ul1&O3]QD,rmmBpJam8]:Pf\>M62&e`pq(,mD@5&T*S^4e)AgRn<=qARqbhNe?0\?)Qf]rLsDlg>jE$!do`1hjPMQ$lYFX&ePlfa5>ObPNs]N-O$g&btdNH.dX"\jFo6mZH]g92udCO-Osa>qhR6kuFPe2!G-jMq8HUeo69-5![s'a*)Wt:J]kuY^ZG_3l67W^N3^O=\JnhGs/$FkC18e?;GH?XYsW7H#7Ja#g-X$Odii3T'PL>[U"_QQVAdI?)q^Qnpej/pNe5FjgN)gjV,m]eeO?@3A$42m8=d,rl3)=-T]LUai9uV%lC2h7C-9eSP<a?W^cjfGfI:aR[7^`7[DLMerl@7RW--SSF*o(ndR"FCT#P!k/_Ss.O";eNA.:!!U\#=.&X+7>P\dWVos%=GM,HQgSYt&lScVM^>Z=$mp>t0F'4L$7+'oAOfU4KRJ#(P/P/KVEo@c;G5'8e11m0C0!<r@^"%JboQl"W*k]7Q\EIr~>endstream
+Gb!SphfG8X&q9R^d?!-ICWt#loA4LZ]ToP@Y*3O;?`qP*d7>HITEQ$4pX`a_TKu&QBbJC$SPq8+l0mr0l&VD:"uo`[O&s)k'u3&2E.,WT$^f4jgWYE:^YnMOim3Mnpn'Lr[_nnN9*q1;=F_J*Ha'!WKK"Bh%W!e[PT)hl0WsYA+?4F"rUl-MmV7O$Eq.0P-=,LDH><bOJ:%Ban$AaAf?5jRW#=C/M(7F^S43j_9*Mf8qAO"9!o@Hb!?]iS=2j_XR!seScT:n5<V.A.\&%3i=kmcG^pIV+!>bIEOEt\&p^(H?8.d3iaTCF/.pU)2m_M;#HTVOR"nS@Y7iT\HO9e?1iT":[LI?GPZ]V5J`2`Y@+a[?oPq7S#`P+,KL*RC'E'rkZ`,LLBg7s`7%R5%q-T7_Rg77]K`kYDVXtP0u(!LaGN,&_X>nZq@oSs*3JOiiMd]d+8B3P6pYe<:RjJaCC=?LPRET,OND?@WpYEJ*d=;oR]*cjK<5qY0]JQB^6>phaHqu!\a*"-J5@9mMJ^9-_XV1m(83(jY.JWC\@kWn*Ob`QpFm0TBg[cJQPT^=Jm=p$j*cgkonpdQR0dsmDaTBJN(9BLQ3&<,4jd_c+%`bmU2-S6*I5n<*B6h5*MpNjBl;q#lMae%_-Wehq(RH6GiLVI`e"5C'^*ujTNSo<Z?F)@!,]+\Z`I"<9GO2E,AfR<]^fjL%+[rm<6Rj]HDC#?t?YMQpAb>ts@6.$Al>/PZLEYp%!Uu?6pY^7QN8,P=Y:3b,!TK/gf$.-(k:Ooil?-\&.aAuIco7*!BVb+B*b;bKb_hC_+qKHqm#YVQ7G:IMqh5Q0P&uM?TJjXWTk_HLFgiiO7e>dnLpa-bZiZgkChg)WF7DM$*T#rTHl_O_jPkZhF^3hQu%sMgEgdTDjA=j78Z:Q'UG&9mgak@d^_MKD9H^+<$+R,@#fSepT2g74p0.$*f[(`S)Z1X,,APuaYY%5pAe/K]p'&\G,lguUqiSd-:ZKj2iVC=>4JsVsbk^$K,q(CR#A\:o.,Y`%Hfeq%150^I'*[SZ0mi+Go;3)>4p\Frm<@oNJe?_h4Uj0H8>c@R9*%@D%Ur=)seMs6tir?$+Lp@==5JOA36e:o9n^2"!@mnr+H*sG"cE)*3W#b\SL&02e3[tUeeI93UKhZ=^q(ISdkL8Go30AWUCg(h>&n!t&\*GjM>\As)ZX<KZa?7SQ;6IbkbNhC3d9Z8g:6GXE67>!9G'+%<B4FEe@tZca:I`?[/g-]58lnN-T'8,(&HAt-e6QXP=dBa(jrL7@SmB)P=hg`M2sHMsHNRr?n2sT_[[A0"TCZaKoj4@RQf_5?9&)%R8=A,go3[i-WF?nt6M`fjU]@%R5lq#(-pCulYL4dP?TKArR8u77-%,UoGNhX.(R_@bQ]*3ZWAY>ngTM*glWl)ODpcnY`H7MA3(Jm&#5W0+HUBPu(YU/l0cmH6)<eZNmg[Bt?"fSO`9:=%6.ZR[eTHf-)j2)N:nedX&:VEb^#VrRUp]FL3!'Q445$N_[t\G5,ODYIP?f,PCIi&"_@FaNfsQC?L1J:K/6NH`2<*8Rk+3.,hOp4/K,C&"Wl#V/fMVH*^nDXDqJG2N*L3f1*1C`Eh\P)$;>E7<;YkCB^c?tEX4h8r(kZ.L,Ku6C;]W;S@n5WBJe#mZeSbgRG#Z1#k`AJ:rO-*D8*)gaOsPX"b!7__OkFGk(lNj'/nSe:aZ^0j(m5cKd%OSi]/FnD87q3TLM!.Eg>Ir6RB[,GM?+/kMttVFmBfVlMgg[2d'10HIC=*)87k!$%a-reFUL-_AB#k\Ye60*[r>hJAj!qnja\\pB3q^N-\TnboJ1M"6aKO1fYSRh.UNE?1uhQM/\J?`no]IMZVC,I_AbQd?O'+o^BK23S7]?U;AWqp+23XMP%C@HK/I7/[OuMiL5AY7esI'&]"fKB,s!nc@n("p!f9LX^pTT37<McCqu(s<%U`CfM;AYcDan:'i.g?[kgY.WAjj';DHM@E:(;Gd7V(iC81E.laJpc2.q<jHIB2&YL[QFAA=)NIi2Tad7V(fdLLcb8o\aI`@n("p!f(<Qkk*d7=CXg2lN2o7fCpXnX][#%<Y+W6E*,:1*XpDiYoMC,b9+Q_!Eq=G"8cO&+uh>CMoKdFYP3M0gta`H/5+;tJU(eZgct];O'TNWjLIlUphd-R]t+?Di>35H_d20*WA[cp@%3aJocQjZR6J5q53FuR_g?:tfg$SMe+_^R=^V/`HX>5*N5*%:Gk-l&-`hh%SsE.73CD6n_;>V(Rl"<Kk_km\?9o!@m*p;_P`V_V;Co-elEur^DRE&QqL4WmnRT5QdgE=Z^)!PK_`#]Q^il\t"a\:DH&1u5bf`=!.ah*^?,8!`A'AGQ0!522[X#Ah,CdCe#ZbA:Wgo2mCUs:jqd2Foc`@K[O>Gf;/0r[\@@Z9'g409.4@:;QZa^J@Lt#4Y</9'3NZTLEWF#3#j\eCE[SSj8/6'-,X`l8)8[<3>VrbREqb:4*.>0*+.*=6qWt\s4`G'T$WKs770osen=JA(3GrFDV)QFLL(S!5TGF6<)FE(3#3iGe=Cn@/S,Ym=KlW^l#-uB.`-;AV2ECn`T^f*tq5Q)LXDVn*OXm_9NA"F92/WIFb]8KYpFfK<4pW2W\V+P0nmPg&X:;u6CEJ4]LelY`uh%f5$NCkGNgH5Xj"Y,r)qR&n7F%R@Q+<E+D>jE,3f@=q[qMC*hmeVT;FA^i:rS=Y9^J,@6<@*`;MZW$d[]4N9-UC[r?W@gQ')d4A<DuZ1EZ`]jri$@4b(Rg*!@mu]*m&la5BmQUJ`U>KZRjh30TRW8X\'4&Bsq.q0`qtV9ee(r?G30=-'bO*JGTa$''?eV?&P`$c1Lm;_PG7J<g5"0@@lg.T'6umo,U5%3fb(ZUf9*"O8qp^Lkj,H71!j/.+p0,_+p7q6(;d*"KN6;N0YtpSLBuTe'A-0L?pRbrb"i]ONdD.MMj&.4]atO:H"dqj3628G2?BA])JOKfik6<h*Z3tpo"A+7SW-H.cs`(koR6t@%(*l29rO-9CiMR8TD+jq`G6`63Vg,`F/5`F'CK7h3CVQhm/G7lZ,5V5nW5K)CJ0TLc$r?D-S]S#.fScGW6<#>ede)XuP<OU3XB!B`j,HrZ\OQHIEkiearJ'BpV<YCK;qU=b,rr)a?J'l)DPM;p6f>X`sS"/_$h.Lf*C`b.d/g8o$nmZUpQZE!&/MPA3\&DX]\nX!CG?4iEkXPW*[W.nsLXR/2l-@M;2AggO&0MAV7O?C@3YF['ajnQ\LE/9:Dc(#gbd`B$p)cb6!R[m`HFBDTkSm9!E(o1Fr9G,br.Q_k`l;79Y`BrlCanOU3=Es!^XXM8@l2H#4l3NCr:V$jU^f=J%Q1%*5RPJ5.$N3Hn5BD6\QE+6="$eZ#WHnP<Ze*/CLd<$-gr#OWXk],e7k5I11<rqd<l:k]:`9F@k%<pieMuNg%T<<k~>endstream
 endobj
 34 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 1309
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 1144
 >>
 stream
-GatU395iiK&AJ$Cn5<Xu+H!,,O1RZd/^Ql=qTp0S9=1d&,./[2>=F$h8##"`Y2qCN2A-tNpW\?Jb]#t,%rXN.c5T)6XiU*H8n^Ij)aYc&,-0VCc`>$OKpOD*5L#"NKlO>Ui%kbX3$a"QZB->:H3p8_Bh4`u5_?0sq.h]fb6DGY_V+L31lF[m]Pr610;:9t@\V%s5c9E-PJD"ULK2S<DC\j%di0eU@_/Gq])Rno?HMK1_<)UiN`+2aZAJIq90nkVa?Lf6GA%\CO!)QW(m88(n=mlkBlIWPn\R.jG^^'(6E^=9Vosa<1l5*pq)ZrW^gFe:i:$J_8CA[;bbIP:*sfOYRst?^H6W5<[t_Aod*M/H?!t\@JBO55<2J4<VOkb4g@O%t>9k<uQ*X@ZU#?9B]^BpX_2/qB0:>hA/N-\49g5[5QDr0<Sb2u/eSE^N_4)D#<5.[%n$O`[+\13MY//dBFGT/LO2(Y)H9)\OVN#2_Wan+3(**4@d!"P.cZ<T]"B__D%IaptagD].CmCP)W8SBU2+$$m\/;`V/7Z.OjU/Rc(,LaF?80B>D2ln\o+f_RV(7iNqY@j$a-\>_h`<:'"ft^@=*#loYstr@j$gfT>&\ak"2IAN[Li*`#psIN@`:Xo*=bh6YZ/'b<%'^H_8`M.*^!l;&Z\@Wn>\t*b7T^jp^p:"&`35)X5j:Mdh0jL%RgR5n52GWf*mO:>(a&LO>'FL#LPmKS>&AXTam6@*)+5</S[LsaM*kijJ]A8s+pWh.;Y\@TUQmK5i<0p*&s?*,tisC>k!j%6%"e"lJs+nK1YD_BNGBKM&eR\>HO>0Xk3%c]gJ^lVH/&REO]#9Q\P\SS`"'jnMI-=$l?V(.+kNS)AMCio<):*/b-Y!3am;<i?>_qr$pd1P'@sAd9Q9+=u29[c#.=!rk3hhhaf!E-=J.tk!)`&"lHkj#*aE_\uJMVT5&,q_jl%R$s$D+0MR314i/Uh-.`E4L5!e;?=qtTfH#'8?b,GI=pC*>Y799upZu`1ad(T9gYTkh'j!_'m<ObeZZ@sFA:4\q3UJ2J?uC0V#dJm%riXocdh>"eXQDN<EOtUbkY&>t4U?rW_D=Mb[HKIe7q[KAgdR&CLVnfV-K,G#L0X(uDu"A0fWRC1)Bh9;adVDV`Y1G]f3E*5^Pn`9Y=$<KH/NIJikum"lQQLWYZ&WCT$T:]pn2RJ/RYHBq8@nD[T_3+cS0SdRBA^6d$&E$DF[4LdkH;`Gqu'T#u_,$%M3)s,4>-.B>;J@`fH4Zb=M8@"]*IC1p0N@Y-o(OSX(C5UTPT_GU\`ns/:k0b5~>endstream
-endobj
-35 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 1214
->>
-stream
-GatU3?#SIU'Rf_Zi6-YRJ/CkDAc"2Ndqq>TA??sI`\8#W1S@:(Un"sIO7/o]3D-@`)H1%a!7/3g?TbuY:^DPJo:;-PIG1?`0+j(N[+V0%_$ShC7<b6SNu;9,dr;iaGVrjHlNI3jiq[&D^ATdMBYMJ8MH6ZDMe*;BpaOSafu_sj)0:V//K?EFaZMn7hE2&k;7'"58/I9tSNLX\!jb9:2M.7EEljG((s>N^lE[5^n2o>dU!6)?ZU7tCnX4Yu$\kC["8iBjBp$L=J4U[>28h]Um9[-$d]epHq*!8ML;O/t$)*+>0Nt@[7qo7;e+\m"-sicqiAS@E1.OtRm0Z?9g(+I\s4U6[TJ0&@K]Y9DPUZgb`%!'PFUk7/Y^SriLnl&#491!FaHS!H(Ba!"Jn:e'c(Kb(Js[YYXoUpj[3:sri(Lg*#Kd1OF%/4CYt3OU/M"Z]=DZm_DEn/LLWd?^.8>_/B1C@u3iqD.(Lr7Qboeft0aO,3Bn11L-XgDCNIcbW3R`U0EKEenZEg5:c)g&D:IcAK<.[L#O)J''/k-55m3n;'XbBM>*iU"c\qAtp'PPOH.gD]n<0(4)T%0!B3Qm0rg+^5')&mPN[t1t-)S"1nYp=$q.O>NK("KPWTM$%g0,m*PN=q2J3\t9R3.Vu0i(Lm?i;MRr,B-bd<W\)?#qr/P"d`M*Y9#@JGjb468#^M+5D;-);^]d&6J_=fl*DNnVr7J`OKL(Z9Ot/n8>SEJja^HUNL>Ys#p!LK`Mg$hT/(%Zd*s[ub":`;bhsk0H35gqE_d,UiLF1DWF`6F.E@GU*c#QMI/).FTaSC)/qm,_<-VU`oUosbMhVm>9..25R1;ttj%7e/P["uT48.N62U!"^d<NN621gu`kQC4qJU<%4^+PtQKH0<-/SR`R;Ve$3e$,0S=i\rql^k]gY,#=M5-H73(3nrjgm`7+hB'UF3=1JANVN8@WAlaMUh$d&bkK#%`>uiXI8nS@*nn(b<:52o0[ru;U+Lhkqaj;RZ7n%E[$g!p#S+N13E*hU['5$us8$dMS6orK=XCb*^L`!3+=4qcaR)dHZ<'Ee`D2E##?m#$@A;S>BU1Ben"3445a]un4aXKk#!"B)[*Q@P@qU/D]"hYElm1sXD2c?Cp[oiZh5bf$0.oCV33V:2HC=P`fB"B[h^g]8Cod9\E4bA]TR"h<.JV9Dl+dmU.tD'ZW&Naa1N&o>09hY<3<~>endstream
-endobj
-36 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 344
->>
-stream
-Garo<bt8'm'SZ:,MR*npco<uaZPCuLMlM%&K9HciPH($"V;T7\)/H4G2in113@FP/Tdku_rAam[*g\eg'(B[uiX5Ypf:KZ3DJN0R#O\B'[48'f;G0.-Z41?h%EK\Y>>\)Ug>e;9dbGNp.DE*tYYIakQZI^.,&9#U3uR69d2Z;Z#n,XG'ZP%>@Fu*#9Gk2eKtKX*It>A%1/Ej4M5,,,g'FDdiI+#f<[qC.Q;f#?B<*$(YIV;%`b#s+@(ankZ%,kt7C<.DUMOLjO(fa/oM)<X9%XI#ELK]?37PuhM:=CW+*SkurcT:ZLLQ'L@;L`!qV0g*fm>3^h9^<m]pTQ#'75.FgA~>endstream
-endobj
-37 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2304
->>
-stream
-Gb"/(h/h=/&qBX_Z#=bhP:$&V^\OCqQ]=.%0Bt]C`e$`P@S@Cs!0"&ZosY<X8;]hran6l7(Mc]1_!Y[:=T!=YADlF%fk4=dr*p5'Y8Ar8jssi5)oDLg?I$mrF64gUfLo+]die3o+b$><&-_R,+3nU,Ao8#.KaOQm7j`&<nFirMQBEqrk[_5QP(iu>2m@eiL5[Eu"DUX>XOkON7*Z.bk9[=A.I%!,<Z=neDQAYqmC+d!#P7CTjrS"HqBP/B^)"5G4i1QF.0F,u+^sBNW,Peb'"u5A;I#q<YTQ6N!kZG_'_<FmfpAmi?nne-pLn!u04`X7U,JsLX?j#)C]rO6,I@L6_2YOr_WV)%SgY8u_OWG:r[$KK1UIZB`Q7E4M))S4Br;J/)gD2A>D;4/6Goh%GmV,t7%G-TOS;@^X.=LrR=TD.1$`q7XAoUaat5$XZOL9-!`hooYk[D)lPBpF?4[K`,sZD06OcHnYM]<f/#dK_L*`EU'P:k<;502a0N)c&d87so2>VHEj*:*ZkFn_Q=r;M:#XsuG<4U*+BC(keSXhf+FT%;E%D<(Wcjuc$.2Y"GZVb7M`*<R7&IL/p#MsF=.q)EI]22>oU,Jb.FXBlL&tu3emm&`bpb@GQ%h>Ro(B"^Hd:X<ir,.lJrNJ@Vr$\(d4%m7pk0s(=]JTJ8r]j_YI[[X"SWXbAT-b$3-DXd@n0)qLSZdK]Jq5XG_g$c?'r&p5+*?X6kk[BhJ+Ku%h^d%$%5Tb1gr'9AYmG'7CE;L6D7b0C1373MOnQg2O%kIK;Uk#"k<[b"bloZ-_!ABVq1`PVC]^a^$$pl=W_Q8N')J1A4'q,)2J;P[`3-te4%rRO6ugOuh3s=&V^<9Q5=0G`r1MrD'(Gsa!dRQ/f#TQpe+\3Hf<lBOYZ/LdjJ!?sI7j:UqL&o"O#(X5@>_)DVtYM1]Tj"f.eGk8-n'[H-!&);ENe[JC0m#5A>S4,gCP>;llEThC=,g,Yn(XR,X:;g]2QPr`A@0@_FJ05't#I(elLD*cTC@\p1V%bVjrE!I4r$`?3HOr',s;GSG%AN3qa_%FFDdYq@Fp`5&?1a,f:m!ho@hi/P@")X[/jlNh^BC#Z'sdFGM7Ad)SXLIk"P1d9G\F)]qX,Ni3c>AtohLiPsWs19Djm4*Df?O$7;-/0(NpKP873:?WlP:79Q31.p\GL.`/?9j)"\JO[bh&m@BN:hl6RM)(UL!A/.0TJ/L3M[V@IPDA1:,6:@a"45e;.8^M!4.c-I=U!,#e)@jDOVpJ/$K.a%I=.s:K_==2l`o["2r?=0V#@H;9LN9n(?SB8<b:9.agJXRec0glgU@PG9hcL$M$L\GHt]<,Hi*"bgAoj0i(]nu](6_gBX(Y_<8LalBp?Er?*Ji*Jh0J\cmTUT/5IjBY)R0PdjgJAZ8G?l^hat[9VN4jm#1P_2jb@i$CO,tb"UrLP0"21#s:YW"aO:\&PctT>!M.`-JK+,neJ\gaXXi)A$`:q<Ir`<8[Oc1!VXQ\-U,H.ckH7I5P,1GcWm3BTGbg,SuE6PeD$JeA?q%1KF!\0A@@m7j.D[4@G)@f23uo8&"u9+?tMM6IQp,`#!3ad1\8(!:6272V0.pgW@s`(mlL7&2A9)$Vu%SpLo5A;BY;ZPm%KE8FuMa2(tichLTu7Q)MX;lGB)7.Nfc7+;HsouGHHui8@j=FhgO\8BH4si4,].@M#a1(d/R:5q(?p++0WTiCU39XLnVDa;$pjIP[*<pg.re(T*9SQI'(NiO(ts>-,p<0%^gP3S(m79?bCK]%U^a0/hoabT%g%F9=11O\%0"fDJifg^^gK&q4_Z^?l44&!+@XLfJ`Z@!)^p_]qNBdLdsh#52B;m1eCZ+I)+m#6%;T0(g[C&Q2e5l4=C3i+T6pC^n:B`9M"`,90Ss1Kl*1d7pi2K]7*Ofkad?rN%u'hA3)*E/i>U+loQ(bOh.IubZuXqYmHDL?!duZ:Fd91Ds#'ud1F9/X<7<9$:Yg"FSPE!*fHW"U(02CCn+D9(F:V%&7&+(K>f"C3)\*h5ZHMBB'[OD_)fs"MQPX-:Z_<Q\V:?gmV,qW7k1&A5bBKC=R[WkEmI%]_@jfn>J4>/h1fF9ZGg#8@^mDPha6Q8/8>H,FM$mGG[Sk2fQIFM-+5c*BPIBu@'_?6Xg3anETDpE&`iBURLHnE(rhHH.VQ]+hNr'4)rB46R'&4n1N7F\1+`,S%*uFU+VZM.[1nh3h"dM)/+hC26r%Y\YRA?i=fcD'AD^CGNq\M;nVB:QVW!94r:GYVm1kMQQNd4'S'GKp3t=qUg5l0ReKg[`(S/e#ZN~>endstream
-endobj
-38 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2359
->>
-stream
-Gb".=CQm4*nGE0ArHKo,A'&Z'd/ok^@&AXb?U:r^7%@W*2S&J3G?973Q\TWIgS%Ou_aV&gPude=Kn4juApu*f^^gftr.4t0YZLqtC_%:7iVDKu_j)7^JJ1L\8$:0J&&0@WqC]G[l)F_B[KBnLjPYe5M/\m!S#cOqL^kYgmOXi_OlnL(?1S0,a&j2RT[uTIHB-438=@Bg+qqM#<2#uAeW%eHDY%,sh06)J%u]o@bR(!3nWEBDZ'N2\$0#muPQB8)&M\BTA2q]qM%9Lsi=icFg^k?Ebo;ME!XUub?m1\8g]K-:of\m7T73Dd_`k45p5L=W7(.":bBm)[f`iMEY2QtFS:6sn\]F,npui,ejR.#h$'&L,#'Li:G%airMAtGr%K2>@TDniV\XfX>*"Bu?)kCVU5]S2"Ul8[MhtoG2Z;Ck]5m;NeA6b:S($:)KkhLeNH_b*I">qZEJE!ke\o*2),4ob1U:\L?!TSA7r69U!X=B$3HiTSbnQ+lG>@_a0,Alk2ae:5XrK26YEs2f-i5gFpa7Mr5f<,S)C<7<=Rg$"LXARQCeHI4m&keLhAd@n0&k/qFigpMtn`8^\pH6]H!TPRkQ_/C%LNhLJ&(kmCI4kddNZ:"?oK>>jndk6Y*>_,9G+-b>:34*E4,lB!oP"j+B2hRnK.iJ5cM.pfn.SMmrt&<`5LX1RVt[DSmIIqaR^jA-gn411QQK54"p%l[5dQTd/N!dA<3BUNM+*On>G^u4)X:OlA[R)cA^]_HBQ0^tDIC"BkZVS-,Ec8S-=B4)p<5W4NL]$T7-"gg/B>(6>;5f.k<._;jTJ@!kM-f$cr3,FRn]mF/f@M.^c?!U[o[PrCIg?O1TTf'_EW5kkC[N,>&'41%?DZtR5F6?_ai-FDX8R0'mO?pZIcjY2jFF8#ItEg<N/E1XD(MNN$JF3<GH#5.#eF'SSVimkRO_4:n"WEaC6'lnhQK'C64-OAhpbY5=&+fb)Olul<]'-fO9*Yj)hoRPSDDh.'<b&`iKZ+MZFS]4Y2CYR*U)G^J?d*K/si%m\_2=A4Su0_'EGKl;e!_-^0PYHF=oc9K#'BqCN'@!WHJiEFOuLL<W8LlmUP+46k6'_kN.Zj4j75?K3g.%K/[<G(Mk1g@K:P,3Fr#c.QHFT$<srTc3JfDdhLI#G[A@>[_n9dc-fH>X,+pRGsFe]mftQfdj(EhSE5M)iTOX<f*LD:5i30aeU4m[UcXD"UY8t/_P:slU7d""[oYF=eo(s,#Sc5Wapj_2pde#2FqW#"C8;c[?C2W7se<K.T)2Aa08fL2ob$h>#Z6BUYDM?\V*YYA?ni`BjX\fs#$k89qtRMq!Na`O=/R_/DH*&Y'0:1MVl;/P#i*o>Et'i6(+'/:)#ZCMB&Y3&CVu%WhtHTOr/,5O^8JfM\/^4PhGI/%C[nSIclA.'O#]Hg(YE5PK_G('o",H!6@e:gJZq3Z>s/V&j$&MKl/oZj1.RhfY[=MPfZMlSXf'sDr-V8-2t0UOqOU3f3f'[TuBigBhhJMa.*Z5/;r4uKhJ4"@D.l8^j8S"'Iol.hTIVe>-/KQ#W:55#SY1_cROPu*F`]V&Te1joW!pL`Wc1MnQ.:Aldq<dLh'7pZEs>8>-8SYo$3W:nbk)=<*^5(@[)'\YGg#;43tmJ*+FM2:;C8%p#.;P;$[!hbn=6UPTi8!p/9C4l7m:&DIkH!@"fp./QO(B3QEGF#@FgepX,Qp373n*n?ERr9&?!tG+&CpZmrVoZs61]:ru\,d#_g_6+N$]Uari*TFssD26%$)W)JR-2<Ur`6_;e*4@6$NFh'BOKCiKZH6qdp;JT6F[_!r2a,WsI!3XB>XhUP6=HkDgF"+2hhOS;9o5Ja=HrK:Jo<T1s&eAS)(OA%**7%>hL/.9f:8I;tm_gcLs2<ark<C3Nbku+lq:telfP6CWd2Ye(2Y2Rm9T</@gU+67m$tEZ>sFqPg=ZMWE%\a]%6U.W"df!']=10,:'^;LQH#]41Udrd(Qg'3iZUtD6>C\63#iL$BlhN]OcQ(-V2k,.O*samO:gKRIKj5.6%auUAfUR(qXP&7O**EMSC2U5T`H5mKa)kQ()lC6@q_N*Xl92"EmMdJ4?5Z&[Yu4'6I.`]/m.K6>@0F`oPB?%b)8Cm(AoYhaCV-sT3+Za6;p1T&NZ0\k.LLX'!M[0hhI?pbMhNf`>55RYS\rn:h'f`h(Pq2dAm2rJYNl@nX]^6^le5<FQ+,BS0j9?$-rGjd-&Um?]"Mgf6CtFae;bfqd:)*FONW5"k31S)B5?TD5t$1j>AipZs@5pp.U.6Y_1Fa>t`Z_$N$>5W2nIiL?X$LZIN&oG?)Ylq;WjJ+%%!"bfSE\mW\ZLkp'I3"Xg3ekP~>endstream
-endobj
-39 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2532
->>
-stream
-Gb!#]D0+_q%fW&,JWI?b/W8-UcHXZ,]%PAPg:cmVkIr:K7,-EtP"SAhID>a]]o[8NM/h]rk)r:=5p5q6!!s9K@,inUs!KhB5?>#d^jpE,D1K0_$`dXm@<M>ASJ=Q,*J@gSNlN@\T-8D@#JU+X=+Cre5-PT=n,eW0OPIb*]3\]4b"/8UAapmb*<qhYrda)c(AJrl/N$p!U/iSKbi+#YO7Tm,M@?L`<Jqis-I61IqAZNM_<O,13GRcg>daJLDZpV\,kr;gAWV!s'FZr%:3,EVPi/0()O;I)0Y91H-hs"pj%k3O#Z7?S(`@rLG.:ndh40++DQda4>1a6@V7e329LOd$<.5F7I@Q*-o!gZq?>SZ_":$(d33K!16S,:>fYUh37C!RAA-G(=1X8E@Z[W?s*DTCLbj$4eckP.[6WHo(5CIqWqXEP1j$,ak[ZKtXIf9>jZ3HM,f_=jk]mKPHr^G;6(5.b\(F^'Xc[&HFD,0#NQ>ofhdQ02aK`h8:^[?VdTrYn)Y3<G6\a"Xoa9$3ZmfZUtCm)Al,$gF-I;!@db+]n#R_:?$_W6Wg!-F3^=TXjZlDuOE;b@JU2fRP`aUYP'PG"t&Z_]G3e?/93p_hb=3*n?<kE/OV8XUZ>3ioTe2@M'#ho?QK5Ub(1AFI=IC2`9bDf04Eg'cZ@h$@;,K_pNh%qq3aoP'^M'N=d1Q&SI*+9/XbjZp[PQ8uJgLX1?MT?uTpPifq\AVgnZSUW[BU=*/@BZKb&6Rt!(/sQ<N6DEF5R+&`dcMrglr?=-t<'-QA?QOZ@s6G<&Vb^j$<,Aj,Zo6%J,WJLo(BKH;`BIS1bObqCfo,,i)lM0iUJuqm+38_qMENd2p9d(%6J*!G:2#>ld`X<!m_8Vu8gE$)X\]nWin@*#X0P=<17J]-2@kU"?[!IA?AREWLH,A^0;m'Ie87L8-jme%!Oc-M([!hq^-bom3sYuW+M`S8^kr3]\Ihq@BKHg(kF#'u\7foce$X,FaW6"/gV6`9&#4E@4Q&0aoK7b$-bNS0B*Oq#bs#U1_+-&dfgj7BpkUphqhQtZO-k@%O$\JWr0ok1)'%_mm[kBk[(B9IU#kOhiPh)qSC"ORIS3i4Y&?ECf>1.R-,6&`$_<F,@O,Kn&d'<^JJGORkGs,\DRJa$?7kNMW0DPbc+m4TS53t(;4lI`W,;@YlLlCE@k"$/qsmi@'.MpE4CXn,CqlCr.A`_$"&DK_#U)5M?D)'7/:33C+d57d&)85PU/K-Y1kSClZ"]sf2@h=#nI]sp_p\`^WLLf%KI/hL!@H$9=HjaHeOKPWWr]"smS8Bk$6dJ5GQgXniX'ml!rlU]9L)S_HtI8TUaDjtqmHMT:6'L4O>/V0!iXTQ1\d2r1C4T")<'sXG`qhHWt8]G()`jaSb1ol>O4^o*V+LlW9Rb;0"''5*P"BFFGl(#0g7`mZ&_]EnJCX@HRe\%'=NU/&jht/oI?4HTGa1r3=!eSj8k1K!ErOQ<9YG.:g.!]%8%"&`ZGR@;o^nsm^tG?9sBknWGL,E;GtuR4@@Q<E[8qrQj\o\X6O/+$>Uf7&uo_<,gX_=aJ-YP8J=([FO%WnLeWK]L33!66:?l+G1[D>d>J=(;ESST,rG"&gQ5#g9W:"(34t\F.ciHh6jl^m0f%gO%b.gEiTo0T!M@e%&R5H7a\4<<JK]`+X,kF?V8tZ=9!:Igf2>M/5<2.p6gj/9)56@&"#?]k-ME\JAEZ%.<7-u<>H;JdZjhu<*`XuES%u!snOFpdPqeQ<,2mSVKOKR@2q^AP\\gPlCSq<8kkpBhhrZOH/3GU-<?3IUO,QKUD+;or0lZM9Sir5T^0bYOjWDH3>4K9ko9!($GGN:0I8^#5nW?k"gXghK#<p[M#!UFl+)oIp>4FaOo9!($8)&`2`TKqdO]Hj6O-f']:\Bm%:UK*dHFuWr^8K"E[,O/n]L486e)M`XnSLEqU'H.GLE#O+qKfB[*il2olEQJL7ZJCHB/H-MlSp'-0o`N7FF6%bQ7X2N"8B:*"\IITq"57K$[Mc/MNqI\>I`j.:&pUG@Bd?[2,[`Vmg>js>9NSi*46`4RggoJ.D77E;]YYb+$\(Q9g*h+A@?6q\.>a[VeW)G9o;-l;NX#(^SjZYU5c0Me(U`9Fc//X6s\F<RQ;/#6[`#qqEW$qlY@W\kQj\Qs,-Q1pks8A[3PJ#XM9U&iqV-uW+8-TLV9>gS+.duQW3P:5W:N>Z,NKl/l%ucpH^:\^W3\0>dm=egY?/gm_Xub/:>XR[gpjc>C5q2WRCJN9t`(=>UN/9(!'D#rBOElOR/pjXKPS2BDShmAC6H,,p_<q<3V$TlpXRnBie$Dk8`*p,mL"/:*aYHN7!LP]Y=]n?XgRb:_kckVU5i`7ZcJY^:3">)-s#Wn/9R88""4<ojWn-7,CeB(R9efZKi^q%8('0A4Nn'QfYrnFc$Q1E1irZ6mA_IT%Rh[akJ78e6-*JhTN"'A\,(3/c1Jngl$Q3b_p:h]Sg$H]SfI8]Sem=SIAYSflRruLcT:dF>[F`^W>ll"l0%]J(67*~>endstream
-endobj
-40 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2422
->>
-stream
-Gb!#^hileC&q8/6_..XAed)gRHH^63WOf[C9(qE4*c4B`2MllO6K@jU^IGZIfaP`tg4tW&7d\bso6!"=+:UdpI.6d;W"Jmh,C9,*,>?JE*oSA:d,Vmgqo;cF?U[(QA"KABUQ"7?>Ve\a7=Tc2eKC;N.Dct&&`X!4JQSWG]Xh:iN%ospfSTs\&rKOSV]QU!)"Wucra6Z&/#133[&h[@a%FiJX%&fA4D7lm@B=7lT79.fT@)]&`o]u_Q4VgAUGtetfa[Ea\2#9B#!bqCQUParN)TN1.#N)="Kl4o.K0^[(m/L;DHtA[9;IC6mIe*"(i.f<=ean()X.&gVOq1f&6fM!on1qo)hN%qHL\=0Y;]BM-H:8?JeQlD\Dk*P,S@D;5"kPED-;HP4.Cj-#\g%eItreHgE%itce#*Wn(o0eGEk"):sB"I1e?"1a,OcTc!K\pLe_geARDhmUlRj;YG:HL*70J_`#H'"<AgEs;1([@SHF('khT?g0u"ga2e_u\3l%a"@Z7\X%oNpV&G1Y:2r0BY&#bhh'Mju^SJ_eRo[.\;;Z?9#iu7?&?$)EpbAUZJQuES9<gDmrP<=_8eb0R7^)[_SaM[IUd!tue&b==6Wrg:QHVFr!6j!nF3.UC>e:T4o;FcS$[[1SOlPJ!rO-&7&+u,aSXK#)nPFjh5s&2'?DB.M+Th"TT27gIh^l2+G[M@$IIP2gYcV"*p)[p2cA>0cA4Ga*U/+qOhn6-iY5e#!gG&a$a]4lp:1#G^#onDnLrU&WWb!XQ7N@[b="A;?iR3\g;m@KS*9jNJtO+601s0mW"R/u-eY9RSo//gmO^Zcb".=FUr-RhNep1#teA!^F&f2^gXlIFjlGOoA6i*u'Nq>Tcn5MenQ\V$tLm%.cQjfsrGlX52ceqN>+PH'j2:Y#rg12BIBVX-XZTAe5lk>8,;$n;@4qM.-`O"Y_VL*H6ANl;TXh5a-XbCnMBY<6D7oL:7+*,7*sb.$WC!Bd+`8hc#I)j8""M>"]9-1dN*0M&>HbccOFkCb-AMXi<q3AK,iRn6A)B_%_=KVtkfZ92MN+ffGm(9eZhCMhK>0AE9b=`'AmJB_VIN[P4pLrQK:7'](<#[a,I_?)_AFENTL$06o\X)is#5`RO*SKl>[3Pol\N\Ct(#fiuePQasLY0IRd9qq=V=\-k\=<T)NQs4D,Ej>[7H,Qj5$[mEur':u'"kOptiIPS4#.1oA`=l]mKFs:?FF\[o:m,H'SLiF9\&?G*e!TuW3>fpqcRB5J)8:\bB*5KZ04=YdQ1L_J`>1AuYZD6p["eAh7uLj39/0/,.F,sMfOXC"+ZbOm>%D74V$k3m./*4(pjKg1Z"fDe29.FX+D,&2@PmciF*lOEZ\@4mZJ<a'&@;6C;7))B;Wo[ScOeR;)!9^1S.Hj$f(("RMt0cAH0V(_B_YV5^D+RnVZi#Dh7(oM[^!,qi6Ds4B:gGuU(2m6QRU8L@JUjt(>WU!ZFQPsg4"iA0@R;JWFl[.BNc+q]eiZnJgMILT>e#hB@d\^CNkW."aQs\n:T!ZC49Yk[NU+N/m_WcDbsbl,[3R]*%Wut8C#p7Ss_9pZRG/l,S^+_M3^#hos>]V=3%FgO:rZ-nl"k6P,6ekPW*i+3qLb2T)+du\CNM1e1!c'_7[quiP)$@p0elJnNqeG+?t_4=!6Yg&W82VlZ?RT3L$.*19\P"(`k&EQMoqb$l.=6EZ2^1",Xih&i2j'_<b&#[^Bd6W5HTiFg*R0*Jeqi"u%@f>,J&Y:/t^PAg*bsr";d<.N#rWc<'Qf.Oggk$PBahQO$b+p8/hmA0o&i%@tkbEEfhfLo.Mm5gt:3CC8GLCaDg/4NjbljS!:e<>jTY\IOpm>*+5>_^o$6FPe!cgQMqYLnuuC`6s6nG70HF]TT,1D..Dkc#[NHM5LMcn,1!I=j+-dT1$(E'j-2mP!F/W=BZ:-P)T3/P1(Xg#\?ki+gegBlUrc\..OI.H+];O%JO6Ol2DZqQj5+!@;%CF43@<PlI1T2eVXu?U;K8SLB'tr8+!PurrctM.o.Pi5n.!U7;+rl40"=[p_QT7[cV\3]YB3M4"?<1@.0m7C[4_+F]$]DUT@-SK*D1EqAlYtCQ$KEW)S&g#31_Q@nY)6ib71:r!Rs<0E'or6lA&=(D-94fpn2LIh+A7+8,<p7<:c5?L3&hesZ7J(5na?]UYA^7^dW73^(PbcZ5ogg$071oH7@$@87?=e]4*,a-kJI(C%5&aB$Vm>`<LlN&s2D<hD@$NGS:+q.jNAO.F$TT(V4hriA&aeT9oWOfb38IuS:;eG3ljX!c2",?oT_r&+&H2\4JP]ofFg4+E6+p!!5IA?2WR?R&c<G5`E5l=9"\O_9+)gs)@uWH0uBDT:VZ&A6-79qlP'\T-f4V)3g]B`,M6DTl%H<g+T-ZhDl?6*L7ub^QH"~>endstream
-endobj
-41 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2177
->>
-stream
-Gb"/'gN)%,&:O:SlslJ`1]S0$pap?Q:-.W5ii%:5@1n`:PCs"#ES[he!ka=e84Ln$Ff2La2@Sq)(5q"$4f1L66g`2Z#P`!>V_9Jq#0R`XcgbE=)U=Zsmn]GrnjsCE'=s]&*rZY;b?_XQjeMl8EdXN'jM1kP8iY&Qh+;B61rbJBA'8:Hkd_BIf7&;2;&]3Lo\(_?eg"rC204#JbX=(`Zq-n'0.WGX=m*?BpHQIa#*r&Ec%.)5=KhNiX<g\m+SZ_5dRea)"oU,CLZ@/0OT^>mGXU[l2aGDgHUd$tJI4LBNs;Pg?litfX/BXQI+i_pldfdsXufLr\/0]0KuAt<q)u*@EebRH72n;mTu67tYVpaDK7`9T<I<#+1EHuAA\=SlZO*VXh8q2P1;jNAmSF1Z^g?/j2iKc"26^+rSOn6ta'31<ED)9u]aF@`C!V)S13)?i>6->5f;Y(H/?7-triG8UmW@+R`dD<(P<Qb@pWZr33-`Jf?..g$-1du^g/Q1``GUF_$(Po\)@\3?T\TH:qLr70$ms*q:'ZrbCJs#l1rJ1[MoTPoEA6kle$HB4_k@gn)qgWL?..G?-f<Y(@H@YVL<Pn=a%P3)QV:C;@<IrMaqEY7CXc>A*aIVpbuL0pBu,^s*.?g.BIreYr<O0X+h+IF/#D\XcD2lRm2e$1j9B7=i5R<-;!)6kYpjL^KJgrn6:8g)jS-moiPVa:3bQ\;f0cVWfG_5B$trL1>G-80at+F65"`<u%Rg=.=Y2iOQQjkDn[nYo7`H+7d-TE.Snh3#`>Wi(DP4j22F#(O4c!Q!1U.P^/Y0bQ^hlfY&=&d?Wu#<"q$Z168@52LR2;BUBL2PP1(AGVX80E22G2;4dYf1*3BjukHSLp>+l4',faI(&gaS^UG/#M!WN/u5-(I:G1MOmN`d?6K"B?5$>BD:l.c6-Zg[-7nX1O'\bM*L1T\>2/F#d;DnD&9C7@E-K!Z1NE"TlADU#?Vb>3..^;6n(OkOW$bK,D-N,W"/lE1A-X0>gP^=oDIO5YO7tUM^ieUm].e2s5t`SA.F97#5Fb#Q&EEc4/Wtjs;^NFRK2U`+]4d)0J-&@QqgkK_qO3mmU*cAAHd:0>r/L@<76UUaD,o,KsdqfUtFIrfZY&kK+)Hf;8q;8Xm^E4l_?F?:]Db-6<u/gL]*^Y)+pimSQKJ?FL(q+P,qan/PEH/JC70W>RhEQ,]nI.[=XJ5;n!r9!+@2SXWLl3%'SoIi]Q&X$0C)(+2H,]8niQ(UcXD$d/5p98dPYl=sO)K.=::S>6H*We,#S.7E^5Y]ZECeA-"P/QJo_M7"ttnY*dkO#Jme*LkFB>+@pU-0DnH7n6C6DfOSQ(kl"Y1pKYf/Zpl9>HQ,m#bijr:8\9D/<PHdJL]_I+UV7ReL4R<PcDs>\2$junWC_E,+9p,m'3:g<VB'ca!NUDGOq[!H=X8KCi:-ZH/`JJX+q;%&ZW@u/q+ruoZ<66YSWfQL:tgo'#VFVk`KZ+V-\JBr@oofT^OiCaJ7t_bgm:IU\bUM$l>JfpFC41JG1TIi3TMikrF'`6d@^=DYf*BU)nIfL]$c](>5/uZH.30[%hSCjETN0[(+%mQbJ\Q"qJS7qgrfuO^2lK9F#@;<$Ns>K+/:&JLB?3jSt$,rk;*[I5+0VR0V8)`lToerW-=C/f?`\_3rLHCV5g[;dRR59.VIi"8Fn#EXs*)WlXV%2@1MrqU9Rqo&*9@<@&#Tf4cE9lp:*gC1G_eOE^1`BT^J1Vgh8IV-FsLMbIRUk]i;?&/hp`)t>(OqE+@t)"j[*E=b[\*XZ^>gSKC\H;_3C@;dC5^HK3mp6_Wl(<$^X]JtE?ijWtV:Tg?g4chOs98[rrZ-'Nb;;Fn,9'E[aOLZ+I9CCMM7PIAqDIb^.PN0a0'GP\=/bNNc5ObMf*ZpdW>Tmn)\!>I0oWkT`9@lHk=3c2lUW4A=T/31i<Jotsm,A/QQ;+uB+d1RM>RMKT;4$hf)\BXd9DjdtmL%[H[i@C[Om#Ai9>dIb#K39W"er7V''G8,DC*0b9jJY]]i+Vpa0dOb2ETu6onbC"O#bF46E`.eB;;O"WE<X?V=A,BRqA)5EFdBb!/,b39;mb:lEW1-[OJtXj'?Us\5ig^S)D>e=J]duV93,l8>N^m0A6j&ZnRK_:W+'A?p9T`fLb\<"_Vn@)G^89O)c&W~>endstream
-endobj
-42 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2182
->>
-stream
-Gb"/'=``=U&:XAWfXEnsBE5^DjtoZ!9KJA)e*053'T.Jf-G2s&G19mV>ok\2Od)AHg2n6KCr)%K@^0$_+0Z_%IX(fM9E:[.iSlj&/muBtDAa56?bs)Efq2o3lT<>`_!k$%p_J=*_R*$^qo`+LVJeH04\3A3"V/C]%.DJFCE=?<NQ.8->gG/c(hW^KL;g^hfMHBt!,k$#:#a4scKB2/"=d"g.!MMN$'\GQ"NBd0bWiuB+kc2kZn7tA^(*%6\D'r0K1kGc/K5EFdm]&0KU0\aAp_$U@<0gca38jhjB,"VQk'sVEQh*Y:e4\Q6rW_l'g0+okAK$mpo^hQ*t7%:VD%/FDpn.c7dO9bq0ai`f!Il1NqV)Z-,;>'HM9k??iAW/Dc(En>.#C-!7N\XU0@*7LmD]1lHFQ8XB+Q?iSYVlSNfKu\>E]c#2VPUHMZAP,?[aOUpWoOmZU]2Ca?d2G$5WOQku-&WG;Eu([F&m#n%WLXCt"!\0sR1EI>\hD:]YL:[;+mhVl:2lJ6WMbMkQ4dD7)$,BPb72m^0<P$AlMU8GTQp*YHjF[fjh`*G#4ndd%qQ!>oD$5K\<0FHgYMc@eXNmRAo/q0pc+H:T'\P1@u\ME_\I@bIZ:GUo6\U$pS\%>X:g=%1j(G,h/q.`('Vd23+'72d96SS0GIm6[OYCQrY7Y=Xf*c5X*r20-,SWrN`=AQ!`*u^3-eqpZb8KCT"*D]<?XZ@mh4"2@O-cK[F7J,!V\ZO@<4cC6RdBmfi0QHor*5=T"S,.1Bc%V/9+ZM^Q@\W66Ui/S5#`G>s.0spc5^e]Fd!+1[_Sh`OD$$DPcN&mVbJ<*kK@`C$,Z5B)?a>2[DA#'BZT-]):k[Te3f*OOkJ/UkANd5oq+%*h.E:"q1XU<:8ej`qHhr*OLmmaANMpUI)UZu]X:\/9><@P739Mlu4HF#8K"7C[Wq98?&)p31+V4CM4i6Zfj[U2Ki+Fj@f"G7h&9U9U,uD=ST\)e8_D2B]OhAh&Ac(^l,PYbNmN>%Z1(Lakb/[m_'A:i"aXN"PU0tj+0l+eA\Ib+O^Z94NS4e$q#d5_cc&/Jl[-@shC\Duo`Nk/994K;mnJEYHpuY"K9&u<i/`?b317!'0b.&MhLbf\LiV>Q)'eb_4R*L:Yo826,f25QO0ut%F)G1&BgA/CCkioJX)2)3"Oda[!\SC^=MCSS(KWJ'sV'&D#?6$$h>6??(8tQrE]c\n+\sC<0&Le"ePh6d^_F<(!eeqi23!`#GI7gKHa#>D.?lQ5soH'#<r+`(\g?0Ol*j?0t%_)aT#L%h+"5]_C3nE6u&\.P5BluTKnr)ThL@#E?Me.0N(Ep>A5KGA!a2\VnP#E@r!P]a%2%7CmI3`\2mJLZ6<g3m"hbEqX]Qo7ej0q5=9uLnnAF+K.EAtK[3Bbth=pqh3*1S^gRpotI3#:[^eUWG@fub.MD^FNsI)pZuB&pQ7PkUF,Q"j7)8bSTKF*qqk#^e/<iNnha>F(OKmpcFJ'J8CX#$0J0a151#7BYfM=sZhQ889Yj!ZY]2`^n80EK#CeTHKV05VZ#:WFgqd&B6IrO\[CdlR8mI(E--d9op0.8Dg&SJ+*K]%$m=8emV7Y,!gUN&D-HmVbJ)W<B*XV*>6$OlJ@('GEF15/TTg)4N;@e^,dP-<P"4[J$OtR-':OPb;S!Y;I::bYb`i+*SV;*Het!"T:;1l?KCTXY@9h5%!?NFmp1N8AXAsg?B@^_%+[2jJ\9!eO4O1e"cOP_7ldq"CZ:')Fp'OG[G#'WVbt"D=4NF(Msi[S%E'YgXp/;%^4GUA#&1LHY.^XSJ3Nu*URh+U$$:a?X_snpkt&>jl`B<1K`!C=WZ*Z(m%KV`1qpirLDe*B<nm9V(hT@>+msLUH.+APMtQ5'I&#?NFGXh,4E\M6i+i[#p^06f@&4Sc$<C?n9++dUAWQfL9V2kLm]b_CPn&<)<kVT"3.?E!4#\OP3[P2$p->nET(c"W[e=*U-e(/`dbQZKDtKCJ.(#+cM4t^phB7OA%EfYPhh!k*f@O%OHiqT3D7N:]B(-.G5M[&^qOkH$DuLidM#U=(ial-L`=*E6/gUHtc%04/ldGG*CGglES):%(^o66H3lV%*%eD+)_03;EA1G4#j\:Ceq_Y'\;L;3A0G>'*bI0IZ.fQ@^gojo>1'9gN#jQ9SpABQN!]^&rd]Xu"~>endstream
-endobj
-43 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2209
->>
-stream
-Gb!#\=``=U&:XAWfLIm*."XDLQ;!H:3pB<J[BC<>64sqQ$:3BCIso'8%nW'XgM,BH4dP$F@^4SG>:]oFp_EW]cA>jZB`;%oY\:9ci><%VhU@t5`O?5m%mAAPa9ZV6$6=L!QL3Dul.:iFm*P5m"I,,9>?HPe7\;=pB`STON`MHSq13#`12QnVL*MB?\Q#\VJ`nr=,-`o$b=*3.;4SIOWL^&#:9)G-W7q2:M_DG^`\J&?\rJYLr",tVPW<.LLnjU4NXJ>6k#98[kQaFJZ<>!@X[U+V[]ik\_t<HYj#_qB0SWt>#cLLb1VF0gDj9L*#N>;Z#R^;fbT$^XZ"67gT4D9baFp:>R\EXr/aM4N/_3Qeo5.X\[&V9=Q@jVJ3,VU&T5)*"W[O3VQ2WA9UOS6iDJA`$g$bi@F(ufU4]VBlWleqeWN"`F>,@X_lR;a)Bi14]iKN7Vhe$S%`0-ip/M#)57F`<o%gVg$9&<T_/K\C7dg4SQ-So(B[56\]GYF<G6%;YIg7S"X;)[qK:?SCOUC]WF(8&LQ^?GjScE`/k,J.c_W4Ztu"]2uH5*jDD#Nqu71J$N_DI3,:4@XPWFZN_@)"(_R41RkIa0Ri"lHT,-[2g1u2)%39i<np7cg62&e-s#OJpbJfpi9+Kf<C;JjP^t3V0alH**9gd&I0lR[,:BIAI;*?q!,;3<Sf_<6cRSADpT0B,FZ/UlDMt0L/WFKL+Ura".Y5$gX3fS6UOSfG=VRU2YmEIejqt1d7nUk[YH[jLI2`bO#Z5L>`U%$RglOG#,E5E9/AD7T4Z..X5p_or_0)G0PHR87=s0OMNjZ<(=ThSpu-d]PK>%#YhR`Bm[.$:4f")MqNgH#A;#MJLDG@]apZudr(#bZi,R1M0dY(f*[cqui4QFP^jpsmgXLY@at,QF-c0EDg9^brAW?W(9FoB#iBB3P?Y!D;m5XULbI:JsK7Z]-AS#(:5`)=89N7K@57&Yd=3&^dZ/geFGMl`L/D?a&M34hFDB%E_YG58rkr:A#VWH&rB4_>U9>%L1(]:K2_ApB5@%PuPI+d#=ZC9KX@"!Rf\<#=66W&jlhXHt*`ssWT0q"?X4/,QW@d>M4;^+#sa&Bj1V9]<TaW*>*#GWX!q`C5VNLo`)h\(GuS*21N.f`3g='/X,m!]G.j821GoZ?20h59k"$@,9K=fE*Z<IOVg!>OQD=7(N<Gm*83d5GbSam\.bl&DL7N11fLe-6eoWMQV[n`0:pd43a>bbLs0!SZApZ0,h6:KK<aF]=<G.PRqM@aNT:TVHeK5]]@aF8+2jR+0P<33H)j8RJ*CagWkQW#bOlSZP>@mhhaB[MCk/pNGgL>g?Z"m_\q(9nbAtaZ9$q]adOO$2;3L:\T301`Wu9obBtXMJdj9N_&-d\3;IPWbe\;cBMS?-+_f7DkafJ;98j![)mJj((s=ME&:uh9jBUlp?@o5p$($(186D#U9mt..bjiIc'\m:/o`Ns;RO&%DCHhXp/4F&n8n#^"ni'\1+Bcm%RB9tXi;&6Pq":og/W=kP[3sbW2h[f@MlAjRY8r"L*>&?>Cu7IQKeeeS?9)]4/J6L<rdO\\>p+.&@q"_b&nW?5jWAk<R$g5b3q*'>$R*8Km"kf``I/7$42nP!1$=gc>=?aFCi_Ll+=AAP:X*4+@&l]k5mk-mt)q6I(j%M:1OUY*08f3L\\3i8mL`kJ5!=G1r(=[\QH4q1K9)6\"U5d@\+qZTmpmBLu#cBo]G9$hqo8rZIGdYY-RUV7Sk4AgI<`Rs&*4Q/CQ.(V#6828W1DK$,WR^3SVC(=Xu.F9t6p7e0m=q6hj>Wp'&)2"_<KCYOG8FQpr,>f^B89nW^0R1>s'\PKra)87>Fl3^d;gX_HUeM15GS0t#[n4.+qQ"o-@:gp<=$f]Mji!T64<$OR@&]E30hM<]M0`n!X;,>2)nh>nAZ2(n=-kKC7J]%tm9qj&E-o3gJ?IaAM$?W4JN]CVJ3:YWi_hq7g!hrHpq+uasL'*%?W:Zsq1`FiSKGjuYrIe:TlkaMe+R8RbW(83[ieA)fZG8T3/9@FU;9tiIWEnuj)9#!7V9\*mT2=t>kqV;Ad;gJrE`JB@Qc[ff;G9+9+TDW(UaRqZBijl>W&nBK6Io1$O[>-ma>3;&*ce.HdN?;PBGicj<rhmXsfA3pR_t@lIVo^=2Su/*dH^]9/n7h/Zb;]AJ\_#m2<O/O2XWUpI"9#csOo~>endstream
+Gb!$F;0/Kj&:i[0/,$+59qk0F#kZbEPFH`YRHB5g+G2@)J:']%EIWC<fQ$h>I8/&>_&gB-.quD`<kHP*ig5Z!]ES'fKA1_WN'gVI'1>+Z!-d,Hf;g:3fNqb",`5#)6'>+Y8Lgt5d;&qFCtF9V*?$.86V:l7+_u:c:i$HeE$E1VKIY-/"N#C7'L!4DE<:%N60SOt5=>-G:n&jF;j@D]Os[0DB-Kd];!P%_Srsq;`'gk``t0OB`EBto-pM.d<(':dS'u.\0qm6l6<44f0pG/@DXSfH6.'`\-Gi;J7kKeR[X]=,Y@$U5"cl%2lPi'u%[PE(kKqd^]=s$](3I#@NNRC&bf2BC:MB8CD/eT4,I"'ZfH_[KJ'JE@T0'JJas%G_*&_F7DgH(-oPR<7s#/\EYR+P?S"$lUF2u:CXCPS+_tM@`H>hF$d+7BFC!C5)E>212k&4_si+0c:U"CX#bk+(qnl=L5B/ZDaVXnqZN3]]=.-h*9EG\s]44E:-i^kGYZO;-Mgj)@Oc>tjkIf;(o*eng28#j7>%2:_h07lio.H.T@GB3,];T336o@(3k;$:!ED7]E6[=PnV[D!-Y_fN0U4n5`T1Ampll0RD913\1==pS;tdrB;>ROqpIi_9G,`q?b,^m=KQelOb;b\`7LK0.f1,VKd3c9D;kF(ERF35tMW'KO.+p_f$gJ\J>N46hQ&nhaKE')fLL2l#7R:gY*]Z"icTWohjm6[2HdG12)QUVqM9nP]r/&!)OVhr%N@\0hkA-MG56Z*TZ?ZV,_rgjPM]=tHYE,^nitIgD2Ys&?5*?``/H3Yuee30f/FJD1%aX=3qK\4)!;._^kNiZK\1oj?_A;G[d-VnCR5QU#QRFSO3Wh.&'q61h,LIk*j-=1i09_0NfNrUS_'*GLE6hd](kQobc90K=E.IrcDOMMQ];1bBgaM9]oNE\R-=SajS$*i5X,E5M<lAUD%0U`(s1dJ*_d(e\C%)YUN%N76g4k%qXkm0;`m\O^s^qq>8``Bk&'Y$k=W^`$Wtd\TH4#Pgi!rXr[FmDCo%k/.+o1OZYepc*5(nn1nVeD6VE(-C!_/NVhJEjIDRI&/uJFp!FIld"j0#n_@,1IIbci!-8\hM?X#pD^e7SX-/$0=>q5Opt[p"'g_@]`~>endstream
 endobj
 xref
-0 44
+0 35
 0000000000 65535 f 
 0000000061 00000 n 
 0000000112 00000 n 
 0000000219 00000 n 
 0000000331 00000 n 
-0000000526 00000 n 
-0000000721 00000 n 
-0000000916 00000 n 
-0000001111 00000 n 
-0000001306 00000 n 
-0000001411 00000 n 
-0000001607 00000 n 
-0000001803 00000 n 
-0000001999 00000 n 
-0000002195 00000 n 
-0000002391 00000 n 
-0000002587 00000 n 
-0000002783 00000 n 
-0000002979 00000 n 
-0000003175 00000 n 
-0000003371 00000 n 
-0000003567 00000 n 
-0000003763 00000 n 
-0000003959 00000 n 
-0000004029 00000 n 
-0000004313 00000 n 
-0000004492 00000 n 
-0000007266 00000 n 
-0000009778 00000 n 
-0000010591 00000 n 
-0000013543 00000 n 
-0000014518 00000 n 
-0000016065 00000 n 
-0000016976 00000 n 
-0000017833 00000 n 
-0000019234 00000 n 
-0000020540 00000 n 
-0000020975 00000 n 
-0000023371 00000 n 
-0000025822 00000 n 
-0000028446 00000 n 
-0000030960 00000 n 
-0000033229 00000 n 
-0000035503 00000 n 
+0000000436 00000 n 
+0000000641 00000 n 
+0000000846 00000 n 
+0000001051 00000 n 
+0000001256 00000 n 
+0000001461 00000 n 
+0000001667 00000 n 
+0000001754 00000 n 
+0000002015 00000 n 
+0000002089 00000 n 
+0000002216 00000 n 
+0000002314 00000 n 
+0000002434 00000 n 
+0000002580 00000 n 
+0000002699 00000 n 
+0000002837 00000 n 
+0000002968 00000 n 
+0000003095 00000 n 
+0000003237 00000 n 
+0000003370 00000 n 
+0000003514 00000 n 
+0000003634 00000 n 
+0000003752 00000 n 
+0000003871 00000 n 
+0000003962 00000 n 
+0000006739 00000 n 
+0000009593 00000 n 
+0000012172 00000 n 
+0000014969 00000 n 
+0000018517 00000 n 
 trailer
 <<
 /ID 
-[<066a487902758a41040e1769fc457905><066a487902758a41040e1769fc457905>]
+[<d0fcfa7eb1ef8389db5e89741d088955><d0fcfa7eb1ef8389db5e89741d088955>]
 % ReportLab generated PDF document -- digest (opensource)
 
-/Info 24 0 R
-/Root 23 0 R
-/Size 44
+/Info 12 0 R
+/Root 11 0 R
+/Size 35
 >>
 startxref
-37804
-%%EOF
-
-4 0 obj
-<</Type/Page/Contents[50 0 R 51 0 R 53 0 R 55 0 R 56 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R/hebo 54 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-5 0 obj
-<</Type/Page/Contents[59 0 R 60 0 R 61 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-6 0 obj
-<</Type/Page/Contents[64 0 R 65 0 R 66 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-7 0 obj
-<</Type/Page/Contents[71 0 R 72 0 R 73 0 R 74 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-8 0 obj
-<</Type/Page/Contents[77 0 R 78 0 R 79 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-10 0 obj
-<</Type/Page/Contents[82 0 R 83 0 R 84 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/F3 9 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-11 0 obj
-<</Type/Page/Contents[87 0 R 88 0 R 89 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F3 9 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-12 0 obj
-<</Type/Page/Contents[92 0 R 93 0 R 94 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F3 9 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-13 0 obj
-<</Type/Page/Contents[97 0 R 98 0 R 99 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F3 9 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-14 0 obj
-<</Type/Page/Contents[102 0 R 103 0 R 104 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F3 9 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-15 0 obj
-<</Type/Page/Contents[107 0 R 108 0 R 109 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F3 9 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-16 0 obj
-<</Type/Page/Contents[112 0 R 113 0 R 114 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-17 0 obj
-<</Type/Page/Contents[117 0 R 118 0 R 119 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-18 0 obj
-<</Type/Page/Contents[122 0 R 123 0 R 124 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-19 0 obj
-<</Type/Page/Contents[127 0 R 128 0 R 129 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-20 0 obj
-<</Type/Page/Contents[132 0 R 133 0 R 134 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-21 0 obj
-<</Type/Page/Contents[137 0 R 138 0 R 139 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-22 0 obj
-<</Type/Page/Contents[142 0 R 143 0 R 144 0 R]/MediaBox[0 0 612 792]/Parent 25 0 R/Resources<</Font<</F1 2 0 R/F2 3 0 R/helv 52 0 R>>>>/Rotate 0/Trans<<>>/Annots[]>>
-endobj
-
-44 0 obj
-<</Type/Annot/Subtype/Redact/P 4 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 45 0 R>>/NM(fitz-A0)>>
-endobj
-
-45 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-46 0 obj
-<</Type/Annot/Subtype/Redact/P 4 0 R/F 4/Rect[161.34 684.746 450.66 716.04]/IC[1 1 1]/AP<</N 47 0 R>>/NM(fitz-A1)>>
-endobj
-
-47 0 obj
-<</Type/XObject/Subtype/Form/BBox[161.34 684.746 450.66 716.04]/Matrix[1 0 0 1 0 0]/Length 66/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.C3#=c3S=s3Ö\.K=33∏@L¿‹–Tœ¿»áÍÄÛ14‡2›Ñt#É¶¨
-endstream
-endobj
-
-48 0 obj
-<</Type/Annot/Subtype/Redact/P 4 0 R/F 4/Rect[44.6 552.0692 546.6751 565.71]/IC[1 1 1]/AP<</N 49 0 R>>/NM(fitz-A2)>>
-endobj
-
-49 0 obj
-<</Type/XObject/Subtype/Form/BBox[44.6 552.0692 546.6751 565.71]/Matrix[1 0 0 1 0 0]/Length 65/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.S=3SSc=3K#Ö\.SêÄπ©!B,IÃÃDœ‹(—„a”É€\T3*PÕ :Æ
-endstream
-endobj
-
-50 0 obj
-<</Length 5870>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 1)Tj T* ET Q q 1 0 0 1 45.6 688 cm .043137 .121569 .2 rg BT 26 TL/F2 22 Tf 1 0 0 1 116.74 4 Tm T* ET Q q 1 0 0 1 45.6 652 cm .278431 .333333 .411765 rg BT 13 TL/F1 10 Tf 1 0 0 1 11.13 16 Tm (Repository-wide PDF report generated from the tracked source tree, local workspace inventory, and the latest 10)Tj T* 166.195 0 Td (commits on the current `main` HEAD.)Tj T* ET Q q 1 0 0 1 45.6 618 cm .278431 .333333 .411765 rg BT 13 TL/F1 10 Tf 1 0 0 1 13.05 16 Tm (Generated on 2026-04-11 17:04:49 CST. Commit window covered in the appendix: 2026-04-08T21:22:26-06:00)Tj T* 165.355 0 Td (through 2026-04-11T16:51:46-06:00.)Tj T* ET Q q 1 0 0 1 45.6 596.48 cm .796078 .835294 .882353 RG 1 J 0 0 m 520.8 0 l S Q q 1 0 0 1 45.6 528.52 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 38.8 Tm (Tlamatini is a locally deployed AI developer assistant built on Django, Django Channels, and a large in-repo `agent` application.)Tj T* T* (catalog of workflow agents that can act on local files, APIs, infrastructure, communication channels, and operating-system)Tj T* (resources.)Tj T* ET Q q 1 0 0 1 45.6 486.52 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 26.8 Tm (The core application lives under `Tlamatini/agent/` and is supported by the Django project configuration under)Tj T* (`Tlamatini/tlamatini/`, packaging and installer scripts at repository root, a bundled `jd-cli` Java decompiler, and documentation)Tj T* (artifacts such as `README.md`, `CLAUDE.md`, and agent-specific markdown guides.)Tj T* ET Q q 1 0 0 1 45.6 432.52 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 38.8 Tm (Architecturally, the codebase exposes two main interaction modes: a real-time chat surface backed by WebSockets and a)Tj T* (drag-and-drop workflow designer that deploys and coordinates 57 agent templates. The recent commit history shows active)Tj T* (work in two hotspots: Multi-Turn orchestration for chat requests and Parametrizer hardening for deterministic agent-to-agent)Tj T* (handoff.)Tj T* ET Q q 1 0 0 1 45.6 387.32 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Repository Facts)Tj T* ET Q q 1 0 0 1 45.6 185.32 cm .070588 .231373 .388235 rg 0 194 432 -24 re f* 1 1 1 rg 0 170 432 -17 re f* .972549 .980392 .988235 rg 0 153 432 -17 re f* 1 1 1 rg 0 136 432 -17 re f* .972549 .980392 .988235 rg 0 119 432 -17 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 179.5 Tm (Measure)Tj T* ET BT 1 0 0 1 188.6 179.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 158.3 Tm (Tracked files in git tree)Tj T* ET BT 1 0 0 1 188.6 158.3 Tm (340)Tj T* ET BT 1 0 0 1 5 141.3 Tm (Agent templates under `Tlamatini/agent/agents/`)Tj T* ET BT 1 0 0 1 188.6 141.3 Tm (57)Tj T* ET BT 1 0 0 1 5 124.3 Tm (Django migration files)Tj T* ET BT 1 0 0 1 188.6 124.3 Tm (70)Tj T* ET BT 1 0 0 1 5 107.3 Tm (Frontend JavaScript modules)Tj T* ET BT 1 0 0 1 188.6 107.3 Tm (24)Tj T* ET BT 1 0 0 1 5 90.3 Tm (Frontend CSS files)Tj T* ET BT 1 0 0 1 188.6 90.3 Tm (5)Tj T* ET BT 1 0 0 1 5 73.3 Tm (HTML templates)Tj T* ET BT 1 0 0 1 188.6 73.3 Tm (4)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Effective tracked source/doc lines counted)Tj T* ET BT 1 0 0 1 188.6 56.3 Tm (69,166)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Python requirements)Tj T* ET BT 1 0 0 1 188.6 39.3 Tm (61)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Node dev dependencies)Tj T* ET BT 1 0 0 1 188.6 22.3 Tm (3)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Current HEAD)Tj T* ET BT 1 0 0 1 188.6 5.3 Tm (34e4e08 \(Just linting Parametrizer agent, by angelahack1\))Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 194 m 432 194 l S 0 0 m 432 0 l S 0 0 m 0 194 l S 432 0 m 432 194 l S 0 170 m 432 170 l S 0 153 m 432 153 l S 0 136 m 432 136 l S 0 119 m 432 119 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 183.6 0 m 183.6 194 l S Q Q q 1 0 0 1 45.6 144.68 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Primary Subsystems)Tj T* ET Q q 1 0 0 1 45.6 54.68 cm .070588 .231373 .388235 rg 0 82 432 -24 re f* 1 1 1 rg 0 58 432 -24.8 re f* .972549 .980392 .988235 rg 0 33.2 432 -33.2 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 67.5 Tm (Subsystem)Tj T* ET BT 1 0 0 1 95 67.5 Tm (Primary paths)Tj T* ET BT 1 0 0 1 271.4 67.5 Tm (Role)Tj T* ET q 1 0 0 1 5 45.6 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 1.2 Tm (Django app + runtime)Tj T* ET Q q 1 0 0 1 95 37.2 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (`Tlamatini/agent/`, `Tlamatini/tlamatini/`,)Tj T* (`Tlamatini/manage.py`)Tj T* ET Q q 1 0 0 1 271.4 37.2 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (Core web app, chat handling, models, routing,)Tj T* (settings, and ASGI startup.)Tj T* ET Q q 1 0 0 1 5 20.8 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 1.2 Tm (RAG + orchestration)Tj T* ET Q q 1 0 0 1 95 4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 18 Tm (`Tlamatini/agent/rag/`, `mcp_agent.py`,)Tj T* (`global_execution_planner.py`,)Tj T* (`capability_registry.py`, `chat_agent_runtime.py`)Tj T* ET Q q 1 0 0 1 271.4 4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 18 Tm (Retrieval chains, tool-capability scoring, global)Tj T* (execution planning, multi-turn execution, and)Tj T* (wrapped-agent runtime isolation.)Tj T* ET Q q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 82 m 432 82 l S 0 0 m 0 82 l S 432 0 m 432 82 l S 0 0 m 432 0 l S 0 58 m 432 58 l S 0 33.2 m 432 33.2 l S 90 0 m 90 82 l S 266.4 0 m 266.4 82 l S Q Q Q
-endstream
-endobj
-
-51 0 obj
-<</Length 105/Filter/FlateDecode>>
-stream
-x⁄Öç+√@πO·<˘∑ˆöñßw®ö‹t£ÚVèx£°ì|"y@•∫∏j¨än„ÎM)ﬂ{=˘◊Œ⁄àN“TxpŒ@E≤ÕÜª¬:Dˇ»wt$Wh»ÇÎ‚»ê˘”˛ T#)
-endstream
-endobj
-
-52 0 obj
-<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>
-endobj
-
-53 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-54 0 obj
-<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>
-endobj
-
-55 0 obj
-<</Length 119/Filter/FlateDecode>>
-stream
-x⁄uÃ;
-BAD—ºWQ+ª{˙„Äº@¡LôLL‘ß&"∫ˇ¿qR…ÖEoZwò@BK5DSÙ'-Û˘}Ca´RS=QD≈cEqÿ˛•œ«ï[\B‚í-ÊqÕ&…… ^”á¸L≥Mßæ£Mß=}ˇ£º
-endstream
-endobj
-
-56 0 obj
-<</Length 211/Filter/FlateDecode>>
-stream
-x⁄Öé±n√0Dw}Öæ@5)ÒEá EÄnº]‚⁄Õ–Õ–ÔœQm≥÷Ü-Út|ºÙïˆsí<Òï‹¨ õY©öÁœtw^?æs/l∂\&å«Yı&‚∞\ƒ4Í]>˛1\ﬁÛÀΩ5,ºAº°cE◊	Ωy•"¸‘õªWj™q/Q£çâ]t2k]óò¿:˛‹âu∞Î/ô]ê@ó1“ïö«â˚%ˆÒ¶E
-úÃÂ'68ù'H	ZÂ·é”_ÇëÌñùJ{xùü“„úû”LGOÃ
-endstream
-endobj
-
-57 0 obj
-<</Type/Annot/Subtype/Redact/P 5 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 58 0 R>>/NM(fitz-A0)>>
-endobj
-
-58 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-59 0 obj
-<</Length 7181>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 2)Tj T* ET Q q 1 0 0 1 45.6 589.6 cm .070588 .231373 .388235 rg 0 156.8 432 -24 re f* 1 1 1 rg 0 132.8 432 -41.6 re f* .972549 .980392 .988235 rg 0 91.2 432 -33.2 re f* 1 1 1 rg 0 58 432 -24.8 re f* .972549 .980392 .988235 rg 0 33.2 432 -33.2 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 142.3 Tm (Subsystem)Tj T* ET BT 1 0 0 1 95 142.3 Tm (Primary paths)Tj T* ET BT 1 0 0 1 271.4 142.3 Tm (Role)Tj T* ET q 1 0 0 1 5 120.4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 1.2 Tm (Workflow agents)Tj T* ET Q q 1 0 0 1 95 120.4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 1.2 Tm (`Tlamatini/agent/agents/*`)Tj T* ET Q q 1 0 0 1 271.4 95.2 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 26.4 Tm (57 reusable agent templates covering control)Tj T* (flow, routing, monitoring, notifications, file)Tj T* (operations, APIs, infrastructure, and)Tj T* (cryptography.)Tj T* ET Q q 1 0 0 1 5 78.8 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 1.2 Tm (Frontend)Tj T* ET Q q 1 0 0 1 95 70.4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (`Tlamatini/agent/templates/agent/*`,)Tj T* (`Tlamatini/agent/static/agent/*`)Tj T* ET Q q 1 0 0 1 271.4 62 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 18 Tm (Browser UI for chat and the agentic control)Tj T* (panel, including 24 tracked JS modules and 5)Tj T* (tracked CSS files.)Tj T* ET Q q 1 0 0 1 5 45.6 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 1.2 Tm (Packaging and install)Tj T* ET Q q 1 0 0 1 95 37.2 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (`build.py`, `build_installer.py`, `build_uninstaller.py`,)Tj T* (`install.py`, `uninstall.py`)Tj T* ET Q q 1 0 0 1 271.4 37.2 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (PyInstaller packaging plus GUI installer and)Tj T* (uninstaller generation.)Tj T* ET Q q 1 0 0 1 5 12.4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (Documentation and)Tj T* (assistant context)Tj T* ET Q q 1 0 0 1 95 4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 18 Tm (`README.md`, `CLAUDE.md`,)Tj T* (`NEW_AGENT_RECOMMENDATIONS.md`, agent)Tj T* (markdown guides)Tj T* ET Q q 1 0 0 1 271.4 12.4 cm .066667 .094118 .152941 rg BT 8.4 TL/F1 7.2 Tf 1 0 0 1 0 9.6 Tm (User-facing documentation, AI-assistant)Tj T* (onboarding, and agent authoring guidance.)Tj T* ET Q q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 156.8 m 432 156.8 l S 0 132.8 m 0 156.8 l S 0 0 m 0 132.8 l S 432 132.8 m 432 156.8 l S 432 0 m 432 132.8 l S 0 0 m 432 0 l S 0 132.8 m 432 132.8 l S 90 132.8 m 90 156.8 l S 266.4 132.8 m 266.4 156.8 l S 0 91.2 m 432 91.2 l S 0 58 m 432 58 l S 0 33.2 m 432 33.2 l S 90 0 m 90 132.8 l S 266.4 0 m 266.4 132.8 l S Q Q q 1 0 0 1 45.6 548.96 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Dependency Highlights)Tj T* ET Q q 1 0 0 1 45.6 528.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Python stack highlights: Django, Channels, LangChain, LangGraph, FAISS, Anthropic, Ollama, Playwright, PyInstaller.)Tj T* ET Q q 1 0 0 1 45.6 510.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Node development tooling: @eslint/js, eslint, globals.)Tj T* ET Q q 1 0 0 1 45.6 480.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 14.8 Tm (The current requirements file emphasizes local LLM operation, cloud LLM access, browser automation, document extraction,)Tj T* (cryptography, and frozen-Windows packaging.)Tj T* ET Q q 1 0 0 1 45.6 435.76 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Tracked Top-Level Breakdown)Tj T* ET Q q 1 0 0 1 45.6 46.76 cm .070588 .231373 .388235 rg 0 381 432 -24 re f* 1 1 1 rg 0 357 432 -17 re f* .972549 .980392 .988235 rg 0 340 432 -17 re f* 1 1 1 rg 0 323 432 -17 re f* .972549 .980392 .988235 rg 0 306 432 -17 re f* 1 1 1 rg 0 289 432 -17 re f* .972549 .980392 .988235 rg 0 272 432 -17 re f* 1 1 1 rg 0 255 432 -17 re f* .972549 .980392 .988235 rg 0 238 432 -17 re f* 1 1 1 rg 0 221 432 -17 re f* .972549 .980392 .988235 rg 0 204 432 -17 re f* 1 1 1 rg 0 187 432 -17 re f* .972549 .980392 .988235 rg 0 170 432 -17 re f* 1 1 1 rg 0 153 432 -17 re f* .972549 .980392 .988235 rg 0 136 432 -17 re f* 1 1 1 rg 0 119 432 -17 re f* .972549 .980392 .988235 rg 0 102 432 -17 re f* 1 1 1 rg 0 85 432 -17 re f* .972549 .980392 .988235 rg 0 68 432 -17 re f* 1 1 1 rg 0 51 432 -17 re f* .972549 .980392 .988235 rg 0 34 432 -17 re f* 1 1 1 rg 0 17 432 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 366.5 Tm (Top-level path)Tj T* ET BT 1 0 0 1 235.4 366.5 Tm (Tracked file count)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 345.3 Tm (Tlamatini)Tj T* ET BT 1 0 0 1 235.4 345.3 Tm (313)Tj T* ET BT 1 0 0 1 5 328.3 Tm (.gitignore)Tj T* ET BT 1 0 0 1 235.4 328.3 Tm (1)Tj T* ET BT 1 0 0 1 5 311.3 Tm (CLAUDE.md)Tj T* ET BT 1 0 0 1 235.4 311.3 Tm (1)Tj T* ET BT 1 0 0 1 5 294.3 Tm (CreateShortcut.json)Tj T* ET BT 1 0 0 1 235.4 294.3 Tm (1)Tj T* ET BT 1 0 0 1 5 277.3 Tm (CreateShortcut.ps1)Tj T* ET BT 1 0 0 1 235.4 277.3 Tm (1)Tj T* ET BT 1 0 0 1 5 260.3 Tm (LICENSE)Tj T* ET BT 1 0 0 1 235.4 260.3 Tm (1)Tj T* ET BT 1 0 0 1 5 243.3 Tm (NEW_AGENT_RECOMMENDATIONS.md)Tj T* ET BT 1 0 0 1 235.4 243.3 Tm (1)Tj T* ET BT 1 0 0 1 5 226.3 Tm (README.md)Tj T* ET BT 1 0 0 1 235.4 226.3 Tm (1)Tj T* ET BT 1 0 0 1 5 209.3 Tm (RemoveShortcut.ps1)Tj T* ET BT 1 0 0 1 235.4 209.3 Tm (1)Tj T* ET BT 1 0 0 1 5 192.3 Tm (Tlamatini.ico)Tj T* ET BT 1 0 0 1 235.4 192.3 Tm (1)Tj T* ET BT 1 0 0 1 5 175.3 Tm (Tlamatini.jpg)Tj T* ET BT 1 0 0 1 235.4 175.3 Tm (1)Tj T* ET BT 1 0 0 1 5 158.3 Tm (Tlamatini.ps1)Tj T* ET BT 1 0 0 1 235.4 158.3 Tm (1)Tj T* ET BT 1 0 0 1 5 141.3 Tm (Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx)Tj T* ET BT 1 0 0 1 235.4 141.3 Tm (1)Tj T* ET BT 1 0 0 1 5 124.3 Tm (build.py)Tj T* ET BT 1 0 0 1 235.4 124.3 Tm (1)Tj T* ET BT 1 0 0 1 5 107.3 Tm (build_installer.py)Tj T* ET BT 1 0 0 1 235.4 107.3 Tm (1)Tj T* ET BT 1 0 0 1 5 90.3 Tm (build_uninstaller.py)Tj T* ET BT 1 0 0 1 235.4 90.3 Tm (1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (eslint.config.mjs)Tj T* ET BT 1 0 0 1 235.4 73.3 Tm (1)Tj T* ET BT 1 0 0 1 5 56.3 Tm (googler_mcp.py)Tj T* ET BT 1 0 0 1 235.4 56.3 Tm (1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (install.py)Tj T* ET BT 1 0 0 1 235.4 39.3 Tm (1)Tj T* ET BT 1 0 0 1 5 22.3 Tm (mouse_mover.py)Tj T* ET BT 1 0 0 1 235.4 22.3 Tm (1)Tj T* ET BT 1 0 0 1 5 5.3 Tm (package.json)Tj T* ET BT 1 0 0 1 235.4 5.3 Tm (1)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 381 m 432 381 l S 0 0 m 0 381 l S 432 0 m 432 381 l S 0 0 m 432 0 l S 0 357 m 432 357 l S 0 340 m 432 340 l S 0 323 m 432 323 l S 0 306 m 432 306 l S 0 289 m 432 289 l S 0 272 m 432 272 l S 0 255 m 432 255 l S 0 238 m 432 238 l S 0 221 m 432 221 l S 0 204 m 432 204 l S 0 187 m 432 187 l S 0 170 m 432 170 l S 0 153 m 432 153 l S 0 136 m 432 136 l S 0 119 m 432 119 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 230.4 0 m 230.4 381 l S Q Q Q
-endstream
-endobj
-
-60 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-61 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-62 0 obj
-<</Type/Annot/Subtype/Redact/P 6 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 63 0 R>>/NM(fitz-A0)>>
-endobj
-
-63 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-64 0 obj
-<</Length 1578>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 3)Tj T* ET Q q 1 0 0 1 45.6 603.4 cm .070588 .231373 .388235 rg 0 143 432 -24 re f* 1 1 1 rg 0 119 432 -17 re f* .972549 .980392 .988235 rg 0 102 432 -17 re f* 1 1 1 rg 0 85 432 -17 re f* .972549 .980392 .988235 rg 0 68 432 -17 re f* 1 1 1 rg 0 51 432 -17 re f* .972549 .980392 .988235 rg 0 34 432 -17 re f* 1 1 1 rg 0 17 432 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 128.5 Tm (Top-level path)Tj T* ET BT 1 0 0 1 235.4 128.5 Tm (Tracked file count)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 107.3 Tm (prompts_example.txt)Tj T* ET BT 1 0 0 1 235.4 107.3 Tm (1)Tj T* ET BT 1 0 0 1 5 90.3 Tm (register_flw.ps1)Tj T* ET BT 1 0 0 1 235.4 90.3 Tm (1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (requirements.txt)Tj T* ET BT 1 0 0 1 235.4 73.3 Tm (1)Tj T* ET BT 1 0 0 1 5 56.3 Tm (tlamatini_app_summary.pdf)Tj T* ET BT 1 0 0 1 235.4 56.3 Tm (1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (trigger_jenkins.py)Tj T* ET BT 1 0 0 1 235.4 39.3 Tm (1)Tj T* ET BT 1 0 0 1 5 22.3 Tm (uninstall.py)Tj T* ET BT 1 0 0 1 235.4 22.3 Tm (1)Tj T* ET BT 1 0 0 1 5 5.3 Tm (unregister_flw.ps1)Tj T* ET BT 1 0 0 1 235.4 5.3 Tm (1)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 143 m 432 143 l S 0 119 m 0 143 l S 0 0 m 0 119 l S 432 119 m 432 143 l S 432 0 m 432 119 l S 0 0 m 432 0 l S 0 119 m 432 119 l S 230.4 119 m 230.4 143 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 230.4 0 m 230.4 119 l S Q Q Q
-endstream
-endobj
-
-65 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-66 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-67 0 obj
-<</Type/Annot/Subtype/Redact/P 7 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 68 0 R>>/NM(fitz-A0)>>
-endobj
-
-68 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-69 0 obj
-<</Type/Annot/Subtype/Redact/P 7 0 R/F 4/Rect[44.6 84.34918 567.3998 97.98999]/IC[1 1 1]/AP<</N 70 0 R>>/NM(fitz-A1)>>
-endobj
-
-70 0 obj
-<</Type/XObject/Subtype/Form/BBox[44.6 84.34918 567.3998 97.98999]/Matrix[1 0 0 1 0 0]/Length 70/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.S=3S=cKCÖ\.S33=cKKÑXBÃ“Lœ“¬““(÷áƒ«¶ßŸËÊ ©A77 E◊"
-endstream
-endobj
-
-71 0 obj
-<</Length 9527>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 4)Tj T* ET Q q 1 0 0 1 45.6 726.4 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Effective Source Line Inventory)Tj T* ET Q q 1 0 0 1 45.6 694.4 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 14.8 Tm (Methodology: counts were computed on tracked text files only. Effective lines exclude blank lines and comment-only lines.)Tj T* (Python counts also exclude standalone docstrings using tokenization; other languages use lightweight comment stripping.)Tj T* ET Q q 1 0 0 1 45.6 426.4 cm .070588 .231373 .388235 rg 0 262 399.6 -24 re f* 1 1 1 rg 0 238 399.6 -17 re f* .972549 .980392 .988235 rg 0 221 399.6 -17 re f* 1 1 1 rg 0 204 399.6 -17 re f* .972549 .980392 .988235 rg 0 187 399.6 -17 re f* 1 1 1 rg 0 170 399.6 -17 re f* .972549 .980392 .988235 rg 0 153 399.6 -17 re f* 1 1 1 rg 0 136 399.6 -17 re f* .972549 .980392 .988235 rg 0 119 399.6 -17 re f* 1 1 1 rg 0 102 399.6 -17 re f* .972549 .980392 .988235 rg 0 85 399.6 -17 re f* 1 1 1 rg 0 68 399.6 -17 re f* .972549 .980392 .988235 rg 0 51 399.6 -17 re f* 1 1 1 rg 0 34 399.6 -17 re f* .972549 .980392 .988235 rg 0 17 399.6 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 247.5 Tm (Language)Tj T* ET BT 1 0 0 1 123.8 247.5 Tm (Ext)Tj T* ET BT 1 0 0 1 163.4 247.5 Tm (Files)Tj T* ET BT 1 0 0 1 206.6 247.5 Tm (Effective)Tj T* ET BT 1 0 0 1 278.6 247.5 Tm (Total)Tj T* ET BT 1 0 0 1 347 247.5 Tm (Share %)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 226.3 Tm (Python)Tj T* ET BT 1 0 0 1 123.8 226.3 Tm (.py)Tj T* ET BT 1 0 0 1 163.4 226.3 Tm (204)Tj T* ET BT 1 0 0 1 206.6 226.3 Tm (47,191)Tj T* ET BT 1 0 0 1 278.6 226.3 Tm (61,810)Tj T* ET BT 1 0 0 1 347 226.3 Tm (68.23)Tj T* ET BT 1 0 0 1 5 209.3 Tm (JavaScript)Tj T* ET BT 1 0 0 1 123.8 209.3 Tm (.js)Tj T* ET BT 1 0 0 1 163.4 209.3 Tm (24)Tj T* ET BT 1 0 0 1 206.6 209.3 Tm (9,995)Tj T* ET BT 1 0 0 1 278.6 209.3 Tm (12,510)Tj T* ET BT 1 0 0 1 347 209.3 Tm (14.45)Tj T* ET BT 1 0 0 1 5 192.3 Tm (Markdown)Tj T* ET BT 1 0 0 1 123.8 192.3 Tm (.md)Tj T* ET BT 1 0 0 1 163.4 192.3 Tm (10)Tj T* ET BT 1 0 0 1 206.6 192.3 Tm (6,823)Tj T* ET BT 1 0 0 1 278.6 192.3 Tm (8,555)Tj T* ET BT 1 0 0 1 347 192.3 Tm (9.86)Tj T* ET BT 1 0 0 1 5 175.3 Tm (CSS)Tj T* ET BT 1 0 0 1 123.8 175.3 Tm (.css)Tj T* ET BT 1 0 0 1 163.4 175.3 Tm (5)Tj T* ET BT 1 0 0 1 206.6 175.3 Tm (2,403)Tj T* ET BT 1 0 0 1 278.6 175.3 Tm (2,995)Tj T* ET BT 1 0 0 1 347 175.3 Tm (3.47)Tj T* ET BT 1 0 0 1 5 158.3 Tm (YAML)Tj T* ET BT 1 0 0 1 123.8 158.3 Tm (.yaml)Tj T* ET BT 1 0 0 1 163.4 158.3 Tm (59)Tj T* ET BT 1 0 0 1 206.6 158.3 Tm (750)Tj T* ET BT 1 0 0 1 278.6 158.3 Tm (1,722)Tj T* ET BT 1 0 0 1 347 158.3 Tm (1.08)Tj T* ET BT 1 0 0 1 5 141.3 Tm (HTML)Tj T* ET BT 1 0 0 1 123.8 141.3 Tm (.html)Tj T* ET BT 1 0 0 1 163.4 141.3 Tm (4)Tj T* ET BT 1 0 0 1 206.6 141.3 Tm (588)Tj T* ET BT 1 0 0 1 278.6 141.3 Tm (606)Tj T* ET BT 1 0 0 1 347 141.3 Tm (0.85)Tj T* ET BT 1 0 0 1 5 124.3 Tm (PowerShell)Tj T* ET BT 1 0 0 1 123.8 124.3 Tm (.ps1)Tj T* ET BT 1 0 0 1 163.4 124.3 Tm (5)Tj T* ET BT 1 0 0 1 206.6 124.3 Tm (429)Tj T* ET BT 1 0 0 1 278.6 124.3 Tm (616)Tj T* ET BT 1 0 0 1 347 124.3 Tm (0.62)Tj T* ET BT 1 0 0 1 5 107.3 Tm (JavaScript)Tj T* ET BT 1 0 0 1 123.8 107.3 Tm (.mjs)Tj T* ET BT 1 0 0 1 163.4 107.3 Tm (1)Tj T* ET BT 1 0 0 1 206.6 107.3 Tm (324)Tj T* ET BT 1 0 0 1 278.6 107.3 Tm (390)Tj T* ET BT 1 0 0 1 347 107.3 Tm (0.47)Tj T* ET BT 1 0 0 1 5 90.3 Tm (Prompt template)Tj T* ET BT 1 0 0 1 123.8 90.3 Tm (.pmt)Tj T* ET BT 1 0 0 1 163.4 90.3 Tm (2)Tj T* ET BT 1 0 0 1 206.6 90.3 Tm (266)Tj T* ET BT 1 0 0 1 278.6 90.3 Tm (333)Tj T* ET BT 1 0 0 1 347 90.3 Tm (0.38)Tj T* ET BT 1 0 0 1 5 73.3 Tm (JSON)Tj T* ET BT 1 0 0 1 123.8 73.3 Tm (.json)Tj T* ET BT 1 0 0 1 163.4 73.3 Tm (4)Tj T* ET BT 1 0 0 1 206.6 73.3 Tm (244)Tj T* ET BT 1 0 0 1 278.6 73.3 Tm (244)Tj T* ET BT 1 0 0 1 347 73.3 Tm (0.35)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Text)Tj T* ET BT 1 0 0 1 123.8 56.3 Tm (.txt)Tj T* ET BT 1 0 0 1 163.4 56.3 Tm (4)Tj T* ET BT 1 0 0 1 206.6 56.3 Tm (114)Tj T* ET BT 1 0 0 1 278.6 56.3 Tm (133)Tj T* ET BT 1 0 0 1 347 56.3 Tm (0.16)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Protocol Buffers)Tj T* ET BT 1 0 0 1 123.8 39.3 Tm (.proto)Tj T* ET BT 1 0 0 1 163.4 39.3 Tm (1)Tj T* ET BT 1 0 0 1 206.6 39.3 Tm (20)Tj T* ET BT 1 0 0 1 278.6 39.3 Tm (33)Tj T* ET BT 1 0 0 1 347 39.3 Tm (0.03)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Batch)Tj T* ET BT 1 0 0 1 123.8 22.3 Tm (.bat)Tj T* ET BT 1 0 0 1 163.4 22.3 Tm (1)Tj T* ET BT 1 0 0 1 206.6 22.3 Tm (19)Tj T* ET BT 1 0 0 1 278.6 22.3 Tm (24)Tj T* ET BT 1 0 0 1 347 22.3 Tm (0.03)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Total)Tj T* ET BT 1 0 0 1 123.8 5.3 Tm (-)Tj T* ET BT 1 0 0 1 163.4 5.3 Tm (324)Tj T* ET BT 1 0 0 1 206.6 5.3 Tm (69,166)Tj T* ET BT 1 0 0 1 278.6 5.3 Tm (89,971)Tj T* ET BT 1 0 0 1 347 5.3 Tm (100.00)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 262 m 399.6 262 l S 0 0 m 399.6 0 l S 0 0 m 0 262 l S 399.6 0 m 399.6 262 l S 0 238 m 399.6 238 l S 0 221 m 399.6 221 l S 0 204 m 399.6 204 l S 0 187 m 399.6 187 l S 0 170 m 399.6 170 l S 0 153 m 399.6 153 l S 0 136 m 399.6 136 l S 0 119 m 399.6 119 l S 0 102 m 399.6 102 l S 0 85 m 399.6 85 l S 0 68 m 399.6 68 l S 0 51 m 399.6 51 l S 0 34 m 399.6 34 l S 0 17 m 399.6 17 l S 118.8 0 m 118.8 262 l S 158.4 0 m 158.4 262 l S 201.6 0 m 201.6 262 l S 273.6 0 m 273.6 262 l S 342 0 m 342 262 l S Q Q q 1 0 0 1 45.6 383.6 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Largest Tracked Source Files)Tj T* ET Q q 1 0 0 1 45.6 147.6 cm .070588 .231373 .388235 rg 0 228 432 -24 re f* 1 1 1 rg 0 204 432 -17 re f* .972549 .980392 .988235 rg 0 187 432 -17 re f* 1 1 1 rg 0 170 432 -17 re f* .972549 .980392 .988235 rg 0 153 432 -17 re f* 1 1 1 rg 0 136 432 -17 re f* .972549 .980392 .988235 rg 0 119 432 -17 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 213.5 Tm (Path)Tj T* ET BT 1 0 0 1 264.2 213.5 Tm (Language)Tj T* ET BT 1 0 0 1 336.2 213.5 Tm (Effective)Tj T* ET BT 1 0 0 1 386.6 213.5 Tm (Total)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 192.3 Tm (Tlamatini/agent/views.py)Tj T* ET BT 1 0 0 1 264.2 192.3 Tm (Python)Tj T* ET BT 1 0 0 1 336.2 192.3 Tm (6,381)Tj T* ET BT 1 0 0 1 386.6 192.3 Tm (8,411)Tj T* ET BT 1 0 0 1 5 175.3 Tm (README.md)Tj T* ET BT 1 0 0 1 264.2 175.3 Tm (Markdown)Tj T* ET BT 1 0 0 1 336.2 175.3 Tm (2,814)Tj T* ET BT 1 0 0 1 386.6 175.3 Tm (3,551)Tj T* ET BT 1 0 0 1 5 158.3 Tm (Tlamatini/agent/tools.py)Tj T* ET BT 1 0 0 1 264.2 158.3 Tm (Python)Tj T* ET BT 1 0 0 1 336.2 158.3 Tm (1,954)Tj T* ET BT 1 0 0 1 386.6 158.3 Tm (2,386)Tj T* ET BT 1 0 0 1 5 141.3 Tm (Tlamatini/agent/agents/flowcreator/agentic_skill.md)Tj T* ET BT 1 0 0 1 264.2 141.3 Tm (Markdown)Tj T* ET BT 1 0 0 1 336.2 141.3 Tm (1,621)Tj T* ET BT 1 0 0 1 386.6 141.3 Tm (1,798)Tj T* ET BT 1 0 0 1 5 124.3 Tm (Tlamatini/agent/static/agent/css/agentic_control_panel.css)Tj T* ET BT 1 0 0 1 264.2 124.3 Tm (CSS)Tj T* ET BT 1 0 0 1 336.2 124.3 Tm (1,551)Tj T* ET BT 1 0 0 1 386.6 124.3 Tm (2,018)Tj T* ET BT 1 0 0 1 5 107.3 Tm (Tlamatini/agent/tests.py)Tj T* ET BT 1 0 0 1 264.2 107.3 Tm (Python)Tj T* ET BT 1 0 0 1 336.2 107.3 Tm (1,363)Tj T* ET BT 1 0 0 1 386.6 107.3 Tm (1,638)Tj T* ET BT 1 0 0 1 5 90.3 Tm (Tlamatini/agent/static/agent/js/acp-canvas-core.js)Tj T* ET BT 1 0 0 1 264.2 90.3 Tm (JavaScript)Tj T* ET BT 1 0 0 1 336.2 90.3 Tm (1,235)Tj T* ET BT 1 0 0 1 386.6 90.3 Tm (1,529)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Tlamatini/agent/consumers.py)Tj T* ET BT 1 0 0 1 264.2 73.3 Tm (Python)Tj T* ET BT 1 0 0 1 336.2 73.3 Tm (1,026)Tj T* ET BT 1 0 0 1 386.6 73.3 Tm (1,260)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Tlamatini/agent/static/agent/js/acp-agent-connectors.js)Tj T* ET BT 1 0 0 1 264.2 56.3 Tm (JavaScript)Tj T* ET BT 1 0 0 1 336.2 56.3 Tm (1,019)Tj T* ET BT 1 0 0 1 386.6 56.3 Tm (1,154)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Tlamatini/agent/static/agent/js/acp-control-buttons.js)Tj T* ET BT 1 0 0 1 264.2 39.3 Tm (JavaScript)Tj T* ET BT 1 0 0 1 336.2 39.3 Tm (1,000)Tj T* ET BT 1 0 0 1 386.6 39.3 Tm (1,301)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Tlamatini/agent/agents/crawler/crawler.py)Tj T* ET BT 1 0 0 1 264.2 22.3 Tm (Python)Tj T* ET BT 1 0 0 1 336.2 22.3 Tm (957)Tj T* ET BT 1 0 0 1 386.6 22.3 Tm (1,261)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Tlamatini/agent/static/agent/js/canvas_item_dialog.js)Tj T* ET BT 1 0 0 1 264.2 5.3 Tm (JavaScript)Tj T* ET BT 1 0 0 1 336.2 5.3 Tm (896)Tj T* ET BT 1 0 0 1 386.6 5.3 Tm (1,163)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 228 m 432 228 l S 0 0 m 432 0 l S 0 0 m 0 228 l S 432 0 m 432 228 l S 0 204 m 432 204 l S 0 187 m 432 187 l S 0 170 m 432 170 l S 0 153 m 432 153 l S 0 136 m 432 136 l S 0 119 m 432 119 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 259.2 0 m 259.2 228 l S 331.2 0 m 331.2 228 l S 381.6 0 m 381.6 228 l S Q Q q 1 0 0 1 45.6 104.8 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Local-Only Workspace Inventory)Tj T* ET Q q 1 0 0 1 45.6 60.8 cm .066667 .094118 .152941 rg BT -.01302 Tw 12 TL/F1 9.2 Tf 1 0 0 1 0 26.8 Tm T* 0 Tw (directories listed here are present locally but represent caches, builds, installed dependencies, static output, or git internals)Tj T* (rather than the authored source tree.)Tj T* ET Q Q
-endstream
-endobj
-
-72 0 obj
-<</Length 86/Filter/FlateDecode>>
-stream
-x⁄}À!Ä0QüS¸dö4mãA√∞Ì˝0xfÕöGÉjpGc)ûétÖg*ÊA	ﬁˆﬂÃmDÉÃ∆’RMï=3 ïªïê?}aDJ
-endstream
-endobj
-
-73 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-74 0 obj
-<</Length 214/Filter/FlateDecode>>
-stream
-x⁄ÖN1N1ÏÛäº $ﬁdºñ≈Iâî—∞ª·
-(∏Ç˜3ŒTàDJ∆ûÒx¬W8ıPbÊ-±∂Ñ∏jjf¶˚g∏9ﬂ—íƒ>b òGâ¨ñ¢h1ï&é◊¯¸è‡Ú_n[≈êå744ÕíµbEÛ_≈{‰äfÕƒ*LWq”ÅEõ.ÏV÷ád:m(ÿ©ßéj#cÙq’»ˆÎŒHﬁÛéoq/°ŒlîÈ1TßÁ¬W'œππÔö¨v"Áπõh£zgb„º'ŒrÕ wØ˝1‹˜~ \¿R
-endstream
-endobj
-
-75 0 obj
-<</Type/Annot/Subtype/Redact/P 8 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 76 0 R>>/NM(fitz-A0)>>
-endobj
-
-76 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-77 0 obj
-<</Length 2563>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 5)Tj T* ET Q q 1 0 0 1 45.6 535.4 cm .070588 .231373 .388235 rg 0 211 403.2 -24 re f* 1 1 1 rg 0 187 403.2 -17 re f* .972549 .980392 .988235 rg 0 170 403.2 -17 re f* 1 1 1 rg 0 153 403.2 -17 re f* .972549 .980392 .988235 rg 0 136 403.2 -17 re f* 1 1 1 rg 0 119 403.2 -17 re f* .972549 .980392 .988235 rg 0 102 403.2 -17 re f* 1 1 1 rg 0 85 403.2 -17 re f* .972549 .980392 .988235 rg 0 68 403.2 -17 re f* 1 1 1 rg 0 51 403.2 -17 re f* .972549 .980392 .988235 rg 0 34 403.2 -17 re f* 1 1 1 rg 0 17 403.2 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 196.5 Tm (Local path)Tj T* ET BT 1 0 0 1 278.6 196.5 Tm (Files)Tj T* ET BT 1 0 0 1 343.4 196.5 Tm (Dirs)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 175.3 Tm (.git)Tj T* ET BT 1 0 0 1 278.6 175.3 Tm (1,684)Tj T* ET BT 1 0 0 1 343.4 175.3 Tm (271)Tj T* ET BT 1 0 0 1 5 158.3 Tm (.venv)Tj T* ET BT 1 0 0 1 278.6 158.3 Tm (888)Tj T* ET BT 1 0 0 1 343.4 158.3 Tm (134)Tj T* ET BT 1 0 0 1 5 141.3 Tm (node_modules)Tj T* ET BT 1 0 0 1 278.6 141.3 Tm (1,116)Tj T* ET BT 1 0 0 1 343.4 141.3 Tm (188)Tj T* ET BT 1 0 0 1 5 124.3 Tm (build)Tj T* ET BT 1 0 0 1 278.6 124.3 Tm (0)Tj T* ET BT 1 0 0 1 343.4 124.3 Tm (1)Tj T* ET BT 1 0 0 1 5 107.3 Tm (dist)Tj T* ET BT 1 0 0 1 278.6 107.3 Tm (0)Tj T* ET BT 1 0 0 1 343.4 107.3 Tm (0)Tj T* ET BT 1 0 0 1 5 90.3 Tm (__pycache__)Tj T* ET BT 1 0 0 1 278.6 90.3 Tm (1)Tj T* ET BT 1 0 0 1 343.4 90.3 Tm (0)Tj T* ET BT 1 0 0 1 5 73.3 Tm (.ruff_cache)Tj T* ET BT 1 0 0 1 278.6 73.3 Tm (215)Tj T* ET BT 1 0 0 1 343.4 73.3 Tm (1)Tj T* ET BT 1 0 0 1 5 56.3 Tm (.claude)Tj T* ET BT 1 0 0 1 278.6 56.3 Tm (1)Tj T* ET BT 1 0 0 1 343.4 56.3 Tm (0)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Tlamatini/.pytest_cache)Tj T* ET BT 1 0 0 1 278.6 39.3 Tm (5)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (2)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Tlamatini/.ruff_cache)Tj T* ET BT 1 0 0 1 278.6 22.3 Tm (66)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (1)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Tlamatini/staticfiles)Tj T* ET BT 1 0 0 1 278.6 5.3 Tm (160)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (19)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 211 m 403.2 211 l S 0 0 m 403.2 0 l S 0 0 m 0 211 l S 403.2 0 m 403.2 211 l S 0 187 m 403.2 187 l S 0 170 m 403.2 170 l S 0 153 m 403.2 153 l S 0 136 m 403.2 136 l S 0 119 m 403.2 119 l S 0 102 m 403.2 102 l S 0 85 m 403.2 85 l S 0 68 m 403.2 68 l S 0 51 m 403.2 51 l S 0 34 m 403.2 34 l S 0 17 m 403.2 17 l S 273.6 0 m 273.6 211 l S 338.4 0 m 338.4 211 l S Q Q Q
-endstream
-endobj
-
-78 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-79 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-80 0 obj
-<</Type/Annot/Subtype/Redact/P 10 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 81 0 R>>/NM(fitz-A0)>>
-endobj
-
-81 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-82 0 obj
-<</Length 3351>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 6)Tj T* ET Q q 1 0 0 1 45.6 726.4 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Complete Tracked Repository File Tree)Tj T* ET Q q 1 0 0 1 45.6 694.4 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 14.8 Tm (The following appendix is the complete tracked file tree at HEAD 34e4e08. It contains 340 tracked files and excludes untracked)Tj T* (cache, build, dependency, and VCS-internal directories listed in the prior section.)Tj T* ET Q q 1 0 0 1 45.6 186.2 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 495.2 Tm (Tlamatini/)Tj T* (|-- .gitignore)Tj T* (|-- build.py)Tj T* (|-- build_installer.py)Tj T* (|-- build_uninstaller.py)Tj T* (|-- CLAUDE.md)Tj T* (|-- CreateShortcut.json)Tj T* (|-- CreateShortcut.ps1)Tj T* (|-- eslint.config.mjs)Tj T* (|-- googler_mcp.py)Tj T* (|-- install.py)Tj T* (|-- LICENSE)Tj T* (|-- mouse_mover.py)Tj T* (|-- NEW_AGENT_RECOMMENDATIONS.md)Tj T* (|-- package.json)Tj T* (|-- prompts_example.txt)Tj T* (|-- README.md)Tj T* (|-- register_flw.ps1)Tj T* (|-- RemoveShortcut.ps1)Tj T* (|-- requirements.txt)Tj T* (|-- Tlamatini.ico)Tj T* (|-- Tlamatini.jpg)Tj T* (|-- Tlamatini.ps1)Tj T* (|-- tlamatini_app_summary.pdf)Tj T* (|-- Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx)Tj T* (|-- trigger_jenkins.py)Tj T* (|-- uninstall.py)Tj T* (|-- unregister_flw.ps1)Tj T* (`-- Tlamatini/)Tj T* (    |-- cat_art.py)Tj T* (    |-- manage.py)Tj T* (    |-- .agents/)Tj T* (    |   `-- workflows/)Tj T* (    |       `-- create_new_agent.md)Tj T* (    |-- .mcps/)Tj T* (    |   `-- create_new_mcp.md)Tj T* (    |-- agent/)Tj T* (    |   |-- __init__.py)Tj T* (    |   |-- admin.py)Tj T* (    |   |-- apps.py)Tj T* (    |   |-- capability_registry.py)Tj T* (    |   |-- chain_files_search_lcel.py)Tj T* (    |   |-- chain_system_lcel.py)Tj T* (    |   |-- chat_agent_registry.py)Tj T* (    |   |-- chat_agent_runtime.py)Tj T* (    |   |-- chat_history_loader.py)Tj T* (    |   |-- command_togen_pb2.txt)Tj T* (    |   |-- config.json)Tj T* (    |   |-- config_loader.py)Tj T* (    |   |-- constants.py)Tj T* (    |   |-- consumers.py)Tj T* (    |   |-- filesearch.proto)Tj T* (    |   |-- filesearch_pb2.py)Tj T* (    |   |-- filesearch_pb2_grpc.py)Tj T* (    |   |-- global_execution_planner.py)Tj T* (    |   |-- global_state.py)Tj T* (    |   |-- inet_determiner.py)Tj T* (    |   |-- mcp_agent.py)Tj T* (    |   |-- mcp_files_search_client.py)Tj T* (    |   |-- mcp_files_search_server.py)Tj T* (    |   |-- mcp_system_client.py)Tj T* (    |   |-- mcp_system_server.py)Tj T* ET Q q 1 0 0 1 45.6 44.9 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 130.7 Tm (    |   |-- models.py)Tj T* (    |   |-- path_guard.py)Tj T* (    |   |-- prompt.pmt)Tj T* (    |   |-- rag_enhancements.py)Tj T* (    |   |-- routing.py)Tj T* (    |   |-- tests.py)Tj T* (    |   |-- tools.py)Tj T* (    |   |-- urls.py)Tj T* (    |   |-- views.py)Tj T* (    |   |-- web_search_llm.py)Tj T* (    |   |-- agents/)Tj T* (    |   |   |-- and/)Tj T* (    |   |   |   |-- and.py)Tj T* (    |   |   |   `-- config.yaml)Tj T* (    |   |   |-- apirer/)Tj T* (    |   |   |   |-- apirer.py)Tj T* (    |   |   |   `-- config.yaml)Tj T* ET Q Q
-endstream
-endobj
-
-83 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-84 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-85 0 obj
-<</Type/Annot/Subtype/Redact/P 11 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 86 0 R>>/NM(fitz-A0)>>
-endobj
-
-86 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-87 0 obj
-<</Length 3652>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 7)Tj T* ET Q q 1 0 0 1 45.6 381.9 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 357.5 Tm (    |   |   |-- asker/)Tj T* (    |   |   |   |-- asker.py)Tj T* (    |   |   |   `-- config.yaml)Tj T* (    |   |   |-- barrier/)Tj T* (    |   |   |   |-- barrier.py)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- test_barrier.py)Tj T* (    |   |   |-- cleaner/)Tj T* (    |   |   |   |-- __init__.py)Tj T* (    |   |   |   |-- cleaner.py)Tj T* (    |   |   |   `-- config.yaml)Tj T* (    |   |   |-- counter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- counter.py)Tj T* (    |   |   |-- crawler/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- crawler.py)Tj T* (    |   |   |-- croner/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- croner.py)Tj T* (    |   |   |-- deleter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- deleter.py)Tj T* (    |   |   |-- dockerer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- dockerer.py)Tj T* (    |   |   |-- emailer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- emailer.py)Tj T* (    |   |   |-- ender/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- ender.py)Tj T* (    |   |   |-- executer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- executer.py)Tj T* (    |   |   |-- file_creator/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- file_creator.py)Tj T* (    |   |   |-- file_extractor/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- file_extractor.py)Tj T* (    |   |   |-- file_interpreter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- file_interpreter.py)Tj T* (    |   |   |-- flowbacker/)Tj T* ET Q q 1 0 0 1 45.6 46.2 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 325.1 Tm (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- flowbacker.py)Tj T* (    |   |   |-- flowcreator/)Tj T* (    |   |   |   |-- agentic_skill.md)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- flowcreator.py)Tj T* (    |   |   |-- flowhypervisor/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   |-- flowhypervisor.py)Tj T* (    |   |   |   |-- hypervisor_alert.wav)Tj T* (    |   |   |   `-- monitoring-prompt.pmt)Tj T* (    |   |   |-- forker/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- forker.py)Tj T* (    |   |   |-- gateway_relayer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   |-- gateway_relayer.md)Tj T* (    |   |   |   `-- gateway_relayer.py)Tj T* (    |   |   |-- gatewayer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   |-- gatewayer.md)Tj T* (    |   |   |   `-- gatewayer.py)Tj T* (    |   |   |-- gitter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- gitter.py)Tj T* (    |   |   |-- googler/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- googler.py)Tj T* (    |   |   |-- image_interpreter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- image_interpreter.py)Tj T* (    |   |   |-- j_decompiler/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- j_decompiler.py)Tj T* (    |   |   |-- jenkinser/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- jenkinser.py)Tj T* (    |   |   |-- keyboarder/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- keyboarder.py)Tj T* (    |   |   |-- kuberneter/)Tj T* ET Q Q
-endstream
-endobj
-
-88 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-89 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-90 0 obj
-<</Type/Annot/Subtype/Redact/P 12 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 91 0 R>>/NM(fitz-A0)>>
-endobj
-
-91 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-92 0 obj
-<</Length 3676>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 8)Tj T* ET Q q 1 0 0 1 45.6 576.3 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 163.1 Tm (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- kuberneter.py)Tj T* (    |   |   |-- kyber_cipher/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- kyber_cipher.py)Tj T* (    |   |   |-- kyber_decipher/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- kyber_decipher.py)Tj T* (    |   |   |-- kyber_keygen/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- kyber_keygen.py)Tj T* (    |   |   |-- mongoxer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- mongoxer.py)Tj T* (    |   |   |-- monitor_log/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- monitor_log.py)Tj T* (    |   |   |-- monitor_netstat/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- monitor_netstat.py)Tj T* (    |   |   |-- mouser/)Tj T* ET Q q 1 0 0 1 45.6 70.5 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 495.2 Tm (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- mouser.py)Tj T* (    |   |   |-- mover/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- mover.py)Tj T* (    |   |   |-- node_manager/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   |-- node_manager.md)Tj T* (    |   |   |   |-- node_manager.py)Tj T* (    |   |   |   |-- nodes_example.json)Tj T* (    |   |   |   `-- nodes_example.yaml)Tj T* (    |   |   |-- notifier/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- notifier.py)Tj T* (    |   |   |-- or/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- or.py)Tj T* (    |   |   |-- parametrizer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- parametrizer.py)Tj T* (    |   |   |-- prompter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- prompter.py)Tj T* (    |   |   |-- pser/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- pser.py)Tj T* (    |   |   |-- pythonxer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- pythonxer.py)Tj T* (    |   |   |-- raiser/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- raiser.py)Tj T* (    |   |   |-- recmailer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- recmailer.py)Tj T* (    |   |   |-- scper/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- scper.py)Tj T* (    |   |   |-- shoter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- shoter.py)Tj T* (    |   |   |-- sleeper/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- sleeper.py)Tj T* (    |   |   |-- sqler/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- sqler.py)Tj T* (    |   |   |-- ssher/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- ssher.py)Tj T* (    |   |   |-- starter/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- starter.py)Tj T* (    |   |   |-- stopper/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- stopper.py)Tj T* (    |   |   |-- summarizer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- summarizer.py)Tj T* (    |   |   |-- telegramer/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- telegramer.py)Tj T* ET Q q 1 0 0 1 45.6 42.6 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 17.3 Tm (    |   |   |-- telegramrx/)Tj T* (    |   |   |   |-- config.yaml)Tj T* (    |   |   |   `-- telegramrx.py)Tj T* ET Q Q
-endstream
-endobj
-
-93 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-94 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-95 0 obj
-<</Type/Annot/Subtype/Redact/P 13 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 96 0 R>>/NM(fitz-A0)>>
-endobj
-
-96 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-97 0 obj
-<</Length 4280>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 547.048 8 Tm (Page 9)Tj T* ET Q q 1 0 0 1 45.6 268.5 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 470.9 Tm (    |   |   `-- whatsapper/)Tj T* (    |   |       |-- config.yaml)Tj T* (    |   |       `-- whatsapper.py)Tj T* (    |   |-- doc_generation/)Tj T* (    |   |   |-- mardown_to_pdf.py)Tj T* (    |   |   `-- test_output.pdf)Tj T* (    |   |-- images/)Tj T* (    |   |   |-- mockup.jpg)Tj T* (    |   |   |-- TlamatiniAbout.jpg)Tj T* (    |   |   `-- XAIHT-Tlamatini.mp4)Tj T* (    |   |-- imaging/)Tj T* (    |   |   |-- converter.py)Tj T* (    |   |   |-- image_interpreter.py)Tj T* (    |   |   `-- screenshot.py)Tj T* (    |   |-- management/)Tj T* (    |   |   |-- __init__.py)Tj T* (    |   |   `-- commands/)Tj T* (    |   |       `-- startserver.py)Tj T* (    |   |-- migrations/)Tj T* (    |   |   |-- 0001_initial.py)Tj T* (    |   |   |-- 0002_populate_db.py)Tj T* (    |   |   |-- 0003_add_cleaner.py)Tj T* (    |   |   |-- 0004_add_deleter.py)Tj T* (    |   |   |-- 0005_add_executer.py)Tj T* (    |   |   |-- 0006_add_notifier.py)Tj T* (    |   |   |-- 0007_add_stopper.py)Tj T* (    |   |   |-- 0008_add_recmailer.py)Tj T* (    |   |   |-- 0009_add_whatsapper.py)Tj T* (    |   |   |-- 0010_add_pythonxer.py)Tj T* (    |   |   |-- 0011_add_asker.py)Tj T* (    |   |   |-- 0012_repopulate_all_agents.py)Tj T* (    |   |   |-- 0013_add_forker.py)Tj T* (    |   |   |-- 0014_repopulate_all_agents.py)Tj T* (    |   |   |-- 0015_add_shoter.py)Tj T* (    |   |   |-- 0016_repopulate_all_agents.py)Tj T* (    |   |   |-- 0017_add_ssher.py)Tj T* (    |   |   |-- 0018_repopulate_all_agents.py)Tj T* (    |   |   |-- 0019_add_scper.py)Tj T* (    |   |   |-- 0020_repopulate_all_agents.py)Tj T* (    |   |   |-- 0021_add_telegramrx.py)Tj T* (    |   |   |-- 0022_repopulate_all_agents.py)Tj T* (    |   |   |-- 0023_add_mongoxer.py)Tj T* (    |   |   |-- 0024_repopulate_all_agents.py)Tj T* (    |   |   |-- 0025_add_telegramer.py)Tj T* (    |   |   |-- 0026_repopulate_all_agents.py)Tj T* (    |   |   |-- 0027_add_sqler.py)Tj T* (    |   |   |-- 0028_repopulate_all_agents.py)Tj T* (    |   |   |-- 0029_add_prompter.py)Tj T* (    |   |   |-- 0030_repopulate_all_agents.py)Tj T* (    |   |   |-- 0031_add_flowcreator.py)Tj T* (    |   |   |-- 0032_repopulate_all_agents.py)Tj T* (    |   |   |-- 0033_add_gitter.py)Tj T* (    |   |   |-- 0034_add_dockerer.py)Tj T* (    |   |   |-- 0035_add_pser.py)Tj T* (    |   |   |-- 0036_add_kuberneter.py)Tj T* (    |   |   |-- 0037_add_apirer.py)Tj T* (    |   |   |-- 0038_add_jenkinser.py)Tj T* (    |   |   |-- 0039_add_crawler.py)Tj T* (    |   |   |-- 0040_add_summarizer.py)Tj T* ET Q q 1 0 0 1 45.6 46.2 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 211.7 Tm (    |   |   |-- 0041_add_flowhypervisor.py)Tj T* (    |   |   |-- 0042_add_mouser.py)Tj T* (    |   |   |-- 0043_agentmessage_conversation_user.py)Tj T* (    |   |   |-- 0044_add_counter.py)Tj T* (    |   |   |-- 0045_add_file_interpreter.py)Tj T* (    |   |   |-- 0046_add_image_interpreter.py)Tj T* (    |   |   |-- 0047_add_gatewayer.py)Tj T* (    |   |   |-- 0048_add_gateway_relayer.py)Tj T* (    |   |   |-- 0049_add_node_manager.py)Tj T* (    |   |   |-- 0050_add_file_creator.py)Tj T* (    |   |   |-- 0051_add_file_extractor.py)Tj T* (    |   |   |-- 0052_add_kyber_keygen.py)Tj T* (    |   |   |-- 0053_add_kyber_cipher.py)Tj T* (    |   |   |-- 0054_add_kyber_decipher.py)Tj T* (    |   |   |-- 0055_fix_kyber_cipher_names.py)Tj T* (    |   |   |-- 0056_add_parametrizer.py)Tj T* (    |   |   |-- 0057_add_flowbacker.py)Tj T* (    |   |   |-- 0058_add_barrier.py)Tj T* (    |   |   |-- 0059_add_j_decompiler.py)Tj T* (    |   |   |-- 0060_add_agent_parametrizer_tool.py)Tj T* (    |   |   |-- 0061_add_agent_starter_tool.py)Tj T* (    |   |   |-- 0062_sync_agent_control_tools_and_prompts.py)Tj T* (    |   |   |-- 0063_add_agent_parametrizer_prompt.py)Tj T* (    |   |   |-- 0064_add_chat_agent_run_model.py)Tj T* (    |   |   |-- 0065_add_chat_wrapped_agent_tools.py)Tj T* (    |   |   |-- 0066_add_keyboarder.py)Tj T* (    |   |   |-- 0067_add_multi_turn_demo_prompts.py)Tj T* ET Q Q
-endstream
-endobj
-
-98 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-99 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-100 0 obj
-<</Type/Annot/Subtype/Redact/P 14 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 101 0 R>>/NM(fitz-A0)>>
-endobj
-
-101 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-102 0 obj
-<</Length 3855>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 10)Tj T* ET Q q 1 0 0 1 45.6 462.9 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 276.5 Tm (    |   |   |-- 0068_add_googler_tool.py)Tj T* (    |   |   |-- 0069_add_googler_agent.py)Tj T* (    |   |   `-- __init__.py)Tj T* (    |   |-- monitors/)Tj T* (    |   |   `-- monitor_sql.py)Tj T* (    |   |-- opus_client/)Tj T* (    |   |   |-- claude_opus_client.py)Tj T* (    |   |   |-- examples.py)Tj T* (    |   |   `-- README.md)Tj T* (    |   |-- rag/)Tj T* (    |   |   |-- __init__.py)Tj T* (    |   |   |-- config.py)Tj T* (    |   |   |-- factory.py)Tj T* (    |   |   |-- interaction.py)Tj T* (    |   |   |-- interface.py)Tj T* (    |   |   |-- loaders.py)Tj T* (    |   |   |-- prompts.py)Tj T* (    |   |   |-- retrieval.py)Tj T* (    |   |   |-- splitters.py)Tj T* (    |   |   |-- utils.py)Tj T* (    |   |   `-- chains/)Tj T* (    |   |       |-- base.py)Tj T* (    |   |       |-- basic.py)Tj T* (    |   |       |-- history_aware.py)Tj T* (    |   |       `-- unified.py)Tj T* (    |   |-- services/)Tj T* (    |   |   |-- __init__.py)Tj T* (    |   |   |-- filesystem.py)Tj T* (    |   |   `-- response_parser.py)Tj T* (    |   |-- static/)Tj T* (    |   |   `-- agent/)Tj T* (    |   |       |-- css/)Tj T* (    |   |       |   |-- agent_page.css)Tj T* (    |   |       |   |-- agentic_control_panel.css)Tj T* (    |   |       |   |-- login.css)Tj T* ET Q q 1 0 0 1 45.6 46.2 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 406.1 Tm (    |   |       |   |-- tools_dialog.css)Tj T* (    |   |       |   `-- welcome.css)Tj T* (    |   |       |-- img/)Tj T* (    |   |       |   `-- spinner.svg)Tj T* (    |   |       |-- js/)Tj T* (    |   |       |   |-- acp-agent-connectors.js)Tj T* (    |   |       |   |-- acp-canvas-core.js)Tj T* (    |   |       |   |-- acp-canvas-undo.js)Tj T* (    |   |       |   |-- acp-control-buttons.js)Tj T* (    |   |       |   |-- acp-file-io.js)Tj T* (    |   |       |   |-- acp-globals.js)Tj T* (    |   |       |   |-- acp-layout.js)Tj T* (    |   |       |   |-- acp-parametrizer-dialog.js)Tj T* (    |   |       |   |-- acp-running-state.js)Tj T* (    |   |       |   |-- acp-session.js)Tj T* (    |   |       |   |-- acp-undo-manager.js)Tj T* (    |   |       |   |-- acp-validate.js)Tj T* (    |   |       |   |-- agent_page_canvas.js)Tj T* (    |   |       |   |-- agent_page_chat.js)Tj T* (    |   |       |   |-- agent_page_context.js)Tj T* (    |   |       |   |-- agent_page_dialogs.js)Tj T* (    |   |       |   |-- agent_page_init.js)Tj T* (    |   |       |   |-- agent_page_layout.js)Tj T* (    |   |       |   |-- agent_page_state.js)Tj T* (    |   |       |   |-- agent_page_ui.js)Tj T* (    |   |       |   |-- agentic_control_panel.js)Tj T* (    |   |       |   |-- canvas_item_dialog.js)Tj T* (    |   |       |   |-- contextual_menus.js)Tj T* (    |   |       |   `-- tools_dialog.js)Tj T* (    |   |       |-- sounds/)Tj T* (    |   |       |   |-- hypervisor_alert.wav)Tj T* (    |   |       |   `-- notification.wav)Tj T* (    |   |       `-- video/)Tj T* (    |   |           `-- XAIHT-Tlamatini.mp4)Tj T* (    |   |-- telegram/)Tj T* (    |   |   |-- AztecTlamatini.txt)Tj T* (    |   |   |-- config.yaml)Tj T* (    |   |   `-- telegram_receiver.py)Tj T* (    |   `-- templates/)Tj T* (    |       `-- agent/)Tj T* (    |           |-- agent_page.html)Tj T* (    |           |-- agentic_control_panel.html)Tj T* (    |           |-- login.html)Tj T* (    |           `-- welcome.html)Tj T* (    |-- jd-cli/)Tj T* (    |   |-- jd-cli.bat)Tj T* (    |   `-- jd-cli.jar)Tj T* (    `-- tlamatini/)Tj T* (        |-- __init__.py)Tj T* (        |-- asgi.py)Tj T* (        |-- context_processors.py)Tj T* ET Q Q
-endstream
-endobj
-
-103 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-104 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-105 0 obj
-<</Type/Annot/Subtype/Redact/P 15 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 106 0 R>>/NM(fitz-A0)>>
-endobj
-
-106 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-107 0 obj
-<</Length 375>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 11)Tj T* ET Q q 1 0 0 1 45.6 714 cm .058824 .090196 .164706 rg BT 8.1 TL/F3 7 Tf 1 0 0 1 36 25.4 Tm (        |-- middleware.py)Tj T* (        |-- settings.py)Tj T* (        |-- urls.py)Tj T* (        `-- wsgi.py)Tj T* ET Q Q
-endstream
-endobj
-
-108 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-109 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-110 0 obj
-<</Type/Annot/Subtype/Redact/P 16 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 111 0 R>>/NM(fitz-A0)>>
-endobj
-
-111 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-112 0 obj
-<</Length 6379>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 12)Tj T* ET Q q 1 0 0 1 45.6 726.4 cm .070588 .231373 .388235 rg BT 20 TL/F2 16 Tf 1 0 0 1 0 4 Tm (Documentation of the Latest 10 Commits)Tj T* ET Q q 1 0 0 1 45.6 694.4 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 14.8 Tm (This final appendix documents the exact latest 10 commits currently reachable from `HEAD`. Dates are shown in ISO format)Tj T* (with the repository's local UTC-06:00 offset where recorded.)Tj T* ET Q q 1 0 0 1 45.6 671.4 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (1. 34e4e08 - Parametrizer maintenance)Tj T* ET Q q 1 0 0 1 45.6 539.4 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Just linting Parametrizer agent, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-11T16:51:46-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (1)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+36 / -0)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Low-risk internal refactor and naming cleanup in the Parametrizer runtime.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 517.08 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 499.08 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Introduced explicit progress-stage constants so later logic can refer to stable symbolic names instead of ad-hoc literals.)Tj T* ET Q q 1 0 0 1 45.6 469.08 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Added `get_source_base_name\(\)` to normalize agent pool names such as `apirer_2` or `file_interpreter_3` back to their base)Tj T* 4.67 0 Td (structured-output type.)Tj T* ET Q q 1 0 0 1 45.6 451.08 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Prepared the Parametrizer code for cleaner reuse of source-agent type matching after the larger unified-parser refactor.)Tj T* ET Q q 1 0 0 1 45.6 427.48 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 380.48 cm .070588 .231373 .388235 rg 0 41 417.6 -24 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 26.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 26.5 Tm (+)Tj T* ET BT 1 0 0 1 383 26.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 5.3 Tm (Tlamatini/agent/agents/parametrizer/parametrizer.py)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (36)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 41 m 417.6 41 l S 0 0 m 417.6 0 l S 0 0 m 0 41 l S 417.6 0 m 417.6 41 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 41 l S 378 0 m 378 41 l S Q Q q 1 0 0 1 45.6 345.96 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (2. 0226fef - AI assistant onboarding)Tj T* ET Q q 1 0 0 1 45.6 213.96 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Creation of a new CLAUDE.md file to be loadable by Claude,-CLI, Gemini-CLI, Codex, etc. to have enough context in order to empower Tlamatini, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-11T14:30:26-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (1)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+638 / -0)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Major documentation addition that improves context loading for Claude Code, Gemini CLI, Codex, and similar coding agents.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 191.64 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 161.64 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Created a new top-level `CLAUDE.md` as an authoritative onboarding and operating guide for AI assistants working on)Tj T* 4.67 0 Td (Tlamatini.)Tj T* ET Q q 1 0 0 1 45.6 131.64 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Documented architecture, repository layout, runtime layers, major subsystems, key files, run commands, configuration, and)Tj T* 4.67 0 Td (packaging behavior.)Tj T* ET Q q 1 0 0 1 45.6 101.64 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Captured project-specific engineering rules so assistant-driven edits stay aligned with Tlamatini's existing patterns and)Tj T* 4.67 0 Td (constraints.)Tj T* ET Q q 1 0 0 1 45.6 78.04 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q Q
-endstream
-endobj
-
-113 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-114 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-115 0 obj
-<</Type/Annot/Subtype/Redact/P 17 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 116 0 R>>/NM(fitz-A0)>>
-endobj
-
-116 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-117 0 obj
-<</Length 7128>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 13)Tj T* ET Q q 1 0 0 1 45.6 705.4 cm .070588 .231373 .388235 rg 0 41 417.6 -24 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 26.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 26.5 Tm (+)Tj T* ET BT 1 0 0 1 383 26.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 5.3 Tm (CLAUDE.md)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (638)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 41 m 417.6 41 l S 0 0 m 417.6 0 l S 0 0 m 0 41 l S 417.6 0 m 417.6 41 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 41 l S 378 0 m 378 41 l S Q Q q 1 0 0 1 45.6 670.88 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (3. cfb1118 - Multi-Turn capability expansion)Tj T* ET Q q 1 0 0 1 45.6 538.88 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Improving a lot the Multi-turn capability of Tlamatini and updating skills and documentation, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-11T13:40:25-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (5)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+393 / -64)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Behavioral and documentation improvement for the chat orchestration stack when Multi-Turn mode is enabled.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 516.56 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 486.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Expanded `README.md` with a dedicated Multi-Turn execution-engine section describing the end-to-end pipeline, tool)Tj T* 4.67 0 Td (categories, the explicit tool loop, and wrapped runtime lifecycle.)Tj T* ET Q q 1 0 0 1 45.6 456.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Strengthened `mcp_agent.py` system-prompt guidance so the model is instructed to operate tools proactively, choose tools)Tj T* 4.67 0 Td (intentionally, and chain multi-step workflows.)Tj T* ET Q q 1 0 0 1 45.6 426.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT -.043941 Tw/F1 9 Tf 1 0 0 1 9.33 15 Tm (Updated `prompt.pmt` so empty-context requests can still be fulfilled when tools are available, and clarified the operator behavior)Tj T* 0 Tw 4.67 0 Td (expected in Multi-Turn mode.)Tj T* ET Q q 1 0 0 1 45.6 396.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Reworked `chat_agent_registry.py` tool descriptions and examples to make wrapped-agent selection more capability-aware and)Tj T* 4.67 0 Td (easier for the model to map from user intent.)Tj T* ET Q q 1 0 0 1 45.6 366.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Expanded `flowcreator/agentic_skill.md` with a quick-reference capability table and workflow design patterns so agent authors)Tj T* 4.67 0 Td (can use the growing tool surface correctly.)Tj T* ET Q q 1 0 0 1 45.6 342.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 227.96 cm .070588 .231373 .388235 rg 0 109 417.6 -24 re f* 1 1 1 rg 0 85 417.6 -17 re f* .972549 .980392 .988235 rg 0 68 417.6 -17 re f* 1 1 1 rg 0 51 417.6 -17 re f* .972549 .980392 .988235 rg 0 34 417.6 -17 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 94.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 94.5 Tm (+)Tj T* ET BT 1 0 0 1 383 94.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 73.3 Tm (README.md)Tj T* ET BT 1 0 0 1 343.4 73.3 Tm (156)Tj T* ET BT 1 0 0 1 383 73.3 Tm (0)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Tlamatini/agent/agents/flowcreator/agentic_skill.md)Tj T* ET BT 1 0 0 1 343.4 56.3 Tm (113)Tj T* ET BT 1 0 0 1 383 56.3 Tm (0)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Tlamatini/agent/chat_agent_registry.py)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (40)Tj T* ET BT 1 0 0 1 383 39.3 Tm (40)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Tlamatini/agent/mcp_agent.py)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (71)Tj T* ET BT 1 0 0 1 383 22.3 Tm (20)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Tlamatini/agent/prompt.pmt)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (13)Tj T* ET BT 1 0 0 1 383 5.3 Tm (4)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 109 m 417.6 109 l S 0 0 m 417.6 0 l S 0 0 m 0 109 l S 417.6 0 m 417.6 109 l S 0 85 m 417.6 85 l S 0 68 m 417.6 68 l S 0 51 m 417.6 51 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 109 l S 378 0 m 378 109 l S Q Q q 1 0 0 1 45.6 193.44 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (4. 8af4942 - Parametrizer parser hardening)Tj T* ET Q q 1 0 0 1 45.6 61.44 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Improving bullet-froof scheme of parametrization, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-11T13:06:50-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (22)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+962 / -1068)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Major internal simplification of structured-output ingestion plus a stricter, more uniform contract for source agents.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 39.12 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q Q
-endstream
-endobj
-
-118 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-119 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-120 0 obj
-<</Type/Annot/Subtype/Redact/P 18 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 121 0 R>>/NM(fitz-A0)>>
-endobj
-
-121 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-122 0 obj
-<</Length 8042>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 14)Tj T* ET Q q 1 0 0 1 45.6 722.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Replaced many legacy per-agent parsing branches in `parametrizer.py` with a unified `INI_SECTION_)Tj (<)Tj (<)Tj (< ...)Tj T* 4.67 0 Td (>>>END_SECTION_)Tj (` parser and next-segment extractor.)Tj T* ET Q q 1 0 0 1 45.6 692.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Turned the structured-output contract into a single generic section format, which reduces parser drift and makes new)Tj T* 4.67 0 Td (Parametrizer-compatible agents cheaper to add.)Tj T* ET Q q 1 0 0 1 45.6 674.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT -.0495 Tw/F1 9 Tf 1 0 0 1 9.33 3 Tm (Expanded the documented source-agent roster from 15 to 16 by folding Googler into the standardized structured-output scheme.)Tj T* ET Q q 1 0 0 1 45.6 644.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Refreshed `README.md` to define the mandatory section format, field/body rules, and the new generic parser model used by)Tj T* 4.67 0 Td (Parametrizer.)Tj T* ET Q q 1 0 0 1 45.6 620.8 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 216.8 cm .070588 .231373 .388235 rg 0 398 417.6 -24 re f* 1 1 1 rg 0 374 417.6 -17 re f* .972549 .980392 .988235 rg 0 357 417.6 -17 re f* 1 1 1 rg 0 340 417.6 -17 re f* .972549 .980392 .988235 rg 0 323 417.6 -17 re f* 1 1 1 rg 0 306 417.6 -17 re f* .972549 .980392 .988235 rg 0 289 417.6 -17 re f* 1 1 1 rg 0 272 417.6 -17 re f* .972549 .980392 .988235 rg 0 255 417.6 -17 re f* 1 1 1 rg 0 238 417.6 -17 re f* .972549 .980392 .988235 rg 0 221 417.6 -17 re f* 1 1 1 rg 0 204 417.6 -17 re f* .972549 .980392 .988235 rg 0 187 417.6 -17 re f* 1 1 1 rg 0 170 417.6 -17 re f* .972549 .980392 .988235 rg 0 153 417.6 -17 re f* 1 1 1 rg 0 136 417.6 -17 re f* .972549 .980392 .988235 rg 0 119 417.6 -17 re f* 1 1 1 rg 0 102 417.6 -17 re f* .972549 .980392 .988235 rg 0 85 417.6 -17 re f* 1 1 1 rg 0 68 417.6 -17 re f* .972549 .980392 .988235 rg 0 51 417.6 -17 re f* 1 1 1 rg 0 34 417.6 -17 re f* .972549 .980392 .988235 rg 0 17 417.6 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 383.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 383.5 Tm (+)Tj T* ET BT 1 0 0 1 383 383.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 362.3 Tm (README.md)Tj T* ET BT 1 0 0 1 343.4 362.3 Tm (75)Tj T* ET BT 1 0 0 1 383 362.3 Tm (22)Tj T* ET BT 1 0 0 1 5 345.3 Tm (Tlamatini/.agents/workflows/create_new_agent.md)Tj T* ET BT 1 0 0 1 343.4 345.3 Tm (80)Tj T* ET BT 1 0 0 1 383 345.3 Tm (0)Tj T* ET BT 1 0 0 1 5 328.3 Tm (Tlamatini/agent/agents/apirer/apirer.py)Tj T* ET BT 1 0 0 1 343.4 328.3 Tm (29)Tj T* ET BT 1 0 0 1 383 328.3 Tm (12)Tj T* ET BT 1 0 0 1 5 311.3 Tm (Tlamatini/agent/agents/crawler/crawler.py)Tj T* ET BT 1 0 0 1 343.4 311.3 Tm (9)Tj T* ET BT 1 0 0 1 383 311.3 Tm (5)Tj T* ET BT 1 0 0 1 5 294.3 Tm (Tlamatini/agent/agents/file_extractor/file_extractor.py)Tj T* ET BT 1 0 0 1 343.4 294.3 Tm (4)Tj T* ET BT 1 0 0 1 383 294.3 Tm (4)Tj T* ET BT 1 0 0 1 5 277.3 Tm (Tlamatini/agent/agents/file_interpreter/file_interpreter.py)Tj T* ET BT 1 0 0 1 343.4 277.3 Tm (25)Tj T* ET BT 1 0 0 1 383 277.3 Tm (20)Tj T* ET BT 1 0 0 1 5 260.3 Tm (Tlamatini/agent/agents/flowcreator/flowcreator.py)Tj T* ET BT 1 0 0 1 343.4 260.3 Tm (7)Tj T* ET BT 1 0 0 1 383 260.3 Tm (3)Tj T* ET BT 1 0 0 1 5 243.3 Tm (Tlamatini/agent/agents/flowhypervisor/monitoring-prompt.pmt)Tj T* ET BT 1 0 0 1 343.4 243.3 Tm (9)Tj T* ET BT 1 0 0 1 383 243.3 Tm (0)Tj T* ET BT 1 0 0 1 5 226.3 Tm (Tlamatini/agent/agents/gateway_relayer/gateway_relayer.py)Tj T* ET BT 1 0 0 1 343.4 226.3 Tm (2)Tj T* ET BT 1 0 0 1 383 226.3 Tm (2)Tj T* ET BT 1 0 0 1 5 209.3 Tm (Tlamatini/agent/agents/gatewayer/gatewayer.py)Tj T* ET BT 1 0 0 1 343.4 209.3 Tm (2)Tj T* ET BT 1 0 0 1 383 209.3 Tm (2)Tj T* ET BT 1 0 0 1 5 192.3 Tm (Tlamatini/agent/agents/gitter/gitter.py)Tj T* ET BT 1 0 0 1 343.4 192.3 Tm (8)Tj T* ET BT 1 0 0 1 383 192.3 Tm (3)Tj T* ET BT 1 0 0 1 5 175.3 Tm (Tlamatini/agent/agents/googler/googler.py)Tj T* ET BT 1 0 0 1 343.4 175.3 Tm (22)Tj T* ET BT 1 0 0 1 383 175.3 Tm (3)Tj T* ET BT 1 0 0 1 5 158.3 Tm (Tlamatini/agent/agents/image_interpreter/image_interpreter.py)Tj T* ET BT 1 0 0 1 343.4 158.3 Tm (7)Tj T* ET BT 1 0 0 1 383 158.3 Tm (6)Tj T* ET BT 1 0 0 1 5 141.3 Tm (Tlamatini/agent/agents/kuberneter/kuberneter.py)Tj T* ET BT 1 0 0 1 343.4 141.3 Tm (8)Tj T* ET BT 1 0 0 1 383 141.3 Tm (1)Tj T* ET BT 1 0 0 1 5 124.3 Tm (Tlamatini/agent/agents/kyber_cipher/kyber_cipher.py)Tj T* ET BT 1 0 0 1 343.4 124.3 Tm (7)Tj T* ET BT 1 0 0 1 383 124.3 Tm (3)Tj T* ET BT 1 0 0 1 5 107.3 Tm (Tlamatini/agent/agents/kyber_decipher/kyber_decipher.py)Tj T* ET BT 1 0 0 1 343.4 107.3 Tm (5)Tj T* ET BT 1 0 0 1 383 107.3 Tm (1)Tj T* ET BT 1 0 0 1 5 90.3 Tm (Tlamatini/agent/agents/kyber_keygen/kyber_keygen.py)Tj T* ET BT 1 0 0 1 343.4 90.3 Tm (6)Tj T* ET BT 1 0 0 1 383 90.3 Tm (2)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Tlamatini/agent/agents/parametrizer/parametrizer.py)Tj T* ET BT 1 0 0 1 343.4 73.3 Tm (629)Tj T* ET BT 1 0 0 1 383 73.3 Tm (966)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Tlamatini/agent/agents/prompter/prompter.py)Tj T* ET BT 1 0 0 1 343.4 56.3 Tm (7)Tj T* ET BT 1 0 0 1 383 56.3 Tm (3)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Tlamatini/agent/agents/summarizer/summarizer.py)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (6)Tj T* ET BT 1 0 0 1 383 39.3 Tm (5)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Tlamatini/agent/views.py)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (9)Tj T* ET BT 1 0 0 1 383 22.3 Tm (5)Tj T* ET BT 1 0 0 1 5 5.3 Tm (build.py)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (6)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 398 m 417.6 398 l S 0 0 m 417.6 0 l S 0 0 m 0 398 l S 417.6 0 m 417.6 398 l S 0 374 m 417.6 374 l S 0 357 m 417.6 357 l S 0 340 m 417.6 340 l S 0 323 m 417.6 323 l S 0 306 m 417.6 306 l S 0 289 m 417.6 289 l S 0 272 m 417.6 272 l S 0 255 m 417.6 255 l S 0 238 m 417.6 238 l S 0 221 m 417.6 221 l S 0 204 m 417.6 204 l S 0 187 m 417.6 187 l S 0 170 m 417.6 170 l S 0 153 m 417.6 153 l S 0 136 m 417.6 136 l S 0 119 m 417.6 119 l S 0 102 m 417.6 102 l S 0 85 m 417.6 85 l S 0 68 m 417.6 68 l S 0 51 m 417.6 51 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 398 l S 378 0 m 378 398 l S Q Q q 1 0 0 1 45.6 182.28 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (5. 684a5ff - Googler agent and MCP)Tj T* ET Q q 1 0 0 1 45.6 50.28 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Implementing Googler agent/mcp by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-09T18:15:34-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (32)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+2236 / -1049)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Large feature addition: Tlamatini gained a Playwright-backed web-search agent, a matching tool, and an MCP service.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q Q
-endstream
-endobj
-
-123 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-124 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-125 0 obj
-<</Type/Annot/Subtype/Redact/P 19 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 126 0 R>>/NM(fitz-A0)>>
-endobj
-
-126 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-127 0 obj
-<</Length 8612>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 15)Tj T* ET Q q 1 0 0 1 45.6 734.4 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 704.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Added `Tlamatini/agent/agents/googler/googler.py`, implementing a search-and-fetch workflow that queries Google, falls back to)Tj T* 4.67 0 Td (DuckDuckGo, skips binary targets, and extracts readable page text.)Tj T* ET Q q 1 0 0 1 45.6 674.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Added `googler_mcp.py`, exposing similar behavior through a FastMCP service so search can be used outside the core chat)Tj T* 4.67 0 Td (runtime as well.)Tj T* ET Q q 1 0 0 1 45.6 644.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Wired the feature into the chat tool surface via `Tlamatini/agent/tools.py`, database setup via migrations `0068` and `0069`, and)Tj T* 4.67 0 Td (ACP-side connection handling in `views.py`.)Tj T* ET Q q 1 0 0 1 45.6 614.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Updated `requirements.txt` with `beautifulsoup4` and `playwright`, and expanded `README.md` to cover the new search)Tj T* 4.67 0 Td (capability and the larger agent inventory.)Tj T* ET Q q 1 0 0 1 45.6 590.8 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 50.8 cm .070588 .231373 .388235 rg 0 534 417.6 -24 re f* 1 1 1 rg 0 510 417.6 -17 re f* .972549 .980392 .988235 rg 0 493 417.6 -17 re f* 1 1 1 rg 0 476 417.6 -17 re f* .972549 .980392 .988235 rg 0 459 417.6 -17 re f* 1 1 1 rg 0 442 417.6 -17 re f* .972549 .980392 .988235 rg 0 425 417.6 -17 re f* 1 1 1 rg 0 408 417.6 -17 re f* .972549 .980392 .988235 rg 0 391 417.6 -17 re f* 1 1 1 rg 0 374 417.6 -17 re f* .972549 .980392 .988235 rg 0 357 417.6 -17 re f* 1 1 1 rg 0 340 417.6 -17 re f* .972549 .980392 .988235 rg 0 323 417.6 -17 re f* 1 1 1 rg 0 306 417.6 -17 re f* .972549 .980392 .988235 rg 0 289 417.6 -17 re f* 1 1 1 rg 0 272 417.6 -17 re f* .972549 .980392 .988235 rg 0 255 417.6 -17 re f* 1 1 1 rg 0 238 417.6 -17 re f* .972549 .980392 .988235 rg 0 221 417.6 -17 re f* 1 1 1 rg 0 204 417.6 -17 re f* .972549 .980392 .988235 rg 0 187 417.6 -17 re f* 1 1 1 rg 0 170 417.6 -17 re f* .972549 .980392 .988235 rg 0 153 417.6 -17 re f* 1 1 1 rg 0 136 417.6 -17 re f* .972549 .980392 .988235 rg 0 119 417.6 -17 re f* 1 1 1 rg 0 102 417.6 -17 re f* .972549 .980392 .988235 rg 0 85 417.6 -17 re f* 1 1 1 rg 0 68 417.6 -17 re f* .972549 .980392 .988235 rg 0 51 417.6 -17 re f* 1 1 1 rg 0 34 417.6 -17 re f* .972549 .980392 .988235 rg 0 17 417.6 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 519.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 519.5 Tm (+)Tj T* ET BT 1 0 0 1 383 519.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 498.3 Tm (README.md)Tj T* ET BT 1 0 0 1 343.4 498.3 Tm (603)Tj T* ET BT 1 0 0 1 383 498.3 Tm (598)Tj T* ET BT 1 0 0 1 5 481.3 Tm (Tlamatini/agent/agents/flowcreator/agentic_skill.md)Tj T* ET BT 1 0 0 1 343.4 481.3 Tm (73)Tj T* ET BT 1 0 0 1 383 481.3 Tm (57)Tj T* ET BT 1 0 0 1 5 464.3 Tm (Tlamatini/agent/agents/googler/config.yaml)Tj T* ET BT 1 0 0 1 343.4 464.3 Tm (6)Tj T* ET BT 1 0 0 1 383 464.3 Tm (0)Tj T* ET BT 1 0 0 1 5 447.3 Tm (Tlamatini/agent/agents/googler/googler.py)Tj T* ET BT 1 0 0 1 343.4 447.3 Tm (711)Tj T* ET BT 1 0 0 1 383 447.3 Tm (0)Tj T* ET BT 1 0 0 1 5 430.3 Tm (Tlamatini/agent/migrations/0068_add_googler_tool.py)Tj T* ET BT 1 0 0 1 343.4 430.3 Tm (36)Tj T* ET BT 1 0 0 1 383 430.3 Tm (0)Tj T* ET BT 1 0 0 1 5 413.3 Tm (Tlamatini/agent/migrations/0069_add_googler_agent.py)Tj T* ET BT 1 0 0 1 343.4 413.3 Tm (36)Tj T* ET BT 1 0 0 1 383 413.3 Tm (0)Tj T* ET BT 1 0 0 1 5 396.3 Tm (Tlamatini/agent/static/agent/css/agentic_control_panel.css)Tj T* ET BT 1 0 0 1 343.4 396.3 Tm (24)Tj T* ET BT 1 0 0 1 383 396.3 Tm (12)Tj T* ET BT 1 0 0 1 5 379.3 Tm (Tlamatini/agent/static/agent/js/acp-agent-connectors.js)Tj T* ET BT 1 0 0 1 343.4 379.3 Tm (38)Tj T* ET BT 1 0 0 1 383 379.3 Tm (19)Tj T* ET BT 1 0 0 1 5 362.3 Tm (Tlamatini/agent/static/agent/js/acp-canvas-core.js)Tj T* ET BT 1 0 0 1 343.4 362.3 Tm (8)Tj T* ET BT 1 0 0 1 383 362.3 Tm (1)Tj T* ET BT 1 0 0 1 5 345.3 Tm (Tlamatini/agent/static/agent/js/acp-canvas-undo.js)Tj T* ET BT 1 0 0 1 343.4 345.3 Tm (13)Tj T* ET BT 1 0 0 1 383 345.3 Tm (1)Tj T* ET BT 1 0 0 1 5 328.3 Tm (Tlamatini/agent/static/agent/js/acp-file-io.js)Tj T* ET BT 1 0 0 1 343.4 328.3 Tm (20)Tj T* ET BT 1 0 0 1 383 328.3 Tm (18)Tj T* ET BT 1 0 0 1 5 311.3 Tm (Tlamatini/agent/templates/agent/agent_page.html)Tj T* ET BT 1 0 0 1 343.4 311.3 Tm (23)Tj T* ET BT 1 0 0 1 383 311.3 Tm (21)Tj T* ET BT 1 0 0 1 5 294.3 Tm (Tlamatini/agent/tools.py)Tj T* ET BT 1 0 0 1 343.4 294.3 Tm (307)Tj T* ET BT 1 0 0 1 383 294.3 Tm (0)Tj T* ET BT 1 0 0 1 5 277.3 Tm (Tlamatini/agent/urls.py)Tj T* ET BT 1 0 0 1 343.4 277.3 Tm (1)Tj T* ET BT 1 0 0 1 383 277.3 Tm (0)Tj T* ET BT 1 0 0 1 5 260.3 Tm (Tlamatini/agent/views.py)Tj T* ET BT 1 0 0 1 343.4 260.3 Tm (68)Tj T* ET BT 1 0 0 1 383 260.3 Tm (0)Tj T* ET BT 1 0 0 1 5 243.3 Tm (gatewayer-xplained-files/20260405233215_agent_management.py)Tj T* ET BT 1 0 0 1 343.4 243.3 Tm (0)Tj T* ET BT 1 0 0 1 383 243.3 Tm (26)Tj T* ET BT 1 0 0 1 5 226.3 Tm (gatewayer-xplained-files/20260405233215_authentication.py)Tj T* ET BT 1 0 0 1 343.4 226.3 Tm (0)Tj T* ET BT 1 0 0 1 383 226.3 Tm (24)Tj T* ET BT 1 0 0 1 5 209.3 Tm (gatewayer-xplained-files/20260405233215_cleanup.py)Tj T* ET BT 1 0 0 1 343.4 209.3 Tm (0)Tj T* ET BT 1 0 0 1 383 209.3 Tm (10)Tj T* ET BT 1 0 0 1 5 192.3 Tm (gatewayer-xplained-files/20260405233215_dispatch_loop.py)Tj T* ET BT 1 0 0 1 343.4 192.3 Tm (0)Tj T* ET BT 1 0 0 1 383 192.3 Tm (23)Tj T* ET BT 1 0 0 1 5 175.3 Tm (gatewayer-xplained-files/20260405233215_envelope_builder.py)Tj T* ET BT 1 0 0 1 343.4 175.3 Tm (0)Tj T* ET BT 1 0 0 1 383 175.3 Tm (21)Tj T* ET BT 1 0 0 1 5 158.3 Tm (gatewayer-xplained-files/20260405233215_folder_watch.py)Tj T* ET BT 1 0 0 1 343.4 158.3 Tm (0)Tj T* ET BT 1 0 0 1 383 158.3 Tm (27)Tj T* ET BT 1 0 0 1 5 141.3 Tm (gatewayer-xplained-files/20260405233215_gatewayer_init.py)Tj T* ET BT 1 0 0 1 343.4 141.3 Tm (0)Tj T* ET BT 1 0 0 1 383 141.3 Tm (14)Tj T* ET BT 1 0 0 1 5 124.3 Tm (gatewayer-xplained-files/20260405233215_global_state.py)Tj T* ET BT 1 0 0 1 343.4 124.3 Tm (0)Tj T* ET BT 1 0 0 1 383 124.3 Tm (5)Tj T* ET BT 1 0 0 1 5 107.3 Tm (gatewayer-xplained-files/20260405233215_handler_class.py)Tj T* ET BT 1 0 0 1 343.4 107.3 Tm (0)Tj T* ET BT 1 0 0 1 383 107.3 Tm (46)Tj T* ET BT 1 0 0 1 5 90.3 Tm (gatewayer-xplained-files/20260405233215_main_entry.py)Tj T* ET BT 1 0 0 1 343.4 90.3 Tm (0)Tj T* ET BT 1 0 0 1 383 90.3 Tm (33)Tj T* ET BT 1 0 0 1 5 73.3 Tm (gatewayer-xplained-files/20260405233215_payload_logging.py)Tj T* ET BT 1 0 0 1 343.4 73.3 Tm (0)Tj T* ET BT 1 0 0 1 383 73.3 Tm (21)Tj T* ET BT 1 0 0 1 5 56.3 Tm (gatewayer-xplained-files/20260405233215_persistence.py)Tj T* ET BT 1 0 0 1 343.4 56.3 Tm (0)Tj T* ET BT 1 0 0 1 383 56.3 Tm (23)Tj T* ET BT 1 0 0 1 5 39.3 Tm (gatewayer-xplained-files/20260405233215_pid_management.py)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (0)Tj T* ET BT 1 0 0 1 383 39.3 Tm (15)Tj T* ET BT 1 0 0 1 5 22.3 Tm (gatewayer-xplained-files/20260405233215_reanim_helpers.py)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (0)Tj T* ET BT 1 0 0 1 383 22.3 Tm (10)Tj T* ET BT 1 0 0 1 5 5.3 Tm (gatewayer-xplained-files/20260405233215_validation.py)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (0)Tj T* ET BT 1 0 0 1 383 5.3 Tm (24)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 534 m 417.6 534 l S 0 0 m 0 534 l S 417.6 0 m 417.6 534 l S 0 0 m 417.6 0 l S 0 510 m 417.6 510 l S 0 493 m 417.6 493 l S 0 476 m 417.6 476 l S 0 459 m 417.6 459 l S 0 442 m 417.6 442 l S 0 425 m 417.6 425 l S 0 408 m 417.6 408 l S 0 391 m 417.6 391 l S 0 374 m 417.6 374 l S 0 357 m 417.6 357 l S 0 340 m 417.6 340 l S 0 323 m 417.6 323 l S 0 306 m 417.6 306 l S 0 289 m 417.6 289 l S 0 272 m 417.6 272 l S 0 255 m 417.6 255 l S 0 238 m 417.6 238 l S 0 221 m 417.6 221 l S 0 204 m 417.6 204 l S 0 187 m 417.6 187 l S 0 170 m 417.6 170 l S 0 153 m 417.6 153 l S 0 136 m 417.6 136 l S 0 119 m 417.6 119 l S 0 102 m 417.6 102 l S 0 85 m 417.6 85 l S 0 68 m 417.6 68 l S 0 51 m 417.6 51 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 534 l S 378 0 m 378 534 l S Q Q Q
-endstream
-endobj
-
-128 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-129 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-130 0 obj
-<</Type/Annot/Subtype/Redact/P 20 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 131 0 R>>/NM(fitz-A0)>>
-endobj
-
-131 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-132 0 obj
-<</Length 6877>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 16)Tj T* ET Q q 1 0 0 1 45.6 688.4 cm .070588 .231373 .388235 rg 0 58 417.6 -24 re f* 1 1 1 rg 0 34 417.6 -17 re f* .972549 .980392 .988235 rg 0 17 417.6 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 43.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 43.5 Tm (+)Tj T* ET BT 1 0 0 1 383 43.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 22.3 Tm (googler_mcp.py)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (267)Tj T* ET BT 1 0 0 1 383 22.3 Tm (0)Tj T* ET BT 1 0 0 1 5 5.3 Tm (requirements.txt)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (2)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 58 m 417.6 58 l S 0 34 m 0 58 l S 0 0 m 0 34 l S 417.6 34 m 417.6 58 l S 417.6 0 m 417.6 34 l S 0 0 m 417.6 0 l S 0 34 m 417.6 34 l S 338.4 34 m 338.4 58 l S 378 34 m 378 58 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 34 l S 378 0 m 378 34 l S Q Q q 1 0 0 1 45.6 653.88 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (6. 6584b69 - Repository cleanup)Tj T* ET Q q 1 0 0 1 45.6 521.88 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Erasing rush trash, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-09T14:47:09-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (3)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+0 / -3)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Low-risk cleanup that removes transient Ruff artifacts from the repository.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 499.56 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 481.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Deleted `ruff.toml`, `ruff_errors.json`, and `ruff_errors.txt`.)Tj T* ET Q q 1 0 0 1 45.6 463.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Removed rushed lint-output artifacts that did not belong in the maintained source tree.)Tj T* ET Q q 1 0 0 1 45.6 445.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Reduced repository noise so the tracked tree reflects durable project assets instead of one-off troubleshooting files.)Tj T* ET Q q 1 0 0 1 45.6 421.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 340.96 cm .070588 .231373 .388235 rg 0 75 417.6 -24 re f* 1 1 1 rg 0 51 417.6 -17 re f* .972549 .980392 .988235 rg 0 34 417.6 -17 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 60.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 60.5 Tm (+)Tj T* ET BT 1 0 0 1 383 60.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 39.3 Tm (ruff.toml)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (0)Tj T* ET BT 1 0 0 1 383 39.3 Tm (3)Tj T* ET BT 1 0 0 1 5 22.3 Tm (ruff_errors.json)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (0)Tj T* ET BT 1 0 0 1 383 22.3 Tm (0)Tj T* ET BT 1 0 0 1 5 5.3 Tm (ruff_errors.txt)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (0)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 75 m 417.6 75 l S 0 0 m 417.6 0 l S 0 0 m 0 75 l S 417.6 0 m 417.6 75 l S 0 51 m 417.6 51 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 75 l S 378 0 m 378 75 l S Q Q q 1 0 0 1 45.6 306.44 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (7. ce56a25 - Documentation refresh)Tj T* ET Q q 1 0 0 1 45.6 174.44 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Updating all of the documentation, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-08T22:27:35-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (5)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+58 / -32)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Documentation-only update aligning written guidance with the new Parametrizer segment-log archival behavior.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 152.12 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 122.12 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Updated `README.md` to document that each completed Parametrizer target run now archives its live log into numbered files)Tj T* 4.67 0 Td (such as `prompter_1_segment_3.log`.)Tj T* ET Q q 1 0 0 1 45.6 92.12 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Clarified how archive creation interacts with pause/resume and how completed target output is preserved even if a pause)Tj T* 4.67 0 Td (happens just before cursor commit.)Tj T* ET Q q 1 0 0 1 45.6 62.12 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Updated `flowcreator/agentic_skill.md` so flow authors understand that Parametrizer preserves both target config state and)Tj T* 4.67 0 Td (per-segment target logs.)Tj T* ET Q q 1 0 0 1 45.6 38.52 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q Q
-endstream
-endobj
-
-133 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-134 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-135 0 obj
-<</Type/Annot/Subtype/Redact/P 21 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 136 0 R>>/NM(fitz-A0)>>
-endobj
-
-136 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-137 0 obj
-<</Length 6951>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 17)Tj T* ET Q q 1 0 0 1 45.6 637.4 cm .070588 .231373 .388235 rg 0 109 417.6 -24 re f* 1 1 1 rg 0 85 417.6 -17 re f* .972549 .980392 .988235 rg 0 68 417.6 -17 re f* 1 1 1 rg 0 51 417.6 -17 re f* .972549 .980392 .988235 rg 0 34 417.6 -17 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 94.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 94.5 Tm (+)Tj T* ET BT 1 0 0 1 383 94.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 73.3 Tm (README.md)Tj T* ET BT 1 0 0 1 343.4 73.3 Tm (32)Tj T* ET BT 1 0 0 1 383 73.3 Tm (10)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Tlamatini/agent/agents/flowcreator/agentic_skill.md)Tj T* ET BT 1 0 0 1 343.4 56.3 Tm (6)Tj T* ET BT 1 0 0 1 383 56.3 Tm (4)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Tlamatini/agent/agents/flowhypervisor/monitoring-prompt.pmt)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (2)Tj T* ET BT 1 0 0 1 383 39.3 Tm (0)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (0)Tj T* ET BT 1 0 0 1 383 22.3 Tm (0)Tj T* ET BT 1 0 0 1 5 5.3 Tm (tlamatini_app_summary.pdf)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (18)Tj T* ET BT 1 0 0 1 383 5.3 Tm (18)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 109 m 417.6 109 l S 0 0 m 417.6 0 l S 0 0 m 0 109 l S 417.6 0 m 417.6 109 l S 0 85 m 417.6 85 l S 0 68 m 417.6 68 l S 0 51 m 417.6 51 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 109 l S 378 0 m 378 109 l S Q Q q 1 0 0 1 45.6 602.88 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (8. 405ba41 - Parametrizer segment-log archival)Tj T* ET Q q 1 0 0 1 45.6 470.88 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Adding the log targets backing up to Parametrizer agent, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-08T22:09:10-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (2)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+103 / -24)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Behavioral enhancement to preserve each completed target run's output instead of letting later runs overwrite a single live log.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 448.56 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 418.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Added helpers in `parametrizer.py` to compute live target-log paths and per-segment archive paths, then copy the live log into)Tj T* 4.67 0 Td (numbered archive files.)Tj T* ET Q q 1 0 0 1 45.6 388.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Centralized post-run cleanup in `finalize_completed_target_segment\(\)` so both the normal path and reanimation recovery path)Tj T* 4.67 0 Td (archive the target log, restore config, and commit progress consistently.)Tj T* ET Q q 1 0 0 1 45.6 358.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Extended reanimation handling so a completed target segment is archived and committed safely even if Parametrizer resumes)Tj T* 4.67 0 Td (after the target already finished.)Tj T* ET Q q 1 0 0 1 45.6 328.56 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Added tests in `Tlamatini/agent/tests.py` that assert archive creation and correct archived content for normal execution and)Tj T* 4.67 0 Td (reanimation recovery.)Tj T* ET Q q 1 0 0 1 45.6 304.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 240.96 cm .070588 .231373 .388235 rg 0 58 417.6 -24 re f* 1 1 1 rg 0 34 417.6 -17 re f* .972549 .980392 .988235 rg 0 17 417.6 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 43.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 43.5 Tm (+)Tj T* ET BT 1 0 0 1 383 43.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 22.3 Tm (Tlamatini/agent/agents/parametrizer/parametrizer.py)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (91)Tj T* ET BT 1 0 0 1 383 22.3 Tm (24)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Tlamatini/agent/tests.py)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (12)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 58 m 417.6 58 l S 0 0 m 417.6 0 l S 0 0 m 0 58 l S 417.6 0 m 417.6 58 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 58 l S 378 0 m 378 58 l S Q Q q 1 0 0 1 45.6 206.44 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (9. 3cf47b9 - Lint cleanup)Tj T* ET Q q 1 0 0 1 45.6 74.44 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Just linting Parametrizer agent, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-08T21:24:39-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (1)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+0 / -1)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Tiny hygiene change with no intended runtime behavior change.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 52.12 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q Q
-endstream
-endobj
-
-138 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-139 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-140 0 obj
-<</Type/Annot/Subtype/Redact/P 22 0 R/F 4/Rect[38.6 5.107971 135.72 17.099976]/IC[1 1 1]/AP<</N 141 0 R>>/NM(fitz-A0)>>
-endobj
-
-141 0 obj
-<</Type/XObject/Subtype/Form/BBox[38.6 5.107971 135.72 17.099976]/Matrix[1 0 0 1 0 0]/Length 69/Filter/FlateDecode>>
-stream
-x⁄3T0 ¬ w.cK=33=CsKsCÖ\.Cc=s#ÑHLƒ–Lœ¿“““‹(÷Ñ,Ä©áπ¶ )¡05 Öv ¢
-endstream
-endobj
-
-142 0 obj
-<</Length 6071>>
-stream
-q q .796078 .835294 .882353 RG 39.6 18 m 572.4 18 l S .278431 .333333 .411765 rg BT 9.6 TL/F1 8 Tf 1 0 0 1 39.6 8 Tm T* ET BT 1 0 0 1 542.6 8 Tm (Page 18)Tj T* ET Q q 1 0 0 1 45.6 734.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Removed an unused `typing` import from `Tlamatini/agent/agents/parametrizer/parametrizer.py`.)Tj T* ET Q q 1 0 0 1 45.6 716.4 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Brought the file back into lint compliance after the larger Parametrizer rewrite.)Tj T* ET Q q 1 0 0 1 45.6 692.8 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 645.8 cm .070588 .231373 .388235 rg 0 41 417.6 -24 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 26.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 26.5 Tm (+)Tj T* ET BT 1 0 0 1 383 26.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 5.3 Tm (Tlamatini/agent/agents/parametrizer/parametrizer.py)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (0)Tj T* ET BT 1 0 0 1 383 5.3 Tm (1)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 41 m 417.6 41 l S 0 0 m 417.6 0 l S 0 0 m 0 41 l S 417.6 0 m 417.6 41 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 41 l S 378 0 m 378 41 l S Q Q q 1 0 0 1 45.6 611.28 cm .082353 .243137 .458824 rg BT 15 TL/F2 12 Tf 1 0 0 1 0 3 Tm (10. be090c7 - Parametrizer sequential queue and reanimation)Tj T* ET Q q 1 0 0 1 45.6 479.28 cm .070588 .231373 .388235 rg 0 126 432 -24 re f* 1 1 1 rg 0 102 432 -17 re f* .972549 .980392 .988235 rg 0 85 432 -17 re f* 1 1 1 rg 0 68 432 -17 re f* .972549 .980392 .988235 rg 0 51 432 -17 re f* 1 1 1 rg 0 34 432 -17 re f* .972549 .980392 .988235 rg 0 17 432 -17 re f* 1 1 1 rg BT 12 TL/F2 8.5 Tf 1 0 0 1 5 111.5 Tm (Field)Tj T* ET BT 1 0 0 1 105.8 111.5 Tm (Value)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 90.3 Tm (Subject)Tj T* ET BT 1 0 0 1 105.8 90.3 Tm (Improving a lot the processing shcme and reanimation of Parametrizer agent, by angelahack1)Tj T* ET BT 1 0 0 1 5 73.3 Tm (Date)Tj T* ET BT 1 0 0 1 105.8 73.3 Tm (2026-04-08T21:22:26-06:00)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Author)Tj T* ET BT 1 0 0 1 105.8 56.3 Tm (angelahack1)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Files changed)Tj T* ET BT 1 0 0 1 105.8 39.3 Tm (5)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Insertions / deletions)Tj T* ET BT 1 0 0 1 105.8 22.3 Tm (+1137 / -278)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Impact)Tj T* ET BT 1 0 0 1 105.8 5.3 Tm (Large behavioral refactor of the Parametrizer runtime, with new persistence and recovery semantics plus extensive documentation and tests.)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 126 m 432 126 l S 0 0 m 432 0 l S 0 0 m 0 126 l S 432 0 m 432 126 l S 0 102 m 432 102 l S 0 85 m 432 85 l S 0 68 m 432 68 l S 0 51 m 432 51 l S 0 34 m 432 34 l S 0 17 m 432 17 l S 100.8 0 m 100.8 126 l S Q Q q 1 0 0 1 45.6 456.96 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Documented change summary)Tj T* ET Q q 1 0 0 1 45.6 426.96 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Reworked Parametrizer into a strict sequential source-segment queue that processes exactly one unread structured segment at)Tj T* 4.67 0 Td (a time, waits for the target to finish, restores state, and only then advances the source cursor.)Tj T* ET Q q 1 0 0 1 45.6 396.96 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Introduced persisted progress-state stages, in-flight state tracking, and resume logic so interrupted executions can recover)Tj T* 4.67 0 Td (cleanly without replaying already completed target runs.)Tj T* ET Q q 1 0 0 1 45.6 378.96 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 3 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 3 Tm (Extended tests to cover sequential processing, recovery edges, and the new queue semantics.)Tj T* ET Q q 1 0 0 1 45.6 348.96 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Updated `README.md` and `flowcreator/agentic_skill.md` to explain the new deterministic queue model, pause/resume)Tj T* 4.67 0 Td (behavior, and operational constraints.)Tj T* ET Q q 1 0 0 1 45.6 318.96 cm .066667 .094118 .152941 rg BT 12 TL/F2 10 Tf 1 0 0 1 0 15 Tm (-)Tj ET BT/F1 9 Tf 1 0 0 1 9.33 15 Tm (Added flow-monitoring prompt guidance in `flowhypervisor/monitoring-prompt.pmt` so monitoring logic understands the new)Tj T* 4.67 0 Td (Parametrizer lifecycle.)Tj T* ET Q q 1 0 0 1 45.6 295.36 cm .066667 .094118 .152941 rg BT 12 TL/F1 9.2 Tf 1 0 0 1 0 2.8 Tm (Touched files)Tj T* ET Q q 1 0 0 1 45.6 180.36 cm .070588 .231373 .388235 rg 0 109 417.6 -24 re f* 1 1 1 rg 0 85 417.6 -17 re f* .972549 .980392 .988235 rg 0 68 417.6 -17 re f* 1 1 1 rg 0 51 417.6 -17 re f* .972549 .980392 .988235 rg 0 34 417.6 -17 re f* 1 1 1 rg 0 17 417.6 -17 re f* BT 12 TL/F2 8.5 Tf 1 0 0 1 5 94.5 Tm (Path)Tj T* ET BT 1 0 0 1 343.4 94.5 Tm (+)Tj T* ET BT 1 0 0 1 383 94.5 Tm (-)Tj T* ET 0 0 0 rg BT 9 TL/F1 7.7 Tf 1 0 0 1 5 73.3 Tm (README.md)Tj T* ET BT 1 0 0 1 343.4 73.3 Tm (196)Tj T* ET BT 1 0 0 1 383 73.3 Tm (98)Tj T* ET BT 1 0 0 1 5 56.3 Tm (Tlamatini/agent/agents/flowcreator/agentic_skill.md)Tj T* ET BT 1 0 0 1 343.4 56.3 Tm (55)Tj T* ET BT 1 0 0 1 383 56.3 Tm (25)Tj T* ET BT 1 0 0 1 5 39.3 Tm (Tlamatini/agent/agents/flowhypervisor/monitoring-prompt.pmt)Tj T* ET BT 1 0 0 1 343.4 39.3 Tm (18)Tj T* ET BT 1 0 0 1 383 39.3 Tm (0)Tj T* ET BT 1 0 0 1 5 22.3 Tm (Tlamatini/agent/agents/parametrizer/parametrizer.py)Tj T* ET BT 1 0 0 1 343.4 22.3 Tm (663)Tj T* ET BT 1 0 0 1 383 22.3 Tm (155)Tj T* ET BT 1 0 0 1 5 5.3 Tm (Tlamatini/agent/tests.py)Tj T* ET BT 1 0 0 1 343.4 5.3 Tm (205)Tj T* ET BT 1 0 0 1 383 5.3 Tm (0)Tj T* ET q .796078 .835294 .882353 RG 1 J 1 j .35 w 0 109 m 417.6 109 l S 0 0 m 417.6 0 l S 0 0 m 0 109 l S 417.6 0 m 417.6 109 l S 0 85 m 417.6 85 l S 0 68 m 417.6 68 l S 0 51 m 417.6 51 l S 0 34 m 417.6 34 l S 0 17 m 417.6 17 l S 338.4 0 m 338.4 109 l S 378 0 m 378 109 l S Q Q Q
-endstream
-endobj
-
-143 0 obj
-<</Length 56>>
-stream
-
-q
-38.6 5.10797 97.12 11.992 re
-h
-1 1 1 RG 1 1 1 rg B
-Q
-
-endstream
-endobj
-
-144 0 obj
-<</Length 117/Filter/FlateDecode>>
-stream
-x⁄}…±¬0Ñ·›OqOÏƒ±	1T™*±Å≤!&(0î°<?©ÿ{∑¸“Gıï‹.H%:‘7Ì^”¸]ÛÅΩ”$äê˛À*‚¶éÛ∏…ü'.˚¨v3±ªâ´õ¨DnÕŒë=yn≤ZÙr∏÷#ïNÙp; Ñ
-endstream
-endobj
-
-xref
-4 5
-0000038901 00000 n 
-0000039106 00000 n 
-0000039285 00000 n 
-0000039464 00000 n 
-0000039650 00000 n 
-10 13
-0000039829 00000 n 
-0000040018 00000 n 
-0000040198 00000 n 
-0000040378 00000 n 
-0000040558 00000 n 
-0000040741 00000 n 
-0000040924 00000 n 
-0000041107 00000 n 
-0000041290 00000 n 
-0000041473 00000 n 
-0000041656 00000 n 
-0000041839 00000 n 
-0000042022 00000 n 
-44 101
-0000042205 00000 n 
-0000042340 00000 n 
-0000042561 00000 n 
-0000042694 00000 n 
-0000042910 00000 n 
-0000043044 00000 n 
-0000043260 00000 n 
-0000049182 00000 n 
-0000049357 00000 n 
-0000049447 00000 n 
-0000049634 00000 n 
-0000049729 00000 n 
-0000049918 00000 n 
-0000050199 00000 n 
-0000050334 00000 n 
-0000050555 00000 n 
-0000057788 00000 n 
-0000057894 00000 n 
-0000058081 00000 n 
-0000058216 00000 n 
-0000058437 00000 n 
-0000060067 00000 n 
-0000060173 00000 n 
-0000060360 00000 n 
-0000060495 00000 n 
-0000060716 00000 n 
-0000060852 00000 n 
-0000061075 00000 n 
-0000070654 00000 n 
-0000070809 00000 n 
-0000070996 00000 n 
-0000071280 00000 n 
-0000071415 00000 n 
-0000071636 00000 n 
-0000074251 00000 n 
-0000074357 00000 n 
-0000074544 00000 n 
-0000074680 00000 n 
-0000074901 00000 n 
-0000078304 00000 n 
-0000078410 00000 n 
-0000078597 00000 n 
-0000078733 00000 n 
-0000078954 00000 n 
-0000082658 00000 n 
-0000082764 00000 n 
-0000082951 00000 n 
-0000083087 00000 n 
-0000083308 00000 n 
-0000087036 00000 n 
-0000087142 00000 n 
-0000087329 00000 n 
-0000087465 00000 n 
-0000087686 00000 n 
-0000092018 00000 n 
-0000092124 00000 n 
-0000092311 00000 n 
-0000092449 00000 n 
-0000092671 00000 n 
-0000096579 00000 n 
-0000096686 00000 n 
-0000096874 00000 n 
-0000097012 00000 n 
-0000097234 00000 n 
-0000097661 00000 n 
-0000097768 00000 n 
-0000097956 00000 n 
-0000098094 00000 n 
-0000098316 00000 n 
-0000104748 00000 n 
-0000104855 00000 n 
-0000105043 00000 n 
-0000105181 00000 n 
-0000105403 00000 n 
-0000112584 00000 n 
-0000112691 00000 n 
-0000112879 00000 n 
-0000113017 00000 n 
-0000113239 00000 n 
-0000121334 00000 n 
-0000121441 00000 n 
-0000121629 00000 n 
-0000121767 00000 n 
-0000121989 00000 n 
-0000130654 00000 n 
-0000130761 00000 n 
-0000130949 00000 n 
-0000131087 00000 n 
-0000131309 00000 n 
-0000138239 00000 n 
-0000138346 00000 n 
-0000138534 00000 n 
-0000138672 00000 n 
-0000138894 00000 n 
-0000145898 00000 n 
-0000146005 00000 n 
-0000146193 00000 n 
-0000146331 00000 n 
-0000146553 00000 n 
-0000152677 00000 n 
-0000152784 00000 n 
-
-trailer
-<</ID[<066A487902758A41040E1769FC457905><7628523958DA31D6C21C90E39344B28E>]/Info 24 0 R/Root 23 0 R/Size 145/Prev 37804>>
-startxref
-152972
+19753
 %%EOF
