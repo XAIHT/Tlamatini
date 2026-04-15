@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import json
 import subprocess
 import sys
@@ -8,13 +7,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
-
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.util import Inches, Pt
-
+from mardown_to_pdf import markdown_text_to_pdf
 
 SCRIPT_PATH = Path(__file__).resolve()
 DOC_DIR = SCRIPT_PATH.parent
@@ -23,9 +21,6 @@ REPO_ROOT = SCRIPT_PATH.parents[3]
 
 if str(DOC_DIR) not in sys.path:
     sys.path.insert(0, str(DOC_DIR))
-
-from mardown_to_pdf import markdown_text_to_pdf
-
 
 PDF_OUTPUT = REPO_ROOT / "tlamatini_app_summary.pdf"
 PPT_OUTPUT = REPO_ROOT / "Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx"
