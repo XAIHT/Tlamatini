@@ -13,6 +13,10 @@ from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.util import Inches, Pt
 from mardown_to_pdf import markdown_text_to_pdf
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1063061 (Adding a proper log file for the entire appllication (tlamatini.log), some linting, and updated the documentation, by angelahack1)
 
 SCRIPT_PATH = Path(__file__).resolve()
 DOC_DIR = SCRIPT_PATH.parent

@@ -169,6 +169,12 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
     - [Forker/Asker Not Routing](#forkerasker-not-routing)
   - [Debug Mode](#debug-mode)
   - [Log Locations](#log-locations)
+- [Application Log (tlamatini.log)](#application-log-tlamatinilog)
+  - [Location](#tlamatini-log-location)
+  - [How It Works: The Tee Stream Architecture](#how-it-works-the-tee-stream-architecture)
+  - [What the Log Contains](#what-the-log-contains)
+  - [Django Logger Integration](#django-logger-integration)
+  - [Lifecycle and Rotation](#lifecycle-and-rotation)
 - [Glossary](#glossary)
 - [Keyboarder Supported Keys](#keyboarder-supported-keys)
 - [Contributing](#contributing)
@@ -3908,7 +3914,100 @@ All log lines are prefixed with timestamps and logger names (e.g. `2026-04-13 12
 - **Django/Multi-Turn logs**: Console output (stdout) — includes planner scoring, tool selection, runtime creation, and subprocess launch diagnostics
 - **ACP workflow agent logs**: `<pool_directory>/<agent_name>/<agent_name>.log`
 - **Chat-launched wrapped agent logs**: `agent/agents/pools/_chat_runs_/<agent>_<seq>_<id>/<agent>_<seq>_<id>.log` — each run gets its own sequenced directory, failed runs are preserved
-- **System logs**: `Tlamatini/logs/` (if configured)
+- **Application-wide log**: `Tlamatini/tlamatini.log` — see [Application Log](#application-log-tlamatinilog) below
+
+---
+
+## Application Log (tlamatini.log)
+
+Tlamatini ships a built-in application log that captures **all console output** (stdout and stderr) into a single file. This is the primary diagnostic artifact for the running server — every print statement, Django startup message, HTTP request log, warning, traceback, and structured logger message ends up here alongside the normal console output.
+
+### <a id="tlamatini-log-location"></a>Location
+
+| Mode | Log file path |
+|------|---------------|
+| **Source (development)** | `Tlamatini/tlamatini.log` — same directory as `manage.py` |
+| **Frozen (PyInstaller .exe)** | Next to the executable, e.g. `C:\Program Files\Tlamatini\tlamatini.log` |
+
+The path is resolved at startup in `manage.py` using the standard frozen-mode detection pattern:
+
+```python
+if getattr(sys, 'frozen', False):
+    log_dir = os.path.dirname(sys.executable)        # frozen .exe directory
+else:
+    log_dir = os.path.dirname(os.path.abspath(__file__))  # manage.py directory
+```
+
+### How It Works: The Tee Stream Architecture
+
+The log is **not** implemented through Django's `LOGGING` setting or a file-based logging handler. Instead, `manage.py` defines a lightweight `_TeeStream` class that **wraps `sys.stdout` and `sys.stderr`** before Django even initializes:
+
+```
+┌──────────────────────────────────────────────────┐
+│  Any Python output (print, logging, tracebacks)  │
+└──────────────────┬───────────────────────────────┘
+                   │
+            ┌──────▼──────┐
+            │  _TeeStream  │
+            └──┬───────┬──┘
+               │       │
+     ┌─────────▼─┐  ┌──▼──────────────┐
+     │  Console   │  │  tlamatini.log  │
+     │  (original │  │  (file on disk) │
+     │   stream)  │  │                 │
+     └───────────┘  └─────────────────┘
+```
+
+Every call to `write()` on either stream is duplicated: the original console receives the data as usual, and a second copy is written to the log file with an **immediate `flush()`** to ensure nothing is lost if the process crashes. Write failures to the file are silently ignored so that a full disk or permission error never breaks the console output.
+
+The tee is installed at **module import time** (line 61 of `manage.py`), which means it captures output from the earliest moments of Django's startup — including the `Watching for file changes with StatReloader` banner and `collectstatic` summaries.
+
+### What the Log Contains
+
+Because the tee captures all of stdout/stderr, the log file includes:
+
+| Source | Example content |
+|--------|----------------|
+| **Django startup** | System check messages, migration status, server address |
+| **HTTP request log** | `"GET /agent/ HTTP/1.1" 200` lines from Django's dev server |
+| **Structured loggers** | Timestamped `INFO`/`WARNING`/`ERROR` lines from the five configured loggers (see below) |
+| **Print statements** | Any `print()` call anywhere in the codebase |
+| **Tracebacks** | Full Python exception tracebacks written to stderr |
+| **Third-party library output** | Warnings from LangChain, FAISS, gRPC, etc. |
+| **Subprocess output** | If a subprocess inherits stdout/stderr, its output appears here too |
+
+### Django Logger Integration
+
+Django's `LOGGING` configuration in `settings.py` defines five module-specific loggers, all routed to a `StreamHandler` (i.e. console). Because the console is wrapped by `_TeeStream`, these structured log lines automatically flow into `tlamatini.log` as well:
+
+| Logger name | What it captures |
+|-------------|-----------------|
+| `agent.chat_agent_runtime` | Wrapped chat-agent runtime lifecycle — creation, start, stop, status transitions |
+| `agent.tools` | Tool invocation details — which tools are called, arguments, return values |
+| `agent.mcp_agent` | Multi-turn tool loop execution, MCP agent decisions |
+| `agent.global_execution_planner` | Planner scoring: per-tool scores, selected tools, threshold, top score |
+| `agent.capability_registry` | Capability scoring and tool-selection details |
+
+All five loggers use the same formatter:
+
+```
+%(asctime)s [%(name)s] %(levelname)s %(message)s
+```
+
+Producing lines like:
+
+```
+2026-04-15 10:42:17 [agent.tools] INFO [tools._launch_wrapped_chat_agent] Launching executer run #3 ...
+```
+
+### Lifecycle and Rotation
+
+- **Truncated on every restart**: The log file opens in **write mode (`'w'`)**, not append mode. Each time the server starts, the previous log is overwritten. This keeps the file relevant to the current session and prevents unbounded growth.
+- **No size limit or rotation**: There is no `RotatingFileHandler` or max-size cap on `tlamatini.log`. For long-running sessions, the file grows as long as the server runs.
+- **Encoding**: UTF-8.
+- **Graceful degradation**: If the log file cannot be created (e.g. read-only filesystem), the tee setup is silently skipped and the application runs normally with console-only output.
+
+> **Tip**: If you need to preserve logs across restarts, copy or rename `tlamatini.log` before restarting the server. For workflow agent logs (which are per-agent and per-session), see [Log Locations](#log-locations) above.
 
 ---
 
