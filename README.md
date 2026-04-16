@@ -7,6 +7,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 ## Table of Contents
 
 - [Overview](#overview)
+- [Videos](#videos)
 - [Quick Start](#quick-start)
 - [Default Login Credentials](#default-login-credentials)
 - [Key Features](#key-features)
@@ -202,6 +203,13 @@ The main chat surface is now substantially more agentic as well. When **Multi-Tu
 Just as important, when **Multi-Turn** is unchecked the chat path intentionally preserves the legacy one-shot behavior, including the original prompt-shape validation and full-tool binding surface.
 
 The entire application can be packaged into a standalone executable using PyInstaller, with a user-friendly Tkinter-based GUI installer for easy deployment.
+
+---
+
+## Videos
+
+- [First video of system usage getting in Tlamatini](https://www.youtube.com/watch?v=CkvDPSd_c-g)
+- [Video showing tlamatini loading a complete project and summarizing its entire source code](https://www.youtube.com/watch?v=Lrpbt_dPIXw)
 
 ---
 
