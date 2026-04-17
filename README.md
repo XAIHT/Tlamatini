@@ -1461,7 +1461,8 @@ For tools and wrapped agents, the selector:
 - uses aliases, example requests, security hints, and token overlap against the current request
 - automatically includes runtime follow-up tools when wrapped agents or `run_id`-style monitoring requests are detected
 - run-control tools (`chat_agent_run_list/status/log/stop`) are excluded from scoring-floor calculations and auto-injected when wrapped agents are selected, preventing them from inflating the threshold and crowding out actual agent tools
-- up to 50 tools can be selected per request (matching the full agent catalogue), with the scoring threshold as the real filter rather than an artificial hard cap
+- up to 20 tools can be selected per request by default (configurable via `max_selected_tools`), with the scoring threshold as the real filter rather than an artificial hard cap. The cap was lowered from 50 to 20 after observing that keyword inflation on real-world prompts could otherwise select every tool at once
+- short follow-up messages (≤4 meaningful tokens, e.g. "continue", "go ahead") receive a history-aware scoring boost of up to +15 points per capability, derived from the last 4 chat-history messages, so follow-ups do not lose the previously-selected tool set
 
 For MCP-backed context prefetch, the selector currently supports:
 
@@ -1505,8 +1506,9 @@ The planner summary is injected into the executor so the model is guided by the 
 
 - Each tool is scored against the request using name matching (+14 for exact tool-name match), alias/hint phrase matching (+10-12), example-request token overlap (+up to 3), and description token overlap (+up to 10)
 - Run-control tools are excluded from the scoring floor calculation since they are auto-injected whenever wrapped agents are selected
-- Every tool scoring above the entry threshold (6 when MCP contexts are active, 2 otherwise) is selected, up to a maximum of 50 tools per request
-- The planner, capability selector, and tool executor all emit detailed `INFO`-level logs (prefixed `[Planner._select]`, `[tools._launch_wrapped_chat_agent]`, etc.) visible in the Django console for debugging tool selection issues
+- Every tool scoring above the entry threshold (6 when MCP contexts are active, 2 otherwise) is selected, up to a maximum of **20 tools** per request by default (configurable via `max_selected_tools`; was 50 before the April 2026 reduction)
+- For short follow-up messages, the score is boosted with up to +15 points per capability derived from the last 4 chat-history messages, preserving tool context across terse follow-ups like "continue" or "go ahead"
+- The planner, capability selector, and tool executor all emit detailed `INFO`-level logs (prefixed `[Planner._select]`, `[tools._launch_wrapped_chat_agent]`, etc.) visible in the Django console and in `tlamatini.log` for debugging tool selection issues
 
 #### Wrapped Chat-Agent Runtime Tools
 
@@ -2580,6 +2582,8 @@ Tools available in Multi-Turn mode fall into five categories:
 **Web Search** — Search the internet using Playwright browser automation:
 `googler`
 
+> **Implementation note**: `googler` wraps its `sync_playwright()` block in a dedicated `ThreadPoolExecutor(max_workers=1)` with a 120-second timeout. This is required because Django Channels runs its workers inside a live `asyncio` event loop, and synchronous Playwright refuses to start under those conditions (raises `NotImplementedError`). Any new synchronous-Playwright-based tool MUST do the same, otherwise it will crash the moment the LLM invokes it in Multi-Turn mode.
+
 ### The Multi-Turn Tool Loop
 
 The core execution engine is the `MultiTurnToolAgentExecutor`. It implements an explicit tool-calling loop (not using LangChain's opaque AgentExecutor) that gives the backend direct control over every tool-call/observation turn:
@@ -2599,7 +2603,7 @@ This architecture allows the LLM to orchestrate multi-step workflows: crawl a we
 When 50+ tools are available, binding all of them to the LLM wastes context and confuses smaller models. The `CapabilityAwareToolAgentExecutor` solves this with intelligent tool selection:
 
 1. **Global Execution Plan** (highest priority): If a planner has pre-selected tools for this request, use only those.
-2. **Smart Scoring** (`select_tools_for_request`): Each tool is scored against the user's input text using name matching, alias phrases, description tokens, and security hints. Every tool scoring above the entry threshold is selected (up to 50 tools per request).
+2. **Smart Scoring** (`select_tools_for_request`): Each tool is scored against the user's input text using name matching, alias phrases, description tokens, and security hints. Every tool scoring above the entry threshold is selected (up to **20 tools per request** by default; was 50 before the April 2026 reduction). Short follow-up messages also receive a +15 boost per capability derived from the last 4 chat-history messages.
 3. **Run-Control Isolation**: Run-control tools (`chat_agent_run_list/status/log/stop`) are excluded from score-floor calculations and auto-injected whenever wrapped agents are selected. This prevents monitoring tools from inflating the threshold and crowding out the actual agent tools the user requested.
 4. **Fallback**: If no tools score above threshold, all tools are bound (safe default).
 
@@ -2615,6 +2619,10 @@ When the LLM invokes a `chat_agent_*` tool, the following happens:
 4. **JSON Response**: The tool returns a JSON object with `run_id`, `status`, `pid`, `runtime_dir`, `log_path`, and `log_excerpt`.
 5. **Monitoring**: If `status="running"`, the LLM can call `chat_agent_run_status` or `chat_agent_run_log` in subsequent iterations to check progress.
 6. **Completion**: When the agent finishes, its status transitions to `completed` or `failed`, and the full log is available via `chat_agent_run_log`.
+
+#### Wrapped-Agent Deduplication (April 2026)
+
+`MultiTurnToolAgentExecutor` tracks a per-request `_wrapped_agent_signatures` set keyed on `tool_name + sorted-JSON args`. If the LLM attempts to launch the exact same `chat_agent_*` tool with identical arguments twice in the same request, the second call is short-circuited and a `ToolMessage` is returned explaining the skip. This prevents the common failure mode where a model that received an inconclusive wrapped-agent result decides to "try again" with the same parameters and produces duplicate subprocesses. Management tools (`chat_agent_run_list`, `chat_agent_run_status`, etc.) are not deduplicated since repeated status checks are legitimate.
 
 This design ensures that each tool invocation is isolated, traceable, and monitorable. The global sequence number shows the exact execution order across all agent types, so the user can reconstruct the full timeline of what the LLM attempted — including retries and failures.
 
@@ -4156,6 +4164,16 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Multi-Turn Planner Max-Tool Cap Lowered 50 → 20** - `build_global_execution_plan()` and `_select_planner_tool_names()` now default to `max_selected_tools=20` (configurable). After observing MXNet-installation sessions where the planner selected every tool at once due to keyword inflation, the default was reduced to 20 to force the scoring threshold to do the real filtering.
+- **Planner Short Follow-Up Scoring Fix** - Short follow-up messages like "continue", "go ahead", "proceed" used to score near-zero for every capability because scoring only considered the current message. The planner now accepts a `chat_history_text` argument and applies a history-aware boost of up to +15 points per capability when the current request has ≤4 meaningful tokens. Wired in `rag/factory.py::_extract_chat_history_text()` which pulls the last 4 chat messages either from the payload or directly from `DBChatHistoryLoader`.
+- **Wrapped Chat-Agent Deduplication** - `MultiTurnToolAgentExecutor.invoke()` now tracks a per-request `_wrapped_agent_signatures` set keyed on `tool_name + sorted-JSON args`. When the LLM attempts to relaunch the same `chat_agent_*` tool with identical arguments, the executor short-circuits with a `ToolMessage` explaining the skip. Management tools (`chat_agent_run_list/status/log/stop`) are exempt so status-polling still works.
+- **Googler Playwright Async-Loop Fix** - `googler` tool now runs its `sync_playwright()` block inside a dedicated `ThreadPoolExecutor(max_workers=1)` with a 120-second timeout. `sync_playwright()` cannot be invoked from within Django Channels' running asyncio event loop (raises `NotImplementedError`), so the executor isolates it on a synchronous thread.
+- **Cancel-Current RAG Rebuild Race Fix** - `consumers.py` now `await`s `setup_rag_chain()` during cancel-current handling instead of firing it with `asyncio.create_task(...)`. Otherwise the `MSG_LLM_REESTABLISHED` confirmation reached the client before the httpx rebuild completed, and the next request hit *"Cannot send a request, as the client has been closed."* All `getHttpxClientInstance()` call sites were also hardened to `None`-check before `.close()`.
+- **Multi-Turn Answer SUCCESS/FAILURE Classifier** - Added `agent/services/answer_analizer.py` — a LangChain-based binary classifier that asks the configured `chained-model` whether the final answer reflects a successful outcome or a failure. Replaces fragile regex/keyword heuristics. Fails **open** (returns `True`) on internal errors so the "Create Flow" button is not hidden unnecessarily. Max answer length sent for classification is 4000 characters.
+- **Create-Flow-From-Answer Button** - On Multi-Turn SUCCESS the chat message header renders a **"Create Flow"** button. Clicking it walks the executor's per-request `_tool_calls_log`, maps each tool invocation to its sidebar agent display name, lays out nodes left-to-right, wires sequential `target_agents` connections, and downloads a `.flw` workflow file the user can re-open in the ACP designer. See [Flow Creation from Multi-Turn Answers](#flow-creation-from-multi-turn-answers).
+- **Unified Application Log (`tlamatini.log`)** - `manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` before Django initializes, so every print, Django logger, and third-party stdout line lands in both the console and a single `tlamatini.log` file (next to `manage.py` in source mode, next to the executable in frozen mode). Truncated on every start, no rotation. See [Application Log (tlamatini.log)](#application-log-tlamatinilog).
+- **Documentation Regeneration Pipeline** - Added `agent/doc_generation/refresh_project_docs.py` and `agent/doc_generation/mardown_to_pdf.py` (sic) to rebuild the repository-root `tlamatini_app_summary.pdf` from the current source tree.
+- **Demo Videos Added to README** - Three YouTube walkthroughs now linked from the [Videos](#videos) section: first-use overview, full-project loading/summarization, and live OpenCV installation.
 - **Sequenced Runtime Directories for Wrapped Chat-Agent Runs** - Each `chat_agent_*` tool invocation now creates a **unique, sequenced directory** under `_chat_runs_/{agent}_{seq:03d}_{short_id}/` (e.g. `executer_001_a1b2c3d4`, `executer_002_e5f67890`). Failed runs are never overwritten, preserving the full execution history including logs, configs, and exit codes from every attempt. The global sequence counter is thread-safe, monotonically increasing across all agent types, and re-seeds from existing directories on server restart
 - **Planner Tool Selection Fix** - Fixed a critical bug where the Global Execution Planner excluded wrapped agent tools from Multi-Turn requests. Run-control tools (`chat_agent_run_list/status/log/stop`) no longer inflate the scoring floor since they are auto-injected. The dynamic floor was replaced with a simple threshold filter, and the max tool selection cap was raised from 12 to 50 to match the full agent catalogue
 - **Comprehensive Multi-Turn Runtime Logging** - Added `INFO`-level logging across the entire wrapped chat-agent launch pipeline: `chat_agent_runtime.py` (directory creation, template copy, script resolution, subprocess launch, Python executable selection), `tools.py` (template discovery, config.yaml lifecycle, launch result), `mcp_agent.py` (tool invocation/result for `chat_agent_*` tools), and `global_execution_planner.py` (per-tool scoring, selection decisions). All loggers are configured in `tlamatini/settings.py` with timestamped console output

@@ -19,6 +19,11 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 **Primary developer**: angelahack1 (angelahack1)
 **Platform**: Windows 11 (primary), bash shell in Claude Code
 
+**Demo videos** (linked from README.md):
+- First system-usage walkthrough: `https://www.youtube.com/watch?v=CkvDPSd_c-g`
+- Loading a complete project and summarizing its source code: `https://www.youtube.com/watch?v=Lrpbt_dPIXw`
+- Installing OpenCV end-to-end in Multi-Turn: `https://www.youtube.com/watch?v=bBlqbZVK-Wk`
+
 ---
 
 ## Quick Orientation
@@ -82,7 +87,8 @@ Tlamatini/                          # Git root
 │   │   │   └── claude_opus_client.py
 │   │   │
 │   │   ├── imaging/                # Dual-backend image analysis (Claude + Qwen)
-│   │   ├── services/               # filesystem.py, response_parser.py
+│   │   ├── services/               # filesystem.py, response_parser.py, answer_analizer.py
+│   │   ├── doc_generation/         # refresh_project_docs.py, mardown_to_pdf.py
 │   │   ├── templates/agent/        # HTML templates
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, etc.
@@ -90,6 +96,8 @@ Tlamatini/                          # Git root
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations
 │   │
+│   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log
+│   ├── tlamatini.log               # Unified application log (console + Django loggers)
 │   ├── jd-cli/                     # Bundled Java decompiler
 │   └── staticfiles/                # Collected static files (WhiteNoise)
 ```
@@ -221,7 +229,8 @@ Key rules:
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, + 32 wrapped chat-agent launchers
+- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 32 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`)
+- Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---
 
@@ -231,12 +240,41 @@ When **Multi-Turn is checked** in the toolbar:
 1. Prompt-shape validation is skipped
 2. Request-scoped global execution plan/DAG is built
 3. MCP contexts are prefetched selectively
-4. Only planned tool subset is bound
+4. Only planned tool subset is bound (default cap: **20 tools**, configurable via `max_selected_tools`)
 5. Wrapped agents launch in headless/background mode
+6. The MultiTurnToolAgentExecutor **deduplicates wrapped chat-agent calls** with identical arguments (prevents the LLM from launching the same sub-agent twice in a single request)
+7. After the final answer, `services/answer_analizer.py` classifies the answer as SUCCESS/FAILURE and the frontend renders a **"Create Flow"** button on SUCCESS that converts the executed tool-call log into a downloadable `.flw` workflow
 
 When **unchecked**: legacy one-shot behavior is preserved exactly.
 
 The toggle is per-browser-session, sent as `multi_turn_enabled` with each request.
+
+### Short Follow-Up Message Scoring
+
+`global_execution_planner._select_planner_tool_names()` accepts a `chat_history_text` argument. When the current request is a short follow-up (≤4 meaningful tokens, e.g. "continue", "go ahead"), it boosts each capability's score with up to +15 points derived from the last 4 chat messages. This keeps tool context from evaporating on terse follow-ups and is wired in `rag/factory.py::_extract_chat_history_text()`.
+
+---
+
+## Create Flow from a Multi-Turn Answer
+
+Every successful Multi-Turn response can be converted into a visual `.flw` workflow by clicking the **"Create Flow"** button rendered in the chat message header.
+
+Pipeline:
+
+1. **Tool-call log capture**: `MultiTurnToolAgentExecutor` in `mcp_agent.py` records each tool invocation into a per-request `_tool_calls_log`. Management tools (`chat_agent_stat_getter`, etc.) are excluded.
+2. **Success classification**: `services/answer_analizer.py::analyze_answer_success()` asks the configured `chained-model` to classify the final answer as `SUCCESS` or `FAILURE`. It is a deliberate LLM-based classifier (no regex/keyword heuristics). On internal error it fails **open** (returns `True`) so the button is not hidden unnecessarily. Max answer length sent for classification is 4000 chars.
+3. **WebSocket broadcast**: `consumers.py` attaches `tool_calls_log` and `answer_success` to the outgoing `agent_message` frame.
+4. **Button gate (frontend)**: `agent_page_chat.js` renders the "Create Flow" button only when Multi-Turn was enabled, `answer_success` is true, the tool-call log is non-empty, and the user is not anonymous.
+5. **Flow synthesis**: The frontend walks the tool-call log, maps each tool name to its sidebar agent display name, lays out nodes left-to-right, wires sequential `target_agents` connections, and emits a `.flw` JSON file that is downloaded by the browser.
+
+Files involved:
+
+- `agent/services/answer_analizer.py` — SUCCESS/FAILURE classifier
+- `agent/services/response_parser.py` — strips `END-RESPONSE` sentinel and related artifacts
+- `agent/mcp_agent.py` — `_tool_calls_log` accumulation and wrapped-agent dedup
+- `agent/consumers.py` — broadcasts `tool_calls_log` + `answer_success`
+- `agent/static/agent/js/agent_page_chat.js` — button render + `.flw` generator
+- `agent/static/agent/css/agent_page.css` — `.create-flow` button styling
 
 ---
 
@@ -552,6 +590,32 @@ npm run lint
 
 ---
 
+## Application Log (tlamatini.log)
+
+`Tlamatini/manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` **before Django initializes**. Every print, every Django logger (they all use `StreamHandler`), and every tool's stdout/stderr lands in both the console and a single file:
+
+- **Source mode**: `Tlamatini/tlamatini.log` (next to `manage.py`)
+- **Frozen mode**: next to the executable (e.g. `C:\Program Files\Tlamatini\tlamatini.log`)
+
+Characteristics:
+
+- **Truncate-on-start**: the file is opened with mode `'w'`, so each run begins with a fresh log
+- **No rotation / no size cap**: long sessions grow unbounded — copy or rename before restart if you need to preserve the history
+- **Not a Django LOGGING handler**: the tee is stream-level, upstream of Django's logging config, so it picks up print() calls and third-party stdout as well
+
+When asked to debug an issue, `Tlamatini/tlamatini.log` is the first artifact to consult.
+
+---
+
+## Doc Generation (agent/doc_generation)
+
+- `refresh_project_docs.py` — Pipeline that regenerates `tlamatini_app_summary.pdf` (the repository-root PDF overview) from the current source tree. Invoked manually during documentation passes
+- `mardown_to_pdf.py` *(sic, typo preserved)* — Markdown → PDF helper used by `refresh_project_docs.py`
+
+Output artifact: `tlamatini_app_summary.pdf` in the repository root.
+
+---
+
 ## Database Models (13 models in agent/models.py)
 
 Key models:
@@ -608,6 +672,17 @@ Key models:
 8. `FileSearchRAGChain` falls back to `localhost:50051` for gRPC
 9. Tool status keys are handwritten and can drift
 10. `mcpContent` is stored as string, not boolean
+11. Planner default `max_selected_tools` was lowered from 50 → **20** to prevent keyword inflation from selecting every tool on a single request
+12. `tlamatini.log` is truncated on every server start (mode `'w'`) and has no rotation
+
+---
+
+## Recent Fixes / Gotchas (keep these in mind)
+
+- **Planner statelessness on short follow-ups** — Solved by passing `chat_history_text` into the planner and boosting capability scores. If you touch `_select_planner_tool_names()` or `build_global_execution_plan()`, preserve this argument.
+- **Wrapped chat-agent dedup** — `MultiTurnToolAgentExecutor` hashes `tool_name + sorted-JSON args` into `_wrapped_agent_signatures` and short-circuits duplicates with a `ToolMessage` explaining the skip. Do not remove this without replacing it; the LLM reliably launches the same sub-agent twice otherwise.
+- **Googler Playwright + async loop** — `sync_playwright()` raises `NotImplementedError` inside Django Channels' running asyncio loop. The Googler tool wraps its Playwright work in a `ThreadPoolExecutor(max_workers=1)` with a 120s timeout. Any new sync-Playwright tool must do the same.
+- **Cancel/rebuild race** — `consumers.py` now `await`s `setup_rag_chain()` during cancel-current instead of `asyncio.create_task(...)`. Otherwise the client receives `MSG_LLM_REESTABLISHED` while the httpx client is still torn down, and the next request hits "Cannot send a request, as the client has been closed." All `getHttpxClientInstance()` callers must also guard against `None`.
 
 ---
 
