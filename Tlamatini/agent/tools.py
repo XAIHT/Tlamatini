@@ -2340,9 +2340,10 @@ def googler(query: str, number_of_results: int = 5) -> str:
         return "Error: No search query provided. Please specify what to search for."
 
     number_of_results = max(1, min(int(number_of_results), 10))
-    outcomes = []
 
-    try:
+    def _run_playwright_search(search_query, num_results):
+        """Run the Playwright search in an isolated thread to avoid async event-loop conflicts."""
+        results = []
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=_GOOGLER_BROWSER_ARGS)
             context = browser.new_context(
@@ -2361,7 +2362,7 @@ def googler(query: str, number_of_results: int = 5) -> str:
                 search_box = page.wait_for_selector(
                     'textarea[name="q"], input[name="q"]', timeout=10000
                 )
-                search_box.fill(str(query))
+                search_box.fill(str(search_query))
                 search_box.press("Enter")
 
                 try:
@@ -2375,7 +2376,7 @@ def googler(query: str, number_of_results: int = 5) -> str:
                 # --- DuckDuckGo fallback ---
                 if not top_links:
                     page.goto(
-                        f"https://duckduckgo.com/?q={str(query).replace(' ', '+')}&t=h_&ia=web",
+                        f"https://duckduckgo.com/?q={str(search_query).replace(' ', '+')}&t=h_&ia=web",
                         wait_until="domcontentloaded", timeout=15000
                     )
                     try:
@@ -2389,21 +2390,32 @@ def googler(query: str, number_of_results: int = 5) -> str:
                         page, _GOOGLER_DDG_RESULT_SELECTORS, skip_domains={'duckduckgo.com'}
                     )
 
-                top_links = top_links[:number_of_results]
+                top_links = top_links[:num_results]
 
                 if not top_links:
-                    return f"No search results found for '{query}'."
+                    return None  # Signal: no results
 
                 # Fetch content using Playwright (handles JS-rendered pages)
                 for url in top_links:
                     result = _googler_fetch_page_text(page, url)
-                    outcomes.append(result)
-
-            except Exception as e:
-                return f"Error during Google search: {e}"
+                    results.append(result)
             finally:
                 browser.close()
 
+        return results
+
+    # Run Playwright in a dedicated thread to avoid conflicts with
+    # Django Channels' async event loop (sync_playwright cannot be called
+    # from inside a running asyncio loop).
+    from concurrent.futures import ThreadPoolExecutor
+    outcomes = []
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_run_playwright_search, query, number_of_results)
+            result = future.result(timeout=120)
+            if result is None:
+                return f"No search results found for '{query}'."
+            outcomes = result
     except Exception as e:
         return f"Error launching browser for Google search: {e}"
 

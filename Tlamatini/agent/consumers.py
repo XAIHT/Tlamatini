@@ -811,18 +811,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     global_state.set_state(f'context_path_{user_id}', None)
                     print(f"--- [CANCEL] Cleared global_state cache for user {user_id} ---")
                     
-                    # Step 9: Rebuild the RAG chain with fresh connection (non-blocking)
-                    # Use create_task to avoid deadlock - the old task may still hold the lock
-                    print("--- [CANCEL] Scheduling RAG chain rebuild (non-blocking) ---")
-                    asyncio.create_task(self.setup_rag_chain())
-                    
-                    # Step 10: Send confirmation that rebuild is in progress
-                    # Note: actual ready message will come from setup_rag_chain when it completes
+                    # Step 9: Rebuild the RAG chain with fresh connection (BLOCKING)
+                    # We must wait for the rebuild to complete before telling the
+                    # user that the agent is ready.  Otherwise, a request that
+                    # arrives before the rebuild finishes will hit
+                    # "Cannot send a request, as the client has been closed".
+                    print("--- [CANCEL] Scheduling RAG chain rebuild (awaiting completion) ---")
+                    await self.setup_rag_chain()
+
+                    # Step 10: Send confirmation that rebuild is done
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
                         {'type': 'agent_message', 'message': constants.MSG_LLM_REESTABLISHED, 'username': 'Tlamatini'}
                     )
-                    print("--- [CANCEL] Agent rebuild scheduled, user notified ---")
+                    print("--- [CANCEL] Agent rebuild completed, user notified ---")
                     
                 except Exception as e:
                     print(f"!!! ERROR while requesting cancellation: {e}")
@@ -837,7 +839,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("--- Received reconnect-llm-agent message from client. Attempting to reconnect LLM...")
                 try:
                     if hasattr(self, 'rag_chain') and self.rag_chain:
-                        self.rag_chain.getHttpxClientInstance().close()
+                        client = self.rag_chain.getHttpxClientInstance()
+                        if client:
+                            client.close()
                     # Clear global_state cache to force new RAG chain creation
                     user_id = user.id if user and user.is_authenticated else 'anonymous'
                     global_state.set_state(f'rag_chain_{user_id}', None)
@@ -870,7 +874,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     
                     # Proceed with reconnection
                     if hasattr(self, 'rag_chain') and self.rag_chain:
-                        self.rag_chain.getHttpxClientInstance().close()
+                        client = self.rag_chain.getHttpxClientInstance()
+                        if client:
+                            client.close()
                     asyncio.create_task(self.setup_rag_chain())
                     print("--- LLM reconnected after history clean.")
                     await self.channel_layer.group_send(   # type: ignore
@@ -886,7 +892,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("--- Received clear-context message from client. Attempting to reconnect LLM...")
                 try:
                     if hasattr(self, 'rag_chain') and self.rag_chain:
-                        self.rag_chain.getHttpxClientInstance().close()
+                        client = self.rag_chain.getHttpxClientInstance()
+                        if client:
+                            client.close()
                     # Clear session state
                     await self.clear_session_state(user)
                     print("--- Session state cleared.")
@@ -912,8 +920,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 try:
                     request_cancel_generation()
                     global_state.set_state('rag_chain_ready', True)
-                    if(self.rag_chain):
-                        self.rag_chain.getHttpxClientInstance().close()
+                    if hasattr(self, 'rag_chain') and self.rag_chain:
+                        client = self.rag_chain.getHttpxClientInstance()
+                        if client:
+                            client.close()
                     global_state.set_state('chat_hist_summarizer_counter', 0)
                     print("--- LLM cancelled.")
                 except Exception as e:

@@ -93,7 +93,8 @@ def _select_planner_tool_names(
     tools: Iterable,
     *,
     selected_contexts: tuple[str, ...],
-    max_selected: int = 50,
+    max_selected: int = 20,
+    chat_history_text: str = "",
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     tools_list = list(tools)
     if not tools_list:
@@ -103,9 +104,24 @@ def _select_planner_tool_names(
     normalized_request = _normalize_text(request_text)
     request_tokens = _tokenize(normalized_request)
 
+    # When the current message is short (e.g. "continue", "go ahead"),
+    # score tools against the recent chat history as well so that
+    # follow-up messages carry forward tool relevance from prior turns.
+    history_boost_tokens: set[str] = set()
+    history_boost_text: str = ""
+    is_short_followup = len(request_tokens - {"continue", "go", "ahead", "proceed", "yes", "ok", "do"}) < 4
+    if is_short_followup and chat_history_text:
+        history_boost_text = _normalize_text(chat_history_text)
+        history_boost_tokens = _tokenize(history_boost_text)
+
     scored: list[tuple[int, int, Any]] = []
     for index, capability in enumerate(capabilities):
         score = _score_capability(capability, normalized_request, request_tokens)
+        # Apply history boost for short follow-up messages
+        if history_boost_tokens:
+            history_score = _score_capability(capability, history_boost_text, history_boost_tokens)
+            # Use half of the history score as a boost (capped at 15)
+            score += min(history_score // 2, 15)
         scored.append((score, index, capability))
         logger.info("[Planner._select] tool=%s kind=%s score=%d", capability.tool_name, capability.kind, score)
 
@@ -190,7 +206,8 @@ def build_global_execution_plan(
     *,
     system_enabled: bool,
     files_enabled: bool,
-    max_selected_tools: int = 50,
+    max_selected_tools: int = 20,
+    chat_history_text: str = "",
 ) -> GlobalExecutionPlan:
     tools_list = list(tools)
     selected_contexts = select_context_capabilities_for_request(
@@ -208,6 +225,7 @@ def build_global_execution_plan(
         tools_list,
         selected_contexts=selected_contexts,
         max_selected=max_selected_tools,
+        chat_history_text=chat_history_text,
     )
 
     capability_map = {

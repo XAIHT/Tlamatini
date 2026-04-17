@@ -109,6 +109,23 @@ def _files_context_enabled() -> bool:
     return FileSearchRAGChain is not None and global_state.get_state('mcp_files_search_status') == 'enabled'
 
 
+def _extract_chat_history_text(payload: dict) -> str:
+    """Extract text from recent chat history for planner context boost."""
+    chat_history = payload.get("chat_history", [])
+    if not chat_history:
+        try:
+            from ..chat_history_loader import DBChatHistoryLoader
+            chat_history = DBChatHistoryLoader.load(limit=3)
+        except Exception:
+            return ""
+    parts = []
+    for msg in chat_history:
+        content = getattr(msg, "content", "") if hasattr(msg, "content") else str(msg.get("content", ""))
+        if content:
+            parts.append(content)
+    return " ".join(parts[-4:])  # Last 4 messages max
+
+
 def _ensure_global_execution_plan(payload: dict) -> dict:
     if not bool(payload.get("multi_turn_enabled", False)):
         return payload
@@ -118,11 +135,13 @@ def _ensure_global_execution_plan(payload: dict) -> dict:
         return payload
 
     try:
+        chat_history_text = _extract_chat_history_text(payload)
         plan = build_global_execution_plan(
             str(payload.get("input", "") or ""),
             get_mcp_tools(),
             system_enabled=_system_context_enabled(),
             files_enabled=_files_context_enabled(),
+            chat_history_text=chat_history_text,
         )
         enhanced_payload = payload.copy()
         enhanced_payload["global_execution_plan"] = plan.to_dict()
