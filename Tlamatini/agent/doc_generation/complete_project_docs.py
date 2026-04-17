@@ -3,12 +3,9 @@ from __future__ import annotations
 import ast
 import io
 import json
-import math
 import re
 import subprocess
-import sys
 import tokenize
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +24,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     Image,
-    KeepTogether,
     PageBreak,
     Paragraph,
     Preformatted,

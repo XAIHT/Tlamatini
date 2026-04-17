@@ -54,6 +54,7 @@ The generator builds the full PPTX and performs an internal geometry audit while
 
 ## Validation Checklist
 
+- If Python source code was generated or modified, run `python -m ruff check` from the project root and fix all reported issues.
 - Open the PPTX with `python-pptx` and confirm slide count.
 - Extract text from the first content slides and at least one tree appendix slide.
 - Confirm the line-inventory slide contains the total effective line count.

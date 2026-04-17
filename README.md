@@ -209,7 +209,7 @@ The entire application can be packaged into a standalone executable using PyInst
 ## Videos
 
 - [First video of system usage getting in Tlamatini](https://www.youtube.com/watch?v=CkvDPSd_c-g)
-- [Video showing tlamatini loading a complete project and summarizing its entire source code](https://www.youtube.com/watch?v=Lrpbt_dPIXw)
+- [Video showing Tlamatini loading a complete project and summarizing its entire source code](https://www.youtube.com/watch?v=Lrpbt_dPIXw)
 - [Tlamatini installs OpenCV, showing the entire process](https://www.youtube.com/watch?v=bBlqbZVK-Wk)
 
 ---
