@@ -270,6 +270,8 @@ class MultiTurnToolAgentExecutor:
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Reset per-invocation tool call log.
         self._tool_calls_log = []
+        # Track wrapped chat-agent calls to avoid duplicate launches.
+        self._wrapped_agent_signatures: set[str] = set()
 
         input_text = payload.get("input", "")
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
@@ -399,11 +401,37 @@ class MultiTurnToolAgentExecutor:
 
             # --- Normal tool execution ---
             for tool_call in tool_calls:
+                tool_name = tool_call.get("name", "")
+                # Dedup: skip duplicate wrapped chat-agent calls with identical args
+                if tool_name.startswith("chat_agent_") and tool_name not in _MANAGEMENT_TOOLS:
+                    dedup_sig = f"{tool_name}:{json.dumps(tool_call.get('args', {}), sort_keys=True, ensure_ascii=False)}"
+                    if dedup_sig in self._wrapped_agent_signatures:
+                        logger.info(
+                            "[MultiTurnExecutor] DEDUP: skipping duplicate wrapped-agent call: %s",
+                            tool_name,
+                        )
+                        messages.append(
+                            ToolMessage(
+                                tool_call_id=tool_call.get("id", ""),
+                                name=tool_name,
+                                content=json.dumps({
+                                    "status": "skipped",
+                                    "message": (
+                                        f"This exact '{tool_name}' call with identical parameters "
+                                        "was already executed earlier in this session. "
+                                        "Use the results from the previous execution."
+                                    ),
+                                }),
+                            )
+                        )
+                        continue
+                    self._wrapped_agent_signatures.add(dedup_sig)
+
                 tool_result = self._invoke_tool(tool_call)
                 messages.append(
                     ToolMessage(
                         tool_call_id=tool_call.get("id", ""),
-                        name=tool_call.get("name", ""),
+                        name=tool_name,
                         content=tool_result,
                     )
                 )
