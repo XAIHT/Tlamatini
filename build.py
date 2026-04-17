@@ -1,6 +1,8 @@
 # build.py — Tlamatini Build Script
 
+import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -191,6 +193,92 @@ def collect_python_dll_binaries():
     return binaries
 
 
+_NUMPY_DIST_INFO_RE = re.compile(r'^numpy[-_].+\.(dist-info|egg-info)$', re.IGNORECASE)
+_NUMPY_WHEEL_RE = re.compile(r'^numpy-.+\.whl$', re.IGNORECASE)
+
+
+def _purge_numpy_environment(python_exe):
+    """Wipe every numpy trace from a target Python's site-packages.
+
+    Repeated or partial numpy installs leave multiple ``numpy-*.dist-info``
+    directories side-by-side. When that happens, ``importlib.metadata``
+    returns whichever dist-info sorts first (often the stale older one),
+    PyInstaller's numpy hook branches on that wrong version number, and
+    ``collect_dynamic_libs("numpy")`` walks a file list that no longer
+    matches what's on disk — returning zero binaries and letting PyInstaller
+    pick up ``numpy/core/`` duplicate ``.pyd`` files via the module graph
+    instead, which trips numpy 2.x's one-init-per-process guard at runtime.
+
+    To get a clean slate, uninstall numpy repeatedly (pip removes one
+    install at a time when duplicates are present) and then sweep away any
+    orphan ``numpy/`` tree, ``numpy.libs/`` tree, ``numpy-*.dist-info``
+    directory, or ``numpy-*.whl`` wheel file left behind across every
+    site-packages directory the target Python knows about. The subsequent
+    ``pip install -r requirements.txt`` reinstalls numpy fresh against the
+    pinned version.
+    """
+    print(f"\n--- Purging numpy environment for: {python_exe} ---")
+
+    # Enumerate every site-packages directory (system + user) for this Python.
+    probe = (
+        "import site, json, sys; "
+        "dirs = list(site.getsitepackages()); "
+        "u = site.getusersitepackages(); "
+        "dirs.append(u) if u else None; "
+        "print(json.dumps(dirs))"
+    )
+    try:
+        raw = subprocess.check_output([python_exe, "-c", probe], text=True).strip()
+        site_dirs = [Path(p) for p in json.loads(raw)]
+    except Exception as e:
+        print(f"WARNING: Could not enumerate site-packages for {python_exe}: {e}")
+        site_dirs = []
+
+    # Repeatedly ``pip uninstall`` — each call removes one dist-info, so we
+    # loop until pip reports nothing left.
+    for _ in range(5):
+        result = subprocess.run(
+            [python_exe, "-m", "pip", "uninstall", "-y", "numpy"],
+            capture_output=True, text=True,
+        )
+        combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0 or "not installed" in combined.lower():
+            break
+
+    # Sweep residual files. pip uninstall only removes what its manifest
+    # tracks; orphan ``.whl`` files and dist-info dirs from aborted installs
+    # must be removed manually.
+    removed = 0
+    for sp in site_dirs:
+        if not sp.is_dir():
+            continue
+        for item in sp.iterdir():
+            name = item.name
+            should_remove = False
+            if name.lower() in ('numpy', 'numpy.libs'):
+                should_remove = True
+            elif _NUMPY_DIST_INFO_RE.match(name):
+                should_remove = True
+            elif _NUMPY_WHEEL_RE.match(name):
+                should_remove = True
+            if not should_remove:
+                continue
+            try:
+                if item.is_dir():
+                    shutil.rmtree(item, onerror=_on_rmtree_error)
+                else:
+                    item.unlink()
+                print(f"Removed numpy residual: {item}")
+                removed += 1
+            except Exception as e:
+                print(f"WARNING: Could not remove {item}: {e}")
+
+    if removed == 0:
+        print("No numpy residuals found.")
+    else:
+        print(f"Cleared {removed} numpy residual entries.")
+
+
 def run_step(label, func, *args, **kwargs):
     """Execute a build step with consistent logging and error handling."""
     print(f"\n--- {label} ---")
@@ -278,6 +366,16 @@ def main():
     for target_python in install_pythons:
         print(f"\n--- Installing dependencies into: {target_python} ---")
 
+        # 1a-pre) Clean numpy residuals so pip reinstalls numpy fresh.
+        # Prevents stale dist-info/wheel fragments from tripping PyInstaller's
+        # numpy hook (wrong version branch, empty collect_dynamic_libs, and the
+        # downstream "cannot load module more than once per process" crash).
+        run_step(
+            f"Purging numpy residuals in {target_python}",
+            _purge_numpy_environment,
+            target_python,
+        )
+
         # 1a) Install torch CPU-only FIRST to avoid CUDA DLL issues (WinError 1114)
         # --user ensures install works without admin privileges
         print(f"  -> Installing torch (CPU-only) for {target_python} ...")
@@ -339,8 +437,15 @@ def main():
     dll_args = run_step("Collecting Python DLL binaries",
                         collect_python_dll_binaries)
 
+    # Point PyInstaller at our local hooks directory so our custom
+    # hook-numpy.py (priority 2) shadows PyInstaller's stock one (priority 1).
+    # See pyinstaller_hooks/hook-numpy.py for the numpy/core/ duplicate-pyd
+    # filter rationale.
+    hooks_dir = Path(__file__).with_name('pyinstaller_hooks')
+
     command = [
         sys.executable, '-m', 'PyInstaller', '--name', 'manage', '--console', '--noconfirm',
+        f'--additional-hooks-dir={hooks_dir}',
         *dll_args,
         f'--add-data=Tlamatini/agent/templates{separator}agent/templates',
         f'--add-data=Tlamatini/agent/static{separator}agent/static',

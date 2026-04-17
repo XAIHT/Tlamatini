@@ -46,4 +46,5 @@ That script delegates to `complete_project_docs.py` and rebuilds both the full P
 - The complete tree can be an appendix, but it must be present.
 - Tables should be readable and paginated safely.
 - Include exact dates and commit ids when discussing current state.
+- When generating or modifying Python source code for the dossier workflow, run `python -m ruff check` from the project root and fix reported errors before handing off.
 - Verify by extracting PDF text or checking page count after generation.
