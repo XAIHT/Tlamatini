@@ -170,6 +170,7 @@ const spinnerId = 'wait-spinner';
 const maximalTheoricTokens = 12500;
 const MAX_MCPS = 32;
 const MULTI_TURN_STORAGE_KEY = 'multiTurnEnabled';
+const EXEC_REPORT_STORAGE_KEY = 'execReportEnabled';
 
 // --- Static DOM references ---
 const textEditorPre = document.querySelector('#text-editor pre');
@@ -189,6 +190,7 @@ const confirmationSecondaryDialogLegend = document.getElementById('confirmation-
 const reConnectButton = document.getElementById('re-connect-button');
 const cleanHistoryButton = document.getElementById('clean-history');
 const multiTurnCheckbox = document.getElementById('multi-turn-enabled');
+const execReportCheckbox = document.getElementById('exec-report-enabled');
 const contextMenuButton = document.getElementById('context-menu-button');
 const mcpsMenuButton = document.getElementById('mcps-menu-button');
 const agentsMenuButton = document.getElementById('agents-menu-button');
@@ -245,6 +247,38 @@ function applyStoredMultiTurnState() { // eslint-disable-line no-unused-vars
     }
 
     multiTurnCheckbox.checked = enabled;
+}
+
+function isExecReportEnabled() { // eslint-disable-line no-unused-vars
+    // Exec report is a modifier of Multi-Turn — return false whenever
+    // Multi-Turn is off so the backend can short-circuit all capture work.
+    if (!multiTurnCheckbox || !multiTurnCheckbox.checked) {
+        return false;
+    }
+    return !!(execReportCheckbox && execReportCheckbox.checked);
+}
+
+function persistExecReportState(enabled) { // eslint-disable-line no-unused-vars
+    try {
+        sessionStorage.setItem(EXEC_REPORT_STORAGE_KEY, enabled ? 'true' : 'false');
+    } catch (err) {
+        console.error('Failed to persist exec-report state:', err);
+    }
+}
+
+function applyStoredExecReportState() { // eslint-disable-line no-unused-vars
+    if (!execReportCheckbox) {
+        return;
+    }
+
+    let enabled = false;
+    try {
+        enabled = sessionStorage.getItem(EXEC_REPORT_STORAGE_KEY) === 'true';
+    } catch (err) {
+        console.error('Failed to restore exec-report state:', err);
+    }
+
+    execReportCheckbox.checked = enabled;
 }
 
 // --- Open in... dropdown references ---

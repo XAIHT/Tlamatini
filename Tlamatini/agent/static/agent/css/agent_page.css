@@ -825,3 +825,267 @@ body.resizing-vertical {
 .connection-status-hidden { display: none; }
 .connection-status-warning { display: block; background-color: #5c2b29; color: #ffe0de; }
 .connection-status-ok { display: block; background-color: #21413d; color: #d8fffa; }
+
+/* ── Exec report tables (Executer / Pythonxer) ─────────────────────────
+ * Rendered at the tail of a multi-turn answer when the "Exec report"
+ * toolbar toggle is on. The gradients mirror the Executer and Pythonxer
+ * canvas tiles so the tables feel native to the agentic UI. */
+.exec-report-block {
+    display: block;
+    margin-top: 0.9rem;
+    width: 100%;
+}
+
+.exec-report-table {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 0.6rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    table-layout: fixed;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.exec-report-caption {
+    caption-side: top;
+    padding: 0.45rem 0.75rem;
+    font-weight: 700;
+    text-align: left;
+    letter-spacing: 0.02em;
+    color: #1b1b1b;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+/* Per-agent caption gradients — each one mirrors its canvas-item gradient
+ * in agentic_control_panel.css so the table feels like an extension of the
+ * agent's sidebar tile. When adding a new state-changing tool to
+ * _EXEC_REPORT_TOOLS in mcp_agent.py, add its agent_key rule here too. */
+.exec-report-caption-executer {
+    background: linear-gradient(135deg, #FDE047 0%, #EAB308 100%);
+}
+
+.exec-report-caption-pythonxer {
+    background: linear-gradient(135deg, #306998 0%, #FFD43B 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-unzip {
+    background: linear-gradient(135deg, #FFB74D 0%, #F57C00 100%);
+}
+
+.exec-report-caption-jdecompiler {
+    background: linear-gradient(135deg, #2C3E50 0%, #E74C3C 50%, #27AE60 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-dockerer {
+    background: linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%);
+}
+
+.exec-report-caption-kuberneter {
+    background: linear-gradient(135deg, #000000 0%, #00008B 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-ssher {
+    background: linear-gradient(135deg, #1a237e 0%, #e53935 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-scper {
+    background: linear-gradient(135deg, #424242 0%, #e53935 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-pser {
+    background: linear-gradient(135deg, #E91E63 0%, #4CAF50 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-sqler {
+    background: linear-gradient(135deg, #f97316 0%, #10b981 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-mongoxer {
+    background: linear-gradient(135deg, #558B2F 0%, #33691E 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-jenkinser {
+    background: linear-gradient(135deg, #FFFFFF 0%, #1E88E5 100%);
+}
+
+.exec-report-caption-gitter {
+    background: linear-gradient(135deg, #FFFFFF 0%, #000000 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-filecreator {
+    background: linear-gradient(135deg, #00897B 0%, #FF7043 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-mover {
+    background: linear-gradient(135deg, #8D6E63 0%, #5D4037 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-deleter {
+    background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-apirer {
+    background: linear-gradient(135deg, #3B0764 0%, #86EFAC 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-emailer {
+    background: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-telegramer {
+    background: linear-gradient(135deg, #1a237e 0%, #10B981 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-whatsapper {
+    background: linear-gradient(135deg, #006400 0%, #008000 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-notifier {
+    background: linear-gradient(135deg, #F472B6 0%, #DB2777 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-kyberkeygen {
+    background: linear-gradient(135deg, #7B2FBE 0%, #00BFA5 50%, #FFD740 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-kybercipher {
+    background: linear-gradient(135deg, #D35400 0%, #1ABC9C 50%, #8E44AD 100%);
+    color: #ffffff;
+}
+
+.exec-report-caption-kyberdecipher {
+    background: linear-gradient(135deg, #4A90D9 0%, #D94F7A 50%, #82C91E 100%);
+    color: #ffffff;
+}
+
+.exec-report-table thead th {
+    padding: 0.4rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #1b1b1b;
+    background: rgba(255, 255, 255, 0.55);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+/* Dark-captioned tables get matching dark-tinted headers for contrast. */
+.exec-report-pythonxer thead th,
+.exec-report-kuberneter thead th,
+.exec-report-ssher thead th,
+.exec-report-scper thead th,
+.exec-report-pser thead th,
+.exec-report-sqler thead th,
+.exec-report-mongoxer thead th,
+.exec-report-gitter thead th,
+.exec-report-filecreator thead th,
+.exec-report-mover thead th,
+.exec-report-deleter thead th,
+.exec-report-apirer thead th,
+.exec-report-emailer thead th,
+.exec-report-telegramer thead th,
+.exec-report-whatsapper thead th,
+.exec-report-notifier thead th,
+.exec-report-kyberkeygen thead th,
+.exec-report-kybercipher thead th,
+.exec-report-kyberdecipher thead th,
+.exec-report-jdecompiler thead th {
+    color: #f5f5f5;
+    background: rgba(0, 0, 0, 0.55);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.exec-report-table tbody td {
+    padding: 0.4rem 0.75rem;
+    vertical-align: top;
+    background-color: #2d2d2d;
+    color: #ececf1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    word-break: break-word;
+}
+
+.exec-report-col-cmd {
+    width: 85%;
+}
+
+.exec-report-col-status {
+    width: 15%;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.exec-report-success {
+    color: #7ddc7d;
+    background-color: #1f3a23 !important;
+}
+
+.exec-report-failure {
+    color: #ff9999;
+    background-color: #3a1f1f !important;
+}
+
+.exec-report-cmd {
+    margin: 0;
+    padding: 0.5rem 0.65rem;
+    background-color: #1e1e1e;
+    color: #e6e6e6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    max-height: 22rem;
+    overflow: auto;
+}
+
+/* Agent-tinted left border on each command cell — mirrors the canvas tile
+ * accent colour for quick visual grouping. */
+.exec-report-executer .exec-report-cmd       { border-left: 3px solid #EAB308; }
+.exec-report-pythonxer .exec-report-cmd      { border-left: 3px solid #306998; }
+.exec-report-unzip .exec-report-cmd          { border-left: 3px solid #F57C00; }
+.exec-report-jdecompiler .exec-report-cmd    { border-left: 3px solid #E74C3C; }
+.exec-report-dockerer .exec-report-cmd       { border-left: 3px solid #2496ED; }
+.exec-report-kuberneter .exec-report-cmd     { border-left: 3px solid #00008B; }
+.exec-report-ssher .exec-report-cmd          { border-left: 3px solid #e53935; }
+.exec-report-scper .exec-report-cmd          { border-left: 3px solid #e53935; }
+.exec-report-pser .exec-report-cmd           { border-left: 3px solid #E91E63; }
+.exec-report-sqler .exec-report-cmd          { border-left: 3px solid #f97316; }
+.exec-report-mongoxer .exec-report-cmd       { border-left: 3px solid #558B2F; }
+.exec-report-jenkinser .exec-report-cmd      { border-left: 3px solid #1E88E5; }
+.exec-report-gitter .exec-report-cmd         { border-left: 3px solid #000000; }
+.exec-report-filecreator .exec-report-cmd    { border-left: 3px solid #00897B; }
+.exec-report-mover .exec-report-cmd          { border-left: 3px solid #5D4037; }
+.exec-report-deleter .exec-report-cmd        { border-left: 3px solid #B91C1C; }
+.exec-report-apirer .exec-report-cmd         { border-left: 3px solid #3B0764; }
+.exec-report-emailer .exec-report-cmd        { border-left: 3px solid #5C6BC0; }
+.exec-report-telegramer .exec-report-cmd     { border-left: 3px solid #1a237e; }
+.exec-report-whatsapper .exec-report-cmd     { border-left: 3px solid #006400; }
+.exec-report-notifier .exec-report-cmd       { border-left: 3px solid #DB2777; }
+.exec-report-kyberkeygen .exec-report-cmd    { border-left: 3px solid #7B2FBE; }
+.exec-report-kybercipher .exec-report-cmd    { border-left: 3px solid #D35400; }
+.exec-report-kyberdecipher .exec-report-cmd  { border-left: 3px solid #D94F7A; }

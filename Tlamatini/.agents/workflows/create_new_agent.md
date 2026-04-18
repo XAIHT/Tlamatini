@@ -11,6 +11,20 @@ This is a step-by-step guide for creating a new workflow agent. Follow ALL 8 ste
 > - Agent with source monitoring: `agent/agents/telegramer/telegramer.py` + `config.yaml`
 > - Agent with NO downstream: `agent/agents/emailer/emailer.py` + `config.yaml`
 
+## Common Pitfalls (Read Before You Start)
+
+Most broken agents are broken in one of these exact ways. Pre-commit your brain to checking each one:
+
+1. **Naming drift** — `agentDescription` in the DB migration, the CSS class, the classMap key, the `chat_agent_*` tool name, the `_EXEC_REPORT_TOOLS` key, and the Flow-Generator branch all derive from the display name but use **different transforms**. Fix the name in the migration first; don't rename later. See the "Naming Convention" section below — the single table there is the single source of truth.
+2. **Empty-string overwrites of template defaults** — the backend's `save_agent_config_view` **deep-merges** posted JSON over the template's `config.yaml`. Writing `config.my_field = ''` in any wiring code (connection update, flow generator, canvas dialog) **destroys** the template's default value. Always use "omit if empty" semantics. The Flow-Generator now enforces this via a `set(key, value)` helper (Step 7.7).
+3. **Pool-name cardinal mismatch** — pool folders on disk are always `<base>_<N>` (e.g. `executer_2`). If your code emits bare `"executer"` into a `target_agents` list, the Starter tries to launch a folder that does not exist and the chain dies on the first hop. Underscores, not hyphens, in pool names.
+4. **Forgetting `_IS_REANIMATED`** — an agent without the reanimation marker truncates its log on every resume, destroying the pause/resume observability. Add the marker **before** `logging.basicConfig(...)`, not after.
+5. **Concurrency guard on looping flows** — if your agent starts downstream agents, you MUST call `wait_for_agents_to_stop(target_agents)` **before** the `start_agent(...)` loop. Without it, re-entrant loops spawn duplicate processes.
+6. **`_EXEC_REPORT_TOOLS` miss for state-changing agents** — if the agent mutates the system and you forget Step 7.6, Multi-Turn users will see no table for your agent in the Exec Report. Silent data loss, no error message.
+7. **Flow-Generator `_mapToolArgsToAgentConfig` miss** — if the LLM can launch your agent (Step 7.5) but you skip Step 7.7, the generated `.flw` puts the tool call's args into a node with **no config fields set**, and the runtime silently falls back to template defaults. The flow loads visually fine but runs the wrong behavior.
+8. **Forgetting the 6 JS edit locations** — `acp-canvas-core.js` touches connections in 6 separate places. Missing any one breaks either creation, removal, undo, redo, or `.flw` load for that agent.
+9. **CSS gradient duplicated in JS** — never type a hard-coded gradient string inside `populateAgentsList()`. Let `applyAgentToolIconStyle()` resolve the sidebar icon color from the same CSS class the canvas uses. If you duplicate, the sidebar and canvas drift over time.
+
 ---
 
 ## Step 1 · Backend: Create Agent Directory and Script
@@ -713,6 +727,104 @@ Add a row to the **Connection Updates** API table:
 
 ---
 
+## Step 7.5 · OPTIONAL: Register as a Wrapped Chat-Agent Tool (LLM-callable)
+
+Skip this step if the agent is **only** used from the Agentic Control Panel canvas. Do this step if the Multi-Turn LLM should be able to **launch your agent as a sub-process tool** during a chat conversation (e.g., "Hey Tlamatini, SSH into 10.0.0.1 and check uptime").
+
+Edit `agent/chat_agent_registry.py` and append a new `ChatWrappedAgentSpec(...)` entry to `WRAPPED_CHAT_AGENT_SPECS`. Example:
+
+```python
+ChatWrappedAgentSpec(
+    key="myagent",                                 # short identifier
+    template_dir="myagent",                        # MUST match agent/agents/<dir> folder
+    tool_name="chat_agent_myagent",                # MUST start with "chat_agent_"
+    tool_description="Chat-Agent-MyAgent",
+    display_name="MyAgent",                        # MUST match the DB agentDescription
+    purpose="Do the thing the agent does. Use when the user asks about X.",
+    example_request="Run MyAgent with param1='value', param2='value2'",
+    aliases=("myagent", "my agent", "friendly name"),
+    security_hints=("myagent", "the keyword", "alternate phrasing"),
+    # poll_window_seconds=3,                       # optional, default 8
+    # long_running=True,                           # optional, for watch-loop agents
+),
+```
+
+The unified agent picks this up automatically via `WRAPPED_CHAT_AGENT_BY_TOOL_NAME` — no further wiring is needed inside `mcp_agent.py` or `tools.py`. The LLM will see your tool in the bound-tools list and can invoke it with a free-form `request` string that your template agent's `config.yaml` fields will absorb through the Parametrizer-style key=value syntax.
+
+**Verification:** `get_mcp_tools()` returns one `Tool.from_function(..., name="chat_agent_myagent", ...)` wrapper. Launching creates an isolated pool runtime copy; the tool returns a JSON string with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`.
+
+---
+
+## Step 7.6 · REQUIRED for state-changing agents: Register in the Exec Report
+
+If the new agent **changes system state** (runs commands, mutates files/databases/containers/clusters, sends external messages, etc.), it MUST appear in the Exec Report tables that are appended to the final multi-turn answer when the user toggles "Exec Report" on.
+
+Read the "Exec Report" section of `CLAUDE.md` for background. Registration is a **three-spot edit**:
+
+**1. `agent/mcp_agent.py` — add one line to `_EXEC_REPORT_TOOLS`:**
+
+```python
+_EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
+    # ... existing entries ...
+    "chat_agent_myagent":   ("myagent",   "MyAgent"),
+}
+```
+
+The tuple is `(agent_key, agent_display)`:
+- `agent_key` — lowercase, no spaces, MUST match the canvas-item CSS class you chose in Step 4 (e.g., `nodemanager`, `gateway-relayer`, `filecreator`). This keys all the Exec Report CSS rules below.
+- `agent_display` — exactly the caption text ("List of <Display> Operations"). Typically the DB `agentDescription`.
+
+If the agent has BOTH a direct @tool call AND a wrapped chat-agent launch, list both tool names mapping to the **same** `agent_key` so their rows merge into one table.
+
+**2. `agent/static/agent/css/agent_page.css` — add two CSS rules:**
+
+```css
+.exec-report-caption-<agent_key> {
+    background: linear-gradient(135deg, #<color1> 0%, #<color2> 100%);  /* mirror the canvas gradient */
+    color: #ffffff;  /* or #1b1b1b for light backgrounds */
+}
+
+.exec-report-<agent_key> .exec-report-cmd {
+    border-left: 3px solid #<primary-color>;
+}
+```
+
+Copy the gradient colors from your Step 4b `.canvas-item.<css_class>-agent` rule so the Exec Report table feels like an extension of the agent's canvas tile.
+
+**3. If the caption background is dark, add the agent_key to the dark-header selector list** in the same CSS file (the rule that sets `color: #f5f5f5; background: rgba(0, 0, 0, 0.55)` for `thead th`). Skip this if your caption is a light/pastel gradient.
+
+**Verification:** `python manage.py test agent.tests.ExecReportCaptureTests` covers capture + grouping + render-order + flag-gating generically, so **no per-agent test is needed**. Run a Multi-Turn with Exec Report ticked that fires the new agent, and confirm a "List of <Display> Operations" table appears in the browser.
+
+**Skip this step** for read-only / monitoring agents (Crawler, Summarizer, Prompter, File-Interpreter, File-Extractor, Image-Interpreter, Shoter, Monitor-Log, Monitor-Netstat, Recmailer, FlowHypervisor, TelegramRX). They never enter the Exec Report, by design.
+
+---
+
+## Step 7.7 · REQUIRED if LLM-callable: Flow-Generator Mapping
+
+If you did Step 7.5 (wrapped chat-agent tool), you must also teach the **"Create Flow" button** how to turn a successful multi-turn call on your agent into a well-formed node in the downloaded `.flw` file.
+
+Edit `agent/static/agent/js/agent_page_chat.js` — find `_mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName)` and add a new branch:
+
+```javascript
+// ── MyAgent ──────────────────────────────────────────────────────
+// Template fields: param1, param2, nested.field
+} else if (lower === 'myagent') {
+    set('param1', pairs.param1);
+    set('param2', pairs.param2 || pairs.alt_name);
+    const nested = collectDotted('nested');
+    if (Object.keys(nested).length > 0) config.nested = nested;
+```
+
+Rules:
+- Use the `set(key, value)` helper (defined at the top of the function). It **refuses** to write empty strings, which protects the template's default values from being overwritten by the backend's deep-merge.
+- Field names MUST match the `config.yaml` keys of your template agent EXACTLY. Mismatch = backend deep-merges an unknown key, template default survives, and the runtime uses the default instead of the LLM's intent.
+- For dotted nested keys (`smtp.host=...`), use `collectDotted('smtp')`.
+- Never set `config.target_agents` / `config.source_agents` here — those are set by `_generateAndDownloadFlow` with cardinal-suffixed pool names (`myagent_1`, `myagent_2`, ...).
+
+Test: drag the agent onto the canvas once in the ACP, open its config dialog, note the exact field names; they MUST appear verbatim in your mapping branch.
+
+---
+
 ## Step 8 · Quality: Lint and Fix All Modified Files
 
 After completing all previous steps, run the linting tools to ensure code quality.
@@ -774,6 +886,23 @@ Review the output and **fix only the errors** (ignore warnings). Re-run the comm
 [ ] Step 6: Add agent entry in agentic_skill.md (for FlowCreator AI)
 [ ] Step 7: Update README.md (count, structure, tables, glossary, changelog, API)
     [ ] 7d: Workflow Agents table row added with the final `Purpose` text that both the ACP `Description` menu and the sidebar tooltip will display
+[ ] Step 7.5: OPTIONAL — if LLM should be able to launch this agent during Multi-Turn chat:
+    [ ] Add ChatWrappedAgentSpec entry to WRAPPED_CHAT_AGENT_SPECS in chat_agent_registry.py
+    [ ] tool_name MUST start with "chat_agent_"
+    [ ] display_name MUST match the DB agentDescription
+    [ ] Provide a good example_request — the LLM reads this to format its call
+[ ] Step 7.6: REQUIRED if agent changes system state (filesystem, DB, remote host, container, cluster,
+    repo, GUI, external messages):
+    [ ] Add tool_name → (agent_key, agent_display) entry to _EXEC_REPORT_TOOLS in mcp_agent.py
+    [ ] Add .exec-report-caption-<agent_key> CSS rule mirroring the canvas-item gradient
+    [ ] Add .exec-report-<agent_key> .exec-report-cmd { border-left: ... } accent rule
+    [ ] If caption is dark, add agent_key to the dark-header thead th selector list
+    [ ] SKIP for read-only / monitoring agents
+[ ] Step 7.7: REQUIRED if Step 7.5 done — Flow-Generator mapping:
+    [ ] Add agent-specific branch in _mapToolArgsToAgentConfig (agent_page_chat.js)
+    [ ] Use the set(key, value) helper — never write empty strings
+    [ ] Field names MUST match the template's config.yaml keys EXACTLY
+    [ ] Never set target_agents / source_agents inside the branch
 [ ] Step 8: Lint and fix:
     [ ] 8a: Run `python -m ruff check` and fix all issues
     [ ] 8b: Run `npm run lint` and fix only errors

@@ -23,7 +23,80 @@ def save_snippet(snippetName, snippetLanguage, snippetContent):
 def get_or_create_bot_user():
     return User.objects.get_or_create(username='Tlamatini')
 
-async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None):
+def _html_escape(text):
+    if text is None:
+        return ""
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
+
+def _render_exec_report_html(exec_report_entries):
+    """Build the HTML rendered at the tail of a multi-turn answer when the
+    user enabled the Exec report toggle. Entries are grouped by
+    ``agent_key`` and each group becomes a separate table with a caption
+    like "List of <Agent> Operations". Each table uses the CSS class
+    ``exec-report-<agent_key>`` / ``exec-report-caption-<agent_key>`` so
+    its colours mirror the matching canvas-item gradient. Returns an empty
+    string when no state-changing tool calls were captured, letting the
+    caller skip appending anything.
+    """
+    entries = [row for row in (exec_report_entries or []) if (row or {}).get("command")]
+    if not entries:
+        return ""
+
+    # Preserve first-appearance order of agent_keys so the tables stack in
+    # execution order rather than alphabetical order.
+    ordered_keys: list[str] = []
+    buckets: dict[str, list[dict]] = {}
+    display_names: dict[str, str] = {}
+    for row in entries:
+        agent_key = str(row.get("agent_key") or "").strip() or "other"
+        if agent_key not in buckets:
+            ordered_keys.append(agent_key)
+            buckets[agent_key] = []
+            display_names[agent_key] = str(row.get("agent_display") or agent_key.title())
+        buckets[agent_key].append(row)
+
+    parts = ['<div class="exec-report-block">']
+    for agent_key in ordered_keys:
+        rows = buckets[agent_key]
+        display = display_names[agent_key]
+        parts.append(
+            f'<table class="exec-report-table exec-report-{_html_escape(agent_key)}">'
+        )
+        parts.append(
+            f'<caption class="exec-report-caption exec-report-caption-{_html_escape(agent_key)}">'
+            f'List of {_html_escape(display)} Operations</caption>'
+        )
+        parts.append(
+            '<thead><tr>'
+            '<th class="exec-report-col-cmd">Command</th>'
+            '<th class="exec-report-col-status">Status</th>'
+            '</tr></thead><tbody>'
+        )
+        for row in rows:
+            success = bool(row.get("success"))
+            status_cls = "exec-report-success" if success else "exec-report-failure"
+            status_txt = "SUCCESS" if success else "FAILURE"
+            parts.append(
+                '<tr>'
+                '<td class="exec-report-col-cmd"><pre class="exec-report-cmd">'
+                f'{_html_escape(row.get("command", ""))}</pre></td>'
+                f'<td class="exec-report-col-status {status_cls}">{status_txt}</td>'
+                '</tr>'
+            )
+        parts.append('</tbody></table>')
+    parts.append('</div>')
+    return "".join(parts)
+
+
+async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None, exec_report_enabled=False, exec_report_entries=None):
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
@@ -151,6 +224,24 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         print("--- AnswerAnalizer: classifying multi-turn answer...")
         answer_success = await analyze_answer_success(llm_response)
         print(f"--- AnswerAnalizer: verdict = {'SUCCESS' if answer_success else 'FAILURE'}")
+
+    # Append the Exec report HTML (one per-agent table per state-changing
+    # tool that fired) to the final answer, but only when the user enabled
+    # the Exec report checkbox AND at least one capture was recorded. The
+    # SUCCESS/FAILURE classification above already ran against the original
+    # answer, so the appended tables don't bias that verdict.
+    entries_count = len(exec_report_entries) if exec_report_entries else 0
+    print(
+        f"--- process_llm_response: exec_report_enabled={exec_report_enabled} "
+        f"exec_report_entries_count={entries_count}"
+    )
+    if exec_report_enabled:
+        exec_report_html = _render_exec_report_html(exec_report_entries)
+        if exec_report_html:
+            llm_response = llm_response + exec_report_html
+            print(f"--- process_llm_response: appended exec_report HTML ({len(exec_report_html)} chars)")
+        else:
+            print("--- process_llm_response: exec_report HTML empty (no state-changing tool rows captured)")
 
     if channel_layer:
         broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}

@@ -144,6 +144,7 @@ class UnifiedAgentChain:
             "files_context": payload.get("files_context", ""),
             "context": payload.get("context", ""),
             "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+            "exec_report_enabled": bool(payload.get("exec_report_enabled", False)),
             "global_execution_plan": payload.get("global_execution_plan"),
             "planner_summary": payload.get("planner_summary", ""),
         }
@@ -196,12 +197,15 @@ User Question: {enhanced_input}"""
             enhanced_input = f"Web Context: {ext}{sources_str}\n\n{enhanced_input}"
 
         # Use unified agent if available, otherwise fall back to basic LLM
+        exec_report_entries: list = []
+        exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         if self.unified_agent is not None:
             try:
                 print(f"--- UnifiedAgentChain: Invoking unified agent with input length: {len(enhanced_input)} chars")
                 result = self.unified_agent.invoke({
                     "input": enhanced_input,
                     "multi_turn_enabled": payload.get("multi_turn_enabled", False),
+                    "exec_report_enabled": exec_report_enabled,
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 })
@@ -211,6 +215,8 @@ User Question: {enhanced_input}"""
                     print(f"--- UnifiedAgentChain: output value: '{result.get('output', '<NOT PRESENT>')}' (length: {len(result.get('output', ''))})")
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
                 tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
+                if isinstance(result, dict):
+                    exec_report_entries = result.get("exec_report_entries", []) or []
                 if not answer or not answer.strip():
                     print(f"--- UnifiedAgentChain: WARNING - Empty answer received! Full result: {result}")
             except Exception as e:
@@ -258,6 +264,17 @@ User Question: {enhanced_input}"""
             result_dict["tool_calls_log"] = tool_calls_log
         if payload.get("multi_turn_enabled"):
             result_dict["multi_turn_used"] = True
+        # Forward Exec report entries only when the user toggled the
+        # checkbox on. The downstream renderer bails out on empty input,
+        # so the buffer is passed through verbatim.
+        if exec_report_enabled:
+            result_dict["exec_report_enabled"] = True
+            result_dict["exec_report_entries"] = exec_report_entries
+        print(
+            f"--- UnifiedAgentChain: returning result_dict with exec_report_enabled="
+            f"{result_dict.get('exec_report_enabled')} "
+            f"exec_report_entries_count={len(exec_report_entries)}"
+        )
         return result_dict
 
 class UnifiedAgentRAGChain:
@@ -629,16 +646,21 @@ User Question: {enhanced_input}"""
 
         # 7) Use unified agent if available, otherwise fall back to basic LLM
         tool_calls_log = []
+        exec_report_entries: list = []
+        exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         if self.unified_agent is not None:
             try:
                 result = self.unified_agent.invoke({
                     "input": enhanced_input,
                     "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+                    "exec_report_enabled": exec_report_enabled,
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 })
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
                 tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
+                if isinstance(result, dict):
+                    exec_report_entries = result.get("exec_report_entries", []) or []
             except Exception as e:
                 print(f"--- UnifiedAgentRAGChain: Agent invocation failed ({e}), falling back to basic LLM ---")
                 # Fallback to basic LLM call with context
@@ -684,4 +706,7 @@ User Question: {enhanced_input}"""
             result_dict["tool_calls_log"] = tool_calls_log
         if multi_turn_enabled:
             result_dict["multi_turn_used"] = True
+        if exec_report_enabled:
+            result_dict["exec_report_enabled"] = True
+            result_dict["exec_report_entries"] = exec_report_entries
         return result_dict

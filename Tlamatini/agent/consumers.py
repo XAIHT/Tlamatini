@@ -543,7 +543,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False):
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -553,8 +553,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     {'type': 'agent_message', 'message': 'The agent is still loading. Please wait a moment and try again.', 'username': 'Tlamatini'}
                 )
                 return
-            
+
             print("--- The message is being procesed by the LLM")
+            # Exec report is multi-turn-only by design.
+            exec_report_enabled = bool(exec_report_enabled) and bool(multi_turn_enabled)
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
             llm_response = await ask_rag_async(
                 self.rag_chain,
@@ -562,15 +564,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     "input": message,
                     "conversation_user_id": conversation_user.id,
                     "multi_turn_enabled": bool(multi_turn_enabled),
+                    "exec_report_enabled": exec_report_enabled,
                 },
                 inet_enabled=self.inet_enabled
             )
             # Pick up tool-call metadata stored by the chain pipeline.
             tool_calls_log = global_state.get_state('last_tool_calls_log')
             multi_turn_used = global_state.get_state('last_multi_turn_used')
+            exec_report_used = global_state.get_state('last_exec_report_enabled')
+            exec_report_entries = global_state.get_state('last_exec_report_entries') if exec_report_used else None
             # Clear immediately to avoid leaking into the next request.
             global_state.set_state('last_tool_calls_log', None)
             global_state.set_state('last_multi_turn_used', None)
+            global_state.set_state('last_exec_report_enabled', None)
+            global_state.set_state('last_exec_report_entries', None)
 
             await process_llm_response(
                 llm_response,
@@ -580,6 +587,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 conversation_user=conversation_user,
                 tool_calls_log=tool_calls_log,
                 multi_turn_used=multi_turn_used,
+                exec_report_enabled=bool(exec_report_used),
+                exec_report_entries=exec_report_entries,
             )
         except Exception as e:
             print(f"!!! ERROR in queue_llm_retrieval method: {e}")
@@ -604,6 +613,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             text_data_json = json.loads(text_data)
             message = text_data_json['message']
             multi_turn_enabled = bool(text_data_json.get('multi_turn_enabled', False))
+            exec_report_enabled = bool(text_data_json.get('exec_report_enabled', False)) and multi_turn_enabled
 
             if 'type' in text_data_json:
                 type = text_data_json['type']
@@ -1100,7 +1110,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {'type': 'agent_message', 'message': constants.MSG_PROCESSING_REQUEST, 'username': 'Tlamatini'}
             )
             print("--- Bot message broadcast to room.")
-            asyncio.create_task(self.queue_llm_retrieval(message, user, multi_turn_enabled=multi_turn_enabled))
+            asyncio.create_task(self.queue_llm_retrieval(
+                message, user,
+                multi_turn_enabled=multi_turn_enabled,
+                exec_report_enabled=exec_report_enabled,
+            ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")
             not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
