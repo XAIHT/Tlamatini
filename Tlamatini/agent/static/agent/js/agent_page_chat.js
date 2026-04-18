@@ -307,92 +307,107 @@ function _canonicalAgentName(displayName) {
  * and trigger a browser file download.
  *
  * Flow layout: Starter → Agent1 → Agent2 → … → Ender
- * Each agent node carries the configData derived from the tool call args.
+ *
+ * Key correctness invariants (these are the ones users previously lost):
+ *
+ * 1. **One node per successful tool call** — NOT one node per unique agent.
+ *    If the LLM ran execute_command five times with five different
+ *    commands, the flow must contain five Executer nodes, each with its
+ *    own script. Collapsing by agent type throws away four of the five.
+ *
+ * 2. **Cardinal-suffixed pool names in every source_agents/target_agents
+ *    list.** Pool folders on disk are always ``<base>_<N>`` (e.g. the
+ *    second Executer ends up at ``pools/executer_2``), because the .flw
+ *    loader calls ``registerItem`` which clears counters and increments
+ *    per base name in node order. If ``target_agents`` emits a bare
+ *    "executer" instead of "executer_2", Starter tries to launch a pool
+ *    folder that does not exist and the chain dies on the first hop.
+ *
+ * 3. **Only set config fields the tool call actually populated.** Passing
+ *    empty-string defaults forces a deep-merge overwrite that destroys
+ *    the template's legitimate default value. Always prefer omission to
+ *    an empty string.
  */
 function _generateAndDownloadFlow(toolCallsLog) {
-    // 1) Collect unique successful agents (preserve execution order,
-    //    deduplicate by display name keeping the LAST config seen).
-    const agentMap = new Map();   // displayName → {args, tool_name}
-    const agentOrder = [];        // ordered unique display names
-    for (const entry of toolCallsLog) {
-        if (!entry.success) continue;
-        // Use agent_display_name when available; otherwise derive a
-        // human-readable name from the tool_name so every successful
-        // tool call is represented in the generated flow.
-        const name = entry.agent_display_name
-            || (entry.tool_name || 'Unknown')
-                .replace(/_/g, ' ')
-                .replace(/\b\w/g, c => c.toUpperCase());
-        if (!agentMap.has(name)) {
-            agentOrder.push(name);
-        }
-        agentMap.set(name, { args: entry.args || {}, tool_name: entry.tool_name });
-    }
+    // 1) Keep EVERY successful tool call — preserves order + fidelity.
+    //    Each entry → its own flow node; no dedup by agent type.
+    const successfulCalls = (toolCallsLog || [])
+        .filter(entry => entry && entry.success)
+        .map(entry => {
+            const displayName = entry.agent_display_name
+                || (entry.tool_name || 'Unknown')
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            return {
+                displayName,
+                canonical: _canonicalAgentName(displayName),
+                args: entry.args || {},
+                toolName: entry.tool_name,
+            };
+        });
 
-    if (agentOrder.length === 0) {
+    if (successfulCalls.length === 0) {
         console.warn('--- Create Flow: no eligible agents found in tool_calls_log');
         return;
     }
 
-    // 2) Map display names to canonical DB names (for template resolution)
-    const canonicalOrder = agentOrder.map(n => _canonicalAgentName(n));
+    // 2) Assign cardinal-suffixed pool names that will MATCH what the
+    //    loader's `registerItem` increments to (counters reset per load,
+    //    so the first Executer becomes executer_1, second → executer_2…).
+    const baseCounters = {};
+    const poolNames = successfulCalls.map(call => {
+        const base = _poolBase(call.canonical);
+        baseCounters[base] = (baseCounters[base] || 0) + 1;
+        return `${base}_${baseCounters[base]}`;
+    });
+    const starterPool = 'starter_1';
+    const enderPool = 'ender_1';
 
-    // 3) Build nodes: Starter + each agent + Ender
+    // 3) Build nodes: Starter + one per tool call + Ender
     const HORIZONTAL_GAP = 220;
     const TOP_OFFSET = 80;
     const nodes = [];
 
-    // Starter node
     nodes.push({
         text: 'Starter',
         left: '50px',
         top: TOP_OFFSET + 'px',
         agentPurpose: 'Entry point, launches first agents',
-        configData: { target_agents: [_toPoolName(canonicalOrder[0])] }
+        configData: { target_agents: [poolNames[0]] }
     });
 
-    // Agent nodes (one per unique successful agent type)
-    agentOrder.forEach((displayName, idx) => {
-        const info = agentMap.get(displayName);
-        const canonical = canonicalOrder[idx];
-        const configData = _mapToolArgsToAgentConfig(canonical, info.args, info.tool_name);
-        // Wire target_agents to next agent or Ender
-        if (idx < agentOrder.length - 1) {
-            configData.target_agents = [_toPoolName(canonicalOrder[idx + 1])];
-        } else {
-            configData.target_agents = [_toPoolName('Ender')];
-        }
-        // Wire source_agents to previous agent or Starter
-        if (idx === 0) {
-            configData.source_agents = [_toPoolName('Starter')];
-        } else {
-            configData.source_agents = [_toPoolName(canonicalOrder[idx - 1])];
-        }
+    successfulCalls.forEach((call, idx) => {
+        const configData = _mapToolArgsToAgentConfig(call.canonical, call.args, call.toolName);
+        // Wire downstream → next call's pool name, or Ender if last.
+        configData.target_agents = [idx < successfulCalls.length - 1 ? poolNames[idx + 1] : enderPool];
+        // Wire upstream → previous call's pool name, or Starter if first.
+        configData.source_agents = [idx === 0 ? starterPool : poolNames[idx - 1]];
 
-        // Parametrizer uses singular source_agent / target_agent
-        if (canonical.toLowerCase() === 'parametrizer') {
+        // Parametrizer uses singular source_agent / target_agent fields.
+        if (call.canonical.toLowerCase() === 'parametrizer') {
             configData.source_agent = configData.source_agents[0] || '';
             configData.target_agent = configData.target_agents[0] || '';
         }
 
         nodes.push({
-            text: canonical,
+            text: call.canonical,
             left: (50 + (idx + 1) * HORIZONTAL_GAP) + 'px',
             top: TOP_OFFSET + 'px',
-            agentPurpose: _agentPurpose(canonical),
+            agentPurpose: _agentPurpose(call.canonical),
             configData: configData
         });
     });
 
-    // Ender node
     nodes.push({
         text: 'Ender',
-        left: (50 + (agentOrder.length + 1) * HORIZONTAL_GAP) + 'px',
+        left: (50 + (successfulCalls.length + 1) * HORIZONTAL_GAP) + 'px',
         top: TOP_OFFSET + 'px',
         agentPurpose: 'Terminates all agents, launches Cleaners',
         configData: {
-            target_agents: canonicalOrder.map(n => _toPoolName(n)),
-            source_agents: [_toPoolName(canonicalOrder[canonicalOrder.length - 1])]
+            // Ender's target_agents is the list of ALL agents to terminate
+            // (every pool name, not just the last one).
+            target_agents: poolNames.slice(),
+            source_agents: [poolNames[poolNames.length - 1]]
         }
     });
 
@@ -475,12 +490,23 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     }
 
     // Agent-specific config mapping — field names match config.yaml templates.
+    //
+    // **Rule:** only set a field when we have a NON-EMPTY value for it.
+    // The backend deep-merges this dict over the template's config.yaml,
+    // so ``config.foo = ''`` would overwrite a legitimate template default
+    // with an empty string. Use the ``set(key, value)`` helper below so
+    // the empty-string trap can't re-enter a branch by accident.
+    const set = (key, value) => {
+        if (value === undefined || value === null) return;
+        if (typeof value === 'string' && value.trim() === '') return;
+        config[key] = value;
+    };
     const lower = canonicalName.toLowerCase();
 
     // ── Executer ─────────────────────────────────────────────────────
     // Template field: script (NOT "command")
     if (lower === 'executer') {
-        config.script = pairs.command || pairs.script || requestStr || '';
+        set('script', pairs.command || pairs.script || requestStr);
         if (pairs.non_blocking !== undefined) {
             config.non_blocking = String(pairs.non_blocking) === 'true';
         }
@@ -491,7 +517,7 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // ── Pythonxer ────────────────────────────────────────────────────
     // Template field: script
     } else if (lower === 'pythonxer') {
-        config.script = pairs.script || pairs.command || requestStr || '';
+        set('script', pairs.script || pairs.command || requestStr);
         if (pairs.execute_forked_window !== undefined) {
             config.execute_forked_window = String(pairs.execute_forked_window) === 'true';
         }
@@ -499,22 +525,22 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // ── SSHer (DB: "Ssher") ──────────────────────────────────────────
     // Template fields: user, ip, script
     } else if (lower === 'ssher') {
-        config.user = pairs.username || pairs.user || '';
-        config.ip = pairs.host || pairs.ip || '';
-        config.script = pairs.command || pairs.script || '';
+        set('user', pairs.username || pairs.user);
+        set('ip', pairs.host || pairs.ip);
+        set('script', pairs.command || pairs.script);
 
     // ── SCPer (DB: "Scper") ──────────────────────────────────────────
     // Template fields: user, ip, file, direction
     } else if (lower === 'scper') {
-        config.user = pairs.username || pairs.user || '';
-        config.ip = pairs.host || pairs.ip || '';
-        config.file = pairs.local_path || pairs.file || pairs.remote_path || '';
-        if (pairs.direction) config.direction = pairs.direction;
+        set('user', pairs.username || pairs.user);
+        set('ip', pairs.host || pairs.ip);
+        set('file', pairs.local_path || pairs.file || pairs.remote_path);
+        set('direction', pairs.direction);
 
     // ── SQLer (DB: "Sqler") ──────────────────────────────────────────
     // Template fields: sql_connection (nested), script
     } else if (lower === 'sqler') {
-        config.script = pairs.query || pairs.script || '';
+        set('script', pairs.query || pairs.script);
         const sqlConn = collectDotted('sql_connection');
         if (pairs.connection_string) sqlConn.server = pairs.connection_string;
         if (Object.keys(sqlConn).length > 0) config.sql_connection = sqlConn;
@@ -522,63 +548,64 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // ── Gitter ───────────────────────────────────────────────────────
     // Template fields: repo_path, command, branch, commit_message, remote, custom_command
     } else if (lower === 'gitter') {
-        config.repo_path = pairs.repo_path || '';
-        config.command = pairs.operation || pairs.command || '';
-        if (pairs.branch) config.branch = pairs.branch;
-        if (pairs.commit_message) config.commit_message = pairs.commit_message;
-        if (pairs.remote) config.remote = pairs.remote;
-        if (pairs.args) config.custom_command = pairs.args;
+        set('repo_path', pairs.repo_path);
+        set('command', pairs.operation || pairs.command);
+        set('branch', pairs.branch);
+        set('commit_message', pairs.commit_message);
+        set('remote', pairs.remote);
+        set('custom_command', pairs.args || pairs.custom_command);
 
     // ── Apirer ───────────────────────────────────────────────────────
     // Template fields: url, method, headers (object), body
     } else if (lower === 'apirer') {
-        config.url = pairs.url || '';
-        config.method = pairs.method || 'GET';
+        set('url', pairs.url);
+        set('method', pairs.method);
         if (pairs.headers) {
             try { config.headers = JSON.parse(pairs.headers); }
             catch (_e) { config.headers = pairs.headers; }
         }
-        if (pairs.body) config.body = pairs.body;
+        set('body', pairs.body);
 
     // ── Crawler ──────────────────────────────────────────────────────
     // Template fields: url, system_prompt, content_mode
     } else if (lower === 'crawler') {
-        config.url = pairs.url || '';
-        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
-        if (pairs.content_mode) config.content_mode = pairs.content_mode;
+        set('url', pairs.url);
+        set('system_prompt', pairs.system_prompt);
+        set('content_mode', pairs.content_mode);
 
     // ── Prompter ─────────────────────────────────────────────────────
     // Template field: prompt
     } else if (lower === 'prompter') {
-        config.prompt = pairs.prompt || requestStr || '';
+        set('prompt', pairs.prompt || requestStr);
 
     // ── Googler ──────────────────────────────────────────────────────
     // Template fields: query, number_of_results
     } else if (lower === 'googler') {
-        config.query = pairs.query || requestStr || '';
+        set('query', pairs.query || requestStr);
         if (pairs.number_of_results) {
-            config.number_of_results = parseInt(pairs.number_of_results, 10) || 5;
+            const n = parseInt(pairs.number_of_results, 10);
+            if (!Number.isNaN(n)) config.number_of_results = n;
         }
 
     // ── Dockerer ─────────────────────────────────────────────────────
     // Template field: command
     } else if (lower === 'dockerer') {
-        config.command = pairs.command || requestStr || '';
+        set('command', pairs.command || requestStr);
 
     // ── Kuberneter ───────────────────────────────────────────────────
     // Template fields: command, namespace, extra_args, custom_command
     } else if (lower === 'kuberneter') {
-        config.command = pairs.command || requestStr || '';
-        if (pairs.namespace) config.namespace = pairs.namespace;
-        if (pairs.extra_args) config.extra_args = pairs.extra_args;
+        set('command', pairs.command || requestStr);
+        set('namespace', pairs.namespace);
+        set('extra_args', pairs.extra_args);
 
     // ── Jenkinser ────────────────────────────────────────────────────
     // Template fields: jenkins_url, job_name, user, api_token
     } else if (lower === 'jenkinser') {
-        if (pairs.jenkins_url) config.jenkins_url = pairs.jenkins_url;
-        if (pairs.job_name) config.job_name = pairs.job_name;
-        if (pairs.user) config.user = pairs.user;
-        if (pairs.api_token) config.api_token = pairs.api_token;
+        set('jenkins_url', pairs.jenkins_url);
+        set('job_name', pairs.job_name);
+        set('user', pairs.user);
+        set('api_token', pairs.api_token);
 
     // ── Mongoxer ─────────────────────────────────────────────────────
     // Template fields: mongo_connection (nested), script
@@ -589,43 +616,42 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             mongoConn.connection_string = pairs['mongodb.connection_string'];
         }
         if (Object.keys(mongoConn).length > 0) config.mongo_connection = mongoConn;
-        config.script = pairs['mongodb.operation'] || pairs.script || '';
+        set('script', pairs['mongodb.operation'] || pairs.script);
 
     // ── File Creator ─────────────────────────────────────────────────
     // Template fields: file_path (with underscore!), content
     } else if (lower === 'file creator') {
-        config.file_path = pairs.filepath || pairs.file_path || '';
-        config.content = pairs.content || '';
+        set('file_path', pairs.filepath || pairs.file_path);
+        set('content', pairs.content);
 
     // ── File Extractor ───────────────────────────────────────────────
     // Template field: path_filenames
     } else if (lower === 'file extractor') {
-        config.path_filenames = pairs.path || pairs.path_filenames || '';
+        set('path_filenames', pairs.path || pairs.path_filenames);
 
     // ── File Interpreter ─────────────────────────────────────────────
     // Template fields: path_filenames, reading_type, llm.prompt
     } else if (lower === 'file interpreter') {
-        config.path_filenames = pairs.path || pairs.path_filenames || '';
-        if (pairs.reading_type) config.reading_type = pairs.reading_type;
+        set('path_filenames', pairs.path || pairs.path_filenames);
+        set('reading_type', pairs.reading_type);
         if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
 
     // ── Image Interpreter ────────────────────────────────────────────
     // Template fields: images_pathfilenames, llm.prompt, recursive
     } else if (lower === 'image interpreter') {
-        config.images_pathfilenames = pairs.images_pathfilenames
-            || pairs.path_filename || pairs.path || '';
+        set('images_pathfilenames', pairs.images_pathfilenames || pairs.path_filename || pairs.path);
         if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
-        if (pairs.recursive) config.recursive = String(pairs.recursive) === 'true';
+        if (pairs.recursive !== undefined) config.recursive = String(pairs.recursive) === 'true';
 
     // ── Summarizer ───────────────────────────────────────────────────
     // Template field: system_prompt (NO input_text field exists!)
     } else if (lower === 'summarizer') {
-        if (pairs.system_prompt) config.system_prompt = pairs.system_prompt;
+        set('system_prompt', pairs.system_prompt);
 
     // ── PSer (DB: "Pser") ────────────────────────────────────────────
     // Template field: likely_process_name
     } else if (lower === 'pser') {
-        config.likely_process_name = pairs.command || pairs.likely_process_name || requestStr || '';
+        set('likely_process_name', pairs.command || pairs.likely_process_name || requestStr);
 
     // ── Emailer ──────────────────────────────────────────────────────
     // Template fields: smtp (nested), email (nested), pattern
@@ -659,7 +685,7 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // ── Shoter ───────────────────────────────────────────────────────
     // Template field: output_dir
     } else if (lower === 'shoter') {
-        config.output_dir = pairs.output_path || pairs.output_dir || '';
+        set('output_dir', pairs.output_path || pairs.output_dir);
 
     // ── Telegramer ───────────────────────────────────────────────────
     // Template field: telegram (nested)
@@ -715,25 +741,25 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
 
     // ── Kyber-KeyGen ─────────────────────────────────────────────────
     } else if (lower === 'kyber-keygen') {
-        if (pairs.kyber_variant) config.kyber_variant = pairs.kyber_variant;
-        if (pairs.output_directory) config.output_directory = pairs.output_directory;
+        set('kyber_variant', pairs.kyber_variant);
+        set('output_directory', pairs.output_directory);
 
     // ── Kyber-Cipher ─────────────────────────────────────────────────
     } else if (lower === 'kyber-cipher') {
-        if (pairs.kyber_variant) config.kyber_variant = pairs.kyber_variant;
-        config.public_key = pairs.public_key || pairs.public_key_path || '';
-        config.buffer = pairs.buffer || pairs.input_data || '';
+        set('kyber_variant', pairs.kyber_variant);
+        set('public_key', pairs.public_key || pairs.public_key_path);
+        set('buffer', pairs.buffer || pairs.input_data);
 
     // ── Kyber-DeCipher ───────────────────────────────────────────────
     } else if (lower === 'kyber-decipher') {
-        if (pairs.kyber_variant) config.kyber_variant = pairs.kyber_variant;
-        config.private_key = pairs.private_key || pairs.private_key_path || '';
-        if (pairs.ciphertext_path) config.cipher_text = pairs.ciphertext_path;
+        set('kyber_variant', pairs.kyber_variant);
+        set('private_key', pairs.private_key || pairs.private_key_path);
+        set('cipher_text', pairs.ciphertext_path || pairs.cipher_text);
 
     // ── J-Decompiler ─────────────────────────────────────────────────
     // Template field: directory
     } else if (lower === 'j-decompiler' || lower === 'j decompiler') {
-        config.directory = pairs.path_filename || pairs.directory || '';
+        set('directory', pairs.path_filename || pairs.directory);
 
     // ── Parametrizer ─────────────────────────────────────────────────
     // Only connection fields — no content params.  source_agent / target_agent
@@ -758,18 +784,31 @@ function _parseKeyValuePairs(str) {
     const result = {};
     if (!str || typeof str !== 'string') return result;
 
-    // Match: key='value' or key="value" (value can span multiple lines via \n)
-    const regex = /([\w.]+)\s*=\s*'((?:[^'\\]|\\.)*)'/g;
-    let match;
-    while ((match = regex.exec(str)) !== null) {
-        result[match[1]] = match[2].replace(/\\'/g, "'").replace(/\\n/g, '\n');
+    // Pass 1: single-quoted values — ``key='...'`` where ``...`` may
+    // contain escaped quotes (\') and newlines (\n). Allow nested unescaped
+    // double-quotes inside single-quoted values (common in shell commands).
+    const singleQ = /([\w.]+)\s*=\s*'((?:[^'\\]|\\.)*)'/g;
+    let m;
+    while ((m = singleQ.exec(str)) !== null) {
+        result[m[1]] = m[2].replace(/\\'/g, "'").replace(/\\n/g, '\n');
     }
 
-    // Also match key="value"
-    const regex2 = /([\w.]+)\s*=\s*"((?:[^"\\]|\\.)*)"/g;
-    while ((match = regex2.exec(str)) !== null) {
-        if (!(match[1] in result)) {
-            result[match[1]] = match[2].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+    // Pass 2: double-quoted values — ``key="..."``.
+    const doubleQ = /([\w.]+)\s*=\s*"((?:[^"\\]|\\.)*)"/g;
+    while ((m = doubleQ.exec(str)) !== null) {
+        if (!(m[1] in result)) {
+            result[m[1]] = m[2].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+        }
+    }
+
+    // Pass 3: unquoted bareword values — ``key=value`` with no quotes,
+    // terminated by whitespace or a comma. This catches cases like
+    // ``operation=log method=GET timeout=30``. Skip keys already
+    // populated by the quoted passes.
+    const bareword = /([\w.]+)\s*=\s*([^'"\s,][^\s,]*)/g;
+    while ((m = bareword.exec(str)) !== null) {
+        if (!(m[1] in result)) {
+            result[m[1]] = m[2];
         }
     }
 
@@ -777,11 +816,22 @@ function _parseKeyValuePairs(str) {
 }
 
 /**
- * Convert an agent display name to its pool folder name convention.
- * e.g. "File Creator" → "file_creator", "Executer" → "executer"
+ * Convert an agent display name to its pool-folder base name (no cardinal).
+ * e.g. "File Creator" → "file_creator", "Executer" → "executer",
+ *      "Kyber-KeyGen" → "kyber_keygen"
+ *
+ * Pool folders on disk always carry a trailing ``_<N>`` cardinal assigned
+ * by the .flw loader's counter, so callers that need an actual target
+ * name must append their own cardinal. Use ``_poolBase`` when you're
+ * the one generating cardinals (flow-generator path); kept as
+ * ``_toPoolName`` only for any legacy callers that predated the fix.
  */
-function _toPoolName(displayName) {
+function _poolBase(displayName) {
     return displayName.toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function _toPoolName(displayName) {
+    return _poolBase(displayName);
 }
 
 /**

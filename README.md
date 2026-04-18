@@ -135,6 +135,16 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
     - [Agent Config Mapping](#agent-config-mapping)
   - [Complete Pipeline Diagram](#complete-pipeline-diagram)
   - [Files Involved](#files-involved)
+- [Exec Report: Seeing Everything the Agent Did](#exec-report-seeing-everything-the-agent-did)
+  - [What the Exec Report Is, in Plain Words](#what-the-exec-report-is-in-plain-words)
+  - [Turning the Exec Report On](#turning-the-exec-report-on)
+  - [What You Will See in the Chat](#what-you-will-see-in-the-chat)
+  - [Which Agents Appear in the Report](#which-agents-appear-in-the-report)
+  - [Which Agents Never Appear and Why](#which-agents-never-appear-and-why)
+  - [Success vs Failure: How the Verdict Is Decided](#success-vs-failure-how-the-verdict-is-decided)
+  - [A Worked Example, Start to Finish](#a-worked-example-start-to-finish)
+  - [Adding a New Agent to the Report](#adding-a-new-agent-to-the-report)
+  - [Files Involved in the Exec Report](#files-involved-in-the-exec-report)
 - [Custom Agent Development](#custom-agent-development)
   - [Using the `create_new_agent` Skill](#using-the-create_new_agent-skill)
     - [In Antigravity IDE / Gemini CLI](#in-antigravity-ide--gemini-cli)
@@ -3151,6 +3161,185 @@ The function `_mapToolArgsToAgentConfig()` translates raw tool-call arguments in
 | `agent/static/agent/js/agent_page_chat.js` | Button rendering, flow generation, and download | `appendChatMessage()`, `_hasSuccessfulToolCalls()`, `_generateAndDownloadFlow()`, `_mapToolArgsToAgentConfig()`, `_toPoolName()`, `_agentPurpose()` |
 | `agent/static/agent/css/agent_page.css` | Button styling (`.create-flow`, `.create-flow:hover`, `.create-flow:active`) | CSS rules at lines 152–177 |
 | `agent/config.json` | Provides `chained-model` and `ollama_base_url` for the classifier LLM | Configuration keys |
+
+---
+
+## Exec Report: Seeing Everything the Agent Did
+
+### What the Exec Report Is, in Plain Words
+
+When you ask Tlamatini to do something that takes many steps — "install a library", "run these tests", "clean up this server", "deploy to Kubernetes" — Multi-Turn mode lets the LLM fire tool after tool until the job is done. In a long run, the LLM may execute **dozens of commands**, hop across local shells, remote SSH hosts, Docker containers, Kubernetes clusters, databases, git repos, HTTP APIs, email, Telegram, and more.
+
+At the end, the LLM writes a summary. That summary is usually honest, but it is a **summary** — not the ground truth. Important details disappear: which commands actually ran, which ones failed, in what order, with what arguments.
+
+The **Exec Report** fixes that. When you turn it on, Tlamatini appends a set of **coloured tables to the bottom of the final answer** — one table per kind of agent that fired, each row showing one real command and its verdict (SUCCESS or FAILURE). Nothing is inferred from the LLM's prose; every row is recorded **directly from the live tool-call stream** inside the multi-turn executor. If a command ran, it is in the report. If the LLM's prose forgot to mention it, the table still shows it. If the LLM's prose claimed something succeeded but the tool returned an error, the table is the one telling the truth.
+
+It is a **"show-your-work" panel** for agentic execution. Think of it like a test runner's pass/fail list, but for whatever the AI just did on your system.
+
+### Turning the Exec Report On
+
+There is a checkbox on the chat toolbar labelled **"Exec Report"**, right next to the **"Multi-Turn"** checkbox.
+
+Rules:
+
+1. The Exec Report only works **inside Multi-Turn mode**. Outside Multi-Turn, Tlamatini is not using tools in a loop, so there is nothing to record. If you tick "Exec Report" with Multi-Turn off, the backend strips the flag silently.
+2. The setting is **per-browser-session**, sent with each request as `exec_report_enabled` over WebSocket. Refresh the page and it resets to off.
+3. Turning it on has **no effect on the LLM's behaviour** — it only controls whether the tables appear in your answer. The capture inside the executor runs either way, so the feature is cheap to toggle.
+
+### What You Will See in the Chat
+
+After the LLM's text answer, you will see a block like this (rendered with real HTML tables in the browser; shown here in a simplified ASCII form):
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  List of Executer Operations                        [yellow header] │
+├─────────────────────────────────────────────────────────────────────┤
+│  git status                                                SUCCESS  │
+│  choco install cmake --yes                                 SUCCESS  │
+│  cmake -G "Visual Studio 17 2022" ..                       FAILURE  │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  List of Dockerer Operations                          [blue header] │
+├─────────────────────────────────────────────────────────────────────┤
+│  docker ps -a                                              SUCCESS  │
+│  docker stop my-container                                  SUCCESS  │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  List of SSHer Operations                              [red header] │
+├─────────────────────────────────────────────────────────────────────┤
+│  ssh admin@10.0.0.1 'uptime'                               SUCCESS  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+Important visual rules:
+
+- **One table per kind of agent** that actually fired. If no Dockerer calls happened, there is no Dockerer table. Tables are never empty.
+- **Tables appear in the order each agent first fired**, not alphabetical. This mirrors the actual execution timeline.
+- **Each caption uses the agent's canvas gradient** — the same colour you see on the Agentic Control Panel sidebar tile for that agent. The Executer table is yellow because the Executer canvas tile is yellow; the SSHer table is the SSHer red; the Gitter table is the Gitter white-to-black; and so on for all 24 state-changing agents.
+- **Each command cell has a left-border stripe** in the agent's primary colour, for quick visual grouping even if you scroll past the caption.
+- **SUCCESS cells are green, FAILURE cells are red.** Nothing else.
+
+### Which Agents Appear in the Report
+
+Any agent whose invocation **changes system state** qualifies. The definition of "changes system state" is deliberately strict: something on disk, in a database, on a remote host, inside a container, inside a cluster, inside a git repo, in the GUI, or as an external message must measurably differ after the call.
+
+The current whitelist is **26 tools spanning 24 state-changing agents**:
+
+| Agent | Tool name(s) captured | Why it counts |
+|-------|------------------------|---------------|
+| Executer | `execute_command`, `chat_agent_executer` | Runs arbitrary shell commands |
+| Pythonxer | `execute_file`, `chat_agent_pythonxer` | Runs Python scripts |
+| Unzip | `unzip_file` | Creates files on disk |
+| J-Decompiler | `decompile_java`, `chat_agent_jdecompiler` *(if wrapped)* | Produces decompiled output files |
+| Dockerer | `chat_agent_dockerer` | Mutates container state |
+| Kuberneter | `chat_agent_kuberneter` | Mutates cluster state |
+| SSHer | `chat_agent_ssher` | Runs remote commands |
+| SCPer | `chat_agent_scper` | Transfers files across network |
+| PSer | `chat_agent_pser` | Runs PowerShell (Windows system changes) |
+| SQLer | `chat_agent_sqler` | SQL queries (INSERT/UPDATE/DELETE/DDL possible) |
+| Mongoxer | `chat_agent_mongoxer` | MongoDB mutations |
+| Jenkinser | `chat_agent_jenkinser` | Triggers CI/CD pipelines |
+| Gitter | `chat_agent_gitter` | Commits, pushes, branches |
+| File Creator | `chat_agent_file_creator` | Writes files |
+| Mover | `chat_agent_move_file` | Moves/renames files |
+| Deleter | `chat_agent_deleter` | Deletes files |
+| Apirer | `chat_agent_apirer` | HTTP calls (POST/PUT/DELETE side effects) |
+| Emailer | `chat_agent_send_email` | Sends external messages |
+| Telegramer | `chat_agent_telegramer` | Sends external messages |
+| Whatsapper | `chat_agent_whatsapper` | Sends external messages |
+| Notifier | `chat_agent_notifier` | Posts desktop notifications |
+| Kyber Keygen | `chat_agent_kyber_keygen` | Creates key files |
+| Kyber Cipher | `chat_agent_kyber_cipher` | Creates encrypted output files |
+| Kyber Deciph | `chat_agent_kyber_deciph` | Creates decrypted output files |
+
+The canonical list lives in `_EXEC_REPORT_TOOLS` in `agent/mcp_agent.py`.
+
+### Which Agents Never Appear and Why
+
+Read-only / observational agents are **deliberately excluded** — they do not change anything:
+
+- **Crawler, Googler** — read web pages
+- **File-Interpreter, File-Extractor** — read documents
+- **Image-Interpreter, Shoter** — read images / capture screens
+- **Summarizer, Prompter** — LLM passes that produce text only
+- **Monitor-Log, Monitor-Netstat, Recmailer** — observe logs / ports / mailboxes
+- **FlowHypervisor, TelegramRX** — watchdogs / inbound receivers
+
+Also excluded: the whole **Management Tools** set (`get_current_time`, `agent_stat_getter`, `chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop`) — these are lifecycle bookkeeping, not user-visible work.
+
+If you ever need to include one of these (for example, you want to treat Shoter as system-changing because it writes a PNG), adding it is a one-line edit to `_EXEC_REPORT_TOOLS` plus a matching CSS rule — see [Adding a New Agent to the Report](#adding-a-new-agent-to-the-report).
+
+### Success vs Failure: How the Verdict Is Decided
+
+The verdict on each row comes from the **same heuristic Multi-Turn already uses to decide if the tool call itself worked**, applied to the raw return value:
+
+1. Try to parse the tool's return as JSON. If the parsed object has `status: "error"` or `status: "failed"` → **FAILURE**.
+2. Otherwise treat it as a plain string. Strings starting with `"Error"` → **FAILURE**; strings containing `"failed with return code"` → **FAILURE**; strings containing `"executed successfully"` → **SUCCESS**.
+3. Anything else defaults to **SUCCESS**. The Executer, Pythonxer, and the wrapped chat-agent launchers all produce well-known sentinel strings or JSON, so in practice the heuristic is unambiguous.
+
+The verdict is **independent of** the SUCCESS/FAILURE label the "Create Flow" button uses — that one is an LLM-based classification of the overall answer prose (see [Flow Creation from Multi-Turn Answers](#flow-creation-from-multi-turn-answers)). The Exec Report verdict is a **per-call fact**, not a per-answer opinion.
+
+### A Worked Example, Start to Finish
+
+You type: *"Tlamatini, install the Asio C++ libraries and set the env vars."*
+
+With Multi-Turn + Exec Report both ticked, what happens:
+
+1. You hit **Send**. Your browser WebSocket includes `multi_turn_enabled: true, exec_report_enabled: true`.
+2. The planner selects a narrow tool subset (Executer, PSer, Gitter, etc.) based on your prompt.
+3. The LLM enters the multi-turn loop. Round after round it issues tool calls: `choco install vcpkg`, `vcpkg install asio:x64-windows`, several `[Environment]::SetEnvironmentVariable(...)` PowerShell calls, a `git clone` to fetch a config template, and so on.
+4. Every single one of those calls passes through `MultiTurnToolAgentExecutor._invoke_tool`, which records an entry into `_exec_report_entries` tagged with the right `agent_key` (`executer`, `pser`, `gitter`, ...). **Capture is unconditional** — it happens even if the Exec Report flag was lost upstream for any reason.
+5. When the LLM finally stops calling tools and writes its answer ("Asio installed, env vars set, here's how to use it..."), the executor bundles the captured entries into the result: `{"output": ..., "exec_report_entries": [...], "exec_report_enabled": true, ...}`.
+6. The chain layer forwards it; `process_llm_response` asks the renderer to build HTML; the renderer groups entries by `agent_key` and emits one table per unique agent in first-fire order.
+7. The WebSocket frame that lands in your browser contains the LLM prose **plus** the appended tables. You scroll to the bottom and see three tables: one Executer (5 commands, all SUCCESS), one PSer (6 env-var-set commands, all SUCCESS), one Gitter (1 clone, SUCCESS).
+
+If any single Executer call had failed — say `vcpkg` returned a non-zero exit code — that row would show **FAILURE** in red, even if the LLM's prose politely said "the installation was completed successfully." That is the whole point of the feature: the report is the ground truth, not the LLM's opinion of the ground truth.
+
+### Adding a New Agent to the Report
+
+If you add a new state-changing wrapped chat-agent tool — say `chat_agent_terraformer` — making it appear in the Exec Report is a **two-spot edit**:
+
+**1. Register the tool in `_EXEC_REPORT_TOOLS`** (in `agent/mcp_agent.py`):
+
+```python
+_EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
+    # ... existing entries ...
+    "chat_agent_terraformer":    ("terraformer",    "Terraformer"),
+}
+```
+
+The tuple is `(agent_key, agent_display)`. The `agent_key` **must match** a canvas-item CSS class (`.canvas-item.terraformer-agent`) so the table gradient mirrors the sidebar tile. The `agent_display` is the caption text ("List of Terraformer Operations").
+
+**2. Add two CSS rules in `agent/static/agent/css/agent_page.css`:**
+
+```css
+.exec-report-caption-terraformer {
+    background: linear-gradient(135deg, #623CEA 0%, #7BB661 100%);  /* copy from canvas-item */
+    color: #ffffff;
+}
+
+.exec-report-terraformer .exec-report-cmd {
+    border-left: 3px solid #623CEA;
+}
+```
+
+That is it. The capture, the grouping, the render-in-first-fire-order, the SUCCESS/FAILURE classification — all already work. Run `python manage.py test agent.tests.ExecReportCaptureTests` to verify.
+
+### Files Involved in the Exec Report
+
+| File | Role |
+|------|------|
+| `agent/mcp_agent.py` | `_EXEC_REPORT_TOOLS` map (single source of truth); `MultiTurnToolAgentExecutor._invoke_tool()` captures entries; `_build_result_dict()` emits `exec_report_entries` in every result |
+| `agent/rag/chains/unified.py` | `UnifiedAgentChain.invoke()` and `UnifiedAgentRAGChain.invoke()` — **must** include `exec_report_enabled` in their payload whitelist (the key that caused the original bug) and forward `exec_report_entries` on the way back up |
+| `agent/rag/interface.py` | `ask_rag()` stores `last_exec_report_enabled` / `last_exec_report_entries` in `global_state` for the consumer to pick up |
+| `agent/consumers.py` | `queue_llm_retrieval()` reads the global-state handoff and passes it to `process_llm_response` |
+| `agent/services/response_parser.py` | `_render_exec_report_html()` groups entries by `agent_key` and emits one HTML table per unique agent; `process_llm_response()` appends the HTML to the final answer |
+| `agent/static/agent/css/agent_page.css` | Per-agent caption gradients + command-cell left-border accents. One `.exec-report-caption-<key>` rule per entry in `_EXEC_REPORT_TOOLS` |
+| `agent/static/agent/js/agent_page_state.js`, `agent_page_init.js` | Tracks the `exec_report_enabled` checkbox state and sends it on each WebSocket send |
+| `agent/templates/agent/agent_page.html` | The **Exec Report** toolbar checkbox markup |
+| `agent/tests.py` | `ExecReportCaptureTests` covers direct tool capture, multi-agent wrapped-tool capture, read-only exclusion, failure classification, capture-when-flag-off, and render grouping order. `LoadedContextFallbackTests` covers the payload-whitelist regression guard |
 
 ---
 

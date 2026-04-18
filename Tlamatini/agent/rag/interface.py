@@ -625,12 +625,15 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     if isinstance(question, dict):
         raw_text = question.get("input", "")
         multi_turn_enabled = bool(question.get("multi_turn_enabled", False))
+        exec_report_enabled = bool(question.get("exec_report_enabled", False)) and multi_turn_enabled
     elif isinstance(question, str):
         raw_text = question
         multi_turn_enabled = False
+        exec_report_enabled = False
     else:
         raw_text = str(question)
         multi_turn_enabled = False
+        exec_report_enabled = False
 
     try:
         with open(os.path.join(application_path, 'config.json'), 'r', encoding='utf-8') as f:
@@ -690,6 +693,8 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         payload["conversation_user_id"] = question["conversation_user_id"]
     if isinstance(question, dict) and question.get("multi_turn_enabled") is not None:
         payload["multi_turn_enabled"] = multi_turn_enabled
+    if exec_report_enabled:
+        payload["exec_report_enabled"] = True
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException
@@ -773,9 +778,18 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
             global_state.set_state('last_multi_turn_used', True)
         else:
             global_state.set_state('last_multi_turn_used', None)
+        # Exec report data (only populated when the checkbox was enabled).
+        if response.get("exec_report_enabled"):
+            global_state.set_state('last_exec_report_enabled', True)
+            global_state.set_state('last_exec_report_entries', response.get("exec_report_entries") or [])
+        else:
+            global_state.set_state('last_exec_report_enabled', None)
+            global_state.set_state('last_exec_report_entries', None)
         return response.get("answer", "I was unable to generate a response. Please try rephrasing your question or check the system status.")
 
     global_state.set_state('last_tool_calls_log', None)
     global_state.set_state('last_multi_turn_used', None)
+    global_state.set_state('last_exec_report_enabled', None)
+    global_state.set_state('last_exec_report_entries', None)
     global_state.set_state('rag_chain_ready', True)
     return str(response)

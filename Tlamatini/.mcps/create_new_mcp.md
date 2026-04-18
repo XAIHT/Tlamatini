@@ -23,9 +23,9 @@ If you do not separate those three layers before coding, you will probably modif
 
 Before editing anything, classify the request into exactly one of these buckets:
 
-### `Tool only`
+### `Tool only` (direct @tool)
 
-Choose this when the model must perform an action on demand during unified-agent execution.
+Choose this when the model must perform an action on demand during unified-agent execution, **implemented inline in the Django process**.
 
 Examples:
 
@@ -35,6 +35,21 @@ Examples:
 - unzip an archive
 - decompile a binary
 - parametrize a template agent
+
+### `Wrapped chat-agent tool` (LLM launches an isolated subprocess agent)
+
+Choose this when the model must perform a **longer-running, subprocess-style action** by spawning an isolated runtime copy of an existing template agent (from `agent/agents/<name>/`) and returning a `run_id` the LLM can later poll with `chat_agent_run_status` / `chat_agent_run_log` / `chat_agent_run_stop`.
+
+Examples:
+
+- SSH into a remote host and run a command
+- send an email via SMTP
+- trigger a Jenkins job
+- run a PowerShell command
+- call an API
+- monitor a log file or netstat continuously
+
+This bucket is served by `ChatWrappedAgentSpec` entries in `agent/chat_agent_registry.py`. The tool name is always `chat_agent_<key>` and the tool's body is a fixed launcher (`_launch_wrapped_chat_agent` in `tools.py`) — you almost never write runner code in `tools.py` for this bucket; instead you add/modify the underlying template agent under `agent/agents/<name>/` and register its spec.
 
 ### `MCP-backed context provider only`
 
@@ -55,7 +70,7 @@ Choose this only when the model needs both:
 - pre-fetched context for reasoning
 - and a separate imperative action later
 
-Do not choose `Both` unless you can point to one concrete context payload and one concrete action tool. Most requests are only `Tool only` or `MCP-backed context provider only`.
+Do not choose `Both` unless you can point to one concrete context payload and one concrete action tool. Most requests are only one of the three action buckets above OR an MCP context provider.
 
 ## Stop And Correct Yourself If
 
@@ -95,12 +110,19 @@ Read these when adding an MCP-backed context provider:
 - `agent/static/agent/js/agent_page_dialogs.js`
 - `agent/templates/agent/agent_page.html`
 
-Read these when adding a tool:
+Read these when adding a direct @tool:
 
-- `agent/mcp_agent.py`
+- `agent/mcp_agent.py` — capture point for the Exec Report (`_EXEC_REPORT_TOOLS`, `_invoke_tool`)
 - `agent/static/agent/js/agent_page_init.js`
-- `agent/static/agent/js/agent_page_chat.js`
+- `agent/static/agent/js/agent_page_chat.js` — Flow-Generator mapping (`_mapToolArgsToAgentConfig`)
 - `agent/static/agent/js/agent_page_dialogs.js`
+
+Read these when adding a wrapped chat-agent tool:
+
+- `agent/chat_agent_registry.py` — the `ChatWrappedAgentSpec` dataclass and the registry
+- `agent/tools.py` — `_launch_wrapped_chat_agent`, `_build_wrapped_chat_agent_tool`, the Parametrizer-style request parser
+- `agent/mcp_agent.py` — `_EXEC_REPORT_TOOLS`, `_MANAGEMENT_TOOLS`, wrapped-agent dedup logic
+- `agent/static/agent/js/agent_page_chat.js` — Flow-Generator mapping
 
 ## Understand The Real Layers
 
@@ -181,13 +203,16 @@ Important:
 
 Use this as a hard boundary guide.
 
-### If adding a tool only
+### If adding a direct @tool only
 
 Must usually touch:
 
 - `agent/tools.py`
 - `agent/rag/factory.py`
 - a new migration that seeds the `Tool` row
+- `agent/mcp_agent.py` → `_EXEC_REPORT_TOOLS` (only if the tool changes system state)
+- `agent/static/agent/css/agent_page.css` → exec-report CSS rules (only if state-changing)
+- `agent/static/agent/js/agent_page_chat.js` → Flow-Generator mapping branch (only if the LLM uses it in Multi-Turn and the resulting `.flw` must carry the tool args)
 
 May need to touch:
 
@@ -199,6 +224,26 @@ Usually must not touch:
 - `agent/chain_*_lcel.py`
 - MCP checkbox HTML or MCP-specific frontend logic
 - `Mcp` seed rows
+- `agent/chat_agent_registry.py` (that's for wrapped chat-agent tools, a different bucket)
+
+### If adding a wrapped chat-agent tool
+
+Must usually touch:
+
+- `agent/chat_agent_registry.py` → append `ChatWrappedAgentSpec`
+- `agent/mcp_agent.py` → `_EXEC_REPORT_TOOLS` (only if state-changing)
+- `agent/static/agent/css/agent_page.css` → exec-report CSS rules (only if state-changing)
+- `agent/static/agent/js/agent_page_chat.js` → Flow-Generator mapping branch
+
+May need to touch:
+
+- the underlying `agent/agents/<name>/` template agent if it doesn't exist yet (follow `create_new_agent.md` first in that case)
+
+Usually must not touch:
+
+- `agent/tools.py` (the wrapped-agent runner is already implemented)
+- `agent/rag/factory.py`
+- `Tool` or `Mcp` seed rows
 
 ### If adding an MCP-backed context provider only
 
@@ -315,6 +360,88 @@ A new tool is only usable when the main chain is:
 - `UnifiedAgentRAGChain`
 
 If unified-agent mode is disabled, the tool is effectively dead code from the chat path.
+
+## Wrapped Chat-Agent Tool Workflow
+
+Follow these steps when the feature is an imperative action best served by **launching an isolated template-agent runtime copy**, and you want the unified agent to drive it during chat.
+
+### Step 1: Decide whether the underlying template agent already exists
+
+Browse `agent/agents/`. If a template agent exists that does what the user wants (SSHer, Dockerer, Apirer, Gitter, Sqler, ...), you are **configuring** that agent, not writing a new runner.
+
+If the underlying capability is new, go through the full `create_new_agent.md` skill first to create the template agent (including `config.yaml`, migration, canvas CSS, etc.). Then come back here.
+
+### Step 2: Append a `ChatWrappedAgentSpec` to `agent/chat_agent_registry.py`
+
+Append a new entry to `WRAPPED_CHAT_AGENT_SPECS`:
+
+```python
+ChatWrappedAgentSpec(
+    key="myagent",                           # short identifier
+    template_dir="myagent",                  # MUST match agent/agents/<dir>
+    tool_name="chat_agent_myagent",          # MUST start with "chat_agent_"
+    tool_description="Chat-Agent-MyAgent",
+    display_name="MyAgent",                  # MUST match DB agentDescription
+    purpose="One-sentence description of when to use this.",
+    example_request="Run MyAgent with param1='value', param2='value2'",
+    aliases=("myagent", "my agent"),
+    security_hints=("myagent", "keyword"),
+    # poll_window_seconds=3,                 # optional
+    # long_running=True,                     # optional
+),
+```
+
+No further wiring is needed inside `mcp_agent.py` or `tools.py`. The registry drives `WRAPPED_CHAT_AGENT_BY_TOOL_NAME`, `get_mcp_tools()` auto-returns a `Tool.from_function(..., name=spec.tool_name, ...)` wrapper, and the unified agent picks up the tool on its next chain build.
+
+### Step 3: Ensure the template agent accepts Parametrizer-style key=value input
+
+The LLM will call your tool with a free-form `request` string like:
+
+```
+Run MyAgent with param1='value1', nested.param='value2'
+```
+
+`_launch_wrapped_chat_agent()` in `tools.py` parses that string into `config.yaml` overrides using the same Parametrizer grammar. Your template agent's `config.yaml` must have top-level (or dotted-nested) keys matching the names you advertise in the `example_request`, or the overrides silently fall through.
+
+### Step 4: Register in the Exec Report if state-changing
+
+If the action changes system state (filesystem, DB, remote host, container, cluster, repo, GUI, external messages), add a one-line entry to `_EXEC_REPORT_TOOLS` in `agent/mcp_agent.py`:
+
+```python
+_EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
+    # ... existing entries ...
+    "chat_agent_myagent":  ("myagent",  "MyAgent"),
+}
+```
+
+Plus the two matching CSS rules in `agent/static/agent/css/agent_page.css` (caption gradient + command-cell accent). See the "Exec Report" section in `CLAUDE.md` for the full pattern.
+
+**Skip** this step for read-only / monitoring agents (Crawler, Summarizer, Prompter, File-Interpreter, File-Extractor, Image-Interpreter, Shoter, Monitor-Log, Monitor-Netstat, Recmailer).
+
+### Step 5: Register in the Flow-Generator mapping
+
+Add an agent-specific branch in `_mapToolArgsToAgentConfig` (in `agent/static/agent/js/agent_page_chat.js`) that translates the LLM's raw tool-call args into your template's `config.yaml` fields. Use the `set(key, value)` helper — it refuses empty strings so template defaults stay intact. See `create_new_agent.md` Step 7.7 for the full pattern.
+
+Without this branch, the "Create Flow" button produces a `.flw` whose node for your agent has **no config fields set**, and the runtime silently falls back to template defaults.
+
+### Step 6: No `Tool` DB row is needed
+
+Wrapped chat-agent tools are not managed through the `Tool` table. They are enabled whenever the unified agent is active. The `Tool` table is for the dynamic tool-toggle UI of direct @tool functions in `tools.py` — wrapped chat-agents are always-on when the unified agent runs.
+
+### Step 7: No management-tools treatment unless it is truly management
+
+The set `_MANAGEMENT_TOOLS` in `agent/mcp_agent.py` excludes specific tools from `.flw` generation and other UI integrations. It is for lifecycle bookkeeping (`chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop`), NOT for ordinary state-changing agents. Don't add your agent here.
+
+### Verification checklist
+
+- `WRAPPED_CHAT_AGENT_BY_TOOL_NAME["chat_agent_myagent"]` returns the spec
+- `get_mcp_tools()` includes a tool with `name == "chat_agent_myagent"`
+- Launching produces a new runtime copy under `agents/pools/_chat_runs_/<key>_<N>_<id>/`
+- The tool returns a JSON string with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`
+- If state-changing: the agent appears in the Exec Report table when Multi-Turn + Exec Report are both on
+- The "Create Flow" button produces a `.flw` in which your node carries the expected `config.yaml` overrides (not empty defaults)
+
+---
 
 ## MCP-Backed Context Provider Workflow
 
@@ -455,17 +582,34 @@ Use those patterns when building tools that touch bundled assets or template-age
 9. `mcp_files_search_server.py` currently hardcodes gRPC port and worker count instead of reading the config keys already present.
 10. Tool status keys are handwritten and can drift from seeded DB descriptions.
 11. `mcpContent` is stored as string text, not a boolean.
+12. **Wrapped chat-agent tools are NOT in the `Tool` DB table.** They are always-on whenever the unified agent is active. The `Tool` table and its toggle UI only gate direct @tool functions defined in `tools.py`.
+13. **`UnifiedAgentChain.invoke()` rebuilds the payload with a hardcoded key whitelist** (around line 138 of `rag/chains/unified.py`). Any new payload key (`multi_turn_enabled`, `exec_report_enabled`, future flags) MUST be added to that whitelist or it is silently dropped at the chain boundary. This has already caused one production bug — see the Exec Report section in `CLAUDE.md`.
+14. **The Exec Report capture point in `mcp_agent.py` is `_invoke_tool()`, not the chain layer.** Capture is unconditional (ignores the per-request flag). The flag only gates rendering. This separation is deliberate to prevent whitelist-style bugs from silently hiding data again.
+15. **Flow-Generator emits cardinal-suffixed pool names** (`executer_1`, `executer_2`, …) in `target_agents` / `source_agents` lists. A wrapped chat-agent tool whose Flow-Generator branch emits bare names like `"executer"` will produce a `.flw` whose Starter cannot find the agent and the chain dies on the first hop.
 
 ## Self-Check Before Saying It Is Done
 
-If you added a tool, verify:
+If you added a direct @tool, verify:
 
 - the `@tool` exists
 - `get_mcp_tools()` returns it
 - the status key matches the seeded `Tool` row and `factory.py` mapping
 - bundled paths work in both frozen and non-frozen modes if applicable
 - the tool is reachable in unified-agent mode
+- if state-changing: entry in `_EXEC_REPORT_TOOLS` + matching CSS rules
+- if Multi-Turn may call it: branch in `_mapToolArgsToAgentConfig`
 - no unnecessary MCP server or MCP UI edits were made
+
+If you added a wrapped chat-agent tool, verify:
+
+- `WRAPPED_CHAT_AGENT_BY_TOOL_NAME["chat_agent_<key>"]` returns the spec
+- `get_mcp_tools()` includes it (auto via registry)
+- launching creates a runtime copy under `agents/pools/_chat_runs_/<key>_<N>_<id>/`
+- the tool returns a JSON string with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`
+- the underlying `agent/agents/<name>/` template exists and accepts the advertised `example_request` fields
+- if state-changing: entry in `_EXEC_REPORT_TOOLS` + matching CSS rules
+- branch in `_mapToolArgsToAgentConfig` so `.flw` generation produces populated config fields
+- NO new `Tool` DB row (wrapped chat-agents are always-on, not in the `Tool` toggle UI)
 
 If you added an MCP context provider, verify:
 
@@ -477,13 +621,14 @@ If you added an MCP context provider, verify:
 - the `Mcp` row exists
 - the frontend MCP toggle is visible and persists
 - the feature works in every intended chain mode
+- **`UnifiedAgentChain.invoke()`'s payload whitelist includes any new flag** your provider reads (assumption #13)
 
-If you added both, verify both checklists independently.
+If you added multiple buckets, verify each checklist independently.
 
 ## Final Rule
 
 Answer this question explicitly before coding:
 
-"Am I adding a runtime service, a context preprocessor, a unified-agent tool, or more than one of those?"
+"Am I adding a direct @tool, a wrapped chat-agent tool, an MCP context provider, or more than one of those?"
 
 If that answer is not written down first, the implementation will usually end up in the wrong files.

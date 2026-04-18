@@ -545,6 +545,295 @@ class LoadedContextFallbackTests(TestCase):
         self.assertEqual(result['answer'], 'ok')
         self.assertTrue(captured['payload']['multi_turn_enabled'])
 
+    def test_unified_agent_chain_forwards_exec_report_flag_and_round_trips_entries(self):
+        # Regression guard: UnifiedAgentChain.invoke rebuilds the payload as
+        # a new dict with a hardcoded key whitelist. Any key missing from
+        # that whitelist is silently dropped before reaching the executor.
+        # This once stripped `exec_report_enabled`, which made the Exec
+        # report feature produce no tables in the final answer.
+        captured = {}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {
+                    'output': 'done',
+                    'tool_calls_log': [],
+                    'exec_report_enabled': bool(payload.get('exec_report_enabled')),
+                    'exec_report_entries': [
+                        {
+                            'tool_name': 'chat_agent_dockerer',
+                            'agent_key': 'dockerer',
+                            'agent_display': 'Dockerer',
+                            'command': 'docker ps',
+                            'success': True,
+                        },
+                    ],
+                }
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = ''
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        result = chain.invoke({
+            'input': 'list containers',
+            'chat_history': [],
+            'multi_turn_enabled': True,
+            'exec_report_enabled': True,
+        })
+
+        self.assertTrue(
+            captured['payload'].get('exec_report_enabled'),
+            'exec_report_enabled must survive the UnifiedAgentChain payload whitelist',
+        )
+        self.assertTrue(result.get('exec_report_enabled'))
+        self.assertEqual(len(result.get('exec_report_entries', [])), 1)
+        self.assertEqual(result['exec_report_entries'][0]['agent_key'], 'dockerer')
+        self.assertEqual(result['exec_report_entries'][0]['command'], 'docker ps')
+
+    def test_unified_agent_chain_omits_exec_report_fields_when_flag_off(self):
+        # When the user has not toggled the Exec report checkbox on, the
+        # chain must NOT surface exec_report_entries in its result dict,
+        # so the downstream renderer stays dormant.
+        class _FakeAgent:
+            def invoke(self, payload):
+                return {
+                    'output': 'done',
+                    'tool_calls_log': [],
+                    'exec_report_enabled': False,
+                    'exec_report_entries': [],
+                }
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = ''
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        result = chain.invoke({
+            'input': 'run something',
+            'chat_history': [],
+            'multi_turn_enabled': True,
+            # exec_report_enabled intentionally absent
+        })
+
+        self.assertNotIn('exec_report_enabled', result)
+        self.assertNotIn('exec_report_entries', result)
+
+
+class ExecReportCaptureTests(TestCase):
+    """Exercise MultiTurnToolAgentExecutor's Exec report capture across the
+    full set of state-changing tools. Each call must land in
+    ``exec_report_entries`` tagged with the right ``agent_key`` /
+    ``agent_display`` and the correct success verdict."""
+
+    def _fake_llm_for_calls(self, calls_per_turn):
+        """Build a fake LLM that issues ``calls_per_turn[i]`` tool calls on
+        turn ``i+1`` and then returns an empty tool-call final turn.
+        Each item in ``calls_per_turn`` is a list of ``(tool_name, args_dict)``.
+        """
+        iterator = iter(calls_per_turn + [[]])
+
+        class _FakeLLM:
+            def bind_tools(self, tools):
+                return self
+
+            def invoke(self, messages):
+                try:
+                    calls = next(iterator)
+                except StopIteration:
+                    calls = []
+                if not calls:
+                    return SimpleNamespace(content='wrap up', tool_calls=[])
+                tool_calls = [
+                    {'id': f'c{idx}', 'name': name, 'args': args}
+                    for idx, (name, args) in enumerate(calls)
+                ]
+                return SimpleNamespace(content='', tool_calls=tool_calls)
+
+        return _FakeLLM()
+
+    def _build_executor(self, tools, calls_per_turn):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        return MultiTurnToolAgentExecutor(
+            llm=self._fake_llm_for_calls(calls_per_turn),
+            system_prompt='test',
+            tools=tools,
+            max_iterations=10,
+        )
+
+    def test_direct_executer_and_pythonxer_are_captured_with_correct_agent_keys(self):
+        from langchain.tools import tool
+
+        @tool
+        def execute_command(command: str) -> str:
+            """Run a shell command."""
+            return f"Command '{command}' executed successfully."
+
+        @tool
+        def execute_file(command: str) -> str:
+            """Run a Python script."""
+            return f"Command '{command}' executed successfully."
+
+        exe = self._build_executor(
+            tools=[execute_command, execute_file],
+            calls_per_turn=[
+                [('execute_command', {'command': 'git status'})],
+                [('execute_file', {'command': 'install.py'})],
+            ],
+        )
+        result = exe.invoke({'input': 'do things', 'exec_report_enabled': True})
+
+        entries = result['exec_report_entries']
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(entries[0]['agent_key'], 'executer')
+        self.assertEqual(entries[0]['agent_display'], 'Executer')
+        self.assertEqual(entries[0]['command'], 'git status')
+        self.assertTrue(entries[0]['success'])
+        self.assertEqual(entries[1]['agent_key'], 'pythonxer')
+        self.assertEqual(entries[1]['agent_display'], 'Pythonxer')
+
+    def test_wrapped_chat_agent_tools_are_captured_across_agent_types(self):
+        """Simulate a real multi-turn that fans out across Dockerer, SSHer,
+        and SQLer wrapped launches. All three must land in
+        exec_report_entries tagged with the right agent_key."""
+        from langchain.tools import Tool
+
+        def _make_stub(tool_name):
+            def runner(request: str) -> str:
+                return json.dumps({'status': 'ok', 'tool': tool_name})
+            return Tool.from_function(func=runner, name=tool_name,
+                                      description=f'Launch {tool_name}.')
+
+        tools = [
+            _make_stub('chat_agent_dockerer'),
+            _make_stub('chat_agent_ssher'),
+            _make_stub('chat_agent_sqler'),
+        ]
+        exe = self._build_executor(
+            tools=tools,
+            calls_per_turn=[
+                [
+                    ('chat_agent_dockerer', {'__arg1': 'docker ps -a'}),
+                    ('chat_agent_ssher', {'__arg1': "ssh admin@10.0.0.1 'uptime'"}),
+                ],
+                [
+                    ('chat_agent_sqler', {'__arg1': "SELECT 1 FROM users"}),
+                ],
+            ],
+        )
+        result = exe.invoke({'input': 'fleet check', 'exec_report_enabled': True})
+
+        keys = [e['agent_key'] for e in result['exec_report_entries']]
+        self.assertEqual(keys, ['dockerer', 'ssher', 'sqler'])
+        commands = [e['command'] for e in result['exec_report_entries']]
+        self.assertIn('docker ps -a', commands)
+        self.assertTrue(any("ssh admin@10.0.0.1" in c for c in commands))
+        self.assertIn('SELECT 1 FROM users', commands)
+
+    def test_read_only_tool_calls_are_not_captured(self):
+        """``chat_agent_crawler`` / ``chat_agent_run_status`` / ``googler``
+        must NOT appear in exec_report_entries — they don't change state."""
+        from langchain.tools import Tool
+
+        def _make_stub(name):
+            def runner(request: str) -> str:
+                return json.dumps({'status': 'ok'})
+            return Tool.from_function(func=runner, name=name,
+                                      description=f'Launch {name}.')
+
+        tools = [
+            _make_stub('chat_agent_crawler'),
+            _make_stub('chat_agent_run_status'),
+        ]
+        exe = self._build_executor(
+            tools=tools,
+            calls_per_turn=[
+                [
+                    ('chat_agent_crawler', {'__arg1': 'crawl example.com'}),
+                    ('chat_agent_run_status', {'__arg1': 'status'}),
+                ],
+            ],
+        )
+        result = exe.invoke({'input': 'read only', 'exec_report_enabled': True})
+
+        self.assertEqual(result['exec_report_entries'], [])
+
+    def test_failing_tool_is_captured_with_success_false(self):
+        """Executer returning an ``Error:`` string must mark the entry as
+        failed; the existing ``call_success`` heuristic covers both the
+        JSON-status path and the plain-text path."""
+        from langchain.tools import tool
+
+        @tool
+        def execute_command(command: str) -> str:
+            """Run a shell command."""
+            return json.dumps({'status': 'error', 'message': 'boom'})
+
+        exe = self._build_executor(
+            tools=[execute_command],
+            calls_per_turn=[[('execute_command', {'command': 'bad-cmd'})]],
+        )
+        result = exe.invoke({'input': 'fails', 'exec_report_enabled': True})
+
+        self.assertEqual(len(result['exec_report_entries']), 1)
+        self.assertFalse(result['exec_report_entries'][0]['success'])
+
+    def test_exec_report_entries_are_emitted_even_when_flag_off(self):
+        """The flag gates RENDERING, not CAPTURE. Capturing unconditionally
+        means a future payload-whitelist bug cannot silently hide the data."""
+        from langchain.tools import tool
+
+        @tool
+        def execute_command(command: str) -> str:
+            """Run a shell command."""
+            return f"Command '{command}' executed successfully."
+
+        exe = self._build_executor(
+            tools=[execute_command],
+            calls_per_turn=[[('execute_command', {'command': 'dir'})]],
+        )
+        # Explicitly DO NOT pass exec_report_enabled.
+        result = exe.invoke({'input': 'just run'})
+
+        self.assertFalse(result['exec_report_enabled'])
+        self.assertEqual(len(result['exec_report_entries']), 1)
+
+    def test_render_groups_entries_by_agent_key_in_first_appearance_order(self):
+        """The renderer must emit one table per unique agent_key, in the
+        order each agent first fired — not alphabetical."""
+        from agent.services.response_parser import _render_exec_report_html
+
+        entries = [
+            {'tool_name': 'chat_agent_ssher',   'agent_key': 'ssher',    'agent_display': 'SSHer',    'command': 'uptime', 'success': True},
+            {'tool_name': 'execute_command',    'agent_key': 'executer', 'agent_display': 'Executer', 'command': 'dir',    'success': True},
+            {'tool_name': 'chat_agent_ssher',   'agent_key': 'ssher',    'agent_display': 'SSHer',    'command': 'df -h',  'success': False},
+            {'tool_name': 'chat_agent_dockerer','agent_key': 'dockerer', 'agent_display': 'Dockerer', 'command': 'docker ps', 'success': True},
+        ]
+        html = _render_exec_report_html(entries)
+
+        # SSHer appears first (its first fire was index 0) then Executer then Dockerer.
+        ssher_idx = html.index('List of SSHer Operations')
+        executer_idx = html.index('List of Executer Operations')
+        dockerer_idx = html.index('List of Dockerer Operations')
+        self.assertLess(ssher_idx, executer_idx)
+        self.assertLess(executer_idx, dockerer_idx)
+
+        # The SSHer table groups both SSHer commands.
+        self.assertIn('uptime', html)
+        self.assertIn('df -h', html)
+        # Success / failure cells both appear.
+        self.assertIn('>SUCCESS<', html)
+        self.assertIn('>FAILURE<', html)
+        # Each agent's caption carries its own CSS class.
+        self.assertIn('exec-report-caption-ssher', html)
+        self.assertIn('exec-report-caption-executer', html)
+        self.assertIn('exec-report-caption-dockerer', html)
+
 
 class CapabilitySelectionTests(TestCase):
     def test_select_tools_for_request_prefers_wrapped_agent_and_run_controls(self):

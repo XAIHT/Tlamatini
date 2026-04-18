@@ -2,7 +2,7 @@
 import json
 import logging
 import re
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
@@ -45,6 +45,50 @@ _MANAGEMENT_TOOLS: set[str] = {
     "chat_agent_run_status",
     "chat_agent_run_log",
     "chat_agent_run_stop",
+}
+
+
+# Tools whose invocation changes system / external state and therefore belongs
+# in the Exec report. Maps ``tool_name`` -> ``(agent_key, agent_display)``.
+# ``agent_key`` is the lowercase token used to scope the per-agent CSS class
+# (``.exec-report-<agent_key>`` / ``.exec-report-caption-<agent_key>``) and MUST
+# match a canvas-item CSS class defined in ``agentic_control_panel.css`` so the
+# appended table inherits the agent's canvas gradient. ``agent_display`` is the
+# human-facing caption. Direct @tool calls and wrapped chat-agent launches that
+# correspond to the SAME agent share an ``agent_key`` on purpose — their rows
+# merge into a single "List of <Agent> Operations" table. Read-only tools
+# (Crawler, Googler, monitor_*, summarizer, prompter, file_interpreter,
+# file_extractor, image_interpreter, shoter, recmailer, and everything in
+# ``_MANAGEMENT_TOOLS``) are intentionally absent.
+_EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
+    # direct @tool calls
+    "execute_command":           ("executer",       "Executer"),
+    "execute_file":              ("pythonxer",      "Pythonxer"),
+    "unzip_file":                ("unzip",          "Unzip"),
+    "decompile_java":            ("jdecompiler",    "J-Decompiler"),
+    # wrapped chat-agent launches (see chat_agent_registry.py)
+    "chat_agent_executer":       ("executer",       "Executer"),
+    "chat_agent_pythonxer":      ("pythonxer",      "Pythonxer"),
+    "chat_agent_dockerer":       ("dockerer",       "Dockerer"),
+    "chat_agent_kuberneter":     ("kuberneter",     "Kuberneter"),
+    "chat_agent_ssher":          ("ssher",          "SSHer"),
+    "chat_agent_scper":          ("scper",          "SCPer"),
+    "chat_agent_pser":           ("pser",           "PSer"),
+    "chat_agent_sqler":          ("sqler",          "SQLer"),
+    "chat_agent_mongoxer":       ("mongoxer",       "Mongoxer"),
+    "chat_agent_jenkinser":      ("jenkinser",      "Jenkinser"),
+    "chat_agent_gitter":         ("gitter",         "Gitter"),
+    "chat_agent_file_creator":   ("filecreator",    "File Creator"),
+    "chat_agent_move_file":      ("mover",          "Mover"),
+    "chat_agent_deleter":        ("deleter",        "Deleter"),
+    "chat_agent_apirer":         ("apirer",         "Apirer"),
+    "chat_agent_send_email":     ("emailer",        "Emailer"),
+    "chat_agent_telegramer":     ("telegramer",     "Telegramer"),
+    "chat_agent_whatsapper":     ("whatsapper",     "Whatsapper"),
+    "chat_agent_notifier":       ("notifier",       "Notifier"),
+    "chat_agent_kyber_keygen":   ("kyberkeygen",    "Kyber Keygen"),
+    "chat_agent_kyber_cipher":   ("kybercipher",    "Kyber Cipher"),
+    "chat_agent_kyber_deciph":   ("kyberdecipher",  "Kyber Deciph"),
 }
 
 
@@ -180,6 +224,35 @@ class MultiTurnToolAgentExecutor:
         self.bound_llm = llm.bind_tools(self.tools) if self.tools else None
         # Per-invocation log of every tool call (populated during invoke()).
         self._tool_calls_log: list[Dict[str, Any]] = []
+        # Per-invocation Exec report buffer — one entry per state-changing
+        # tool call (see _EXEC_REPORT_TOOLS). Only surfaced to the browser
+        # when the user toggled the Exec report checkbox on.
+        self._exec_report_enabled: bool = False
+        self._exec_report_entries: list[Dict[str, Any]] = []
+
+    @staticmethod
+    def _extract_exec_report_command(tool_input: Any) -> str:
+        """Pull a human-readable "command / intent" string out of the tool
+        input dict so it can be rendered in the Exec report. Covers both
+        direct @tool inputs (``{"command": "..."}`` / ``{"path_filename":
+        "..."}``) and wrapped chat-agent launches (``{"__arg1": "..."}`` /
+        ``{"request": "..."}``). Falls back to a compact ``key=value`` summary
+        so the report never shows an empty cell.
+        """
+        if tool_input is None:
+            return ""
+        if isinstance(tool_input, str):
+            return tool_input
+        if not isinstance(tool_input, dict):
+            return str(tool_input)
+        for key in ("command", "path_filename", "request", "__arg1"):
+            value = tool_input.get(key)
+            if value:
+                return str(value)
+        values = [v for v in tool_input.values() if v not in (None, "")]
+        if len(values) == 1:
+            return str(values[0])
+        return ", ".join(f"{k}={v}" for k, v in tool_input.items() if v not in (None, ""))
 
     def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
         tool_name = tool_call.get("name", "")
@@ -244,6 +317,23 @@ class MultiTurnToolAgentExecutor:
             "agent_display_name": _tool_name_to_agent_display(tool_name),
         })
 
+        # ── Exec report capture ──
+        # Always record entries for any tool in _EXEC_REPORT_TOOLS, regardless
+        # of the per-request flag — capture is cheap, and decoupling capture
+        # from rendering means a future layer that drops the flag (as the
+        # UnifiedAgentChain payload whitelist once did) cannot silently hide
+        # the data. The flag only gates whether the tables reach the user.
+        exec_report_spec = _EXEC_REPORT_TOOLS.get(tool_name)
+        if exec_report_spec is not None:
+            agent_key, agent_display = exec_report_spec
+            self._exec_report_entries.append({
+                "tool_name": tool_name,
+                "agent_key": agent_key,
+                "agent_display": agent_display,
+                "command": self._extract_exec_report_command(tool_input),
+                "success": call_success,
+            })
+
         if isinstance(result, str):
             return result
         return result_str
@@ -272,6 +362,9 @@ class MultiTurnToolAgentExecutor:
         self._tool_calls_log = []
         # Track wrapped chat-agent calls to avoid duplicate launches.
         self._wrapped_agent_signatures: set[str] = set()
+        # Reset Exec report state for this request; honour the per-request flag.
+        self._exec_report_enabled = bool(payload.get("exec_report_enabled", False))
+        self._exec_report_entries = []
 
         input_text = payload.get("input", "")
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
@@ -294,7 +387,7 @@ class MultiTurnToolAgentExecutor:
             answer = getattr(response, "content", "") or ""
             if not str(answer).strip():
                 answer = "The planner selected no tools for this request, and the model returned an empty response."
-            return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
+            return self._build_result_dict(str(answer))
 
         # --- Repetition tracking state ---
         last_signature: str | None = None
@@ -340,7 +433,7 @@ class MultiTurnToolAgentExecutor:
                             )
                         else:
                             answer = "The tool-calling model returned an empty final response."
-                return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
+                return self._build_result_dict(str(answer))
 
             # --- Repetition detection ---
             sig = self._call_signature(tool_calls)
@@ -397,7 +490,7 @@ class MultiTurnToolAgentExecutor:
                             "before the loop was broken:\n\n"
                             + "\n---\n".join(reversed(last_real_results))
                         )
-                return {"output": str(answer), "tool_calls_log": list(self._tool_calls_log)}
+                return self._build_result_dict(str(answer))
 
             # --- Normal tool execution ---
             for tool_call in tool_calls:
@@ -436,12 +529,23 @@ class MultiTurnToolAgentExecutor:
                     )
                 )
 
+        return self._build_result_dict(
+            "The tool-calling loop hit its iteration limit before producing a final answer. "
+            "Summarize the latest observed tool state or refine the request."
+        )
+
+    def _build_result_dict(self, answer: str) -> Dict[str, Any]:
+        """Assemble the final executor return dict. ``exec_report_entries``
+        is always populated from the captured state-changing tool calls;
+        the chain above gates rendering on ``exec_report_enabled``. Emitting
+        the entries unconditionally prevents a whitelist-style bug from ever
+        silently hiding the data again.
+        """
         return {
-            "output": (
-                "The tool-calling loop hit its iteration limit before producing a final answer. "
-                "Summarize the latest observed tool state or refine the request."
-            ),
+            "output": answer,
             "tool_calls_log": list(self._tool_calls_log),
+            "exec_report_enabled": bool(self._exec_report_enabled),
+            "exec_report_entries": list(self._exec_report_entries),
         }
 
 
@@ -628,6 +732,8 @@ class CapabilityAwareToolAgentExecutor:
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
+        # Exec report is multi-turn-only: outside multi-turn we strip it.
+        exec_report_enabled = bool(payload.get("exec_report_enabled", False)) and multi_turn_enabled
         global_execution_plan = payload.get("global_execution_plan")
 
         with scoped_request_state(
@@ -667,6 +773,8 @@ class CapabilityAwareToolAgentExecutor:
             )
             executor = self._get_executor_for_tools(selected_tools)
             executor_payload = {"input": input_text}
+            if exec_report_enabled:
+                executor_payload["exec_report_enabled"] = True
             if global_execution_plan:
                 executor_payload["global_execution_plan"] = global_execution_plan
                 executor_payload["planner_summary"] = (
