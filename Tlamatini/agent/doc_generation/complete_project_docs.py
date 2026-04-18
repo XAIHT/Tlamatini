@@ -597,7 +597,12 @@ def build_pdf(context: dict) -> None:
 
     cover_image = context["reference_media"][0] if context["reference_media"] else REPO_ROOT / "Tlamatini.jpg"
     story.append(p("TLAMATINI", styles["title"]))
-    story.append(p("Complete Project Dossier: system purpose, architecture, usage, source tree, and effective line inventory", styles["subtitle"]))
+    story.append(
+        p(
+            "Complete Project Dossier: what the system does, how it works, how to use it, complete tracked file tree, and effective line inventory",
+            styles["subtitle"],
+        )
+    )
     if cover_image.exists():
         try:
             story.append(Image(str(cover_image), width=6.8 * inch, height=3.8 * inch))
@@ -713,7 +718,7 @@ def build_pdf(context: dict) -> None:
     story.append(table(largest_rows, widths=[4.0 * inch, 1.2 * inch, 0.75 * inch, 0.75 * inch], font_size=6.7))
     story.append(PageBreak())
 
-    story.append(p("7. Complete Tracked Repository File Tree", styles["h1"]))
+    story.append(p("7. Complete Tracked File Tree (Repository Appendix)", styles["h1"]))
     TREE_OUTPUT.write_text(context["tree_text"], encoding="utf-8")
     tree_chunks = split_lines(context["tree_text"], 76)
     for index, chunk in enumerate(tree_chunks, 1):
@@ -961,7 +966,13 @@ def build_ppt(context: dict) -> None:
     prs.slide_height = Inches(SLIDE_H)
     cover = context["reference_media"][0] if context["reference_media"] else None
 
-    slide, audit = add_slide(prs, "TLAMATINI", "Complete project dossier", THEME["copper"], cover)
+    slide, audit = add_slide(
+        prs,
+        "TLAMATINI",
+        "Complete project dossier: what it does, how it works, how to use it",
+        THEME["copper"],
+        cover,
+    )
     add_text(slide, audit, 0.9, 2.0, 5.5, 0.6, "El Saber Cosmico del Desarrollo", 24, THEME["white"], False, name="cover-tag", font="Aptos Display")
     add_text(slide, audit, 0.9, 2.76, 5.8, 1.0, "Local AI developer assistant with RAG, Multi-Turn orchestration, 57 agents, visual workflows, and Windows packaging.", 17, THEME["muted"], False, name="cover-body")
     add_metric_card(slide, audit, 0.9, 4.25, 1.75, "Files", str(context["tracked_files"]), THEME["jade"], "cover-m1")
@@ -1119,7 +1130,12 @@ def build_ppt(context: dict) -> None:
 
     tree_chunks = split_lines(context["tree_text"], 31)
     for idx, chunk in enumerate(tree_chunks, 1):
-        slide, audit = add_slide(prs, f"File Tree Appendix {idx}/{len(tree_chunks)}", "complete tracked repository tree", THEME["jade"] if idx % 2 else THEME["copper"])
+        slide, audit = add_slide(
+            prs,
+            f"Tracked File Tree Appendix {idx}/{len(tree_chunks)}",
+            "complete tracked file tree, no tracked file omitted",
+            THEME["jade"] if idx % 2 else THEME["copper"],
+        )
         add_text(slide, audit, 0.72, 1.56, 11.95, 5.42, chunk, 7, THEME["white"], False, name=f"tree-{idx}", font="Cascadia Mono")
         audit_layout(audit, len(prs.slides))
 
