@@ -1033,8 +1033,10 @@ async function _renderFlowCreatorResult(flowResult, flowCreatorId, flowCreatorIt
         newItem.style.left = nodeData.left || '50px';
         newItem.style.top = nodeData.top || '50px';
 
-        submonitor.appendChild(newItem);
+        const canvasContentEl = document.getElementById('canvas-content') || submonitor;
+        canvasContentEl.appendChild(newItem);
         makeDraggable(newItem);
+        if (typeof updateCanvasContentSize === 'function') updateCanvasContentSize();
 
         // Deploy agent to pool directory with config
         try {

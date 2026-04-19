@@ -431,7 +431,9 @@ async function createCanvasItem(clientX, clientY, textContent) {
         }
     }
 
-    const rect = submonitor.getBoundingClientRect();
+    // canvasContent's bounding rect already reflects current scroll offset, so the
+    // subtraction below yields coordinates in content-space (what style.left expects).
+    const rect = canvasContent.getBoundingClientRect();
     let x = clientX - rect.left;
     let y = clientY - rect.top;
 
@@ -455,7 +457,7 @@ async function createCanvasItem(clientX, clientY, textContent) {
     appendOutputTriangles(newItem, lowerName);
     appendLedIndicator(newItem);
 
-    submonitor.appendChild(newItem); // Append first to read offsetWidth/Height
+    canvasContent.appendChild(newItem); // Append first to read offsetWidth/Height
 
     const width = newItem.offsetWidth;
     const height = newItem.offsetHeight;
@@ -463,15 +465,16 @@ async function createCanvasItem(clientX, clientY, textContent) {
     x -= width / 2;
     y -= height / 2;
 
-    const maxX = rect.width - width;
-    const maxY = rect.height - height;
-    x = Math.max(0, Math.min(x, maxX));
-    y = Math.max(0, Math.min(y, maxY));
+    // Clamp to non-negative only; the canvas grows to the right/bottom via
+    // updateCanvasContentSize() below, so no viewport upper bound is needed.
+    x = Math.max(0, x);
+    y = Math.max(0, y);
 
     newItem.style.left = x + 'px';
     newItem.style.top = y + 'px';
 
     makeDraggable(newItem);
+    updateCanvasContentSize();
     updateSaveButtonState();
 
     // Deploy agent template to pool directory
@@ -541,7 +544,7 @@ function cloneAndRegister(originalItem) {
     appendOutputTriangles(newItem, lowerName);
     appendLedIndicator(newItem);
 
-    submonitor.appendChild(newItem);
+    canvasContent.appendChild(newItem);
     makeDraggable(newItem);
     return newItem;
 }
@@ -648,18 +651,18 @@ function makeDraggable(el) {
             hasCloned = true;
         }
 
-        const containerRect = submonitor.getBoundingClientRect();
         initialPositions.forEach((startPos, item) => {
             let newLeft = startPos.left + dx;
             let newTop = startPos.top + dy;
-            const maxLeft = containerRect.width - item.offsetWidth;
-            const maxTop = containerRect.height - item.offsetHeight;
-            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-            newTop = Math.max(0, Math.min(newTop, maxTop));
+            // Only clamp the top-left against zero; the canvas can grow to the right
+            // and bottom, so upper bounds are intentionally omitted.
+            newLeft = Math.max(0, newLeft);
+            newTop = Math.max(0, newTop);
             item.style.left = newLeft + 'px';
             item.style.top = newTop + 'px';
             updateAttachedConnections(item);
         });
+        updateCanvasContentSize();
     });
 
     window.addEventListener('mouseup', () => {
@@ -667,6 +670,7 @@ function makeDraggable(el) {
             isMoving = false;
             el.style.zIndex = '';
             initialPositions.clear();
+            updateCanvasContentSize();
             markDirty();
         }
     });
@@ -726,9 +730,10 @@ function deselectAll() {
 
 function startSelectionBox(e) {
     ACP.isSelecting = true;
-    const rect = submonitor.getBoundingClientRect();
-    ACP.initialBoxX = e.clientX - rect.left + submonitor.scrollLeft;
-    ACP.initialBoxY = e.clientY - rect.top + submonitor.scrollTop;
+    // canvasContent's rect already accounts for scroll offset, so no manual add.
+    const rect = canvasContent.getBoundingClientRect();
+    ACP.initialBoxX = e.clientX - rect.left;
+    ACP.initialBoxY = e.clientY - rect.top;
     ACP.selectionBox.style.left = ACP.initialBoxX + 'px';
     ACP.selectionBox.style.top = ACP.initialBoxY + 'px';
     ACP.selectionBox.style.width = '0px';
@@ -746,7 +751,9 @@ function isIntersecting(r1, r2) {
 
 function getCenter(el) {
     const rect = el.getBoundingClientRect();
-    const containerRect = submonitor.getBoundingClientRect();
+    // Connections are drawn inside #canvas-content (the scrollable content layer),
+    // so center coordinates must be expressed in canvas-content space.
+    const containerRect = canvasContent.getBoundingClientRect();
     return {
         x: rect.left + rect.width / 2 - containerRect.left,
         y: rect.top + rect.height / 2 - containerRect.top
@@ -1115,11 +1122,13 @@ function initCanvasEvents() {
     // Wire up the SVG connections layer
     ACP.svgLayer = document.getElementById('connections-layer');
 
-    // Create the rubber-band selection box element if it doesn't exist
+    // Create the rubber-band selection box element if it doesn't exist.
+    // It lives inside #canvas-content so its absolute coordinates share the same
+    // reference frame as canvas items (and scroll together with them).
     if (!document.getElementById('selection-box')) {
         const sb = document.createElement('div');
         sb.id = 'selection-box';
-        submonitor.appendChild(sb);
+        canvasContent.appendChild(sb);
     }
     ACP.selectionBox = document.getElementById('selection-box');
 
@@ -1155,7 +1164,7 @@ function initCanvasEvents() {
             e.target.closest('.canvas-item')) {
             return;
         }
-        if (e.target === submonitor || e.target.id === 'connections-layer') {
+        if (e.target === submonitor || e.target === canvasContent || e.target.id === 'connections-layer') {
             if (!e.ctrlKey) deselectAll();
             startSelectionBox(e);
         }
@@ -1234,7 +1243,7 @@ function initCanvasEvents() {
         if (ACP.isConnecting && ACP.tempPath) {
             const startEl = ACP.sourceNode.querySelector('.output-triangle');
             const startPos = getCenter(startEl);
-            const rect = submonitor.getBoundingClientRect();
+            const rect = canvasContent.getBoundingClientRect();
             setPathD(startPos.x, startPos.y, e.clientX - rect.left, e.clientY - rect.top,
                 ACP.tempPath.visiblePath, ACP.tempPath.hitPath);
         }
@@ -1243,7 +1252,7 @@ function initCanvasEvents() {
     // ---- Window: Selection Box resize ----
     window.addEventListener('mousemove', (e) => {
         if (!ACP.isSelecting) return;
-        const rect = submonitor.getBoundingClientRect();
+        const rect = canvasContent.getBoundingClientRect();
         const currentX = e.clientX - rect.left;
         const currentY = e.clientY - rect.top;
         ACP.selectionBox.style.width = Math.abs(currentX - ACP.initialBoxX) + 'px';

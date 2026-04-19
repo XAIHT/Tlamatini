@@ -231,7 +231,7 @@ async function loadDiagram(data) {
             newItem.style.left = nodeData.left;
             newItem.style.top = nodeData.top;
 
-            submonitor.appendChild(newItem);
+            canvasContent.appendChild(newItem);
             makeDraggable(newItem);
 
             // Deploy agent to pool directory
@@ -328,9 +328,14 @@ async function loadDiagram(data) {
     // 7. Force layout update after DOM rendering
     setTimeout(() => {
         console.log('--- [Load] Performing final connection layout update...');
+        // Grow #canvas-content first so far-flung items are scrollable, then redraw
+        // connections against the final, settled layout.
+        updateCanvasContentSize();
         loadedNodes.forEach(node => updateAttachedConnections(node));
     }, 200);
 
+    // Initial resize so scrollbars appear immediately, before the settled redraw.
+    updateCanvasContentSize();
     updateSaveButtonState();
     markClean();
 }

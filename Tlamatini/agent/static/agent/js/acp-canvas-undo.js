@@ -84,8 +84,9 @@ async function recreateCanvasItem(state) {
     newItem.style.left = state.position.x + 'px';
     newItem.style.top = state.position.y + 'px';
 
-    submonitor.appendChild(newItem);
+    canvasContent.appendChild(newItem);
     makeDraggable(newItem);
+    updateCanvasContentSize();
 
     try {
         const response = await fetch(`/agent/deploy_agent_template/${state.id}/`, {

@@ -1,0 +1,1950 @@
+{
+  "nodes": [
+    {
+      "text": "Starter",
+      "left": "50px",
+      "top": "80px",
+      "agentPurpose": "Entry point, launches first agents",
+      "configData": {
+        "target_agents": [
+          "executer_1"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "270px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "where fmod 2>nul || echo FMOD not found in PATH",
+        "target_agents": [
+          "executer_2"
+        ],
+        "source_agents": [
+          "starter_1"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "490px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo %FMOD_HOME% & echo %FMOD_PATH% & echo %FMOD_SDK%",
+        "target_agents": [
+          "executer_3"
+        ],
+        "source_agents": [
+          "executer_1"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "710px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\Program Files (x86)\\FMOD*\" 2>nul || echo No FMOD in Program Files (x86)",
+        "target_agents": [
+          "executer_4"
+        ],
+        "source_agents": [
+          "executer_2"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "930px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\Program Files\\FMOD*\" 2>nul || echo No FMOD in Program Files",
+        "target_agents": [
+          "executer_5"
+        ],
+        "source_agents": [
+          "executer_3"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "1150px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "winget search fmod",
+        "target_agents": [
+          "executer_6"
+        ],
+        "source_agents": [
+          "executer_4"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "1370px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "choco search fmod 2>nul || echo \"Chocolatey search completed\"",
+        "target_agents": [
+          "executer_7"
+        ],
+        "source_agents": [
+          "executer_5"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "1590px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "mkdir \"C:\\FMOD\" 2>nul & echo FMOD directory created",
+        "target_agents": [
+          "executer_8"
+        ],
+        "source_agents": [
+          "executer_6"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "1810px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl --version 2>nul || echo curl not available",
+        "target_agents": [
+          "executer_9"
+        ],
+        "source_agents": [
+          "executer_7"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "2030px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmodstudioapi_win64.exe\" \"https://s3.amazonaws.com/fmod-public-downloads/versions/fmodstudioapi_win64.exe\" --progress-bar",
+        "target_agents": [
+          "executer_10"
+        ],
+        "source_agents": [
+          "executer_8"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "2250px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\"",
+        "target_agents": [
+          "executer_11"
+        ],
+        "source_agents": [
+          "executer_9"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "2470px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmodstudioapi_win64.exe\" \"https://www.fmod.com/api/releases/fmodstudioapi_win64.exe\" --progress-bar",
+        "target_agents": [
+          "executer_12"
+        ],
+        "source_agents": [
+          "executer_10"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "2690px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\"",
+        "target_agents": [
+          "executer_13"
+        ],
+        "source_agents": [
+          "executer_11"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "2910px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmodstudioapi20206win64installer.exe\" \"https://s3.amazonaws.com/fmod-public-downloads/versions/fmodstudioapi20206win64installer.exe\" --progress-bar",
+        "target_agents": [
+          "executer_14"
+        ],
+        "source_agents": [
+          "executer_12"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "3130px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\"",
+        "target_agents": [
+          "executer_15"
+        ],
+        "source_agents": [
+          "executer_13"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "3350px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"Invoke-WebRequest -Uri 'https://www.fmod.com/api/releases/fmodstudioapi_win64' -OutFile 'C:\\FMOD\\fmodstudioapi_win64.exe' -UseBasicParsing\"",
+        "target_agents": [
+          "executer_16"
+        ],
+        "source_agents": [
+          "executer_14"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "3570px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\"",
+        "target_agents": [
+          "executer_17"
+        ],
+        "source_agents": [
+          "executer_15"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "3790px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"Invoke-WebRequest -Uri 'https://github.com/fmod/fmod/releases/download/2.02.20/fmodstudioapi20220win64installer.exe' -OutFile 'C:\\FMOD\\fmodstudioapi20220win64installer.exe' -UseBasicParsing\"",
+        "target_agents": [
+          "executer_18"
+        ],
+        "source_agents": [
+          "executer_16"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "4010px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget help 2>nul || echo NuGet not found, checking dotnet",
+        "target_agents": [
+          "executer_19"
+        ],
+        "source_agents": [
+          "executer_17"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "4230px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dotnet --version",
+        "target_agents": [
+          "executer_20"
+        ],
+        "source_agents": [
+          "executer_18"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "4450px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget search fmod -Source nuget.org -Take 20",
+        "target_agents": [
+          "executer_21"
+        ],
+        "source_agents": [
+          "executer_19"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "4670px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget search fmodstudio -Source nuget.org -Take 20",
+        "target_agents": [
+          "executer_22"
+        ],
+        "source_agents": [
+          "executer_20"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "4890px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget search FMOD.Studio -Source nuget.org -Take 20",
+        "target_agents": [
+          "executer_23"
+        ],
+        "source_agents": [
+          "executer_21"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "5110px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "vcpkg --version 2>nul || echo vcpkg not found",
+        "target_agents": [
+          "executer_24"
+        ],
+        "source_agents": [
+          "executer_22"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "5330px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "where vcpkg 2>nul || echo vcpkg not in PATH",
+        "target_agents": [
+          "executer_25"
+        ],
+        "source_agents": [
+          "executer_23"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "5550px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "vcpkg search fmod",
+        "target_agents": [
+          "executer_26"
+        ],
+        "source_agents": [
+          "executer_24"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "5770px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://www.fmod.com/api/releases/fmodstudioapi20220win64installer.exe'; $output = 'C:\\FMOD\\fmodstudioapi20220win64installer.exe'; try { Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing -UserAgent 'Mozilla/5.0' } catch { Write-Host 'Error:' $_.Exception.Message }\"",
+        "target_agents": [
+          "executer_27"
+        ],
+        "source_agents": [
+          "executer_25"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "5990px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\"",
+        "target_agents": [
+          "executer_28"
+        ],
+        "source_agents": [
+          "executer_26"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "6210px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget install Ultraviolet.FMOD.Native -OutputDirectory \"C:\\FMOD\\packages\" -Source nuget.org",
+        "target_agents": [
+          "executer_29"
+        ],
+        "source_agents": [
+          "executer_27"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "6430px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget install FmodAudio -OutputDirectory \"C:\\FMOD\\packages\" -Source nuget.org",
+        "target_agents": [
+          "executer_30"
+        ],
+        "source_agents": [
+          "executer_28"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "6650px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\packages\" /s",
+        "target_agents": [
+          "executer_31"
+        ],
+        "source_agents": [
+          "executer_29"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "6870px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget search fmod.native -Source nuget.org -Take 20",
+        "target_agents": [
+          "executer_32"
+        ],
+        "source_agents": [
+          "executer_30"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "7090px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget search fmod.cpp -Source nuget.org -Take 20",
+        "target_agents": [
+          "executer_33"
+        ],
+        "source_agents": [
+          "executer_31"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "7310px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/fmod/fmod/releases/download/2.02.20/fmodstudioapi20220win64installer.exe' -OutFile 'C:\\FMOD\\fmod_installer.exe' -UseBasicParsing\" 2>&1",
+        "target_agents": [
+          "executer_34"
+        ],
+        "source_agents": [
+          "executer_32"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "7530px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmod_sdk.zip\" \"https://github.com/fmod/fmod/archive/refs/tags/2.02.20.zip\" --progress-bar 2>&1",
+        "target_agents": [
+          "executer_35"
+        ],
+        "source_agents": [
+          "executer_33"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "7750px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\fmod_sdk.zip\"",
+        "target_agents": [
+          "executer_36"
+        ],
+        "source_agents": [
+          "executer_34"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "7970px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"try { [System.Net.WebRequest]::Create('https://www.fmod.com/api/releases').GetResponse() } catch { $_.Exception.Message }\"",
+        "target_agents": [
+          "executer_37"
+        ],
+        "source_agents": [
+          "executer_35"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "8190px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\packages\\Ultraviolet.FMOD.Native.2023.8.0.3\" /s /b | findstr /i \"\\.h \\.hpp \\.lib\"",
+        "target_agents": [
+          "executer_38"
+        ],
+        "source_agents": [
+          "executer_36"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "8410px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\Users\\angel\\.nuget\\packages\\ultraviolet.fmod.native\\2023.8.0.3\" /s /b 2>nul | findstr /i \"\\.h \\.hpp \\.lib\"",
+        "target_agents": [
+          "executer_39"
+        ],
+        "source_agents": [
+          "executer_37"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "8630px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "nuget install AssetRipper.FMOD.V1 -OutputDirectory \"C:\\FMOD\\packages\" -Source nuget.org",
+        "target_agents": [
+          "executer_40"
+        ],
+        "source_agents": [
+          "executer_38"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "8850px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\packages\\AssetRipper.FMOD.V1.0.1.0\" /s",
+        "target_agents": [
+          "executer_41"
+        ],
+        "source_agents": [
+          "executer_39"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "9070px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmod.hpp\" \"https://raw.githubusercontent.com/fmod/fmod/master/core/inc/fmod.hpp\" 2>&1",
+        "target_agents": [
+          "executer_42"
+        ],
+        "source_agents": [
+          "executer_40"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "9290px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmod.h\" \"https://raw.githubusercontent.com/fmod/fmod/master/core/inc/fmod.h\" 2>&1",
+        "target_agents": [
+          "executer_43"
+        ],
+        "source_agents": [
+          "executer_41"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "9510px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "curl -L -o \"C:\\FMOD\\fmod_common.h\" \"https://raw.githubusercontent.com/fmod/fmod/master/core/inc/fmod_common.h\" 2>&1",
+        "target_agents": [
+          "executer_44"
+        ],
+        "source_agents": [
+          "executer_42"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "9730px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$client = New-Object System.Net.WebClient; $client.Headers.Add('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'); $client.DownloadFile('https://www.fmod.com/api/releases/fmodstudioapi20220win64installer.exe', 'C:\\FMOD\\fmod_sdk_installer.exe')\"",
+        "target_agents": [
+          "executer_45"
+        ],
+        "source_agents": [
+          "executer_43"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "9950px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\fmod_sdk_installer.exe\"",
+        "target_agents": [
+          "executer_46"
+        ],
+        "source_agents": [
+          "executer_44"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "10170px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$client = New-Object System.Net.WebClient; $client.Headers.Add('User-Agent', 'Mozilla/5.0'); $client.DownloadFile('https://s3.amazonaws.com/fmod-public-downloads/versions/fmodstudioapi20220win64installer.exe', 'C:\\FMOD\\fmod_sdk_installer.exe')\"",
+        "target_agents": [
+          "executer_47"
+        ],
+        "source_agents": [
+          "executer_45"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "10390px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$client = New-Object System.Net.WebClient; $client.Headers.Add('User-Agent', 'Mozilla/5.0'); $client.DownloadFile('https://s3.amazonaws.com/fmod-public-downloads/versions/fmodstudioapi20206win64installer.exe', 'C:\\FMOD\\fmod_sdk_installer.exe')\"",
+        "target_agents": [
+          "executer_48"
+        ],
+        "source_agents": [
+          "executer_46"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "10610px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession; $session.UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'; Invoke-WebRequest -Uri 'https://www.fmod.com/api/releases/fmodstudioapi20220win64installer.exe' -OutFile 'C:\\FMOD\\fmod_sdk_installer.exe' -WebSession $session -UseBasicParsing\"",
+        "target_agents": [
+          "executer_49"
+        ],
+        "source_agents": [
+          "executer_47"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "10830px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\fmod_sdk_installer.exe\"",
+        "target_agents": [
+          "executer_50"
+        ],
+        "source_agents": [
+          "executer_48"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "11050px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "mkdir \"C:\\FMOD\\SDK\\inc\" 2>nul & mkdir \"C:\\FMOD\\SDK\\lib\\x64\" 2>nul & mkdir \"C:\\FMOD\\SDK\\lib\\x86\" 2>nul & mkdir \"C:\\FMOD\\SDK\\bin\\x64\" 2>nul & mkdir \"C:\\FMOD\\SDK\\bin\\x86\" 2>nul & echo Directories created",
+        "target_agents": [
+          "executer_51"
+        ],
+        "source_agents": [
+          "executer_49"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "11270px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "copy \"C:\\FMOD\\packages\\Ultraviolet.FMOD.Native.2023.8.0.3\\build\\net6.0\\x64\\win32nt\\fmod.dll\" \"C:\\FMOD\\SDK\\bin\\x64\\fmod.dll\"",
+        "target_agents": [
+          "executer_52"
+        ],
+        "source_agents": [
+          "executer_50"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "11490px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "copy \"C:\\FMOD\\packages\\Ultraviolet.FMOD.Native.2023.8.0.3\\build\\net6.0\\x86\\win32nt\\fmod.dll\" \"C:\\FMOD\\SDK\\bin\\x86\\fmod.dll\"",
+        "target_agents": [
+          "executer_53"
+        ],
+        "source_agents": [
+          "executer_51"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "11710px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "copy \"C:\\FMOD\\packages\\AssetRipper.FMOD.V1.0.1.0\\runtimes\\win-x64\\native\\fmod64.dll\" \"C:\\FMOD\\SDK\\bin\\x64\\fmod64.dll\"",
+        "target_agents": [
+          "executer_54"
+        ],
+        "source_agents": [
+          "executer_52"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "11930px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "copy \"C:\\FMOD\\packages\\AssetRipper.FMOD.V1.0.1.0\\runtimes\\win-x86\\native\\fmod.dll\" \"C:\\FMOD\\SDK\\bin\\x86\\fmod.dll\" /Y",
+        "target_agents": [
+          "executer_55"
+        ],
+        "source_agents": [
+          "executer_53"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "12150px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"[Environment]::SetEnvironmentVariable('FMOD_HOME', 'C:\\FMOD\\SDK', 'User'); [Environment]::SetEnvironmentVariable('FMOD_PATH', 'C:\\FMOD\\SDK', 'User'); [Environment]::SetEnvironmentVariable('FMOD_SDK', 'C:\\FMOD\\SDK', 'User'); Write-Host 'Environment variables set successfully'\"",
+        "target_agents": [
+          "executer_56"
+        ],
+        "source_agents": [
+          "executer_54"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "12370px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$currentPath = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($currentPath -notlike '*C:\\FMOD\\SDK\\bin\\x64*') { [Environment]::SetEnvironmentVariable('PATH', $currentPath + ';C:\\FMOD\\SDK\\bin\\x64;C:\\FMOD\\SDK\\bin\\x86', 'User'); Write-Host 'PATH updated' } else { Write-Host 'PATH already contains FMOD' }\"",
+        "target_agents": [
+          "executer_57"
+        ],
+        "source_agents": [
+          "executer_55"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "12590px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"@'\n@echo off\necho ============================================\necho FMOD SDK Download Script\necho ============================================\necho.\necho FMOD requires license acceptance from the official website.\necho Please follow these steps:\necho.\necho 1. Open your browser and go to: https://www.fmod.com/download/\necho 2. Create a free account or log in\necho 3. Download FMOD Studio API (version 2.02.20 or later)\necho 4. Run the installer and install to: C:\\FMOD\\SDK\necho.\necho After installation, the following directories should exist:\necho   - C:\\FMOD\\SDK\\api\\core\\inc    (header files)\necho   - C:\\FMOD\\SDK\\api\\core\\lib   (library files)\necho.\necho ============================================\npause\n'@ | Out-File -FilePath 'C:\\FMOD\\download_fmod_sdk.bat' -Encoding ASCII\"",
+        "target_agents": [
+          "executer_58"
+        ],
+        "source_agents": [
+          "executer_56"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "12810px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo @echo off > \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo ============================================ >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo FMOD SDK Download Script >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo ============================================ >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo. >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo FMOD requires license acceptance from the official website. >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo Please follow these steps: >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo 1. Open your browser and go to: https://www.fmod.com/download/ >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo 2. Create a free account or log in >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo 3. Download FMOD Studio API (version 2.02.20 or later) >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo 4. Run the installer and install to: C:\\FMOD\\SDK >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo After installation, copy headers and libs to: >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo   - C:\\FMOD\\SDK\\inc (header files) >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo   - C:\\FMOD\\SDK\\lib (library files) >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo pause >> \"C:\\FMOD\\download_fmod_sdk.bat\"",
+        "target_agents": [
+          "executer_59"
+        ],
+        "source_agents": [
+          "executer_57"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "13030px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo @echo off> \"C:\\FMOD\\download_fmod_sdk.bat\"",
+        "target_agents": [
+          "executer_60"
+        ],
+        "source_agents": [
+          "executer_58"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "13250px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo echo ============================================ >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo FMOD SDK Download Instructions >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo ============================================ >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo FMOD requires license acceptance from: https://www.fmod.com/download/ >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo echo After downloading, install to C:\\FMOD\\SDK >> \"C:\\FMOD\\download_fmod_sdk.bat\" && echo pause >> \"C:\\FMOD\\download_fmod_sdk.bat\"",
+        "target_agents": [
+          "executer_61"
+        ],
+        "source_agents": [
+          "executer_59"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "13470px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "type \"C:\\FMOD\\download_fmod_sdk.bat\"",
+        "target_agents": [
+          "executer_62"
+        ],
+        "source_agents": [
+          "executer_60"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "13690px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"[Environment]::GetEnvironmentVariable('FMOD_HOME', 'User'); [Environment]::GetEnvironmentVariable('FMOD_PATH', 'User'); [Environment]::GetEnvironmentVariable('FMOD_SDK', 'User')\"",
+        "target_agents": [
+          "executer_63"
+        ],
+        "source_agents": [
+          "executer_61"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "13910px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$props = @'\n<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?>\n<Project ToolsVersion=\\\"4.0\\\" xmlns=\\\"http://schemas.microsoft.com/developer/msbuild/2003\\\">\n  <ImportGroup Label=\\\"PropertySheets\\\" />\n  <PropertyGroup Label=\\\"UserMacros\\\">\n    <FMOD_HOME>$(FMOD_HOME)</FMOD_HOME>\n    <FMOD_PATH>$(FMOD_PATH)</FMOD_PATH>\n    <FMOD_SDK>$(FMOD_SDK)</FMOD_SDK>\n  </PropertyGroup>\n  <PropertyGroup>\n    <IncludePath>$(FMOD_SDK)\\inc;$(IncludePath)</IncludePath>\n    <LibraryPath Condition=\\\"'$(Platform)'=='x64'\\\">$(FMOD_SDK)\\lib\\x64;$(LibraryPath)</LibraryPath>\n    <LibraryPath Condition=\\\"'$(Platform)'=='Win32'\\\">$(FMOD_SDK)\\lib\\x86;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <ItemDefinitionGroup>\n    <Link Condition=\\\"'$(Platform)'=='x64'\\\">\n      <AdditionalDependencies>fmod64.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n    <Link Condition=\\\"'$(Platform)'=='Win32'\\\">\n      <AdditionalDependencies>fmod.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n    <PostBuildEvent Condition=\\\"'$(Platform)'=='x64'\\\">\n      <Command>xcopy /Y \\\"$(FMOD_SDK)\\bin\\x64\\*.dll\\\" \\\"$(OutDir)\\\"</Command>\n    </PostBuildEvent>\n    <PostBuildEvent Condition=\\\"'$(Platform)'=='Win32'\\\">\n      <Command>xcopy /Y \\\"$(FMOD_SDK)\\bin\\x86\\*.dll\\\" \\\"$(OutDir)\\\"</Command>\n    </PostBuildEvent>\n  </ItemDefinitionGroup>\n</Project>\n'@; $props | Out-File -FilePath 'C:\\FMOD\\FMOD.props' -Encoding UTF8\"",
+        "target_agents": [
+          "executer_64"
+        ],
+        "source_agents": [
+          "executer_62"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "14130px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<?xml version=\"1.0\" encoding=\"utf-8\"?^> > \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_65"
+        ],
+        "source_agents": [
+          "executer_63"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "14350px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_66"
+        ],
+        "source_agents": [
+          "executer_64"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "14570px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo   ^<PropertyGroup Label=\"UserMacros\"^> >> \"C:\\FMOD\\FMOD.props\" && echo     ^<FMOD_HOME^>$(FMOD_HOME)^</FMOD_HOME^> >> \"C:\\FMOD\\FMOD.props\" && echo   ^</PropertyGroup^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_67"
+        ],
+        "source_agents": [
+          "executer_65"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "14790px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo   ^<PropertyGroup^> >> \"C:\\FMOD\\FMOD.props\" && echo     ^<IncludePath^>$(FMOD_SDK)\\inc;$(IncludePath)^</IncludePath^> >> \"C:\\FMOD\\FMOD.props\" && echo   ^</PropertyGroup^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_68"
+        ],
+        "source_agents": [
+          "executer_66"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "15010px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^</Project^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_69"
+        ],
+        "source_agents": [
+          "executer_67"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "15230px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "type \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_70"
+        ],
+        "source_agents": [
+          "executer_68"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "15450px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "del \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_71"
+        ],
+        "source_agents": [
+          "executer_69"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "15670px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$content = @'\n<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?>\n<Project ToolsVersion=\\\"4.0\\\" xmlns=\\\"http://schemas.microsoft.com/developer/msbuild/2003\\\">\n  <ImportGroup Label=\\\"PropertySheets\\\" />\n  <PropertyGroup Label=\\\"UserMacros\\\">\n    <FMOD_SDK>C:\\FMOD\\SDK</FMOD_SDK>\n  </PropertyGroup>\n  <PropertyGroup>\n    <IncludePath>$(FMOD_SDK)\\inc;$(IncludePath)</IncludePath>\n  </PropertyGroup>\n  <PropertyGroup Condition=\\\"'$(Platform)'=='x64'\\\">\n    <LibraryPath>$(FMOD_SDK)\\lib\\x64;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <PropertyGroup Condition=\\\"'$(Platform)'=='Win32'\\\">\n    <LibraryPath>$(FMOD_SDK)\\lib\\x86;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <ItemDefinitionGroup Condition=\\\"'$(Platform)'=='x64'\\\">\n    <Link>\n      <AdditionalDependencies>fmod64.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n  </ItemDefinitionGroup>\n  <ItemDefinitionGroup Condition=\\\"'$(Platform)'=='Win32'\\\">\n    <Link>\n      <AdditionalDependencies>fmod.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n  </ItemDefinitionGroup>\n</Project>\n'@; [System.IO.File]::WriteAllText('C:\\FMOD\\FMOD.props', $content)\"",
+        "target_agents": [
+          "executer_72"
+        ],
+        "source_agents": [
+          "executer_70"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "15890px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<?xml version=\"1.0\" encoding=\"utf-8\"?^> > \"C:\\FMOD\\FMOD.props\" && echo ^<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"^> >> \"C:\\FMOD\\FMOD.props\" && echo   ^<ImportGroup Label=\"PropertySheets\" /^> >> \"C:\\FMOD\\FMOD.props\" && echo   ^<PropertyGroup Label=\"UserMacros\"^> >> \"C:\\FMOD\\FMOD.props\" && echo     ^<FMOD_SDK^>C:\\FMOD\\SDK^</FMOD_SDK^> >> \"C:\\FMOD\\FMOD.props\" && echo   ^</PropertyGroup^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_73"
+        ],
+        "source_agents": [
+          "executer_71"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "16110px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\"",
+        "target_agents": [
+          "executer_74"
+        ],
+        "source_agents": [
+          "executer_72"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "16330px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\SDK\" /s",
+        "target_agents": [
+          "executer_75"
+        ],
+        "source_agents": [
+          "executer_73"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "16550px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"[System.IO.File]::WriteAllText('C:\\FMOD\\FMOD.props', '<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?>\n<Project ToolsVersion=\\\"4.0\\\" xmlns=\\\"http://schemas.microsoft.com/developer/msbuild/2003\\\">\n  <ImportGroup Label=\\\"PropertySheets\\\" />\n  <PropertyGroup Label=\\\"UserMacros\\\">\n    <FMOD_SDK>C:\\FMOD\\SDK</FMOD_SDK>\n  </PropertyGroup>\n  <PropertyGroup>\n    <IncludePath>$(FMOD_SDK)\\inc;$(IncludePath)</IncludePath>\n  </PropertyGroup>\n  <PropertyGroup Condition=\\\"''$(Platform)''==''x64''\\\">\n    <LibraryPath>$(FMOD_SDK)\\lib\\x64;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <PropertyGroup Condition=\\\"''$(Platform)''==''Win32''\\\">\n    <LibraryPath>$(FMOD_SDK)\\lib\\x86;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <ItemDefinitionGroup Condition=\\\"''$(Platform)''==''x64''\\\">\n    <Link>\n      <AdditionalDependencies>fmod64.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n  </ItemDefinitionGroup>\n  <ItemDefinitionGroup Condition=\\\"''$(Platform)''==''Win32''\\\">\n    <Link>\n      <AdditionalDependencies>fmod.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n  </ItemDefinitionGroup>\n</Project>')\"",
+        "target_agents": [
+          "executer_76"
+        ],
+        "source_agents": [
+          "executer_74"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "16770px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"$xml = @'\n<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?>\n<Project ToolsVersion=\\\"4.0\\\" xmlns=\\\"http://schemas.microsoft.com/developer/msbuild/2003\\\">\n  <ImportGroup Label=\\\"PropertySheets\\\" />\n  <PropertyGroup Label=\\\"UserMacros\\\">\n    <FMOD_SDK>C:\\FMOD\\SDK</FMOD_SDK>\n  </PropertyGroup>\n  <PropertyGroup>\n    <IncludePath>$(FMOD_SDK)\\inc;$(IncludePath)</IncludePath>\n  </PropertyGroup>\n  <PropertyGroup Condition=\\\"'$(Platform)'=='x64'\\\">\n    <LibraryPath>$(FMOD_SDK)\\lib\\x64;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <PropertyGroup Condition=\\\"'$(Platform)'=='Win32'\\\">\n    <LibraryPath>$(FMOD_SDK)\\lib\\x86;$(LibraryPath)</LibraryPath>\n  </PropertyGroup>\n  <ItemDefinitionGroup Condition=\\\"'$(Platform)'=='x64'\\\">\n    <Link>\n      <AdditionalDependencies>fmod64.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n  </ItemDefinitionGroup>\n  <ItemDefinitionGroup Condition=\\\"'$(Platform)'=='Win32'\\\">\n    <Link>\n      <AdditionalDependencies>fmod.lib;%(AdditionalDependencies)</AdditionalDependencies>\n    </Link>\n  </ItemDefinitionGroup>\n</Project>\n'@; $xml | Out-File -FilePath 'C:\\FMOD\\FMOD.props' -Encoding UTF8\"",
+        "target_agents": [
+          "executer_77"
+        ],
+        "source_agents": [
+          "executer_75"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "16990px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<?xml version=\"1.0\" encoding=\"utf-8\"?^>^<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"^>^<ImportGroup Label=\"PropertySheets\" /^>^<PropertyGroup Label=\"UserMacros\"^>^<FMOD_SDK^>C:\\FMOD\\SDK^</FMOD_SDK^>^</PropertyGroup^>^<PropertyGroup^>^<IncludePath^>$(FMOD_SDK)\\inc;$(IncludePath)^</IncludePath^>^</PropertyGroup^>^<PropertyGroup Condition=\"'$(Platform)'=='x64'\"^>^<LibraryPath^>$(FMOD_SDK)\\lib\\x64;$(LibraryPath)^</LibraryPath^>^</PropertyGroup^>^<PropertyGroup Condition=\"'$(Platform)'=='Win32'\"^>^<LibraryPath^>$(FMOD_SDK)\\lib\\x86;$(LibraryPath)^</LibraryPath^>^</PropertyGroup^>^<ItemDefinitionGroup Condition=\"'$(Platform)'=='x64'\"^>^<Link^>^<AdditionalDependencies^>fmod64.lib;%%(AdditionalDependencies)^</AdditionalDependencies^>^</Link^>^</ItemDefinitionGroup^>^<ItemDefinitionGroup Condition=\"'$(Platform)'=='Win32'\"^>^<Link^>^<AdditionalDependencies^>fmod.lib;%%(AdditionalDependencies)^</AdditionalDependencies^>^</Link^>^</ItemDefinitionGroup^>^</Project^> > \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_78"
+        ],
+        "source_agents": [
+          "executer_76"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "17210px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "type nul > \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_79"
+        ],
+        "source_agents": [
+          "executer_77"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "17430px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<?xml version=\"1.0\" encoding=\"utf-8\"?^> > \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_80"
+        ],
+        "source_agents": [
+          "executer_78"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "17650px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_81"
+        ],
+        "source_agents": [
+          "executer_79"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "17870px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo   ^<ImportGroup Label=\"PropertySheets\" /^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_82"
+        ],
+        "source_agents": [
+          "executer_80"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "18090px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo ^<ImportGroup Label=\"PropertySheets\" /^> >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_83"
+        ],
+        "source_agents": [
+          "executer_81"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "18310px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "echo test >> \"C:\\FMOD\\FMOD.props\"",
+        "target_agents": [
+          "executer_84"
+        ],
+        "source_agents": [
+          "executer_82"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "18530px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\SDK\\bin\\x64\"",
+        "target_agents": [
+          "executer_85"
+        ],
+        "source_agents": [
+          "executer_83"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "18750px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\SDK\\bin\\x86\"",
+        "target_agents": [
+          "executer_86"
+        ],
+        "source_agents": [
+          "executer_84"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "18970px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "powershell -Command \"[Environment]::GetEnvironmentVariable('FMOD_HOME', 'User'); [Environment]::GetEnvironmentVariable('FMOD_PATH', 'User'); [Environment]::GetEnvironmentVariable('FMOD_SDK', 'User'); [Environment]::GetEnvironmentVariable('PATH', 'User')\"",
+        "target_agents": [
+          "executer_87"
+        ],
+        "source_agents": [
+          "executer_85"
+        ]
+      }
+    },
+    {
+      "text": "Executer",
+      "left": "19190px",
+      "top": "80px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "dir \"C:\\FMOD\\packages\"",
+        "target_agents": [
+          "ender_1"
+        ],
+        "source_agents": [
+          "executer_86"
+        ]
+      }
+    },
+    {
+      "text": "Ender",
+      "left": "19410px",
+      "top": "80px",
+      "agentPurpose": "Terminates all agents, launches Cleaners",
+      "configData": {
+        "target_agents": [
+          "executer_1",
+          "executer_2",
+          "executer_3",
+          "executer_4",
+          "executer_5",
+          "executer_6",
+          "executer_7",
+          "executer_8",
+          "executer_9",
+          "executer_10",
+          "executer_11",
+          "executer_12",
+          "executer_13",
+          "executer_14",
+          "executer_15",
+          "executer_16",
+          "executer_17",
+          "executer_18",
+          "executer_19",
+          "executer_20",
+          "executer_21",
+          "executer_22",
+          "executer_23",
+          "executer_24",
+          "executer_25",
+          "executer_26",
+          "executer_27",
+          "executer_28",
+          "executer_29",
+          "executer_30",
+          "executer_31",
+          "executer_32",
+          "executer_33",
+          "executer_34",
+          "executer_35",
+          "executer_36",
+          "executer_37",
+          "executer_38",
+          "executer_39",
+          "executer_40",
+          "executer_41",
+          "executer_42",
+          "executer_43",
+          "executer_44",
+          "executer_45",
+          "executer_46",
+          "executer_47",
+          "executer_48",
+          "executer_49",
+          "executer_50",
+          "executer_51",
+          "executer_52",
+          "executer_53",
+          "executer_54",
+          "executer_55",
+          "executer_56",
+          "executer_57",
+          "executer_58",
+          "executer_59",
+          "executer_60",
+          "executer_61",
+          "executer_62",
+          "executer_63",
+          "executer_64",
+          "executer_65",
+          "executer_66",
+          "executer_67",
+          "executer_68",
+          "executer_69",
+          "executer_70",
+          "executer_71",
+          "executer_72",
+          "executer_73",
+          "executer_74",
+          "executer_75",
+          "executer_76",
+          "executer_77",
+          "executer_78",
+          "executer_79",
+          "executer_80",
+          "executer_81",
+          "executer_82",
+          "executer_83",
+          "executer_84",
+          "executer_85",
+          "executer_86",
+          "executer_87"
+        ],
+        "source_agents": [
+          "executer_87"
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIndex": 0,
+      "targetIndex": 1,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 1,
+      "targetIndex": 2,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 2,
+      "targetIndex": 3,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 3,
+      "targetIndex": 4,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 4,
+      "targetIndex": 5,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 5,
+      "targetIndex": 6,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 6,
+      "targetIndex": 7,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 7,
+      "targetIndex": 8,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 8,
+      "targetIndex": 9,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 9,
+      "targetIndex": 10,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 10,
+      "targetIndex": 11,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 11,
+      "targetIndex": 12,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 12,
+      "targetIndex": 13,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 13,
+      "targetIndex": 14,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 14,
+      "targetIndex": 15,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 15,
+      "targetIndex": 16,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 16,
+      "targetIndex": 17,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 17,
+      "targetIndex": 18,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 18,
+      "targetIndex": 19,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 19,
+      "targetIndex": 20,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 20,
+      "targetIndex": 21,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 21,
+      "targetIndex": 22,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 22,
+      "targetIndex": 23,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 23,
+      "targetIndex": 24,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 24,
+      "targetIndex": 25,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 25,
+      "targetIndex": 26,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 26,
+      "targetIndex": 27,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 27,
+      "targetIndex": 28,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 28,
+      "targetIndex": 29,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 29,
+      "targetIndex": 30,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 30,
+      "targetIndex": 31,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 31,
+      "targetIndex": 32,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 32,
+      "targetIndex": 33,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 33,
+      "targetIndex": 34,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 34,
+      "targetIndex": 35,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 35,
+      "targetIndex": 36,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 36,
+      "targetIndex": 37,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 37,
+      "targetIndex": 38,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 38,
+      "targetIndex": 39,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 39,
+      "targetIndex": 40,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 40,
+      "targetIndex": 41,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 41,
+      "targetIndex": 42,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 42,
+      "targetIndex": 43,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 43,
+      "targetIndex": 44,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 44,
+      "targetIndex": 45,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 45,
+      "targetIndex": 46,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 46,
+      "targetIndex": 47,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 47,
+      "targetIndex": 48,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 48,
+      "targetIndex": 49,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 49,
+      "targetIndex": 50,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 50,
+      "targetIndex": 51,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 51,
+      "targetIndex": 52,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 52,
+      "targetIndex": 53,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 53,
+      "targetIndex": 54,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 54,
+      "targetIndex": 55,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 55,
+      "targetIndex": 56,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 56,
+      "targetIndex": 57,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 57,
+      "targetIndex": 58,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 58,
+      "targetIndex": 59,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 59,
+      "targetIndex": 60,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 60,
+      "targetIndex": 61,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 61,
+      "targetIndex": 62,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 62,
+      "targetIndex": 63,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 63,
+      "targetIndex": 64,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 64,
+      "targetIndex": 65,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 65,
+      "targetIndex": 66,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 66,
+      "targetIndex": 67,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 67,
+      "targetIndex": 68,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 68,
+      "targetIndex": 69,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 69,
+      "targetIndex": 70,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 70,
+      "targetIndex": 71,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 71,
+      "targetIndex": 72,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 72,
+      "targetIndex": 73,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 73,
+      "targetIndex": 74,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 74,
+      "targetIndex": 75,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 75,
+      "targetIndex": 76,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 76,
+      "targetIndex": 77,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 77,
+      "targetIndex": 78,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 78,
+      "targetIndex": 79,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 79,
+      "targetIndex": 80,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 80,
+      "targetIndex": 81,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 81,
+      "targetIndex": 82,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 82,
+      "targetIndex": 83,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 83,
+      "targetIndex": 84,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 84,
+      "targetIndex": 85,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 85,
+      "targetIndex": 86,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 86,
+      "targetIndex": 87,
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 87,
+      "targetIndex": 88,
+      "inputSlot": 0,
+      "outputSlot": 0
+    }
+  ]
+}
