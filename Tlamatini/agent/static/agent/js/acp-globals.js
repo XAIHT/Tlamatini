@@ -5,6 +5,7 @@
 const container = document.getElementById('agents-container');
 const canvas = document.getElementById('monitor-container');
 const submonitor = document.getElementById('submonitor-container');
+const canvasContent = document.getElementById('canvas-content');
 const chat = document.getElementById('main-agents-container');
 const divider = document.getElementById('drag-divider');
 const openBtn = document.getElementById('file-open-button');
@@ -99,6 +100,37 @@ window.nodeConfigs = ACP.nodeConfigs;
 /**
  * Update the save button enabled/disabled state based on canvas content.
  */
+/**
+ * Recompute #canvas-content's bounding size so the viewport shows scrollbars
+ * whenever items extend beyond it. Never shrinks below 100% of the viewport.
+ * Call after: item creation, drag end, .flw load, undo/redo item restoration.
+ */
+function updateCanvasContentSize() { // eslint-disable-line no-unused-vars
+    if (!canvasContent || !submonitor) return;
+    const margin = 240; // headroom so the user can always drop beyond current extent
+    let maxRight = submonitor.clientWidth;
+    let maxBottom = submonitor.clientHeight;
+    const items = canvasContent.querySelectorAll('.canvas-item');
+    items.forEach(item => {
+        const right = item.offsetLeft + item.offsetWidth;
+        const bottom = item.offsetTop + item.offsetHeight;
+        if (right > maxRight) maxRight = right;
+        if (bottom > maxBottom) maxBottom = bottom;
+    });
+    // Only set pixel sizes when content exceeds viewport; otherwise clear to let
+    // the CSS min-width/min-height:100% rule track viewport size automatically.
+    if (maxRight > submonitor.clientWidth) {
+        canvasContent.style.width = (maxRight + margin) + 'px';
+    } else {
+        canvasContent.style.width = '';
+    }
+    if (maxBottom > submonitor.clientHeight) {
+        canvasContent.style.height = (maxBottom + margin) + 'px';
+    } else {
+        canvasContent.style.height = '';
+    }
+}
+
 function updateSaveButtonState() {
     if (!saveBtn) return;
     const hasItems = submonitor.querySelectorAll('.canvas-item').length > 0;

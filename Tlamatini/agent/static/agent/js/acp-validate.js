@@ -600,8 +600,12 @@ function resetFlowValidation() {
 
 // Hook into MutationObserver for canvas changes
 document.addEventListener('DOMContentLoaded', () => {
-    const submonitorEl = document.getElementById('submonitor-container');
-    if (submonitorEl) {
+    // Canvas items now live inside #canvas-content (the scrollable content layer),
+    // so the observer must watch that element — not the outer viewport — to detect
+    // add/remove of items.
+    const observedEl = document.getElementById('canvas-content')
+        || document.getElementById('submonitor-container');
+    if (observedEl) {
         const observer = new MutationObserver(() => {
             resetFlowValidation();
             // Also refresh all control button states (e.g. disable all when canvas is empty)
@@ -609,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateControlButtonStates();
             }
         });
-        observer.observe(submonitorEl, { childList: true, subtree: false });
+        observer.observe(observedEl, { childList: true, subtree: false });
     }
 
     // Initial state

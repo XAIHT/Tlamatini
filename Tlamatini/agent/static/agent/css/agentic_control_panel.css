@@ -203,14 +203,55 @@ body.resizing {
     border: ridge;
 }
 
-/* Submonitor Container - Canvas */
+/* Submonitor Container - scrollable viewport over the canvas content layer */
 #submonitor-container {
     position: relative;
     width: 100%;
     height: 100%;
     background-color: #1e1e1e;
-    overflow: hidden;
-    /* Prevent items from overflowing */
+    overflow: auto;
+    /* Scroll horizontally/vertically when canvas content exceeds viewport */
+}
+
+/* Canvas Content Layer - absolute-positioned items live here.
+   Auto-grows beyond the viewport; min 100% keeps drop targets usable when empty. */
+#canvas-content {
+    position: relative;
+    min-width: 100%;
+    min-height: 100%;
+    width: 100%;
+    height: 100%;
+}
+
+/* Dark, unobtrusive scrollbars that match the ACP theme (WebKit/Chromium/Edge). */
+#submonitor-container::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+#submonitor-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border: 1px solid #2b2b2b;
+}
+
+#submonitor-container::-webkit-scrollbar-thumb {
+    background: #4a4a55;
+    border: 2px solid #1a1a1a;
+    border-radius: 6px;
+}
+
+#submonitor-container::-webkit-scrollbar-thumb:hover {
+    background: #6a6a7a;
+}
+
+#submonitor-container::-webkit-scrollbar-corner {
+    background: #1a1a1a;
+}
+
+/* Firefox scrollbar styling. */
+#submonitor-container {
+    scrollbar-color: #4a4a55 #1a1a1a;
+    scrollbar-width: thin;
 }
 
 .navbar-margin {
