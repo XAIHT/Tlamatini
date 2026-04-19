@@ -835,6 +835,121 @@ class ExecReportCaptureTests(TestCase):
         self.assertIn('exec-report-caption-dockerer', html)
 
 
+class ExecReportPersistenceTests(TestCase):
+    """Regression guard for the behaviour the end-user asked for: once the
+    Exec report tables are generated, the Tlamatini chat message stored in
+    the DB must contain them too — so reloading the page restores the same
+    content the user saw live. The DB row must carry the tables regardless
+    of whether the answer was classified as SUCCESS or FAILURE, and when the
+    Exec report toggle is off the row must stay table-free."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='persister', password='pw')
+        self.entries = [
+            {
+                'tool_name': 'execute_command',
+                'agent_key': 'executer',
+                'agent_display': 'Executer',
+                'command': 'dir',
+                'success': True,
+            },
+            {
+                'tool_name': 'chat_agent_dockerer',
+                'agent_key': 'dockerer',
+                'agent_display': 'Dockerer',
+                'command': 'docker ps',
+                'success': False,
+            },
+        ]
+
+    def _run_processor(self, *, exec_report_enabled, entries, multi_turn_used=True,
+                       tool_calls_log=(('execute_command', {'command': 'dir'}),),
+                       answer_success=True):
+        from agent.services.response_parser import process_llm_response
+
+        async def _analyzer(_text):
+            return answer_success
+
+        with patch(
+            'agent.services.response_parser.analyze_answer_success',
+            side_effect=_analyzer,
+        ):
+            final = async_to_sync(process_llm_response)(
+                'done<br>END-RESPONSE',
+                None,
+                None,
+                None,
+                conversation_user=self.user,
+                tool_calls_log=list(tool_calls_log) if tool_calls_log else None,
+                multi_turn_used=multi_turn_used,
+                exec_report_enabled=exec_report_enabled,
+                exec_report_entries=entries,
+            )
+        return final
+
+    def _latest_bot_message(self):
+        return (
+            AgentMessage.objects
+            .filter(conversation_user=self.user, user__username='Tlamatini')
+            .order_by('-timestamp')
+            .first()
+        )
+
+    def test_exec_report_tables_are_persisted_into_agent_message_row(self):
+        final = self._run_processor(
+            exec_report_enabled=True,
+            entries=self.entries,
+            answer_success=True,
+        )
+        row = self._latest_bot_message()
+        self.assertIsNotNone(row, 'Expected a Tlamatini AgentMessage row to be saved')
+        # The persisted text MUST match what was broadcast to the WebSocket
+        # — including the Exec report HTML — so reload parity is guaranteed.
+        self.assertEqual(row.message, final)
+        self.assertIn('exec-report-block', row.message)
+        self.assertIn('List of Executer Operations', row.message)
+        self.assertIn('List of Dockerer Operations', row.message)
+        self.assertIn('>SUCCESS<', row.message)
+        self.assertIn('>FAILURE<', row.message)
+
+    def test_exec_report_tables_are_persisted_even_when_answer_is_failure(self):
+        # The user explicitly asked: the tables must persist independently
+        # of whether the LLM answer is classified SUCCESS or FAILURE.
+        final = self._run_processor(
+            exec_report_enabled=True,
+            entries=self.entries,
+            answer_success=False,
+        )
+        row = self._latest_bot_message()
+        self.assertIsNotNone(row)
+        self.assertEqual(row.message, final)
+        self.assertIn('exec-report-block', row.message)
+        self.assertIn('List of Executer Operations', row.message)
+
+    def test_persisted_message_has_no_tables_when_exec_report_disabled(self):
+        self._run_processor(
+            exec_report_enabled=False,
+            entries=self.entries,
+            answer_success=True,
+        )
+        row = self._latest_bot_message()
+        self.assertIsNotNone(row)
+        self.assertNotIn('exec-report-block', row.message)
+        self.assertNotIn('List of Executer Operations', row.message)
+
+    def test_persisted_message_has_no_tables_when_no_entries_captured(self):
+        # Flag on, but no state-changing tool fired. Row must stay clean and
+        # NOT carry an empty <div class="exec-report-block"></div> husk.
+        self._run_processor(
+            exec_report_enabled=True,
+            entries=[],
+            answer_success=True,
+        )
+        row = self._latest_bot_message()
+        self.assertIsNotNone(row)
+        self.assertNotIn('exec-report-block', row.message)
+
+
 class CapabilitySelectionTests(TestCase):
     def test_select_tools_for_request_prefers_wrapped_agent_and_run_controls(self):
         tools = [
