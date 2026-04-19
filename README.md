@@ -64,6 +64,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
     - [Legacy Compatibility Guarantee](#legacy-compatibility-guarantee)
     - [Frozen-Mode and Runtime Behavior](#frozen-mode-and-runtime-behavior)
   - [Agentic Workflow Designer](#agentic-workflow-designer)
+    - [Scrollable Canvas](#scrollable-canvas)
     - [Canvas Context Menus and Agent Descriptions](#canvas-context-menus-and-agent-descriptions)
     - [Pause, Stop, and Reanimation of a Flow](#pause-stop-and-reanimation-of-a-flow)
     - [Flow Validation](#flow-validation)
@@ -1629,6 +1630,7 @@ This matters because the Multi-Turn path depends on file context, wrapped runtim
 Access via `/agentic_control_panel/` URL. Features:
 - Drag-and-drop agent placement from sidebar
 - Visual connection drawing between agents
+- **Scrollable canvas** with themed dark scrollbars — the canvas now grows beyond the visible viewport in both the horizontal and vertical axes as you drop or drag agents further right/down, so large workflows no longer hit an invisible viewport wall. See "Scrollable Canvas" below for the exact behavior
 - Start/Stop/Pause controls
 - Hover tooltips in the sidebar that show each agent's purpose
 - Right-click canvas actions for Configure, Description, See log, Explore dir..., Open cmd..., and Restart (when enabled)
@@ -1641,6 +1643,24 @@ Access via `/agentic_control_panel/` URL. Features:
 - Session-scoped pool directories
 - Canvas auto-configuration (connections auto-populate agent configs)
 - Flow validation with detailed error reporting
+
+#### Scrollable Canvas
+
+Earlier versions of the ACP capped every agent's position to the visible area of the canvas, which meant that large multi-stage workflows had to be laid out in a cramped single-screen arrangement. The canvas is now a **two-layer, auto-growing workspace**:
+
+- `#submonitor-container` is the **viewport** — it owns the themed dark scrollbars and occupies the right-hand panel of the ACP.
+- `#canvas-content`, living inside the viewport, is the **content layer** where every agent, every connection line, and the rubber-band selection rectangle is actually positioned.
+
+Behavioral consequences for end users:
+
+- **Agents can be placed or dragged past the visible edge.** Items are clamped only against the top-left corner (`left >= 0`, `top >= 0`); the canvas expands to the right and bottom automatically as you extend your workflow. There is no hard upper bound on workflow size other than browser memory.
+- **Themed scrollbars appear on demand.** When the rightmost or bottommost agent extends past the viewport, the corresponding scrollbar becomes active; when it doesn't, the scrollbar stays hidden. Scrollbars match the ACP's dark theme (Chromium/Edge via `::-webkit-scrollbar`, Firefox via `scrollbar-color`).
+- **Connection lines and selection rectangle scroll with the canvas**, not with the viewport — so the connection between two far-apart agents stays visually anchored to those agents no matter where you scroll.
+- **Rubber-band selection works anywhere inside the canvas**, including over blank areas that exist only because other items have pushed the content envelope outward.
+- **.flw files loaded from disk automatically re-expand the canvas** to fit all imported items; the scrollbars appear immediately after load if the file is larger than the current viewport.
+- **Undo/redo preserves the scroll envelope** — restoring an item that was outside the old visible area re-grows the canvas so the scrollbars stay consistent with the restored state.
+
+There is no configuration knob for this — the canvas always grows as needed, with a modest 240 px headroom margin so a drop target is always available just beyond the current content edge.
 
 #### Canvas Context Menus and Agent Descriptions
 
