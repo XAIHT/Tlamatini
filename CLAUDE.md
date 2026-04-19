@@ -330,6 +330,7 @@ Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the sa
 6. **Consumer** — `AgentConsumer.queue_llm_retrieval()` reads from `global_state`, clears immediately (to prevent leakage into the next request), and passes both to `process_llm_response`.
 7. **Render** — `_render_exec_report_html(entries)` in `services/response_parser.py` groups entries by `agent_key` in **first-appearance order** (not alphabetical) and emits one `<table class="exec-report-table exec-report-<agent_key>">` per unique agent, with caption `List of <agent_display> Operations`. Empty input returns `""`.
 8. **Append** — `process_llm_response()` concatenates the HTML to `llm_response` before broadcasting over WebSocket, but only when `exec_report_enabled=True`.
+9. **Persist (strict ordering contract)** — `save_message(bot_user, llm_response, ...)` **must run AFTER the exec-report HTML has been appended to `llm_response`**, not before. This is the only reason reloading the chat history restores the per-agent tables verbatim. The ordering inside `process_llm_response()` is therefore: (a) strip `END-RESPONSE` and artifacts, (b) run SUCCESS/FAILURE classification against the prose-only answer so exec-report tables don't bias the verdict, (c) append exec-report HTML, (d) **then** `save_message`, (e) broadcast over WebSocket. Moving `save_message` back above step (c) — as an earlier revision of the file did — silently breaks exec-report persistence across chat reloads while leaving the live-broadcast path working, which makes the regression invisible in manual testing until the user reloads the page. Do not reorder these steps.
 
 ### Success/failure classification
 
@@ -726,7 +727,7 @@ Key models:
 
 ### ACP Workflow Designer (11 modules)
 - `agentic_control_panel.js` - Entry point
-- `acp-globals.js` - Shared global state
+- `acp-globals.js` - Shared global state, plus `updateCanvasContentSize()` (canvas-growth helper — see ACP Canvas DOM Contract below)
 - `acp-canvas-core.js` - Canvas rendering, drag-and-drop, classMap, connection handlers
 - `acp-canvas-undo.js` - Undo/redo state (1024 actions)
 - `acp-agent-connectors.js` - 50+ agent connection handlers
@@ -736,6 +737,23 @@ Key models:
 - `acp-session.js` - Session pool management
 - `acp-layout.js` - Canvas layout utilities
 - `acp-validate.js` - Flow validation engine
+
+### ACP Canvas DOM Contract (scrollable canvas)
+
+The ACP canvas is a **two-layer DOM**. Confusing the two layers is the single most common source of coordinate-math bugs in ACP code, so the contract is called out explicitly here:
+
+1. `#submonitor-container` — the **viewport**. `overflow: auto`, fixed to the available panel size, owns the themed scrollbars. It is NOT where canvas items live; it is only the window you look through.
+2. `#canvas-content` — the **content layer** that lives inside `#submonitor-container`. `position: relative`, `min-width: 100%`, `min-height: 100%`, and grows in pixel width/height whenever items extend past the viewport (managed by `updateCanvasContentSize()` in `acp-globals.js`). Every `.canvas-item`, the SVG `#connections-layer`, and the rubber-band `#selection-box` are all children of `#canvas-content`.
+
+Consequences that MUST be respected by any new canvas code:
+
+- **Coordinate reference frame is `canvasContent`, not `submonitor`.** All math that translates pointer events into `style.left` / `style.top` on a canvas item must use `canvasContent.getBoundingClientRect()`. `canvasContent`'s rect already reflects the current scroll offset, so you do NOT manually add `submonitor.scrollLeft` / `scrollTop`. Mixing `submonitor.getBoundingClientRect()` with a `canvasContent`-positioned child (or vice versa) produces items that jump under the cursor as soon as the user has scrolled.
+- **Appending items goes to `canvasContent`, never to `submonitor`.** `createCanvasItem()` and `cloneAndRegister()` both call `canvasContent.appendChild(newItem)`. Appending to `submonitor` places the item above the scrollable layer and out of the coordinate frame used by connections.
+- **No upper clamp on item positions.** Item positions are clamped `>= 0` only. The canvas intentionally grows to the right and bottom — do not re-add `rect.width - width` / `rect.height - height` upper bounds. After any position or size change that could extend the content envelope (item creation, drag end, `.flw` load, undo/redo item restoration) call `updateCanvasContentSize()` so the viewport's scrollbars stay in sync.
+- **Selection-box rect frame.** `startSelectionBox()` uses `canvasContent.getBoundingClientRect()` and does NOT add `submonitor.scrollLeft/scrollTop` — the rect already carries the scroll offset. The selection box is itself a child of `#canvas-content`, so it scrolls with the content.
+- **Mousedown dispatch.** The "begin selection box" branch in `initCanvasEvents()` accepts `e.target === submonitor || e.target === canvasContent || e.target.id === 'connections-layer'`. New clickable layers added on top of the canvas must either stop propagation or be whitelisted here explicitly, otherwise they silently disable rubber-band selection.
+
+If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.), it almost always belongs as a child of `#canvas-content`, not `#submonitor-container`, so it shares the coordinate frame with the items it visualizes.
 
 ### Shared
 - `canvas_item_dialog.js` - Agent config dialog on canvas
@@ -768,6 +786,8 @@ Key models:
 - **Wrapped chat-agent dedup** — `MultiTurnToolAgentExecutor` hashes `tool_name + sorted-JSON args` into `_wrapped_agent_signatures` and short-circuits duplicates with a `ToolMessage` explaining the skip. Do not remove this without replacing it; the LLM reliably launches the same sub-agent twice otherwise.
 - **Googler Playwright + async loop** — `sync_playwright()` raises `NotImplementedError` inside Django Channels' running asyncio loop. The Googler tool wraps its Playwright work in a `ThreadPoolExecutor(max_workers=1)` with a 120s timeout. Any new sync-Playwright tool must do the same.
 - **Cancel/rebuild race** — `consumers.py` now `await`s `setup_rag_chain()` during cancel-current instead of `asyncio.create_task(...)`. Otherwise the client receives `MSG_LLM_REESTABLISHED` while the httpx client is still torn down, and the next request hits "Cannot send a request, as the client has been closed." All `getHttpxClientInstance()` callers must also guard against `None`.
+- **Exec-report persistence ordering** — In `services/response_parser.py::process_llm_response()`, `save_message(bot_user, llm_response, ...)` must run AFTER the exec-report HTML is appended to `llm_response`, otherwise the tables live only in the broadcast and vanish from chat history on page reload. An earlier revision saved the message before the append step; the fix (commit `e99d2b8`) reorders the operations to: classify → append exec-report HTML → save → broadcast. See the "Exec Report" pipeline step 9 for the full contract. Do not reorder these steps.
+- **ACP canvas DOM split (`#canvas-content` vs `#submonitor-container`)** — The ACP canvas is scrollable (commit `9249349`). `#submonitor-container` is the viewport with scrollbars; `#canvas-content` is the content layer where items, the SVG connections layer, and the rubber-band selection box live. All coordinate math (`createCanvasItem`, `makeDraggable`, `startSelectionBox`, `getCenter`, tempPath drawing in `initCanvasEvents`) must use `canvasContent.getBoundingClientRect()`, which already reflects scroll offset — do NOT add `submonitor.scrollLeft/scrollTop` manually, and do NOT append new items to `submonitor`. Item positions are clamped `>= 0` only; the canvas grows to the right/bottom via `updateCanvasContentSize()` in `acp-globals.js`, which must be called after item creation, drag end, .flw load, and undo/redo restoration. Full contract in "ACP Canvas DOM Contract" under Frontend Architecture.
 
 ---
 
