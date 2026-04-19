@@ -212,13 +212,12 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     print("\n--- The LLM response after cleaning is: <<<<<\n"+llm_response+"\n>>>>>")   
 
     print("\n--- The final parsed/cleaned LLM response is: "+llm_response)
-    print("\n--- We take the parsed/processed response by the LLM and save it to the DB")
-    bot_user, _ = await get_or_create_bot_user()
-    await save_message(bot_user, llm_response, conversation_user=conversation_user)
-    
+
     # When multi-turn was used with tool calls, ask the LLM to classify
     # the answer as success or failure so the frontend can decide whether
-    # to show the "Create Flow" button.
+    # to show the "Create Flow" button. Classification runs against the
+    # prose answer BEFORE the exec report tables are appended so the
+    # tables don't bias the verdict.
     answer_success = None
     if multi_turn_used and tool_calls_log:
         print("--- AnswerAnalizer: classifying multi-turn answer...")
@@ -227,9 +226,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
 
     # Append the Exec report HTML (one per-agent table per state-changing
     # tool that fired) to the final answer, but only when the user enabled
-    # the Exec report checkbox AND at least one capture was recorded. The
-    # SUCCESS/FAILURE classification above already ran against the original
-    # answer, so the appended tables don't bias that verdict.
+    # the Exec report checkbox AND at least one capture was recorded.
     entries_count = len(exec_report_entries) if exec_report_entries else 0
     print(
         f"--- process_llm_response: exec_report_enabled={exec_report_enabled} "
@@ -242,6 +239,13 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             print(f"--- process_llm_response: appended exec_report HTML ({len(exec_report_html)} chars)")
         else:
             print("--- process_llm_response: exec_report HTML empty (no state-changing tool rows captured)")
+
+    # Persist the final message — including any appended exec report tables —
+    # so reloading the chat history restores the exec report HTML verbatim,
+    # independently of the SUCCESS/FAILURE verdict above.
+    print("\n--- We take the parsed/processed response by the LLM and save it to the DB")
+    bot_user, _ = await get_or_create_bot_user()
+    await save_message(bot_user, llm_response, conversation_user=conversation_user)
 
     if channel_layer:
         broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}
