@@ -262,6 +262,8 @@ export default [
                 ACP: "writable",
                 isFlowCreatorWaiting: "writable",
                 updateFilenameDisplay: "readonly",
+                canvasContent: "readonly",
+                updateCanvasContentSize: "readonly",
 
                 // Cross-file globals: acp-running-state.js
                 setGlobalRunningState: "readonly",
