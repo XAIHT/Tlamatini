@@ -223,6 +223,8 @@ The entire application can be packaged into a standalone executable using PyInst
 - [Video showing Tlamatini loading a complete project and summarizing its entire source code](https://www.youtube.com/watch?v=Lrpbt_dPIXw)
 - [Tlamatini installs OpenCV, showing the entire process](https://www.youtube.com/watch?v=bBlqbZVK-Wk)
 - [Tlamatini uninstalling Poco, showing the executions report and its corresponding flow](https://www.youtube.com/watch?v=E5vi0q5FxXQ)
+- [Showing how a flow is created with Tlamatini, and helped by FlowCreator](https://www.youtube.com/watch?v=Tgoa7Tmoo0o)
+
 
 ---
 
