@@ -16,7 +16,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 **Repository**: `https://github.com/XAIHT/Tlamatini.git`
 **License**: GPL-3.0
-**Primary developer**: angelahack1 (angelahack1)
+**Primary developer**: angelahack1
 **Platform**: Windows 11 (primary), bash shell in Claude Code
 
 **Demo videos** (linked from README.md):
