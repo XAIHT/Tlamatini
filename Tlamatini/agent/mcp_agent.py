@@ -368,8 +368,8 @@ class MultiTurnToolAgentExecutor:
     # the LLM burn iterations retrying the same tool with shuffled arguments.
     # Management/polling tools are exempt (see ``_TOOL_QUOTA_EXEMPT``) because
     # polling a ``run_id`` 10+ times is legitimate.
-    _TOOL_QUOTA_SOFT_WARN = 5
-    _TOOL_QUOTA_HARD_STOP = 12
+    _TOOL_QUOTA_SOFT_WARN = 64
+    _TOOL_QUOTA_HARD_STOP = 256
     _TOOL_QUOTA_EXEMPT: set[str] = {
         "agent_stat_getter",
         "chat_agent_run_list",
