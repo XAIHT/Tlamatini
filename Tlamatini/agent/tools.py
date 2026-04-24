@@ -327,6 +327,28 @@ def _find_first_assignment_index(request_text):
     return -1
 
 
+_CONJUNCTION_ASSIGNMENT_RE = re.compile(
+    r'(and|with)\s+[A-Za-z_][A-Za-z0-9_.\-]*\s*=',
+    flags=re.IGNORECASE,
+)
+
+
+def _looks_like_conjunction_assignment_start(text, pos):
+    """Return True if ``text[pos:]`` begins with ``and KEY=`` or ``with KEY=``.
+
+    Every ``example_request`` string in ``chat_agent_registry.py`` separates
+    parameters with the natural-language conjunction ``and`` (occasionally
+    ``with``) rather than a comma. LLMs reliably copy that style, so the
+    assignment parser must treat those conjunctions as top-level separators
+    between ``key=value`` segments. Without this, a call like
+    ``filepath='X' and content='Y'`` collapses into a single segment whose
+    file_path value silently absorbs the entire tail — which is how the
+    file_creator chat agent kept writing literal ``C:\\...\\X' and content='/*...``
+    paths to disk.
+    """
+    return bool(_CONJUNCTION_ASSIGNMENT_RE.match(text, pos))
+
+
 def _starts_triple_quote(text, index):
     """Return the triple-quote token starting at ``index`` or ``None``.
 
@@ -374,27 +396,39 @@ def _closes_outer_quote(text, index, quote_char, multiline_mode):
     Decision rules:
 
     * **Multi-line mode** (opening quote followed by a newline): the quote
-      is only a closer if it stands at the **end of the entire input**,
-      optionally followed by whitespace. Internal apostrophes stay literal.
-      This mirrors how the LLM serializes a ``script='<multi-line body>'``
-      payload — the closing ``'`` is always the last meaningful char.
-    * **Single-line mode**: keep the existing, permissive rule — the quote
-      is a closer if immediately followed by EOF or a separator (``,`` /
-      ``;``). Internal apostrophes in single-line values are rare; the
-      common case is normal key=value splitting.
-    """
-    if multiline_mode:
-        # In multi-line mode, only the LAST quote of the whole text closes.
-        probe = index + 1
-        while probe < len(text) and text[probe] in (' ', '\t', '\r', '\n'):
-            probe += 1
-        return probe >= len(text)
+      is a closer only if it stands at the **end of the entire input**
+      (optionally followed by whitespace), OR if it is followed by the
+      natural-language conjunction ``and|with KEY=`` that starts a new
+      assignment. Internal apostrophes inside the body stay literal. This
+      mirrors how the LLM serializes a ``script='<multi-line body>'``
+      payload — the closing ``'`` is either the last meaningful char or
+      the boundary before the next ``and other_arg='…'`` pair.
+    * **Single-line mode**: the quote is a closer if immediately followed
+      by EOF, ``,``, ``;``, or the same ``and|with KEY=`` conjunction.
+      Internal apostrophes in single-line values are rare; the common case
+      is normal key=value splitting.
 
+    The conjunction rule is essential because every ``example_request`` in
+    ``chat_agent_registry.py`` teaches the LLM to separate parameters with
+    ``and`` rather than a comma (``filepath='X' and content='Y'``). Without
+    it, multi-arg calls collapse into a single segment.
+    """
+    # Check for the end-of-input closer (multi-line mode only) and the
+    # conjunction closer (both modes) via the same whitespace probe.
     probe = index + 1
-    while probe < len(text) and text[probe] in (' ', '\t'):
+    ws_chars = (' ', '\t', '\r', '\n') if multiline_mode else (' ', '\t')
+    while probe < len(text) and text[probe] in ws_chars:
         probe += 1
     if probe >= len(text):
         return True
+    if _looks_like_conjunction_assignment_start(text, probe):
+        return True
+
+    if multiline_mode:
+        # In multi-line mode, any non-EOF / non-conjunction follower means
+        # we are still inside the script body — internal ``'`` stays literal.
+        return False
+
     next_char = text[probe]
     if next_char in (',', ';'):
         return True
@@ -469,14 +503,16 @@ def _split_assignment_segments(assignments_text):
             i += 1
             continue
 
-        # Only ``,`` and ``;`` split top-level assignment segments — NOT ``\n``.
-        # The LLM serializes multi-parameter requests as ``key1='v1', key2='v2'``
-        # (always with a comma), but it also embeds multi-line scripts and YAML
-        # blocks whose interior contains single apostrophes (``node's``, ``don't``).
-        # If we split on newlines, once an interior ``'`` prematurely closes the
-        # enclosing single-char quote, every subsequent newline truncates the value,
-        # which is exactly what caused pythonxer_010 to receive a script consisting
-        # of a lone leading ``'`` on line 1.
+        # ``,`` and ``;`` split top-level assignment segments. The LLM
+        # serializes multi-parameter requests either as ``k1='v1', k2='v2'``
+        # or as ``k1='v1' and k2='v2'`` (the style used by every
+        # ``example_request`` in chat_agent_registry). We split on BOTH —
+        # commas and semicolons for the first style, the ``and|with KEY=``
+        # conjunction for the second. We deliberately do NOT split on
+        # ``\n``: multi-line scripts and YAML blocks contain interior
+        # apostrophes (``node's``, ``don't``) and newline-separated lines,
+        # and splitting on them truncated pythonxer_010's script to just
+        # ``'`` on line 1.
         if char in ',;' and not bracket_stack:
             segment = ''.join(current).strip()
             if segment:
@@ -484,6 +520,35 @@ def _split_assignment_segments(assignments_text):
             current = []
             i += 1
             continue
+
+        # Conjunction split: match ``\s+(and|with)\s+KEY=`` at the current
+        # whitespace boundary. We peek only when ``char`` is whitespace so
+        # the regex cost is O(1) per char on average rather than O(n) per
+        # char (which would make parsing a 50 KB script O(n²)).
+        if char in (' ', '\t') and not bracket_stack:
+            if _looks_like_conjunction_assignment_start(assignments_text, i + 1):
+                segment = ''.join(current).strip()
+                if segment:
+                    segments.append(segment)
+                current = []
+                # Skip past the matched `and `/`with ` tokens so the next
+                # iteration starts at the identifier. The leading conjunction
+                # is already stripped by _parse_requested_assignments, but
+                # skipping here keeps the segment boundaries clean.
+                conj_match = _CONJUNCTION_ASSIGNMENT_RE.match(assignments_text, i + 1)
+                if conj_match:
+                    # Advance past ``\s+(and|with)\s+`` but stop at the
+                    # identifier char so the next segment starts with ``KEY=``.
+                    prefix = re.match(
+                        r'(and|with)\s+',
+                        assignments_text[i + 1:conj_match.end()],
+                        flags=re.IGNORECASE,
+                    )
+                    if prefix:
+                        i = i + 1 + prefix.end()
+                        continue
+                i += 1
+                continue
 
         current.append(char)
         i += 1

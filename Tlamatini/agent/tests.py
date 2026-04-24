@@ -3,6 +3,7 @@ import ast
 import csv
 import json
 import os
+import re
 import subprocess
 import shutil
 import tempfile
@@ -2154,6 +2155,106 @@ class AssignmentParserRobustnessTests(TestCase):
         values = {a['requested_key']: a['value'] for a in parsed['assignments']}
         self.assertIn('script', values)
         ast.parse(values['script'])
+
+    def test_and_conjunction_splits_file_creator_pair(self):
+        # Regression for the AngysBackInCUDA failure mode: file_creator runs
+        # 001-006 each produced garbage paths like
+        # ``C:\\...\\drone_knap.h' and content='/*...`` because the parser
+        # only split on ``,``/``;`` while the LLM uses ``and`` (per the
+        # registry's example_request style). The conjunction must become a
+        # top-level separator. The content value intentionally contains a
+        # real embedded apostrophe (``nodes' knapsacks``) — the exact
+        # pattern that appeared in the failing production runs.
+        request = (
+            "filepath='C:\\Development\\AngysBackInCUDA\\drone_knap.h' "
+            "and content='/* drone_knap.h\n"
+            " * nodes' knapsacks contain other nodes' items\n"
+            " */'"
+        )
+        parsed, err = self._parse_assignments(request)
+        self.assertIsNone(err, f"parse error: {err}")
+        values = {a['requested_key']: a['value'] for a in parsed['assignments']}
+        self.assertIn('filepath', values)
+        self.assertIn('content', values)
+        # file_path must NOT contain ``and content=`` — that is the canary
+        # for the old broken behavior (splitter failed, value absorbed tail).
+        self.assertNotIn(" and content=", str(values['filepath']))
+        self.assertNotIn("and content=", str(values['filepath']))
+        self.assertTrue(
+            str(values['filepath']).endswith('drone_knap.h'),
+            f"filepath was {values['filepath']!r}",
+        )
+        # Content should round-trip and include the body markers.
+        self.assertIn('drone_knap.h', str(values['content']))
+        self.assertIn('*/', str(values['content']))
+
+    def test_with_conjunction_also_splits(self):
+        # ``with`` is the alternate conjunction used by several
+        # example_request strings (e.g. the crawler's sample).
+        request = (
+            "url='https://example.com' "
+            "with system_prompt='Extract the headings' "
+            "and content_mode='text'"
+        )
+        parsed, err = self._parse_assignments(request)
+        self.assertIsNone(err, f"parse error: {err}")
+        values = {a['requested_key']: a['value'] for a in parsed['assignments']}
+        self.assertEqual(values['url'], 'https://example.com')
+        self.assertEqual(values['system_prompt'], 'Extract the headings')
+        self.assertEqual(values['content_mode'], 'text')
+
+    def test_parametric_file_creator_example_request_parses(self):
+        # The registry's canonical example_request for file_creator must
+        # round-trip through the parser without collapsing into a single arg.
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_file_creator']
+        parsed, err = self._parse_assignments(spec.example_request)
+        self.assertIsNone(err, f"parse error: {err}")
+        values = {a['requested_key']: a['value'] for a in parsed['assignments']}
+        self.assertIn('filepath', values)
+        self.assertIn('content', values)
+        # Neither value must contain the conjunction — that is the
+        # canary for a failed split.
+        self.assertNotIn(' and ', str(values['filepath']))
+        self.assertNotIn(' and ', str(values['content'])[:80])
+
+    def test_no_registry_example_leaks_conjunction_into_a_value(self):
+        """Every registry example must parse without leaking a conjunction
+        (``and KEY=`` / ``with KEY=``) into any resulting value.
+
+        This is the real invariant that the file_creator regression
+        violated: the file_path value absorbed the whole ``and content=…``
+        tail. Counting segments is unreliable (examples embed literal
+        commas inside script bodies, and ``with`` appears as both a
+        separator and a natural-language preamble), but scanning values
+        for a leaked conjunction cleanly distinguishes broken-parse from
+        healthy-parse every time.
+        """
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS
+        leak_pattern = re.compile(
+            r"""['"]\s+(?:and|with)\s+[A-Za-z_][A-Za-z0-9_.\-]*\s*=""",
+            flags=re.IGNORECASE,
+        )
+        for spec in WRAPPED_CHAT_AGENT_SPECS:
+            parsed, err = self._parse_assignments(spec.example_request)
+            self.assertIsNone(
+                err,
+                f"[{spec.key}] parse error on canonical example: {err}\n"
+                f"example = {spec.example_request!r}",
+            )
+            for assignment in parsed['assignments']:
+                value_repr = repr(assignment['value'])
+                # Scan the first 160 chars: long script bodies can
+                # legitimately contain ``and``/``with`` as English words,
+                # but a leaked separator ALWAYS appears close to the
+                # start, right after the first real value's closing quote.
+                head = value_repr[:160]
+                self.assertIsNone(
+                    leak_pattern.search(head),
+                    f"[{spec.key}] key={assignment['requested_key']!r} value "
+                    f"leaked a conjunction separator: {head!r}\n"
+                    f"example = {spec.example_request!r}",
+                )
 
 
 class UnifiedChainTransientRetryTests(TestCase):
