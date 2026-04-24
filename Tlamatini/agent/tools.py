@@ -327,48 +327,166 @@ def _find_first_assignment_index(request_text):
     return -1
 
 
+def _starts_triple_quote(text, index):
+    """Return the triple-quote token starting at ``index`` or ``None``.
+
+    Recognizes ``'''`` and ``\"\"\"`` as atomic tokens so that multi-line
+    Python scripts containing embedded apostrophes (``node's knapsack``,
+    ``don't``) or double quotes don't prematurely close the enclosing
+    single-char quote state.
+    """
+    if index + 2 < len(text):
+        triple = text[index:index + 3]
+        if triple == '"""' or triple == "'''":
+            return triple
+    return None
+
+
+def _is_multiline_quote_open(text, quote_start_index):
+    """Return ``True`` if the single-char quote opening at ``quote_start_index``
+    is the start of a **multi-line** value.
+
+    Heuristic: the LLM's multi-line quoted payloads always place a newline
+    immediately after the opening quote (``script='\\nimport os…``). Single-line
+    values like ``smtp.host='smtp.gmail.com'`` or ``command='npm run build'``
+    have no newline immediately after the quote. Treating these two cases
+    differently lets us keep simple comma-separated multi-assignment parsing
+    working while also preserving large multi-line scripts verbatim.
+    """
+    probe = quote_start_index + 1
+    # Skip leading spaces/tabs only — a newline counts as "multi-line start".
+    while probe < len(text) and text[probe] in (' ', '\t'):
+        probe += 1
+    if probe >= len(text):
+        return False
+    return text[probe] == '\n' or text[probe] == '\r'
+
+
+def _closes_outer_quote(text, index, quote_char, multiline_mode):
+    """Return ``True`` if the quote char at ``index`` is a genuine closer.
+
+    LLM-generated multi-line values embed apostrophes/quotes all over the
+    place (``node's knapsack``, ``'w'`` inside ``open(…)``, ``"utf-8"`` in
+    kwargs). Treating every occurrence of the same quote char as a closer
+    truncates the value at the first internal apostrophe, which is what
+    broke pythonxer_010.
+
+    Decision rules:
+
+    * **Multi-line mode** (opening quote followed by a newline): the quote
+      is only a closer if it stands at the **end of the entire input**,
+      optionally followed by whitespace. Internal apostrophes stay literal.
+      This mirrors how the LLM serializes a ``script='<multi-line body>'``
+      payload — the closing ``'`` is always the last meaningful char.
+    * **Single-line mode**: keep the existing, permissive rule — the quote
+      is a closer if immediately followed by EOF or a separator (``,`` /
+      ``;``). Internal apostrophes in single-line values are rare; the
+      common case is normal key=value splitting.
+    """
+    if multiline_mode:
+        # In multi-line mode, only the LAST quote of the whole text closes.
+        probe = index + 1
+        while probe < len(text) and text[probe] in (' ', '\t', '\r', '\n'):
+            probe += 1
+        return probe >= len(text)
+
+    probe = index + 1
+    while probe < len(text) and text[probe] in (' ', '\t'):
+        probe += 1
+    if probe >= len(text):
+        return True
+    next_char = text[probe]
+    if next_char in (',', ';'):
+        return True
+    return False
+
+
 def _split_assignment_segments(assignments_text):
     segments = []
     current = []
-    quote_char = None
+    quote_char = None          # single-char quote: "'" or '"'
+    quote_multiline = False    # True when the opening quote is multi-line
+    triple_quote = None        # triple-char quote: '"""' or "'''"
     escape_next = False
     bracket_stack = []
 
-    for char in assignments_text:
+    i = 0
+    n = len(assignments_text)
+    while i < n:
+        char = assignments_text[i]
+
+        if triple_quote:
+            # Inside a triple-quoted block: only a matching triple-quote closes it.
+            if assignments_text[i:i + 3] == triple_quote:
+                current.append(triple_quote)
+                i += 3
+                triple_quote = None
+                continue
+            current.append(char)
+            i += 1
+            continue
+
         if quote_char:
             current.append(char)
             if escape_next:
                 escape_next = False
             elif char == '\\':
                 escape_next = True
-            elif char == quote_char:
+            elif (
+                char == quote_char
+                and _closes_outer_quote(assignments_text, i, quote_char, quote_multiline)
+            ):
                 quote_char = None
+                quote_multiline = False
+            i += 1
+            continue
+
+        # Prefer triple-quote detection over single-quote detection.
+        triple = _starts_triple_quote(assignments_text, i)
+        if triple is not None:
+            triple_quote = triple
+            current.append(triple)
+            i += 3
             continue
 
         if char in ('"', "'"):
             quote_char = char
+            quote_multiline = _is_multiline_quote_open(assignments_text, i)
             current.append(char)
+            i += 1
             continue
 
         if char in '[{(':
             bracket_stack.append(char)
             current.append(char)
+            i += 1
             continue
 
         if char in ']})':
             if bracket_stack:
                 bracket_stack.pop()
             current.append(char)
+            i += 1
             continue
 
-        if char in ',;\n' and not bracket_stack:
+        # Only ``,`` and ``;`` split top-level assignment segments — NOT ``\n``.
+        # The LLM serializes multi-parameter requests as ``key1='v1', key2='v2'``
+        # (always with a comma), but it also embeds multi-line scripts and YAML
+        # blocks whose interior contains single apostrophes (``node's``, ``don't``).
+        # If we split on newlines, once an interior ``'`` prematurely closes the
+        # enclosing single-char quote, every subsequent newline truncates the value,
+        # which is exactly what caused pythonxer_010 to receive a script consisting
+        # of a lone leading ``'`` on line 1.
+        if char in ',;' and not bracket_stack:
             segment = ''.join(current).strip()
             if segment:
                 segments.append(segment)
             current = []
+            i += 1
             continue
 
         current.append(char)
+        i += 1
 
     tail = ''.join(current).strip()
     if tail:
@@ -380,42 +498,75 @@ def _split_assignment_segments(assignments_text):
 def _split_assignment_segment(segment):
     current = []
     quote_char = None
+    quote_multiline = False
+    triple_quote = None
     escape_next = False
     bracket_stack = []
 
-    for idx, char in enumerate(segment):
+    i = 0
+    n = len(segment)
+    while i < n:
+        char = segment[i]
+
+        if triple_quote:
+            if segment[i:i + 3] == triple_quote:
+                current.append(triple_quote)
+                i += 3
+                triple_quote = None
+                continue
+            current.append(char)
+            i += 1
+            continue
+
         if quote_char:
             current.append(char)
             if escape_next:
                 escape_next = False
             elif char == '\\':
                 escape_next = True
-            elif char == quote_char:
+            elif (
+                char == quote_char
+                and _closes_outer_quote(segment, i, quote_char, quote_multiline)
+            ):
                 quote_char = None
+                quote_multiline = False
+            i += 1
+            continue
+
+        triple = _starts_triple_quote(segment, i)
+        if triple is not None:
+            triple_quote = triple
+            current.append(triple)
+            i += 3
             continue
 
         if char in ('"', "'"):
             quote_char = char
+            quote_multiline = _is_multiline_quote_open(segment, i)
             current.append(char)
+            i += 1
             continue
 
         if char in '[{(':
             bracket_stack.append(char)
             current.append(char)
+            i += 1
             continue
 
         if char in ']})':
             if bracket_stack:
                 bracket_stack.pop()
             current.append(char)
+            i += 1
             continue
 
         if char == '=' and not bracket_stack:
             key = ''.join(current).strip()
-            value = segment[idx + 1:].strip()
+            value = segment[i + 1:].strip()
             return key, value
 
         current.append(char)
+        i += 1
 
     return None, None
 
@@ -424,6 +575,19 @@ def _coerce_assignment_value(raw_value):
     value_text = raw_value.strip()
     if value_text == '':
         return ''
+
+    # Python triple-quoted literals take precedence over single-char quotes
+    # so that multi-line scripts with embedded apostrophes round-trip cleanly.
+    for triple in ('"""', "'''"):
+        if (
+            value_text.startswith(triple)
+            and value_text.endswith(triple)
+            and len(value_text) >= 2 * len(triple)
+        ):
+            try:
+                return ast.literal_eval(value_text)
+            except Exception:
+                return value_text[len(triple):-len(triple)]
 
     if (
         len(value_text) >= 2
@@ -443,6 +607,21 @@ def _coerce_assignment_value(raw_value):
                 return yaml.safe_load(value_text)
             except Exception:
                 return value_text
+
+    # Salvage the common LLM failure mode: value begins with a stray quote
+    # char (e.g. ``script='\nimport os\n...``) but the closing quote was
+    # truncated by a premature match inside a multi-line Python literal.
+    # Strip the dangling leading/trailing quote so the consumer (Pythonxer)
+    # doesn't receive a script whose line 1 is just ``'`` → SyntaxError.
+    if value_text[0] in ('"', "'") and (len(value_text) < 2 or value_text[-1] != value_text[0]):
+        trimmed = value_text[1:].lstrip()
+        if trimmed:
+            return trimmed
+
+    if value_text[-1] in ('"', "'") and (len(value_text) < 2 or value_text[0] != value_text[-1]):
+        trimmed = value_text[:-1].rstrip()
+        if trimmed:
+            return trimmed
 
     lowered = value_text.lower()
     if lowered == 'true':
@@ -1158,6 +1337,40 @@ def _launch_wrapped_chat_agent(spec, request):
             "runtime_dir": runtime_dir,
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
+
+    # Pre-flight syntax check for Pythonxer scripts. The frozen build does
+    # not ship with Ruff, so the agent's own Ruff step is a no-op. Catching
+    # syntax errors *before* we spawn the subprocess lets the LLM see a clean,
+    # actionable error ("line 1: unterminated string literal") without
+    # leaving a failed run directory behind and without burning a Multi-Turn
+    # iteration on a guaranteed failure.
+    if spec.template_dir == "pythonxer":
+        script_value = runtime_config.get("script") if isinstance(runtime_config, dict) else None
+        if isinstance(script_value, str) and script_value.strip():
+            try:
+                ast.parse(script_value)
+            except SyntaxError as syn:
+                detail = f"line {syn.lineno}: {syn.msg}" if syn.lineno else syn.msg
+                first_line = script_value.splitlines()[0] if script_value else ""
+                logger.warning(
+                    "[tools._launch_wrapped_chat_agent] Pythonxer pre-flight SyntaxError: %s (first line: %r)",
+                    detail, first_line,
+                )
+                return _tool_output({
+                    "status": "error",
+                    "retryable": True,
+                    "message": (
+                        f"Pythonxer script has a Python SyntaxError at {detail}. "
+                        "The script was not executed. If you intended to write files, "
+                        "prefer chat_agent_file_creator (one call per file) over embedding "
+                        "large multi-line content in a Python string literal. "
+                        "If you must use Pythonxer, send the script as a plain block without "
+                        "wrapping it in outer quotes."
+                    ),
+                    "runtime_dir": runtime_dir,
+                    "syntax_error": detail,
+                    "first_line": first_line,
+                })
 
     try:
         with open(runtime_config_path, "w", encoding="utf-8") as file_handle:

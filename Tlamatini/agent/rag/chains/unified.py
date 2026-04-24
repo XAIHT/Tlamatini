@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 import httpx
 import hashlib
 import re
+import time
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import SystemMessage
 from langchain_community.vectorstores import FAISS
@@ -21,6 +22,71 @@ _FILE_LISTING_CONTEXT_RE = re.compile(
     r"(^FILE MANIFEST\b|^Allowed Directories:\b|^Found \d+ files matching\b|^No files found matching\b)",
     re.IGNORECASE | re.MULTILINE,
 )
+
+
+# Transient-error fingerprints that warrant retrying the unified-agent call
+# before falling back to the tool-less basic-LLM path. Cloud Ollama in
+# particular returns 502 / forcibly-closed sockets under load; when that
+# happens, dropping Multi-Turn without retrying silently demotes the user's
+# tool-calling request to a plain chat answer.
+_UNIFIED_AGENT_TRANSIENT_PATTERNS = (
+    "status code: 502",
+    "status code: 503",
+    "status code: 504",
+    "forcibly closed",
+    "connection reset",
+    "read tcp",
+    "EOF occurred in violation of protocol",
+    "Read timed out",
+    "ConnectTimeout",
+    "RemoteProtocolError",
+)
+
+
+def _is_transient_agent_error(exc: Exception) -> bool:
+    message = str(exc)
+    if not message:
+        return False
+    lowered = message.lower()
+    for pattern in _UNIFIED_AGENT_TRANSIENT_PATTERNS:
+        if pattern.lower() in lowered:
+            return True
+    return False
+
+
+def _invoke_unified_agent_with_retry(unified_agent, payload, *, max_attempts: int = 3):
+    """Invoke the unified agent with bounded retry on transient 5xx / socket errors.
+
+    Returns ``(result, last_exception)`` — ``result`` is None if every attempt
+    failed. Non-transient errors short-circuit immediately so real bugs surface.
+    """
+    last_exception: Optional[Exception] = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = unified_agent.invoke(payload)
+            if attempt > 1:
+                print(
+                    f"--- [UnifiedAgent] Recovered on attempt {attempt}/{max_attempts} ---"
+                )
+            return result, None
+        except Exception as exc:
+            last_exception = exc
+            if not _is_transient_agent_error(exc):
+                # Non-transient → bubble up to the caller's fallback path.
+                return None, exc
+            if attempt >= max_attempts:
+                print(
+                    f"--- [UnifiedAgent] Transient error persisted after "
+                    f"{max_attempts} attempts: {exc}"
+                )
+                return None, exc
+            backoff = 0.5 * (2 ** (attempt - 1))  # 0.5s, 1s, 2s
+            print(
+                f"--- [UnifiedAgent] Transient error on attempt {attempt}/{max_attempts} "
+                f"({exc}); retrying in {backoff:.1f}s ---"
+            )
+            time.sleep(backoff)
+    return None, last_exception
 
 
 def _should_include_file_manifest(question: str, q_rewritten: str) -> bool:
@@ -200,15 +266,19 @@ User Question: {enhanced_input}"""
         exec_report_entries: list = []
         exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         if self.unified_agent is not None:
-            try:
-                print(f"--- UnifiedAgentChain: Invoking unified agent with input length: {len(enhanced_input)} chars")
-                result = self.unified_agent.invoke({
+            tool_calls_log = []
+            print(f"--- UnifiedAgentChain: Invoking unified agent with input length: {len(enhanced_input)} chars")
+            result, agent_exception = _invoke_unified_agent_with_retry(
+                self.unified_agent,
+                {
                     "input": enhanced_input,
                     "multi_turn_enabled": payload.get("multi_turn_enabled", False),
                     "exec_report_enabled": exec_report_enabled,
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
-                })
+                },
+            )
+            if result is not None:
                 print(f"--- UnifiedAgentChain: Agent returned result type: {type(result)}")
                 if isinstance(result, dict):
                     print(f"--- UnifiedAgentChain: Result keys: {list(result.keys())}")
@@ -219,12 +289,27 @@ User Question: {enhanced_input}"""
                     exec_report_entries = result.get("exec_report_entries", []) or []
                 if not answer or not answer.strip():
                     print(f"--- UnifiedAgentChain: WARNING - Empty answer received! Full result: {result}")
-            except Exception as e:
-                print(f"--- UnifiedAgentChain: Agent invocation failed ({e}), falling back to basic LLM ---")
-                tool_calls_log = []
-                # Fallback to basic LLM call
+            else:
+                print(
+                    f"--- UnifiedAgentChain: Agent invocation failed ({agent_exception}), "
+                    "falling back to basic LLM ---"
+                )
+                # Fallback to basic LLM call. When the user enabled Multi-Turn,
+                # prepend a short visible notice so the answer isn't silently
+                # demoted to a tool-less response.
+                multi_turn_was_requested = bool(payload.get("multi_turn_enabled", False))
+                fallback_input = original_input
+                if multi_turn_was_requested:
+                    fallback_input = (
+                        "SYSTEM NOTICE: Multi-Turn tool execution was requested but the "
+                        "tool-calling backend is currently unavailable (transient network "
+                        "error). Answer the following request using only the model's "
+                        "own knowledge, and clearly mention at the end of your response "
+                        "that tools were not executed so the user can retry if needed.\n\n"
+                        f"User request: {original_input}"
+                    )
                 answer_payload = {
-                    "input": original_input,
+                    "input": fallback_input,
                     "chat_history": hist,
                     "system_context": payload.get("system_context", ""),
                     "files_context": payload.get("files_context", ""),
@@ -649,29 +734,48 @@ User Question: {enhanced_input}"""
         exec_report_entries: list = []
         exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         if self.unified_agent is not None:
-            try:
-                result = self.unified_agent.invoke({
+            result, agent_exception = _invoke_unified_agent_with_retry(
+                self.unified_agent,
+                {
                     "input": enhanced_input,
                     "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
                     "exec_report_enabled": exec_report_enabled,
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
-                })
+                },
+            )
+            if result is not None:
                 answer = result.get("output", str(result)) if isinstance(result, dict) else str(result)
                 tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
                 if isinstance(result, dict):
                     exec_report_entries = result.get("exec_report_entries", []) or []
-            except Exception as e:
-                print(f"--- UnifiedAgentRAGChain: Agent invocation failed ({e}), falling back to basic LLM ---")
-                # Fallback to basic LLM call with context
+            else:
+                print(
+                    f"--- UnifiedAgentRAGChain: Agent invocation failed ({agent_exception}), "
+                    "falling back to basic LLM ---"
+                )
+                # Fallback to basic LLM call with context. When Multi-Turn was
+                # requested, surface that fact so the answer isn't silently
+                # demoted to a tool-less response.
+                multi_turn_was_requested = bool(payload.get("multi_turn_enabled", False))
+                fallback_input = q_rewritten
+                if multi_turn_was_requested:
+                    fallback_input = (
+                        "SYSTEM NOTICE: Multi-Turn tool execution was requested but the "
+                        "tool-calling backend is currently unavailable (transient network "
+                        "error). Answer the following request using only the model's "
+                        "own knowledge and the provided context, and clearly mention at "
+                        "the end of your response that tools were not executed so the "
+                        "user can retry if needed.\n\n"
+                        f"User request: {q_rewritten}"
+                    )
                 qa_prompt = ChatPromptTemplate.from_messages([
                     ("system", self.prompt_template_string),
                     MessagesPlaceholder("chat_history"),
                     ("human", "{input}"),
                 ])
                 answer_payload = {
-                    #"input": original_input,
-                    "input": q_rewritten,
+                    "input": fallback_input,
                     "chat_history": hist,
                     "system_context": sys_ctx or "",
                     "files_context": files_ctx or "",

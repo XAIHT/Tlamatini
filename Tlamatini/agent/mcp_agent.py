@@ -229,6 +229,12 @@ class MultiTurnToolAgentExecutor:
         # when the user toggled the Exec report checkbox on.
         self._exec_report_enabled: bool = False
         self._exec_report_entries: list[Dict[str, Any]] = []
+        # Per-tool invocation counter (populated during invoke()). Complements
+        # the consecutive-signature repetition detector: that one catches
+        # identical-arg loops, this one catches semantic loops where the LLM
+        # keeps reaching for the same hammer (e.g. pythonxer) with varying
+        # scripts when a specialized tool would finish the job faster.
+        self._tool_call_counts: Dict[str, int] = {}
 
     @staticmethod
     def _extract_exec_report_command(tool_input: Any) -> str:
@@ -357,6 +363,39 @@ class MultiTurnToolAgentExecutor:
     # allowing legitimate retries (e.g. polling a running agent twice).
     _REPEAT_LIMIT = 3
 
+    # Per-tool invocation ceilings for a single Multi-Turn request. Exceeded
+    # counts short-circuit the call with a directed nudge instead of letting
+    # the LLM burn iterations retrying the same tool with shuffled arguments.
+    # Management/polling tools are exempt (see ``_TOOL_QUOTA_EXEMPT``) because
+    # polling a ``run_id`` 10+ times is legitimate.
+    _TOOL_QUOTA_SOFT_WARN = 5
+    _TOOL_QUOTA_HARD_STOP = 12
+    _TOOL_QUOTA_EXEMPT: set[str] = {
+        "agent_stat_getter",
+        "chat_agent_run_list",
+        "chat_agent_run_status",
+        "chat_agent_run_log",
+        "chat_agent_run_stop",
+        "get_current_time",
+    }
+    # Tools for which a soft-warn nudge recommends a specialized alternative.
+    _TOOL_ALTERNATIVE_HINT: Dict[str, str] = {
+        "chat_agent_pythonxer": (
+            "You have already launched Pythonxer several times in this request. "
+            "If the remaining work is file creation, prefer chat_agent_file_creator "
+            "(one call per file) — it is more reliable for multi-line content with "
+            "embedded quotes than embedding Python ``open(..., 'w')`` scripts. "
+            "For file deletion use chat_agent_deleter; for moves, chat_agent_move_file. "
+            "Keep using Pythonxer only if the remaining step is genuine computation."
+        ),
+        "execute_command": (
+            "You have already executed several shell commands in this request. "
+            "If you are verifying files you just created, a single ``dir /s`` or "
+            "``ls -R`` is enough — further execute_command calls with similar "
+            "intent are probably redundant. Consider summarizing and finalizing."
+        ),
+    }
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Reset per-invocation tool call log.
         self._tool_calls_log = []
@@ -365,6 +404,8 @@ class MultiTurnToolAgentExecutor:
         # Reset Exec report state for this request; honour the per-request flag.
         self._exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         self._exec_report_entries = []
+        # Reset per-tool call counters for this request.
+        self._tool_call_counts = {}
 
         input_text = payload.get("input", "")
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
@@ -520,7 +561,63 @@ class MultiTurnToolAgentExecutor:
                         continue
                     self._wrapped_agent_signatures.add(dedup_sig)
 
+                # Per-tool quota: hard-stop after HARD cap, warn after SOFT cap.
+                prior_count = self._tool_call_counts.get(tool_name, 0)
+                if tool_name not in self._TOOL_QUOTA_EXEMPT:
+                    if prior_count >= self._TOOL_QUOTA_HARD_STOP:
+                        logger.info(
+                            "[MultiTurnExecutor] QUOTA HARD-STOP for tool=%s count=%d",
+                            tool_name, prior_count,
+                        )
+                        messages.append(
+                            ToolMessage(
+                                tool_call_id=tool_call.get("id", ""),
+                                name=tool_name,
+                                content=json.dumps({
+                                    "status": "skipped",
+                                    "message": (
+                                        f"[QUOTA HARD-STOP] You have invoked '{tool_name}' "
+                                        f"{prior_count} times in this request — the per-tool cap "
+                                        f"is {self._TOOL_QUOTA_HARD_STOP}. No further calls to "
+                                        f"'{tool_name}' will be executed this turn. "
+                                        "Produce your FINAL answer summarizing what has been "
+                                        "accomplished so far. Do NOT call any more tools."
+                                    ),
+                                }),
+                            )
+                        )
+                        # Record the attempt in the log so Create-Flow / Exec Report
+                        # can still see that the LLM tried (with success=False).
+                        self._tool_calls_log.append({
+                            "tool_name": tool_name,
+                            "args": dict(tool_call.get("args", {}) or {}),
+                            "success": False,
+                            "agent_display_name": _tool_name_to_agent_display(tool_name),
+                        })
+                        continue
+                    if prior_count + 1 == self._TOOL_QUOTA_SOFT_WARN:
+                        hint = self._TOOL_ALTERNATIVE_HINT.get(
+                            tool_name,
+                            f"You have invoked '{tool_name}' {self._TOOL_QUOTA_SOFT_WARN} times "
+                            "in this request. If the task is complete, produce your final answer; "
+                            "otherwise consider whether a specialized tool would finish faster.",
+                        )
+                        # Attach the hint to the tool result below so the LLM
+                        # sees it alongside the actual output (non-blocking).
+                        soft_warn_hint = hint
+                    else:
+                        soft_warn_hint = None
+                else:
+                    soft_warn_hint = None
+                self._tool_call_counts[tool_name] = prior_count + 1
+
                 tool_result = self._invoke_tool(tool_call)
+                if soft_warn_hint:
+                    tool_result = (
+                        tool_result
+                        + "\n\n[PLANNER HINT] "
+                        + soft_warn_hint
+                    )
                 messages.append(
                     ToolMessage(
                         tool_call_id=tool_call.get("id", ""),
@@ -663,7 +760,10 @@ You have access to the following tools. Use them proactively whenever the user's
 - **Text extraction from PDFs/DOCX** → use `chat_agent_file_extractor`, NOT `chat_agent_pythonxer`.
 - **Web crawling** → use `chat_agent_crawler`, NOT `chat_agent_pythonxer` with requests.
 - **API calls** → use `chat_agent_apirer`, NOT `chat_agent_pythonxer` with requests.
-- **Only use `chat_agent_pythonxer`** when no specialized tool exists for the task (data transformation, custom computation, file format conversion, etc.).
+- **Writing ANY file to disk (source code, config, README, data)** → use `chat_agent_file_creator` with `filepath='<abs path>'` and `content='<entire file contents>'`. NEVER wrap file contents in a Pythonxer `open(..., 'w')` script. Pythonxer's script parameter is single-line-friendly; multi-line Python code with embedded quotes, triple-quoted strings, or markdown fences is fragile and frequently fails with `SyntaxError: unterminated string literal`. For a project that needs N files, make N `chat_agent_file_creator` calls — NOT one Pythonxer call that loops over `open()` statements.
+- **Creating a directory tree** → use `execute_command` with `mkdir -p` (Linux/macOS) or `mkdir` (Windows, recursive in PowerShell via `New-Item -ItemType Directory -Force`), THEN call `chat_agent_file_creator` once per file. Do NOT try to create files and directories in one Pythonxer script — split the work.
+- **Deleting a file** → use `chat_agent_deleter`. **Moving/renaming a file** → use `chat_agent_move_file`.
+- **Only use `chat_agent_pythonxer`** when no specialized tool exists for the task (data transformation, custom computation, file format conversion, mathematical operations, parsing structured data that another tool cannot). When you do use it, pass the script as a SHORT, self-contained snippet — keep it under ~30 lines and avoid raw triple-quoted string literals that contain apostrophes.
 
 **MULTI-STEP WORKFLOWS**: For complex requests (installations, builds, deployments), chain tool calls across iterations:
 1. Use tool A → read the result in the next iteration

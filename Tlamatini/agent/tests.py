@@ -2040,3 +2040,241 @@ class ParametrizerSequentialExecutionTests(TestCase):
             self.assertIsNone(recovered['inflight_block'])
             self.assertIsNone(recovered['inflight_end_offset'])
             self.assertEqual(saved_states[-1]['offset'], 48)
+
+
+class AssignmentParserRobustnessTests(TestCase):
+    """Regression coverage for the tools.py key=value parser.
+
+    These tests pin the fixes that prevent multi-line Python scripts with
+    embedded apostrophes (``node's knapsack``, ``"w"`` kwargs, ``r\"\"\"``
+    docstrings) from being truncated or from leaving a stray leading quote
+    on the coerced value — the root cause of the ``SyntaxError:
+    unterminated string literal`` failure in pythonxer_010.
+    """
+
+    def setUp(self):
+        from agent.tools import (
+            _coerce_assignment_value,
+            _parse_requested_assignments,
+            _split_assignment_segment,
+            _split_assignment_segments,
+        )
+        self._split_segments = _split_assignment_segments
+        self._split_segment = _split_assignment_segment
+        self._coerce_value = _coerce_assignment_value
+        self._parse_assignments = _parse_requested_assignments
+
+    def test_multi_line_script_with_embedded_apostrophes_parses(self):
+        failing = (
+            "script='\n"
+            "import os\n"
+            'base = r"C:\\Development\\AngysBackInCUDA"\n'
+            'content = r"""# Distributed Multiple Knapsack Solver\n'
+            "\n"
+            "The worker's GPU runs HyperQ. Each node's knapsack gets other nodes' items.\n"
+            "Don't put a node's own items in its own knapsack.\n"
+            '"""\n'
+            "with open(os.path.join(base, 'README.md'), 'w') as f:\n"
+            "    f.write(content)\n"
+            "'\n"
+        )
+
+        segments = self._split_segments(failing)
+        self.assertEqual(len(segments), 1)
+
+        key, value = self._split_segment(segments[0])
+        self.assertEqual(key, 'script')
+
+        coerced = self._coerce_value(value)
+        self.assertIsInstance(coerced, str)
+        self.assertFalse(coerced.startswith("'"),
+                         f"leading orphan quote: {coerced[:40]!r}")
+        # Must parse as real Python — this is the syntactic contract Pythonxer depends on.
+        ast.parse(coerced)
+        self.assertIn('import os', coerced)
+
+    def test_comma_separated_multi_assignment_still_splits(self):
+        request = (
+            "smtp.host='smtp.gmail.com', "
+            "smtp.port=587, "
+            "smtp.username='user@example.com', "
+            "subject='Hello', "
+            "body='All good'"
+        )
+        segments = self._split_segments(request)
+        self.assertEqual(len(segments), 5)
+
+    def test_triple_quoted_value_round_trips(self):
+        request = (
+            'script="""import os\n'
+            "# docstring with don't worry\n"
+            "print('hello')"
+            '"""'
+        )
+        segments = self._split_segments(request)
+        self.assertEqual(len(segments), 1)
+        key, value = self._split_segment(segments[0])
+        self.assertEqual(key, 'script')
+        coerced = self._coerce_value(value)
+        ast.parse(coerced)
+        self.assertIn('import os', coerced)
+
+    def test_single_line_python_kwargs_do_not_split_on_inner_comma(self):
+        # Regression: Python kwargs like open(path, 'w', encoding='utf-8')
+        # must not trick the parser into treating the inner ``',`` as a
+        # top-level separator when the outer value is a multi-line script.
+        request = (
+            "script='\n"
+            "with open('f.txt', 'w', encoding='utf-8') as f:\n"
+            "    f.write(\"hello\")\n"
+            "'"
+        )
+        segments = self._split_segments(request)
+        self.assertEqual(len(segments), 1)
+        key, value = self._split_segment(segments[0])
+        self.assertEqual(key, 'script')
+        coerced = self._coerce_value(value)
+        ast.parse(coerced)
+
+    def test_coerce_strips_orphan_leading_quote(self):
+        # Direct coverage of the salvage branch: a value that starts with
+        # ``'`` but whose closing quote was lost earlier should not retain
+        # the leading ``'`` (which would become line 1 of a Python script
+        # and raise SyntaxError at subprocess time).
+        coerced = self._coerce_value("'\nimport os\nprint('hi')")
+        self.assertIsInstance(coerced, str)
+        self.assertFalse(coerced.startswith("'"))
+
+    def test_parametric_pythonxer_example_request_still_parses(self):
+        # The canonical example from WRAPPED_CHAT_AGENT_SPECS must keep working.
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_pythonxer']
+        parsed, err = self._parse_assignments(spec.example_request)
+        self.assertIsNone(err)
+        values = {a['requested_key']: a['value'] for a in parsed['assignments']}
+        self.assertIn('script', values)
+        ast.parse(values['script'])
+
+
+class UnifiedChainTransientRetryTests(TestCase):
+    """Regression coverage for the 502 / forcibly-closed retry helper.
+
+    Before the fix, a transient ``(status code: 502)`` from the cloud
+    Ollama endpoint caused the unified agent call to fall back to the
+    basic-LLM path immediately — silently dropping the user's Multi-Turn
+    tool-calling intent. The helper now retries bounded transient errors
+    before falling back.
+    """
+
+    def setUp(self):
+        from agent.rag.chains.unified import (
+            _invoke_unified_agent_with_retry,
+            _is_transient_agent_error,
+        )
+        self._invoke_with_retry = _invoke_unified_agent_with_retry
+        self._is_transient = _is_transient_agent_error
+
+    def test_classifier_recognizes_cloud_ollama_502(self):
+        exc = Exception(
+            'Post "https://ollama.com:443/api/chat?ts=1776988025": '
+            'read tcp 10.61.253.43:61552->34.36.133.15:443: wsarecv: '
+            'An existing connection was forcibly closed by the remote host. '
+            '(status code: 502)'
+        )
+        self.assertTrue(self._is_transient(exc))
+
+    def test_classifier_lets_non_transient_errors_pass(self):
+        self.assertFalse(self._is_transient(Exception('KeyError: missing key')))
+        self.assertFalse(self._is_transient(Exception('AttributeError: no attr')))
+
+    def test_retry_recovers_after_transient_failure(self):
+        call_counter = {'n': 0}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                call_counter['n'] += 1
+                if call_counter['n'] < 3:
+                    raise Exception('read tcp: connection forcibly closed (status code: 502)')
+                return {'output': 'recovered'}
+
+        with patch('agent.rag.chains.unified.time.sleep'):
+            result, exc = self._invoke_with_retry(_FakeAgent(), {})
+        self.assertIsNone(exc)
+        self.assertEqual(result, {'output': 'recovered'})
+        self.assertEqual(call_counter['n'], 3)
+
+    def test_non_transient_error_does_not_retry(self):
+        call_counter = {'n': 0}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                call_counter['n'] += 1
+                raise KeyError('boom')
+
+        with patch('agent.rag.chains.unified.time.sleep'):
+            result, exc = self._invoke_with_retry(_FakeAgent(), {})
+        self.assertIsNone(result)
+        self.assertIsInstance(exc, KeyError)
+        self.assertEqual(call_counter['n'], 1)
+
+    def test_retry_bounded_when_transient_persists(self):
+        call_counter = {'n': 0}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                call_counter['n'] += 1
+                raise Exception('Read timed out after 60s')
+
+        with patch('agent.rag.chains.unified.time.sleep'):
+            result, exc = self._invoke_with_retry(_FakeAgent(), {}, max_attempts=3)
+        self.assertIsNone(result)
+        self.assertIsNotNone(exc)
+        self.assertEqual(call_counter['n'], 3)
+
+
+class MultiTurnToolQuotaTests(TestCase):
+    """Regression coverage for the per-tool quota in MultiTurnToolAgentExecutor.
+
+    The consecutive-signature repetition detector doesn't catch cases where
+    the LLM keeps reaching for the same hammer (e.g. chat_agent_pythonxer)
+    with varying arguments — exactly the pattern that launched 10+
+    pythonxer runs in a single request. The quota caps this behaviour.
+    """
+
+    def _make_executor(self):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        executor = MultiTurnToolAgentExecutor.__new__(MultiTurnToolAgentExecutor)
+        executor.llm = object()
+        executor.system_prompt = 'sys'
+        executor.tools = []
+        executor.tool_map = {}
+        executor.max_iterations = 1
+        executor.bound_llm = None
+        executor._tool_calls_log = []
+        executor._exec_report_enabled = False
+        executor._exec_report_entries = []
+        executor._tool_call_counts = {}
+        executor._wrapped_agent_signatures = set()
+        return executor
+
+    def test_quota_constants_are_sane(self):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        # Soft warn fires before hard stop.
+        self.assertLess(
+            MultiTurnToolAgentExecutor._TOOL_QUOTA_SOFT_WARN,
+            MultiTurnToolAgentExecutor._TOOL_QUOTA_HARD_STOP,
+        )
+        # Polling/listing tools must stay exempt — polling a run_id dozens
+        # of times is legitimate.
+        self.assertIn('chat_agent_run_status', MultiTurnToolAgentExecutor._TOOL_QUOTA_EXEMPT)
+        self.assertIn('chat_agent_run_log', MultiTurnToolAgentExecutor._TOOL_QUOTA_EXEMPT)
+        self.assertIn('get_current_time', MultiTurnToolAgentExecutor._TOOL_QUOTA_EXEMPT)
+        # Pythonxer must have an alternative-suggestion hint wired.
+        self.assertIn(
+            'chat_agent_pythonxer',
+            MultiTurnToolAgentExecutor._TOOL_ALTERNATIVE_HINT,
+        )
+        self.assertIn(
+            'chat_agent_file_creator',
+            MultiTurnToolAgentExecutor._TOOL_ALTERNATIVE_HINT['chat_agent_pythonxer'],
+        )
