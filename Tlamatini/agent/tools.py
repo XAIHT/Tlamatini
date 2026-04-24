@@ -636,6 +636,45 @@ def _split_assignment_segment(segment):
     return None, None
 
 
+def _unquote_preserving_backslashes(value_text):
+    """Strip a surrounding matching single/double quote pair and decode ONLY
+    the two escape sequences that are genuinely ambiguous without decoding:
+    ``\\\\`` (literal backslash) and ``\\<outer-quote>`` (embedded matching
+    quote). Every other backslash-prefixed byte (``\\a``, ``\\b``, ``\\t``,
+    ``\\v``, ``\\n``, ``\\r``, ``\\x07``, ``\\D``, ``\\A`` …) is kept verbatim.
+    This mirrors YAML single-quoted / Python raw-string semantics and
+    supersedes ``ast.literal_eval`` for scalar assignments, where Python
+    literal semantics would turn ``C:\\angys`` into ``C:\\x07ngys`` and break
+    ``chat_agent_file_creator`` / every other Windows-path-bearing wrapped
+    agent. Multi-line scripts that actually need ``\\n``/``\\t`` expansion
+    already flow through the triple-quoted branch, which keeps
+    ``ast.literal_eval``.
+    """
+    outer_quote = value_text[0]
+    inner = value_text[1:-1]
+    if '\\' not in inner:
+        return inner
+
+    out = []
+    i = 0
+    n = len(inner)
+    while i < n:
+        char = inner[i]
+        if char == '\\' and i + 1 < n:
+            nxt = inner[i + 1]
+            if nxt == '\\':
+                out.append('\\')
+                i += 2
+                continue
+            if nxt == outer_quote:
+                out.append(outer_quote)
+                i += 2
+                continue
+        out.append(char)
+        i += 1
+    return ''.join(out)
+
+
 def _coerce_assignment_value(raw_value):
     value_text = raw_value.strip()
     if value_text == '':
@@ -659,10 +698,7 @@ def _coerce_assignment_value(raw_value):
         and value_text[0] == value_text[-1]
         and value_text[0] in ('"', "'")
     ):
-        try:
-            return ast.literal_eval(value_text)
-        except Exception:
-            return value_text[1:-1]
+        return _unquote_preserving_backslashes(value_text)
 
     if value_text[0] in '[{(' and value_text[-1] in ']})':
         try:

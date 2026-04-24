@@ -2256,6 +2256,127 @@ class AssignmentParserRobustnessTests(TestCase):
                     f"example = {spec.example_request!r}",
                 )
 
+    def test_windows_path_backslash_escapes_are_preserved(self):
+        # Regression for the AngysBackInCUDA file_creator_001 failure: the
+        # LLM sent ``filepath='C:\Development\AngysBackInCUDA\angys_knapsack.cuh'``
+        # and ``ast.literal_eval`` decoded ``\a`` as 0x07 (bell), so
+        # file_creator tried to create
+        # ``C:\Development\AngysBackInCUDA\x07ngys_knapsack.cuh`` and the
+        # OS returned [Errno 22] Invalid argument. A Windows path must
+        # round-trip byte-for-byte through _coerce_assignment_value.
+        hazards = [
+            r"C:\Development\AngysBackInCUDA\angys_knapsack.cuh",   # \a -> bell
+            r"C:\Users\angel\bin\tool.exe",                         # \b -> backspace
+            r"C:\temp\file.txt",                                    # \t -> tab
+            r"D:\var\vendor\pkg",                                   # \v -> vertical tab
+            r"C:\new\path.log",                                     # \n -> newline
+            r"C:\repo\readme.md",                                   # \r -> CR
+            r"C:\forms\form.pdf",                                   # \f -> form feed
+            r"C:\x07 and \0nul\junk",                               # \xNN and \0
+        ]
+        for raw in hazards:
+            single = f"'{raw}'"
+            double = f'"{raw}"'
+            self.assertEqual(
+                self._coerce_value(single), raw,
+                f"single-quoted Windows path corrupted: {raw!r} -> {self._coerce_value(single)!r}",
+            )
+            self.assertEqual(
+                self._coerce_value(double), raw,
+                f"double-quoted Windows path corrupted: {raw!r} -> {self._coerce_value(double)!r}",
+            )
+
+    def test_windows_path_assignment_end_to_end(self):
+        # End-to-end: a wrapped-agent request of the shape the file_creator
+        # LLM actually emits must surface the Windows path unchanged, so
+        # the downstream yaml.safe_dump -> child-process re-load roundtrip
+        # cannot reintroduce the bell-character mangling.
+        request = (
+            r"filepath='C:\Development\AngysBackInCUDA\angys_knapsack.cuh' "
+            r"and content='#pragma once"
+            "\n"
+            r"// AngysBackInCUDA"
+            "'"
+        )
+        parsed, err = self._parse_assignments(request)
+        self.assertIsNone(err, f"parse error: {err}")
+        values = {a['requested_key']: a['value'] for a in parsed['assignments']}
+        self.assertEqual(
+            values['filepath'],
+            r"C:\Development\AngysBackInCUDA\angys_knapsack.cuh",
+        )
+        # The bell char (0x07) must never appear in the coerced path.
+        self.assertNotIn('\x07', values['filepath'])
+        self.assertNotIn('\x08', values['filepath'])
+        self.assertNotIn('\t', values['filepath'])
+
+    def test_every_registry_example_resolves_against_its_template(self):
+        """Regression guard: every wrapped chat agent's ``example_request``
+        must be accepted by ``_apply_requested_assignments_to_config``
+        against the corresponding template's ``config.yaml`` — i.e. every
+        key the example emits must resolve to a real path in the template
+        (the runtime uses normalized-identifier matching, so ``filepath``
+        correctly maps to ``file_path``, ``smtp.host`` to ``smtp_host``,
+        etc.). When this fails, the LLM faithfully copies the broken
+        example, the parser rejects with ``Parameter 'X' was not found
+        in the target agent config.``, and Multi-Turn burns an iteration
+        + leaves a failed pool directory. Four live incidents caught this
+        on the running instance — executer, pser, and follow-ups — which
+        this test now pins.
+
+        The check invokes the SAME resolver used at runtime, so this
+        test cannot false-positive when the resolver legitimately
+        normalizes a key (e.g. ``filepath`` ↔ ``file_path``).
+        """
+        import os
+        import yaml
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS
+        from agent.tools import _apply_requested_assignments_to_config
+
+        repo_agents_root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), 'agents')
+        )
+
+        failures = []
+        for spec in WRAPPED_CHAT_AGENT_SPECS:
+            template_yaml = os.path.join(
+                repo_agents_root, spec.template_dir, 'config.yaml'
+            )
+            if not os.path.isfile(template_yaml):
+                continue
+            with open(template_yaml, 'r', encoding='utf-8') as fh:
+                template_cfg = yaml.safe_load(fh) or {}
+            if not isinstance(template_cfg, dict):
+                continue
+
+            _, err, _ = _apply_requested_assignments_to_config(
+                template_cfg, spec.example_request
+            )
+            if err:
+                failures.append(f"[{spec.key}] {err}\n    example = {spec.example_request!r}")
+
+        self.assertEqual(
+            failures, [],
+            "Registry ↔ template drift (fix by renaming either the "
+            "example_request key or the template YAML key):\n  "
+            + "\n  ".join(failures),
+        )
+
+    def test_supported_quote_escapes_still_decode(self):
+        # The helper intentionally decodes ONLY the two escapes that are
+        # ambiguous without decoding: ``\\`` (literal backslash) and
+        # ``\<outer-quote>`` (embedded matching quote). ``\n``/``\r``/``\t``
+        # stay verbatim so Windows paths survive; scripts that actually
+        # need those escapes use the triple-quoted branch.
+        self.assertEqual(self._coerce_value(r"'he said \'hi\''"), "he said 'hi'")
+        self.assertEqual(self._coerce_value(r'"quote: \""'), 'quote: "')
+        self.assertEqual(self._coerce_value(r"'two\\slashes'"), r"two\slashes")
+        # Verbatim backslash escapes survive (they are what paths need).
+        self.assertEqual(self._coerce_value(r"'line1\nline2'"), r"line1\nline2")
+        self.assertEqual(self._coerce_value(r"'a\tb'"), r"a\tb")
+        # A non-matching inner quote needs no escape and does not get one.
+        self.assertEqual(self._coerce_value("'he said \"hi\"'"), 'he said "hi"')
+
 
 class UnifiedChainTransientRetryTests(TestCase):
     """Regression coverage for the 502 / forcibly-closed retry helper.
