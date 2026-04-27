@@ -44,7 +44,7 @@ tlamatini:
 # used by the rest of Tlamatini.
 llm:
   host: "http://localhost:11434"
-  model: "llama3"
+  model: "glm-5.1:cloud"
   understanding_prompt: |
     You are an intent-completeness classifier. The user is talking to the
     Tlamatini AI developer assistant. Decide whether the user's last message,
