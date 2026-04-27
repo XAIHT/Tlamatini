@@ -578,6 +578,25 @@ async function updateCounterConnection(agentId, connectionType, connectedAgentId
     }
 }
 
+async function updateTeletlamatiniConnection(agentId, connectedAgentId, action, connectionType = 'source') {
+    try {
+        const response = await fetch(`/agent/update_teletlamatini_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- TeleTlamatini ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update TeleTlamatini ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating TeleTlamatini ${agentId}:`, error);
+    }
+}
+
 async function updateTelegramrxConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_telegramrx_connection/${agentId}/`, {

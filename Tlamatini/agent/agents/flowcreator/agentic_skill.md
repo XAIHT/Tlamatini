@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder, TeleTlamatini.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -1372,6 +1372,27 @@ system_prompt: |
   - `output_file`: "googler_results.txt" (file path to save search results)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after search completes)
+
+### 57. TeleTlamatini
+- **Purpose**: Long-running active agent that exposes the full Tlamatini chat (the same multi-turn behavior as `agent_page.html`, including Multi-Turn tool execution and the per-agent Exec Report tables) over Telegram. It stays alive waiting for messages, password-gates each chat on first contact, uses an LLM-aided check to decide whether each user message is a clear and complete request, asks follow-up questions until the request is well-formed, then proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true` and sends the assembled response (including command/action tables per agent) back to the Telegram user. Pauses to ask the user for additional information when needed during processing. After every successfully completed request cycle, starts the configured `target_agents`.
+- **Used for**: Letting an authorized Telegram user drive Tlamatini end-to-end without opening the browser UI; remote operation of Multi-Turn flows; mobile triage with full Exec Report visibility.
+- **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable from anywhere.
+- **Application example**: An on-call engineer DMs the bot with the configured password, then sends "deploy the staging branch and notify the team". TeleTlamatini classifies the request as complete, forwards it to the local Tlamatini chat with Multi-Turn + Exec Report enabled, waits for the answer (which includes per-agent operation tables for Gitter, Dockerer, Telegramer, etc.), strips the HTML, and sends the readable result back over Telegram.
+- **Pool name pattern**: `teletlamatini_<n>`
+- **Starts other agents**: YES (starts `target_agents` after every completed user request cycle)
+- **Config parameters**:
+  - `telegram.api_id` / `telegram.api_hash` / `telegram.listen_chat` / `telegram.bot_token` (Telegram credentials; bot_token optional)
+  - `access.password`: "" (password the Telegram user must supply on first contact; mandatory)
+  - `access.welcome_message` / `access.rejection_message` / `access.password_prompt` / `access.unclear_request_prompt` / `access.awaiting_info_intro` / `access.processing_message` / `access.completed_prefix` / `access.error_prefix` (user-facing wording)
+  - `tlamatini.base_url`: "http://127.0.0.1:8000" (HTTP login endpoint of the running Tlamatini server)
+  - `tlamatini.ws_url`: "ws://127.0.0.1:8000/ws/agent/" (chat WebSocket the agent_page.html browser uses)
+  - `tlamatini.username` / `tlamatini.password`: Tlamatini Django credentials this agent logs in with
+  - `tlamatini.multi_turn_enabled`: true (always send chat with Multi-Turn enabled so tools can fire)
+  - `tlamatini.exec_report_enabled`: true (request the per-agent Exec Report tables in every answer)
+  - `tlamatini.response_idle_timeout` / `tlamatini.total_timeout` (seconds; how long to wait for a single answer)
+  - `llm.host` / `llm.model` / `llm.understanding_prompt` (Ollama-backed completeness classifier)
+  - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
+  - `target_agents`: [] (downstream agents started after every completed user request cycle)
 
 ---
 

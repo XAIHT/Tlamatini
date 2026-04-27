@@ -200,7 +200,7 @@ A sophisticated, locally-run AI developer assistant featuring an advanced Retrie
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source-code analysis including metadata extraction, architectural role classification, dependency mapping, context budgeting, and controlled fallback behavior to provide deeply grounded responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 57 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 58 pre-built agent types.
 
 The main chat surface is now substantially more agentic as well. When **Multi-Turn** is enabled in the toolbar, the chat stack switches from the legacy one-shot tool exposure path to a request-scoped orchestration path that can:
 
@@ -337,7 +337,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 57 pre-built agent types for diverse automation tasks
+- 58 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - README-backed agent purpose tooltips in the sidebar and per-node Description dialogs on the canvas
@@ -592,7 +592,7 @@ Tlamatini/
 │   │   │   ├── image_interpreter.py  # Dual-backend image analysis (Claude + Qwen)
 │   │   │   └── converter.py         # Image format conversion / base64 encoding
 │   │   │
-│   │   ├── agents/                 # Workflow agent templates (56 types)
+│   │   ├── agents/                 # Workflow agent templates (58 types)
 │   │   │   ├── starter/           # Flow initiator
 │   │   │   ├── ender/             # Flow terminator (+ output_agents for Cleaners)
 │   │   │   ├── stopper/           # Pattern-based agent terminator
@@ -646,6 +646,7 @@ Tlamatini/
 │   │   │   ├── flowbacker/    # Session backup and cleanup handoff agent
 │   │   │   ├── barrier/       # Synchronization barrier for flow control
 │   │   │   ├── googler/       # Google search agent (Playwright + text extraction)
+│   │   │   ├── teletlamatini/ # Long-running Telegram bridge for the full Tlamatini chat (Multi-Turn + Exec Report)
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -1850,7 +1851,7 @@ Wrapped chat-agent launchers create isolated, sequenced runtime copies of select
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **57 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **58 agent types** total.
 
 The `Purpose` text in the agent tables below is no longer documentation-only. The ACP now parses these table rows from `README.md` and uses them as the live source for sidebar agent-purpose tooltips and the canvas **Description** dialog, so edits to a Purpose cell affect both the documentation and the UI text shown to users.
 
@@ -1869,7 +1870,7 @@ All workflow agents follow a common structural pattern:
 
 Agents are classified as:
 - **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `keyboarder`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `j_decompiler`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
-- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis)
+- **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis), `teletlamatini` (LLM-aided request-completeness classifier + full Multi-Turn Tlamatini chat over Telegram)
 
 ### Control Agents
 
@@ -1897,6 +1898,7 @@ Agents are classified as:
 | **whatsapper** | WhatsApp notification agent. Monitors source agent logs in parallel threads for keywords, uses LLM to summarize issues, and sends alerts via TextMeBot API. | `source_agents`: Agents to monitor<br>`keywords`: Detection patterns<br>`llm.model`: Ollama model for summarization<br>`textmebot.phone`: Recipient phone number<br>`textmebot.apikey`: TextMeBot API key<br>`poll_interval`: Check frequency |
 | **telegramer** | Send Telegram notifications | `telegram_bot_token`: Token<br>`telegram_chat_id`: Receiver<br>`message`: Content |
 | **telegramrx** | Telegram receiver / monitor bot | Monitor incoming Telegram messages using Telegram Bot API |
+| **teletlamatini** | Long-running active agent that exposes the full Tlamatini chat (the same Multi-Turn behavior as `agent_page.html`, including the per-agent Exec Report tables) over Telegram. Stays alive waiting for messages, password-gates each chat on first contact, uses an LLM-aided check to decide whether each user message is a clear and complete request and asks follow-up questions until it is, then proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` + `exec_report_enabled=true` and sends the assembled answer (commands/actions per agent included) back to the Telegram user. Pauses to ask the user for additional information mid-processing if needed. After every successfully completed user request cycle, starts the configured `target_agents`. | `telegram.api_id`, `telegram.api_hash`, `telegram.listen_chat`, `telegram.bot_token`: Telegram credentials<br>`access.password`: Password the Telegram user must supply on first contact<br>`access.welcome_message`, `access.rejection_message`, `access.password_prompt`, `access.unclear_request_prompt`, `access.awaiting_info_intro`, `access.processing_message`, `access.completed_prefix`, `access.error_prefix`: User-facing wording<br>`tlamatini.base_url`, `tlamatini.ws_url`: Tlamatini server endpoints<br>`tlamatini.username`, `tlamatini.password`: Tlamatini Django credentials<br>`tlamatini.multi_turn_enabled`, `tlamatini.exec_report_enabled`: Always-on toggles for the proxied chat<br>`tlamatini.response_idle_timeout`, `tlamatini.total_timeout`: WebSocket read deadlines<br>`llm.host`, `llm.model`, `llm.understanding_prompt`: Ollama-backed completeness classifier<br>`source_agents`: Informational only<br>`target_agents`: Downstream agents launched after every completed user request cycle |
 
 **Notifier Architecture Details:**
 - Built on **LangGraph StateGraph** with a continuous-loop state machine (`tools -> tools`)
@@ -3817,6 +3819,7 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 | `/save_parametrizer_scheme/<agent_name>/` | POST | Save Parametrizer interconnection scheme |
 | `/update_barrier_connection/<agent_name>/` | POST | Update barrier connections |
 | `/update_googler_connection/<agent_name>/` | POST | Update googler connections |
+| `/update_teletlamatini_connection/<agent_name>/` | POST | Update teletlamatini connections |
 
 #### Session & Pool Management
 
@@ -4306,6 +4309,7 @@ Producing lines like:
 | **Parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via a deployed interconnection scheme CSV, supporting iterative execution for multiple output elements |
 | **Barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier, waiting for ALL configured source agents to start before triggering downstream target agents via cross-process file-based locking and flag files |
 | **Googler** | Short-running web-search agent that searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content, and saves the combined results to an output file for downstream processing |
+| **TeleTlamatini** | Long-running active notification-and-prompt-processing agent that exposes the full Tlamatini chat (`agent_page.html` Multi-Turn behavior, including the per-agent Exec Report tables) over Telegram. Password-gates each chat on first contact, uses an Ollama-backed completeness classifier to decide whether each user message is a clear and complete request (asking follow-up questions until it is), proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true`, pauses to ask the user for additional information mid-processing if needed, and sends the assembled answer (including command/action tables per agent) back to the Telegram user. After every successfully completed user request cycle, starts the configured `target_agents` |
 
 ---
 
@@ -4376,6 +4380,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Added TeleTlamatini Agent** - Long-running active agent that exposes the full Tlamatini chat (`agent_page.html` Multi-Turn behavior, including the per-agent Exec Report tables) over Telegram. Stays alive waiting for messages, password-gates each chat on first contact, uses an Ollama-backed completeness classifier to decide whether each user message is a clear and complete request (asking follow-up questions until it is), proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true`, sends the assembled answer back to the Telegram user, and starts the configured `target_agents` after every completed user request cycle. Unique 4-color gradient: Telegram-Blue → Sky → Amber → Crimson.
 - **Multi-Turn Planner Max-Tool Cap Lowered 50 → 20** - `build_global_execution_plan()` and `_select_planner_tool_names()` now default to `max_selected_tools=20` (configurable). After observing MXNet-installation sessions where the planner selected every tool at once due to keyword inflation, the default was reduced to 20 to force the scoring threshold to do the real filtering.
 - **Planner Short Follow-Up Scoring Fix** - Short follow-up messages like "continue", "go ahead", "proceed" used to score near-zero for every capability because scoring only considered the current message. The planner now accepts a `chat_history_text` argument and applies a history-aware boost of up to +15 points per capability when the current request has ≤4 meaningful tokens. Wired in `rag/factory.py::_extract_chat_history_text()` which pulls the last 4 chat messages either from the payload or directly from `DBChatHistoryLoader`.
 - **Wrapped Chat-Agent Deduplication** - `MultiTurnToolAgentExecutor.invoke()` now tracks a per-request `_wrapped_agent_signatures` set keyed on `tool_name + sorted-JSON args`. When the LLM attempts to relaunch the same `chat_agent_*` tool with identical arguments, the executor short-circuits with a `ToolMessage` explaining the skip. Management tools (`chat_agent_run_list/status/log/stop`) are exempt so status-polling still works.

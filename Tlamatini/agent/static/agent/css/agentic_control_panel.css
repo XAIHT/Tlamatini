@@ -2057,3 +2057,16 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #EF5350 0%, #FDD835 33%, #66BB6A 66%, #42A5F5 100%);
     box-shadow: 0 6px 15px rgba(66, 165, 245, 0.5);
 }
+
+/* TeleTlamatini Agent - Telegram-Blue -> Sky -> Amber -> Crimson 4-color gradient
+   (unique combination not used by any other agent) */
+.canvas-item.teletlamatini-agent {
+    background-color: #0088CC;
+    background: linear-gradient(135deg, #0088CC 0%, #29B6F6 33%, #FFA000 66%, #C2185B 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.teletlamatini-agent:hover {
+    background: linear-gradient(135deg, #29A4D9 0%, #4FC3F7 33%, #FFB74D 66%, #E91E63 100%);
+    box-shadow: 0 6px 15px rgba(0, 136, 204, 0.5);
+}

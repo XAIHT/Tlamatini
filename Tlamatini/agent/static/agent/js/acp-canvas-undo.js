@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateKeyboarderConnection, updateGooglerConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -191,6 +191,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             }
             if (sourceAgentName.toLowerCase() === 'googler') {
                 await updateGooglerConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'teletlamatini') {
+                await updateTeletlamatiniConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'teletlamatini') {
+                await updateTeletlamatiniConnection(sourceId, targetId, 'remove', 'target');
             }
                 if (sourceAgentName.toLowerCase() === 'shoter') {
                 await updateShoterConnection(sourceId, targetId, 'remove');
@@ -464,6 +470,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'googler') {
         await updateGooglerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'teletlamatini') {
+        await updateTeletlamatiniConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'teletlamatini') {
+        await updateTeletlamatiniConnection(sourceId, targetId, 'add', 'target');
     }
             if (sourceAgentName === 'shoter') {
         await updateShoterConnection(sourceId, targetId, 'add');

@@ -1,0 +1,58 @@
+# TeleTlamatini Agent Configuration
+# Long-running active agent that exposes the Tlamatini chat (agent_page.html behavior)
+# over Telegram. Performs password-gating, LLM-aided request understanding, and
+# proxies the user request into the local Tlamatini WebSocket chat with
+# Multi-Turn + Exec Report enabled, then sends the full assembled answer back to
+# the Telegram user.
+
+# Connection fields (auto-populated via canvas connections)
+source_agents: []
+target_agents: []
+
+# Telegram Configuration
+telegram:
+  api_id: 123456                   # Replace with your actual api_id (int)
+  api_hash: ""                     # Replace with your actual Telegram API Hash
+  listen_chat: "me"                # Chat to listen on ("me" = Saved Messages)
+  bot_token: ""                    # Optional: if set, runs as a bot instead of user account
+
+# Authentication gate
+access:
+  password: "changeme"             # Password the Telegram user must supply on first contact
+  welcome_message: "Welcome to Tlamatini. Send me your request and I will operate Tlamatini for you."
+  rejection_message: "Authentication failed. Please send the correct password."
+  password_prompt: "Please send the access password to continue."
+  unclear_request_prompt: "Your request is not clear or complete. Could you please provide more detail about what you want Tlamatini to do?"
+  awaiting_info_intro: "Tlamatini needs additional information to continue:"
+  processing_message: "Working on your request. This may take a while..."
+  completed_prefix: "Tlamatini completed your request:"
+  error_prefix: "Tlamatini encountered an error while processing your request:"
+
+# Tlamatini chat backend (the same Django/Channels server agent_page.html uses)
+tlamatini:
+  base_url: "http://127.0.0.1:8000"
+  ws_url: "ws://127.0.0.1:8000/ws/agent/"
+  username: "user"
+  password: "changeme"
+  multi_turn_enabled: true
+  exec_report_enabled: true
+  response_idle_timeout: 8        # seconds of WS idle that mark end-of-response
+  total_timeout: 1800             # max seconds to wait for a single request to finish
+
+# Ollama configuration used to LLM-classify request completeness and to detect
+# follow-up information requests when needed. Pointed at the same Ollama instance
+# used by the rest of Tlamatini.
+llm:
+  host: "http://localhost:11434"
+  model: "llama3"
+  understanding_prompt: |
+    You are an intent-completeness classifier. The user is talking to the
+    Tlamatini AI developer assistant. Decide whether the user's last message,
+    combined with the prior conversation context if any, expresses a clear and
+    complete actionable request that Tlamatini could begin working on right now.
+    Respond ONLY with a single JSON object on one line, no prose, no code fences,
+    using EXACTLY this schema:
+    {"complete": true|false, "ask": "<question to ask the user if not complete, otherwise empty>"}
+
+# Polling / runtime tuning
+poll_interval: 5
