@@ -10,11 +10,23 @@ source_agents: []
 target_agents: []
 
 # Telegram Configuration
+#
+# Two modes:
+#   1) USER-ACCOUNT MODE (bot_token empty): logs in as YOUR Telegram account and
+#      listens on `listen_chat` (default "me" = your Saved Messages).
+#   2) BOT MODE (bot_token set): logs in as a bot created via @BotFather and
+#      responds to any user that messages it. `listen_chat` is ignored unless
+#      you set it explicitly to a specific chat id/username.
+#
+# To run as a real bot:
+#   - Talk to @BotFather, run /newbot, copy the token into `bot_token`.
+#   - Get api_id and api_hash from https://my.telegram.org → "API development tools".
+#   - Leave `listen_chat` null (or omit it) so the bot answers any user.
 telegram:
-  api_id: 123456                   # Replace with your actual api_id (int)
-  api_hash: ""                     # Replace with your actual Telegram API Hash
-  listen_chat: "me"                # Chat to listen on ("me" = Saved Messages)
-  bot_token: ""                    # Optional: if set, runs as a bot instead of user account
+  api_id: 36367295                   # Replace with your actual api_id (int) from my.telegram.org
+  api_hash: "9854952a0bd1cf028341b5d591305d32"                     # Replace with your actual Telegram API Hash from my.telegram.org
+  listen_chat: null                # null = respond to any user (recommended for bot mode); "me" = Saved Messages (user-account mode)
+  bot_token: "8650426683:AAEwskPzNwNQAAADdn-sHGO5jeMuBx8C9-U"                    # Set this (from @BotFather) to run as a bot instead of user account
 
 # Authentication gate
 access:

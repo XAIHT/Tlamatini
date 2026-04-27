@@ -505,8 +505,11 @@ async def _telegram_main_loop(config: Dict[str, Any]):
     telegram_cfg = config.get('telegram', {}) or {}
     api_id = telegram_cfg.get('api_id')
     api_hash = telegram_cfg.get('api_hash')
-    listen_chat = telegram_cfg.get('listen_chat', 'me')
     bot_token = (telegram_cfg.get('bot_token') or '').strip()
+    # In bot mode, respond to any user that messages the bot (chats=None = no filter).
+    # In user-account mode, default to Saved Messages ("me") unless the user picks a chat.
+    listen_chat = telegram_cfg.get('listen_chat', None if bot_token else 'me')
+    is_bot_mode = bool(bot_token)
 
     access_cfg = config.get('access', {}) or {}
     expected_password = str(access_cfg.get('password') or '').strip()
@@ -593,13 +596,20 @@ async def _telegram_main_loop(config: Dict[str, Any]):
             for target in target_agents:
                 start_agent(target)
 
-    @client.on(events.NewMessage(chats=listen_chat))
+    handler_filter = events.NewMessage() if listen_chat is None else events.NewMessage(chats=listen_chat)
+
+    @client.on(handler_filter)
     async def handler(event):
         try:
             text = (event.raw_text or '').strip()
             if not text:
                 return
             chat_key = str(event.chat_id)
+
+            # Bot-mode courtesy: greet on /start before the password gate.
+            if is_bot_mode and text.lower() in ('/start', '/help'):
+                await _send_telegram_text(client, event.chat, password_prompt)
+                return
 
             async with loop_lock:
                 chat_state = state.setdefault(chat_key, {
