@@ -3,7 +3,8 @@
 ![Project Logo](Tlamatini.jpg)
 
 A sophisticated, locally-run AI developer assistant featuring an advanced Retrieval-Augmented Generation (RAG) system, a request-scoped Multi-Turn orchestration layer, a real-time web interface, a visual agentic workflow designer, and multi-model LLM support. 
-Visit our new site!: https://xaiht.org
+Visit our new site!: https://xaiht.org, and check our little taste of Tlamatini on YouTube: https://youtu.be/a51miZ1JIe0
+
 
 ## Table of Contents
 

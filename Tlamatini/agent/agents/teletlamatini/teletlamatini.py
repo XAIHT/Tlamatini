@@ -454,7 +454,6 @@ async def _login_and_chat_via_websocket(
                 if response_started and (time.monotonic() - last_event_at) >= response_idle_timeout:
                     break
                 continue
-            last_event_at = time.monotonic()
             try:
                 data = json.loads(raw)
             except Exception:
@@ -465,7 +464,18 @@ async def _login_and_chat_via_websocket(
                 continue
             msg = data.get('message') or ''
             lowered = msg.lower()
-            if msg in ('ping',) or '|' in msg or 'establishment' in lowered:
+            # Drop only known control frames:
+            #   - bare "ping"
+            #   - establishment frames shaped "<name>|<description>|<content>"
+            #     (server emits these for mcp/tool/agent UI seeding — they would
+            #     otherwise be mistaken for the LLM answer). The regex matches
+            #     a leading identifier followed by '|', so markdown table rows
+            #     like "| Capability | How |" — which start with a space/pipe —
+            #     are NOT filtered out.
+            #   - "establishment" sentinel text
+            if msg == 'ping' or 'establishment' in lowered:
+                continue
+            if re.match(r'^[A-Za-z][A-Za-z0-9_-]*\|', msg):
                 continue
             if any(marker in lowered for marker in (
                 'still loading', 'agent is loading', 'loading the agent',
@@ -473,6 +483,7 @@ async def _login_and_chat_via_websocket(
             )):
                 continue
             response_started = True
+            last_event_at = time.monotonic()
             final_response_parts.append(msg)
             # Heuristic: if the message is non-trivial and a real LLM answer,
             # we still wait for `response_idle_timeout` to confirm no further
@@ -508,7 +519,12 @@ async def _telegram_main_loop(config: Dict[str, Any]):
     bot_token = (telegram_cfg.get('bot_token') or '').strip()
     # In bot mode, respond to any user that messages the bot (chats=None = no filter).
     # In user-account mode, default to Saved Messages ("me") unless the user picks a chat.
-    listen_chat = telegram_cfg.get('listen_chat', None if bot_token else 'me')
+    # Treat null / empty string / whitespace-only as "no explicit chat" so the
+    # canvas dialog can't silently break the handler by writing '' instead of null.
+    raw_listen_chat = telegram_cfg.get('listen_chat', None if bot_token else 'me')
+    if isinstance(raw_listen_chat, str) and not raw_listen_chat.strip():
+        raw_listen_chat = None
+    listen_chat = raw_listen_chat if raw_listen_chat is not None else (None if bot_token else 'me')
     is_bot_mode = bool(bot_token)
 
     access_cfg = config.get('access', {}) or {}
