@@ -1374,23 +1374,22 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after search completes)
 
 ### 57. TeleTlamatini
-- **Purpose**: Long-running active agent that exposes the full Tlamatini chat (the same multi-turn behavior as `agent_page.html`, including Multi-Turn tool execution and the per-agent Exec Report tables) over Telegram. It stays alive waiting for messages, password-gates each chat on first contact, uses an LLM-aided check to decide whether each user message is a clear and complete request, asks follow-up questions until the request is well-formed, then proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true` and sends the assembled response (including command/action tables per agent) back to the Telegram user. Pauses to ask the user for additional information when needed during processing. After every successfully completed request cycle, starts the configured `target_agents`.
-- **Used for**: Letting an authorized Telegram user drive Tlamatini end-to-end without opening the browser UI; remote operation of Multi-Turn flows; mobile triage with full Exec Report visibility.
-- **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable from anywhere.
-- **Application example**: An on-call engineer DMs the bot with the configured password, then sends "deploy the staging branch and notify the team". TeleTlamatini classifies the request as complete, forwards it to the local Tlamatini chat with Multi-Turn + Exec Report enabled, waits for the answer (which includes per-agent operation tables for Gitter, Dockerer, Telegramer, etc.), strips the HTML, and sends the readable result back over Telegram.
+- **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — Telegramer / TelegramRX exist for the user-account direction; do not give TeleTlamatini a `listen_chat` field.
+- **Used for**: Letting an authorized Telegram user drive Tlamatini end-to-end without opening the browser UI; fast OpenClaw-style fire-and-go remote operation of Multi-Turn flows; mobile triage with full Exec Report visibility.
+- **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable from anywhere — fast enough for "what's my CPU usage?" turnaround.
+- **Application example**: An on-call engineer DMs the bot with the configured password, then sends "deploy the staging branch and notify the team". TeleTlamatini forwards the request into the persistent Tlamatini WS with Multi-Turn + Exec Report enabled, waits for the assembled answer (which includes per-agent operation tables for Gitter, Dockerer, Telegramer, etc.), strips the HTML, and edits the status message into the readable result.
 - **Pool name pattern**: `teletlamatini_<n>`
 - **Starts other agents**: YES (starts `target_agents` after every completed user request cycle)
-- **Config parameters**:
-  - `telegram.api_id` / `telegram.api_hash` / `telegram.listen_chat` / `telegram.bot_token` (Telegram credentials; bot_token optional)
-  - `access.password`: "" (password the Telegram user must supply on first contact; mandatory)
-  - `access.welcome_message` / `access.rejection_message` / `access.password_prompt` / `access.unclear_request_prompt` / `access.awaiting_info_intro` / `access.processing_message` / `access.completed_prefix` / `access.error_prefix` (user-facing wording)
-  - `tlamatini.base_url`: "http://127.0.0.1:8000" (HTTP login endpoint of the running Tlamatini server)
-  - `tlamatini.ws_url`: "ws://127.0.0.1:8000/ws/agent/" (chat WebSocket the agent_page.html browser uses)
+- **Config parameters** (slim — old `access.*` text overrides, `telegram.listen_chat`, `llm.*`, and `poll_interval` were removed; the agent reads them only for backward-compat warnings):
+  - `telegram.api_id` / `telegram.api_hash` / `telegram.bot_token` (REQUIRED — bot_token from @BotFather)
+  - `password`: "" (single string the Telegram user must supply on first contact; empty disables the gate)
+  - `tlamatini.base_url`: "http://127.0.0.1:8000" (HTTP login endpoint; `ws_url` is auto-derived)
   - `tlamatini.username` / `tlamatini.password`: Tlamatini Django credentials this agent logs in with
   - `tlamatini.multi_turn_enabled`: true (always send chat with Multi-Turn enabled so tools can fire)
   - `tlamatini.exec_report_enabled`: true (request the per-agent Exec Report tables in every answer)
   - `tlamatini.response_idle_timeout` / `tlamatini.total_timeout` (seconds; how long to wait for a single answer)
-  - `llm.host` / `llm.model` / `llm.understanding_prompt` (Ollama-backed completeness classifier)
+  - `completeness_check.enabled`: false (when true, runs an Ollama-backed clarification gate before forwarding — adds 2-30 s per message; default OFF for fire-and-go)
+  - `completeness_check.host` / `completeness_check.model` / `completeness_check.instruction`
   - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
   - `target_agents`: [] (downstream agents started after every completed user request cycle)
 

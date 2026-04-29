@@ -1,39 +1,36 @@
-# TeleTlamatini Agent - Long-running Telegram bridge to the Tlamatini chat core.
+# TeleTlamatini Agent — pure Telegram-bot bridge to the Tlamatini chat core.
 #
-# Behavior overview (mirrors agent_page.html's chat from Telegram):
-#   A) Stays alive waiting for user messages on Telegram.
-#   B) On the first message from a chat, asks for a configured password.
-#   C) Wrong password -> gentle rejection. Correct password -> welcome message.
-#   D) Once authenticated, the next message is treated as a Tlamatini request.
-#   E) An LLM-aided check classifies whether the request is clear and complete.
-#   F) If unclear, the agent asks follow-up questions until the request is complete.
-#   G) Once complete, the request is forwarded to the local Tlamatini chat
-#      (Multi-Turn + Exec Report enabled) over the same WebSocket the browser uses.
-#   H) The full Tlamatini answer (including the per-agent Exec Report tables) is
-#      converted to plain text and sent back to the Telegram user.
+# This is a focused redesign of the original TeleTlamatini. The original was
+# carrying legacy from Telegramer's user-account mode (`listen_chat`,
+# user-account fallback, customizable strings for every message, per-request
+# HTTP login, 10-second drain on every message, mandatory LLM completeness
+# gate with a slow cloud model). For a bot, all of that is dead weight. This
+# rewrite cuts straight to the bone:
 #
-# After every successfully completed request cycle, the configured target_agents
-# are launched (long-running active agent semantics, like Gatewayer's dispatcher).
+#   * BOT MODE ONLY. `bot_token` is required. No `listen_chat`, no
+#     "user-account fallback". Telegramer / TelegramRX exist for the
+#     user-account direction; TeleTlamatini is a bot, period.
+#   * PERSISTENT TLAMATINI BRIDGE. We log into Tlamatini ONCE on startup,
+#     open ONE WebSocket, and reuse it for every Telegram message. No more
+#     1–2 s of HTTP login + WS handshake per CPU-usage question.
+#   * COMPLETENESS GATE IS OFF BY DEFAULT. Set `completeness_check.enabled:
+#     true` only if you want the LLM to ask follow-up questions before
+#     forwarding to Tlamatini. The default is fire-and-go (OpenClaw-style):
+#     every message goes straight through.
+#   * EDITABLE STATUS MESSAGE. The user sees ONE "🔄 Working on it…" message
+#     that gets edited in place to "✅ Result:" + answer when ready, instead
+#     of a wall of intermediate notifications.
+#   * COMPACT CONFIG. Required keys are flat and obvious. Old keys are read
+#     for backward-compat but ignored when superseded by the new shape.
 #
-# IMPORTANT design choices in this rewrite (the previous implementation hung
-# silently on "Working on your request..." in some configurations):
-#   * Per-chat asyncio.Task isolation — the long Tlamatini call no longer holds
-#     the global handler lock, so other chats keep flowing and the user can
-#     send a follow-up while a request is in progress (it is queued and then
-#     forwarded as a clarifier).
-#   * Definitive final-answer detection — the WS receive loop looks for the
-#     `multi_turn_used` / `answer_success` keys that `process_llm_response`
-#     attaches to the assembled final frame. No more guessing by 8s of silence.
-#   * Strict control-frame filter — uses the full constants.py noise list
-#     (loading / processing / ready / fallback / restored / etc.) so the
-#     "Your request is being processed..." sentinel never leaks to the user.
-#   * Websockets compatibility — passes Cookie via `additional_headers` first
-#     (websockets >=14) and falls back to `extra_headers` (<14).
-#   * Milestone logging at every step — login start / login OK / WS connect /
-#     WS open / send message / N-th frame received / final answer / error.
-#     If TeleTlamatini ever stalls again, the log will show exactly where.
-#   * `processing_message` send is INSIDE the try/except so a Telegram-side
-#     error there is logged instead of crashing the cycle silently.
+# Behaviour from the user's perspective (Telegram side):
+#   1. /start  → bot asks for the access password.
+#   2. <password> → if correct, "✅ Authenticated." Otherwise rejection.
+#   3. <any text> → "🔄 Working on it…", then the assembled Tlamatini answer
+#      (incl. per-agent Exec Report tables) edited into the status message.
+#
+# After every successfully completed request, configured `target_agents` are
+# launched (long-running active-agent semantics, like Gatewayer's dispatcher).
 
 import os
 import sys
@@ -81,8 +78,8 @@ logging.getLogger().addHandler(console_handler)
 
 
 # ---------------------------------------------------------------------------
-# Config / PID helpers (verbatim from telegramer.py — see Step 1 of the agent
-# creation skill; do not modify these utility functions).
+# Config / PID helpers (verbatim from telegramer.py — these are the agent
+# platform contract; do not modify).
 # ---------------------------------------------------------------------------
 
 PID_FILE = "agent.pid"
@@ -275,15 +272,8 @@ def remove_pid_file():
 
 
 # ---------------------------------------------------------------------------
-# Per-chat conversation state (persisted to reanim.state for pause/resume)
+# Reanim state (which chats are past the password gate)
 # ---------------------------------------------------------------------------
-
-# State machine phases
-PHASE_AWAIT_PASSWORD = "AWAIT_PASSWORD"
-PHASE_AWAIT_REQUEST = "AWAIT_REQUEST"
-PHASE_PROCESSING = "PROCESSING"
-PHASE_AWAIT_INFO = "AWAIT_INFO"
-
 
 def load_reanim_state() -> Dict[str, Any]:
     if os.path.exists(REANIM_STATE_FILE):
@@ -304,27 +294,25 @@ def save_reanim_state(state: Dict[str, Any]):
 
 
 # ---------------------------------------------------------------------------
-# Tlamatini WebSocket noise / control frames — must mirror the strings
-# emitted by Tlamatini/agent/constants.py and consumers.py. Any frame whose
-# `message` value normalizes (lowercased) to one of these substrings is NOT
-# part of the LLM answer and must be skipped.
+# Tlamatini WS frame classifier — the single most important piece of logic
+# in this agent. See the previous bug-fix commits for the full rationale:
+# real chat answers carry NO `type` field; UI-control frames DO; and only
+# `multi_turn_used` / `answer_success` extras mark the assembled final.
 # ---------------------------------------------------------------------------
 
+_SPECIAL_TYPES_TO_SKIP: Tuple[str, ...] = (
+    "mcp", "tool", "agent",
+    "heartbeat", "session-restored", "context-path-set",
+    "establishment-completed",
+)
+
 _NOISE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
-    # constants.MSG_AGENT_LOADING / LOADING_CONTEXT
     "your agent is loading",
     "loading the context",
-    # constants.MSG_AGENT_READY
     "your agent is ready",
-    # constants.MSG_AGENT_FALLBACK
     "fallback to a basic prompt only chain",
-    # constants.MSG_OVERSIZED_DOCS_WARNING
     "be aware tlamatini might not be able to load",
-    # constants.MSG_PROCESSING_REQUEST  ← critical: this one is what TeleTlamatini
-    # was previously returning to the Telegram user as the "answer".
     "your request is being processed by tlamatini",
-    # constants.MSG_LLM_CANCELLED / DESTROYED / REBUILDING / REESTABLISHED /
-    # RECONNECT / CLEARCONTEXT / HISTORY_CLEANED
     "generation was cancelled",
     "connection to ollama has been forcibly terminated",
     "rebuilding agent with fresh connection",
@@ -332,63 +320,63 @@ _NOISE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
     "re-connection issued by user",
     "clear-context issued by user",
     "chat history has been cleared",
-    # constants.MSG_SESSION_RESTORED / SESSION_AND_CONTEXT_RESTORED
     "welcome back, session restored",
     "welcome back, session and context restored",
-    # consumers.py inline strings
     "agent is still loading",
     "request is being processed",
-    # not-ready / errors
+)
+
+_FAILURE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
     "agent cannot process your requests",
     "agent is not ready",
-    # establishment sentinel emitted during MCP/tool/agent UI seeding
-    "establishment",
-    # auth / generic noise
     "you're not authenticated",
 )
 
 
-def _is_noise_frame(msg: str) -> bool:
-    """
-    Return True iff `msg` is one of Tlamatini's lifecycle/control frames that
-    must be excluded from the assembled answer.
-
-    Implementation note: we use case-insensitive substring matches on a
-    curated list mirroring Tlamatini/agent/constants.py + consumers.py.
-    DO NOT widen this with structural heuristics like "any message containing
-    a pipe character" — those silently filter out legitimate LLM answers
-    whose exec-report tables include shell commands with pipes.
-    """
-    if not msg:
-        return True
-    if msg.strip() == "ping":
-        return True
+def _classify_frame(data: Dict[str, Any]) -> str:
+    frame_type = data.get('type')
+    if frame_type and frame_type in _SPECIAL_TYPES_TO_SKIP:
+        return "skip"
+    username = data.get('username')
+    msg = data.get('message') or ''
+    if username == 'ping' or not msg or msg.strip() == 'ping':
+        return "skip"
+    if username != 'Tlamatini':
+        return "skip"
+    if ('multi_turn_used' in data) or ('answer_success' in data):
+        return "final"
     lowered = msg.lower()
+    if any(s in lowered for s in _FAILURE_SUBSTRINGS_LOWER):
+        return "failure"
     if any(s in lowered for s in _NOISE_SUBSTRINGS_LOWER):
-        return True
-    # Establishment frames seeded by the server look like
-    #   "<identifier>|<description>|<content>"
-    # — a leading bare identifier followed by a pipe. Markdown rows like
-    # "| Capability | How |" start with whitespace/pipe and must NOT match.
+        return "noise"
     if re.match(r'^[A-Za-z][A-Za-z0-9_\-]*\|', msg):
-        return True
-    return False
+        return "skip"
+    return "partial"
+
+
+def _summarize_frame_for_log(data: Dict[str, Any]) -> str:
+    msg = data.get('message') or ''
+    extras: List[str] = []
+    if 'multi_turn_used' in data:
+        extras.append(f"multi_turn_used={data.get('multi_turn_used')}")
+    if 'answer_success' in data:
+        extras.append(f"answer_success={data.get('answer_success')}")
+    if data.get('tool_calls_log'):
+        extras.append(f"tool_calls_log_len={len(data.get('tool_calls_log') or [])}")
+    extras_s = (' ' + ' '.join(extras)) if extras else ''
+    return (
+        f"type={data.get('type')!r} username={data.get('username')!r} "
+        f"len={len(msg)}{extras_s} first80={msg[:80]!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
-# LLM-aided request understanding (uses local Ollama, like Prompter)
+# Optional LLM-aided completeness check (off by default)
 # ---------------------------------------------------------------------------
 
 def _classify_request_completeness(host: str, model: str, instruction: str,
                                    conversation: List[Dict[str, str]]) -> Dict[str, Any]:
-    """
-    Ask the LLM whether the accumulated request from the user is clear and
-    complete. Returns {"complete": bool, "ask": "<follow-up question>"}.
-
-    On any error the function fails OPEN (treats the request as complete) so
-    the agent does not block the user with infinite clarification rounds when
-    the LLM is unreachable.
-    """
     transcript_lines = []
     for turn in conversation:
         role = turn.get('role', 'user').upper()
@@ -397,28 +385,17 @@ def _classify_request_completeness(host: str, model: str, instruction: str,
             transcript_lines.append(f"{role}: {content}")
     transcript = "\n".join(transcript_lines)
     prompt = f"{instruction}\n\nCONVERSATION:\n{transcript}\n\nJSON:"
-
     url = f"{host.rstrip('/')}/api/generate"
-    payload = json.dumps({
-        "model": model,
-        "prompt": prompt,
-        "stream": False
-    }).encode("utf-8")
-
+    payload = json.dumps({"model": model, "prompt": prompt, "stream": False}).encode("utf-8")
     req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST"
+        url, data=payload, headers={"Content-Type": "application/json"}, method="POST",
     )
-
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             body = json.loads(resp.read().decode("utf-8"))
             text = (body.get("response") or "").strip()
         match = re.search(r'\{.*\}', text, flags=re.DOTALL)
         if not match:
-            logging.warning(f"Completeness classifier returned no JSON: {text[:200]}")
             return {"complete": True, "ask": ""}
         parsed = json.loads(match.group(0))
         return {
@@ -426,19 +403,15 @@ def _classify_request_completeness(host: str, model: str, instruction: str,
             "ask": str(parsed.get("ask") or "").strip(),
         }
     except Exception as e:
-        logging.error(f"LLM completeness check failed (failing open): {e}")
+        logging.error(f"Completeness check failed (failing open): {e}")
         return {"complete": True, "ask": ""}
 
 
 # ---------------------------------------------------------------------------
-# Tlamatini WebSocket bridge — behaves like agent_page.html's chat client.
+# Telegram-friendly HTML→text stripping for the assembled answer
 # ---------------------------------------------------------------------------
 
 def _strip_html_to_text(html_content: str) -> str:
-    """
-    Convert the LLM HTML response (including BEGIN-CODE blocks and exec-report
-    tables) into a Telegram-friendly plain-text rendering.
-    """
     if not html_content:
         return ""
     text = html_content
@@ -453,331 +426,485 @@ def _strip_html_to_text(html_content: str) -> str:
     return text.strip()
 
 
-async def _ws_connect_with_cookie_compat(websockets_mod, ws_url: str, cookie_header: str):
+# ---------------------------------------------------------------------------
+# TlamatiniBridge — single persistent session+WS, reused across all chats
+# ---------------------------------------------------------------------------
+
+class TlamatiniBridge:
     """
-    Open a websockets connection, passing the session cookie. The keyword for
-    extra HTTP headers changed names between websockets <14 (`extra_headers`)
-    and >=14 (`additional_headers`). Try the new name first, fall back to the
-    old one. Returns the connected client.
+    Maintains ONE Django session and ONE WebSocket connection to Tlamatini for
+    the entire lifetime of the agent. Every Telegram message is forwarded
+    through the same WS, saving the per-request HTTP login + WS handshake +
+    establishment-frame burst that the original implementation paid every
+    single time.
+
+    Concurrency model: a single asyncio.Lock serializes chat calls. Tlamatini
+    only processes one rag_chain LLM call per consumer at a time anyway, so
+    pipelining gains nothing; the lock just keeps the receive loop's framing
+    simple and prevents two Telegram users from accidentally interleaving
+    each other's frames.
     """
-    try:
-        return await websockets_mod.connect(
-            ws_url,
-            additional_headers={'Cookie': cookie_header},
-            max_size=None,
-            ping_interval=20,
-            open_timeout=30,
+
+    def __init__(
+        self,
+        base_url: str,
+        ws_url: str,
+        username: str,
+        password: str,
+        multi_turn_enabled: bool,
+        exec_report_enabled: bool,
+        total_timeout: float,
+        idle_timeout: float = 8.0,
+    ):
+        self.base_url = base_url.rstrip('/')
+        self.ws_url = ws_url
+        self.username = username
+        self.password = password
+        self.multi_turn_enabled = multi_turn_enabled
+        self.exec_report_enabled = exec_report_enabled
+        self.total_timeout = float(total_timeout)
+        self.idle_timeout = float(idle_timeout)
+
+        self._ws = None  # websockets client connection
+        self._cookie_header: Optional[str] = None
+        self._lock = asyncio.Lock()
+        self._closed = False
+
+    # -- HTTP login (rare; run once + on reconnect) -------------------------
+
+    def _http_login_sync(self) -> str:
+        """Returns a 'k=v; k=v' cookie header suitable for the WS upgrade."""
+        import requests
+        login_url = f"{self.base_url}/"
+        session = requests.Session()
+        page = session.get(login_url, timeout=30)
+        csrf = session.cookies.get('csrftoken')
+        if not csrf:
+            m = re.search(
+                r'name=["\']csrfmiddlewaretoken["\']\s+value=["\']([^"\']+)["\']',
+                page.text,
+            )
+            if m:
+                csrf = m.group(1)
+        if not csrf:
+            raise RuntimeError("Could not obtain CSRF token from Tlamatini login page")
+        post = session.post(
+            login_url,
+            data={
+                'username': self.username,
+                'password': self.password,
+                'csrfmiddlewaretoken': csrf,
+            },
+            headers={'Referer': login_url},
+            allow_redirects=False,
+            timeout=30,
         )
-    except TypeError:
-        return await websockets_mod.connect(
-            ws_url,
-            extra_headers={'Cookie': cookie_header},
-            max_size=None,
-            ping_interval=20,
-            open_timeout=30,
-        )
+        if post.status_code not in (301, 302, 303):
+            raise RuntimeError(f"Tlamatini login failed: HTTP {post.status_code}")
+        return "; ".join(f"{k}={v}" for k, v in session.cookies.items())
 
+    # -- WS lifecycle -------------------------------------------------------
 
-async def _login_and_chat_via_websocket(
-    base_url: str,
-    ws_url: str,
-    username: str,
-    password: str,
-    user_message: str,
-    multi_turn_enabled: bool,
-    exec_report_enabled: bool,
-    response_idle_timeout: float,
-    total_timeout: float,
-    log_tag: str,
-) -> str:
-    """
-    Authenticate against the Tlamatini Django server and run a single chat
-    exchange over the same WebSocket the browser uses. Returns the assembled
-    HTML answer (incl. exec-report tables when enabled).
+    async def _ws_open(self):
+        import websockets
+        try:
+            return await websockets.connect(
+                self.ws_url,
+                additional_headers={'Cookie': self._cookie_header},
+                max_size=None,
+                ping_interval=20,
+                open_timeout=30,
+            )
+        except TypeError:
+            return await websockets.connect(
+                self.ws_url,
+                extra_headers={'Cookie': self._cookie_header},
+                max_size=None,
+                ping_interval=20,
+                open_timeout=30,
+            )
 
-    Detects end-of-response by the unambiguous `multi_turn_used` /
-    `answer_success` extras attached by `process_llm_response()` to the final
-    broadcast frame. As a safety net, also breaks on `response_idle_timeout`
-    seconds of WS silence after at least one non-noise frame.
-    """
-    import requests
-    import websockets
-
-    # ---- HTTP login --------------------------------------------------------
-    login_page_url = f"{base_url.rstrip('/')}/"
-    logging.info(f"{log_tag} [tla] HTTP GET login page {login_page_url}")
-    session = requests.Session()
-    login_response = session.get(login_page_url, timeout=30)
-    csrf_token = session.cookies.get('csrftoken')
-    if not csrf_token:
-        match = re.search(
-            r'name=["\']csrfmiddlewaretoken["\']\s+value=["\']([^"\']+)["\']',
-            login_response.text,
-        )
-        if match:
-            csrf_token = match.group(1)
-    if not csrf_token:
-        raise RuntimeError("Could not obtain CSRF token from Tlamatini login page")
-    logging.info(f"{log_tag} [tla] got csrf token (len={len(csrf_token)})")
-
-    post_response = session.post(
-        login_page_url,
-        data={
-            'username': username,
-            'password': password,
-            'csrfmiddlewaretoken': csrf_token,
-        },
-        headers={'Referer': login_page_url},
-        allow_redirects=False,
-        timeout=30,
-    )
-    logging.info(f"{log_tag} [tla] login POST status={post_response.status_code}")
-    if post_response.status_code not in (301, 302, 303):
-        raise RuntimeError(
-            f"Tlamatini login failed: HTTP {post_response.status_code}"
-        )
-    cookie_header = "; ".join([f"{k}={v}" for k, v in session.cookies.items()])
-
-    # ---- WebSocket exchange ------------------------------------------------
-    final_html: Optional[str] = None
-    fallback_parts: List[str] = []
-    last_event_at = time.monotonic()
-    response_started = False
-    frame_index = 0
-
-    logging.info(f"{log_tag} [tla] WS connect {ws_url}")
-    ws = await _ws_connect_with_cookie_compat(websockets, ws_url, cookie_header)
-    logging.info(f"{log_tag} [tla] WS connected, draining ready/restored frames")
-    try:
-        # Drain pre-existing welcome/ready/restored frames for up to 10 s.
-        # If we miss them, no harm done — Tlamatini accepts user input as long
-        # as the rag_chain is initialized, and replies with an
-        # "agent is still loading" frame (which we recognize as noise) if not.
-        ready_deadline = time.monotonic() + 10.0
-        while time.monotonic() < ready_deadline:
+    async def ensure_connected(self, log_tag: str):
+        if self._closed:
+            raise RuntimeError("TlamatiniBridge already closed")
+        if self._ws is not None:
             try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                # `closed` attr exists on websockets <14; on >=14 the handle is
+                # still usable until a recv/send raises ConnectionClosed.
+                if getattr(self._ws, 'closed', False):
+                    self._ws = None
+            except Exception:
+                self._ws = None
+        if self._ws is not None:
+            return
+
+        if self._cookie_header is None:
+            logging.info(f"{log_tag} bridge: HTTP login {self.base_url}")
+            self._cookie_header = await asyncio.to_thread(self._http_login_sync)
+            logging.info(f"{log_tag} bridge: HTTP login OK")
+        logging.info(f"{log_tag} bridge: WS connect {self.ws_url}")
+        self._ws = await self._ws_open()
+        logging.info(f"{log_tag} bridge: WS open")
+
+    async def close(self):
+        self._closed = True
+        if self._ws is not None:
+            try:
+                await self._ws.close()
+            except Exception:
+                pass
+            self._ws = None
+
+    # -- Drain any frames queued from previous activity --------------------
+
+    async def _drain_queued(self, log_tag: str, max_frames: int = 200):
+        """Quickly consume anything Tlamatini may have buffered for us
+        between chat calls (browser activity, MCP heartbeats, session
+        restores, etc.)."""
+        drained = 0
+        while drained < max_frames:
+            try:
+                raw = await asyncio.wait_for(self._ws.recv(), timeout=0.05)
             except asyncio.TimeoutError:
-                continue
+                break
+            except Exception:
+                break
+            drained += 1
             try:
                 data = json.loads(raw)
             except Exception:
                 continue
-            if data.get('type') != 'agent_message':
-                continue
-            msg = data.get('message') or ''
-            lowered = msg.lower()
-            if 'ready' in lowered or 'restored' in lowered or 'fallback' in lowered:
-                logging.info(f"{log_tag} [tla] saw ready/restored frame, proceeding")
-                break
+            v = _classify_frame(data)
+            if v in ("partial", "final", "failure"):
+                # Stale answer to a previous request? Log and discard, so a
+                # late frame from a prior chat doesn't poison the next one.
+                logging.warning(
+                    f"{log_tag} bridge: drained stale {v} frame "
+                    f"({_summarize_frame_for_log(data)})"
+                )
+        if drained:
+            logging.info(f"{log_tag} bridge: drained {drained} stale frames")
 
-        # Send the chat message.
+    # -- The main entry: send one user message, return final HTML ----------
+
+    async def chat(
+        self,
+        log_tag: str,
+        user_message: str,
+    ) -> Tuple[str, Dict[str, int]]:
+        async with self._lock:
+            return await self._chat_locked(log_tag, user_message)
+
+    async def _chat_locked(
+        self,
+        log_tag: str,
+        user_message: str,
+    ) -> Tuple[str, Dict[str, int]]:
+        # One reconnect retry on a clean send/recv failure.
+        for attempt in (1, 2):
+            try:
+                await self.ensure_connected(log_tag)
+                await self._drain_queued(log_tag)
+                return await self._send_and_collect(log_tag, user_message)
+            except Exception as e:
+                logging.warning(
+                    f"{log_tag} bridge: chat attempt {attempt} failed: {e}"
+                )
+                # Force reconnect on retry
+                try:
+                    if self._ws is not None:
+                        await self._ws.close()
+                except Exception:
+                    pass
+                self._ws = None
+                if attempt == 2:
+                    raise
+        raise RuntimeError("unreachable")
+
+    async def _send_and_collect(
+        self,
+        log_tag: str,
+        user_message: str,
+    ) -> Tuple[str, Dict[str, int]]:
         send_payload = {
             'message': user_message,
-            'multi_turn_enabled': bool(multi_turn_enabled),
-            'exec_report_enabled': bool(exec_report_enabled),
+            'multi_turn_enabled': bool(self.multi_turn_enabled),
+            'exec_report_enabled': bool(self.exec_report_enabled),
         }
-        await ws.send(json.dumps(send_payload))
+        await self._ws.send(json.dumps(send_payload))
         logging.info(
-            f"{log_tag} [tla] sent user message "
-            f"(len={len(user_message)}, multi_turn={multi_turn_enabled}, "
-            f"exec_report={exec_report_enabled})"
+            f"{log_tag} bridge: sent (len={len(user_message)}, "
+            f"multi_turn={self.multi_turn_enabled}, "
+            f"exec_report={self.exec_report_enabled})"
         )
 
-        deadline = time.monotonic() + float(total_timeout)
+        final_html: Optional[str] = None
+        last_failure_msg: Optional[str] = None
+        partial_parts: List[str] = []
+        last_event_at = time.monotonic()
+        response_started = False
+        counters: Dict[str, int] = {
+            "total": 0, "skip": 0, "noise": 0, "failure": 0,
+            "partial": 0, "final": 0, "non_json": 0, "recv_error": 0,
+        }
+        deadline = time.monotonic() + self.total_timeout
         last_progress_log = time.monotonic()
 
         while time.monotonic() < deadline:
             try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                raw = await asyncio.wait_for(self._ws.recv(), timeout=1.0)
             except asyncio.TimeoutError:
-                # If we've already collected at least one real frame, accept
-                # response_idle_timeout seconds of silence as end-of-response.
-                if response_started and (time.monotonic() - last_event_at) >= response_idle_timeout:
+                if response_started and (time.monotonic() - last_event_at) >= self.idle_timeout:
                     logging.info(
-                        f"{log_tag} [tla] idle timeout ({response_idle_timeout}s) — closing"
+                        f"{log_tag} bridge: idle {self.idle_timeout}s — closing. "
+                        f"counters={counters}"
                     )
                     break
-                # Heartbeat log every 30 s so a future hang is easy to diagnose.
                 if (time.monotonic() - last_progress_log) >= 30.0:
                     logging.info(
-                        f"{log_tag} [tla] still waiting for Tlamatini answer... "
-                        f"(frames_seen={frame_index}, response_started={response_started})"
+                        f"{log_tag} bridge: still waiting... counters={counters}"
                     )
                     last_progress_log = time.monotonic()
                 continue
             except Exception as recv_err:
-                logging.error(f"{log_tag} [tla] WS recv error: {recv_err}")
-                break
+                counters["recv_error"] += 1
+                logging.error(f"{log_tag} bridge: WS recv error: {recv_err}")
+                raise
 
             try:
                 data = json.loads(raw)
             except Exception:
-                continue
-            if data.get('type') != 'agent_message':
-                continue
-            if data.get('username') != 'Tlamatini':
+                counters["non_json"] += 1
                 continue
 
+            counters["total"] += 1
+            v = _classify_frame(data)
+            counters[v] = counters.get(v, 0) + 1
+            summary = _summarize_frame_for_log(data)
+
+            if v == "skip":
+                if counters["skip"] % 25 == 1:
+                    logging.info(f"{log_tag} bridge: frame#{counters['total']} skip ({summary})")
+                continue
+            if v == "noise":
+                logging.info(f"{log_tag} bridge: frame#{counters['total']} noise ({summary})")
+                continue
             msg = data.get('message') or ''
-            frame_index += 1
-
-            # Definitive final-answer frame: process_llm_response attaches
-            # `multi_turn_used` (boolean) and/or `answer_success` (boolean)
-            # ONLY when broadcasting the assembled answer. Use that as the
-            # primary completion signal.
-            is_final_frame = (
-                ('multi_turn_used' in data) or ('answer_success' in data)
-            )
-
-            if _is_noise_frame(msg) and not is_final_frame:
-                logging.info(
-                    f"{log_tag} [tla] frame#{frame_index} noise — "
-                    f"first40={msg[:40]!r}"
-                )
+            if v == "failure":
+                last_failure_msg = msg
+                response_started = True
+                last_event_at = time.monotonic()
+                logging.info(f"{log_tag} bridge: frame#{counters['total']} failure ({summary})")
                 continue
-
             response_started = True
             last_event_at = time.monotonic()
-            if is_final_frame:
+            if v == "final":
                 final_html = msg
-                logging.info(
-                    f"{log_tag} [tla] frame#{frame_index} FINAL "
-                    f"(len={len(msg)}, multi_turn_used={data.get('multi_turn_used')}, "
-                    f"answer_success={data.get('answer_success')})"
-                )
+                logging.info(f"{log_tag} bridge: frame#{counters['total']} FINAL ({summary})")
                 break
+            partial_parts.append(msg)
+            logging.info(f"{log_tag} bridge: frame#{counters['total']} partial ({summary})")
 
-            # Any other non-noise frame is a partial / ad-hoc answer (e.g.
-            # the basic-chain path that does not set multi_turn_used).
-            fallback_parts.append(msg)
-            logging.info(
-                f"{log_tag} [tla] frame#{frame_index} partial "
-                f"(len={len(msg)}, first40={msg[:40]!r})"
-            )
+        if final_html is None and not partial_parts and time.monotonic() >= deadline:
+            logging.error(f"{log_tag} bridge: total_timeout reached. counters={counters}")
 
-        if final_html is None and not fallback_parts and time.monotonic() >= deadline:
-            logging.error(
-                f"{log_tag} [tla] total_timeout ({total_timeout}s) reached with no answer"
-            )
-    finally:
-        try:
-            await ws.close()
-        except Exception:
-            pass
-
-    if final_html is not None:
-        return final_html
-    return "\n".join(part for part in fallback_parts if part).strip()
+        if final_html is not None:
+            return final_html, counters
+        if partial_parts:
+            return "\n".join(p for p in partial_parts if p).strip(), counters
+        if last_failure_msg:
+            return last_failure_msg, counters
+        return "", counters
 
 
 # ---------------------------------------------------------------------------
-# Telegram glue
+# Telegram glue — pure bot mode
 # ---------------------------------------------------------------------------
 
-async def _send_telegram_text(client, chat, text: str):
-    """Send a long text in 3800-char chunks (Telegram message limit is 4096)."""
+PHASE_AWAIT_PASSWORD = "AWAIT_PASSWORD"
+PHASE_READY = "READY"
+PHASE_PROCESSING = "PROCESSING"
+PHASE_AWAIT_INFO = "AWAIT_INFO"  # only used when completeness_check.enabled
+
+
+def _resolve_telegram_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Read telegram credentials from the new flat shape AND from the legacy
+    `telegram: {api_id, api_hash, bot_token, listen_chat?}` shape, so old
+    config.yaml files keep working. `listen_chat` is silently ignored — bot
+    mode is the only mode now.
+    """
+    flat = {
+        'api_id': config.get('api_id') or (config.get('telegram') or {}).get('api_id'),
+        'api_hash': config.get('api_hash') or (config.get('telegram') or {}).get('api_hash'),
+        'bot_token': (
+            (config.get('bot_token') or '').strip()
+            if isinstance(config.get('bot_token'), str)
+            else ((config.get('telegram') or {}).get('bot_token') or '').strip()
+        ),
+    }
+    legacy_listen_chat = (config.get('telegram') or {}).get('listen_chat')
+    if legacy_listen_chat is not None:
+        logging.warning(
+            "telegram.listen_chat is ignored — TeleTlamatini is bot-only. "
+            "(Telegramer / TelegramRX cover user-account mode.)"
+        )
+    return flat
+
+
+def _resolve_password(config: Dict[str, Any]) -> str:
+    # New flat: `password: ...`
+    # Legacy nested: `access.password: ...`
+    return str(
+        config.get('password')
+        or (config.get('access') or {}).get('password')
+        or ''
+    ).strip()
+
+
+def _resolve_completeness_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
+    # New: `completeness_check: {enabled, host, model, instruction}`
+    # Legacy: `llm: {host, model, understanding_prompt}` + always-on behaviour
+    new = config.get('completeness_check') or {}
+    legacy_llm = config.get('llm') or {}
+    enabled = bool(new.get('enabled', False))
+    return {
+        'enabled': enabled,
+        'host': new.get('host') or legacy_llm.get('host', 'http://localhost:11434'),
+        'model': new.get('model') or legacy_llm.get('model', 'llama3'),
+        'instruction': (
+            new.get('instruction')
+            or legacy_llm.get('understanding_prompt')
+            or "Decide if the user request is clear and complete. Respond JSON "
+               "{\"complete\":bool,\"ask\":\"<question>\"}."
+        ),
+    }
+
+
+def _resolve_tlamatini_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
+    tla = config.get('tlamatini') or {}
+    base = (tla.get('base_url') or 'http://127.0.0.1:8000').rstrip('/')
+    ws_url = tla.get('ws_url')
+    if not ws_url:
+        # Derive ws:// from http:// automatically — one less thing to keep in
+        # sync in config.yaml.
+        ws_url = base.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/agent/'
+    return {
+        'base_url': base,
+        'ws_url': ws_url,
+        'username': tla.get('username', 'user'),
+        'password': tla.get('password', 'changeme'),
+        'multi_turn_enabled': bool(tla.get('multi_turn_enabled', True)),
+        'exec_report_enabled': bool(tla.get('exec_report_enabled', True)),
+        'total_timeout': float(tla.get('total_timeout', 1800)),
+        'idle_timeout': float(tla.get('response_idle_timeout', 8)),
+    }
+
+
+# Hard-coded user-facing strings (formerly configurable via 9 different keys).
+_MSG_PASSWORD_PROMPT = "🔒 Send the access password to use this bot."
+_MSG_AUTH_REJECTED = "❌ Wrong password. Try again."
+_MSG_AUTH_OK = (
+    "✅ Authenticated. Send any request — I'll forward it to Tlamatini "
+    "(Multi-Turn + Exec Report). For example: \"What's my CPU usage?\"."
+)
+_MSG_WORKING = "🔄 Working on your request..."
+_MSG_NEED_INFO = "🟡 I need a bit more detail:"
+_MSG_EMPTY_RESULT = "⚠️ Tlamatini returned an empty response."
+_MSG_ERROR_PREFIX = "❌ Error: "
+_MAX_TG_CHUNK = 3800
+
+
+async def _send_long(client, chat, text: str) -> Optional[Any]:
+    """Send a (possibly long) text and return the FIRST sent Message."""
     if not text:
-        return
-    chunk_size = 3800
-    pieces = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)] or [text]
-    for piece in pieces:
+        return None
+    chunks = [text[i:i + _MAX_TG_CHUNK] for i in range(0, len(text), _MAX_TG_CHUNK)] or [text]
+    first_msg = None
+    for chunk in chunks:
         try:
-            await client.send_message(chat, piece)
+            m = await client.send_message(chat, chunk)
+            if first_msg is None:
+                first_msg = m
         except Exception as e:
-            logging.error(f"Failed to send Telegram message chunk: {e}")
+            logging.error(f"send_message chunk failed: {e}")
             break
+    return first_msg
+
+
+async def _edit_or_send(client, chat, status_msg, text: str):
+    """Edit the existing status message; if too long or edit fails, send fresh."""
+    if status_msg is None or len(text) > _MAX_TG_CHUNK:
+        # Edit the status to a brief "done" then send the full answer.
+        if status_msg is not None:
+            try:
+                await client.edit_message(chat, status_msg.id, "✅ Result:")
+            except Exception:
+                pass
+        await _send_long(client, chat, text)
+        return
+    try:
+        await client.edit_message(chat, status_msg.id, text)
+    except Exception as e:
+        logging.warning(f"edit_message failed, sending fresh: {e}")
+        await _send_long(client, chat, text)
 
 
 async def _telegram_main_loop(config: Dict[str, Any]):
     from telethon import TelegramClient, events
 
-    telegram_cfg = config.get('telegram', {}) or {}
-    api_id = telegram_cfg.get('api_id')
-    api_hash = telegram_cfg.get('api_hash')
-    bot_token = (telegram_cfg.get('bot_token') or '').strip()
-    # In bot mode, respond to any user that messages the bot (chats=None = no filter).
-    # In user-account mode, default to Saved Messages ("me") unless the user picks a chat.
-    # Treat null / empty string / whitespace-only as "no explicit chat" so the
-    # canvas dialog can't silently break the handler by writing '' instead of null.
-    raw_listen_chat = telegram_cfg.get('listen_chat', None if bot_token else 'me')
-    if isinstance(raw_listen_chat, str) and not raw_listen_chat.strip():
-        raw_listen_chat = None
-    listen_chat = raw_listen_chat if raw_listen_chat is not None else (None if bot_token else 'me')
-    is_bot_mode = bool(bot_token)
-
-    access_cfg = config.get('access', {}) or {}
-    expected_password = str(access_cfg.get('password') or '').strip()
-    welcome_message = access_cfg.get('welcome_message') or "Welcome."
-    rejection_message = access_cfg.get('rejection_message') or "Authentication failed."
-    password_prompt = access_cfg.get('password_prompt') or "Please send the password."
-    unclear_prompt = access_cfg.get('unclear_request_prompt') or "Could you clarify?"
-    awaiting_info_intro = access_cfg.get('awaiting_info_intro') or "Need more info:"
-    processing_message = access_cfg.get('processing_message') or "Working on it..."
-    completed_prefix = access_cfg.get('completed_prefix') or "Result:"
-    error_prefix = access_cfg.get('error_prefix') or "Error:"
-
-    tlamatini_cfg = config.get('tlamatini', {}) or {}
-    base_url = tlamatini_cfg.get('base_url', 'http://127.0.0.1:8000')
-    ws_url = tlamatini_cfg.get('ws_url', 'ws://127.0.0.1:8000/ws/agent/')
-    tla_user = tlamatini_cfg.get('username', 'user')
-    tla_pass = tlamatini_cfg.get('password', 'changeme')
-    multi_turn_enabled = bool(tlamatini_cfg.get('multi_turn_enabled', True))
-    exec_report_enabled = bool(tlamatini_cfg.get('exec_report_enabled', True))
-    idle_timeout = float(tlamatini_cfg.get('response_idle_timeout', 8))
-    total_timeout = float(tlamatini_cfg.get('total_timeout', 1800))
-
-    llm_cfg = config.get('llm', {}) or {}
-    llm_host = llm_cfg.get('host', 'http://localhost:11434')
-    llm_model = llm_cfg.get('model', 'llama3')
-    llm_instruction = llm_cfg.get('understanding_prompt') or (
-        "Decide if the user request is clear and complete. Respond JSON "
-        "{\"complete\":bool,\"ask\":\"<question>\"}."
-    )
-
+    tg_cfg = _resolve_telegram_cfg(config)
+    password_gate = _resolve_password(config)
+    cc_cfg = _resolve_completeness_cfg(config)
+    tla_cfg = _resolve_tlamatini_cfg(config)
     target_agents = config.get('target_agents', []) or []
 
-    if not api_id or not api_hash:
-        logging.error("Telegram api_id or api_hash missing in config.yaml")
+    if not tg_cfg['api_id'] or not tg_cfg['api_hash']:
+        logging.error("api_id / api_hash missing in config.yaml. Get them from "
+                      "https://my.telegram.org → API development tools.")
         return
-    if not expected_password:
-        logging.error("access.password is empty in config.yaml; refusing to start without a password gate.")
+    if not tg_cfg['bot_token']:
+        logging.error("bot_token missing in config.yaml. TeleTlamatini is "
+                      "bot-only — get a token from @BotFather.")
         return
 
+    # --- Persistent Tlamatini bridge (one login, one WS, reused forever) ---
+    bridge = TlamatiniBridge(
+        base_url=tla_cfg['base_url'],
+        ws_url=tla_cfg['ws_url'],
+        username=tla_cfg['username'],
+        password=tla_cfg['password'],
+        multi_turn_enabled=tla_cfg['multi_turn_enabled'],
+        exec_report_enabled=tla_cfg['exec_report_enabled'],
+        total_timeout=tla_cfg['total_timeout'],
+        idle_timeout=tla_cfg['idle_timeout'],
+    )
+    try:
+        await bridge.ensure_connected(log_tag="[bridge:init]")
+    except Exception as e:
+        logging.error(f"Initial Tlamatini bridge connect failed: {e}. "
+                      "The bot will start anyway and retry on first message.")
+
+    # --- Telegram client ---
     session_name = os.path.join(script_dir, 'teletlamatini_session')
-    client = TelegramClient(session_name, api_id, api_hash)
-    if bot_token:
-        await client.start(bot_token=bot_token)
-    else:
-        await client.start()
+    client = TelegramClient(session_name, tg_cfg['api_id'], tg_cfg['api_hash'])
+    await client.start(bot_token=tg_cfg['bot_token'])
 
-    # Per-chat state. Each chat has its own asyncio.Lock, its own conversation
-    # buffer, and its own (optional) in-flight processing task. The previous
-    # implementation used a SINGLE global lock across all chats and held it
-    # for the entire duration of the Tlamatini call — meaning a slow chat
-    # would freeze every other Telegram conversation, including the chat's
-    # own follow-ups. With per-chat locks, multiple Telegram users can be
-    # served concurrently and a user can queue a clarification while their
-    # own request is in flight.
+    # --- Per-chat state ---
     chat_states: Dict[str, Dict[str, Any]] = {}
     chat_locks: Dict[str, asyncio.Lock] = {}
-
     if _IS_REANIMATED:
         loaded = load_reanim_state()
         if isinstance(loaded, dict):
             for k, v in loaded.items():
                 if isinstance(v, dict):
-                    # On reanimation we cannot resume a half-processed
-                    # request (the WS exchange is already gone), so coerce
-                    # any leftover PROCESSING phase back to AWAIT_REQUEST.
                     if v.get('phase') == PHASE_PROCESSING:
-                        v['phase'] = PHASE_AWAIT_REQUEST
-                        v.pop('task_running', None)
+                        v['phase'] = PHASE_READY
                     chat_states[k] = v
 
     state_persist_lock = asyncio.Lock()
 
-    async def _persist_locked():
+    async def _persist():
         async with state_persist_lock:
             try:
                 save_reanim_state(chat_states)
@@ -791,75 +918,65 @@ async def _telegram_main_loop(config: Dict[str, Any]):
             chat_locks[chat_key] = lock
         return lock
 
-    async def _process_complete_request(chat, chat_key: str, request_text: str):
+    # --- The actual Tlamatini call, with editable status message ----------
+
+    async def _process_request(event_chat, chat_key: str, request_text: str):
         log_tag = f"[chat={chat_key}]"
+        status_msg = None
         try:
-            await _send_telegram_text(client, chat, processing_message)
-            logging.info(f"{log_tag} sent processing_message to user")
+            status_msg = await client.send_message(event_chat, _MSG_WORKING)
+            logging.info(f"{log_tag} status message sent")
         except Exception as e:
-            logging.error(f"{log_tag} failed to send processing_message: {e}")
+            logging.error(f"{log_tag} send_message(working) failed: {e}")
 
         try:
-            answer_html = await _login_and_chat_via_websocket(
-                base_url=base_url,
-                ws_url=ws_url,
-                username=tla_user,
-                password=tla_pass,
-                user_message=request_text,
-                multi_turn_enabled=multi_turn_enabled,
-                exec_report_enabled=exec_report_enabled,
-                response_idle_timeout=idle_timeout,
-                total_timeout=total_timeout,
-                log_tag=log_tag,
-            )
-            answer_text = _strip_html_to_text(answer_html) or "(empty response)"
+            answer_html, counters = await bridge.chat(log_tag, request_text)
+            answer_text = _strip_html_to_text(answer_html) or _MSG_EMPTY_RESULT
             logging.info(
-                f"{log_tag} Tlamatini answer ready "
-                f"(html_len={len(answer_html)}, text_len={len(answer_text)})"
+                f"{log_tag} answer ready (html_len={len(answer_html)}, "
+                f"text_len={len(answer_text)}, counters={counters})"
             )
-            await _send_telegram_text(client, chat, f"{completed_prefix}\n\n{answer_text}")
+            await _edit_or_send(client, event_chat, status_msg, answer_text)
         except Exception as exc:
-            logging.error(f"{log_tag} Tlamatini chat call failed: {exc}", exc_info=True)
+            logging.error(f"{log_tag} bridge.chat failed: {exc}", exc_info=True)
+            err_text = f"{_MSG_ERROR_PREFIX}{exc}"
             try:
-                await _send_telegram_text(client, chat, f"{error_prefix} {exc}")
+                if status_msg is not None:
+                    await client.edit_message(event_chat, status_msg.id, err_text)
+                else:
+                    await _send_long(client, event_chat, err_text)
             except Exception as send_err:
-                logging.error(f"{log_tag} failed to deliver error to user: {send_err}")
+                logging.error(f"{log_tag} failed to deliver error: {send_err}")
 
+        # Trigger downstream target_agents per cycle (Gatewayer-style semantics).
         if target_agents:
             wait_for_agents_to_stop(target_agents)
-            for target in target_agents:
-                start_agent(target)
+            for tgt in target_agents:
+                start_agent(tgt)
 
-    async def _process_with_pending(chat, chat_key: str, chat_state: Dict[str, Any]):
-        """Run one full request cycle, then drain any pending mid-flight follow-ups."""
+    async def _process_with_pending(event_chat, chat_key: str, chat_state: Dict[str, Any]):
         try:
-            full_request = "\n".join(
-                turn['content']
-                for turn in chat_state.get('conversation', [])
-                if turn.get('role') == 'user'
+            req_text = "\n".join(
+                t['content'] for t in chat_state.get('conversation', [])
+                if t.get('role') == 'user'
             ).strip()
-            await _process_complete_request(chat, chat_key, full_request)
-
-            # If user pinged us during processing, fold those into a fresh
-            # follow-up cycle instead of dropping them.
+            await _process_request(event_chat, chat_key, req_text)
             pending = chat_state.pop('pending_info', []) or []
             if pending:
-                logging.info(f"[chat={chat_key}] processing {len(pending)} queued follow-ups")
-                chat_state['conversation'] = [
-                    {'role': 'user', 'content': p} for p in pending
-                ]
-                follow_text = "\n".join(pending).strip()
-                if follow_text:
-                    await _process_complete_request(chat, chat_key, follow_text)
+                logging.info(f"[chat={chat_key}] {len(pending)} queued follow-ups")
+                follow = "\n".join(pending).strip()
+                if follow:
+                    chat_state['conversation'] = [{'role': 'user', 'content': follow}]
+                    await _process_request(event_chat, chat_key, follow)
         finally:
             chat_state['conversation'] = []
-            chat_state['phase'] = PHASE_AWAIT_REQUEST
+            chat_state['phase'] = PHASE_READY
             chat_state.pop('task_running', None)
-            await _persist_locked()
+            await _persist()
 
-    handler_filter = events.NewMessage() if listen_chat is None else events.NewMessage(chats=listen_chat)
+    # --- Event handler ----------------------------------------------------
 
-    @client.on(handler_filter)
+    @client.on(events.NewMessage())
     async def handler(event):
         try:
             text = (event.raw_text or '').strip()
@@ -867,90 +984,91 @@ async def _telegram_main_loop(config: Dict[str, Any]):
                 return
             chat_key = str(event.chat_id)
 
-            # Bot-mode courtesy: greet on /start before the password gate.
-            if is_bot_mode and text.lower() in ('/start', '/help'):
-                await _send_telegram_text(client, event.chat, password_prompt)
+            # Pre-auth courtesy on /start /help
+            if text.lower() in ('/start', '/help'):
+                state = chat_states.get(chat_key)
+                if state and state.get('phase') in (PHASE_READY, PHASE_PROCESSING, PHASE_AWAIT_INFO):
+                    await client.send_message(event.chat,
+                        "🟢 Already authenticated. Send a request to Tlamatini.")
+                else:
+                    await client.send_message(event.chat, _MSG_PASSWORD_PROMPT)
                 return
 
             chat_lock = _get_chat_lock(chat_key)
-
             async with chat_lock:
                 chat_state = chat_states.setdefault(chat_key, {
                     'phase': PHASE_AWAIT_PASSWORD,
                     'conversation': [],
                 })
-
                 phase = chat_state.get('phase', PHASE_AWAIT_PASSWORD)
-                logging.info(f"[chat={chat_key}] phase={phase} received={text!r}")
+                logging.info(f"[chat={chat_key}] phase={phase} received={text[:80]!r}")
 
                 if phase == PHASE_AWAIT_PASSWORD:
-                    if text == expected_password:
-                        chat_state['phase'] = PHASE_AWAIT_REQUEST
+                    if password_gate and text == password_gate:
+                        chat_state['phase'] = PHASE_READY
                         chat_state['conversation'] = []
-                        await _persist_locked()
-                        await _send_telegram_text(client, event.chat, welcome_message)
-                        await _send_telegram_text(
-                            client,
-                            event.chat,
-                            "Send your request to Tlamatini whenever you are ready.",
-                        )
+                        await _persist()
+                        await client.send_message(event.chat, _MSG_AUTH_OK)
+                    elif not password_gate:
+                        # No password configured → first message acts as request
+                        chat_state['phase'] = PHASE_READY
+                        await _persist()
+                        # Fall through into the READY branch below
+                        phase = PHASE_READY
                     else:
-                        await _send_telegram_text(client, event.chat, rejection_message)
-                        await _send_telegram_text(client, event.chat, password_prompt)
-                    return
+                        await client.send_message(event.chat, _MSG_AUTH_REJECTED)
+                        await client.send_message(event.chat, _MSG_PASSWORD_PROMPT)
+                        return
 
                 if phase == PHASE_PROCESSING:
-                    # Mid-processing user reply: queue it; the running task
-                    # will pick it up after the current cycle finishes.
                     chat_state.setdefault('pending_info', []).append(text)
-                    await _persist_locked()
-                    logging.info(f"[chat={chat_key}] queued mid-processing follow-up")
+                    await _persist()
+                    logging.info(f"[chat={chat_key}] queued mid-processing")
                     return
 
                 if phase == PHASE_AWAIT_INFO:
                     chat_state['conversation'].append({'role': 'user', 'content': text})
-                    await _persist_locked()
-                    chat_state['phase'] = PHASE_AWAIT_REQUEST
-                    phase = PHASE_AWAIT_REQUEST
-                    # Fall through.
+                    await _persist()
+                    chat_state['phase'] = PHASE_READY
+                    phase = PHASE_READY
+                    # Fall through to READY processing.
 
-                if phase == PHASE_AWAIT_REQUEST:
+                if phase == PHASE_READY:
                     chat_state['conversation'].append({'role': 'user', 'content': text})
-                    await _persist_locked()
+                    await _persist()
 
-                    verdict = await asyncio.to_thread(
-                        _classify_request_completeness,
-                        llm_host,
-                        llm_model,
-                        llm_instruction,
-                        chat_state['conversation'],
-                    )
-                    logging.info(f"[chat={chat_key}] completeness verdict={verdict}")
-
-                    if not verdict.get('complete', True):
-                        question = verdict.get('ask') or unclear_prompt
-                        chat_state['phase'] = PHASE_AWAIT_INFO
-                        await _persist_locked()
-                        await _send_telegram_text(
-                            client,
-                            event.chat,
-                            f"{awaiting_info_intro}\n{question}",
+                    # Optional clarification gate (off by default — fast path).
+                    if cc_cfg['enabled']:
+                        verdict = await asyncio.to_thread(
+                            _classify_request_completeness,
+                            cc_cfg['host'], cc_cfg['model'], cc_cfg['instruction'],
+                            chat_state['conversation'],
                         )
-                        return
+                        logging.info(f"[chat={chat_key}] completeness verdict={verdict}")
+                        if not verdict.get('complete', True):
+                            chat_state['phase'] = PHASE_AWAIT_INFO
+                            await _persist()
+                            await client.send_message(
+                                event.chat,
+                                f"{_MSG_NEED_INFO}\n{verdict.get('ask') or 'Could you clarify?'}",
+                            )
+                            return
 
                     chat_state['phase'] = PHASE_PROCESSING
                     chat_state['task_running'] = True
-                    await _persist_locked()
-                    # Detach the long Tlamatini call from the per-chat lock so
-                    # the user can queue follow-ups while it runs. The task is
-                    # fire-and-forget; cleanup is in its own finally block.
+                    await _persist()
                     asyncio.create_task(_process_with_pending(event.chat, chat_key, chat_state))
                     return
 
         except Exception as e:
             logging.error(f"Telegram handler error: {e}", exc_info=True)
 
-    logging.info("Connected. Listening for Telegram messages. Press Ctrl+C to stop.")
+    logging.info(
+        f"TeleTlamatini ready. completeness_check={cc_cfg['enabled']} "
+        f"multi_turn={tla_cfg['multi_turn_enabled']} "
+        f"exec_report={tla_cfg['exec_report_enabled']} "
+        f"target_agents={target_agents}"
+    )
     try:
         await client.run_until_disconnected()
     finally:
@@ -958,6 +1076,7 @@ async def _telegram_main_loop(config: Dict[str, Any]):
             await client.disconnect()
         except Exception:
             pass
+        await bridge.close()
 
 
 # ---------------------------------------------------------------------------
@@ -973,24 +1092,19 @@ def main():
         logging.info("=" * 60)
 
     try:
-        logging.info("TELETLAMATINI AGENT STARTED (Telegram-Blue to Crimson)")
-        target_agents = config.get('target_agents', []) or []
-        source_agents = config.get('source_agents', []) or []
-        logging.info(f"Sources: {source_agents}")
-        logging.info(f"Targets: {target_agents}")
-
+        logging.info("TELETLAMATINI AGENT STARTED (pure bot mode)")
+        logging.info(f"Sources: {config.get('source_agents') or []}")
+        logging.info(f"Targets: {config.get('target_agents') or []}")
         try:
             asyncio.run(_telegram_main_loop(config))
         except KeyboardInterrupt:
-            logging.info("TeleTlamatini agent stopped by user.")
+            logging.info("TeleTlamatini stopped by user.")
         except Exception as e:
-            logging.error(f"TeleTlamatini fatal error: {e}")
-
+            logging.error(f"TeleTlamatini fatal error: {e}", exc_info=True)
     finally:
         time.sleep(0.4)
         remove_pid_file()
         logging.info("TeleTlamatini stopped.")
-
     sys.exit(0)
 
 

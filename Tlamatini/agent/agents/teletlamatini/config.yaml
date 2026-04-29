@@ -1,70 +1,53 @@
-# TeleTlamatini Agent Configuration
-# Long-running active agent that exposes the Tlamatini chat (agent_page.html behavior)
-# over Telegram. Performs password-gating, LLM-aided request understanding, and
-# proxies the user request into the local Tlamatini WebSocket chat with
-# Multi-Turn + Exec Report enabled, then sends the full assembled answer back to
-# the Telegram user.
+# TeleTlamatini — pure Telegram-bot bridge to Tlamatini.
+#
+# Only the keys below are needed. The agent reads legacy keys (telegram.listen_chat,
+# access.welcome_message / rejection_message / password_prompt / unclear_request_prompt /
+# awaiting_info_intro / processing_message / completed_prefix / error_prefix, llm.*,
+# poll_interval) for backward compatibility but ignores them — they were dead weight
+# from the old user-account-mode design. Telegramer / TelegramRX cover that direction;
+# TeleTlamatini is bot-only by design.
 
-# Connection fields (auto-populated via canvas connections)
+# ── Connection fields (auto-populated via canvas connections) ──────────────
 source_agents: []
 target_agents: []
 
-# Telegram Configuration
-#
-# Two modes:
-#   1) USER-ACCOUNT MODE (bot_token empty): logs in as YOUR Telegram account and
-#      listens on `listen_chat` (default "me" = your Saved Messages).
-#   2) BOT MODE (bot_token set): logs in as a bot created via @BotFather and
-#      responds to any user that messages it. `listen_chat` is ignored unless
-#      you set it explicitly to a specific chat id/username.
-#
-# To run as a real bot:
-#   - Talk to @BotFather, run /newbot, copy the token into `bot_token`.
-#   - Get api_id and api_hash from https://my.telegram.org → "API development tools".
-#   - Leave `listen_chat` null (or omit it) so the bot answers any user.
+# ── Telegram bot credentials ───────────────────────────────────────────────
+# api_id / api_hash:  https://my.telegram.org → "API development tools"
+# bot_token:          @BotFather → /newbot
 telegram:
-  api_id: 36367295                   # Replace with your actual api_id (int) from my.telegram.org
-  api_hash: "9854952a0bd1cf028341b5d591305d32"                     # Replace with your actual Telegram API Hash from my.telegram.org
-  listen_chat: null                # null = respond to any user (recommended for bot mode); "me" = Saved Messages (user-account mode)
-  bot_token: "8650426683:AAEwskPzNwNQAAADdn-sHGO5jeMuBx8C9-U"                    # Set this (from @BotFather) to run as a bot instead of user account
+  api_id: 36367295
+  api_hash: "9854952a0bd1cf028341b5d591305d32"
+  bot_token: "8650426683:AAEwskPzNwNQAAADdn-sHGO5jeMuBx8C9-U"
 
-# Authentication gate
-access:
-  password: "changeme"             # Password the Telegram user must supply on first contact
-  welcome_message: "Welcome to Tlamatini. Send me your request and I will operate Tlamatini for you."
-  rejection_message: "Authentication failed. Please send the correct password."
-  password_prompt: "Please send the access password to continue."
-  unclear_request_prompt: "Your request is not clear or complete. Could you please provide more detail about what you want Tlamatini to do?"
-  awaiting_info_intro: "Tlamatini needs additional information to continue:"
-  processing_message: "Working on your request. This may take a while..."
-  completed_prefix: "Tlamatini completed your request:"
-  error_prefix: "Tlamatini encountered an error while processing your request:"
+# ── Access gate ────────────────────────────────────────────────────────────
+# Single password the Telegram user must send on first contact. Leave empty
+# to disable the gate (NOT recommended for a bot exposed on the public Telegram
+# network).
+password: "changeme"
 
-# Tlamatini chat backend (the same Django/Channels server agent_page.html uses)
+# ── Tlamatini chat backend ─────────────────────────────────────────────────
+# ws_url is auto-derived from base_url if omitted.
 tlamatini:
   base_url: "http://127.0.0.1:8000"
-  ws_url: "ws://127.0.0.1:8000/ws/agent/"
   username: "user"
   password: "changeme"
   multi_turn_enabled: true
   exec_report_enabled: true
-  response_idle_timeout: 8        # seconds of WS idle that mark end-of-response
-  total_timeout: 1800             # max seconds to wait for a single request to finish
+  total_timeout: 1800              # hard ceiling for one request (seconds)
+  response_idle_timeout: 8         # WS-silence after first frame to call it done
 
-# Ollama configuration used to LLM-classify request completeness and to detect
-# follow-up information requests when needed. Pointed at the same Ollama instance
-# used by the rest of Tlamatini.
-llm:
+# ── OPTIONAL: LLM-aided clarification gate (off by default) ────────────────
+# When enabled, every Telegram message is first sent to a local Ollama model
+# that decides whether the request is "complete enough" to forward to
+# Tlamatini, and if not, asks a follow-up question. Adds 2-30 s of latency
+# per message. Leave disabled for OpenClaw-style fire-and-go behavior.
+completeness_check:
+  enabled: false
   host: "http://localhost:11434"
-  model: "glm-5.1:cloud"
-  understanding_prompt: |
-    You are an intent-completeness classifier. The user is talking to the
-    Tlamatini AI developer assistant. Decide whether the user's last message,
-    combined with the prior conversation context if any, expresses a clear and
-    complete actionable request that Tlamatini could begin working on right now.
-    Respond ONLY with a single JSON object on one line, no prose, no code fences,
-    using EXACTLY this schema:
-    {"complete": true|false, "ask": "<question to ask the user if not complete, otherwise empty>"}
-
-# Polling / runtime tuning
-poll_interval: 5
+  model: "llama3"
+  instruction: |
+    You are an intent-completeness classifier. Decide whether the user's last
+    message (combined with prior conversation if any) expresses a clear and
+    complete actionable request that Tlamatini could begin working on right
+    now. Respond ONLY with a single JSON object: {"complete": true|false,
+    "ask": "<question to ask the user if not complete, else empty>"}.

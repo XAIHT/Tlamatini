@@ -1035,6 +1035,39 @@ def save_agent_config_view(request, agent_name):
             ender_known_keys = {'target_agents', 'source_agents', 'output_agents'}
             merged_config = {k: v for k, v in merged_config.items() if k in ender_known_keys}
 
+        # Sanitize TeleTlamatini config: drop legacy user-account-mode keys that
+        # are now dead weight (Telegramer / TelegramRX cover that direction).
+        # Without this, deep_merge would preserve `telegram.listen_chat` and the
+        # whole `access.*` block forever in pool configs from older deploys.
+        if base_folder_name == 'teletlamatini':
+            tg = merged_config.get('telegram')
+            if isinstance(tg, dict) and 'listen_chat' in tg:
+                tg.pop('listen_chat', None)
+            # The old `access:` block held 9 customizable strings; the new
+            # agent uses hardcoded user-facing strings and reads only the
+            # password (which it also accepts at top-level). Migrate the
+            # password if needed and drop the rest.
+            access = merged_config.get('access')
+            if isinstance(access, dict):
+                pwd_from_access = access.get('password')
+                if pwd_from_access and not merged_config.get('password'):
+                    merged_config['password'] = pwd_from_access
+                merged_config.pop('access', None)
+            # The old `llm:` block has been replaced by `completeness_check:`.
+            # Migrate fields if user hasn't already set the new shape.
+            llm_legacy = merged_config.get('llm')
+            cc = merged_config.get('completeness_check') or {}
+            if isinstance(llm_legacy, dict) and not cc:
+                merged_config['completeness_check'] = {
+                    'enabled': False,
+                    'host': llm_legacy.get('host', 'http://localhost:11434'),
+                    'model': llm_legacy.get('model', 'llama3'),
+                    'instruction': llm_legacy.get('understanding_prompt', ''),
+                }
+                merged_config.pop('llm', None)
+            # `poll_interval` was unused — drop.
+            merged_config.pop('poll_interval', None)
+
         # Custom representer for multiline strings to use literal block style (|)
         def str_representer(dumper, data):
             if '\n' in data:
