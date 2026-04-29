@@ -15,9 +15,9 @@ target_agents: []
 # api_id / api_hash:  https://my.telegram.org → "API development tools"
 # bot_token:          @BotFather → /newbot
 telegram:
-  api_id: 36367295
-  api_hash: "9854952a0bd1cf028341b5d591305d32"
-  bot_token: "8650426683:AAEwskPzNwNQAAADdn-sHGO5jeMuBx8C9-U"
+  api_id: 12345678
+  api_hash: "ffabcdef0123456789000000abcdef01234567"
+  bot_token: "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456"
 
 # ── Access gate ────────────────────────────────────────────────────────────
 # Single password the Telegram user must send on first contact. Leave empty
