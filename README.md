@@ -91,7 +91,6 @@ Visit our new site!: https://xaiht.org, and check our little taste of Tlamatini 
 - [Gatewayer: The Inbound Gateway Agent](#gatewayer-the-inbound-gateway-agent)
   - [How It Works](#how-it-works)
   - [Authentication Modes](#authentication-modes)
-  - [Gatewayer vs. OpenClaw's Gateway](#gatewayer-vs-openclaws-gateway)
   - [Usage Examples](#usage-examples)
     - [Example A: Timestamped HMAC Webhook Triggers a Build-and-Notify Pipeline](#example-a-timestamped-hmac-webhook-triggers-a-build-and-notify-pipeline)
     - [Example B: IoT Sensor Alerts via Folder-Drop with Conditional Routing](#example-b-iot-sensor-alerts-via-folder-drop-with-conditional-routing)
@@ -2038,27 +2037,6 @@ Dispatch Loop (same shared queue and serial dispatch thread)
 All modes support an optional IP allowlist (`allowed_ips`) as an additional layer.
 
 **Important**: Current HMAC mode is **not** directly compatible with providers like GitHub that sign only the body (for example `X-Hub-Signature-256`) and expose event type in headers. To accept those webhooks unchanged, add a small translating relay or patch `gatewayer.py`.
-
-### Gatewayer vs. OpenClaw's Gateway
-
-OpenClaw (the open-source personal AI assistant with 180K+ GitHub stars) uses a **Gateway** as its central control plane. On the surface, both are "gateways" that receive external events and route them to downstream processing. Under the hood, the two designs solve fundamentally different problems — and Tlamatini's Gatewayer carries several architectural advantages for **automation workflows**.
-
-| Dimension | OpenClaw Gateway | Tlamatini Gatewayer |
-|-----------|-----------------|---------------------|
-| **Core purpose** | AI chat routing — shuttles messages between 30+ messaging platforms and an LLM agent runtime | Workflow ingress — receives arbitrary structured events and dispatches deterministic automation pipelines |
-| **Protocol** | WebSocket (persistent bidirectional connection) | HTTP request/response (stateless, fire-and-forget). Accepted and duplicate requests get an immediate JSON ack with the `event_id`; rejected requests return 401/500 |
-| **Ingress channels** | Messaging platform adapters (WhatsApp, Slack, Telegram, etc.) — tightly coupled to chat semantics | Generic HTTP webhook + folder-drop watcher. Any system that can send an HTTP request or write a file can trigger a workflow. Current HTTP handler accepts `POST`/`PUT`/`PATCH`; folder-drop is polling-based |
-| **Event model** | Chat messages with platform-specific schemas (reactions, threads, attachments, presence) | Canonical event envelope with `event_id`, `event_type`, `session_id`, `correlation_id`, `body_hash`, raw body, headers, query params. Content-agnostic — JSON, plaintext, or form-encoded payloads are all first-class |
-| **Authentication** | Platform-level OAuth/bot tokens managed per adapter | Built-in bearer token, Gatewayer-specific timestamp+body HMAC verification, and IP allowlists — configurable in YAML. Direct compatibility with third-party webhook HMAC schemes may require a relay or code patch |
-| **Persistence** | Session state stored in memory/database; messages are consumed | Every event is written to disk as a structured artifact directory (`event.json`, `headers.json`, `request_body.txt`) with configurable retention. Full audit trail by default |
-| **Crash recovery** | Relies on the messaging platform to redeliver (platform-dependent) | `reanim_queue.json` and `reanim_dedup.json` files persist pending events and dedup state locally. On restart, accepted-but-undispatched events resume automatically |
-| **Deduplication** | No built-in dedup — relies on message IDs from each platform | Configurable sliding-window dedup for HTTP ingress, keyed on any combination of event fields (`event_type`, `session_id`, `body_hash`). Folder-drop does not currently apply dedup |
-| **Downstream dispatch** | Routes to a single LLM agent runtime; responses flow back through the same WebSocket | Triggers any number of `target_agents` on the Tlamatini canvas via the standard concurrency guard. Downstream can be anything: Executer, Pythonxer, SSHer, Emailer, another Gatewayer — the full agent catalog |
-| **Concurrency model** | Serializes messages per session, parallel across sessions. Heavy LLM calls are the bottleneck | Serial dispatch per event with explicit concurrency guard (`wait_for_agents_to_stop`). Gatewayer waits for all target agents to stop before launching them for the next event |
-| **Multi-tenant security** | Single-user trust boundary by design. Shared gateways are explicitly discouraged for mixed-trust users (cited by Microsoft, DigitalOcean, Nebius security analyses) | Session-scoped pool isolation. Each Tlamatini session gets its own pool directory, PID files, logs, and reanim state. Multiple Gatewayer instances can coexist in the same flow or across sessions without interference |
-| **Dependencies** | Node.js 22+, npm ecosystem, platform-specific adapter packages, LLM API keys | Python runtime plus `PyYAML`; optionally uses `psutil` when available for process checks and otherwise falls back to OS-level probing. Core networking/storage logic uses the standard library (`http.server`, `threading`, `queue`, `hashlib`, `ssl`) |
-
-**In short**: OpenClaw's Gateway is a **chat router** — it excels at connecting messaging platforms to an LLM loop. Tlamatini's Gatewayer is a **workflow trigger** — it excels at turning arbitrary external signals into deterministic, auditable, crash-recoverable automation pipelines. If your goal is to build a chatbot that responds on Slack, use OpenClaw. If your goal is to receive a custom webhook, a CI callback, or a translated third-party webhook and trigger a build-test-deploy-notify pipeline that you can see, inspect, and replay on a visual canvas — Gatewayer is purpose-built for that.
 
 ### Usage Examples
 
