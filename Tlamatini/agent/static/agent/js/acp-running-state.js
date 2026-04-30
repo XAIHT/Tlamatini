@@ -4,8 +4,12 @@
 // ========================================
 // ASKER AGENT INTERACTION STATE
 // ========================================
-// Track which Asker agents have already had a choice submitted in this session
-const submittedAskerRequests = new Set();
+// Track which Asker agents have already had a choice submitted in this session.
+// Delegated to the shared-runtime-dialogs module so chat & ACP share state
+// (avoids the dialog re-appearing on either page after a click).
+const submittedAskerRequests = (window.SharedRuntimeDialogs
+    ? window.SharedRuntimeDialogs.submittedAskerRequests
+    : new Set());
 
 // ========================================
 // GLOBAL RUNNING STATE MANAGEMENT
@@ -226,99 +230,17 @@ async function pollAgentStatus() {
 
         // ========================================
         // NOTIFIER AGENT: HANDLE NOTIFICATIONS
+        // (Delegated to shared-runtime-dialogs.js)
         // ========================================
         if (result.notifications && Array.isArray(result.notifications)) {
             result.notifications.forEach(notification => {
                 const agentId = notification.agent_id;
-                const matchesArray = notification.matches || [];
-                const matches = matchesArray.join(', ');
                 const sourceAgent = notification.source_agent;
-                const timestamp = notification.timestamp;
-                const soundEnabled = notification.sound_enabled;
-                const outcomeDetail = notification.outcome_detail || '';
-
-                console.log(`🚨 Notification from ${agentId}: Found "${matches}" in ${sourceAgent}`);
-
-                // ========================================
-                // SEVERITY DETECTION
-                // ========================================
-                const matchesLower = matches.toLowerCase();
-                const errorPatterns = ['error', 'fatal'];
-                const warningPatterns = ['warn', 'warning'];
-                const hasError = errorPatterns.some(pattern => matchesLower.includes(pattern));
-                const hasWarning = warningPatterns.some(pattern => matchesLower.includes(pattern));
-
-                let severity = 'success';
-                let severityIcon = '✅';
-                let severityColor = '#10B981';
-                let severityBgColor = '#D1FAE5';
-                let severityTextColor = '#065F46';
-                let dialogTitle = 'Pattern Detected';
-
-                if (hasError) {
-                    severity = 'error';
-                    severityIcon = '🚨';
-                    severityColor = '#DC2626';
-                    severityBgColor = '#FEE2E2';
-                    severityTextColor = '#991B1B';
-                    dialogTitle = 'Error Detected';
-                } else if (hasWarning) {
-                    severity = 'warning';
-                    severityIcon = '⚠️';
-                    severityColor = '#F59E0B';
-                    severityBgColor = '#FEF3C7';
-                    severityTextColor = '#92400E';
-                    dialogTitle = 'Warning Detected';
+                const matchesArray = notification.matches || [];
+                console.log(`🚨 Notification from ${agentId}: Found "${matchesArray.join(', ')}" in ${sourceAgent}`);
+                if (window.SharedRuntimeDialogs) {
+                    window.SharedRuntimeDialogs.renderNotifierToast(notification);
                 }
-
-                // 1. Play Sound (if enabled)
-                if (soundEnabled) {
-                    const audio = new Audio('/static/agent/sounds/notification.wav');
-                    audio.play().catch(e => console.warn("Audio play failed (user interaction needed?):", e));
-                }
-
-                // 2. Show Dialog (Non-modal) with severity-based styling
-                const dialogId = `notification-dialog-${Date.now()}`;
-                const dialogDiv = document.createElement('div');
-                dialogDiv.id = dialogId;
-                dialogDiv.title = `${severityIcon} ${dialogTitle}: ${sourceAgent}`;
-                const outcomeDetailHtml = outcomeDetail
-                    ? `<div style="margin: 10px 0 6px; padding: 8px 12px; background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); border-left: 3px solid ${severityColor}; border-radius: 0 4px 4px 0;">
-                           <p style="margin: 0; font-size: 0.9em; color: #c0c0c0; line-height: 1.4; font-style: italic;">${escapeHtml(outcomeDetail)}</p>
-                       </div>`
-                    : '';
-                dialogDiv.innerHTML = `
-                    <p style="text-align: center; color: ${severityColor}; font-weight: bold; font-size: 1.1em;">
-                        ${dialogTitle}!
-                    </p>
-                    <p><strong>Agent:</strong> ${sourceAgent}</p>
-                    <p><strong>Found:</strong> <span style="background-color: ${severityBgColor}; padding: 2px 5px; border-radius: 3px; color: ${severityTextColor};">${matches}</span></p>
-                    ${outcomeDetailHtml}
-                    <p style="font-size: 0.8em; color: #888;">${timestamp}</p>
-                `;
-                document.body.appendChild(dialogDiv);
-
-                $(dialogDiv).dialog({
-                    modal: false,
-                    width: 350,
-                    resizable: false,
-                    draggable: true,
-                    closeText: "Dismiss",
-                    dialogClass: `notification-dialog-class notification-${severity}`,
-                    buttons: {
-                        "Dismiss": function () {
-                            $(this).dialog("close");
-                        }
-                    },
-                    close: function () {
-                        $(this).dialog("destroy");
-                        dialogDiv.remove();
-                    },
-                    position: { my: "right bottom", at: "right-20 bottom-20", of: window },
-                    open: function () {
-                        $(this).parent().css('border-left', `4px solid ${severityColor}`);
-                    }
-                });
             });
         }
 
@@ -363,119 +285,48 @@ async function sendAskerChoice(agentId, choice) {
 
 /**
  * Escape HTML special characters to prevent injection in template literals.
+ * Thin wrapper over SharedRuntimeDialogs.escapeHtml so existing call sites
+ * keep working.
  * @param {string} str - Raw string
  * @returns {string} HTML-safe string
  */
 function escapeHtml(str) {
+    if (window.SharedRuntimeDialogs) {
+        return window.SharedRuntimeDialogs.escapeHtml(str);
+    }
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
 /**
- * Show the Asker Choice Dialog for a specific agent.
- * Fetches the agent config to display optional legend captions for each path.
- * @param {string} agentId - The canvas ID of the Asker agent
+ * Show the Asker Choice Dialog for a specific canvas Asker agent.
+ * Delegates to shared-runtime-dialogs.js for the actual rendering.
+ * Provides ACP-specific config loading (canvas node configs first, server fallback).
+ * @param {string} agentId - The canvas ID of the Asker agent (e.g., 'asker-1')
  */
-async function showAskerChoiceDialog(agentId) {
-    // If we already submitted a choice for this agent, don't show again
-    if (submittedAskerRequests.has(agentId)) return;
-
-    const dialogId = `asker-dialog-${agentId}`;
-    if (document.getElementById(dialogId)) return; // Dialog already open
-
-    // Fetch config to get legend captions for Path A/B
-    let legendA = '';
-    let legendB = '';
-    try {
-        let config = typeof ACP !== 'undefined' ? ACP.nodeConfigs.get(agentId) : null;
-        if (!config) {
-            const resp = await fetch(`/agent/load_agent_config/${agentId}/`, {
-                headers: getHeaders(),
-                credentials: 'same-origin'
-            });
-            if (resp.ok) {
-                config = await resp.json();
-            }
-        }
-        if (config) {
-            legendA = config.legend_path_a || '';
-            legendB = config.legend_path_b || '';
-        }
-    } catch (err) {
-        console.warn(`--- Could not load config for Asker ${agentId} legends:`, err);
+function showAskerChoiceDialog(agentId) {
+    if (!window.SharedRuntimeDialogs) {
+        console.error('SharedRuntimeDialogs module not loaded; cannot render Asker dialog.');
+        return;
     }
-
-    // Re-check guards after async fetch (another poll cycle may have opened the dialog)
-    if (submittedAskerRequests.has(agentId)) return;
-    if (document.getElementById(dialogId)) return;
-
-    const hasLegends = legendA || legendB;
-    const safeA = escapeHtml(legendA);
-    const safeB = escapeHtml(legendB);
-
-    const dialogDiv = document.createElement('div');
-    dialogDiv.id = dialogId;
-    dialogDiv.title = "User Input Needed";
-    dialogDiv.innerHTML = `
-        <p style="text-align: center; font-size: 1.1em;">
-            <strong>${escapeHtml(agentId)}</strong> needs your input!
-        </p>
-        <p style="text-align: center;">Choose a path to continue:</p>
-        <div style="display: flex; justify-content: space-around; margin-top: 15px; gap: 16px;">
-            <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
-                <button id="btn-choice-a-${agentId}" class="asker-choice-btn" style="background: #EF4444; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Path A</button>
-                ${safeA ? `<p style="margin: 8px 0 0; font-size: 0.85em; color: #ccc; text-align: center; word-wrap: break-word;">${safeA}</p>` : ''}
-            </div>
-            <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
-                <button id="btn-choice-b-${agentId}" class="asker-choice-btn" style="background: #3B82F6; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Path B</button>
-                ${safeB ? `<p style="margin: 8px 0 0; font-size: 0.85em; color: #ccc; text-align: center; word-wrap: break-word;">${safeB}</p>` : ''}
-            </div>
-        </div>
-    `;
-    document.body.appendChild(dialogDiv);
-
-    const $dialog = $(dialogDiv).dialog({
-        modal: false,
-        width: hasLegends ? 420 : 350,
-        resizable: false,
-        draggable: true,
-        closeText: "",
-        dialogClass: "asker-dialog-wrapper",
-        close: function () {
-            $(this).dialog("destroy");
-            dialogDiv.remove();
-        },
-        position: { my: "center", at: "center", of: window },
-        open: function () {
-            $(this).parent().css('border-top', '4px solid #8B5CF6');
+    return window.SharedRuntimeDialogs.renderAskerChoiceDialog({
+        identifier: agentId,
+        sendChoice: sendAskerChoice,
+        loadConfig: async (id) => {
+            let config = typeof ACP !== 'undefined' ? ACP.nodeConfigs.get(id) : null;
+            if (!config) {
+                const resp = await fetch(`/agent/load_agent_config/${id}/`, {
+                    headers: getHeaders(),
+                    credentials: 'same-origin'
+                });
+                if (resp.ok) {
+                    config = await resp.json();
+                }
+            }
+            return config;
         }
     });
-
-    const btnA = document.getElementById(`btn-choice-a-${agentId}`);
-    const btnB = document.getElementById(`btn-choice-b-${agentId}`);
-
-    if (btnA) {
-        btnA.addEventListener('click', () => {
-            submittedAskerRequests.add(agentId);
-            btnA.textContent = "Sending...";
-            btnA.disabled = true;
-            if (btnB) btnB.disabled = true;
-            sendAskerChoice(agentId, 'A');
-            $dialog.dialog("close");
-        });
-    }
-
-    if (btnB) {
-        btnB.addEventListener('click', () => {
-            submittedAskerRequests.add(agentId);
-            btnB.textContent = "Sending...";
-            btnB.disabled = true;
-            if (btnA) btnA.disabled = true;
-            sendAskerChoice(agentId, 'B');
-            $dialog.dialog("close");
-        });
-    }
 }
 
 // ========================================

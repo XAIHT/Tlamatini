@@ -66,6 +66,7 @@ urlpatterns = [
     path('save_session_state/', secure_post(views.save_session_state_view), name='save_session_state'),
     path('clear_session_state/', secure_post(views.clear_session_state_view), name='clear_session_state'),
     path('check_all_agents_status/', secure_get(views.check_all_agents_status_view), name='check_all_agents_status'),
+    path('check_chat_runtimes_status/', secure_get(views.check_chat_runtimes_status_view), name='check_chat_runtimes_status'),
     path('read_agent_log/<str:agent_name>/', secure_get(views.read_agent_log_view), name='read_agent_log'),
     path('restart_agent/<str:agent_name>/', secure_post(views.restart_agent_view), name='restart_agent'),
     path('clear_pos_files/', secure_post(views.clear_pos_files_view), name='clear_pos_files'),

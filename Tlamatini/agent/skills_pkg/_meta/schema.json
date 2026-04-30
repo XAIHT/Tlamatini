@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tlamatini SKILL.md frontmatter",
+  "description": "Schema for the YAML frontmatter of a SKILL.md file. OpenClaw-compatible; the metadata.tlamatini block is Tlamatini-specific.",
+  "type": "object",
+  "required": ["name", "description"],
+  "additionalProperties": true,
+  "properties": {
+    "name":        { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "openclaw": { "type": "object", "additionalProperties": true },
+        "tlamatini": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "runtime": { "type": "string", "enum": ["in-process", "acpx"] },
+            "acpx_agent": { "type": "string" },
+            "requires_tools": { "type": "array", "items": { "type": "string" } },
+            "requires_mcps":  { "type": "array", "items": { "type": "string" } },
+            "budget": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "max_iterations": { "type": "integer", "minimum": 1, "maximum": 256 },
+                "max_seconds":    { "type": "number",  "minimum": 1, "maximum": 7200 },
+                "max_tokens":     { "type": "integer", "minimum": 1, "maximum": 1000000 }
+              }
+            },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "filesystem": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "read":  { "type": "array", "items": { "type": "string" } },
+                    "write": { "type": "array", "items": { "type": "string" } }
+                  }
+                },
+                "shell":   { "type": "array", "items": { "type": "string" } },
+                "network": { "oneOf": [
+                  { "type": "string", "enum": ["allow", "deny"] },
+                  { "type": "array",  "items": { "type": "string" } }
+                ]},
+                "db":      { "oneOf": [
+                  { "type": "string", "enum": ["allow", "deny", "read"] },
+                  { "type": "array",  "items": { "type": "string" } }
+                ]}
+              }
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "type"],
+                "additionalProperties": true,
+                "properties": {
+                  "name":     { "type": "string", "minLength": 1 },
+                  "type":     { "type": "string" },
+                  "required": { "type": "boolean" },
+                  "default":  {},
+                  "values":   { "type": "array" },
+                  "choices":  { "type": "array" },
+                  "description": { "type": "string" }
+                }
+              }
+            },
+            "outputs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "type"],
+                "additionalProperties": true,
+                "properties": {
+                  "name":     { "type": "string", "minLength": 1 },
+                  "type":     { "type": "string" },
+                  "required": { "type": "boolean" },
+                  "description": { "type": "string" }
+                }
+              }
+            },
+            "triggers": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "keywords":   { "type": "array", "items": { "type": "string" } },
+                "file_globs": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -452,6 +452,11 @@ def main():
         f'--add-data=Tlamatini/staticfiles{separator}staticfiles',
         f'--add-data=Tlamatini/agent/config.json{separator}agent',
         f'--add-data=Tlamatini/agent/prompt.pmt{separator}agent',
+        # ACPX skill catalog — every SKILL.md package + its scripts/ + _meta/.
+        # The skill registry (agent/skills/registry.py) discovers SKILL.md
+        # under this tree at runtime; without this --add-data line, frozen
+        # builds would have an empty skill catalog.
+        f'--add-data=Tlamatini/agent/skills_pkg{separator}agent/skills_pkg',
         '--hidden-import=daphne.server', '--hidden-import=channels',
         '--hidden-import=whitenoise.middleware', '--hidden-import=whitenoise.storage',
         '--hidden-import=django_bootstrap5',
@@ -552,6 +557,11 @@ def main():
         optional_dir_copies = {
             Path("Tlamatini") / "agent" / "images": dist_manage / "images",
             Path("Tlamatini") / "agent" / "agents": dist_manage / "agents",
+            # ACPX skill catalog also copied next to the executable, so users
+            # opening the install dir can browse/author skills without
+            # needing to peek inside the PyInstaller bundle. The registry
+            # prefers this directory when present.
+            Path("Tlamatini") / "agent" / "skills_pkg": dist_manage / "agent" / "skills_pkg",
         }
         for src_dir, dst_dir in optional_dir_copies.items():
             if src_dir.exists():

@@ -2794,4 +2794,35 @@ def get_mcp_tools():
     for spec in WRAPPED_CHAT_AGENT_SPECS:
         if global_state.get_state(_tool_status_key(spec.tool_description), 'enabled') == 'enabled':
             tools.append(_build_wrapped_chat_agent_tool(spec))
+
+    # ── ACPX runtime tools ───────────────────────────────────────────
+    # Each tool is independently toggleable through the existing pattern.
+    try:
+        from .acpx import (
+            acp_spawn,
+            acp_send,
+            acp_kill,
+            acp_doctor,
+            list_acp_agents,
+            invoke_skill,
+            list_skills,
+        )
+        if global_state.get_state('tool_acpx-spawn_status', 'enabled') == 'enabled':
+            tools.append(acp_spawn)
+        if global_state.get_state('tool_acpx-send_status', 'enabled') == 'enabled':
+            tools.append(acp_send)
+        if global_state.get_state('tool_acpx-kill_status', 'enabled') == 'enabled':
+            tools.append(acp_kill)
+        if global_state.get_state('tool_acpx-doctor_status', 'enabled') == 'enabled':
+            tools.append(acp_doctor)
+        if global_state.get_state('tool_acpx-list-agents_status', 'enabled') == 'enabled':
+            tools.append(list_acp_agents)
+        if global_state.get_state('tool_acpx-invoke-skill_status', 'enabled') == 'enabled':
+            tools.append(invoke_skill)
+        if global_state.get_state('tool_acpx-list-skills_status', 'enabled') == 'enabled':
+            tools.append(list_skills)
+    except Exception:
+        # Never let an ACPX import error block tool initialization. Log only.
+        logger.exception("[ACPX] failed to register tools")
+
     return tools

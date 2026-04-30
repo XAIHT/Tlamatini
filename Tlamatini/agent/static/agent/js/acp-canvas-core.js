@@ -236,6 +236,13 @@ const AGENT_TYPE_CLASS_MAP = {
     'barrier': 'barrier-agent',
     'j-decompiler': 'jdecompiler-agent',
     'googler': 'googler-agent',
+    // ── ACPX visual node types (added 2026-04-29) ────────────────────
+    // 'skill' nodes invoke a registered SKILL.md package via invoke_skill.
+    // 'acpx' nodes spawn an external coding-agent CLI via acp_spawn.
+    // Both render through the existing canvas-item pipeline; their
+    // gradients live in agentic_control_panel.css.
+    'skill': 'skill-agent',
+    'acpx':  'acpx-agent',
 };
 
 const agentToolIconStyleCache = new Map();

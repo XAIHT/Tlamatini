@@ -314,6 +314,23 @@ class AgentConfig(AppConfig):
                 t2 = threading.Thread(target=run_mcp_files, name="MCPFilesSearchServer", daemon=True)
                 t2.start()
                 global_state.set_state('mcp_files_server_running', True)
+
+            # ── ACPX runtime + skill registry boot ──────────────────
+            # Both of these are best-effort: if ACPX cannot probe a CLI
+            # or the skills package is missing, Django keeps starting.
+            try:
+                from .acpx.service import boot_acpx, boot_skills
+                # Run on a background thread so health-probes don't block startup.
+                def run_acpx_boot():
+                    try:
+                        boot_acpx()
+                        boot_skills()
+                    except Exception:
+                        logging.exception("ACPX/Skills boot failed")
+                threading.Thread(target=run_acpx_boot,
+                                 name="ACPXBoot", daemon=True).start()
+            except Exception:
+                logging.exception("Could not import agent.acpx.service")
         except Exception:
             # Never block Django startup if MCP fails; just log.
             import logging

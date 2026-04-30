@@ -299,6 +299,17 @@ def tool_node(state: NotifierState):
     offsets = state.get('offsets', {})
     search_strings = [s.strip() for s in CONFIG['target'].get('search_strings', '').split(',') if s.strip()]
     source_agents = CONFIG.get('source_agents', [])
+
+    # ONESHOT MODE: When invoked from chat (Multi-Turn), the agent has no
+    # source log to monitor. Fire a single notification from config and exit.
+    if CONFIG['target'].get('mode') == 'oneshot':
+        matches = search_strings or [CONFIG['target'].get('outcome_detail') or 'Notification']
+        logging.critical(f"🚨 ONESHOT NOTIFICATION: {matches}")
+        trigger_frontend_notification(matches, CURRENT_DIR_NAME)
+        # Brief delay so the frontend poller has a chance to pick up the file.
+        time.sleep(1.0)
+        remove_pid_file()
+        sys.exit(0)
     
     if not source_agents:
         logging.warning("⚠️ No source agents configured to monitor.")

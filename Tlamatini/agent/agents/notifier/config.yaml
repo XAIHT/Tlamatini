@@ -3,6 +3,7 @@ llm:
   model: gpt-oss:120b-cloud
   temperature: 0.1
 target:
+  mode: ''
   search_strings: '''demo'' and target.outcome_detail=''The end-to-end multi-turn
     local document demo has finished successfully! Steps completed: File created,
     content extracted, summary generated.'' and target.sound_enabled=true'

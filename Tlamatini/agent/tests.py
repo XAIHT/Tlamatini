@@ -6,8 +6,11 @@ import os
 import re
 import subprocess
 import shutil
+import sys
 import tempfile
+import tempfile as _acpx_tempfile
 from functools import lru_cache
+from pathlib import Path as _AcpxPath
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, call, patch
 
@@ -2500,3 +2503,1483 @@ class MultiTurnToolQuotaTests(TestCase):
             'chat_agent_file_creator',
             MultiTurnToolAgentExecutor._TOOL_ALTERNATIVE_HINT['chat_agent_pythonxer'],
         )
+
+
+# ──────────────────────────────────────────────────────────────────────
+#  ACPX + SKILLS — automated test suite (Django-integrated)
+# ──────────────────────────────────────────────────────────────────────
+# (`_acpx_tempfile` and `_AcpxPath` are imported at the top of the module.)
+
+
+class AcpxConfigDjangoTests(TestCase):
+    def test_default_when_acpx_block_absent(self):
+        from agent.acpx import load_acpx_config, PERMISSION_MODES
+        cfg = load_acpx_config({})
+        self.assertIn(cfg.permission_mode, PERMISSION_MODES)
+        self.assertEqual(cfg.permission_mode, "approve-reads")
+        self.assertEqual(cfg.non_interactive, "deny")
+        self.assertFalse(cfg.plugin_tools_mcp_bridge)
+        self.assertFalse(cfg.openclaw_tools_mcp_bridge)
+        self.assertEqual(cfg.timeout_seconds, 120)
+        self.assertEqual(cfg.mcp_servers, {})
+        self.assertEqual(cfg.agents, {})
+
+    def test_full_override_block(self):
+        from agent.acpx import load_acpx_config
+        cfg = load_acpx_config({"acpx": {
+            "permissionMode": "deny-all",
+            "nonInteractivePermissions": "fail",
+            "timeoutSeconds": 45,
+            "agents": {"claude": {"command": "/tmp/claude.cmd"}},
+            "mcpServers": {
+                "files": {"command": "python", "args": ["-m", "files"], "env": {"X": "1"}}
+            },
+        }})
+        self.assertEqual(cfg.permission_mode, "deny-all")
+        self.assertEqual(cfg.non_interactive, "fail")
+        self.assertEqual(cfg.timeout_seconds, 45)
+        self.assertEqual(cfg.agents["claude"], "/tmp/claude.cmd")
+        self.assertEqual(cfg.mcp_servers["files"].command, "python")
+        self.assertEqual(cfg.mcp_servers["files"].env, {"X": "1"})
+
+    def test_invalid_permission_mode_falls_back_to_approve_reads(self):
+        from agent.acpx import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"permissionMode": "yolo"}})
+        self.assertEqual(cfg.permission_mode, "approve-reads")
+
+    def test_dangerous_flag_is_only_approve_all(self):
+        from agent.acpx.permissions import is_dangerous_config
+        self.assertTrue(is_dangerous_config("approve-all"))
+        self.assertFalse(is_dangerous_config("approve-reads"))
+        self.assertFalse(is_dangerous_config("deny-all"))
+
+
+class AcpxAgentRegistryDjangoTests(TestCase):
+    EXPECTED = {"claude", "cursor", "codex", "copilot", "gemini", "qwen",
+                "pi", "droid", "iflow", "kilocode", "kimi", "kiro", "opencode"}
+
+    def test_default_registry_contains_all_acp_router_ids(self):
+        from agent.acpx import build_agent_registry
+        registry = build_agent_registry()
+        for agent_id in self.EXPECTED:
+            self.assertIn(agent_id, registry)
+
+    def test_default_registry_command_is_lowercase_id_for_most_agents(self):
+        from agent.acpx import DEFAULT_ACP_AGENTS
+        self.assertEqual(DEFAULT_ACP_AGENTS["claude"].command, "claude")
+        self.assertEqual(DEFAULT_ACP_AGENTS["qwen"].command, "qwen-code")
+        self.assertEqual(DEFAULT_ACP_AGENTS["cursor"].command, "cursor-agent")
+
+    def test_user_override_replaces_command_only(self):
+        from agent.acpx import build_agent_registry, DEFAULT_ACP_AGENTS
+        registry = build_agent_registry({"claude": "/usr/local/bin/claude"})
+        self.assertEqual(registry["claude"].command, "/usr/local/bin/claude")
+        self.assertEqual(
+            registry["claude"].args, DEFAULT_ACP_AGENTS["claude"].args
+        )
+
+    def test_user_can_register_brand_new_agent_id(self):
+        from agent.acpx import build_agent_registry
+        registry = build_agent_registry({"my-agent": "/opt/me"})
+        self.assertIn("my-agent", registry)
+        self.assertEqual(registry["my-agent"].command, "/opt/me")
+
+
+class AcpxPermissionGateDjangoTests(TestCase):
+    def test_deny_all_blocks_every_kind(self):
+        from agent.acpx.permissions import Action, PermissionGate
+        gate = PermissionGate("deny-all")
+        for kind in ("fs.read", "fs.write", "shell", "net", "db", "tool"):
+            self.assertFalse(
+                gate.decide(Action(kind, {}), interactive=True).allowed,
+                f"{kind} should be denied",
+            )
+
+    def test_approve_all_allows_every_kind(self):
+        from agent.acpx.permissions import Action, PermissionGate
+        gate = PermissionGate("approve-all")
+        for kind in ("fs.read", "fs.write", "shell", "net", "db", "tool"):
+            self.assertTrue(
+                gate.decide(Action(kind, {}), interactive=False).allowed
+            )
+
+    def test_approve_reads_allows_reads_only_when_non_interactive(self):
+        from agent.acpx.permissions import Action, PermissionGate
+        gate = PermissionGate("approve-reads", "deny")
+        self.assertTrue(gate.decide(Action("fs.read", {}), False).allowed)
+        write_decision = gate.decide(Action("fs.write", {}), False)
+        self.assertFalse(write_decision.allowed)
+
+    def test_approve_reads_prompts_when_interactive(self):
+        from agent.acpx.permissions import Action, PermissionGate
+        gate = PermissionGate("approve-reads", "deny")
+        d = gate.decide(Action("fs.write", {}), interactive=True)
+        self.assertTrue(d.allowed)
+        self.assertTrue(d.needs_prompt)
+
+    def test_non_interactive_fail_emits_failure_reason(self):
+        from agent.acpx.permissions import Action, PermissionGate
+        gate = PermissionGate("approve-reads", "fail")
+        d = gate.decide(Action("shell", {}), interactive=False)
+        self.assertFalse(d.allowed)
+        self.assertIn("fail", d.reason)
+
+
+class AcpxSessionStoreDjangoTests(TestCase):
+    def test_round_trip_persists_record(self):
+        from agent.acpx import FileSessionStore, AcpSessionRecord
+        from agent.acpx.session_store import make_session_id, now_epoch
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            store = FileSessionStore(tmp)
+            sid = make_session_id()
+            rec = AcpSessionRecord(
+                session_id=sid, name="t", agent_id="claude",
+                cwd=tmp, state_path=str(_AcpxPath(tmp) / f"{sid}.json"),
+                transcript_path=str(_AcpxPath(tmp) / f"{sid}.t.ndjson"),
+                pid=None, created_at=now_epoch(), last_active_at=now_epoch(),
+            )
+            store.save(rec)
+            loaded = store.load(sid)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded.agent_id, "claude")
+
+    def test_mark_fresh_blocks_one_load_then_clears_after_save(self):
+        from agent.acpx import FileSessionStore, AcpSessionRecord
+        from agent.acpx.session_store import make_session_id, now_epoch
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            store = FileSessionStore(tmp)
+            sid = make_session_id()
+            rec = AcpSessionRecord(
+                session_id=sid, name="t", agent_id="cursor",
+                cwd=tmp, state_path="", transcript_path="", pid=None,
+                created_at=now_epoch(), last_active_at=now_epoch(),
+            )
+            store.save(rec)
+            store.mark_fresh(sid)
+            self.assertIsNone(store.load(sid))
+            store.save(rec)
+            self.assertIsNotNone(store.load(sid))
+
+    def test_list_all_enumerates_every_record(self):
+        from agent.acpx import FileSessionStore, AcpSessionRecord
+        from agent.acpx.session_store import make_session_id, now_epoch
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            store = FileSessionStore(tmp)
+            for _ in range(4):
+                store.save(AcpSessionRecord(
+                    session_id=make_session_id(), name="x",
+                    agent_id="qwen", cwd=tmp,
+                    state_path="", transcript_path="", pid=None,
+                    created_at=now_epoch(), last_active_at=now_epoch(),
+                ))
+            self.assertEqual(len(store.list_all()), 4)
+
+    def test_session_id_sanitization_blocks_path_traversal(self):
+        from agent.acpx import FileSessionStore
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            store = FileSessionStore(tmp)
+            self.assertIsNone(store.load(""))
+            # _path_for sanitizes traversal chars; the resolved path must
+            # stay inside the state_dir, never escape via "../".
+            unsafe = store._path_for("../../etc/passwd")
+            self.assertEqual(unsafe.parent, _AcpxPath(tmp))
+            self.assertNotIn("..", str(unsafe))
+            # An entirely-invalid id (only sanitizable chars) must raise.
+            with self.assertRaises(ValueError):
+                store._path_for("///")
+
+
+class AcpxRuntimeUnitDjangoTests(TestCase):
+    def test_get_runtime_returns_singleton(self):
+        from agent.acpx import get_acpx_runtime
+        a = get_acpx_runtime()
+        b = get_acpx_runtime()
+        self.assertIs(a, b)
+
+    def test_list_agents_includes_default_registry_with_resolvable_field(self):
+        from agent.acpx import get_acpx_runtime
+        rt = get_acpx_runtime()
+        listing = rt.list_agents()
+        self.assertGreaterEqual(len(listing), 13)
+        for entry in listing:
+            self.assertIn("agent_id", entry)
+            self.assertIn("command", entry)
+            self.assertIn("description", entry)
+            self.assertIn("resolvable", entry)
+            self.assertIsInstance(entry["resolvable"], bool)
+
+    def test_spawn_denied_when_permission_mode_is_deny_all(self):
+        from agent.acpx import AcpxRuntime, AcpxConfig, AcpRuntimeError
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            cfg = AcpxConfig(cwd=tmp, state_dir=tmp,
+                             permission_mode="deny-all")
+            rt = AcpxRuntime(config=cfg)
+            with self.assertRaises(AcpRuntimeError) as cm:
+                rt.spawn(agent_id="claude", task="hi")
+            self.assertEqual(cm.exception.code, "PERMISSION_DENIED")
+
+    def test_spawn_unknown_agent_raises(self):
+        from agent.acpx import AcpxRuntime, AcpxConfig, AcpRuntimeError
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            cfg = AcpxConfig(cwd=tmp, state_dir=tmp)
+            rt = AcpxRuntime(config=cfg)
+            with self.assertRaises(AcpRuntimeError) as cm:
+                rt.spawn(agent_id="not-a-real-agent", task="hi")
+            self.assertEqual(cm.exception.code, "UNKNOWN_AGENT")
+
+    def test_doctor_returns_a_dict_even_without_a_probe_being_called(self):
+        from agent.acpx import AcpxRuntime, AcpxConfig
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            cfg = AcpxConfig(cwd=tmp, state_dir=tmp)
+            rt = AcpxRuntime(config=cfg)
+            report = rt.doctor()
+            self.assertIsInstance(report, dict)
+            self.assertIn("ok", report)
+            self.assertIn("message", report)
+
+
+class AcpxToolEnvelopeTests(TestCase):
+    def test_list_acp_agents_returns_ok_envelope(self):
+        from agent.acpx import list_acp_agents
+        out = json.loads(list_acp_agents.invoke({}))
+        self.assertTrue(out["ok"])
+        self.assertIsInstance(out["agents"], list)
+        self.assertGreaterEqual(len(out["agents"]), 13)
+
+    def test_list_skills_returns_ok_envelope(self):
+        from agent.acpx import list_skills
+        out = json.loads(list_skills.invoke({"filter_keywords": ""}))
+        self.assertTrue(out["ok"])
+        self.assertIsInstance(out["skills"], list)
+        self.assertGreaterEqual(len(out["skills"]), 1)
+
+    def test_invoke_skill_with_unknown_name_returns_failure_envelope(self):
+        from agent.acpx import invoke_skill
+        out = json.loads(invoke_skill.invoke({
+            "skill_name": "no-such-skill", "args_json": "{}"
+        }))
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["code"], "UNKNOWN_SKILL")
+
+    def test_invoke_skill_with_bad_json_returns_failure_envelope(self):
+        from agent.acpx import invoke_skill
+        out = json.loads(invoke_skill.invoke({
+            "skill_name": "hello-world", "args_json": "{not json"
+        }))
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["code"], "BAD_JSON")
+
+    def test_acp_doctor_returns_status_dict(self):
+        from agent.acpx import acp_doctor
+        out = json.loads(acp_doctor.invoke({}))
+        self.assertIn("ok", out)
+        self.assertIn("message", out)
+
+
+class SkillRegistryDjangoTests(TestCase):
+    EXPECTED_NAMES = {
+        "hello-world", "skill-creator", "acp-router",
+        "tlamatini-new-acp-agent", "tlamatini-flow-from-objective",
+        "tlamatini-flw-doctor", "tlamatini-exec-report-row-adder",
+        "tlamatini-planner-trace-replay", "tlamatini-allowed-hosts-tighten",
+        "tlamatini-csrf-exempt-audit", "tlamatini-static-version-bumper",
+        "github", "notion", "jira", "slack", "gmail", "todoist", "trello",
+        "summarize", "weather",
+    }
+
+    def test_registry_loads_all_seed_skills(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        loaded = {s.name for s in skill_registry.all()}
+        for name in self.EXPECTED_NAMES:
+            self.assertIn(name, loaded, f"missing skill: {name}")
+
+    def test_registry_get_returns_none_for_unknown(self):
+        from agent.skills.registry import skill_registry
+        self.assertIsNone(skill_registry.get("does-not-exist"))
+
+    def test_registry_list_filter_is_keyword_AND(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        out = skill_registry.list("notion")
+        names = [s["name"] for s in out]
+        self.assertIn("notion", names)
+        for s in out:
+            hay = (s["name"] + " " + s["description"]).lower()
+            self.assertIn("notion", hay)
+
+    def test_planner_records_have_triggers_and_preview(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        for record in skill_registry.planner_records():
+            self.assertIn("triggers_keywords", record)
+            self.assertIn("triggers_file_globs", record)
+            self.assertIn("body_preview", record)
+            self.assertLessEqual(len(record["body_preview"]), 200)
+
+
+class SkillFrontmatterDjangoTests(TestCase):
+    def test_minimal_skill_parses(self):
+        from agent.skills.frontmatter import parse_skill_md
+        fm, body = parse_skill_md("---\nname: t\ndescription: x\n---\nbody\n")
+        self.assertEqual(fm.name, "t")
+        self.assertEqual(fm.runtime, "in-process")
+        self.assertEqual(body.strip(), "body")
+
+    def test_runtime_acpx_without_agent_raises(self):
+        from agent.skills.frontmatter import parse_skill_md, SkillParseError
+        text = (
+            "---\nname: t\ndescription: x\n"
+            "metadata:\n  tlamatini:\n    runtime: acpx\n"
+            "---\nbody\n"
+        )
+        with self.assertRaises(SkillParseError):
+            parse_skill_md(text)
+
+    def test_runtime_acpx_with_agent_parses(self):
+        from agent.skills.frontmatter import parse_skill_md
+        text = (
+            "---\nname: t\ndescription: x\n"
+            "metadata:\n  tlamatini:\n    runtime: acpx\n    acpx_agent: cursor\n"
+            "---\nbody\n"
+        )
+        fm, _ = parse_skill_md(text)
+        self.assertEqual(fm.runtime, "acpx")
+        self.assertEqual(fm.acpx_agent, "cursor")
+
+    def test_invalid_runtime_value_raises(self):
+        from agent.skills.frontmatter import parse_skill_md, SkillParseError
+        text = (
+            "---\nname: t\ndescription: x\n"
+            "metadata:\n  tlamatini:\n    runtime: telepathy\n"
+            "---\nbody\n"
+        )
+        with self.assertRaises(SkillParseError):
+            parse_skill_md(text)
+
+    def test_missing_frontmatter_raises(self):
+        from agent.skills.frontmatter import parse_skill_md, SkillParseError
+        with self.assertRaises(SkillParseError):
+            parse_skill_md("just body, no frontmatter")
+
+    def test_invalid_yaml_raises(self):
+        from agent.skills.frontmatter import parse_skill_md, SkillParseError
+        with self.assertRaises(SkillParseError):
+            parse_skill_md("---\nname: t\n  : bad\n---\nbody\n")
+
+
+class SkillIoContractDjangoTests(TestCase):
+    def test_required_input_missing_is_a_failure(self):
+        from agent.skills.io_contract import validate_inputs
+        v = validate_inputs([{"name": "x", "type": "string", "required": True}], {})
+        self.assertFalse(v.ok)
+        self.assertEqual(len(v.errors), 1)
+
+    def test_default_applied_when_optional_input_missing(self):
+        from agent.skills.io_contract import validate_inputs
+        v = validate_inputs(
+            [{"name": "x", "type": "string", "default": "fallback"}], {}
+        )
+        self.assertTrue(v.ok)
+        self.assertEqual(v.coerced["x"], "fallback")
+
+    def test_enum_validation_rejects_non_choice(self):
+        from agent.skills.io_contract import validate_inputs
+        decls = [{"name": "k", "type": "enum", "values": ["a", "b"], "required": True}]
+        self.assertTrue(validate_inputs(decls, {"k": "a"}).ok)
+        self.assertFalse(validate_inputs(decls, {"k": "z"}).ok)
+
+    def test_array_type_rejects_non_list(self):
+        from agent.skills.io_contract import validate_inputs
+        decls = [{"name": "xs", "type": "array", "required": True}]
+        self.assertFalse(validate_inputs(decls, {"xs": "not a list"}).ok)
+        self.assertTrue(validate_inputs(decls, {"xs": [1, 2]}).ok)
+
+    def test_string_to_number_coercion(self):
+        from agent.skills.io_contract import validate_inputs
+        decls = [{"name": "n", "type": "number", "required": True}]
+        v = validate_inputs(decls, {"n": "3.14"})
+        self.assertTrue(v.ok)
+        self.assertAlmostEqual(v.coerced["n"], 3.14)
+
+    def test_extra_keys_pass_through(self):
+        from agent.skills.io_contract import validate_inputs
+        v = validate_inputs([], {"opaque": {"a": 1}})
+        self.assertTrue(v.ok)
+        self.assertIn("opaque", v.coerced)
+
+    def test_validate_outputs_required_missing_fails(self):
+        from agent.skills.io_contract import validate_outputs
+        decls = [{"name": "ans", "type": "string", "required": True}]
+        self.assertFalse(validate_outputs(decls, {}).ok)
+        self.assertTrue(validate_outputs(decls, {"ans": "x"}).ok)
+
+    def test_validate_outputs_non_dict_fails(self):
+        from agent.skills.io_contract import validate_outputs
+        v = validate_outputs([{"name": "x", "type": "string"}], "not a dict")
+        self.assertFalse(v.ok)
+
+
+class SkillHarnessDjangoTests(TestCase):
+    def test_invoke_hello_world_returns_ok_envelope(self):
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("hello-world")
+        self.assertIsNotNone(skill)
+        result = SkillHarness(skill).invoke({"who": "tester"})
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["skill"], "hello-world")
+        self.assertEqual(result["runtime"], "in-process")
+        self.assertIn("greeting", result["output"])
+        self.assertIn("audit_id", result)
+        self.assertGreater(result["iterations_used"], 0)
+
+    def test_input_contract_violation_routes_to_failure_envelope(self):
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("tlamatini-allowed-hosts-tighten")
+        result = SkillHarness(skill).invoke({})
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "input_contract_violation")
+        self.assertIn("hosts", result["detail"])
+
+    def test_envelope_includes_permissions_block(self):
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("github")
+        result = SkillHarness(skill).invoke({"action": "list-prs"})
+        self.assertTrue(result["ok"])
+        env = result["output"]["_skill_envelope"]
+        self.assertIn("permissions", env)
+        self.assertIn("requires_tools", env)
+
+    def test_unknown_runtime_fails_cleanly(self):
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import Skill
+        skill = Skill(
+            name="bogus", description="x", runtime="does-not-exist",
+            acpx_agent="", requires_tools=[], requires_mcps=[],
+            max_iterations=2, max_seconds=5, max_tokens=1000,
+            permissions={}, inputs=[], outputs=[],
+            triggers_keywords=[], triggers_file_globs=[],
+            body="body", body_sha256="x",
+            skill_dir=_AcpxPath("."), skill_md_path=_AcpxPath("."),
+            frontmatter_json="{}", last_loaded_at=0.0,
+        )
+        result = SkillHarness(skill).invoke({})
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "runtime_error")
+
+    def test_budget_max_iterations_zero_raises(self):
+        from agent.skills.harness import Budget, BudgetExceeded
+        b = Budget(max_iterations=0, max_seconds=60, max_tokens=1000)
+        with self.assertRaises(BudgetExceeded):
+            b.tick_iteration()
+
+    def test_audit_log_writes_open_and_close(self):
+        from agent.skills.harness import SkillAuditLog
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            audit = SkillAuditLog(
+                skill_name="t", user_id=1, base_dir=_AcpxPath(tmp)
+            )
+            audit.write({"event": "hello"})
+            audit.close()
+            files = list(_AcpxPath(tmp).rglob("*.ndjson"))
+            self.assertEqual(len(files), 1)
+            content = files[0].read_text(encoding="utf-8")
+            self.assertIn("audit_open", content)
+            self.assertIn("hello", content)
+            self.assertIn("audit_close", content)
+
+
+class SkillMigrationSeedTests(TestCase):
+    def test_seven_acpx_tool_rows_seeded(self):
+        from agent.models import Tool
+        names = set(Tool.objects.values_list("toolName", flat=True))
+        for expected in (
+            "acpx-spawn", "acpx-send", "acpx-kill", "acpx-doctor",
+            "acpx-list-agents", "acpx-invoke-skill", "acpx-list-skills",
+        ):
+            self.assertIn(expected, names)
+
+    def test_acp_agent_table_exists(self):
+        from agent.models import AcpAgent
+        self.assertEqual(AcpAgent.objects.filter(agent_id="__nope__").count(), 0)
+
+    def test_skill_table_exists(self):
+        from agent.models import Skill as SkillRow
+        self.assertEqual(SkillRow.objects.filter(name="__nope__").count(), 0)
+
+    def test_acp_session_table_exists(self):
+        from agent.models import AcpSession
+        self.assertEqual(AcpSession.objects.filter(session_uuid="x").count(), 0)
+
+    def test_skill_invocation_table_exists(self):
+        from agent.models import SkillInvocation
+        self.assertEqual(SkillInvocation.objects.filter(skill_name="x").count(), 0)
+
+
+class AcpxToolsRegistrationTests(TestCase):
+    def setUp(self):
+        from agent.global_state import global_state
+        for key in (
+            "tool_acpx-spawn_status", "tool_acpx-send_status",
+            "tool_acpx-kill_status", "tool_acpx-doctor_status",
+            "tool_acpx-list-agents_status", "tool_acpx-invoke-skill_status",
+            "tool_acpx-list-skills_status",
+        ):
+            global_state.set_state(key, "enabled")
+
+    def test_get_mcp_tools_includes_all_seven_acpx_tools(self):
+        from agent.tools import get_mcp_tools
+        names = {t.name for t in get_mcp_tools()}
+        for expected in (
+            "acp_spawn", "acp_send", "acp_kill", "acp_doctor",
+            "list_acp_agents", "invoke_skill", "list_skills",
+        ):
+            self.assertIn(expected, names)
+
+    def test_get_mcp_tools_drops_a_disabled_acpx_tool(self):
+        from agent.global_state import global_state
+        from agent.tools import get_mcp_tools
+        global_state.set_state("tool_acpx-spawn_status", "disabled")
+        try:
+            names = {t.name for t in get_mcp_tools()}
+            self.assertNotIn("acp_spawn", names)
+            for expected in (
+                "acp_send", "acp_kill", "acp_doctor",
+                "list_acp_agents", "invoke_skill", "list_skills",
+            ):
+                self.assertIn(expected, names)
+        finally:
+            global_state.set_state("tool_acpx-spawn_status", "enabled")
+
+
+class AcpxLintCommandTests(TestCase):
+    def test_lint_command_emits_json_with_all_ok(self):
+        from io import StringIO
+        from django.core.management import call_command
+        out = StringIO()
+        with self.assertRaises(SystemExit) as cm:
+            call_command("acpx_lint", "--json", stdout=out)
+        self.assertEqual(cm.exception.code, 0)
+        report = json.loads(out.getvalue().strip())
+        self.assertTrue(report["ok"])
+        self.assertGreaterEqual(report["total"], 20)
+        for row in report["rows"]:
+            self.assertTrue(row["ok"], f"failing row: {row}")
+
+
+class AcpxCanvasContractTests(TestCase):
+    JS_PATH = _AcpxPath(__file__).resolve().parent / "static" / "agent" / "js" / "acp-canvas-core.js"
+    CSS_PATH = _AcpxPath(__file__).resolve().parent / "static" / "agent" / "css" / "agentic_control_panel.css"
+
+    def test_classmap_has_skill_and_acpx(self):
+        text = self.JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("'skill': 'skill-agent'", text)
+        self.assertIn("'acpx':  'acpx-agent'", text)
+
+    def test_css_has_skill_agent_block(self):
+        text = self.CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".canvas-item.skill-agent", text)
+        self.assertIn(".canvas-item.skill-agent:hover", text)
+
+    def test_css_has_acpx_agent_block(self):
+        text = self.CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".canvas-item.acpx-agent", text)
+        self.assertIn(".canvas-item.acpx-agent:hover", text)
+
+
+class AcpxModelsTests(TestCase):
+    def test_acpagent_round_trip(self):
+        from agent.models import AcpAgent
+        AcpAgent.objects.create(
+            agent_id="z", command="zsh", description="d",
+            enabled=True, healthy=False,
+        )
+        row = AcpAgent.objects.get(agent_id="z")
+        self.assertEqual(row.command, "zsh")
+        self.assertFalse(row.healthy)
+
+    def test_skill_row_round_trip(self):
+        from agent.models import Skill as SkillRow
+        SkillRow.objects.create(
+            name="x", description="d", runtime="in-process",
+            frontmatter_json="{}", body_sha256="abc",
+        )
+        row = SkillRow.objects.get(name="x")
+        self.assertEqual(row.runtime, "in-process")
+
+    def test_acpsession_user_fk_is_nullable(self):
+        from agent.models import AcpSession
+        s = AcpSession.objects.create(
+            session_uuid="abcd", agent_id="claude", cwd="/tmp",
+        )
+        self.assertIsNone(s.user)
+
+    def test_skillinvocation_links_to_acpsession(self):
+        from agent.models import AcpSession, SkillInvocation
+        s = AcpSession.objects.create(session_uuid="link", agent_id="cursor")
+        inv = SkillInvocation.objects.create(
+            skill_name="t", args_json="{}", acp_session=s,
+        )
+        self.assertEqual(s.skill_invocations.count(), 1)
+        self.assertEqual(inv.acp_session.agent_id, "cursor")
+
+
+class AcpxRouterSkillTests(TestCase):
+    def test_acp_router_inputs_cover_all_default_agents(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("acp-router")
+        self.assertIsNotNone(skill)
+        harness_input = next(
+            (d for d in skill.inputs if d.get("name") == "harness"), None
+        )
+        self.assertIsNotNone(harness_input)
+        self.assertEqual(harness_input["type"], "enum")
+        for agent_id in (
+            "claude", "cursor", "codex", "copilot", "gemini",
+            "qwen", "pi", "droid", "iflow", "kilocode", "kimi", "kiro", "opencode",
+        ):
+            self.assertIn(agent_id, harness_input["values"])
+
+
+class HelloWorldSkillTests(TestCase):
+    def test_hello_world_is_in_process_runtime(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("hello-world")
+        self.assertEqual(skill.runtime, "in-process")
+        self.assertEqual(skill.requires_tools, [])
+        self.assertEqual(skill.requires_mcps, [])
+
+    def test_hello_world_default_who_is_world(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("hello-world")
+        who = next((d for d in skill.inputs if d["name"] == "who"), None)
+        self.assertIsNotNone(who)
+        self.assertEqual(who.get("default"), "world")
+
+    def test_hello_world_declares_greeting_output(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("hello-world")
+        names = [d["name"] for d in skill.outputs]
+        self.assertIn("greeting", names)
+
+
+# ──────────────────────────────────────────────────────────────────────
+#  ACPX config — DEEP per-parameter coverage in both source and frozen modes
+# ──────────────────────────────────────────────────────────────────────
+class AcpxConfigParameterCoverageTests(TestCase):
+    """
+    Every single parameter in the documented `acpx` block, tested twice:
+    once for its DEFAULT value (when the key is absent) and once for an
+    explicit OVERRIDE through `load_acpx_config`. This is the per-key
+    contract test the user asked for ("very complete tests for each
+    parameter in the config").
+    """
+
+    # ── cwd ────────────────────────────────────────────────────────
+    def test_cwd_default_is_process_cwd(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertTrue(cfg.cwd)  # never empty
+        self.assertTrue(_AcpxPath(cfg.cwd).is_absolute() or
+                        _AcpxPath(cfg.cwd).expanduser().is_absolute())
+
+    def test_cwd_override_honored(self):
+        from agent.acpx.config import load_acpx_config
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            cfg = load_acpx_config({"acpx": {"cwd": tmp}})
+            self.assertEqual(cfg.cwd, tmp)
+
+    # ── stateDir ───────────────────────────────────────────────────
+    def test_state_dir_default_is_user_home_tlamatini(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertIn(".tlamatini", cfg.state_dir)
+        self.assertIn("acpx-state", cfg.state_dir)
+
+    def test_state_dir_override_creates_directory(self):
+        from agent.acpx.config import load_acpx_config
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            target = _AcpxPath(tmp) / "custom-state"
+            cfg = load_acpx_config({"acpx": {"stateDir": str(target)}})
+            self.assertEqual(cfg.state_dir, str(target))
+            self.assertTrue(target.exists())
+
+    # ── probeAgent ─────────────────────────────────────────────────
+    def test_probe_agent_default_is_none(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertIsNone(cfg.probe_agent)
+
+    def test_probe_agent_override_honored(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"probeAgent": "claude"}})
+        self.assertEqual(cfg.probe_agent, "claude")
+
+    # ── permissionMode (3-mode matrix) ──────────────────────────────
+    def test_permission_mode_default_is_approve_reads(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertEqual(cfg.permission_mode, "approve-reads")
+
+    def test_permission_mode_approve_all_accepted_but_dangerous(self):
+        from agent.acpx.config import load_acpx_config
+        from agent.acpx.permissions import is_dangerous_config
+        cfg = load_acpx_config({"acpx": {"permissionMode": "approve-all"}})
+        self.assertEqual(cfg.permission_mode, "approve-all")
+        self.assertTrue(is_dangerous_config(cfg.permission_mode))
+
+    def test_permission_mode_deny_all_accepted(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"permissionMode": "deny-all"}})
+        self.assertEqual(cfg.permission_mode, "deny-all")
+
+    def test_permission_mode_invalid_falls_back_to_default(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"permissionMode": "yolo"}})
+        self.assertEqual(cfg.permission_mode, "approve-reads")
+
+    # ── nonInteractivePermissions ──────────────────────────────────
+    def test_non_interactive_default_is_deny(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertEqual(cfg.non_interactive, "deny")
+
+    def test_non_interactive_fail_accepted(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"nonInteractivePermissions": "fail"}})
+        self.assertEqual(cfg.non_interactive, "fail")
+
+    def test_non_interactive_invalid_falls_back_to_deny(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"nonInteractivePermissions": "ignore"}})
+        self.assertEqual(cfg.non_interactive, "deny")
+
+    # ── timeoutSeconds ─────────────────────────────────────────────
+    def test_timeout_default_is_120(self):
+        from agent.acpx.config import load_acpx_config, DEFAULT_TIMEOUT_SECONDS
+        cfg = load_acpx_config({})
+        self.assertEqual(cfg.timeout_seconds, DEFAULT_TIMEOUT_SECONDS)
+        self.assertEqual(cfg.timeout_seconds, 120)
+
+    def test_timeout_override_honored(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"timeoutSeconds": 45.5}})
+        self.assertEqual(cfg.timeout_seconds, 45.5)
+
+    def test_timeout_invalid_string_falls_back(self):
+        from agent.acpx.config import load_acpx_config
+        # "0" is falsy → coerced to default
+        cfg = load_acpx_config({"acpx": {"timeoutSeconds": 0}})
+        self.assertEqual(cfg.timeout_seconds, 120)
+
+    # ── pluginToolsMcpBridge / openClawToolsMcpBridge ──────────────
+    def test_plugin_tools_bridge_default_off(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertFalse(cfg.plugin_tools_mcp_bridge)
+
+    def test_plugin_tools_bridge_can_be_turned_on(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"pluginToolsMcpBridge": True}})
+        self.assertTrue(cfg.plugin_tools_mcp_bridge)
+
+    def test_openclaw_tools_bridge_default_off(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertFalse(cfg.openclaw_tools_mcp_bridge)
+
+    def test_openclaw_tools_bridge_can_be_turned_on(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"openClawToolsMcpBridge": True}})
+        self.assertTrue(cfg.openclaw_tools_mcp_bridge)
+
+    # ── strictWindowsCmdWrapper (legacy compatibility flag) ─────────
+    def test_strict_windows_wrapper_default_off(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertFalse(cfg.strict_windows_cmd_wrapper)
+
+    def test_strict_windows_wrapper_accepted(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"strictWindowsCmdWrapper": True}})
+        self.assertTrue(cfg.strict_windows_cmd_wrapper)
+
+    # ── mcpServers ─────────────────────────────────────────────────
+    def test_mcp_servers_default_empty(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertEqual(cfg.mcp_servers, {})
+
+    def test_mcp_servers_full_entry_parsed(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"mcpServers": {
+            "files": {"command": "python", "args": ["-m", "f"], "env": {"K": "V"}}
+        }}})
+        self.assertIn("files", cfg.mcp_servers)
+        spec = cfg.mcp_servers["files"]
+        self.assertEqual(spec.command, "python")
+        self.assertEqual(spec.args, ["-m", "f"])
+        self.assertEqual(spec.env, {"K": "V"})
+
+    def test_mcp_servers_missing_command_skipped(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"mcpServers": {
+            "bogus": {"args": ["only", "args"]}
+        }}})
+        self.assertNotIn("bogus", cfg.mcp_servers)
+
+    def test_mcp_servers_non_dict_value_skipped(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"mcpServers": {
+            "scalar": "string-not-a-dict"
+        }}})
+        self.assertEqual(cfg.mcp_servers, {})
+
+    # ── agents (per-id command override) ────────────────────────────
+    def test_agents_default_empty(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertEqual(cfg.agents, {})
+
+    def test_agents_override_honored(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"agents": {
+            "claude": {"command": "/usr/local/bin/claude"}
+        }}})
+        self.assertEqual(cfg.agents["claude"], "/usr/local/bin/claude")
+
+    def test_agents_missing_command_skipped(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"agents": {"x": {}}}})
+        self.assertNotIn("x", cfg.agents)
+
+    def test_agents_non_dict_value_skipped(self):
+        from agent.acpx.config import load_acpx_config
+        cfg = load_acpx_config({"acpx": {"agents": {"x": 42}}})
+        self.assertEqual(cfg.agents, {})
+
+
+class AcpxConfigSourceModeTests(TestCase):
+    """The on-disk source-tree config.json contains the documented `acpx` block."""
+
+    SOURCE_CONFIG = (_AcpxPath(__file__).resolve().parent / "config.json")
+
+    def test_source_config_json_has_acpx_block(self):
+        text = self.SOURCE_CONFIG.read_text(encoding="utf-8")
+        data = json.loads(text)
+        self.assertIn("acpx", data)
+        self.assertIsInstance(data["acpx"], dict)
+
+    def test_source_config_acpx_documents_every_key(self):
+        text = self.SOURCE_CONFIG.read_text(encoding="utf-8")
+        data = json.loads(text)
+        for key in (
+            "cwd", "stateDir", "probeAgent", "permissionMode",
+            "nonInteractivePermissions", "timeoutSeconds",
+            "pluginToolsMcpBridge", "openClawToolsMcpBridge",
+            "strictWindowsCmdWrapper", "mcpServers", "agents",
+        ):
+            self.assertIn(key, data["acpx"], f"missing acpx.{key}")
+
+    def test_source_config_safe_defaults_in_acpx_block(self):
+        data = json.loads(self.SOURCE_CONFIG.read_text(encoding="utf-8"))
+        self.assertEqual(data["acpx"]["permissionMode"], "approve-reads")
+        self.assertEqual(data["acpx"]["nonInteractivePermissions"], "deny")
+        self.assertFalse(data["acpx"]["pluginToolsMcpBridge"])
+        self.assertFalse(data["acpx"]["openClawToolsMcpBridge"])
+        self.assertEqual(data["acpx"]["timeoutSeconds"], 120)
+        self.assertEqual(data["acpx"]["mcpServers"], {})
+        self.assertEqual(data["acpx"]["agents"], {})
+
+    def test_source_config_section_keys_present_for_documentation(self):
+        data = json.loads(self.SOURCE_CONFIG.read_text(encoding="utf-8"))
+        for key in ("_section_acpx", "_section_acpx_skills",
+                    "_section_acpx_tools", "_acpx_doc_url"):
+            self.assertIn(key, data, f"missing documentation key: {key}")
+
+    def test_source_config_acpx_keys_have_documentation_siblings(self):
+        data = json.loads(self.SOURCE_CONFIG.read_text(encoding="utf-8"))
+        block = data["acpx"]
+        for key in ("cwd", "stateDir", "probeAgent", "permissionMode",
+                    "nonInteractivePermissions", "timeoutSeconds",
+                    "pluginToolsMcpBridge", "openClawToolsMcpBridge",
+                    "strictWindowsCmdWrapper", "mcpServers", "agents"):
+            comment_key = f"_acpx_{key}_comment"
+            self.assertIn(comment_key, block,
+                          f"missing inline doc for acpx.{key}")
+            self.assertGreater(len(block[comment_key]), 20)
+
+
+class AcpxConfigDynamicGenerationTests(TestCase):
+    """
+    `ensure_acpx_block_in_config_json()` self-heals legacy config files
+    that pre-date the ACPX rollout. Tests cover BOTH modes:
+        - frozen (`sys.frozen=True`, executable next to config.json)
+        - source (default Python module layout)
+    """
+
+    def _legacy_config(self) -> dict:
+        # A typical pre-ACPX config.json snapshot. Note: NO `acpx` key.
+        return {
+            "_comment": "Legacy config",
+            "embeding-model": "qwen3-embedding:8b",
+            "chained-model": "glm-5.1:cloud",
+            "ollama_base_url": "http://127.0.0.1:11434",
+            "enable_unified_agent": True,
+            "_section_misc": "Miscellaneous Settings",
+            "load_hidden": True,
+        }
+
+    def _write_config(self, tmp: _AcpxPath, payload: dict) -> _AcpxPath:
+        target = tmp / "config.json"
+        target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        return target
+
+    def test_backfill_appends_acpx_block_when_absent(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            target = self._write_config(tmp, self._legacy_config())
+            self.assertTrue(ensure_acpx_block_in_config_json(config_path=target))
+            data = json.loads(target.read_text(encoding="utf-8"))
+            self.assertIn("acpx", data)
+            self.assertEqual(data["acpx"]["permissionMode"], "approve-reads")
+
+    def test_backfill_preserves_every_existing_key_in_order(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        legacy = self._legacy_config()
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            target = self._write_config(tmp, legacy)
+            ensure_acpx_block_in_config_json(config_path=target)
+            data = json.loads(target.read_text(encoding="utf-8"))
+            # Original keys retained in the same order at the top
+            original_keys = list(legacy.keys())
+            new_keys = list(data.keys())
+            self.assertEqual(new_keys[:len(original_keys)], original_keys)
+
+    def test_backfill_is_idempotent_when_acpx_already_present(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            payload = self._legacy_config()
+            payload["acpx"] = {"permissionMode": "deny-all"}
+            target = self._write_config(tmp, payload)
+            self.assertFalse(
+                ensure_acpx_block_in_config_json(config_path=target)
+            )
+            data = json.loads(target.read_text(encoding="utf-8"))
+            # User customization preserved
+            self.assertEqual(data["acpx"]["permissionMode"], "deny-all")
+
+    def test_backfill_overwrite_replaces_existing_block(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            payload = self._legacy_config()
+            payload["acpx"] = {"permissionMode": "deny-all"}
+            target = self._write_config(tmp, payload)
+            self.assertTrue(
+                ensure_acpx_block_in_config_json(
+                    config_path=target, overwrite=True
+                )
+            )
+            data = json.loads(target.read_text(encoding="utf-8"))
+            self.assertEqual(data["acpx"]["permissionMode"], "approve-reads")
+
+    def test_backfill_silent_no_op_when_file_missing(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            target = _AcpxPath(raw_tmp) / "absent.json"
+            self.assertFalse(
+                ensure_acpx_block_in_config_json(config_path=target)
+            )
+
+    def test_backfill_silent_no_op_when_file_is_invalid_json(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            target = _AcpxPath(raw_tmp) / "config.json"
+            target.write_text("not json at all", encoding="utf-8")
+            self.assertFalse(
+                ensure_acpx_block_in_config_json(config_path=target)
+            )
+
+    def test_backfill_silent_no_op_when_file_is_a_list(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            target = _AcpxPath(raw_tmp) / "config.json"
+            target.write_text("[1, 2, 3]", encoding="utf-8")
+            self.assertFalse(
+                ensure_acpx_block_in_config_json(config_path=target)
+            )
+
+    def test_backfill_writes_atomically_via_temp_file(self):
+        from agent.acpx.config import ensure_acpx_block_in_config_json
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            target = self._write_config(tmp, self._legacy_config())
+            ensure_acpx_block_in_config_json(config_path=target)
+            # No leftover .tmp sidecar should remain after success
+            siblings = [p.name for p in tmp.iterdir()]
+            self.assertNotIn("config.json.tmp", siblings)
+
+    def test_default_block_value_matches_loaded_acpxconfig(self):
+        from agent.acpx.config import (
+            DEFAULT_ACPX_CONFIG_BLOCK,
+            load_acpx_config,
+        )
+        # The user-facing JSON defaults must produce the same AcpxConfig as
+        # `load_acpx_config({})` — i.e. the documented defaults are *the*
+        # defaults the runtime uses when the block is absent.
+        cfg_from_block = load_acpx_config({"acpx": dict(DEFAULT_ACPX_CONFIG_BLOCK)})
+        cfg_from_empty = load_acpx_config({})
+        self.assertEqual(cfg_from_block.permission_mode, cfg_from_empty.permission_mode)
+        self.assertEqual(cfg_from_block.non_interactive, cfg_from_empty.non_interactive)
+        self.assertEqual(cfg_from_block.timeout_seconds, cfg_from_empty.timeout_seconds)
+        self.assertEqual(cfg_from_block.plugin_tools_mcp_bridge,
+                         cfg_from_empty.plugin_tools_mcp_bridge)
+        self.assertEqual(cfg_from_block.openclaw_tools_mcp_bridge,
+                         cfg_from_empty.openclaw_tools_mcp_bridge)
+        self.assertEqual(cfg_from_block.mcp_servers, cfg_from_empty.mcp_servers)
+        self.assertEqual(cfg_from_block.agents, cfg_from_empty.agents)
+
+
+class AcpxConfigFrozenModePathTests(TestCase):
+    """
+    Frozen-mode resolution: when sys.frozen is True, find_config_json_path
+    looks next to sys.executable; load_tlamatini_config_json reads from
+    there; the skill registry adds <install-dir>/agent/skills_pkg/ as a
+    root if it exists. These tests fake sys.frozen / sys.executable to
+    exercise that branch without actually building a PyInstaller bundle.
+    """
+
+    def test_find_config_json_path_uses_executable_dir_when_frozen(self):
+        from agent.acpx import config as acpx_config
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            fake_exe = tmp / "manage.exe"
+            fake_exe.write_text("", encoding="utf-8")
+            target_config = tmp / "config.json"
+            target_config.write_text("{}", encoding="utf-8")
+            with patch.object(sys, "frozen", True, create=True), \
+                 patch.object(sys, "executable", str(fake_exe)):
+                resolved = acpx_config.find_config_json_path()
+            self.assertEqual(resolved, target_config)
+
+    def test_load_tlamatini_config_json_in_frozen_mode_reads_install_dir(self):
+        from agent.acpx import config as acpx_config
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            fake_exe = tmp / "manage.exe"
+            fake_exe.write_text("", encoding="utf-8")
+            payload = {
+                "acpx": {
+                    "permissionMode": "deny-all",
+                    "timeoutSeconds": 90,
+                }
+            }
+            (tmp / "config.json").write_text(
+                json.dumps(payload), encoding="utf-8"
+            )
+            with patch.object(sys, "frozen", True, create=True), \
+                 patch.object(sys, "executable", str(fake_exe)):
+                loaded = acpx_config.load_tlamatini_config_json()
+            self.assertEqual(loaded["acpx"]["permissionMode"], "deny-all")
+            self.assertEqual(loaded["acpx"]["timeoutSeconds"], 90)
+
+    def test_skill_registry_picks_up_install_dir_skills_pkg_in_frozen_mode(self):
+        # Drop a single SKILL.md into a fake install dir and verify the
+        # registry picks it up as an extra root in frozen mode.
+        from agent.skills.registry import SkillRegistry
+        with _acpx_tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = _AcpxPath(raw_tmp)
+            fake_exe = tmp / "manage.exe"
+            fake_exe.write_text("", encoding="utf-8")
+            skills_root = tmp / "agent" / "skills_pkg" / "frozen_only"
+            skills_root.mkdir(parents=True)
+            (skills_root / "SKILL.md").write_text(
+                "---\nname: frozen-only\ndescription: marker\n---\nbody\n",
+                encoding="utf-8",
+            )
+            with patch.object(sys, "frozen", True, create=True), \
+                 patch.object(sys, "executable", str(fake_exe)):
+                registry = SkillRegistry()
+                registry.reload()
+            self.assertIn("frozen-only", {s.name for s in registry.all()})
+
+
+class AcpxConfigBuildPipelineTests(TestCase):
+    """The PyInstaller / install-time pipeline bundles config.json + skills."""
+
+    BUILD_PY = (_AcpxPath(__file__).resolve().parents[2] / "build.py")
+
+    def test_build_py_bundles_skills_pkg_via_add_data(self):
+        text = self.BUILD_PY.read_text(encoding="utf-8")
+        # The PyInstaller --add-data line for skills_pkg into the bundle
+        self.assertIn("Tlamatini/agent/skills_pkg", text)
+        self.assertIn("agent/skills_pkg", text)
+
+    def test_build_py_post_build_copies_skills_pkg_next_to_exe(self):
+        text = self.BUILD_PY.read_text(encoding="utf-8")
+        # The post-build copy that places skills_pkg into <install-dir>/agent/
+        self.assertIn('"skills_pkg"', text)
+
+    def test_build_py_bundles_config_json(self):
+        text = self.BUILD_PY.read_text(encoding="utf-8")
+        self.assertIn("Tlamatini/agent/config.json", text)
+
+
+class AcpxConfigDocumentedDefaultsConsistencyTests(TestCase):
+    """
+    The documented DEFAULT_ACPX_CONFIG_BLOCK in agent/acpx/config.py is the
+    SAME default vector that load_acpx_config({}) yields. If they ever
+    diverge, users editing config.json would see a different runtime
+    behavior than the documentation claims.
+    """
+
+    def test_default_block_permission_mode_matches_runtime_default(self):
+        from agent.acpx.config import DEFAULT_ACPX_CONFIG_BLOCK, load_acpx_config
+        self.assertEqual(
+            DEFAULT_ACPX_CONFIG_BLOCK["permissionMode"],
+            load_acpx_config({}).permission_mode,
+        )
+
+    def test_default_block_non_interactive_matches_runtime_default(self):
+        from agent.acpx.config import DEFAULT_ACPX_CONFIG_BLOCK, load_acpx_config
+        self.assertEqual(
+            DEFAULT_ACPX_CONFIG_BLOCK["nonInteractivePermissions"],
+            load_acpx_config({}).non_interactive,
+        )
+
+    def test_default_block_timeout_matches_runtime_default(self):
+        from agent.acpx.config import DEFAULT_ACPX_CONFIG_BLOCK, load_acpx_config
+        self.assertEqual(
+            DEFAULT_ACPX_CONFIG_BLOCK["timeoutSeconds"],
+            load_acpx_config({}).timeout_seconds,
+        )
+
+    def test_default_block_bridges_match_runtime_default(self):
+        from agent.acpx.config import DEFAULT_ACPX_CONFIG_BLOCK, load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertEqual(
+            DEFAULT_ACPX_CONFIG_BLOCK["pluginToolsMcpBridge"],
+            cfg.plugin_tools_mcp_bridge,
+        )
+        self.assertEqual(
+            DEFAULT_ACPX_CONFIG_BLOCK["openClawToolsMcpBridge"],
+            cfg.openclaw_tools_mcp_bridge,
+        )
+
+    def test_default_block_servers_and_agents_match_runtime_default(self):
+        from agent.acpx.config import DEFAULT_ACPX_CONFIG_BLOCK, load_acpx_config
+        cfg = load_acpx_config({})
+        self.assertEqual(DEFAULT_ACPX_CONFIG_BLOCK["mcpServers"], cfg.mcp_servers)
+        self.assertEqual(DEFAULT_ACPX_CONFIG_BLOCK["agents"], cfg.agents)
+
+    def test_default_block_keys_match_documented_keys(self):
+        # Every parameter the user sees in the JSON must appear in the
+        # AcpxConfig dataclass via load_acpx_config (otherwise it's a
+        # dead documented key).
+        from agent.acpx.config import DEFAULT_ACPX_CONFIG_BLOCK, load_acpx_config
+        load_acpx_config({"acpx": dict(DEFAULT_ACPX_CONFIG_BLOCK)})
+        for key in (
+            "cwd", "stateDir", "probeAgent", "permissionMode",
+            "nonInteractivePermissions", "timeoutSeconds",
+            "pluginToolsMcpBridge", "openClawToolsMcpBridge",
+            "strictWindowsCmdWrapper", "mcpServers", "agents",
+        ):
+            self.assertIn(key, DEFAULT_ACPX_CONFIG_BLOCK,
+                          f"DEFAULT_ACPX_CONFIG_BLOCK missing {key}")
+
+
+# ============================================================
+# CHAT RUNTIME ASKER / NOTIFIER GUI BRIDGE TESTS
+# ============================================================
+# These tests pin the contract that lets the chat page (agent_page.html)
+# show the same Asker A/B dialog and Notifier toast that ACP shows, but
+# for agents launched inside _chat_runs_/ via Multi-Turn.
+
+class ChatRuntimeStatusViewTests(TestCase):
+    """End-to-end coverage of /agent/check_chat_runtimes_status/."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='chatrun', password='secret123')
+        self.client.force_login(self.user)
+        # Point the chat-runtime root at a temp directory we control. The
+        # view resolves _get_chat_runtime_root_path() at call time, so the
+        # patch only needs to cover the request.
+        self._tmp = tempfile.mkdtemp(prefix='chat_runtime_test_')
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _make_runtime(self, name, *, status=None, notification=None, pid=None):
+        runtime_dir = os.path.join(self._tmp, name)
+        os.makedirs(runtime_dir, exist_ok=True)
+        if status is not None:
+            with open(os.path.join(runtime_dir, 'agent.status'), 'w') as f:
+                f.write(status)
+        if notification is not None:
+            with open(os.path.join(runtime_dir, 'notification.json'), 'w', encoding='utf-8') as f:
+                json.dump(notification, f)
+        if pid is not None:
+            with open(os.path.join(runtime_dir, 'agent.pid'), 'w') as f:
+                f.write(str(pid))
+        return runtime_dir
+
+    def test_asker_waiting_status_is_surfaced(self):
+        self._make_runtime('asker_001_a1b2c3d4', status='waiting_for_user_input')
+        with patch('agent.views._get_chat_runtime_root_path', return_value=self._tmp):
+            response = self.client.get(reverse('check_chat_runtimes_status'))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertTrue(data['success'])
+        self.assertIn('asker_001_a1b2c3d4', data['runtimes'])
+        self.assertEqual(data['runtimes']['asker_001_a1b2c3d4']['status'], 'waiting_for_user_input')
+
+    def test_notifier_payload_is_surfaced_and_then_consumed(self):
+        notif_payload = {
+            'type': 'notifier_alert',
+            'matches': ['BUILD DONE'],
+            'source_agent': 'notifier_002_aaaa1111',
+            'sound_enabled': True,
+            'outcome_detail': 'Build finished',
+            'timestamp': 12345.0,
+        }
+        runtime_dir = self._make_runtime('notifier_002_aaaa1111', notification=notif_payload)
+        with patch('agent.views._get_chat_runtime_root_path', return_value=self._tmp):
+            first = self.client.get(reverse('check_chat_runtimes_status'))
+            self.assertEqual(first.status_code, 200)
+            first_data = json.loads(first.content)
+            self.assertIn('notifier_002_aaaa1111', first_data['runtimes'])
+            self.assertEqual(
+                first_data['runtimes']['notifier_002_aaaa1111']['notification']['matches'],
+                ['BUILD DONE'],
+            )
+            # Second poll: notification.json must have been removed so we
+            # don't re-fire the toast on every tick.
+            self.assertFalse(
+                os.path.exists(os.path.join(runtime_dir, 'notification.json')),
+                'notification.json must be deleted after the first read',
+            )
+            second = self.client.get(reverse('check_chat_runtimes_status'))
+            second_data = json.loads(second.content)
+            self.assertNotIn('notifier_002_aaaa1111', second_data['runtimes'])
+
+    def test_pool_poller_still_ignores_chat_runs_root(self):
+        # Sanity guard: the existing ACP poller (check_all_agents_status_view)
+        # explicitly skips the chat-runtime root by name. If somebody removes
+        # that guard, both pollers would render duplicated dialogs.
+        from agent.chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
+        with open(os.path.join(
+            os.path.dirname(views.__file__), 'views.py'
+        ), 'r', encoding='utf-8') as f:
+            views_src = f.read()
+        self.assertIn(
+            "folder_name == CHAT_RUNTIME_ROOT_NAME",
+            views_src,
+            "ACP pool poller must continue to skip the chat-runtime root",
+        )
+        # And CHAT_RUNTIME_ROOT_NAME itself must keep its expected value.
+        self.assertEqual(CHAT_RUNTIME_ROOT_NAME, '_chat_runs_')
+
+
+class ChatRuntimeNameValidationTests(TestCase):
+    """Path-traversal guard on chat-runtime names."""
+
+    def test_valid_names_accepted(self):
+        from agent.views import _is_valid_chat_runtime_name
+        self.assertTrue(_is_valid_chat_runtime_name('asker_001_a1b2c3d4'))
+        self.assertTrue(_is_valid_chat_runtime_name('notifier_002_abc12345'))
+
+    def test_traversal_attempts_rejected(self):
+        from agent.views import _is_valid_chat_runtime_name
+        bad = [
+            '..',
+            '../etc/passwd',
+            'asker/../../etc',
+            'asker_001_../',
+            'asker\\..\\etc',
+            'asker_001_a1b2c3d4/extra',
+            '',
+            'no_seq_or_hash',
+        ]
+        for name in bad:
+            self.assertFalse(
+                _is_valid_chat_runtime_name(name),
+                f"name should be rejected: {name!r}",
+            )
+
+    def test_resolve_returns_none_for_missing_dir(self):
+        from agent.views import _resolve_chat_runtime_dir
+        self.assertIsNone(_resolve_chat_runtime_dir('asker_999_deadbeef'))
+
+    def test_resolve_returns_none_for_traversal(self):
+        from agent.views import _resolve_chat_runtime_dir
+        self.assertIsNone(_resolve_chat_runtime_dir('../etc/passwd'))
+
+
+class AskerChoiceChatRuntimeTests(TestCase):
+    """asker_choice_view must accept chat-runtime names and write
+    choice.txt under _chat_runs_/, with a path-traversal guard."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='askchat', password='secret123')
+        self.client.force_login(self.user)
+        self._tmp = tempfile.mkdtemp(prefix='asker_choice_chat_test_')
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_choice_written_into_chat_runtime_dir(self):
+        runtime_name = 'asker_001_a1b2c3d4'
+        runtime_dir = os.path.join(self._tmp, runtime_name)
+        os.makedirs(runtime_dir)
+        csrf_client = Client(enforce_csrf_checks=False)
+        csrf_client.force_login(self.user)
+        with patch('agent.views._get_chat_runtime_root_path', return_value=self._tmp):
+            response = csrf_client.post(
+                reverse('asker_choice', args=[runtime_name]),
+                data=json.dumps({'choice': 'A'}),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, 200)
+        choice_path = os.path.join(runtime_dir, 'choice.txt')
+        self.assertTrue(os.path.exists(choice_path))
+        with open(choice_path, 'r', encoding='utf-8') as f:
+            self.assertEqual(f.read().strip(), 'A')
+
+    def test_traversal_payload_is_rejected(self):
+        # The URL pattern uses [^/]+ so paths containing `/` never reach the
+        # view (they 404 at the URL resolver). What the view itself must
+        # reject is a name that *passes* the URL filter but still tries to
+        # escape the chat-runtime root, e.g. an `asker..weird` name. That
+        # falls through to the canvas-id branch, which now explicitly
+        # rejects names containing `..`.
+        csrf_client = Client(enforce_csrf_checks=False)
+        csrf_client.force_login(self.user)
+        # Have to construct the URL by hand because Django's reverse()
+        # rejects `..` as a path arg. The route accepts [^/]+ so this URL
+        # string reaches the view.
+        traversal_name = 'asker..%2E%2E_evil'
+        with patch('agent.views._get_chat_runtime_root_path', return_value=self._tmp):
+            response = csrf_client.post(
+                f'/agent/asker_choice/{traversal_name}/',
+                data=json.dumps({'choice': 'A'}),
+                content_type='application/json',
+                HTTP_X_AGENT_SESSION_ID='trav',
+            )
+        # Either 400 (rejected by view) or 404 (canvas pool dir missing) is
+        # acceptable; what matters is that NO file landed under self._tmp.
+        self.assertIn(response.status_code, (400, 404))
+        # And no file was written anywhere inside the chat-runtime tmp.
+        for root, _dirs, files in os.walk(self._tmp):
+            for fname in files:
+                self.assertNotEqual(
+                    fname, 'choice.txt',
+                    f"choice.txt unexpectedly written under {root}",
+                )
+
+    def test_invalid_choice_returns_400(self):
+        csrf_client = Client(enforce_csrf_checks=False)
+        csrf_client.force_login(self.user)
+        runtime_name = 'asker_001_a1b2c3d4'
+        os.makedirs(os.path.join(self._tmp, runtime_name))
+        with patch('agent.views._get_chat_runtime_root_path', return_value=self._tmp):
+            response = csrf_client.post(
+                reverse('asker_choice', args=[runtime_name]),
+                data=json.dumps({'choice': 'C'}),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, 400)
+
+
+class ChatAgentAskerSpecTests(TestCase):
+    """The new chat_agent_asker spec must be present and parseable by
+    the same machinery the rest of the registry uses."""
+
+    def test_chat_agent_asker_is_registered(self):
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        self.assertIn('chat_agent_asker', WRAPPED_CHAT_AGENT_BY_TOOL_NAME)
+        spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_asker']
+        self.assertEqual(spec.template_dir, 'asker')
+        self.assertEqual(spec.display_name, 'Asker')
+
+    def test_asker_example_request_parses_against_template(self):
+        # Same contract the existing
+        # test_every_registry_example_resolves_against_its_template enforces:
+        # every key in the example_request must resolve against the actual
+        # asker/config.yaml.
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        from agent.tools import _apply_requested_assignments_to_config
+
+        spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_asker']
+        template_yaml = os.path.join(
+            os.path.dirname(__file__), 'agents', spec.template_dir, 'config.yaml'
+        )
+        with open(template_yaml, 'r', encoding='utf-8') as fh:
+            template_cfg = yaml.safe_load(fh) or {}
+        _, err, _ = _apply_requested_assignments_to_config(
+            template_cfg, spec.example_request
+        )
+        self.assertIsNone(err, f"Asker example_request did not resolve: {err}")
+
+
+class NotifierOneshotModeTests(TestCase):
+    """Drive notifier.tool_node directly with mode='oneshot' and assert
+    that a notification.json is written and the function exits cleanly."""
+
+    def test_oneshot_writes_notification_and_exits(self):
+        notifier_dir = os.path.join(
+            os.path.dirname(__file__), 'agents', 'notifier'
+        )
+        # Load notifier.py as a fresh module so we can monkey-patch its
+        # CONFIG, CURRENT_DIR_NAME, NOTIFICATION_FILE, and time.sleep.
+        spec = importlib.util.spec_from_file_location(
+            'notifier_under_test',
+            os.path.join(notifier_dir, 'notifier.py'),
+        )
+        module = importlib.util.module_from_spec(spec)
+        # The module's top-level code calls load_config() and chdir()s
+        # into its own folder; that's fine because notifier/config.yaml
+        # is committed and harmless.
+        try:
+            spec.loader.exec_module(module)
+        except SystemExit:
+            self.fail("notifier module raised SystemExit at import")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            notif_path = os.path.join(tmp, 'notification.json')
+            with patch.object(module, 'NOTIFICATION_FILE', notif_path), \
+                 patch.object(module, 'CONFIG', {
+                     'target': {
+                         'mode': 'oneshot',
+                         'search_strings': 'BUILD DONE',
+                         'outcome_detail': 'Build finished successfully',
+                         'sound_enabled': True,
+                     },
+                     'source_agents': [],
+                     'target_agents': [],
+                 }), \
+                 patch.object(module.time, 'sleep', return_value=None), \
+                 patch.object(module, 'remove_pid_file', return_value=None):
+                with self.assertRaises(SystemExit) as cm:
+                    module.tool_node({'messages': [], 'loop_count': 0, 'offsets': {}})
+                self.assertEqual(cm.exception.code, 0)
+                self.assertTrue(os.path.exists(notif_path))
+                with open(notif_path, 'r', encoding='utf-8') as f:
+                    payload = json.load(f)
+                self.assertEqual(payload['type'], 'notifier_alert')
+                self.assertIn('BUILD DONE', payload['matches'])
+                self.assertTrue(payload['sound_enabled'])
+                self.assertEqual(payload['outcome_detail'], 'Build finished successfully')

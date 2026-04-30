@@ -2975,6 +2975,135 @@ def check_all_agents_status_view(request):
         }), content_type='application/json', status=500)
 
 
+_CHAT_RUNTIME_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+_\d{3,}_[0-9a-f]{6,}$")
+
+
+def _get_chat_runtime_root_path() -> str:
+    """Resolve the absolute path to the chat-runtime root (_chat_runs_).
+    Mirrors chat_agent_runtime.get_chat_runtime_root() but without importing
+    that module's logging side effects each time."""
+    if getattr(sys, "frozen", False):
+        agents_root = os.path.join(os.path.dirname(sys.executable), "agents")
+    else:
+        agents_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents")
+    return os.path.join(agents_root, "pools", CHAT_RUNTIME_ROOT_NAME)
+
+
+def _is_valid_chat_runtime_name(name: str) -> bool:
+    """Validate a chat-runtime directory name to prevent path traversal."""
+    if not name or os.sep in name or "/" in name or ".." in name:
+        return False
+    return bool(_CHAT_RUNTIME_NAME_PATTERN.match(name))
+
+
+def _resolve_chat_runtime_dir(runtime_name: str) -> Optional[str]:
+    """Return the absolute path to a chat-runtime dir if it exists and is
+    contained inside the chat-runtime root. Returns None otherwise."""
+    if not _is_valid_chat_runtime_name(runtime_name):
+        return None
+    root = _get_chat_runtime_root_path()
+    candidate = os.path.abspath(os.path.join(root, runtime_name))
+    try:
+        common = os.path.commonpath([os.path.abspath(root), candidate])
+    except ValueError:
+        return None
+    if common != os.path.abspath(root):
+        return None
+    if not os.path.isdir(candidate):
+        return None
+    return candidate
+
+
+@csrf_exempt
+def check_chat_runtimes_status_view(request):
+    """
+    Scan _chat_runs_ for currently-running chat-agent runtimes and surface
+    Asker `waiting_for_user_input` statuses + Notifier `notification.json`
+    payloads to the chat page poller.
+
+    Returns JSON: {
+        success: bool,
+        runtimes: { <runtime_name>: { is_running, status?, notification? } }
+    }
+    """
+    try:
+        runtime_root = _get_chat_runtime_root_path()
+        runtimes: dict = {}
+
+        if not os.path.isdir(runtime_root):
+            return HttpResponse(json.dumps({
+                "success": True,
+                "runtimes": {}
+            }), content_type='application/json')
+
+        for entry_name in os.listdir(runtime_root):
+            entry_path = os.path.join(runtime_root, entry_name)
+            if not os.path.isdir(entry_path):
+                continue
+
+            info: dict = {"is_running": False}
+
+            # PID liveness
+            pid_file_path = os.path.join(entry_path, "agent.pid")
+            if os.path.exists(pid_file_path):
+                try:
+                    with open(pid_file_path, "r") as f:
+                        pid_str = f.read().strip()
+                    if pid_str.isdigit():
+                        pid = int(pid_str)
+                        if psutil.pid_exists(pid):
+                            try:
+                                proc = psutil.Process(pid)
+                                if proc.status() != psutil.STATUS_ZOMBIE:
+                                    info["is_running"] = True
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                except Exception as exc:
+                    print(f"Error reading PID for {entry_name}: {exc}")
+
+            # Detailed status (e.g., Asker waiting for input)
+            status_file_path = os.path.join(entry_path, "agent.status")
+            if os.path.exists(status_file_path):
+                try:
+                    with open(status_file_path, "r") as f:
+                        info["status"] = f.read().strip()
+                except Exception as exc:
+                    print(f"Error reading status for {entry_name}: {exc}")
+
+            # Notifier payload (consumed-once: file is removed after read)
+            notif_file_path = os.path.join(entry_path, "notification.json")
+            if os.path.exists(notif_file_path):
+                try:
+                    with open(notif_file_path, "r", encoding="utf-8") as nf:
+                        notif_data = json.load(nf)
+                    notif_data['runtime_name'] = entry_name
+                    info["notification"] = notif_data
+                    try:
+                        os.remove(notif_file_path)
+                    except Exception as exc:
+                        print(f"Error removing notification {notif_file_path}: {exc}")
+                except Exception as exc:
+                    print(f"Error reading notification for {entry_name}: {exc}")
+
+            # Skip purely idle, signal-less runtimes to keep the response small.
+            if info["is_running"] or "status" in info or "notification" in info:
+                runtimes[entry_name] = info
+
+        return HttpResponse(json.dumps({
+            "success": True,
+            "runtimes": runtimes
+        }), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error checking chat runtimes status: {e}")
+        traceback.print_exc()
+        return HttpResponse(json.dumps({
+            "success": False,
+            "runtimes": {},
+            "error": str(e)
+        }), content_type='application/json', status=500)
+
+
 def read_agent_log_view(request, agent_name):
     """
     Read the last 100 lines of an agent's log file.
@@ -5494,7 +5623,14 @@ def update_counter_connection_view(request, agent_name):
 def asker_choice_view(request, agent_name):
     """
     Receive the user's A/B choice from the frontend dialog and write it
-    to choice.txt in the agent's pool directory so the running asker.py can read it.
+    to choice.txt in the asker agent's directory so the running asker.py
+    can read it.
+
+    Two address modes are supported:
+      1. Canvas id (e.g., 'asker-1') -> resolves to the ACP session pool
+         directory at <pools>/<session>/asker_1/.
+      2. Chat-runtime name (e.g., 'asker_001_a1b2c3d4') -> resolves to
+         <pools>/_chat_runs_/asker_001_a1b2c3d4/. Used by Multi-Turn chat.
     """
     try:
         data = json.loads(request.body)
@@ -5506,6 +5642,22 @@ def asker_choice_view(request, agent_name):
 
         if not agent_name.lower().startswith('asker'):
             return HttpResponse("Invalid agent type", status=400)
+
+        # Mode 2: chat-runtime name (validated against traversal)
+        chat_runtime_dir = _resolve_chat_runtime_dir(agent_name)
+        if chat_runtime_dir is not None:
+            choice_path = os.path.join(chat_runtime_dir, 'choice.txt')
+            with open(choice_path, 'w', encoding='utf-8') as f:
+                f.write(choice)
+            print(f"[ASKER] User chose Path {choice} for chat runtime {agent_name}")
+            return HttpResponse(json.dumps({'success': True, 'message': f'Choice {choice} written'}),
+                              content_type='application/json')
+
+        # Mode 1: canvas id (existing ACP behavior)
+        # Reject anything that looks like an attempted chat-runtime name but
+        # didn't match _is_valid_chat_runtime_name (e.g., traversal attempts).
+        if '..' in agent_name or os.sep in agent_name or '/' in agent_name:
+            return HttpResponse("Invalid agent name", status=400)
 
         # Resolve pool path
         pool_base_path = get_pool_path(request)

@@ -2070,3 +2070,30 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #29A4D9 0%, #4FC3F7 33%, #FFB74D 66%, #E91E63 100%);
     box-shadow: 0 6px 15px rgba(0, 136, 204, 0.5);
 }
+
+/* Skill Agent — purple/indigo/cyan/teal — distinct from every existing
+   visual agent. Used for nodes that invoke a SKILL.md via invoke_skill. */
+.canvas-item.skill-agent {
+    background-color: #4527A0;
+    background: linear-gradient(135deg, #4527A0 0%, #6A1B9A 33%, #00838F 66%, #00BFA5 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.skill-agent:hover {
+    background: linear-gradient(135deg, #5E35B1 0%, #8E24AA 33%, #00ACC1 66%, #1DE9B6 100%);
+    box-shadow: 0 6px 15px rgba(106, 27, 154, 0.5);
+}
+
+/* ACPx Agent — fire-orange/coral/violet/black — visually loud because the
+   node spawns an EXTERNAL coding-agent CLI as a child process. The "this
+   leaves the Tlamatini sandbox" warning should be visually obvious. */
+.canvas-item.acpx-agent {
+    background-color: #BF360C;
+    background: linear-gradient(135deg, #BF360C 0%, #E64A19 33%, #6A1B9A 66%, #212121 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.acpx-agent:hover {
+    background: linear-gradient(135deg, #D84315 0%, #FF7043 33%, #8E24AA 66%, #424242 100%);
+    box-shadow: 0 6px 15px rgba(191, 54, 12, 0.5);
+}

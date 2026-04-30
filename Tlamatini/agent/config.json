@@ -130,5 +130,33 @@
     "pictures",
     "videos",
     "music"
-  ]
+  ],
+  "_section_acpx": "ACPX Runtime + Skills (added 2026-04-29). The whole 'acpx' block is OPTIONAL — when missing, every value below is the safe default applied automatically by agent/acpx/config.py::load_acpx_config. Documenting the keys here makes the surface discoverable.",
+  "_acpx_doc_url": "See ACPX.md at the repo root and docs/claude/acpx.md (when present) for the full contract.",
+  "acpx": {
+    "_acpx_cwd_comment": "Default working directory for ACP child processes when no per-spawn cwd is given. Empty string = use the Django process cwd at runtime.",
+    "cwd": "",
+    "_acpx_stateDir_comment": "Where AcpSession transcripts and per-session JSON records are written. Empty string = ~/.tlamatini/acpx-state/.",
+    "stateDir": "",
+    "_acpx_probeAgent_comment": "agent_id used by acp_doctor's --version probe. Empty string = first resolvable agent in the registry. Set to 'claude' / 'cursor' / etc. to pin it.",
+    "probeAgent": "",
+    "_acpx_permissionMode_comment": "One of 'approve-reads' (default; reads auto-approved, writes need a prompt), 'deny-all' (lockdown; even acp_spawn is blocked), 'approve-all' (FLAGGED DANGEROUS; auto-approves every action including writes/shell/network). Mirrors OpenClaw's ACPX_PERMISSION_MODES vocabulary exactly.",
+    "permissionMode": "approve-reads",
+    "_acpx_nonInteractivePermissions_comment": "What to do when an action needs a prompt but no operator can answer (Multi-Turn unattended runs). 'deny' = action denied, run continues. 'fail' = whole spawn/skill fails hard.",
+    "nonInteractivePermissions": "deny",
+    "_acpx_timeoutSeconds_comment": "Per-turn timeout for the embedded runtime (acp_send / initial spawn drain). Default 120s; bump for slow CLIs like Gemini cold-start.",
+    "timeoutSeconds": 120,
+    "_acpx_pluginToolsMcpBridge_comment": "When true, inject a built-in MCP server into ACP children that exposes Tlamatini @tools to the child. OFF by default — opting a less-trusted runtime into our tool surface is a deliberate security choice.",
+    "pluginToolsMcpBridge": false,
+    "_acpx_openClawToolsMcpBridge_comment": "Reserved for forward compatibility with OpenClaw's openClaw-tools bridge. OFF by default.",
+    "openClawToolsMcpBridge": false,
+    "_acpx_strictWindowsCmdWrapper_comment": "Legacy compatibility field. Accepted and logged as ignored; the current windows_spawn module handles .cmd/.bat resolution itself.",
+    "strictWindowsCmdWrapper": false,
+    "_acpx_mcpServers_comment": "Optional named MCP servers to inject into ACP child sessions at spawn time. Empty by default. Each entry: { command: 'python', args: ['-m', '...'], env: {...} }.",
+    "mcpServers": {},
+    "_acpx_agents_comment": "Per-agent_id command overrides. Empty = use the built-in registry (claude/cursor/codex/copilot/gemini/qwen/pi/droid/iflow/kilocode/kimi/kiro/opencode/tlamatini). Override when the binary lives outside PATH, e.g. {\"claude\": {\"command\": \"C:/Users/me/AppData/Roaming/npm/claude.cmd\"}}.",
+    "agents": {}
+  },
+  "_section_acpx_skills": "Skills are loaded from agent/skills_pkg/<dir>/SKILL.md. The catalog is self-discovering; nothing in config.json controls it. Run `python manage.py acpx_lint` to validate the catalog.",
+  "_section_acpx_tools": "ACPX exposes 7 LangChain @tools to the unified agent (acp_spawn / acp_send / acp_kill / acp_doctor / list_acp_agents / invoke_skill / list_skills). Each is a row in the Tool table seeded by migration 0071_acpx_skills and is independently toggleable through the existing tools dialog UI."
 }

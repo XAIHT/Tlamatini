@@ -130,9 +130,97 @@ class SessionState(models.Model):
 
     def __str__(self):
         return f'{self.user.username}: {self.context_type} - {self.context_path}'
-    
+
     def is_expired(self):
         """Check if session state is older than 24 hours."""
         from django.utils import timezone
         from datetime import timedelta
         return timezone.now() - self.last_active > timedelta(hours=24)
+
+
+# ── ACPX models ────────────────────────────────────────────────────────
+class AcpAgent(models.Model):
+    """
+    Mirror of the ACPX agent registry. One row per registered agent_id
+    (claude / cursor / codex / qwen / etc.). The `command` is the executable
+    string used at spawn time. `healthy` is the most recent probe result.
+    """
+    agent_id      = models.CharField(max_length=64, unique=True)
+    command       = models.CharField(max_length=512)
+    description   = models.CharField(max_length=500, blank=True, default="")
+    enabled       = models.BooleanField(default=True)
+    healthy       = models.BooleanField(default=False)
+    last_probe_at = models.DateTimeField(null=True, blank=True)
+    notes         = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "ACP Agent"
+        verbose_name_plural = "ACP Agents"
+
+    def __str__(self):
+        return f"{self.agent_id} ({'healthy' if self.healthy else 'unhealthy'})"
+
+
+class Skill(models.Model):
+    """
+    Mirror of a SKILL.md package on disk. Disk is source of truth; this
+    table is the toggle/UI/listing surface (same pattern as Mcp/Tool/Agent).
+    """
+    name             = models.CharField(max_length=128, unique=True)
+    description      = models.TextField(blank=True, default="")
+    runtime          = models.CharField(max_length=32, default="in-process")
+    acpx_agent       = models.CharField(max_length=64, blank=True, default="")
+    enabled          = models.BooleanField(default=True)
+    frontmatter_json = models.TextField(blank=True, default="")
+    body_sha256      = models.CharField(max_length=64, blank=True, default="")
+    last_loaded_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Skill"
+        verbose_name_plural = "Skills"
+
+    def __str__(self):
+        return f"{self.name} [{self.runtime}]"
+
+
+class AcpSession(models.Model):
+    """One ACP child-process session, persisted across reconnects."""
+    session_uuid    = models.CharField(max_length=64, unique=True)
+    agent_id        = models.CharField(max_length=64)
+    user            = models.ForeignKey(User, on_delete=models.CASCADE,
+                                        null=True, blank=True,
+                                        related_name="acp_sessions")
+    cwd             = models.CharField(max_length=1024, blank=True, default="")
+    state_path      = models.CharField(max_length=1024, blank=True, default="")
+    transcript_path = models.CharField(max_length=1024, blank=True, default="")
+    started_at      = models.DateTimeField(auto_now_add=True)
+    ended_at        = models.DateTimeField(null=True, blank=True)
+    ok              = models.BooleanField(null=True, blank=True)
+    pid             = models.IntegerField(null=True, blank=True)
+    label           = models.CharField(max_length=200, blank=True, default="")
+
+    def __str__(self):
+        return f"{self.agent_id}/{self.session_uuid[:8]}"
+
+
+class SkillInvocation(models.Model):
+    """One harness invocation of a skill. Audit trail."""
+    skill_name     = models.CharField(max_length=128)
+    user           = models.ForeignKey(User, on_delete=models.CASCADE,
+                                       null=True, blank=True,
+                                       related_name="skill_invocations")
+    started_at     = models.DateTimeField(auto_now_add=True)
+    finished_at    = models.DateTimeField(null=True, blank=True)
+    ok             = models.BooleanField(null=True, blank=True)
+    iterations     = models.IntegerField(null=True, blank=True)
+    tokens         = models.IntegerField(null=True, blank=True)
+    args_json      = models.TextField(blank=True, default="")
+    output_json    = models.TextField(blank=True, default="")
+    audit_path     = models.CharField(max_length=1024, blank=True, default="")
+    failure_reason = models.CharField(max_length=64, blank=True, default="")
+    acp_session    = models.ForeignKey(AcpSession, null=True, blank=True,
+                                        on_delete=models.SET_NULL,
+                                        related_name="skill_invocations")
+
+    def __str__(self):
+        return f"{self.skill_name} @ {self.started_at}"
