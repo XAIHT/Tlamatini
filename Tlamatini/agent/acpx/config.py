@@ -93,6 +93,7 @@ class AcpxConfig:
     queue_owner_ttl_seconds: float = 0.0
     mcp_servers: Dict[str, McpServerConfig] = field(default_factory=dict)
     agents: Dict[str, str] = field(default_factory=dict)
+    agents_env: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
 
 def _coerce_perm_mode(value: Any) -> str:
@@ -135,6 +136,28 @@ def _coerce_agents(raw: Any) -> Dict[str, str]:
         command = spec.get("command")
         if isinstance(command, str) and command.strip():
             out[str(agent_id)] = command.strip()
+    return out
+
+
+def _coerce_agents_env(raw: Any) -> Dict[str, Dict[str, str]]:
+    """Pluck per-agent env maps out of the same `acpx.agents` JSON block.
+
+    Returns agent_id -> {ENV_NAME: VALUE}. Keys/values are coerced to str so
+    the dict is safe to splat into `os.environ` at spawn time. An entry is
+    skipped silently when the spec has no `env` dict, so existing string-only
+    overrides remain valid and the legacy `agents: Dict[str, str]` shape is
+    untouched.
+    """
+    out: Dict[str, Dict[str, str]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for agent_id, spec in raw.items():
+        if not isinstance(spec, dict):
+            continue
+        env = spec.get("env")
+        if not isinstance(env, dict) or not env:
+            continue
+        out[str(agent_id)] = {str(k): str(v) for k, v in env.items()}
     return out
 
 
@@ -184,6 +207,7 @@ def load_acpx_config(config_dict: Optional[Dict[str, Any]] = None) -> AcpxConfig
         queue_owner_ttl_seconds=float(raw.get("queueOwnerTtlSeconds") or 0.0),
         mcp_servers=_coerce_mcp_servers(raw.get("mcpServers")),
         agents=_coerce_agents(raw.get("agents")),
+        agents_env=_coerce_agents_env(raw.get("agents")),
     )
 
 

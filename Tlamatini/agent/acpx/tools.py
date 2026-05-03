@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from langchain.tools import tool
 
@@ -60,8 +60,16 @@ def acp_spawn(agent_id: str, task: str, cwd: str = "",
             agent_id=agent_id, task=task, cwd=cwd or None,
             mode=mode, session_label=session_label,
         )
-        # Drain the initial turn output (bounded by timeout)
-        events = runtime.send(sess.record.session_id, task)
+        # Drain the initial turn output. Use a tight initial-drain budget
+        # so non-JSON-ACP REPLs (gemini/cursor/qwen/codex) surface fast
+        # via the idle-completion rule instead of burning the full
+        # configured timeout on the very first call.
+        events = runtime.send(
+            sess.record.session_id, task,
+            timeout_seconds=45.0,
+            idle_seconds=6.0,
+            startup_grace_seconds=12.0,
+        )
         return _ok({
             "session_id": sess.record.session_id,
             "agent_id": sess.record.agent_id,
@@ -91,7 +99,9 @@ def acp_send(session_id: str, text: str, timeout_seconds: float = 0.0) -> str:
         runtime = get_acpx_runtime()
         events = runtime.send(
             session_id, text,
-            timeout_seconds if timeout_seconds > 0 else None,
+            timeout_seconds=timeout_seconds if timeout_seconds > 0 else None,
+            idle_seconds=6.0,
+            startup_grace_seconds=4.0,
         )
         return _ok({"events": events[-64:]})
     except AcpRuntimeError as e:
@@ -175,7 +185,8 @@ def list_skills(filter_keywords: str = "") -> str:
 
 
 @tool
-def invoke_skill(skill_name: str, args_json: str = "{}") -> str:
+def invoke_skill(skill_name: str,
+                 args_json: Union[str, Dict[str, Any], None] = "{}") -> str:
     """
     Invoke a registered Tlamatini skill by name. The skill runs inside the
     SkillHarness, which enforces the skill's permissions, budget, and
@@ -183,7 +194,10 @@ def invoke_skill(skill_name: str, args_json: str = "{}") -> str:
 
     Args:
         skill_name: registered skill name (see list_skills).
-        args_json: JSON string of the skill's input args. Defaults to "{}".
+        args_json: skill input args. Either a JSON string (preferred,
+            e.g. '{"who":"angel"}') OR an already-parsed JSON object
+            ({"who": "angel"}). Both shapes are accepted because some
+            LLMs parse the example before emitting the tool call.
 
     Returns: JSON {"ok": true, "skill": "...", "output": {...},
                    "iterations_used": N, "audit_id": "..."} or error envelope.
@@ -195,12 +209,29 @@ def invoke_skill(skill_name: str, args_json: str = "{}") -> str:
         skill = skill_registry.get(skill_name)
         if skill is None:
             return _err(f"unknown skill '{skill_name}'", code="UNKNOWN_SKILL")
-        try:
-            args = json.loads(args_json or "{}")
+        # Coerce args_json to a dict, accepting:
+        #   - dict        → use directly
+        #   - JSON string → parse
+        #   - None / ""   → empty dict
+        #   - anything else → BAD_ARGS
+        if args_json is None or args_json == "":
+            args = {}
+        elif isinstance(args_json, dict):
+            args = args_json
+        elif isinstance(args_json, str):
+            try:
+                args = json.loads(args_json)
+            except Exception as e:
+                return _err(f"args_json invalid JSON: {e}", code="BAD_JSON")
             if not isinstance(args, dict):
-                return _err("args_json must encode an object", code="BAD_ARGS")
-        except Exception as e:
-            return _err(f"args_json invalid JSON: {e}", code="BAD_JSON")
+                return _err("args_json must encode a JSON object",
+                            code="BAD_ARGS")
+        else:
+            return _err(
+                f"args_json must be a JSON string or object, got "
+                f"{type(args_json).__name__}",
+                code="BAD_ARGS",
+            )
         harness = SkillHarness(skill)
         result = harness.invoke(args)
         return json.dumps(result, ensure_ascii=False)

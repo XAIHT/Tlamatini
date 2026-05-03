@@ -37,6 +37,9 @@ Visit our new site!: https://xaiht.org, and check our little taste of Tlamatini 
     - [Advanced Retrieval Strategy](#advanced-retrieval-strategy)
   - [Internet Search Settings](#internet-search-settings)
   - [MCP Services](#mcp-services)
+  - [ACPX Settings (External Coding-Agent Runtime + Skills)](#acpx-settings-external-coding-agent-runtime--skills)
+    - [The acpx Configuration Block (Schema)](#the-acpx-configuration-block-schema)
+    - [API Key Setup (ANTHROPIC_API_KEY, GEMINI_API_KEY, and Friends)](#api-key-setup-anthropic_api_key-gemini_api_key-and-friends)
   - [Advanced Options](#advanced-options)
     - [History Management](#history-management)
     - [Performance Tuning](#performance-tuning)
@@ -79,6 +82,7 @@ Visit our new site!: https://xaiht.org, and check our little taste of Tlamatini 
   - [Core Tools](#core-tools)
   - [Wrapped Chat-Agent Tools](#wrapped-chat-agent-tools)
     - [Wrapped Runtime Lifecycle Tools](#wrapped-runtime-lifecycle-tools)
+  - [ACPX & Skills Tools](#acpx--skills-tools)
 - [Workflow Agents](#workflow-agents)
   - [Agent Architecture](#agent-architecture)
   - [Control Agents](#control-agents)
@@ -147,6 +151,22 @@ Visit our new site!: https://xaiht.org, and check our little taste of Tlamatini 
   - [A Worked Example, Start to Finish](#a-worked-example-start-to-finish)
   - [Adding a New Agent to the Report](#adding-a-new-agent-to-the-report)
   - [Files Involved in the Exec Report](#files-involved-in-the-exec-report)
+- [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog)
+  - [What ACPX Gives You](#what-acpx-gives-you)
+  - [Mental Model](#acpx-mental-model)
+  - [Components and File Layout](#acpx-components-and-file-layout)
+  - [Session Lifecycle](#acpx-session-lifecycle)
+  - [Permission Model](#acpx-permission-model)
+  - [Built-in Agent Registry](#acpx-built-in-agent-registry)
+  - [LangChain Tools (acp_spawn / acp_send / acp_kill / acp_doctor / list_acp_agents / invoke_skill / list_skills)](#acpx-langchain-tools)
+  - [Skill Catalog (20 Seed Skills)](#acpx-skill-catalog)
+  - [Day-One Setup Walkthrough](#acpx-day-one-setup-walkthrough)
+  - [End-to-End Examples](#acpx-end-to-end-examples)
+  - [Persisted Artifacts (state dir, transcripts, audit logs)](#acpx-persisted-artifacts)
+  - [Visual Canvas Integration](#acpx-visual-canvas-integration)
+  - [Troubleshooting](#acpx-troubleshooting)
+  - [Security Considerations](#acpx-security-considerations)
+  - [Files Involved](#acpx-files-involved)
 - [Custom Agent Development](#custom-agent-development)
   - [Using the `create_new_agent` Skill](#using-the-create_new_agent-skill)
     - [In Antigravity IDE / Gemini CLI](#in-antigravity-ide--gemini-cli)
@@ -980,6 +1000,134 @@ The context budget allocates token space to different document types:
   "max_lines_search_files": 1024
 }
 ```
+
+### ACPX Settings (External Coding-Agent Runtime + Skills)
+
+ACPX is the runtime that lets Tlamatini spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …) as child processes and brokers them to the unified-agent loop as LangChain tools. The full design lives in [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog); this section is the configuration reference.
+
+The whole `acpx` block is **optional**. When it is missing or partial, every value below falls back to the safe default applied automatically by `agent/acpx/config.py::load_acpx_config`. On first boot of an upgrade build, `agent/acpx/service.py::boot_acpx()` calls `ensure_acpx_block_in_config_json()` and **appends the documented default block to your existing `config.json` atomically** so the surface is discoverable in both source mode and frozen mode.
+
+#### The acpx Configuration Block (Schema)
+
+```json
+{
+  "acpx": {
+    "cwd": "C:/Development/Tlamatini",
+    "stateDir": "C:/Users/angel/.tlamatini/acpx-state",
+    "probeAgent": "gemini",
+    "permissionMode": "approve-reads",
+    "nonInteractivePermissions": "deny",
+    "timeoutSeconds": 180,
+    "pluginToolsMcpBridge": false,
+    "openClawToolsMcpBridge": false,
+    "strictWindowsCmdWrapper": false,
+    "mcpServers": {
+      "files": {
+        "command": "python",
+        "args": ["-m", "agent.mcp_files_search_server"],
+        "env": {}
+      }
+    },
+    "agents": {
+      "claude":  {
+        "command": "C:/Users/angel/AppData/Roaming/npm/claude.cmd",
+        "env": {
+          "ANTHROPIC_API_KEY": "sk-ant-api03-...replace-with-your-key..."
+        }
+      },
+      "cursor":  { "command": "C:/Users/angel/AppData/Local/Programs/cursor/cursor-agent.exe" },
+      "gemini":  {
+        "command": "C:/Users/angel/AppData/Roaming/npm/gemini.cmd",
+        "env": {
+          "GEMINI_API_KEY": "AIza...replace-with-your-key...",
+          "GOOGLE_API_KEY": "AIza...replace-with-your-key..."
+        }
+      },
+      "qwen":    { "command": "C:/Users/angel/AppData/Roaming/npm/qwen-code.cmd" },
+      "codex":   { "command": "C:/Users/angel/AppData/Roaming/npm/codex.cmd" }
+    }
+  }
+}
+```
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `cwd` | string | `""` (Django process cwd) | Default working directory used for ACP child processes when no per-spawn `cwd` is given. Pin it when you want every spawn to start in the same project root regardless of where `runserver` was launched from. |
+| `stateDir` | string | `~/.tlamatini/acpx-state/` | Directory for `AcpSession` records (`<session>.json`) and per-session transcripts (`<session>.transcript.ndjson`). Pin it when you need a deterministic location for audit/replay. |
+| `probeAgent` | string | first resolvable agent_id | `agent_id` used by `acp_doctor`'s `--version` probe. The runtime falls back to *first resolvable* automatically if the named probe is missing. |
+| `permissionMode` | enum | `"approve-reads"` | One of `"approve-reads"` (reads auto-approved, writes need a prompt), `"approve-all"` (FLAGGED **DANGEROUS** — auto-approves every action), `"deny-all"` (lockdown; even `acp_spawn` is blocked). Vocabulary mirrors OpenClaw's `ACPX_PERMISSION_MODES`. |
+| `nonInteractivePermissions` | enum | `"deny"` | What to do when an action needs a prompt but no operator can answer (Multi-Turn unattended runs). `"deny"` denies the action and the run continues. `"fail"` makes the whole spawn/skill fail hard. |
+| `timeoutSeconds` | number | `120` | Per-turn timeout for the embedded runtime (`acp_send` + initial spawn drain). Bump for slow CLIs (e.g. Gemini cold-start). |
+| `pluginToolsMcpBridge` | bool | `false` | When `true`, inject a built-in MCP server into every ACP child that exposes Tlamatini `@tools` to the child. **Off by default** — opting a less-trusted runtime into our tool surface is a deliberate security choice. |
+| `openClawToolsMcpBridge` | bool | `false` | Reserved for forward-compatibility with OpenClaw's openClaw-tools bridge. Off by default. |
+| `strictWindowsCmdWrapper` | bool | `false` | Legacy compatibility field. Accepted and logged as ignored — `agent/acpx/windows_spawn.py` handles `.cmd`/`.bat` resolution itself. |
+| `mcpServers` | object | `{}` | Optional named MCP servers to inject into ACP child sessions at spawn time. Each entry: `{ "command": "...", "args": ["..."], "env": {...} }`. |
+| `agents` | object | `{}` | Per-`agent_id` command overrides on top of the built-in registry. Each entry: `{ "command": "<absolute or PATH-resolvable>", "env": { "<NAME>": "<value>" } }`. The optional `env` map is layered on top of the parent process env at spawn time (override wins on key conflict) and is exactly how API keys get into the child without exporting them in the shell. |
+
+The runtime resolves `probeAgent`, `permissionMode`, and `nonInteractivePermissions` against allow-lists; an invalid string falls back to the documented default rather than raising. See `agent/acpx/config.py::PERMISSION_MODES` and `NON_INTERACTIVE_POLICIES` for the canonical lists.
+
+#### API Key Setup (ANTHROPIC_API_KEY, GEMINI_API_KEY, and Friends)
+
+ACPX never asks the LLM for an API key. Each external CLI reads its own credentials from the environment. Tlamatini gives you **two layered places** to set them, and both write through to the spawned child:
+
+**Layer 1 — top-level `config.json` keys** (consumed directly by Tlamatini's own image-analysis / cloud-LLM paths):
+
+```json
+{
+  "ANTHROPIC_API_KEY": "sk-ant-api03-...",
+  "GEMINI_API_KEY":    "AIza..."
+}
+```
+
+These are read by `agent/config_loader.py` and surfaced wherever Tlamatini itself talks to Anthropic or Google directly (e.g. `agent/opus_client/claude_opus_client.py`).
+
+**Layer 2 — per-`agent_id` `env` injection inside `acpx.agents`** (consumed by the spawned ACP child via `subprocess.Popen(env=...)` in `agent/acpx/runtime.py::AcpSession.spawn_child()`):
+
+```json
+{
+  "acpx": {
+    "agents": {
+      "claude": {
+        "command": "C:/Users/angel/AppData/Roaming/npm/claude.cmd",
+        "env": { "ANTHROPIC_API_KEY": "sk-ant-api03-..." }
+      },
+      "gemini": {
+        "command": "C:/Users/angel/AppData/Roaming/npm/gemini.cmd",
+        "env": {
+          "GEMINI_API_KEY": "AIza...",
+          "GOOGLE_API_KEY": "AIza..."
+        }
+      },
+      "qwen":   { "command": "qwen-code", "env": { "DASHSCOPE_API_KEY": "sk-..." } },
+      "codex":  { "command": "codex",     "env": { "OPENAI_API_KEY":    "sk-..." } }
+    }
+  }
+}
+```
+
+How the merge actually works (read this once, never wonder again):
+
+1. `build_agent_registry(overrides, env_overrides)` in `agent/acpx/agent_registry.py` merges the per-agent `env` dict on top of `DEFAULT_ACP_AGENTS[agent_id].env` (override wins on key conflict).
+2. At spawn time, `AcpSession.spawn_child()` builds the child env as `{**os.environ, **self.spec.env}` — i.e. the parent Django process env first, then the per-agent override on top. That means an explicit `acpx.agents.<id>.env` value wins over an exported shell variable.
+3. The child CLI reads its standard variable name from that env (`ANTHROPIC_API_KEY` for Claude, `GEMINI_API_KEY`/`GOOGLE_API_KEY` for Gemini, `OPENAI_API_KEY` for Codex, `DASHSCOPE_API_KEY` for Qwen, etc. — consult each CLI's own documentation for the canonical name).
+
+| Agent | Standard env var(s) the CLI reads | Where to put it |
+|-------|-----------------------------------|-----------------|
+| `claude` | `ANTHROPIC_API_KEY` | Top-level **and** `acpx.agents.claude.env` (recommended: both — top-level for Tlamatini's own Anthropic calls, per-agent for the spawned `claude` CLI). |
+| `gemini` | `GEMINI_API_KEY` (newer builds also accept `GOOGLE_API_KEY`) | Top-level `GEMINI_API_KEY` and `acpx.agents.gemini.env` with **both** aliases. |
+| `qwen` | `DASHSCOPE_API_KEY` | `acpx.agents.qwen.env`. |
+| `codex` | `OPENAI_API_KEY` | `acpx.agents.codex.env`. |
+| `cursor` | varies; cursor-agent typically reads its own credential store | usually no env injection needed — leave `env` empty. |
+| `copilot` | GitHub credential helper (`gh auth login`) | usually no env injection needed. |
+| Others (`pi`, `droid`, `iflow`, `kilocode`, `kimi`, `kiro`, `opencode`) | per upstream | check each CLI's docs and inject under `acpx.agents.<id>.env`. |
+
+> **Security warning.** `config.json` is a tracked file. Committing real API keys to the repository — especially a public repository — exposes them. Three safer patterns:
+>
+> 1. **Don't commit the keys.** Set `git update-index --skip-worktree Tlamatini/agent/config.json` after configuring locally, or move the key to a sibling file you `.gitignore` and read via `CONFIG_PATH` (the `config_loader.py` envelope honors `CONFIG_PATH`).
+> 2. **Use shell env vars in development.** Export `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` in your shell, leave the corresponding `acpx.agents.<id>.env` empty, and the spawned child inherits the parent process env automatically (`env = {**os.environ, **self.spec.env}`).
+> 3. **Rotate immediately if a key has been pushed.** Any leaked key should be revoked at the provider side and reissued before reusing it. Tracked git history makes the key visible forever even after the file is later edited.
+>
+> If you do paste a real key into `config.json`, treat the file as a secret: never share screenshots, never push the branch, and replace the key the moment the key has been visible to anyone other than you.
 
 ### Advanced Options
 
@@ -1847,6 +1995,22 @@ Wrapped chat-agent launchers create isolated, sequenced runtime copies of select
 | `chat_agent_run_status` | Inspect the current status of a wrapped runtime | Poll a running wrapped agent |
 | `chat_agent_run_log` | Read the latest log excerpt for a wrapped runtime | Inspect progress or failure details |
 | `chat_agent_run_stop` | Stop a wrapped runtime by `run_id` | Cancel a long-running wrapped agent |
+
+### ACPX & Skills Tools
+
+Seven additional LangChain `@tool` functions are exposed by the [ACPX runtime](#acpx-external-coding-agent-runtime--skill-catalog). They are seeded as togglable rows in the `Tool` table by migration `0071_acpx_skills` and surface in the existing **Tools Dialog** UI.
+
+| Tool | Description | Returns |
+|------|-------------|---------|
+| `acp_spawn` | Spawn an external coding-agent CLI (`claude`, `cursor`, `codex`, `gemini`, `qwen`, `pi`, `droid`, `iflow`, `kilocode`, `kimi`, `kiro`, `opencode`, `tlamatini`) as a child process and dispatch a task to it. Args: `agent_id`, `task`, optional `cwd`, `mode` (`session` / `one-shot`), `session_label`. | `{ ok, session_id, agent_id, transcript_path, events: [...] }` (last 32 events) or `{ ok: false, reason, code }`. |
+| `acp_send` | Send a follow-up turn to an existing session. Args: `session_id`, `text`, optional `timeout_seconds`. | `{ ok, events: [...] }` (last 64 events) or error envelope. |
+| `acp_kill` | Terminate a session and its child process. Args: `session_id`. | `{ ok, killed: "<session_id>" }`. |
+| `acp_doctor` | Health-probe the runtime by invoking the configured `probeAgent` with `--version`. | `{ ok, message, details: [...] }`. The outer `ok` reflects probe health, not tool execution. |
+| `list_acp_agents` | List every registered ACP agent and whether each command resolves on PATH on this machine. | `{ ok, agents: [{ agent_id, command, description, resolvable }] }`. |
+| `invoke_skill` | Invoke a registered Tlamatini skill inside the `SkillHarness` (validates inputs, enforces budget, writes audit NDJSON). Args: `skill_name`, optional `args_json` (default `"{}"`). | `{ ok, skill, runtime, output, iterations_used, tokens_used, elapsed_seconds, audit_id }` or `{ ok: false, reason, code }`. |
+| `list_skills` | List every registered skill (name + description + runtime). Optional `filter_keywords` filters by substring match. | `{ ok, skills: [{ name, description, runtime, acpx_agent? }] }`. |
+
+The full envelope shapes, lifecycle, and usage examples are documented in [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog).
 
 ---
 
@@ -3348,6 +3512,532 @@ That is it. The capture, the grouping, the render-in-first-fire-order, the SUCCE
 
 ---
 
+## ACPX: External Coding-Agent Runtime & Skill Catalog
+
+ACPX is a runtime that lets Tlamatini **spawn external coding-agent CLIs** — Anthropic Claude Code, Cursor, OpenAI Codex, GitHub Copilot, Google Gemini, Alibaba Qwen, Pi, Factory Droid, iFlow, Kilocode, Kimi, Kiro, OpenCode — as managed child processes, broker their I/O, and surface them to the unified-agent loop as LangChain tools. It ships alongside a markdown-driven **Skill catalog**: directories under `agent/skills_pkg/<name>/SKILL.md` whose YAML frontmatter declares inputs, outputs, permissions, and budget. The runtime hands invocation to a `SkillHarness` that validates the I/O contract, enforces the budget, and writes append-only NDJSON audit logs.
+
+The full design, every internal contract, and the rollout history are written up in [`ACPX.md`](ACPX.md) at the repository root. This README section is the **operator-facing canonical reference**: what it does, how to configure it, how to invoke it, and how to debug it.
+
+### What ACPX Gives You
+
+- **External-CLI delegation.** When the LLM decides "this refactor should run in Cursor", it calls `acp_spawn(agent_id='cursor', task=...)`. ACPX spawns Cursor as a child, streams its stdout JSON back, persists the transcript, and returns the last 32 events.
+- **Markdown-driven skills.** Drop a `SKILL.md` under `agent/skills_pkg/<name>/` and the LLM gains a new capability with declared inputs/outputs/permissions/budget — invocable through `invoke_skill`. 20 seed skills ship in this revision.
+- **Permission gating.** Three modes — `approve-reads` (default), `approve-all` (DANGEROUS), `deny-all` — plus a non-interactive policy (`deny` / `fail`) for unattended runs. Every action goes through `agent/acpx/permissions.py::PermissionGate.decide()` — there is exactly one decision point.
+- **Audit trail on disk.** Every ACP child turn is captured in `<stateDir>/<session>.transcript.ndjson`. Every skill invocation is captured in `~/.tlamatini/skill-audit/<YYYY-MM>/<...>.ndjson`. The runtime is replayable byte-for-byte after the fact.
+- **OpenClaw compatibility.** The `agent_id` registry, the `permissionMode` vocabulary, and the SKILL.md frontmatter contract match OpenClaw's ACPX plugin verbatim. Skills written for one project run unmodified on the other.
+
+### ACPX Mental Model
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ Browser chat / ACP visual canvas                                     │
+└────────────────────────────┬─────────────────────────────────────────┘
+                             │ WebSocket (Daphne / Channels)
+                             ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ Tlamatini Django app                                                 │
+│                                                                      │
+│  agent/consumers.py ──► agent/rag/chains/unified.py ──►              │
+│                              MultiTurnToolAgentExecutor              │
+│                                                                      │
+│      Layer 5: LangChain @tool calls                                  │
+│  ┌──────────┐   ┌─────────────┐   ┌─────────────────────────┐        │
+│  │tools.py  │   │chat_agent_* │   │ ACPX + Skills tools     │        │
+│  │(legacy)  │   │(wrapped 32) │   │  acp_spawn  acp_send    │        │
+│  │          │   │             │   │  acp_kill   acp_doctor  │        │
+│  │          │   │             │   │  list_acp_agents        │        │
+│  │          │   │             │   │  invoke_skill           │        │
+│  │          │   │             │   │  list_skills            │        │
+│  └──────────┘   └─────────────┘   └──────┬──────────┬───────┘        │
+│                                          │          │                │
+│                              ┌───────────┘          └────────────┐   │
+│                              ▼                                   ▼   │
+│                    ┌──────────────────┐               ┌────────────┐ │
+│                    │ AcpxRuntime      │               │ Skill      │ │
+│                    │  - probe         │               │ Registry + │ │
+│                    │  - spawn child   │               │  Harness   │ │
+│                    │  - send turn     │               │            │ │
+│                    │  - kill          │               │            │ │
+│                    │  - permission    │               │            │ │
+│                    │    gate          │               │            │ │
+│                    └─────────┬────────┘               └─────┬──────┘ │
+└──────────────────────────────┼──────────────────────────────┼────────┘
+                               │ subprocess.Popen             │ in-process
+                               │ (stdin/stdout JSON)          │ scoped loop
+                               ▼                              │ OR delegate
+                    ┌──────────────────┐                      │ to ACPX
+                    │ External CLI     │                      ▼
+                    │   claude / qwen  │           ┌─────────────────────┐
+                    │   cursor / codex │           │ Tlamatini @tools    │
+                    │   gemini / pi /… │           │ (scoped to skill's  │
+                    └──────────────────┘           │  requires_tools)    │
+                                                   └─────────────────────┘
+```
+
+Two key observations:
+
+- **ACPX child processes are external programs.** The `claude` binary, the `cursor` binary, etc. — Tlamatini does not implement them. It just spawns them and brokers their I/O. If a binary isn't installed, that `agent_id` is unhealthy; `acp_doctor` and `list_acp_agents` will tell you so.
+- **Skills are in-process by default.** A skill like `notion` or `summarize` runs *through* the existing unified-agent loop using existing `chat_agent_*` tools. A skill can opt into ACPX by setting `runtime: acpx` and naming an `acpx_agent` in its frontmatter.
+
+### ACPX Components and File Layout
+
+```
+Tlamatini/agent/acpx/
+├── __init__.py              # public exports (AcpxRuntime, AcpAgentSpec, …)
+├── config.py                # AcpxConfig + load_acpx_config(...) +
+│                            # ensure_acpx_block_in_config_json()
+├── agent_registry.py        # DEFAULT_ACP_AGENTS + build_agent_registry(...)
+├── session_store.py         # FileSessionStore + AcpSessionRecord (reset-aware)
+├── windows_spawn.py         # PATH search + .cmd/.bat handling for Windows
+├── permissions.py           # PermissionGate (approve-reads / deny-all / approve-all)
+├── runtime.py               # AcpxRuntime, AcpSession, AcpRuntimeError,
+│                            # get_acpx_runtime() singleton
+├── tools.py                 # @tool acp_spawn / acp_send / acp_kill / acp_doctor /
+│                            # list_acp_agents / invoke_skill / list_skills
+├── service.py               # boot_acpx() + boot_skills() — called from agent/apps.py
+└── tests.py                 # 23 unit tests (no real CLI required)
+
+Tlamatini/agent/skills/      # the in-process skill runtime
+├── frontmatter.py           # parse_skill_md(), find_skill_files()
+├── registry.py              # SkillRegistry singleton (skill_registry)
+├── io_contract.py           # validate_inputs / validate_outputs
+└── harness.py               # SkillHarness, Budget, SkillAuditLog
+
+Tlamatini/agent/skills_pkg/  # the *content* (SKILL.md packages — pure data)
+├── _meta/{schema.json, lint.py}
+├── hello_world/SKILL.md
+├── skill_creator/SKILL.md
+├── acp_router/SKILL.md
+├── tlamatini_*/SKILL.md     # 8 Tlamatini-specific skills
+├── github/SKILL.md, notion/SKILL.md, jira/SKILL.md, slack/SKILL.md,
+├── gmail/SKILL.md, todoist/SKILL.md, trello/SKILL.md
+├── summarize/SKILL.md
+└── weather/SKILL.md
+```
+
+Database tables (created by migration `0071_acpx_skills`):
+
+| Model | Purpose | Source of Truth |
+|-------|---------|-----------------|
+| `AcpAgent` | One row per registered `agent_id`. Reflects `agent_registry.py` + `config.json` overrides. | Mirrored from disk by `service.boot_acpx()` on every Django start. |
+| `Skill` | One row per registered skill. Reflects each `SKILL.md` package. | Mirrored from disk by `service.boot_skills()` on every Django start. |
+| `AcpSession` | One row per real (or recently-real) ACP child process. | `FileSessionStore` JSON files in `<stateDir>`. The DB row is for admin/UI. |
+| `SkillInvocation` | Append-only audit row per `invoke_skill` call. | Standalone — never reconciled. |
+
+### ACPX Session Lifecycle
+
+1. **Boot.** `agent/apps.py::AgentConfig.ready()` schedules `boot_acpx()` on a daemon thread. That call constructs the singleton `AcpxRuntime`, runs `probe_availability()` once, and reconciles `AcpAgent` rows with `runtime.list_agents()`.
+2. **Spawn.** `acp_spawn(agent_id, task, cwd?, mode?, session_label?)` looks up the `AcpAgentSpec`, resolves the command via `windows_spawn.py` (handles `.cmd`/`.bat`/`.exe` PATH search), creates a `FileSessionStore` record with a fresh UUID (and `mark_fresh()` so any stale on-disk JSON is ignored — the OpenClaw `ResetAwareSessionStore` semantics), then spawns the child via `subprocess.Popen` with stdin/stdout/stderr piped (`text=True`).
+3. **Initial turn.** The runtime writes a single JSON envelope `{"task": "...", "mode": "session"}` to the child's stdin and reads stdout line-by-line as JSON. Non-JSON lines are wrapped as `{"event":"log","text":"..."}`. Every event is appended to `<stateDir>/<session>.transcript.ndjson`. The tool returns the **last 32 events** to keep the LLM payload small.
+4. **Follow-up.** `acp_send(session_id, text, timeout_seconds?)` writes another envelope to the live child and reads more events. Each turn is bounded by `timeout_seconds` (default `120`, configurable via `acpx.timeoutSeconds`).
+5. **Kill.** `acp_kill(session_id)` calls `proc.terminate()` (3-second grace), then `proc.kill()`, then marks the record `closed=True`. The transcript stays on disk forever.
+
+The full transport is line-oriented JSON over stdin/stdout — the standard ACP-over-stdio shape that all listed agents support. This is intentionally minimal for the first revision; the contract is shaped so capability discovery, Permission events, and tool-call relay can be added without changing the public surface.
+
+### ACPX Permission Model
+
+Three modes, mirrored verbatim from OpenClaw's `ACPX_PERMISSION_MODES`:
+
+| Mode | What it does | When to use |
+|------|--------------|-------------|
+| `approve-reads` | Reads (`fs.read`) auto-approved; writes / shell / network / db need a prompt. Spawn itself is allowed (the spawn is read-class — equivalent to opening a shell), but every action *inside* the child is gated. | **Default.** Safe for unattended runs because the non-interactive policy then kicks in. |
+| `approve-all` | Every action auto-approved, including writes, shell, network, db. | Flagged **DANGEROUS** by `permissions.is_dangerous_config()`. Opt in only for trusted local automation. |
+| `deny-all` | Hard wall on every action including `acp_spawn` (returns `{ok: false, code: "PERMISSION_DENIED"}`). | Audit / lockdown mode. `acp_doctor` still works (probing is read-only). |
+
+Plus a non-interactive policy (`acpx.nonInteractivePermissions`):
+
+| Policy | Behavior in unattended runs |
+|--------|----------------------------|
+| `deny` | Action denied; LLM gets a `PERMISSION_DENIED` envelope and decides what to do next. **Default.** |
+| `fail` | Whole skill / spawn fails hard with a `PermissionError`. |
+
+### ACPX Built-in Agent Registry
+
+`DEFAULT_ACP_AGENTS` in `agent/acpx/agent_registry.py` ships with 14 entries. The `agent_id` keys match OpenClaw's `acp-router` skill exactly so a skill written for one project picks the right CLI on the other:
+
+| `agent_id` | Default command | Description |
+|------------|-----------------|-------------|
+| `claude` | `claude` | Anthropic Claude Code CLI |
+| `cursor` | `cursor-agent` | Cursor agent CLI |
+| `codex` | `codex` | OpenAI Codex (ACP path) |
+| `copilot` | `copilot` | GitHub Copilot CLI |
+| `gemini` | `gemini` | Google Gemini CLI |
+| `qwen` | `qwen-code` | Alibaba Qwen Code CLI |
+| `pi` | `pi` | Pi assistant CLI |
+| `droid` | `droid` | Factory Droid CLI |
+| `iflow` | `iflow` | iFlow CLI |
+| `kilocode` | `kilocode` | Kilocode CLI |
+| `kimi` | `kimi` | Kimi CLI |
+| `kiro` | `kiro` | Kiro CLI |
+| `opencode` | `opencode` | OpenCode CLI |
+| `tlamatini` | `<sys.executable> -m agent.acpx.self_acp_server` | Tlamatini-as-ACP-server (self-host, reserved slot) |
+
+You can override any default and add new entries through `acpx.agents` in `config.json` (see [ACPX Settings](#acpx-settings-external-coding-agent-runtime--skills) for the full schema).
+
+### ACPX LangChain Tools
+
+The seven `@tool` functions live in `agent/acpx/tools.py`. Every tool returns a JSON string. Success envelopes always include `"ok": true`; failure envelopes always include `"ok": false`, `"reason"`, `"code"`. They never raise — every error is surfaced as a structured envelope.
+
+| Tool | Inputs | Success keys |
+|------|--------|--------------|
+| `acp_spawn` | `agent_id`, `task`, `cwd?`, `mode?` (`session`/`one-shot`), `session_label?` | `session_id`, `agent_id`, `transcript_path`, `events` (last 32) |
+| `acp_send` | `session_id`, `text`, `timeout_seconds?` | `events` (last 64) |
+| `acp_kill` | `session_id` | `killed` |
+| `acp_doctor` | (none) | `message`, `details` (the `ok` field reflects probe health) |
+| `list_acp_agents` | (none) | `agents` — list of `{ agent_id, command, description, resolvable }` |
+| `invoke_skill` | `skill_name`, `args_json?` (default `"{}"`) | `skill`, `runtime`, `output`, `iterations_used`, `tokens_used`, `elapsed_seconds`, `audit_id` |
+| `list_skills` | `filter_keywords?` | `skills` — list of `{ name, description, runtime, acpx_agent? }` |
+
+Failure envelope is always `{ "ok": false, "reason": "...", "code": "..." }`. Common codes:
+
+| Code | Meaning |
+|------|---------|
+| `UNKNOWN_AGENT` | `agent_id` not in the registry. |
+| `AGENT_NOT_FOUND` | Command doesn't resolve on PATH (or absolute path doesn't exist). |
+| `UNKNOWN_SESSION` | `session_id` not tracked by the runtime singleton. |
+| `PERMISSION_DENIED` | Permission gate refused (e.g. `permissionMode=deny-all`). |
+| `SPAWN_FAILED` | `subprocess.Popen` raised. |
+| `UNKNOWN_SKILL` | `skill_name` not in the registry. |
+| `BAD_ARGS` | `args_json` did not decode to a JSON object. |
+| `BAD_JSON` | `args_json` is not valid JSON. |
+| `EXCEPTION` | Catch-all; envelope includes a tail of the traceback. |
+
+### ACPX Skill Catalog
+
+A skill is a directory under `agent/skills_pkg/<name>/` containing a single `SKILL.md` file: YAML frontmatter + a markdown body. Minimum required fields:
+
+```markdown
+---
+name: my-skill
+description: One-line description used by list_skills and the planner.
+---
+
+# Body
+The body is the playbook the LLM follows when this skill is invoked.
+The lint cap is 8 KiB.
+```
+
+Full optional shape (everything Tlamatini-specific lives under `metadata.tlamatini`):
+
+```markdown
+---
+name: example
+description: Example skill.
+metadata:
+  openclaw:
+    emoji: "✨"
+    requires:
+      bins: ["gh"]
+      env:  ["GITHUB_TOKEN"]
+    primaryEnv: "GITHUB_TOKEN"
+  tlamatini:
+    runtime: in-process            # or: acpx
+    acpx_agent: claude             # required iff runtime=acpx
+    requires_tools: ["chat_agent_executer"]
+    requires_mcps:  ["Files-Search"]
+    budget:
+      max_iterations: 12
+      max_seconds: 180
+      max_tokens: 30000
+    permissions:
+      filesystem:
+        read:  ["Tlamatini/agent/**/*"]
+        write: ["Tlamatini/${input.target_dir}/**/*"]
+      shell:   ["python -m ruff check **/*.py"]
+      network: deny                # or: allow, or array of host globs
+      db:      deny                # or: allow, read, or array
+    inputs:
+      - { name: target_dir, type: string,  required: true }
+      - { name: max_lines,  type: integer, required: false, default: 100 }
+      - { name: mode,       type: enum, values: ["fast","careful"], required: false }
+    outputs:
+      - { name: changed_files, type: array,  required: true }
+      - { name: summary,       type: string, required: true }
+    triggers:
+      keywords:   ["refactor","cleanup","rewrite"]
+      file_globs: ["**/*.py"]
+---
+
+# Body of the skill — markdown playbook…
+```
+
+When `invoke_skill('my-skill', {...})` runs:
+
+1. **Registry lookup** — `skill_registry.reload_if_stale()` (cheap; refreshes if older than 30 s), then `skill_registry.get('my-skill')`. Missing → `{ok: false, code: "UNKNOWN_SKILL"}`.
+2. **Input validation** — `io_contract.validate_inputs()` coerces & checks types. Missing required → `{ok: false, reason: "input_contract_violation"}`.
+3. **Audit open** — `SkillAuditLog` opens `~/.tlamatini/skill-audit/<YYYY-MM>/<epoch>_<skill>_<id8>.ndjson` and writes an `audit_open` event.
+4. **Dispatch** — two runtimes:
+    - `in-process` (default) — the harness builds a structured envelope (body, args, requires_tools, permissions, body_excerpt + stub outputs matching the declared `outputs`). The unified-agent reads that envelope and carries forward through the existing tool palette to actually execute the steps. **Safe-by-default**: no new shell paths or file-write paths are introduced through `invoke_skill` alone.
+    - `acpx` — the harness calls `runtime.spawn(agent_id=skill.acpx_agent, task=<rendered body>)`, drains events into the audit log, then `runtime.kill(session_id)`. `${input.x}` substitution is applied to the body before sending.
+5. **Output validation** — when `outputs` are declared, `io_contract.validate_outputs()` runs. Violation → `{ok: false, reason: "output_contract_violation"}` with the offending output included for debugging.
+6. **Audit close** — successful invocation returns `{ ok, skill, runtime, output, iterations_used, tokens_used, elapsed_seconds, audit_id }`. The `audit_id` lets you locate the per-invocation NDJSON later.
+
+**The 20 seed skills:**
+
+| # | Skill | Runtime | Purpose |
+|---|-------|---------|---------|
+| 1 | `hello-world` | in-process | Smoke test the harness |
+| 2 | `skill-creator` | in-process | Bootstrap a new SKILL.md package |
+| 3 | `acp-router` | in-process | Pick the right ACP `agent_id` and `acp_spawn` it |
+| 4 | `tlamatini-new-acp-agent` | in-process | Scaffold a new visual ACP agent end-to-end (8 steps) |
+| 5 | `tlamatini-flow-from-objective` | in-process | Turn an objective into a `.flw` workflow file |
+| 6 | `tlamatini-flw-doctor` | in-process | Validate a `.flw` (topology, terminal agents, gates) |
+| 7 | `tlamatini-exec-report-row-adder` | in-process | Add a tool to `_EXEC_REPORT_TOOLS` + matching CSS |
+| 8 | `tlamatini-planner-trace-replay` | in-process | Replay & explain the latest planner trace from the log |
+| 9 | `tlamatini-allowed-hosts-tighten` | in-process | Replace `ALLOWED_HOSTS=['*']` with a whitelist + backup |
+| 10 | `tlamatini-csrf-exempt-audit` | in-process | Classify every `@csrf_exempt` view in `views.py` |
+| 11 | `tlamatini-static-version-bumper` | in-process | Bump `STATIC_VERSION` to bust frontend cache |
+| 12 | `github` | in-process | Use `gh` CLI for issues / PRs / runs / releases |
+| 13 | `notion` | in-process | Notion API — pages, data sources, blocks |
+| 14 | `jira` | in-process | Jira REST API v3 — issues, comments, transitions |
+| 15 | `slack` | in-process | Slack Web API — post, reply, history, react, upload |
+| 16 | `gmail` | in-process | Gmail API — search, get, send, reply, label |
+| 17 | `todoist` | in-process | Todoist REST API v2 — tasks and projects |
+| 18 | `trello` | in-process | Trello API — boards, cards, comments |
+| 19 | `summarize` | in-process | Compress text to a target word count, faithfully |
+| 20 | `weather` | in-process | Open-Meteo current + hourly forecast (no API key) |
+
+Adding skill #21 means dropping a new directory under `agent/skills_pkg/` — no Python edits required. The registry has a 30-second staleness cap and reloads on demand.
+
+### ACPX Day-One Setup Walkthrough
+
+> The skill catalog and the in-process harness work fine even if you have **zero** ACP CLIs installed. You only need a CLI on PATH if you want to call `acp_spawn` against that specific agent.
+
+**Step 1 — Apply the migration.**
+
+```bash
+python Tlamatini/manage.py migrate
+```
+
+This creates `AcpAgent`, `Skill`, `AcpSession`, `SkillInvocation`, and seeds 7 new `Tool` rows.
+
+**Step 2 — Lint the skill catalog (optional but recommended).**
+
+```bash
+python Tlamatini/manage.py acpx_lint
+```
+
+Expected output: `20 valid, 0 invalid, exit 0`. A malformed `SKILL.md` is silently skipped at runtime, so this is your only signal that something is wrong with the catalog.
+
+**Step 3 — (Optional) install at least one external coding-agent CLI.**
+
+The simplest is Anthropic's:
+
+```bash
+npm install -g @anthropic-ai/claude-code      # installs `claude` (or `claude.cmd` on Windows)
+claude --version                              # confirm it's on PATH
+```
+
+Other supported CLIs: `cursor-agent`, `codex`, `copilot`, `gemini`, `qwen-code`, `pi`, `droid`, `iflow`, `kilocode`, `kimi`, `kiro`, `opencode` — install whichever ones you actually want to delegate to.
+
+**Step 4 — Configure the API keys for whichever CLI you installed.**
+
+See [API Key Setup](#api-key-setup-anthropic_api_key-gemini_api_key-and-friends) above for the canonical recipe. The short version: put the key in `acpx.agents.<id>.env` so it gets injected into the spawned child, and (for Anthropic / Gemini) also set the top-level `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` so Tlamatini's own cloud paths can use the same key.
+
+**Step 5 — Start Tlamatini (source mode).**
+
+```bash
+python Tlamatini/manage.py runserver --noreload
+```
+
+In `Tlamatini/tlamatini.log` (the unified app log) you should see, near the top:
+
+```
+[ACPX] mirrored 14 agents into AcpAgent table
+[skills] reload: 20 skills loaded
+[ACPX] mirrored 20 skills into Skill table
+```
+
+If those three lines are present, the runtime is alive.
+
+**Step 6 — Smoke-test the skill harness from the chat.**
+
+In the chat, with **Multi-Turn enabled** and the seven new tool toggles ON in the Tools Dialog, type:
+
+```
+Use list_skills to confirm 'hello-world' is registered, then invoke it with who='angel'.
+```
+
+Expected: the LLM calls `list_skills` → `invoke_skill('hello-world', '{"who":"angel"}')` and returns a JSON envelope with `ok: true` and `output.greeting` set. An `audit_id` will be returned — that's the path component for the on-disk NDJSON record.
+
+**Step 7 — Health-probe the runtime.**
+
+```
+Run acp_doctor and tell me what it reports.
+```
+
+Expected `ok: true` if the configured `probeAgent` is on PATH; `ok: false` with a clear `details` array otherwise. The runtime is **still healthy** for skill use even when the probe agent is missing — `acp_doctor` only reflects external-CLI reachability, not the harness.
+
+**Step 8 — Spawn an ACP child end-to-end.**
+
+```
+Spawn claude in cwd='C:/Development/Tlamatini' with the task
+'List the immediate children of agent/ and describe each in one sentence.'
+using acp_spawn.
+```
+
+You should get back a `session_id`, a `transcript_path`, and the last 32 events. To follow up:
+
+```
+Send 'now identify which of those children would be the right place to add a new ACP agent_id called kimi-2.' to that session via acp_send.
+```
+
+When done:
+
+```
+Kill the session via acp_kill.
+```
+
+### ACPX End-to-End Examples
+
+Six demo prompts ship in migrations `0072_add_acpx_demo_prompts` and `0073_acpx_demo_gemini_uplift` (`idPrompt` 25–30). They are pre-written Multi-Turn scripts you can pick from the prompt picker; each exercises the full ACPX surface with a colored HTML banner so the run is visually unambiguous.
+
+| `idPrompt` | Name | What it demonstrates |
+|------------|------|----------------------|
+| 25 | **ACPX Health & Roster Parade** | `acp_doctor` + `list_acp_agents` + `invoke_skill('hello-world')`. Renders an HTML roster table with a `resolvable_on_this_machine` column. |
+| 26 | **Skill Catalog Carnival** | `list_skills` + `invoke_skill('summarize')` + `invoke_skill('acp-router')`. Renders a 20-row catalog table. |
+| 27 | **End-to-End ACPX Pipeline** | `acp_doctor` → `acp_spawn` → `acp_send` → `acp_kill` → `invoke_skill('summarize')` → `chat_agent_file_creator` → `chat_agent_notifier`. Full spawn → converse → harvest → summarize → persist → notify. |
+| 28 | **Permission Gate & Audit Tour** | Reports the active `permissionMode` and `nonInteractivePermissions`, then deliberately hits a successful `invoke_skill` AND an `UNKNOWN_SKILL` failure to show both envelope shapes verbatim. |
+| 29 | **Multi-CLI ACPX Relay** | Spawns leg A (`claude`) → harvests transcript → spawns leg B (`gemini`) with leg-A output as input → graceful kill on both. Mirrors OpenClaw's multi-agent acp-router pattern. |
+| 30 | **ACPX Auditor's Replay** | Invokes `hello-world`, captures the `audit_id`, locates the matching NDJSON under `~/.tlamatini/skill-audit/<YYYY-MM>/`, reads it back via `chat_agent_file_extractor`, and renders an "Audit Trail — What's Actually On Disk" table with absolute paths. |
+
+Pick any of these from the prompt picker, hit **Send** with Multi-Turn checked and **Exec Report** also checked, and the full pipeline runs. Demo 30 in particular is the easiest way to **prove** the on-disk audit trail is real and replayable.
+
+**A minimal hand-written example.** Paste this in the chat with Multi-Turn checked:
+
+```
+Run acp_doctor, then list_acp_agents. If 'claude' is resolvable, acp_spawn it
+with task='Read the file C:/Development/Tlamatini/CLAUDE.md and write a
+4-bullet summary.' and capture the session_id. Then acp_send the same session
+'Now identify which agent_id under acpx.agents in config.json maps to you.'
+Then acp_kill the session and emit the four-bullet summary verbatim.
+```
+
+The LLM will execute exactly that sequence; the **Exec Report** table at the bottom of the answer will show the `acp_spawn` / `acp_send` / `acp_kill` rows with SUCCESS/FAILURE verdicts.
+
+### ACPX Persisted Artifacts
+
+Three on-disk locations matter:
+
+| Path | Format | Written by | Purpose |
+|------|--------|------------|---------|
+| `<stateDir>/<session>.json` | JSON (one file per session) | `FileSessionStore.save()` | `AcpSessionRecord` — `session_id`, `agent_id`, `cwd`, `state_path`, `transcript_path`, `pid`, `created_at`, `last_active_at`, `closed`, `tags`. |
+| `<stateDir>/<session>.transcript.ndjson` | NDJSON (one line per event) | `AcpSession.send_turn()` | Per-session full transcript. Each line: `{"direction":"out","text":"...","ts":...}` (what we wrote to stdin) or `{"direction":"in","raw":"...","ts":...}` (what the child wrote to stdout). |
+| `~/.tlamatini/skill-audit/<YYYY-MM>/<epoch>_<skill>_<id8>.ndjson` | NDJSON (one line per event) | `SkillAuditLog` | Per-`invoke_skill` audit. Append-only. Replayable byte-for-byte. |
+
+Default `<stateDir>` is `~/.tlamatini/acpx-state/`. Override via `acpx.stateDir` in `config.json`.
+
+`<stateDir>` files use atomic temp-file + `os.replace` writes so cross-process consistency is best-effort safe (this is a single-user local tool, not a multi-tenant database).
+
+### ACPX Visual Canvas Integration
+
+Two new node types live in the ACP canvas's `AGENT_TYPE_CLASS_MAP` (in `agent/static/agent/js/acp-canvas-core.js`) and have matching gradients in `agent/static/agent/css/agentic_control_panel.css`:
+
+| Node | CSS class | Gradient | Maps to |
+|------|-----------|----------|---------|
+| **Skill** | `.canvas-item.skill-agent` | purple → indigo → cyan → teal | `invoke_skill(name, args)` |
+| **ACPx** | `.canvas-item.acpx-agent` | fire-orange → coral → violet → black | `acp_spawn(agent_id, task, …)` |
+
+The **ACPx gradient is intentionally loud** because spawning an external CLI is a security-relevant action and the visual identity should make that obvious. The full visual integration (right-click menu wiring, configuration dialog populated from `list_acp_agents` / `list_skills`, `.flw` round-trip, undo/redo) is Phase 5 of the rollout (see [`ACPX.md`](ACPX.md) §11). The classMap + gradient ground laid in this revision is what Phase 5 builds on.
+
+You can already pre-populate a `.flw` JSON manually (load it through the existing canvas import path):
+
+```json
+{
+  "version": 1,
+  "agents": [
+    { "id": 1, "type": "starter", "x": 50,  "y": 50, "config": {} },
+    { "id": 2, "type": "skill",   "x": 250, "y": 50,
+      "config": { "skill_name": "summarize", "args": { "text": "...", "target_words": 80 } } },
+    { "id": 3, "type": "acpx",    "x": 450, "y": 50,
+      "config": { "agent_id": "claude", "task": "Refactor file X to async", "cwd": "" } },
+    { "id": 4, "type": "notifier","x": 650, "y": 50, "config": {} }
+  ],
+  "connections": [
+    { "from": 1, "to": 2, "kind": "target_agents" },
+    { "from": 2, "to": 3, "kind": "target_agents" },
+    { "from": 3, "to": 4, "kind": "target_agents" }
+  ]
+}
+```
+
+### ACPX Troubleshooting
+
+> Your first stop is always `Tlamatini/tlamatini.log` — see the [Application Log section](#application-log-tlamatinilog).
+
+**1. `acp_spawn` returns `AGENT_NOT_FOUND`.** The command isn't on PATH, or the absolute path doesn't exist.
+
+```bash
+where claude            # Windows
+which claude            # POSIX
+```
+
+If the binary lives somewhere unusual, override it in `config.json`:
+
+```json
+{ "acpx": { "agents": { "claude": { "command": "C:/full/path/to/claude.cmd" } } } }
+```
+
+Restart Tlamatini, re-run `acp_doctor`. On Windows, `agent/acpx/windows_spawn.py` searches `<name> / <name>.cmd / <name>.bat / <name>.exe` in that order, so a bare `claude` will pick up `claude.cmd` from `%APPDATA%\npm\` automatically.
+
+**2. The CLI launches but immediately exits.** The CLI almost always needs an API key. Confirm the key is being injected:
+
+```bash
+python Tlamatini/manage.py shell
+>>> from agent.acpx import get_acpx_runtime
+>>> r = get_acpx_runtime()
+>>> r.agent_registry["claude"].env
+{'ANTHROPIC_API_KEY': 'sk-ant-...'}
+```
+
+If the env dict is empty, your `acpx.agents.<id>.env` block is missing or malformed. See [API Key Setup](#api-key-setup-anthropic_api_key-gemini_api_key-and-friends).
+
+**3. `acp_doctor` returns `ok: false` but `list_acp_agents` shows resolvable entries.** The probe agent (`acpx.probeAgent`) is unhealthy but other agents work. Either install the named probe CLI or point `probeAgent` at one you have. The skill harness is unaffected.
+
+**4. `invoke_skill` fails with `input_contract_violation`.** Open the matching `~/.tlamatini/skill-audit/<YYYY-MM>/<...>.ndjson` for the returned `audit_id`. The `args_validated` event records what survived coercion; the `skill_failed` event records the reason. The same detail appears in the JSON envelope returned to the LLM.
+
+**5. "I want to see what an ACP child actually said."** Open `<stateDir>/<session_id>.transcript.ndjson`. Default `stateDir` is `~/.tlamatini/acpx-state/`. One line per event, both directions. Use `jq` or `Get-Content -Wait` for live debugging.
+
+**6. "I want to lock down the runtime entirely."** Set `acpx.permissionMode` to `"deny-all"` in `config.json` and restart. `acp_spawn` refuses with `code: PERMISSION_DENIED`; the skill harness rejects any non-trivial action; `acp_doctor` still works (probing is read-only).
+
+**7. "I want to disable specific ACPX tools without locking the runtime."** Toggle them off in the existing **Tools Dialog** UI. Each tool has a row in the `Tool` table seeded by migration `0071_acpx_skills` (`acpx-spawn`, `acpx-send`, `acpx-kill`, `acpx-doctor`, `acpx-list-agents`, `acpx-invoke-skill`, `acpx-list-skills`).
+
+**8. "A skill I just wrote isn't showing up in `list_skills`."** Run `python Tlamatini/manage.py acpx_lint`. If the linter says the package is invalid (frontmatter parse error, missing required field, body over 8 KiB), the registry silently skipped it. Fix the SKILL.md and the next `list_skills` call (within 30 s) will pick it up — no Django restart required.
+
+### ACPX Security Considerations
+
+- **Spawn is a write-class action conceptually** even though the gate treats it as read-class so `approve-reads` mode is usable. The child can do anything the user can; what's gated is what happens *inside* the child once it's running. If you don't trust the spawned CLI, run with `permissionMode=deny-all` to block spawn entirely.
+- **`approve-all` is flagged dangerous.** `permissions.is_dangerous_config('approve-all')` returns `True`. Don't enable it on a multi-user host or any system you don't fully control.
+- **`pluginToolsMcpBridge` is OFF by default.** Turning it ON exposes Tlamatini's `@tools` to the ACP child. Only do so when you trust the child runtime — exposing every internal tool to a less-trusted CLI is a deliberate security choice.
+- **API keys in `config.json` are tracked.** See the warning in [API Key Setup](#api-key-setup-anthropic_api_key-gemini_api_key-and-friends). Use `git update-index --skip-worktree` or `CONFIG_PATH` to keep them out of version control.
+- **Transcripts and audit NDJSON contain whatever the child / skill produced.** That includes any text the operator pasted into the chat plus any text the child returned. Treat `<stateDir>` and `~/.tlamatini/skill-audit/` as you would treat application logs that may contain PII.
+- **`execute_command` has no permission gate.** ACPX adds the gate `execute_command` lacks; the natural follow-up is a skill `tlamatini-execute-command-permission-bridge` that wraps the legacy tool in the same gate (called out as a roadmap item in `ACPX.md`).
+
+### ACPX Files Involved
+
+**New / runtime files:**
+
+- `Tlamatini/agent/acpx/{__init__,config,agent_registry,session_store,windows_spawn,permissions,runtime,tools,service,tests}.py`
+- `Tlamatini/agent/skills/{__init__,frontmatter,registry,io_contract,harness}.py`
+- `Tlamatini/agent/skills_pkg/_meta/{schema.json,lint.py}`
+- `Tlamatini/agent/skills_pkg/<20 SKILL.md packages>`
+- `Tlamatini/agent/management/commands/acpx_lint.py`
+- `Tlamatini/agent/migrations/0071_acpx_skills.py` — creates `AcpAgent`, `Skill`, `AcpSession`, `SkillInvocation`; seeds 7 `Tool` rows.
+- `Tlamatini/agent/migrations/0072_add_acpx_demo_prompts.py` — seeds prompts 25–30.
+- `Tlamatini/agent/migrations/0073_acpx_demo_gemini_uplift.py` — additional Gemini-specific demo polish.
+- `ACPX.md` — design + rollout document at the repo root.
+
+**Modified files:**
+
+- `Tlamatini/agent/apps.py` — boots ACPX + Skills on the existing background-thread path.
+- `Tlamatini/agent/models.py` — adds the four new tables.
+- `Tlamatini/agent/tools.py` — registers the seven new tools in `get_mcp_tools()`.
+- `Tlamatini/agent/static/agent/js/acp-canvas-core.js` — adds `'skill'` and `'acpx'` to `AGENT_TYPE_CLASS_MAP`.
+- `Tlamatini/agent/static/agent/css/agentic_control_panel.css` — adds the two new gradient blocks.
+- `Tlamatini/agent/config.json` — documented `acpx` block + per-agent `env` injection.
+
+---
+
 ## Custom Agent Development
 
 Tlamatini includes a detailed workflow document (Skill) to guide AI assistants in creating new agents correctly. This ensures that new agents integrate perfectly with the backend Django views, database migrations, frontend CSS gradients, and Canvas connection logic.
@@ -4290,6 +4980,15 @@ Producing lines like:
 | **Barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier, waiting for ALL configured source agents to start before triggering downstream target agents via cross-process file-based locking and flag files |
 | **Googler** | Short-running web-search agent that searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content, and saves the combined results to an output file for downstream processing |
 | **TeleTlamatini** | Long-running active notification-and-prompt-processing agent that exposes the full Tlamatini chat (`agent_page.html` Multi-Turn behavior, including the per-agent Exec Report tables) over Telegram. Password-gates each chat on first contact, uses an Ollama-backed completeness classifier to decide whether each user message is a clear and complete request (asking follow-up questions until it is), proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true`, pauses to ask the user for additional information mid-processing if needed, and sends the assembled answer (including command/action tables per agent) back to the Telegram user. After every successfully completed user request cycle, starts the configured `target_agents` |
+| **ACP (protocol)** | The agent-as-child-process I/O protocol: line-oriented JSON over stdin/stdout. ACPX is Tlamatini's implementation; OpenClaw is another implementation. Skills written for one project run unmodified on the other |
+| **ACPX** | The Python runtime in `agent/acpx/` that spawns external coding-agent CLIs (Claude Code, Cursor, Codex, Copilot, Gemini, Qwen, Pi, Droid, iFlow, Kilocode, Kimi, Kiro, OpenCode) as managed child processes, brokers their stdin/stdout JSON, and exposes seven LangChain `@tool`s (`acp_spawn`, `acp_send`, `acp_kill`, `acp_doctor`, `list_acp_agents`, `invoke_skill`, `list_skills`). OpenClaw-compatible verbatim |
+| **AcpAgent** | Database model (created by migration `0071_acpx_skills`) — one row per registered ACP `agent_id`. Mirrored from disk by `agent/acpx/service.py::boot_acpx()` on every Django start. The disk registry (built-ins + `acpx.agents` overrides) is the source of truth |
+| **AcpSession** | Database model and on-disk record (`<stateDir>/<session>.json` + `<session>.transcript.ndjson`) representing one ACP child-process session. Created by `acp_spawn`, terminated by `acp_kill` |
+| **AcpxRuntime** | Singleton runtime in `agent/acpx/runtime.py`. Owns the agent registry, the permission gate, the file session store, and the live `_sessions` dict. Constructed by `boot_acpx()`; accessed via `get_acpx_runtime()` |
+| **Skill** | A markdown-driven extension surface: a directory under `agent/skills_pkg/<name>/` containing a `SKILL.md` with YAML frontmatter (name, description, runtime, inputs, outputs, permissions, budget, triggers) plus a markdown body playbook. Invocable through the `invoke_skill` tool. 20 seed skills ship in this revision |
+| **SkillHarness** | Runtime in `agent/skills/harness.py` that executes a skill: registry lookup → input validation → audit-log open → dispatch (in-process / acpx) → output validation → audit-log close. Enforces `Budget(max_iterations, max_seconds, max_tokens)` |
+| **SkillInvocation** | Append-only audit row written for every `invoke_skill` call. Backed by `~/.tlamatini/skill-audit/<YYYY-MM>/<epoch>_<skill>_<id8>.ndjson` on disk |
+| **acp-router** | A seed skill that picks the right ACP `agent_id` for a given intent ("refactor a Python file", "summarize a long doc") with healthy-fallback recovery. Skill #3 in the seed catalog |
 
 ---
 
@@ -4360,6 +5059,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+- **Added ACPX Runtime + 20-Skill Catalog** - New `agent/acpx/` package implements an OpenClaw-compatible runtime that spawns external coding-agent CLIs (Claude Code, Cursor, Codex, Copilot, Gemini, Qwen, Pi, Droid, iFlow, Kilocode, Kimi, Kiro, OpenCode, plus a reserved `tlamatini` self-host slot) as child processes. Seven new LangChain `@tool`s (`acp_spawn` / `acp_send` / `acp_kill` / `acp_doctor` / `list_acp_agents` / `invoke_skill` / `list_skills`) are seeded as togglable rows in the `Tool` table by migration `0071_acpx_skills` (which also creates the `AcpAgent`, `Skill`, `AcpSession`, `SkillInvocation` models). Permission gating ships with three modes (`approve-reads` default, `approve-all` flagged dangerous, `deny-all`) plus a non-interactive policy (`deny`/`fail`). API keys are injected per-agent through `acpx.agents.<id>.env` so the spawned child reads e.g. `ANTHROPIC_API_KEY` without needing the operator to export it; the boot-time `ensure_acpx_block_in_config_json()` helper appends the documented default `acpx` block to existing `config.json` files atomically so upgrades are self-healing. 20 seed `SKILL.md` packages cover hello-world, skill-creator, acp-router, eight Tlamatini-specific maintenance skills, and ten OpenClaw-format ports (github, notion, jira, slack, gmail, todoist, trello, summarize, weather). Six demo prompts (`idPrompt` 25–30) ship in migrations `0072` and `0073`. Full design and rollout history in [`ACPX.md`](ACPX.md); operator reference in [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog).
 - **Added TeleTlamatini Agent** - Long-running active agent that exposes the full Tlamatini chat (`agent_page.html` Multi-Turn behavior, including the per-agent Exec Report tables) over Telegram. Stays alive waiting for messages, password-gates each chat on first contact, uses an Ollama-backed completeness classifier to decide whether each user message is a clear and complete request (asking follow-up questions until it is), proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true`, sends the assembled answer back to the Telegram user, and starts the configured `target_agents` after every completed user request cycle. Unique 4-color gradient: Telegram-Blue → Sky → Amber → Crimson.
 - **Multi-Turn Planner Max-Tool Cap Lowered 50 → 20** - `build_global_execution_plan()` and `_select_planner_tool_names()` now default to `max_selected_tools=20` (configurable). After observing MXNet-installation sessions where the planner selected every tool at once due to keyword inflation, the default was reduced to 20 to force the scoring threshold to do the real filtering.
 - **Planner Short Follow-Up Scoring Fix** - Short follow-up messages like "continue", "go ahead", "proceed" used to score near-zero for every capability because scoring only considered the current message. The planner now accepts a `chat_history_text` argument and applies a history-aware boost of up to +15 points per capability when the current request has ≤4 meaningful tokens. Wired in `rag/factory.py::_extract_chat_history_text()` which pulls the last 4 chat messages either from the payload or directly from `DBChatHistoryLoader`.

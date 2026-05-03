@@ -15,22 +15,22 @@ target_agents: []
 # api_id / api_hash:  https://my.telegram.org → "API development tools"
 # bot_token:          @BotFather → /newbot
 telegram:
-  api_id: 12345678
-  api_hash: "ffabcdef0123456789000000abcdef01234567"
-  bot_token: "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456"
+  api_id: <TELETLAMATINI_API_ID goes here>
+  api_hash: <TELETLAMATINI_API_HASH goes here>
+  bot_token: <TELETLAMATINI_BOT_TOKEN goes here>
 
 # ── Access gate ────────────────────────────────────────────────────────────
 # Single password the Telegram user must send on first contact. Leave empty
 # to disable the gate (NOT recommended for a bot exposed on the public Telegram
 # network).
-password: "changeme"
+password: <TELETLAMATINI_PASSWORD goes here>
 
 # ── Tlamatini chat backend ─────────────────────────────────────────────────
 # ws_url is auto-derived from base_url if omitted.
 tlamatini:
   base_url: "http://127.0.0.1:8000"
-  username: "user"
-  password: "changeme"
+  username: <TLAMATINI_USERNAME goes here>
+  password: <TLAMATINI_PASSWORD goes here>
   multi_turn_enabled: true
   exec_report_enabled: true
   total_timeout: 1800              # hard ceiling for one request (seconds)

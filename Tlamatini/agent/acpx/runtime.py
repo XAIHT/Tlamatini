@@ -144,15 +144,24 @@ class AcpSession:
                         self.record.pid)
 
     # ── I/O ──────────────────────────────────────────────────────────
-    def send_turn(self, text: str, timeout_seconds: float) -> Iterator[Dict[str, Any]]:
+    def send_turn(self, text: str, timeout_seconds: float,
+                  idle_seconds: float = 6.0,
+                  startup_grace_seconds: float = 12.0) -> Iterator[Dict[str, Any]]:
         """
-        Send one ACP-over-stdio turn and yield events (dicts) until the
-        child reports `done: true`, closes stdout, or timeout elapses.
+        Send one turn and yield events until any of these completion
+        conditions fire (whichever comes first):
 
-        The yielded events are the raw JSON lines emitted by the child,
-        plus one final {"done": True, "_synthetic": "<reason>"} event.
-        Non-JSON lines from the child are wrapped as
-        {"event": "log", "text": "<line>"}.
+          1. The child emits a JSON line with `"done": true` (strict ACP).
+          2. The child closes stdout (process exit).
+          3. `timeout_seconds` elapses (hard backstop).
+          4. The child stops producing output for `idle_seconds` after
+             having already produced at least one event — i.e. the REPL
+             finished its turn but doesn't speak the JSON-ACP envelope.
+             A `startup_grace_seconds` window is granted before the idle
+             rule arms so cold-start CLIs (Gemini, Qwen) get time to boot.
+
+        Rule 4 is what lets Tlamatini drive non-JSON-ACP REPLs (gemini-cli,
+        cursor-agent, qwen-code, codex) without hanging until timeout.
         """
         if self.proc is None or self.proc.stdin is None or self.proc.stdout is None:
             yield {"done": True, "_synthetic": "no_proc"}
@@ -168,18 +177,31 @@ class AcpSession:
                        "error": str(e)}
                 return
 
-            deadline = time.time() + max(1.0, float(timeout_seconds))
+            started_at = time.time()
+            deadline = started_at + max(1.0, float(timeout_seconds))
+            last_event_at: Optional[float] = None
+            event_count = 0
             transcript_path = Path(self.record.transcript_path)
             transcript_path.parent.mkdir(parents=True, exist_ok=True)
             with transcript_path.open("a", encoding="utf-8") as transcript:
                 transcript.write(json.dumps({"direction": "out", "text": text,
                                              "ts": now_epoch()}) + "\n")
                 while True:
-                    if time.time() > deadline:
-                        yield {"done": True, "_synthetic": "timeout"}
+                    now = time.time()
+                    if now > deadline:
+                        yield {"done": True, "_synthetic": "timeout",
+                               "events_seen": event_count}
+                        return
+                    # Idle-based completion: only arms after the startup
+                    # grace AND after we've received at least one event.
+                    if (event_count > 0 and last_event_at is not None
+                            and (now - last_event_at) >= idle_seconds
+                            and (now - started_at) >= startup_grace_seconds):
+                        yield {"done": True, "_synthetic": "idle",
+                               "idle_seconds": idle_seconds,
+                               "events_seen": event_count}
                         return
                     if self.proc.poll() is not None:
-                        # Drain remaining stdout if any
                         for residual in (self.proc.stdout.readlines() or []):
                             ev = self._parse_line(residual)
                             transcript.write(
@@ -197,6 +219,8 @@ class AcpSession:
                     transcript.write(json.dumps({"direction": "in", "raw": line,
                                                  "ts": now_epoch()}) + "\n")
                     yield ev
+                    event_count += 1
+                    last_event_at = time.time()
                     if isinstance(ev, dict) and ev.get("done") is True:
                         return
 
@@ -225,7 +249,9 @@ class AcpxRuntime:
     def __init__(self, *, config: Optional[AcpxConfig] = None):
         self.config = config or load_acpx_config(load_tlamatini_config_json())
         self.session_store = FileSessionStore(self.config.state_dir)
-        self.agent_registry = build_agent_registry(self.config.agents)
+        self.agent_registry = build_agent_registry(
+            self.config.agents, self.config.agents_env,
+        )
         self.permission_gate = PermissionGate(
             self.config.permission_mode, self.config.non_interactive
         )
@@ -367,14 +393,21 @@ class AcpxRuntime:
         return session
 
     def send(self, session_id: str, text: str,
-             timeout_seconds: Optional[float] = None) -> List[Dict[str, Any]]:
+             timeout_seconds: Optional[float] = None,
+             idle_seconds: Optional[float] = None,
+             startup_grace_seconds: Optional[float] = None,
+             ) -> List[Dict[str, Any]]:
         sess = self._sessions.get(session_id)
         if sess is None:
             raise AcpRuntimeError("UNKNOWN_SESSION",
                                   f"session '{session_id}' not found")
         timeout = float(timeout_seconds or self.config.timeout_seconds)
+        idle = float(idle_seconds) if idle_seconds is not None else 6.0
+        grace = float(startup_grace_seconds) if startup_grace_seconds is not None else 12.0
         events: List[Dict[str, Any]] = []
-        for ev in sess.send_turn(text, timeout):
+        for ev in sess.send_turn(text, timeout,
+                                 idle_seconds=idle,
+                                 startup_grace_seconds=grace):
             events.append(ev)
             if ev.get("done"):
                 break

@@ -1,8 +1,8 @@
 source_agents: []
 target_agents: []
 telegram:
-  api_id: 123456
-  api_hash: adcb5adcbbad6676adc98112345678910
-  chat_id: Angela-Bennet
+  api_id: <TELEGRAMER_API_ID goes here>
+  api_hash: <TELEGRAMER_API_HASH goes here>
+  chat_id: <TELEGRAMER_CHAT_ID goes here>
   message: Telegrammer parametrized and launched
 poll_interval: 5

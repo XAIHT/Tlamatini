@@ -261,3 +261,5 @@ agent/agents/pools/*
 
 # Applications
 applications/*
+# Local secrets vault used by regen_secrets.py — NEVER commit
+data.keys
