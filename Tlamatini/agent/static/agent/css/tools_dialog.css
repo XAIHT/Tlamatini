@@ -143,39 +143,6 @@
     border-color: rgba(157,59,255,0.55);
 }
 
-/* Hero banner ribbon — renders the first <div> block from the prompt
-   content live, scaled down to a fixed-height ribbon that gives the user
-   the visual identity of the demo at a glance. */
-.prompt-card-hero {
-    position: relative;
-    height: 92px;
-    margin: -14px -18px 12px -18px;
-    overflow: hidden;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
-    pointer-events: none;
-    background: rgba(0,0,0,0.35);
-}
-.prompt-card-hero::after {
-    content: "";
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 22px;
-    background: linear-gradient(180deg, transparent 0%, rgba(20,22,38,0.85) 100%);
-}
-.prompt-card-hero-inner {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%) scale(0.42);
-    transform-origin: center center;
-    width: 760px;
-    text-align: center;
-}
-.prompt-card-hero-inner > div {
-    margin: 0 !important;
-}
-
 .prompt-card-header {
     display: flex;
     align-items: center;

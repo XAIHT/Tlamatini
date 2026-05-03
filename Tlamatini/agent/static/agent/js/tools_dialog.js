@@ -3,85 +3,31 @@ function appendPrompt(content) { // eslint-disable-line no-unused-vars
     const toolsBody = document.getElementById('tools-body');
     const textBox = document.createElement('div');
     textBox.classList.add('text-box');
-    textBox.innerHTML = content;
+    textBox.textContent = content;
     toolsBody.appendChild(textBox);
 }
 
-function decodeHtmlEntities(text) {
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-}
-
-function stripHtmlAndCondense(raw) {
-    let text = raw.replace(/<[^>]+>/g, ' ');
-    text = decodeHtmlEntities(text);
-    text = text.replace(/\s+/g, ' ').trim();
-    return text;
+function condenseWhitespace(text) {
+    return text.replace(/\s+/g, ' ').trim();
 }
 
 function extractPromptTitle(raw) {
-    const bold = raw.match(/\*\*([^*]{3,120})\*\*/);
-    if (bold && bold[1]) {
-        return decodeHtmlEntities(bold[1]).replace(/\s+/g, ' ').trim();
+    // Catalog prompts now follow the convention
+    //   "Tlamatini, run the <Title> demo, please. ..."
+    // so we lift the title from between "run the" and "demo".
+    const m = raw.match(/run\s+the\s+(.+?)\s+demo/i);
+    if (m && m[1]) {
+        return condenseWhitespace(m[1]);
     }
-    const stripped = stripHtmlAndCondense(raw);
+    const stripped = condenseWhitespace(raw);
     const firstSentence = stripped.split(/(?<=[.!?])\s/)[0] || stripped;
     return firstSentence.length > 80 ? firstSentence.slice(0, 77) + '...' : firstSentence;
 }
 
-// Decode &lt; / &gt; / &amp; / &quot; / &mdash; / &middot; etc. so that the
-// hero-banner HTML the prompt embeds can actually be parsed by the browser.
-// The DB stores the prompts with `&` encoded so the LLM sees literal
-// `&mdash;` in its instruction, but for *visual preview* we want the
-// rendered glyphs.
-function decodeForRender(raw) {
-    return decodeHtmlEntities(raw);
-}
-
-// Pull the FIRST balanced <div ...>...</div> block out of the prompt text.
-// Every demo prompt starts with `Step 1: emit a hero banner <div ...>...</div>.`
-// so this gives us the eye-candy that should sit at the top of the card.
-// Returns null when no balanced <div> block is found.
-function extractFirstDivBlock(raw) {
-    const decoded = decodeForRender(raw);
-    const openRegex = /<div\b[^>]*>/i;
-    const openMatch = decoded.match(openRegex);
-    if (!openMatch) return null;
-    const start = openMatch.index;
-    let depth = 0;
-    let i = start;
-    const tagRegex = /<\/?div\b[^>]*>/gi;
-    tagRegex.lastIndex = start;
-    let m;
-    while ((m = tagRegex.exec(decoded)) !== null) {
-        if (m[0][1] === '/') {
-            depth -= 1;
-            if (depth === 0) {
-                i = m.index + m[0].length;
-                return decoded.slice(start, i);
-            }
-        } else {
-            depth += 1;
-        }
-        if (depth < 0) return null;
-    }
-    return null;
-}
-
 function buildPromptPreview(raw, maxChars = 240) {
-    let text = raw;
-    // Strip the first hero banner (we render it separately above).
-    const banner = extractFirstDivBlock(raw);
-    if (banner) {
-        const decoded = decodeForRender(raw);
-        text = decoded.replace(banner, ' ');
-    }
-    const stripped = stripHtmlAndCondense(text);
-    const cleaned = stripped
-        .replace(/Tlamatini,\s*run the\s*\*\*[^*]+\*\*\s*demo,?\s*please\.?\s*/i, '')
+    const cleaned = condenseWhitespace(raw)
+        .replace(/Tlamatini,\s*run the[^.]+demo,?\s*please\.?\s*/i, '')
         .replace(/Tlamatini,\s*/, '')
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
         .replace(/Step\s*\d+\s*\([^)]*\)\s*:\s*/gi, '• ')
         .replace(/Step\s*\d+\s*:\s*/gi, '• ')
         .trim();
@@ -119,19 +65,6 @@ $(function () {
             card.id = promptName;
             card.dataset.fullContent = content;
 
-            // Live-rendered hero banner ribbon (the first <div>...</div>
-            // block from the prompt content), if present.
-            const bannerHtml = extractFirstDivBlock(content);
-            if (bannerHtml) {
-                const heroWrap = document.createElement('div');
-                heroWrap.className = 'prompt-card-hero';
-                const heroInner = document.createElement('div');
-                heroInner.className = 'prompt-card-hero-inner';
-                heroInner.innerHTML = bannerHtml;
-                heroWrap.appendChild(heroInner);
-                card.appendChild(heroWrap);
-            }
-
             const header = document.createElement('div');
             header.className = 'prompt-card-header';
 
@@ -155,14 +88,10 @@ $(function () {
             const sizeChip = document.createElement('span');
             sizeChip.className = 'prompt-card-chip';
             sizeChip.textContent = `${content.length.toLocaleString()} chars`;
-            const renderedChip = document.createElement('span');
-            renderedChip.className = 'prompt-card-chip';
-            renderedChip.textContent = bannerHtml ? 'banner: rendered' : 'banner: none';
             const insertChip = document.createElement('span');
             insertChip.className = 'prompt-card-chip prompt-card-chip-action';
             insertChip.textContent = 'click to insert →';
             footer.appendChild(sizeChip);
-            footer.appendChild(renderedChip);
             footer.appendChild(insertChip);
 
             card.appendChild(header);
@@ -231,4 +160,3 @@ $(function () {
     });
 
 });
-
