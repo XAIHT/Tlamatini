@@ -857,38 +857,122 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
 
 /**
  * Parse key='value' and key="value" pairs from a request string.
- * Handles single-quoted, double-quoted, and unquoted values.
- * Also handles dotted keys like smtp.host='...'
+ *
+ * Handles single-quoted, double-quoted, and unquoted values, including
+ * apostrophes embedded inside single-quoted values (e.g.
+ * ``message='Hi I'm here!!'``). The LLM rarely escapes inner quotes, so
+ * the parser uses a transport-aware lookahead: an unescaped quote inside
+ * a value is treated as the terminator ONLY when what follows is the end
+ * of the string OR a conjunction (``and``/``with``/``,``/``;``) followed by
+ * another ``KEY=`` token. Otherwise the quote is treated as embedded.
+ *
+ * This mirrors the Python-side ``_split_assignment_segments`` /
+ * ``_closes_outer_quote`` heuristic in ``agent/tools.py`` so the .flw
+ * generator preserves the same values the Python wrapped-agent dispatcher
+ * sees at runtime. Without this, multi-arg wrapped chat-agent calls whose
+ * values contain apostrophes (very common in English text) end up
+ * truncated when round-tripped through Create Flow.
  */
 function _parseKeyValuePairs(str) {
     const result = {};
     if (!str || typeof str !== 'string') return result;
 
-    // Pass 1: single-quoted values — ``key='...'`` where ``...`` may
-    // contain escaped quotes (\') and newlines (\n). Allow nested unescaped
-    // double-quotes inside single-quoted values (common in shell commands).
-    const singleQ = /([\w.]+)\s*=\s*'((?:[^'\\]|\\.)*)'/g;
-    let m;
-    while ((m = singleQ.exec(str)) !== null) {
-        result[m[1]] = m[2].replace(/\\'/g, "'").replace(/\\n/g, '\n');
-    }
+    const n = str.length;
+    let i = 0;
 
-    // Pass 2: double-quoted values — ``key="..."``.
-    const doubleQ = /([\w.]+)\s*=\s*"((?:[^"\\]|\\.)*)"/g;
-    while ((m = doubleQ.exec(str)) !== null) {
-        if (!(m[1] in result)) {
-            result[m[1]] = m[2].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+    const isSpace = (c) => c === ' ' || c === '\t' || c === '\n' || c === '\r';
+    const isKeyChar = (c) => /[\w.]/.test(c);
+    const skipSpaces = () => { while (i < n && isSpace(str[i])) i++; };
+
+    // Lookahead: at position ``pos`` (just past a candidate closing quote),
+    // does the remaining string look like an end-of-arg boundary? That is:
+    // optional whitespace, then EOF / ``,`` / ``;`` / ``and`` / ``with``,
+    // followed (after more whitespace) by ``KEY=``.
+    const looksLikeArgBoundary = (pos) => {
+        let p = pos;
+        while (p < n && isSpace(str[p])) p++;
+        if (p >= n) return true; // EOF
+        if (str[p] === ',' || str[p] === ';') {
+            p++;
+            while (p < n && isSpace(str[p])) p++;
+            return p >= n || /^[\w.]+\s*=/.test(str.slice(p));
         }
-    }
+        // ``and`` or ``with`` conjunction
+        const tail = str.slice(p);
+        const conj = tail.match(/^(?:and|with)\s+/i);
+        if (conj) {
+            const after = tail.slice(conj[0].length);
+            return /^[\w.]+\s*=/.test(after);
+        }
+        return false;
+    };
 
-    // Pass 3: unquoted bareword values — ``key=value`` with no quotes,
-    // terminated by whitespace or a comma. This catches cases like
-    // ``operation=log method=GET timeout=30``. Skip keys already
-    // populated by the quoted passes.
-    const bareword = /([\w.]+)\s*=\s*([^'"\s,][^\s,]*)/g;
-    while ((m = bareword.exec(str)) !== null) {
-        if (!(m[1] in result)) {
-            result[m[1]] = m[2];
+    while (i < n) {
+        skipSpaces();
+        // Skip stray separators / conjunctions between pairs
+        if (i < n && (str[i] === ',' || str[i] === ';')) { i++; continue; }
+        const conjMatch = str.slice(i).match(/^(?:and|with)\s+/i);
+        if (conjMatch && i + conjMatch[0].length < n) {
+            // Only treat as a conjunction if a KEY= follows, otherwise
+            // ``and``/``with`` is part of the next bareword.
+            const after = str.slice(i + conjMatch[0].length);
+            if (/^[\w.]+\s*=/.test(after)) {
+                i += conjMatch[0].length;
+                continue;
+            }
+        }
+        if (i >= n) break;
+
+        // ── Read key ──
+        const keyStart = i;
+        while (i < n && isKeyChar(str[i])) i++;
+        if (i === keyStart) { i++; continue; } // unparseable, advance to avoid infinite loop
+        const key = str.slice(keyStart, i);
+
+        skipSpaces();
+        if (str[i] !== '=') continue; // not a KEY= assignment
+        i++;
+        skipSpaces();
+
+        // ── Read value ──
+        let value;
+        if (i < n && (str[i] === "'" || str[i] === '"')) {
+            const quote = str[i];
+            i++;
+            let buf = '';
+            while (i < n) {
+                const c = str[i];
+                if (c === '\\' && i + 1 < n) {
+                    const next = str[i + 1];
+                    if (next === quote) { buf += quote; i += 2; continue; }
+                    if (next === 'n')   { buf += '\n';  i += 2; continue; }
+                    if (next === 't')   { buf += '\t';  i += 2; continue; }
+                    if (next === '\\')  { buf += '\\';  i += 2; continue; }
+                    buf += next; i += 2; continue;
+                }
+                if (c === quote) {
+                    // Decide: real terminator or embedded apostrophe?
+                    if (looksLikeArgBoundary(i + 1)) {
+                        i++;
+                        break;
+                    }
+                    buf += c;
+                    i++;
+                    continue;
+                }
+                buf += c;
+                i++;
+            }
+            value = buf;
+        } else {
+            // Bareword: read until whitespace, comma, or semicolon
+            const valStart = i;
+            while (i < n && !isSpace(str[i]) && str[i] !== ',' && str[i] !== ';') i++;
+            value = str.slice(valStart, i);
+        }
+
+        if (!(key in result)) {
+            result[key] = value;
         }
     }
 
