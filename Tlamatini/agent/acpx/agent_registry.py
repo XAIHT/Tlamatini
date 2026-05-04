@@ -34,20 +34,26 @@ class AcpAgentSpec:
     description: str = ""
     # Transport profile. Controls how AcpSession.send_turn drives the
     # child process:
-    #   "json-acp"  — child speaks the JSON-ACP envelope on stdout, so
-    #                 the runtime drains until "done": true. This is the
-    #                 strict ACP contract; ``claude`` and ``codex`` are
-    #                 expected to support it once ACP-JSON mode is on.
-    #   "tui-repl"  — child is an interactive TUI (gemini, cursor, qwen,
-    #                 kiro, ...). Stdout is heavily block-buffered when
-    #                 piped, the child has no JSON envelope, and may
-    #                 produce zero events for many seconds. The runtime
-    #                 uses a short hard cap and the idle rule arms even
-    #                 with event_count == 0 so the spawn returns fast.
-    #   "one-shot"  — the child does one task per process invocation
-    #                 (think `python script.py < task`). The runtime
-    #                 closes stdin after the first write and waits for
-    #                 child exit.
+    #   "json-acp"       — child speaks the JSON-ACP envelope on stdout,
+    #                      so the runtime drains until "done": true.
+    #                      This is the strict ACP contract.
+    #   "tui-repl"       — child is an interactive TUI (kiro, kimi, ...).
+    #                      Stdout is heavily block-buffered when piped,
+    #                      the child has no JSON envelope, and may
+    #                      produce zero events for many seconds.
+    #   "one-shot"       — the child does one task per process
+    #                      invocation. Runtime closes stdin after the
+    #                      first write and waits for child exit.
+    #   "oneshot-prompt" — child is invoked one-shot per turn with the
+    #                      prompt passed as a CLI argument behind
+    #                      ``prompt_arg_flag`` (e.g.
+    #                      ``claude -p "<task>"`` or
+    #                      ``gemini --prompt "<task>"``). stdin is
+    #                      closed immediately and the runtime captures
+    #                      the full stdout to EOF. This is the ONLY
+    #                      transport that reliably captures TUI agents'
+    #                      responses on Windows — interactive TUIs
+    #                      detect a piped stdout and refuse to flush.
     transport: str = "tui-repl"
     # Per-agent drain budgets used by send_turn. ``None`` means "use the
     # caller-provided default" (back-compat). These are conservative TUI
@@ -63,6 +69,18 @@ class AcpAgentSpec:
     # back a session it can chain into in <1s, instead of waiting the
     # full 45s every time.
     spawn_returns_immediately: bool = False
+    # ── oneshot-prompt parameters ────────────────────────────────────
+    # The CLI flag that introduces the user prompt as an argv arg. When
+    # set together with ``transport="oneshot-prompt"``, the runtime
+    # builds argv as ``[exe, *args, *prompt_subcommand_args,
+    # prompt_arg_flag, "<task>"]`` (or appends ``"<task>"`` directly
+    # when the flag is empty/whitespace). Examples:
+    #   claude:  prompt_arg_flag="-p"
+    #   gemini:  prompt_arg_flag="-p"
+    #   cursor:  prompt_arg_flag="-p"
+    #   codex:   prompt_subcommand_args=["exec"]  (no flag, positional)
+    prompt_arg_flag: Optional[str] = None
+    prompt_subcommand_args: List[str] = field(default_factory=list)
 
 
 # Built-in registry. agent_id -> AcpAgentSpec.
@@ -71,50 +89,76 @@ class AcpAgentSpec:
 # import time — the resolution happens in windows_spawn.py at spawn time
 # and any "command not found" condition surfaces through acp_doctor().
 # TUI defaults: 8 s hard cap, 2 s idle, 3 s startup grace. These are
-# tuned so a TUI REPL that produces nothing (the common case for
-# gemini/cursor/qwen on a piped stdin) returns the spawn within ~3 s
-# instead of the previous 45 s — a ~15× speedup on the common path.
+# tuned so a TUI REPL that produces nothing (the common case for kiro/
+# kimi on a piped stdin) returns the spawn within ~3 s instead of the
+# previous 45 s — a ~15× speedup on the common path.
 _TUI_IDLE = 2.0
 _TUI_GRACE = 3.0
 _TUI_TIMEOUT = 8.0
 
+# One-shot-prompt defaults. Each turn re-spawns the CLI with the prompt
+# as a CLI arg and waits for the child to exit; an LLM answer can take
+# up to ~3 minutes, so the hard cap is generous. ``idle`` and ``grace``
+# are unused for this transport (the runtime drains until child exit /
+# timeout) but kept set so the per-spec resolver in runtime.send doesn't
+# fall back to the conservative TUI numbers.
+_OS_TIMEOUT = 180.0
+_OS_IDLE = 10.0
+_OS_GRACE = 2.0
+
 DEFAULT_ACP_AGENTS: Dict[str, AcpAgentSpec] = {
-    # JSON-ACP capable when run with the appropriate flag. We assume the
-    # user has configured them that way and keep generous waits; the LLM
-    # can override per-call via the new acp_spawn knobs.
+    # ── One-shot prompt mode ───────────────────────────────────────
+    # These CLIs render to a TUI when run interactively, so a long-
+    # lived child fed via stdin captures NOTHING on Windows: the TUI
+    # detects the piped stdout, refuses to flush, and the transcript
+    # only sees the outbound prompt. The fix is to call them in their
+    # own non-interactive mode (``-p "<task>"``) per turn — the CLI
+    # then prints the answer to stdout and exits, which the runtime
+    # captures verbatim.
     "claude":   AcpAgentSpec("claude",   "claude",
                              description="Anthropic Claude Code CLI",
-                             transport="json-acp"),
+                             transport="oneshot-prompt",
+                             prompt_arg_flag="-p",
+                             default_idle_seconds=_OS_IDLE,
+                             default_startup_grace_seconds=_OS_GRACE,
+                             default_timeout_seconds=_OS_TIMEOUT),
     "codex":    AcpAgentSpec("codex",    "codex",
-                             description="OpenAI Codex (ACP path)",
-                             transport="json-acp"),
-    # Pure interactive TUIs. These are the agents that hung the previous
-    # ACPX runs at 45 s drain each. spawn_returns_immediately=True so the
-    # LLM gets back the session_id sub-second; the actual content drain
-    # happens on the next acp_send / acp_send_and_wait / acp_transcript.
+                             description="OpenAI Codex CLI",
+                             transport="oneshot-prompt",
+                             prompt_subcommand_args=["exec"],
+                             default_idle_seconds=_OS_IDLE,
+                             default_startup_grace_seconds=_OS_GRACE,
+                             default_timeout_seconds=_OS_TIMEOUT),
     "cursor":   AcpAgentSpec("cursor",   "cursor-agent",
                              description="Cursor agent CLI",
-                             transport="tui-repl",
-                             default_idle_seconds=_TUI_IDLE,
-                             default_startup_grace_seconds=_TUI_GRACE,
-                             default_timeout_seconds=_TUI_TIMEOUT,
-                             spawn_returns_immediately=True),
-    "copilot":  AcpAgentSpec("copilot",  "copilot",
-                             description="GitHub Copilot CLI",
-                             transport="tui-repl",
-                             default_idle_seconds=_TUI_IDLE,
-                             default_startup_grace_seconds=_TUI_GRACE,
-                             default_timeout_seconds=_TUI_TIMEOUT,
-                             spawn_returns_immediately=True),
+                             transport="oneshot-prompt",
+                             prompt_arg_flag="-p",
+                             default_idle_seconds=_OS_IDLE,
+                             default_startup_grace_seconds=_OS_GRACE,
+                             default_timeout_seconds=_OS_TIMEOUT),
     "gemini":   AcpAgentSpec("gemini",   "gemini",
                              description="Google Gemini CLI",
-                             transport="tui-repl",
-                             default_idle_seconds=_TUI_IDLE,
-                             default_startup_grace_seconds=_TUI_GRACE,
-                             default_timeout_seconds=_TUI_TIMEOUT,
-                             spawn_returns_immediately=True),
+                             transport="oneshot-prompt",
+                             prompt_arg_flag="-p",
+                             default_idle_seconds=_OS_IDLE,
+                             default_startup_grace_seconds=_OS_GRACE,
+                             default_timeout_seconds=_OS_TIMEOUT),
     "qwen":     AcpAgentSpec("qwen",     "qwen-code",
                              description="Alibaba Qwen Code CLI",
+                             transport="oneshot-prompt",
+                             prompt_arg_flag="-p",
+                             default_idle_seconds=_OS_IDLE,
+                             default_startup_grace_seconds=_OS_GRACE,
+                             default_timeout_seconds=_OS_TIMEOUT),
+    # ── Long-lived TUI REPLs ───────────────────────────────────────
+    # These remain on the legacy ``tui-repl`` transport because we do
+    # not yet know the right one-shot flag for each. If their stdout
+    # capture turns out to be empty, override to ``oneshot-prompt`` in
+    # ``config.json.acpx.agents.<id>``. The original 45 s hang is
+    # avoided by ``spawn_returns_immediately=True`` plus the
+    # transport-aware idle rule.
+    "copilot":  AcpAgentSpec("copilot",  "copilot",
+                             description="GitHub Copilot CLI",
                              transport="tui-repl",
                              default_idle_seconds=_TUI_IDLE,
                              default_startup_grace_seconds=_TUI_GRACE,
@@ -225,6 +269,8 @@ def build_agent_registry(overrides: Optional[Dict[str, str]] = None,
                 default_startup_grace_seconds=spec.default_startup_grace_seconds,
                 default_timeout_seconds=spec.default_timeout_seconds,
                 spawn_returns_immediately=spec.spawn_returns_immediately,
+                prompt_arg_flag=spec.prompt_arg_flag,
+                prompt_subcommand_args=list(spec.prompt_subcommand_args),
             )
         elif merged_env != spec.env:
             registry[agent_id] = AcpAgentSpec(
@@ -238,6 +284,8 @@ def build_agent_registry(overrides: Optional[Dict[str, str]] = None,
                 default_startup_grace_seconds=spec.default_startup_grace_seconds,
                 default_timeout_seconds=spec.default_timeout_seconds,
                 spawn_returns_immediately=spec.spawn_returns_immediately,
+                prompt_arg_flag=spec.prompt_arg_flag,
+                prompt_subcommand_args=list(spec.prompt_subcommand_args),
             )
         else:
             registry[agent_id] = spec

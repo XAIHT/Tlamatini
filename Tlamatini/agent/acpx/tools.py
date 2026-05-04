@@ -59,30 +59,54 @@ def acp_spawn(agent_id: str, task: str, cwd: str = "",
               startup_grace_seconds: float = 0.0,
               max_event_chars: int = 0) -> str:
     """
-    Spawn an external coding-agent CLI (claude / cursor / codex / qwen / etc.)
-    as an ACP child process and dispatch `task` to it. The child runs
-    out-of-process; this tool returns immediately with the session_id.
+    Spawn an external coding-agent CLI (claude / cursor / codex / gemini /
+    qwen / kiro / kimi / iflow / kilocode / opencode / pi / droid /
+    copilot / tlamatini self-host) as an ACP child and dispatch ``task``
+    to it.
+
+    Behavior depends on the registered agent's transport profile:
+
+    - ``oneshot-prompt`` (claude / cursor / gemini / qwen / codex):
+      re-spawns the CLI fresh with the prompt as a CLI argument
+      (``claude -p "<task>"``, ``codex exec "<task>"``, etc.), closes
+      stdin, captures stdout to EOF. The first turn runs synchronously
+      and returns the answer in ``events`` as an ``assistant_message``
+      event with ``role:"assistant"`` and the captured text. Default
+      hard cap 180 s; LLM answers can take >2 min.
+    - ``json-acp`` (tlamatini self-host): drains the child until a
+      ``"done": true`` envelope. Default 45 s timeout.
+    - ``tui-repl`` (kiro / kimi / iflow / kilocode / opencode / pi /
+      droid / copilot): returns ``session_id`` sub-second with
+      ``spawned_immediately:true`` and an empty ``events`` array; harvest
+      content via the next ``acp_send`` / ``acp_send_and_wait`` /
+      ``acp_transcript``.
 
     Args:
         agent_id: registered agent id. Use list_acp_agents to see options.
         task: the prompt the child should start working on.
         cwd: working directory for the child (default: ACPX config cwd).
-        mode: "session" (long-lived, follow-up turns possible via acp_send)
-              or "one-shot" (single-turn).
+        mode: "session" (long-lived, follow-up turns possible via
+              acp_send) or "one-shot" (single-turn). Note: ``mode`` is
+              effectively ignored by ``oneshot-prompt`` agents because
+              every turn is its own fresh process — there is no in-child
+              session state between calls.
         session_label: optional human-readable label for the session.
-        timeout_seconds: hard cap on the initial drain (default 45s).
-            Use a larger value (e.g. 120) when you NEED a complete answer
-            from a slow REPL like gemini.
+        timeout_seconds: hard cap on the drain. Default depends on the
+            transport: 180 s for oneshot-prompt, 45 s for json-acp, 8 s
+            for tui-repl. Override when you need a longer answer.
         idle_seconds: how long the child must stay silent before the drain
-            ends with a synthetic "idle" event (default 6s). Bigger ≈ more
-            patient ≈ richer events array.
+            ends with a synthetic "idle" event. Default 6 s for json-acp,
+            2 s for tui-repl, 10 s for oneshot-prompt (largely unused for
+            the latter — it drains until child exit).
         startup_grace_seconds: how long the idle rule is suppressed after
-            spawn (default 12s) to give cold-start CLIs time to boot.
+            spawn. Default 12 s json-acp / 3 s tui-repl / 2 s oneshot-prompt.
         max_event_chars: cap on the size of each event's text/content body
             in the response (default 2048). Use 0 to keep the runtime default.
 
     Returns: JSON {"ok": true, "session_id": "...", "agent_id": "...",
-                   "transcript_path": "...", "events": [...]} or
+                   "transport": "...", "transcript_path": "...",
+                   "events": [...], "events_total": N,
+                   "spawned_immediately": bool} or
              {"ok": false, "reason": "...", "code": "..."}.
     """
     try:
@@ -154,16 +178,26 @@ def acp_send(session_id: str, text: str, timeout_seconds: float = 0.0,
     """
     Send a follow-up turn to an existing ACP session.
 
+    For ``oneshot-prompt`` sessions (claude / cursor / gemini / qwen /
+    codex), each call re-spawns the CLI from scratch — the child has no
+    memory of previous turns. If you need conversation continuity,
+    include the prior context in ``text`` yourself.
+
     Args:
         session_id: id returned by acp_spawn.
         text: the next prompt for the ACP child.
-        timeout_seconds: optional override; 0 means use the runtime default.
+        timeout_seconds: optional override; 0 means use the per-spec
+            default (180 s for oneshot-prompt, 45 s for json-acp, 8 s
+            for tui-repl).
         idle_seconds: how long the child must stay silent before the drain
-            ends (default 6s).
-        startup_grace_seconds: idle suppression window (default 4s).
+            ends. Default 6 s (json-acp), 2 s (tui-repl), 10 s
+            (oneshot-prompt — largely unused).
+        startup_grace_seconds: idle suppression window after spawn.
         max_event_chars: per-event body cap (default 2048).
 
-    Returns: JSON {"ok": true, "events": [...]} or error envelope.
+    Returns: JSON {"ok": true, "events": [...]} or error envelope. For
+    ``oneshot-prompt`` sessions, the events array contains one
+    ``assistant_message`` event with the captured stdout.
     """
     try:
         runtime = get_acpx_runtime()
@@ -190,8 +224,13 @@ def acp_send_and_wait(session_id: str, text: str,
                       max_event_chars: int = 0) -> str:
     """
     Send a follow-up turn and wait for the child to settle (no output for
-    `until_idle_seconds`). Use this when you need a complete answer for
+    ``until_idle_seconds``). Use this when you need a complete answer for
     hand-off (e.g. before passing the result to another ACP agent).
+
+    For ``oneshot-prompt`` sessions, this is equivalent to a normal
+    ``acp_send`` with the same timeout — the child always exits when its
+    one-shot turn completes, so ``settled`` reflects ``child_exited``
+    rather than the idle rule.
 
     Args:
         session_id: id returned by acp_spawn.
@@ -203,8 +242,8 @@ def acp_send_and_wait(session_id: str, text: str,
 
     Returns: JSON {"ok": true, "events": [...], "events_total": N,
                    "settled": true|false} or error envelope.
-            ``settled`` is True iff the drain ended on the idle rule (not
-            on the timeout backstop).
+            ``settled`` is True iff the drain ended on the idle rule or
+            on a clean child exit (not on the timeout backstop).
     """
     try:
         runtime = get_acpx_runtime()

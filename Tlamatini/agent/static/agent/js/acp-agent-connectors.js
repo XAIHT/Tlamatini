@@ -597,6 +597,25 @@ async function updateTeletlamatiniConnection(agentId, connectedAgentId, action, 
     }
 }
 
+async function updateWhatstlamatiniConnection(agentId, connectedAgentId, action, connectionType = 'source') {
+    try {
+        const response = await fetch(`/agent/update_whatstlamatini_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- WhatsTlamatini ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update WhatsTlamatini ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating WhatsTlamatini ${agentId}:`, error);
+    }
+}
+
 async function updateAcpxerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_acpxer_connection/${agentId}/`, {

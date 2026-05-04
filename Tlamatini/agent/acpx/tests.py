@@ -831,20 +831,169 @@ class AcpSpawnImmediateReturnTests(TestCase):
             self.assertEqual(send_called["count"], 1)
 
 
-class AgentRegistryTransportProfileTests(TestCase):
-    """The default registry must mark interactive TUI agents
-    (gemini, cursor, qwen, kiro, ...) as transport='tui-repl' with
-    spawn_returns_immediately=True so the runtime takes the fast path.
-    JSON-ACP agents (claude, codex, tlamatini self-host) keep the
-    blocking drain behavior."""
+class OneshotPromptCaptureTests(TestCase):
+    """The transport that actually grabs Claude / Gemini answers on
+    Windows: re-spawn the CLI per turn with the prompt as a CLI arg
+    behind ``prompt_arg_flag``, close stdin, and capture stdout to EOF.
 
-    def test_tui_agents_have_fast_path_defaults(self) -> None:
+    We exercise it without touching real CLIs by overriding the spec to
+    point at a tiny ``python -c`` that prints a known string, so the
+    test runs identically on any platform with Python on PATH.
+    """
+
+    def _install_oneshot_session(self, runtime, *, agent_id: str,
+                                 prompt_flag, prompt_subargs,
+                                 stdout_text: str = "hello from claude\n",
+                                 stderr_text: str = "",
+                                 exit_code: int = 0) -> "AcpSession":
+        from agent.acpx.agent_registry import AcpAgentSpec
+        from agent.acpx.runtime import AcpSession
+        from agent.acpx.session_store import AcpSessionRecord, now_epoch
+
+        sid = f"oneshot-{agent_id}"
+        transcript_path = Path(runtime.config.state_dir) / f"{sid}.transcript.ndjson"
+        transcript_path.parent.mkdir(parents=True, exist_ok=True)
+        # Build a python -c snippet that emulates ``claude -p "<task>"``:
+        # prints stdout_text, optionally stderr_text, then exits.
+        snippet = (
+            "import sys; "
+            f"sys.stdout.write({stdout_text!r}); sys.stdout.flush(); "
+            f"sys.stderr.write({stderr_text!r}); sys.stderr.flush(); "
+            f"sys.exit({exit_code})"
+        )
+        spec = AcpAgentSpec(
+            agent_id=agent_id, command=sys.executable,
+            args=["-c", snippet],
+            description=f"oneshot fake {agent_id}",
+            transport="oneshot-prompt",
+            prompt_arg_flag=prompt_flag,
+            prompt_subcommand_args=list(prompt_subargs or []),
+            default_idle_seconds=10.0,
+            default_startup_grace_seconds=2.0,
+            default_timeout_seconds=30.0,
+        )
+        record = AcpSessionRecord(
+            session_id=sid, name=sid, agent_id=agent_id,
+            cwd=str(runtime.config.state_dir),
+            state_path=str(Path(runtime.config.state_dir) / f"{sid}.json"),
+            transcript_path=str(transcript_path),
+            pid=None, created_at=now_epoch(), last_active_at=now_epoch(),
+        )
+        runtime.session_store.save(record)
+        sess = AcpSession(runtime=runtime, spec=spec,
+                           cwd=Path(record.cwd), mode="session", record=record)
+        runtime._sessions[sid] = sess
+        return sess
+
+    def test_send_turn_captures_stdout_as_assistant_message(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            sess = self._install_oneshot_session(
+                runtime, agent_id="claude",
+                prompt_flag="-p", prompt_subargs=[],
+                stdout_text="hello from claude\n",
+            )
+            events = runtime.send(sess.record.session_id, "what's up?",
+                                  timeout_seconds=15.0)
+            assistant = [e for e in events if e.get("event") == "assistant_message"]
+            self.assertEqual(len(assistant), 1)
+            self.assertEqual(assistant[0]["text"], "hello from claude")
+            self.assertEqual(assistant[0]["role"], "assistant")
+            self.assertEqual(assistant[0]["exit_code"], 0)
+            self.assertEqual(events[-1]["_synthetic"], "child_exited")
+            self.assertEqual(events[-1]["transport"], "oneshot-prompt")
+
+    def test_send_turn_writes_transcript_in_and_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            sess = self._install_oneshot_session(
+                runtime, agent_id="gemini",
+                prompt_flag="-p", prompt_subargs=[],
+                stdout_text="grok from gemini\n",
+            )
+            runtime.send(sess.record.session_id, "ping?",
+                         timeout_seconds=15.0)
+            transcript_lines = Path(sess.record.transcript_path).read_text(
+                encoding="utf-8"
+            ).strip().splitlines()
+            entries = [json.loads(ln) for ln in transcript_lines]
+            directions = [e.get("direction") for e in entries]
+            self.assertIn("out", directions)
+            self.assertIn("in", directions)
+            in_payloads = [e for e in entries if e.get("direction") == "in"]
+            self.assertTrue(any("grok from gemini" in (e.get("text") or "")
+                                for e in in_payloads))
+
+    def test_extract_last_assistant_text_picks_up_oneshot_event(self) -> None:
+        from agent.acpx.runtime import extract_last_assistant_text
+        events = [
+            {"event": "assistant_message", "role": "assistant",
+             "text": "the answer is 42"},
+            {"event": "log", "channel": "stderr", "text": "noisy warning"},
+            {"done": True, "_synthetic": "child_exited",
+             "transport": "oneshot-prompt"},
+        ]
+        self.assertEqual(extract_last_assistant_text(events),
+                          "the answer is 42")
+
+    def test_command_not_on_path_returns_clean_error_event(self) -> None:
+        from agent.acpx.agent_registry import AcpAgentSpec
+        from agent.acpx.runtime import AcpSession
+        from agent.acpx.session_store import AcpSessionRecord, now_epoch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            sid = "oneshot-missing"
+            transcript_path = Path(tmp) / f"{sid}.transcript.ndjson"
+            spec = AcpAgentSpec(
+                agent_id="missing-cli",
+                command="this-binary-does-not-exist-12345",
+                description="missing", transport="oneshot-prompt",
+                prompt_arg_flag="-p",
+                default_idle_seconds=10.0,
+                default_startup_grace_seconds=2.0,
+                default_timeout_seconds=10.0,
+            )
+            record = AcpSessionRecord(
+                session_id=sid, name=sid, agent_id="missing-cli",
+                cwd=str(tmp),
+                state_path=str(Path(tmp) / f"{sid}.json"),
+                transcript_path=str(transcript_path),
+                pid=None, created_at=now_epoch(), last_active_at=now_epoch(),
+            )
+            sess = AcpSession(runtime=runtime, spec=spec,
+                               cwd=Path(tmp), mode="session", record=record)
+            runtime._sessions[sid] = sess
+            events = runtime.send(sid, "task", timeout_seconds=10.0)
+            # First event = error, last = synthetic done with command_not_found
+            self.assertEqual(events[-1]["_synthetic"], "command_not_found")
+            self.assertTrue(any(e.get("event") == "error" for e in events))
+
+
+class AgentRegistryTransportProfileTests(TestCase):
+    """The default registry's transport assignments encode the only way
+    we know to actually capture each CLI's output:
+
+    - ``oneshot-prompt`` for claude/codex/cursor/gemini/qwen — these
+      CLIs render a TUI when run interactively (so a long-lived child
+      fed via stdin captures NOTHING on Windows). The fix is to
+      re-spawn per turn with the prompt as a CLI arg behind
+      ``prompt_arg_flag`` (or ``prompt_subcommand_args`` for codex)
+      and capture stdout to EOF.
+    - ``tui-repl`` for kiro/kimi/iflow/kilocode/opencode/pi/droid/
+      copilot — kept on the legacy fast-path because we don't yet
+      know each CLI's one-shot flag. Users override per-agent in
+      ``config.json.acpx.agents.<id>``.
+    - ``json-acp`` for ``tlamatini`` — the self-host server speaks
+      JSON-ACP natively so the blocking drain still applies.
+    """
+
+    def test_legacy_tui_agents_keep_fast_path_defaults(self) -> None:
         from agent.acpx.agent_registry import build_agent_registry
 
         reg = build_agent_registry()
-        for agent_id in ("gemini", "cursor", "qwen", "kiro", "kimi",
-                         "iflow", "kilocode", "opencode", "pi", "droid",
-                         "copilot"):
+        for agent_id in ("kiro", "kimi", "iflow", "kilocode", "opencode",
+                         "pi", "droid", "copilot"):
             spec = reg[agent_id]
             self.assertEqual(spec.transport, "tui-repl",
                               f"{agent_id} should be tui-repl")
@@ -853,16 +1002,38 @@ class AgentRegistryTransportProfileTests(TestCase):
             # TUI defaults: short hard cap so a silent REPL returns fast.
             self.assertLessEqual(spec.default_timeout_seconds or 99, 10)
 
-    def test_json_acp_agents_keep_blocking_drain(self) -> None:
+    def test_oneshot_prompt_agents_have_capture_path(self) -> None:
         from agent.acpx.agent_registry import build_agent_registry
 
         reg = build_agent_registry()
-        for agent_id in ("claude", "codex", "tlamatini"):
+        # Each entry: (agent_id, expected_flag, expected_subargs_prefix).
+        expectations = [
+            ("claude", "-p", []),
+            ("cursor", "-p", []),
+            ("gemini", "-p", []),
+            ("qwen",   "-p", []),
+            ("codex",  None, ["exec"]),
+        ]
+        for agent_id, flag, subargs in expectations:
             spec = reg[agent_id]
-            self.assertEqual(spec.transport, "json-acp",
-                              f"{agent_id} should be json-acp")
+            self.assertEqual(spec.transport, "oneshot-prompt",
+                              f"{agent_id} should be oneshot-prompt")
             self.assertFalse(spec.spawn_returns_immediately,
-                              f"{agent_id} should NOT spawn immediately")
+                              f"{agent_id} drains in spawn (no immediate return)")
+            self.assertEqual(spec.prompt_arg_flag, flag,
+                              f"{agent_id} prompt_arg_flag mismatch")
+            self.assertEqual(list(spec.prompt_subcommand_args), subargs,
+                              f"{agent_id} prompt_subcommand_args mismatch")
+            # Generous timeout: LLM answers can take >2 minutes.
+            self.assertGreaterEqual(spec.default_timeout_seconds or 0, 60)
+
+    def test_json_acp_self_host_keeps_blocking_drain(self) -> None:
+        from agent.acpx.agent_registry import build_agent_registry
+
+        reg = build_agent_registry()
+        spec = reg["tlamatini"]
+        self.assertEqual(spec.transport, "json-acp")
+        self.assertFalse(spec.spawn_returns_immediately)
 
     def test_user_defined_unknown_agent_defaults_to_fast_path(self) -> None:
         from agent.acpx.agent_registry import build_agent_registry

@@ -196,6 +196,20 @@ class AcpSession:
                 f"not found on PATH. Install it or override "
                 f"acpx.agents.{self.spec.agent_id}.command in config.json.",
             )
+        # ``oneshot-prompt`` does NOT keep a long-lived child. Each
+        # send_turn re-spawns the CLI with the prompt as a CLI arg, so
+        # the spawn step here is a no-op aside from recording the
+        # session as "alive logically" so list_sessions / kill behave
+        # consistently. The actual capture happens in
+        # _oneshot_send_turn.
+        if self.spec.transport == "oneshot-prompt":
+            self.proc = None
+            self.record.last_active_at = now_epoch()
+            self.runtime.session_store.save(self.record)
+            logger.info("[ACPX] logical session %s ready (agent=%s, "
+                        "transport=oneshot-prompt, no persistent child)",
+                        self.record.session_id, self.spec.agent_id)
+            return
         argv = [resolved.executable, *resolved.extra_args, *self.spec.args]
         env = {**os.environ, **self.spec.env}
         try:
@@ -251,6 +265,12 @@ class AcpSession:
 
     def close(self) -> None:
         if self.proc is None:
+            # oneshot-prompt or never-spawned: just mark closed.
+            self.record.closed = True
+            self.record.last_active_at = now_epoch()
+            self.runtime.session_store.save(self.record)
+            logger.info("[ACPX] closed logical session %s (agent=%s)",
+                        self.record.session_id, self.spec.agent_id)
             return
         try:
             try:
@@ -288,11 +308,18 @@ class AcpSession:
                has been silent for ``idle_seconds`` AND we are past
                ``startup_grace_seconds`` — even with **zero events**.
 
-        The transport-aware idle rule is the actual fix. Previously the
-        idle rule required ``event_count > 0`` for every transport, so a
-        silent TUI CLI (gemini, cursor, qwen) hung the full
-        ``timeout_seconds`` on every spawn — typically 45 s. Now a TUI
-        agent that produces nothing returns within
+        For ``transport="oneshot-prompt"``, the entire model is
+        different: each turn re-spawns the CLI with the prompt as a CLI
+        argument behind ``spec.prompt_arg_flag``, closes stdin
+        immediately, and captures the full stdout to EOF. This is
+        delegated to :meth:`_oneshot_send_turn`. It is the ONLY
+        transport that reliably captures responses from TUI agents
+        (claude / gemini / cursor / qwen) on Windows.
+
+        The transport-aware idle rule on the legacy path is what
+        unhangs ``tui-repl`` agents that produce zero events: they used
+        to burn the full ``timeout_seconds`` on every spawn (~45 s);
+        now they return within
         ``startup_grace_seconds + idle_seconds`` (default ~5 s).
 
         The drain reads from a ``queue.Queue`` populated by a daemon
@@ -300,6 +327,9 @@ class AcpSession:
         This keeps the loop responsive on Windows where ``readline()`` on
         a pipe cannot be interrupted by a signal.
         """
+        if self.spec.transport == "oneshot-prompt":
+            yield from self._oneshot_send_turn(text, timeout_seconds)
+            return
         if self.proc is None or self.proc.stdin is None or self.proc.stdout is None:
             yield {"done": True, "_synthetic": "no_proc"}
             return
@@ -424,6 +454,167 @@ class AcpSession:
             return {"event": "log", "text": s}
         except Exception:
             return {"event": "log", "text": s}
+
+    def _oneshot_send_turn(self, text: str,
+                           timeout_seconds: float) -> Iterator[Dict[str, Any]]:
+        """
+        Re-spawn the CLI fresh with ``text`` as the prompt argument,
+        close stdin immediately, and capture the full stdout/stderr
+        to EOF. Yields one ``assistant_message`` event holding the
+        captured text plus a synthetic ``done`` event.
+
+        This is the only path that actually grabs answers from TUI
+        agents (claude/gemini/cursor/qwen) on Windows. Each call is a
+        fresh process invocation so there is no inter-turn session
+        state inside the child — continuity, when needed, must be
+        included by the caller in the next prompt.
+        """
+        with self._reader_lock:
+            transcript_path = Path(self.record.transcript_path)
+            transcript_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Persist the outbound prompt up-front so a crash in the
+            # spawn still leaves evidence in the transcript.
+            with transcript_path.open("a", encoding="utf-8") as transcript:
+                transcript.write(json.dumps({
+                    "direction": "out",
+                    "text": text,
+                    "ts": now_epoch(),
+                    "transport": "oneshot-prompt",
+                }) + "\n")
+                transcript.flush()
+
+            resolved = resolve_command(self.spec.command)
+            if not resolved.executable or not is_executable_resolvable(self.spec.command):
+                yield {"event": "error", "text":
+                       f"command '{self.spec.command}' not on PATH"}
+                yield {"done": True, "_synthetic": "command_not_found",
+                       "transport": "oneshot-prompt"}
+                return
+
+            argv: List[str] = [resolved.executable, *resolved.extra_args,
+                               *self.spec.args, *self.spec.prompt_subcommand_args]
+            flag = (self.spec.prompt_arg_flag or "").strip()
+            if flag:
+                argv.append(flag)
+            argv.append(text)
+            env = {**os.environ, **self.spec.env}
+
+            started_at = time.time()
+            deadline_seconds = max(5.0, float(timeout_seconds))
+
+            try:
+                proc = subprocess.Popen(
+                    argv,
+                    cwd=str(self.cwd),
+                    env=env,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    shell=resolved.use_shell,
+                )
+            except FileNotFoundError as e:
+                yield {"event": "error", "text": str(e)}
+                yield {"done": True, "_synthetic": "command_not_found",
+                       "transport": "oneshot-prompt"}
+                return
+            except Exception as e:
+                yield {"event": "error", "text": str(e)}
+                yield {"done": True, "_synthetic": "spawn_failed",
+                       "transport": "oneshot-prompt"}
+                return
+
+            self.record.pid = proc.pid
+            self.record.last_active_at = now_epoch()
+            self.runtime.session_store.save(self.record)
+
+            stdout_text = ""
+            stderr_text = ""
+            timed_out = False
+            try:
+                # Close stdin so the CLI sees EOF — most non-interactive
+                # CLIs need this to start producing output.
+                try:
+                    if proc.stdin is not None:
+                        proc.stdin.close()
+                except Exception:
+                    pass
+                stdout_text, stderr_text = proc.communicate(
+                    timeout=deadline_seconds
+                )
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                try:
+                    stdout_text, stderr_text = proc.communicate(timeout=5)
+                except Exception:
+                    stdout_text = stdout_text or ""
+                    stderr_text = stderr_text or ""
+            except Exception as e:
+                # Unexpected I/O failure; treat as a captured error.
+                stderr_text = (stderr_text or "") + f"\n[ACPX I/O error: {e}]"
+
+            stdout_text = stdout_text or ""
+            stderr_text = stderr_text or ""
+            elapsed = time.time() - started_at
+            exit_code = proc.returncode
+
+            # Persist captured output. We write one transcript line per
+            # non-empty channel so acp_transcript / acp_relay see them
+            # as distinct ``in`` events. Both ``raw`` and ``text`` are
+            # set so the existing readers behave identically.
+            with transcript_path.open("a", encoding="utf-8") as transcript:
+                if stdout_text.strip():
+                    transcript.write(json.dumps({
+                        "direction": "in",
+                        "channel": "stdout",
+                        "raw": stdout_text,
+                        "text": stdout_text,
+                        "ts": now_epoch(),
+                    }) + "\n")
+                if stderr_text.strip():
+                    transcript.write(json.dumps({
+                        "direction": "in",
+                        "channel": "stderr",
+                        "raw": stderr_text,
+                        "text": stderr_text,
+                        "ts": now_epoch(),
+                    }) + "\n")
+                transcript.flush()
+
+            # Surface the response as a single assistant_message event
+            # so extract_last_assistant_text picks it up verbatim and
+            # so trim_event_payload can cap it for the LLM payload.
+            answer = stdout_text.strip()
+            yield {
+                "event": "assistant_message",
+                "role": "assistant",
+                "text": answer,
+                "exit_code": exit_code,
+                "elapsed_seconds": round(elapsed, 3),
+            }
+            if stderr_text.strip():
+                yield {
+                    "event": "log",
+                    "channel": "stderr",
+                    "text": stderr_text.strip(),
+                }
+            if timed_out:
+                yield {"done": True, "_synthetic": "timeout",
+                       "exit_code": exit_code,
+                       "elapsed_seconds": round(elapsed, 3),
+                       "transport": "oneshot-prompt"}
+            else:
+                yield {"done": True, "_synthetic": "child_exited",
+                       "exit_code": exit_code,
+                       "elapsed_seconds": round(elapsed, 3),
+                       "transport": "oneshot-prompt"}
 
     def to_record(self) -> AcpSessionRecord:
         return self.record
@@ -721,12 +912,16 @@ class AcpxRuntime:
 
     # ── Read-side helpers (used by the new ACPX tool surface) ─────────
     def _is_alive(self, sess: AcpSession) -> bool:
-        if sess.proc is None:
-            return False
-        try:
-            return sess.proc.poll() is None
-        except Exception:
-            return False
+        if sess.proc is not None:
+            try:
+                return sess.proc.poll() is None
+            except Exception:
+                return False
+        # oneshot-prompt sessions never keep a long-lived child between
+        # turns; they are "alive" as long as the logical record is open.
+        if sess.spec.transport == "oneshot-prompt":
+            return not sess.record.closed
+        return False
 
     def list_sessions(self) -> List[Dict[str, Any]]:
         """Enumerate live in-memory sessions with status metadata."""

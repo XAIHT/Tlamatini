@@ -73,32 +73,71 @@ logging.getLogger().addHandler(console_handler)
 # ACPX agent registry mirror (kept in sync with agent/acpx/agent_registry.py)
 # ---------------------------------------------------------------------------
 #
-# Each entry: agent_id -> (default_command, transport, idle_s, timeout_s,
-# startup_grace_s, spawn_returns_immediately).
+# Each entry: agent_id -> dict with:
+#   command, transport, idle_s, timeout_s, grace_s,
+#   prompt_flag (str|None), prompt_subargs (list[str])
 #
 # transport semantics:
-#   - "json-acp": child speaks one JSON envelope per turn ending with
-#     {"done": true}; idle rule arms only AFTER first event AND idle window.
-#   - "tui-repl": interactive REPL; idle rule arms after grace + idle window
-#     even with zero events (a silent TUI is, by definition, finished).
-#   - "one-shot": child reads one stdin line then exits; close stdin after
-#     dispatch, drain until process exit or timeout.
+#   - "json-acp":       child speaks one JSON envelope per turn ending
+#                       with {"done": true}; idle rule arms only AFTER
+#                       first event AND idle window.
+#   - "tui-repl":       interactive REPL; idle rule arms after grace +
+#                       idle window even with zero events.
+#   - "one-shot":       child reads one stdin line then exits; close
+#                       stdin after dispatch, drain until exit/timeout.
+#   - "oneshot-prompt": fresh process per turn with prompt as a CLI arg
+#                       behind ``prompt_flag`` (``-p``, ``--prompt``,
+#                       ...); stdin closed immediately, all stdout
+#                       captured to EOF. ONLY transport that reliably
+#                       captures TUI agents' answers on Windows.
 
 _DEFAULT_REGISTRY = {
-    "claude":   ("claude",                       "json-acp", 6.0,  45.0, 12.0),
-    "codex":    ("codex",                        "json-acp", 6.0,  45.0, 12.0),
-    "tlamatini":("python -m agent.acpx.self_acp_server", "json-acp", 6.0, 45.0, 12.0),
-    "gemini":   ("gemini",                       "tui-repl", 2.0,  8.0,  3.0),
-    "cursor":   ("cursor-agent",                 "tui-repl", 2.0,  8.0,  3.0),
-    "qwen":     ("qwen-code",                    "tui-repl", 2.0,  8.0,  3.0),
-    "kiro":     ("kiro",                         "tui-repl", 2.0,  8.0,  3.0),
-    "kimi":     ("kimi",                         "tui-repl", 2.0,  8.0,  3.0),
-    "iflow":    ("iflow",                        "tui-repl", 2.0,  8.0,  3.0),
-    "kilocode": ("kilocode",                     "tui-repl", 2.0,  8.0,  3.0),
-    "opencode": ("opencode",                     "tui-repl", 2.0,  8.0,  3.0),
-    "pi":       ("pi",                           "tui-repl", 2.0,  8.0,  3.0),
-    "droid":    ("droid",                        "tui-repl", 2.0,  8.0,  3.0),
-    "copilot":  ("copilot",                      "tui-repl", 2.0,  8.0,  3.0),
+    # Oneshot-prompt agents (responses actually captured).
+    "claude":   {"command": "claude",   "transport": "oneshot-prompt",
+                 "idle_s": 10.0, "timeout_s": 180.0, "grace_s": 2.0,
+                 "prompt_flag": "-p", "prompt_subargs": []},
+    "codex":    {"command": "codex",    "transport": "oneshot-prompt",
+                 "idle_s": 10.0, "timeout_s": 180.0, "grace_s": 2.0,
+                 "prompt_flag": None, "prompt_subargs": ["exec"]},
+    "cursor":   {"command": "cursor-agent", "transport": "oneshot-prompt",
+                 "idle_s": 10.0, "timeout_s": 180.0, "grace_s": 2.0,
+                 "prompt_flag": "-p", "prompt_subargs": []},
+    "gemini":   {"command": "gemini",   "transport": "oneshot-prompt",
+                 "idle_s": 10.0, "timeout_s": 180.0, "grace_s": 2.0,
+                 "prompt_flag": "-p", "prompt_subargs": []},
+    "qwen":     {"command": "qwen-code", "transport": "oneshot-prompt",
+                 "idle_s": 10.0, "timeout_s": 180.0, "grace_s": 2.0,
+                 "prompt_flag": "-p", "prompt_subargs": []},
+    # ACP-server.
+    "tlamatini":{"command": "python -m agent.acpx.self_acp_server",
+                 "transport": "json-acp",
+                 "idle_s": 6.0, "timeout_s": 45.0, "grace_s": 12.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    # Legacy TUI-REPLs (no known one-shot flag yet).
+    "kiro":     {"command": "kiro",     "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "kimi":     {"command": "kimi",     "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "iflow":    {"command": "iflow",    "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "kilocode": {"command": "kilocode", "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "opencode": {"command": "opencode", "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "pi":       {"command": "pi",       "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "droid":    {"command": "droid",    "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
+    "copilot":  {"command": "copilot",  "transport": "tui-repl",
+                 "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+                 "prompt_flag": None, "prompt_subargs": []},
 }
 
 
@@ -285,14 +324,25 @@ def append_transcript_event(direction: str, text: str, raw: str = "") -> None:
 
 def extract_last_assistant_text(events: list) -> str:
     """Mirror agent.acpx.runtime.extract_last_assistant_text:
-       prefer JSON envelopes with role=='assistant'; fall back to all 'in' text."""
+       prefer envelope-marked assistant events; fall back to all 'in' text."""
     assistant_chunks = []
     log_chunks = []
     for ev in events:
         text = (ev.get("text") or "").strip()
         if not text:
             continue
-        # Try JSON envelope (json-acp transport).
+        # Direct envelope marking (oneshot-prompt and json-acp paths).
+        ev_role = str(ev.get("role") or "").lower()
+        ev_kind = str(ev.get("event") or "").lower()
+        if ev_role in ("assistant", "model", "ai") or ev_kind in (
+            "assistant_message", "assistant", "message", "completion", "answer"
+        ):
+            assistant_chunks.append(text)
+            continue
+        # Skip stderr-channel logs from oneshot output.
+        if str(ev.get("channel") or "").lower() == "stderr":
+            continue
+        # JSON-ACP envelope smuggled inside a raw stdout line.
         try:
             payload = json.loads(text)
             role = (payload.get("role") or "").lower()
@@ -417,24 +467,130 @@ def drain_session(process, transport: str, idle_s: float, timeout_s: float,
 # Spawn + dispatch task
 # ---------------------------------------------------------------------------
 
-def resolve_command(agent_id: str, command_override: str) -> tuple:
-    """Resolve a (command_argv, transport, idle_s, timeout_s, grace_s) tuple."""
+def resolve_command(agent_id: str, command_override: str) -> dict:
+    """Resolve a registry record for ``agent_id`` (with optional command override).
+
+    Returns a dict with keys:
+      - argv (list[str]): executable + args after splitting
+      - transport (str)
+      - idle_s, timeout_s, grace_s (float)
+      - prompt_flag (str|None): CLI flag introducing the prompt arg in
+                                 ``oneshot-prompt`` mode (None means
+                                 the prompt is appended positionally)
+      - prompt_subargs (list[str]): optional positional args before the
+                                    prompt (e.g. ``["exec"]`` for codex)
+    """
     if agent_id in _DEFAULT_REGISTRY:
-        default_cmd, transport, idle_s, timeout_s, grace_s = _DEFAULT_REGISTRY[agent_id]
+        rec = dict(_DEFAULT_REGISTRY[agent_id])
     else:
-        default_cmd, transport, idle_s, timeout_s, grace_s = (
-            agent_id, "tui-repl", 2.0, 8.0, 3.0
-        )
-    cmd_str = (command_override or default_cmd).strip()
+        rec = {"command": agent_id, "transport": "tui-repl",
+               "idle_s": 2.0, "timeout_s": 8.0, "grace_s": 3.0,
+               "prompt_flag": None, "prompt_subargs": []}
+    cmd_str = (command_override or rec["command"]).strip()
     if not cmd_str:
         cmd_str = agent_id
     # Tokenize - shlex would be nice but Windows quoting differs; keep it simple.
     if sys.platform.startswith('win'):
-        argv = cmd_str.split()  # Windows: simple split, user can override per-token via command_argv
+        argv = cmd_str.split()
     else:
         import shlex
         argv = shlex.split(cmd_str)
-    return argv, transport, idle_s, timeout_s, grace_s
+    rec["argv"] = argv
+    return rec
+
+
+def run_oneshot_prompt(argv: list, prompt_flag, prompt_subargs: list,
+                       task: str, cwd, timeout_s: float) -> tuple:
+    """Drive one ``oneshot-prompt`` turn: spawn fresh CLI with the prompt
+    as a CLI arg, close stdin, capture stdout/stderr to EOF.
+
+    Returns (events, settle_reason). The first event is an
+    ``assistant_message`` carrying the captured stdout — extracted by
+    extract_last_assistant_text downstream. ``settle_reason`` is one of
+    ``"child_exited"`` or ``"timeout"``.
+    """
+    full_argv = list(argv) + list(prompt_subargs or [])
+    flag = (prompt_flag or "").strip() if prompt_flag else ""
+    if flag:
+        full_argv.append(flag)
+    full_argv.append(task)
+
+    append_transcript_event("out", task, raw=json.dumps({
+        "argv": full_argv, "transport": "oneshot-prompt"
+    }, ensure_ascii=False))
+
+    try:
+        process = subprocess.Popen(
+            full_argv,
+            cwd=cwd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+    except FileNotFoundError:
+        return ([{"event": "error", "text": f"command not on PATH: {full_argv[0]}",
+                  "direction": "in"}], "command_not_found")
+    except Exception as e:
+        return ([{"event": "error", "text": str(e),
+                  "direction": "in"}], "spawn_failed")
+
+    try:
+        try:
+            if process.stdin is not None:
+                process.stdin.close()
+        except Exception:
+            pass
+        try:
+            stdout_text, stderr_text = process.communicate(timeout=timeout_s)
+            settle = "child_exited"
+        except subprocess.TimeoutExpired:
+            try:
+                process.kill()
+            except Exception:
+                pass
+            try:
+                stdout_text, stderr_text = process.communicate(timeout=5)
+            except Exception:
+                stdout_text, stderr_text = "", ""
+            settle = "timeout"
+    except Exception as e:
+        return ([{"event": "error", "text": f"I/O failure: {e}",
+                  "direction": "in"}], "io_failed")
+
+    stdout_text = stdout_text or ""
+    stderr_text = stderr_text or ""
+
+    events: list = []
+    if stdout_text.strip():
+        append_transcript_event("in", stdout_text, raw=stdout_text)
+        events.append({
+            "direction": "in",
+            "event": "assistant_message",
+            "role": "assistant",
+            "text": stdout_text.strip(),
+        })
+    if stderr_text.strip():
+        append_transcript_event("in", stderr_text, raw=stderr_text)
+        events.append({
+            "direction": "in",
+            "event": "log",
+            "channel": "stderr",
+            "text": stderr_text.strip(),
+        })
+    if not events:
+        # Capture nothing-at-all explicitly so the section block below
+        # carries a non-empty body and Parametrizer downstream sees the
+        # outcome of the call.
+        events.append({
+            "direction": "in",
+            "event": "log",
+            "text": f"(no output; exit_code={process.returncode})",
+        })
+    return events, settle
 
 
 def run_acpx_session(config: dict) -> dict:
@@ -445,14 +601,16 @@ def run_acpx_session(config: dict) -> dict:
     mode = (config.get('mode') or 'session').strip()
     command_override = (config.get('command') or '').strip()
 
-    argv, transport, idle_def, timeout_def, grace_def = resolve_command(
-        agent_id, command_override
-    )
+    rec = resolve_command(agent_id, command_override)
+    argv = rec["argv"]
+    transport = rec["transport"]
+    prompt_flag = rec.get("prompt_flag")
+    prompt_subargs = rec.get("prompt_subargs") or []
 
     # Per-call overrides (0 / null means "use registry default").
-    idle_s = float(config.get('idle_seconds') or 0) or idle_def
-    timeout_s = float(config.get('timeout_seconds') or 0) or timeout_def
-    grace_s = float(config.get('startup_grace_seconds') or 0) or grace_def
+    idle_s = float(config.get('idle_seconds') or 0) or rec["idle_s"]
+    timeout_s = float(config.get('timeout_seconds') or 0) or rec["timeout_s"]
+    grace_s = float(config.get('startup_grace_seconds') or 0) or rec["grace_s"]
 
     session_id = f"acpxer-{uuid.uuid4().hex[:12]}"
     transcript_path = os.path.abspath(TRANSCRIPT_FILE_PATH)
@@ -466,6 +624,9 @@ def run_acpx_session(config: dict) -> dict:
     logging.info(f"   agent_id:    {agent_id}")
     logging.info(f"   command:     {argv}")
     logging.info(f"   transport:   {transport}")
+    if transport == "oneshot-prompt":
+        logging.info(f"   prompt_flag: {prompt_flag!r}")
+        logging.info(f"   prompt_subargs: {prompt_subargs}")
     logging.info(f"   mode:        {mode}")
     logging.info(f"   cwd:         {cwd or '(inherit)'}")
     logging.info(f"   idle/timeout/grace: {idle_s}s / {timeout_s}s / {grace_s}s")
@@ -482,7 +643,35 @@ def run_acpx_session(config: dict) -> dict:
             "error": "No task configured",
         }
 
-    # Spawn the child.
+    # ── oneshot-prompt fast path: fresh process per turn, captures stdout
+    if transport == "oneshot-prompt":
+        events, settle_reason = run_oneshot_prompt(
+            argv, prompt_flag, prompt_subargs, task, cwd, timeout_s
+        )
+        last_text = extract_last_assistant_text(events)
+
+        logging.info(f"📡 Oneshot settled: reason={settle_reason}, events={len(events)}")
+        if last_text:
+            preview = last_text[:300] + ("..." if len(last_text) > 300 else "")
+            logging.info(f"💬 Last assistant text ({len(last_text)} chars): {preview}")
+        else:
+            logging.info("⚠️ No assistant text captured")
+
+        return {
+            "ok": settle_reason == "child_exited" and bool(last_text),
+            "session_id": session_id,
+            "agent_id": agent_id,
+            "transport": transport,
+            "transcript_path": transcript_path,
+            "settle": settle_reason,
+            "events_seen": len(events),
+            "last_assistant_text": last_text,
+            "error": "" if settle_reason == "child_exited" and last_text
+                     else (f"Settled on {settle_reason}" if settle_reason != "child_exited"
+                           else "No assistant text captured"),
+        }
+
+    # ── Legacy long-lived child path (json-acp / tui-repl / one-shot)
     try:
         process = subprocess.Popen(
             argv,

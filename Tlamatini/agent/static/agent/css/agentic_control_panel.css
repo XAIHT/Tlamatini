@@ -2098,6 +2098,26 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(191, 54, 12, 0.5);
 }
 
+/* WhatsTlamatini Agent — "Verdant Mirage" gradient: deep-emerald -> vivid-emerald
+   -> tropical-cyan -> goldenrod. Echoes WhatsApp's brand palette while staying
+   distinct from .whatsapper-agent (which is plain DarkGreen). The four stops
+   read as: emerald depth (the bot's WhatsApp identity) -> living green
+   (active conversation) -> cyan (the Tlamatini bridge channel) -> gold (the
+   delivered answer). The 4-color combination is unique on the canvas and
+   does not collide with .teletlamatini-agent (blues/amber/crimson),
+   .acpxer-agent (cosmic-navy/violet/magenta/cyan) or .acpx-agent
+   (orange/coral/violet/black). */
+.canvas-item.whatstlamatini-agent {
+    background-color: #064E3B;
+    background: linear-gradient(135deg, #064E3B 0%, #10B981 33%, #06B6D4 66%, #FDE047 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.whatstlamatini-agent:hover {
+    background: linear-gradient(135deg, #065F46 0%, #34D399 33%, #22D3EE 66%, #FACC15 100%);
+    box-shadow: 0 6px 15px rgba(16, 185, 129, 0.5);
+}
+
 /* ACPXer Agent — Aurora Conduit gradient: cosmic-navy -> electric-violet ->
    luminous-magenta -> cyan-radiance. Reads as "AI portal / multi-CLI conduit"
    — visually distinct from .acpx-agent (the LLM-driven exec-report row,

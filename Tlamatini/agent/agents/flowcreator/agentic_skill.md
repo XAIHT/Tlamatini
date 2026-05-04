@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -1403,23 +1403,50 @@ system_prompt: |
 - **Config parameters**:
   - `agent_id`: "claude" (which external CLI to spawn — see registry below for built-in IDs)
   - `command`: "" (optional explicit command override; empty = use the registry default for `agent_id`. Use this when the CLI is at a non-PATH location, e.g. `"C:/Users/me/AppData/Roaming/npm/claude.cmd"`)
-  - `task`: "" (REQUIRED — the prompt sent to the child on stdin. For relayed flows, leave empty in the .flw and let Parametrizer fill it from an upstream ACPXer's `response_body`)
-  - `mode`: "session" (`session` keeps stdin open after dispatch; `one-shot` closes stdin so the child reads-once-and-exits — needed for some TUIs)
+  - `task`: "" (REQUIRED — the prompt sent to the child. For `oneshot-prompt` agents the prompt is passed as a CLI argument behind `-p`/`--prompt`; for `json-acp` / `tui-repl` agents it is written to stdin. For relayed flows, leave empty in the .flw and let Parametrizer fill it from an upstream ACPXer's `response_body`)
+  - `mode`: "session" (`session` keeps stdin open after dispatch; `one-shot` closes stdin so the child reads-once-and-exits — needed for some legacy TUIs. Ignored by `oneshot-prompt` transport because each turn is its own fresh process)
   - `cwd`: "" (working directory for the spawned child; empty = inherit from this agent)
-  - `idle_seconds`: 0 (drain idle window in seconds; 0 = use registry default — `json-acp` agents get 6 s, `tui-repl` agents get 2 s)
-  - `timeout_seconds`: 0 (hard drain timeout backstop; 0 = use registry default — `json-acp` agents get 45 s, `tui-repl` agents get 8 s. Override to e.g. 180 when the prompt asks for a long-form answer)
-  - `startup_grace_seconds`: 0 (suppress idle rule for the first N seconds after spawn; 0 = registry default — 12 s for `json-acp`, 3 s for `tui-repl`)
+  - `idle_seconds`: 0 (drain idle window in seconds; 0 = use registry default — `oneshot-prompt` agents get 10 s, `json-acp` agents 6 s, `tui-repl` agents 2 s)
+  - `timeout_seconds`: 0 (hard drain timeout backstop; 0 = use registry default — `oneshot-prompt` agents get **180 s** because LLM answers can take >2 minutes, `json-acp` agents 45 s, `tui-repl` agents 8 s)
+  - `startup_grace_seconds`: 0 (suppress idle rule for the first N seconds after spawn; 0 = registry default — 2 s for `oneshot-prompt`, 12 s for `json-acp`, 3 s for `tui-repl`)
   - `source_agents`: [] (upstream agents — Parametrizer or anything that sets `task` before ACPXer runs)
   - `target_agents`: [] (downstream agents started after the session ends)
 - **Built-in `agent_id` registry** (mirrors `agent/acpx/agent_registry.py` — any other id falls through to a `tui-repl` profile):
-  - `json-acp` transport (drains until `{"done": true}`): `claude`, `codex`, `tlamatini` (self-host)
-  - `tui-repl` transport (interactive REPL; drains on idle): `gemini`, `cursor`, `qwen`, `kiro`, `kimi`, `iflow`, `kilocode`, `opencode`, `pi`, `droid`, `copilot`
+  - `oneshot-prompt` transport (re-spawn per turn with prompt as CLI arg, capture stdout to EOF — **the only transport that reliably captures TUI agents' answers on Windows**): `claude` (`-p`), `cursor` (`-p`), `gemini` (`-p`), `qwen` (`-p`), `codex` (`exec` subcommand)
+  - `json-acp` transport (drains until `{"done": true}`): `tlamatini` (self-host)
+  - `tui-repl` transport (interactive REPL; drains on idle — kept for CLIs whose one-shot flag is unknown): `kiro`, `kimi`, `iflow`, `kilocode`, `opencode`, `pi`, `droid`, `copilot`
 - **Output section** (consumed by Parametrizer): `INI_SECTION_ACPXER<<<` with KV header (`agent_id`, `session_id`, `transport`, `settle`, `transcript_path`) and body = `response_body` (= last-assistant text). Parametrizer source-output fields: `['agent_id', 'session_id', 'transport', 'settle', 'transcript_path', 'response_body']`.
 - **Common ACPXer flow patterns**:
   - **Single-shot CLI run**: `Starter -> ACPXer(agent_id, task) -> File-Creator -> Notifier -> Ender`
   - **Visual multi-CLI relay**: `Starter -> ACPXer(claude) -> Parametrizer -> ACPXer(gemini) -> Parametrizer -> ACPXer(cursor) -> File-Creator -> Ender` (the most powerful pattern — three different LLMs argue back and forth, each adding their own pass)
   - **Scheduled audit**: `Croner(02:00) -> ACPXer(claude, audit prompt) -> Summarizer -> Telegramer -> Ender`
   - **Branching on CLI failure**: `Starter -> ACPXer -> Forker (settle=='timeout' vs 'done') -> [retry path] / [success path] -> Ender`
+
+### 59. WhatsTlamatini
+- **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over **WhatsApp**, via Meta's WhatsApp Cloud API. Mirror of TeleTlamatini, only the chat platform changes. The agent runs a stdlib HTTP listener on a configurable host/port/path and waits for Meta to POST inbound messages there (you must expose the URL publicly via ngrok / cloudflared / domain / port-forward and register it as your app's webhook). It holds ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every WhatsApp message — no per-message re-login overhead), password-gates each chat (= each WhatsApp number) on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user receives a "🔄 Working on it…" message followed by a "✅ Result:" reply containing the assembled answer (WhatsApp text-message API has no edit-message primitive, so the answer arrives as a fresh message rather than an in-place edit). After every completed request cycle, starts the configured `target_agents`.
+- **Used for**: Letting an authorized WhatsApp user drive Tlamatini end-to-end without opening the browser UI; mobile-first remote operation of Multi-Turn flows on the most ubiquitous messaging app on Earth; OpenClaw-style fire-and-go remote operation; Multi-Turn triage from regions where Telegram is restricted but WhatsApp is freely available.
+- **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable over WhatsApp from anywhere — same "what's my CPU usage?" UX as TeleTlamatini.
+- **Application example**: An on-call engineer messages the bot's WhatsApp number with the configured password, then sends "deploy the staging branch and notify the team". WhatsTlamatini forwards the request into the persistent Tlamatini WS with Multi-Turn + Exec Report enabled, waits for the assembled answer (which includes per-agent operation tables for Gitter, Dockerer, Telegramer, etc.), strips the HTML, and sends the readable result back over WhatsApp.
+- **Pool name pattern**: `whatstlamatini_<n>`
+- **Starts other agents**: YES (starts `target_agents` after every completed user request cycle)
+- **Config parameters**:
+  - `whatsapp.phone_number_id` (REQUIRED — WABA number ID from WhatsApp Manager → API Setup, NOT the phone number itself)
+  - `whatsapp.access_token` (REQUIRED — system-user permanent access token)
+  - `whatsapp.verify_token` (REQUIRED — any string of your choice; Meta echoes it during webhook subscription)
+  - `whatsapp.webhook_host`: "0.0.0.0" (bind interface for inbound webhook listener)
+  - `whatsapp.webhook_port`: 8765 (TCP port the listener binds to — expose this publicly)
+  - `whatsapp.webhook_path`: "/wa-webhook" (URL path Meta posts to)
+  - `whatsapp.graph_base`: "https://graph.facebook.com" (Graph API base URL — rarely changed)
+  - `password`: "" (single string the WhatsApp user must supply on first contact; empty disables the gate)
+  - `tlamatini.base_url`: "http://127.0.0.1:8000" (HTTP login endpoint; `ws_url` is auto-derived)
+  - `tlamatini.username` / `tlamatini.password`: Tlamatini Django credentials this agent logs in with
+  - `tlamatini.multi_turn_enabled`: true (always send chat with Multi-Turn enabled so tools can fire)
+  - `tlamatini.exec_report_enabled`: true (request the per-agent Exec Report tables in every answer)
+  - `tlamatini.response_idle_timeout` / `tlamatini.total_timeout` (seconds; how long to wait for a single answer)
+  - `completeness_check.enabled`: false (when true, runs an Ollama-backed clarification gate before forwarding — adds 2-30 s per message; default OFF for fire-and-go)
+  - `completeness_check.host` / `completeness_check.model` / `completeness_check.instruction`
+  - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
+  - `target_agents`: [] (downstream agents started after every completed user request cycle)
 
 ---
 

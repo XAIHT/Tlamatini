@@ -45,7 +45,28 @@ Route a plain-language request to the right ACPX harness.
    is named explicitly or when background spawn is needed.
 3. Default `mode` to `session` so follow-up turns can be added with
    `acp_send`. Use `one-shot` only when the user asked for a single
-   non-interactive task.
+   non-interactive task. (Note: `mode` is ignored by `oneshot-prompt`
+   transport agents — claude / cursor / gemini / qwen / codex — because
+   each turn is its own fresh process. Continuity inside the child is
+   not preserved between `acp_send` calls on those harnesses.)
+
+## Transport awareness
+
+The runtime now uses three transports. `acp_doctor` returns each agent's
+transport in `details[].transport` (when populated by the host) or you
+can infer from the `agent_id`:
+
+- `oneshot-prompt` (**claude, cursor, gemini, qwen, codex**) — re-spawns
+  the CLI fresh per turn with the prompt as a CLI argument
+  (`claude -p "<task>"`, `codex exec "<task>"`, ...) and captures stdout
+  to EOF. `acp_spawn` runs the first turn synchronously and returns the
+  answer in the `events` array; the `assistant_message` event holds the
+  captured stdout.
+- `json-acp` (**tlamatini** self-host) — strict JSON envelope on stdin.
+- `tui-repl` (**kiro, kimi, iflow, kilocode, opencode, pi, droid,
+  copilot**) — long-lived REPL over stdin. `acp_spawn` returns the
+  session_id sub-second; harvest answers via `acp_send_and_wait` /
+  `acp_transcript`.
 
 ## Procedure
 
@@ -62,3 +83,8 @@ Route a plain-language request to the right ACPX harness.
   whether they want to retry with a different harness.
 - If `acp_spawn` returns `code: PERMISSION_DENIED`, the runtime is in
   `deny-all` mode. Report this to the user; do not try to bypass.
+- If a `oneshot-prompt` spawn returns events with empty
+  `assistant_message.text` and a `done._synthetic == "timeout"`, the CLI
+  exceeded the default 180 s hard cap. Retry with explicit
+  `timeout_seconds=300` if the task warrants it; otherwise report the
+  timeout to the user.

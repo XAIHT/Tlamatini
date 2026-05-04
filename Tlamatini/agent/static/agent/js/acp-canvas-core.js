@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateAcpxerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -197,6 +197,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'telegramrx': 'telegramrx-agent',
     'telegramer': 'telegramer-agent',
     'teletlamatini': 'teletlamatini-agent',
+    'whatstlamatini': 'whatstlamatini-agent',
     'acpxer': 'acpxer-agent',
     'pythonxer': 'pythonxer-agent',
     'asker': 'asker-agent',
@@ -895,6 +896,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(targetId, sourceId, 'remove', 'source');
@@ -1002,6 +1005,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'telegramer' && !sourceBeingDeleted) updateTelegramerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'teletlamatini' && !targetBeingDeleted) updateTeletlamatiniConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'teletlamatini' && !sourceBeingDeleted) updateTeletlamatiniConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'whatstlamatini' && !targetBeingDeleted) updateWhatstlamatiniConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'whatstlamatini' && !sourceBeingDeleted) updateWhatstlamatiniConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'acpxer' && !targetBeingDeleted) updateAcpxerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'acpxer' && !sourceBeingDeleted) updateAcpxerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'kuberneter' && !targetBeingDeleted) updateKuberneterConnection(targetId, sourceId, 'remove', 'source');
@@ -1441,6 +1446,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(targetId, sourceId, 'add', 'source');

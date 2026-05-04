@@ -18,22 +18,29 @@ ACPX is a **Python port of OpenClaw's ACPX plugin** (`extensions/acpx/`). The su
 
 Defined in `agent/acpx/agent_registry.py::DEFAULT_ACP_AGENTS`. Each agent has a transport profile that controls how the runtime drives the child:
 
-| `agent_id` | Default command | Transport | Spawn returns immediately? | Default budgets (timeout / idle / grace) |
+| `agent_id` | Default command | Transport | Prompt argv form | Default budgets (timeout / idle / grace) |
 |---|---|---|---|---|
-| `claude` | `claude` | `json-acp` | No (drains on spawn) | 45 s / 6 s / 12 s |
-| `codex` | `codex` | `json-acp` | No | 45 s / 6 s / 12 s |
-| `tlamatini` | `python -m agent.acpx.self_acp_server` | `json-acp` | No | 45 s / 6 s / 12 s |
-| `gemini` | `gemini` | `tui-repl` | **Yes** (sub-second) | 8 s / 2 s / 3 s |
-| `cursor` | `cursor-agent` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `qwen` | `qwen-code` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `kiro` | `kiro` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `kimi` | `kimi` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `iflow` | `iflow` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `kilocode` | `kilocode` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `opencode` | `opencode` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `pi` | `pi` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `droid` | `droid` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
-| `copilot` | `copilot` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `claude` | `claude` | `oneshot-prompt` | `claude -p "<task>"` | 180 s / 10 s / 2 s |
+| `codex` | `codex` | `oneshot-prompt` | `codex exec "<task>"` | 180 s / 10 s / 2 s |
+| `cursor` | `cursor-agent` | `oneshot-prompt` | `cursor-agent -p "<task>"` | 180 s / 10 s / 2 s |
+| `gemini` | `gemini` | `oneshot-prompt` | `gemini -p "<task>"` | 180 s / 10 s / 2 s |
+| `qwen` | `qwen-code` | `oneshot-prompt` | `qwen-code -p "<task>"` | 180 s / 10 s / 2 s |
+| `tlamatini` | `python -m agent.acpx.self_acp_server` | `json-acp` | (stdin envelope) | 45 s / 6 s / 12 s |
+| `kiro` | `kiro` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `kimi` | `kimi` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `iflow` | `iflow` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `kilocode` | `kilocode` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `opencode` | `opencode` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `pi` | `pi` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `droid` | `droid` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+| `copilot` | `copilot` | `tui-repl` | (stdin) | 8 s / 2 s / 3 s |
+
+### Transport modes
+
+- **`oneshot-prompt`** — Each turn re-spawns the CLI with the prompt as a CLI argument behind `prompt_arg_flag` (or `prompt_subcommand_args` for codex), closes stdin, and captures stdout to EOF. This is the **only** transport that reliably captures responses from TUI agents (claude / gemini / cursor / qwen) on Windows: TUI CLIs detect the piped stdout and refuse to flush, so a long-lived stdin-fed child captures the outbound prompt only — never the answer. The fix is to call them in their own `-p`/`--print` mode where they print the answer to stdout and exit. There is no inter-turn session state inside the child process; conversation continuity must be carried in the next prompt by the caller.
+- **`json-acp`** — Child speaks one JSON envelope per turn ending with `{"done": true}`. Strict ACP contract; the `tlamatini` self-host server uses it.
+- **`tui-repl`** — Long-lived interactive REPL over stdin/stdout with the transport-aware idle rule. Used for CLIs whose one-shot flag is unknown to us yet — override per-agent in `config.json.acpx.agents.<id>` (set `transport: oneshot-prompt`, `prompt_arg_flag: "-p"`) once you confirm one.
+- **`one-shot`** — Single-task-per-process via stdin (`python script.py < task`). Stdin closes after the first write; runtime waits for child exit.
 
 User overrides go in `config.json`:
 
@@ -153,6 +160,21 @@ list_skills
 
 ## Runtime mechanics (what happens inside the box)
 
+### `oneshot-prompt` (claude / gemini / cursor / qwen / codex)
+
+`agent/acpx/runtime.py::AcpSession._oneshot_send_turn` runs each turn as a fresh process invocation:
+
+1. **Persist outbound prompt** to the NDJSON transcript with `direction:"out"` and `transport:"oneshot-prompt"` so a crash before the spawn still leaves evidence.
+2. **Resolve command** via `windows_spawn.resolve_command`. If unresolvable, yield an `error` event + `command_not_found` synthetic done.
+3. **Build argv**: `[exe, *extra_args, *spec.args, *spec.prompt_subcommand_args, spec.prompt_arg_flag, "<task>"]` (the flag is omitted when None/empty so codex's `["exec", "<task>"]` works).
+4. **Spawn** with stdin=PIPE, stdout=PIPE, stderr=PIPE; `text=True, encoding=utf-8`; `shell=resolved.use_shell` (Windows .cmd/.bat).
+5. **Close stdin immediately** — most non-interactive CLIs need EOF to start producing output.
+6. **`proc.communicate(timeout=deadline)`** captures stdout and stderr to EOF; on `TimeoutExpired` the child is killed and a final `communicate(timeout=5)` collects whatever was buffered.
+7. **Persist captured output** as one transcript line per non-empty channel (`stdout`, `stderr`).
+8. **Yield events**: one `assistant_message` event with `role:"assistant"` and the captured stdout in `text` (so `extract_last_assistant_text` picks it up verbatim and `trim_event_payload` can cap it for the LLM payload), one `log` event with `channel:"stderr"` if stderr was non-empty, then a synthetic `done` (`child_exited` or `timeout`) carrying `exit_code` and `elapsed_seconds`.
+
+### `json-acp` / `tui-repl` / `one-shot` (long-lived child)
+
 `agent/acpx/runtime.py::AcpSession.send_turn` is the heart. Per turn:
 
 1. **Write `{"task":"...","mode":"session"}\n` to child stdin** (and `close()` for `transport="one-shot"`).
@@ -195,7 +217,7 @@ The 12 tools above are the **LLM-facing** ACPX surface. **ACPXer** is the **canv
   Starter → ACPXer(claude) → Parametrizer → ACPXer(gemini) → Parametrizer → ACPXer(cursor) → File-Creator → Ender
   ```
   Each Parametrizer copies the previous ACPXer's `response_body` into the next ACPXer's `task` — three different LLMs argue back and forth in a fully visual, fully unattended pipeline.
-- **Relationship to the 12 tools**: same `agent_id` registry (claude / codex / tlamatini = `json-acp`; gemini / cursor / qwen / kiro / kimi / iflow / kilocode / opencode / pi / droid / copilot = `tui-repl`); same transport-aware drain rule; same NDJSON transcript format; same default budgets per transport. **The two surfaces produce interchangeable artefacts**.
+- **Relationship to the 12 tools**: same `agent_id` registry (claude / cursor / gemini / qwen / codex = `oneshot-prompt`; tlamatini = `json-acp`; kiro / kimi / iflow / kilocode / opencode / pi / droid / copilot = `tui-repl`); same transport-aware drain rule for legacy paths; same fresh-process-per-turn capture path for `oneshot-prompt`; same NDJSON transcript format; same default budgets per transport. **The two surfaces produce interchangeable artefacts**.
 - **When to use which**:
   - LLM operator in this chat ("spawn claude and relay to gemini") → use the 12 tools (`acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill`).
   - Visual / .flw / Croner-scheduled / unattended flows → use ACPXer nodes on the canvas. FlowCreator (the AI flow designer) knows the patterns.

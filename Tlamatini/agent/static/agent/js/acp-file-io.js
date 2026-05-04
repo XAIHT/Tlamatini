@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateAcpxerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
 
 // ========================================
 // SAVE BUTTON
@@ -442,6 +442,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'parametrizer': await updateParametrizerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'googler': await updateGooglerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'teletlamatini': await updateTeletlamatiniConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'whatstlamatini': await updateWhatstlamatiniConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'acpxer': await updateAcpxerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
@@ -508,6 +509,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'parametrizer': await updateParametrizerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'googler': await updateGooglerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'teletlamatini': await updateTeletlamatiniConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'whatstlamatini': await updateWhatstlamatiniConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'acpxer': await updateAcpxerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }
