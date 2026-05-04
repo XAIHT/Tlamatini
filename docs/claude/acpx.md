@@ -183,6 +183,26 @@ list_skills
 
 ---
 
+## ACPXer — the visual canvas counterpart
+
+The 12 tools above are the **LLM-facing** ACPX surface. **ACPXer** is the **canvas-facing** counterpart: a workflow agent (one of the 59 in the visual ACP designer) that drives ONE ACPX session lifecycle from a drag-and-drop node.
+
+- **Lives at**: `agent/agents/acpxer/acpxer.py` + `config.yaml`. Self-contained — does NOT import `agent.acpx.runtime`, so it works identically in source and frozen builds (the agent pool runs as separate Python subprocesses with no path back into the Django app). It mirrors the runtime's transport-aware drain rule and `agent_id` registry inline.
+- **What it does, in order**: read `config.yaml` → resolve `agent_id` → command + transport + budgets via the registry mirror → spawn the child via `subprocess.Popen` → write task envelope (`{"task":..., "mode":"session"}\n` for `json-acp`, raw `task\n` for `tui-repl`) → drain stdout via daemon reader thread + 100-ms tick + 4-rule completion (json `done:true` / child exit / hard timeout / transport-aware idle) → extract last-assistant text → kill child → emit `INI_SECTION_ACPXER<<<` block → trigger `target_agents`.
+- **Transcript format**: writes `<agent_dir>/transcript.ndjson` with the SAME `{"direction": "in"|"out", "text", "raw", "ts"}` lines that the in-process runtime writes — the two formats are interchangeable, so a future tool could read an ACPXer transcript via the existing `read_transcript` helper without modification.
+- **Output contract** (consumed by Parametrizer, registered in `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS['acpxer']`): KV header `agent_id`, `session_id`, `transport`, `settle`, `transcript_path`; body = `response_body` (= last-assistant text). This means the canonical visual relay flow is:
+  ```
+  Starter → ACPXer(claude) → Parametrizer → ACPXer(gemini) → Parametrizer → ACPXer(cursor) → File-Creator → Ender
+  ```
+  Each Parametrizer copies the previous ACPXer's `response_body` into the next ACPXer's `task` — three different LLMs argue back and forth in a fully visual, fully unattended pipeline.
+- **Relationship to the 12 tools**: same `agent_id` registry (claude / codex / tlamatini = `json-acp`; gemini / cursor / qwen / kiro / kimi / iflow / kilocode / opencode / pi / droid / copilot = `tui-repl`); same transport-aware drain rule; same NDJSON transcript format; same default budgets per transport. **The two surfaces produce interchangeable artefacts**.
+- **When to use which**:
+  - LLM operator in this chat ("spawn claude and relay to gemini") → use the 12 tools (`acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill`).
+  - Visual / .flw / Croner-scheduled / unattended flows → use ACPXer nodes on the canvas. FlowCreator (the AI flow designer) knows the patterns.
+- **CSS gradient (Aurora Conduit)**: `.canvas-item.acpxer-agent { linear-gradient(135deg, #0B1F3A 0%, #5A1FB8 33%, #EC4899 66%, #22D3EE 100%) }` — cosmic-navy → electric-violet → luminous-magenta → cyan-radiance. Distinct from `.acpx-agent` (the LLM-driven exec-report row, fire-orange) so the user can tell at a glance which surface is in play.
+
+---
+
 ## Files involved
 
 - `agent/acpx/agent_registry.py` — `DEFAULT_ACP_AGENTS`, `AcpAgentSpec` (transport, defaults, `spawn_returns_immediately`), `build_agent_registry`.
@@ -197,6 +217,11 @@ list_skills
 - `agent/global_execution_planner.py` — applies `ACPX_CO_SELECTION_RULES` so e.g. selecting `acp_spawn` auto-co-selects `acp_doctor` + `acp_kill`.
 - `agent/mcp_agent.py` — `_EXEC_REPORT_TOOLS` registers ACPX rows under `agent_key="acpx"` so spawn / send / send_and_wait / kill / relay merge into one Exec Report table.
 - `agent/prompt.pmt` rule 12 — the LLM-facing version of this contract.
+- `agent/agents/acpxer/acpxer.py` + `config.yaml` — the **visual ACPXer** workflow agent (canvas counterpart of the 12 tools). Self-contained subprocess that mirrors the runtime's transport-aware drain in ~120 lines, writes interchangeable NDJSON transcripts, emits Parametrizer-compatible `INI_SECTION_ACPXER<<<` blocks.
+- `agent/agents/parametrizer/parametrizer.py` — `SECTION_AGENT_TYPES` includes `'acpxer'` so Parametrizer can pipe ACPXer output into a downstream node's config.
+- `agent/views.py` — `PARAMETRIZER_SOURCE_OUTPUT_FIELDS['acpxer']` lists the 6 fields downstream agents can address: `agent_id`, `session_id`, `transport`, `settle`, `transcript_path`, `response_body`.
+- `agent/agents/flowcreator/agentic_skill.md` — entry #58 documents ACPXer for the AI flow-designer (FlowCreator); it includes the four canonical flow patterns (single-shot CLI run, visual multi-CLI relay, scheduled audit, branching on CLI failure).
+- `agent/agents/flowhypervisor/monitoring-prompt.pmt` — `ACPXER SPECIAL NOTES` block tells the watchdog to NOT flag long-running drains, NOT flag a `settle=timeout` line as an error, and NOT flag content of `INI_SECTION_ACPXER<<<` blocks; it DOES flag `Command not resolvable on PATH` as a real error.
 
 ---
 
@@ -215,4 +240,5 @@ list_skills
 | "Kill the session" / "terminate" / "graceful kill" | `acp_kill`. |
 | "Pick the best agent for ..." | `invoke_skill('acp-router', {intent, prefer})`. |
 | "Summarize the transcript" | `acp_transcript` → `invoke_skill('summarize', {...})`. |
+| "Build a visual flow that uses ACPX" / "Draw a multi-CLI relay" / ".flw with ACPX" / "scheduled multi-CLI" / "Croner-driven ACPX" | This is the **ACPXer canvas surface**, not the 12 tools. Hand the request to FlowCreator (or describe the canvas wiring): `Starter → ACPXer(<id>) → Parametrizer → ACPXer(<id>) → ... → Ender`. Do NOT use `acp_spawn` here. |
 | Anything not in this table but mentioning ACPX | Run `acp_doctor` first to ground yourself, then pick the closest flow. |

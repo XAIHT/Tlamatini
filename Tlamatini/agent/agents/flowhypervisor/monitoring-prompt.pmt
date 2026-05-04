@@ -94,6 +94,31 @@ TeleTlamatini SPECIAL NOTES:
     dispatcher). A burst of "Started agent ..." lines after a long quiet
     period is NORMAL.
 
+ACPXER SPECIAL NOTES:
+  - ACPXer drives ONE ACPX session lifecycle: spawn an external coding-agent
+    CLI (Claude Code, Codex, Gemini CLI, Cursor, Qwen, Kiro, Kimi, iFlow,
+    Kilocode, OpenCode, Pi, Droid, Copilot, or any custom CLI) as a child
+    process, dispatch a task on stdin, drain stdout with a transport-aware
+    idle/timeout/grace rule, harvest the last-assistant text, kill the child.
+  - It is ACTIVE (it starts `target_agents` after the session ends) but the
+    in-session phase can take from sub-seconds (TUI default ~8 s) up to
+    minutes (when `timeout_seconds` is overridden for long-form prompts).
+    NEVER flag an ACPXer "running for 60+ seconds with no log output" as
+    stuck — the spawned child's stdout flushes through ACPXer only after
+    the drain rule fires. Wait for the `📡 Drain settled: reason=` line
+    before judging.
+  - The "Drain settled: reason=timeout" line is NOT an error per se — it
+    means the hard backstop fired before the idle rule did. Whether the
+    flow should retry depends on the downstream Forker / Raiser, NOT on
+    the FlowHypervisor.
+  - The `INI_SECTION_ACPXER<<<` block is structured Parametrizer output;
+    it contains the harvested last-assistant text in `response_body`. NEVER
+    flag this as an error even when the body looks like an error message
+    (e.g. when the spawned CLI itself printed an error — that is content
+    for the downstream Parametrizer / Forker to act on).
+  - "Command not resolvable on PATH" IS a legitimate error to flag — it
+    means the user configured an `agent_id` whose CLI is not installed.
+
 EXTERNAL-WINDOW agents (Sqler, Mongoxer):
   These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
 

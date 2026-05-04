@@ -85,6 +85,7 @@ urlpatterns = [
     path('update_ssher_connection/<str:agent_name>/', secure_post(views.update_ssher_connection_view), name='update_ssher_connection'),
     path('update_scper_connection/<str:agent_name>/', secure_post(views.update_scper_connection_view), name='update_scper_connection'),
     path('update_teletlamatini_connection/<str:agent_name>/', secure_post(views.update_teletlamatini_connection_view), name='update_teletlamatini_connection'),
+    path('update_acpxer_connection/<str:agent_name>/', secure_post(views.update_acpxer_connection_view), name='update_acpxer_connection'),
     path('update_telegramrx_connection/<str:agent_name>/', secure_post(views.update_telegramrx_connection_view), name='update_telegramrx_connection'),
     path('update_telegramer_connection/<str:agent_name>/', secure_post(views.update_telegramer_connection_view), name='update_telegramer_connection'),
     path('update_sqler_connection/<str:agent_name>/', secure_post(views.update_sqler_connection_view), name='update_sqler_connection'),

@@ -1,0 +1,43 @@
+# ACPXer — Visual ACPX Session Driver
+#
+# Drives one ACPX session lifecycle (spawn external coding-agent CLI, dispatch
+# task, drain transcript, harvest last-assistant text, kill). Emits an atomic
+# INI_SECTION_ACPXER block so Parametrizer can pipe the output (agent_id /
+# session_id / transcript_path / response_body=last_assistant_text) into the
+# task field of a downstream ACPXer for multi-CLI relay flows.
+#
+# Supported agent_id values (built-in registry, mirrors agent/acpx/agent_registry.py):
+#   json-acp transport (claude, codex, tlamatini)
+#   tui-repl transport (gemini, cursor, qwen, kiro, kimi, iflow, kilocode,
+#                       opencode, pi, droid, copilot)
+# Pass any other agent_id to spawn a custom CLI; it defaults to tui-repl.
+
+# Which external coding-agent CLI to spawn.
+agent_id: claude
+
+# Optional explicit command override. Empty string means "use the default for
+# this agent_id from the registry" (e.g. agent_id=claude -> command 'claude').
+# Use this when the CLI is at a non-PATH location:
+#   command: "C:/Users/me/AppData/Roaming/npm/claude.cmd"
+command: ''
+
+# The initial task / prompt sent to the child on stdin. Required.
+task: ''
+
+# Spawn mode. 'session' keeps stdin open after dispatch; 'one-shot' closes
+# stdin so the child reads-once-and-exits.
+mode: session
+
+# Working directory for the spawned child. Empty -> inherit from this agent.
+cwd: ''
+
+# Drain budgets. Pass 0 to use the registry default for the resolved transport
+# (json-acp: 6/45/12, tui-repl: 2/8/3). Override per-flow when you need to
+# wait for a slow REPL to produce a long answer.
+idle_seconds: 0
+timeout_seconds: 0
+startup_grace_seconds: 0
+
+# Connection fields (auto-populated by the canvas).
+source_agents: []
+target_agents: []

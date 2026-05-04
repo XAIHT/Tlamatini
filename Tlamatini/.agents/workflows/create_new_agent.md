@@ -10,6 +10,7 @@ This is a step-by-step guide for creating a new workflow agent. Follow ALL 8 ste
 > - Simple agent with outputs: `agent/agents/shoter/shoter.py` + `config.yaml`
 > - Agent with source monitoring: `agent/agents/telegramer/telegramer.py` + `config.yaml`
 > - Agent with NO downstream: `agent/agents/emailer/emailer.py` + `config.yaml`
+> - Agent that mirrors an in-process Tlamatini runtime (ACPX) inline so the pool subprocess stays self-contained: `agent/agents/acpxer/acpxer.py` + `config.yaml`. Read this when your new agent needs to reproduce non-trivial runtime mechanics (drain loops, transcript formats, registries) without importing the Django app — the agent pool runs as separate Python subprocesses that have no path back into `agent.*`, so anything ACPXer-shaped must port the logic inline rather than `from agent.acpx.runtime import ...`.
 
 ## Common Pitfalls (Read Before You Start)
 
@@ -24,6 +25,7 @@ Most broken agents are broken in one of these exact ways. Pre-commit your brain 
 7. **Flow-Generator `_mapToolArgsToAgentConfig` miss** — if the LLM can launch your agent (Step 7.5) but you skip Step 7.7, the generated `.flw` puts the tool call's args into a node with **no config fields set**, and the runtime silently falls back to template defaults. The flow loads visually fine but runs the wrong behavior.
 8. **Forgetting the 6 JS edit locations** — `acp-canvas-core.js` touches connections in 6 separate places. Missing any one breaks either creation, removal, undo, redo, or `.flw` load for that agent.
 9. **CSS gradient duplicated in JS** — never type a hard-coded gradient string inside `populateAgentsList()`. Let `applyAgentToolIconStyle()` resolve the sidebar icon color from the same CSS class the canvas uses. If you duplicate, the sidebar and canvas drift over time.
+10. **Importing `agent.*` from a pool subprocess** — workflow agents run as **separate Python subprocesses** in the pool, started via the user's system Python (or a bundled python.exe in frozen builds). They have **no `sys.path` back into the Django app**, so `from agent.acpx import ...` will `ModuleNotFoundError` at runtime. If your agent needs to reproduce a Tlamatini runtime mechanic (drain rule, transcript format, registry lookup), port the relevant ~100-200 lines inline — see `agent/agents/acpxer/acpxer.py` for a self-contained mirror of the ACPX runtime. The duplication is intentional; the alternative breaks frozen builds.
 
 ---
 

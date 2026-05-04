@@ -2097,3 +2097,24 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #D84315 0%, #FF7043 33%, #8E24AA 66%, #424242 100%);
     box-shadow: 0 6px 15px rgba(191, 54, 12, 0.5);
 }
+
+/* ACPXer Agent — Aurora Conduit gradient: cosmic-navy -> electric-violet ->
+   luminous-magenta -> cyan-radiance. Reads as "AI portal / multi-CLI conduit"
+   — visually distinct from .acpx-agent (the LLM-driven exec-report row,
+   fire-orange) so the user can tell at a glance "this node is the visual
+   workflow driver of one ACPX session, not an exec-report stamp". The four
+   stops mirror the four phases of the lifecycle this agent owns:
+       cosmic-navy  -> spawn (depth of multi-CLI orchestration)
+       violet       -> conduit (pipes between LLMs, the stdin/stdout bridge)
+       magenta      -> transmission (text flowing across the wire)
+       cyan         -> external intelligence (the spawned CLI's voice). */
+.canvas-item.acpxer-agent {
+    background-color: #0B1F3A;
+    background: linear-gradient(135deg, #0B1F3A 0%, #5A1FB8 33%, #EC4899 66%, #22D3EE 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.acpxer-agent:hover {
+    background: linear-gradient(135deg, #1E3A8A 0%, #7C3AED 33%, #F472B6 66%, #67E8F9 100%);
+    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.55);
+}

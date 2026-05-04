@@ -83,6 +83,7 @@ SECTION_AGENT_TYPES = [
     'kyber_keygen', 'kyber_cipher', 'kyber_decipher',
     'gatewayer', 'gateway_relayer',
     'googler',
+    'acpxer',
 ]
 
 

@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder, TeleTlamatini.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -1392,6 +1392,34 @@ system_prompt: |
   - `completeness_check.host` / `completeness_check.model` / `completeness_check.instruction`
   - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
   - `target_agents`: [] (downstream agents started after every completed user request cycle)
+
+### 58. ACPXer
+- **Purpose**: Drives ONE ACPX session lifecycle from the visual canvas. ACPX (Agent Communication Protocol eXtension) is Tlamatini's runtime for spawning **external coding-agent CLIs** — Claude Code, Codex, Gemini CLI, Cursor agent, Qwen Code, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Factory Droid, GitHub Copilot CLI, or any custom CLI — as out-of-process child processes, talking to them over stdin/stdout, and harvesting their output. ACPXer brings that mechanic into the visual workflow designer: one ACPXer node = one external-CLI session (spawn → dispatch task → drain transcript with transport-aware idle/timeout/grace rule → harvest last-assistant text → graceful kill). It writes a NDJSON transcript to `<agent_dir>/transcript.ndjson` (same format as `agent_transcript_path` in the LLM `acp_*` tools, so transcripts are interchangeable). It emits an atomic `INI_SECTION_ACPXER<<<` block whose `response_body` is the last-assistant text — meaning a Parametrizer can pipe the answer of one ACPXer into the `task` field of another for **multi-CLI relay flows built visually**.
+- **Used for**: Building visual workflows that bridge Tlamatini to external coding-agent CLIs without writing prompts in the chat UI; multi-CLI relay (claude → gemini → cursor) drawn as a chain on the canvas; long-running scheduled flows that drive an external CLI on a Croner trigger; pipelines that hand a transcript to a Summarizer / File-Creator / Notifier triplet.
+- **Aimed at**: Letting non-LLM-driven flows include external coding agents as first-class participants. The LLM-driven path uses `acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` tools in Multi-Turn mode; ACPXer is the canvas-driven counterpart of that surface.
+- **Application example**: A Croner fires at 02:00 → ACPXer (agent_id=`claude`, task=`"Audit yesterday's git diff for security regressions and write a 5-bullet report"`) → Parametrizer copies its `response_body` into a downstream ACPXer (agent_id=`gemini`, task=`"Critique this audit and add anything you'd flag"`) → File-Creator writes the combined output → Telegramer DMs the on-call. Zero LLM operator turns; the entire multi-CLI pipeline runs unattended.
+- **Pool name pattern**: `acpxer_<n>`
+- **Starts other agents**: YES (starts `target_agents` after the session ends, regardless of success or failure — so a downstream Raiser can branch on the failure mode)
+- **Config parameters**:
+  - `agent_id`: "claude" (which external CLI to spawn — see registry below for built-in IDs)
+  - `command`: "" (optional explicit command override; empty = use the registry default for `agent_id`. Use this when the CLI is at a non-PATH location, e.g. `"C:/Users/me/AppData/Roaming/npm/claude.cmd"`)
+  - `task`: "" (REQUIRED — the prompt sent to the child on stdin. For relayed flows, leave empty in the .flw and let Parametrizer fill it from an upstream ACPXer's `response_body`)
+  - `mode`: "session" (`session` keeps stdin open after dispatch; `one-shot` closes stdin so the child reads-once-and-exits — needed for some TUIs)
+  - `cwd`: "" (working directory for the spawned child; empty = inherit from this agent)
+  - `idle_seconds`: 0 (drain idle window in seconds; 0 = use registry default — `json-acp` agents get 6 s, `tui-repl` agents get 2 s)
+  - `timeout_seconds`: 0 (hard drain timeout backstop; 0 = use registry default — `json-acp` agents get 45 s, `tui-repl` agents get 8 s. Override to e.g. 180 when the prompt asks for a long-form answer)
+  - `startup_grace_seconds`: 0 (suppress idle rule for the first N seconds after spawn; 0 = registry default — 12 s for `json-acp`, 3 s for `tui-repl`)
+  - `source_agents`: [] (upstream agents — Parametrizer or anything that sets `task` before ACPXer runs)
+  - `target_agents`: [] (downstream agents started after the session ends)
+- **Built-in `agent_id` registry** (mirrors `agent/acpx/agent_registry.py` — any other id falls through to a `tui-repl` profile):
+  - `json-acp` transport (drains until `{"done": true}`): `claude`, `codex`, `tlamatini` (self-host)
+  - `tui-repl` transport (interactive REPL; drains on idle): `gemini`, `cursor`, `qwen`, `kiro`, `kimi`, `iflow`, `kilocode`, `opencode`, `pi`, `droid`, `copilot`
+- **Output section** (consumed by Parametrizer): `INI_SECTION_ACPXER<<<` with KV header (`agent_id`, `session_id`, `transport`, `settle`, `transcript_path`) and body = `response_body` (= last-assistant text). Parametrizer source-output fields: `['agent_id', 'session_id', 'transport', 'settle', 'transcript_path', 'response_body']`.
+- **Common ACPXer flow patterns**:
+  - **Single-shot CLI run**: `Starter -> ACPXer(agent_id, task) -> File-Creator -> Notifier -> Ender`
+  - **Visual multi-CLI relay**: `Starter -> ACPXer(claude) -> Parametrizer -> ACPXer(gemini) -> Parametrizer -> ACPXer(cursor) -> File-Creator -> Ender` (the most powerful pattern — three different LLMs argue back and forth, each adding their own pass)
+  - **Scheduled audit**: `Croner(02:00) -> ACPXer(claude, audit prompt) -> Summarizer -> Telegramer -> Ender`
+  - **Branching on CLI failure**: `Starter -> ACPXer -> Forker (settle=='timeout' vs 'done') -> [retry path] / [success path] -> Ender`
 
 ---
 

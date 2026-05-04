@@ -70,7 +70,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 ---
 
-## All 57 Workflow Agent Types
+## All 59 Workflow Agent Types
 
 ### Control Agents
 - **Starter** - Entry point, launches first agents
@@ -119,6 +119,8 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **Image-Interpreter** - LLM vision analysis
 - **J-Decompiler** - JAR/WAR decompilation (bundled jd-cli)
 - **Telegramer** - Sends Telegram messages
+- **TeleTlamatini** - Long-running Telegram bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat
+- **ACPXer** - Visual ACPX session driver: spawns one external coding-agent CLI (Claude/Codex/Gemini/Cursor/Qwen/etc.), dispatches task, harvests last-assistant text, kills child. Canvas-driven counterpart of the 12 LLM-facing `acp_*` tools; emits Parametrizer-compatible `INI_SECTION_ACPXER` so multi-CLI relay flows can be drawn visually
 
 ### Cryptography Agents
 - **Kyber-KeyGen** - CRYSTALS-Kyber key pair generation (post-quantum)

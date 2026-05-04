@@ -221,7 +221,7 @@ Visit our new site!: https://xaiht.org, and check our little taste of Tlamatini 
 
 The system leverages a highly advanced, custom-built **Retrieval-Augmented Generation (RAG)** pipeline that goes far beyond simple text retrieval. It performs detailed source-code analysis including metadata extraction, architectural role classification, dependency mapping, context budgeting, and controlled fallback behavior to provide deeply grounded responses.
 
-Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 58 pre-built agent types.
+Additionally, Tlamatini features a **Visual Agentic Workflow Designer** that allows you to create automated workflows using drag-and-drop agents. These workflows can monitor logs, execute commands, send notifications via email, WhatsApp, and Telegram, execute SQL/MongoDB scripts, SSH into remote hosts, route decisions through conditional logic, and much more — all orchestrated through an intuitive visual interface with 59 pre-built agent types.
 
 The main chat surface is now substantially more agentic as well. When **Multi-Turn** is enabled in the toolbar, the chat stack switches from the legacy one-shot tool exposure path to a request-scoped orchestration path that can:
 
@@ -358,7 +358,7 @@ If you are setting up from source (manual setup), you will create your own super
 
 ### Visual Workflow Designer
 - Drag-and-drop agentic workflow creation
-- 58 pre-built agent types for diverse automation tasks
+- 59 pre-built agent types for diverse automation tasks
 - Logic gates (AND/OR) for complex flow control
 - Conditional routing agents (Forker, Asker) for branching workflows
 - README-backed agent purpose tooltips in the sidebar and per-node Description dialogs on the canvas
@@ -668,6 +668,7 @@ Tlamatini/
 │   │   │   ├── barrier/       # Synchronization barrier for flow control
 │   │   │   ├── googler/       # Google search agent (Playwright + text extraction)
 │   │   │   ├── teletlamatini/ # Long-running Telegram bridge for the full Tlamatini chat (Multi-Turn + Exec Report)
+│   │   │   ├── acpxer/         # Visual ACPX session driver — spawns external coding-agent CLI, drains transcript, emits Parametrizer-compatible INI_SECTION_ACPXER
 │   │   │   ├── sleeper/           # Delay agent
 │   │   │   ├── croner/            # Scheduled trigger
 │   │   │   ├── flowcreator/       # AI-powered flow designer (LLM)
@@ -2021,7 +2022,7 @@ The full envelope shapes, lifecycle, transport profiles, and canonical flows are
 
 ## Workflow Agents
 
-Pre-built agents for the visual workflow designer, organized by category. **58 agent types** total.
+Pre-built agents for the visual workflow designer, organized by category. **59 agent types** total.
 
 The `Purpose` text in the agent tables below is no longer documentation-only. The ACP now parses these table rows from `README.md` and uses them as the live source for sidebar agent-purpose tooltips and the canvas **Description** dialog, so edits to a Purpose cell affect both the documentation and the UI text shown to users.
 
@@ -2039,7 +2040,7 @@ All workflow agents follow a common structural pattern:
 8. **Cardinal naming**: Deployed agents get numeric suffixes (e.g., `monitor_log_1`, `emailer_2`)
 
 Agents are classified as:
-- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `keyboarder`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `j_decompiler`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`
+- **Deterministic** (no LLM): `starter`, `ender`, `stopper`, `cleaner`, `executer`, `pythonxer`, `sqler`, `mongoxer`, `sleeper`, `deleter`, `mover`, `shoter`, `mouser`, `keyboarder`, `raiser`, `croner`, `asker`, `forker`, `counter`, `ssher`, `scper`, `gitter`, `dockerer`, `telegramer`, `telegramrx`, `and`, `or`, `kuberneter`, `apirer`, `jenkinser`, `gatewayer`, `gateway_relayer`, `node_manager`, `file_creator`, `file_extractor`, `j_decompiler`, `flowbacker`, `barrier`, `kyber_keygen`, `kyber_cipher`, `kyber_decipher`, `parametrizer`, `acpxer` (deterministic at the agent level — it spawns an external coding-agent CLI; the LLM-ness is in the spawned child, not the ACPXer process itself)
 - **LLM-powered**: `monitor_log` (LLM-based log analysis), `monitor_netstat` (port monitoring), `notifier` (LangGraph state machine), `emailer` (SMTP), `recmailer` (IMAP + LLM), `whatsapper` (TextMeBot + LLM), `prompter` (Ollama prompting), `flowcreator` (AI flow design), `pser` (LLM-powered process finder), `crawler` (web crawling + LLM analysis), `summarizer` (log monitoring + LLM event detection), `flowhypervisor` (system-managed LLM flow anomaly detection), `file_interpreter` (document parsing + optional LLM summarization), `image_interpreter` (LLM vision-based image analysis), `teletlamatini` (LLM-aided request-completeness classifier + full Multi-Turn Tlamatini chat over Telegram)
 
 ### Control Agents
@@ -2143,6 +2144,7 @@ Agents are classified as:
 | **parametrizer** | Short-running active utility interconnection agent that maps structured outputs from a source agent's log to a target agent's config.yaml via an interconnection scheme saved for the deployed pool instance. When multiple output elements exist, it iterates sequentially: fill config, start target, wait, repeat. Current structured-output sources are Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, and Gateway-Relayer. | `source_agent`: Source agent name<br>`target_agent`: Target agent name<br>`source_agents`: [] (max 1)<br>`target_agents`: [] (max 1) |
 | **barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier. Waits for ALL configured source agents to start before triggering downstream target agents. Each source agent starts a separate barrier process (input sub-process) that creates a flag file; the first arrival becomes the output sub-process that polls until all flags are present, then fires. Uses cross-process file-based locking to avoid race conditions. | `source_agents`: Upstream agents whose startup is awaited<br>`target_agents`: Downstream agents to start when all sources have checked in |
 | **googler** | Short-running web-search agent that searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content, and saves the combined results to an output file for downstream processing. | `query`: Search query<br>`number_of_results`: 5 (max 10)<br>`content_mode`: text or raw<br>`output_file`: googler_results.txt<br>`source_agents`: Upstream agents<br>`target_agents`: Downstream agents |
+| **acpxer** | Visual ACPX session driver — drives ONE full ACPX (Agent Communication Protocol eXtension) session lifecycle from the canvas. Spawns an external coding-agent CLI (Claude Code, Codex, Gemini CLI, Cursor agent, Qwen Code, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Factory Droid, GitHub Copilot CLI, or any custom CLI) as an out-of-process child, dispatches a task on stdin, drains stdout with a transport-aware idle/timeout/grace rule (json-acp vs tui-repl, both supported), harvests the last-assistant text, and gracefully kills the child. Writes a NDJSON transcript to `<agent_dir>/transcript.ndjson` (byte-compatible with the in-process ACPX runtime). Emits a Parametrizer-compatible `INI_SECTION_ACPXER<<<` block whose `response_body` is the harvested last-assistant text — chain two ACPXers via Parametrizer for visual multi-CLI relay flows (`Starter → ACPXer(claude) → Parametrizer → ACPXer(gemini) → File-Creator → Ender`). Canvas-driven counterpart of the 12 LLM-facing `acp_*` tools (`acp_doctor` / `acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` / etc.). | `agent_id`: Which CLI to spawn (claude, gemini, cursor, codex, qwen, kiro, kimi, iflow, kilocode, opencode, pi, droid, copilot, tlamatini, or custom)<br>`command`: '' (optional explicit command override; empty = use registry default for `agent_id`)<br>`task`: '' (the prompt sent to the child on stdin — REQUIRED unless populated by Parametrizer)<br>`mode`: session (or `one-shot` to close stdin after dispatch)<br>`cwd`: '' (working dir for child; empty = inherit)<br>`idle_seconds`: 0 (0 = registry default — json-acp 6 s, tui-repl 2 s)<br>`timeout_seconds`: 0 (0 = registry default — json-acp 45 s, tui-repl 8 s)<br>`startup_grace_seconds`: 0 (0 = registry default — json-acp 12 s, tui-repl 3 s)<br>`source_agents`: Upstream agents (Parametrizer, etc.)<br>`target_agents`: Downstream agents started after session ends |
 
 Each agent has a `config.yaml` file for customization.
 
@@ -2492,7 +2494,7 @@ Parametrizer extracts: `{'public_key': 'MIIBIjANBgkq...', 'private_key': 'MIIEvg
 
 ### Supported Source Agents and Their Output Fields
 
-Parametrizer supports 16 structured-output source agent types. All use the unified `INI_SECTION / END_SECTION` format described above.
+Parametrizer supports 17 structured-output source agent types. All use the unified `INI_SECTION / END_SECTION` format described above.
 
 | Source Agent | KV Header Fields | Has Body (`response_body`)? |
 |---|---|---|
@@ -2512,6 +2514,7 @@ Parametrizer supports 16 structured-output source agent types. All use the unifi
 | **Gatewayer** | `event_id`, `event_type`, `session_id`, `correlation_id`, `content_type`, `method`, `path`, `body` | No |
 | **Gateway-Relayer** | `event_type`, `delivery_id`, `action`, `ref`, `repository`, `sender`, `body` | No |
 | **Googler** | `url`, `status`, `content_length` | Yes |
+| **ACPXer** | `agent_id`, `session_id`, `transport`, `settle`, `transcript_path` | Yes (`response_body` = harvested last-assistant text) |
 
 ### Iterative Execution Model
 
@@ -4519,6 +4522,7 @@ The current consumer accepts either a plain chat payload or one of the explicit 
 | `/update_barrier_connection/<agent_name>/` | POST | Update barrier connections |
 | `/update_googler_connection/<agent_name>/` | POST | Update googler connections |
 | `/update_teletlamatini_connection/<agent_name>/` | POST | Update teletlamatini connections |
+| `/update_acpxer_connection/<agent_name>/` | POST | Update acpxer connections |
 
 #### Session & Pool Management
 
@@ -5009,6 +5013,7 @@ Producing lines like:
 | **Barrier** | Short-running passive utility flow-control agent that acts as a synchronization barrier, waiting for ALL configured source agents to start before triggering downstream target agents via cross-process file-based locking and flag files |
 | **Googler** | Short-running web-search agent that searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content, and saves the combined results to an output file for downstream processing |
 | **TeleTlamatini** | Long-running active notification-and-prompt-processing agent that exposes the full Tlamatini chat (`agent_page.html` Multi-Turn behavior, including the per-agent Exec Report tables) over Telegram. Password-gates each chat on first contact, uses an Ollama-backed completeness classifier to decide whether each user message is a clear and complete request (asking follow-up questions until it is), proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true`, pauses to ask the user for additional information mid-processing if needed, and sends the assembled answer (including command/action tables per agent) back to the Telegram user. After every successfully completed user request cycle, starts the configured `target_agents` |
+| **ACPXer** | Visual canvas counterpart of the 12 LLM-facing ACPX tools — a workflow agent that drives ONE ACPX session lifecycle from a drag-and-drop node. Spawns an external coding-agent CLI (Claude Code, Codex, Gemini CLI, Cursor, Qwen, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Droid, Copilot, Tlamatini self-host, or any custom CLI) as a child process, dispatches a task on stdin, drains stdout with a transport-aware idle/timeout/grace rule (json-acp drains until `done:true`; tui-repl drains on idle), harvests the last-assistant text, gracefully kills the child. Self-contained — does not import `agent.acpx` so it works identically in source and frozen builds; the agent pool subprocesses have no `sys.path` back into the Django app, so the runtime mechanics are mirrored inline (~120 lines). Writes a NDJSON transcript that is byte-compatible with the in-process runtime. Emits a Parametrizer-compatible `INI_SECTION_ACPXER<<<` block (KV header `agent_id` / `session_id` / `transport` / `settle` / `transcript_path`; body = `response_body` = last-assistant text), enabling **visual multi-CLI relay flows** — `Starter → ACPXer(claude) → Parametrizer → ACPXer(gemini) → Parametrizer → ACPXer(cursor) → File-Creator → Ender` — where three different LLMs argue back and forth in a fully unattended pipeline with zero LLM operator turns |
 | **ACP (protocol)** | The agent-as-child-process I/O protocol: line-oriented JSON over stdin/stdout. ACPX is Tlamatini's implementation; OpenClaw is another implementation. Skills written for one project run unmodified on the other |
 | **ACPX** | The Python runtime in `agent/acpx/` that spawns external coding-agent CLIs (Claude Code, Cursor, Codex, Copilot, Gemini, Qwen, Pi, Droid, iFlow, Kilocode, Kimi, Kiro, OpenCode) as managed child processes, brokers their stdin/stdout JSON, and exposes seven LangChain `@tool`s (`acp_spawn`, `acp_send`, `acp_kill`, `acp_doctor`, `list_acp_agents`, `invoke_skill`, `list_skills`). OpenClaw-compatible verbatim |
 | **AcpAgent** | Database model (created by migration `0071_acpx_skills`) — one row per registered ACP `agent_id`. Mirrored from disk by `agent/acpx/service.py::boot_acpx()` on every Django start. The disk registry (built-ins + `acpx.agents` overrides) is the source of truth |
@@ -5088,6 +5093,20 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+
+- **ACPXer — Visual ACPX Session Driver — May 2026** — A new workflow agent (#59 in the visual ACP designer; migration `0076_add_acpxer`) that brings ACPX mechanics into the canvas. Designed as the **canvas-driven counterpart** of the 12 LLM-facing `acp_*` tools landed in the previous reliability pass: where those tools let the Multi-Turn LLM operator orchestrate external coding-agent CLIs from chat, ACPXer lets the user **draw** that same orchestration as a `.flw` workflow that runs unattended. Highlights:
+
+    1. **One ACPXer node = one ACPX session lifecycle.** Spawn external CLI (Claude Code / Codex / Gemini CLI / Cursor / Qwen / Kiro / Kimi / iFlow / Kilocode / OpenCode / Pi / Droid / Copilot / Tlamatini self-host / any custom CLI) → dispatch task on stdin → drain stdout with the **same transport-aware idle/timeout/grace rule** as the in-process runtime (`json-acp`: idle arms after first event AND idle window AND grace; `tui-repl` / `one-shot`: idle arms after `grace+idle` even with zero events) → harvest last-assistant text → graceful kill → trigger `target_agents`. The `agent_id` registry mirrors `agent/acpx/agent_registry.py` verbatim, so `agent_id="claude"` here picks the same command and budgets as `acp_spawn(agent_id="claude")` does in chat.
+
+    2. **Self-contained — does NOT import `agent.acpx`.** Workflow agents in the pool run as separate Python subprocesses (started via the user's system Python or a bundled python.exe in frozen builds) and have no `sys.path` back into the Django app, so `from agent.acpx import AcpxRuntime` would `ModuleNotFoundError` at runtime. ACPXer therefore **mirrors the runtime mechanics inline** in ~120 lines: 4-rule completion detection (`done:true` envelope / child exit / hard timeout / transport-aware idle), daemon reader thread with `queue.Queue` for cross-platform interruptible reads, per-event NDJSON transcript writer, JSON-envelope last-assistant extractor with TUI-paragraph fallback. The duplication is intentional: the alternative breaks frozen builds.
+
+    3. **Byte-compatible NDJSON transcripts.** Writes `<agent_dir>/transcript.ndjson` with the same `{"direction": "in"|"out", "text", "raw", "ts"}` lines that `agent.acpx.runtime.AcpSession.send_turn` writes. A future tool could read an ACPXer transcript via the existing `read_transcript` helper without modification.
+
+    4. **Parametrizer-compatible structured output → visual multi-CLI relay.** Emits one atomic `INI_SECTION_ACPXER<<<` block per session with a 5-key header (`agent_id`, `session_id`, `transport`, `settle`, `transcript_path`) and a `response_body` body containing the harvested last-assistant text. Registered in `parametrizer.py::SECTION_AGENT_TYPES` and `views.py::PARAMETRIZER_SOURCE_OUTPUT_FIELDS['acpxer']` so a Parametrizer between two ACPXer nodes copies the upstream's `response_body` into the downstream's `task` field. The canonical relay flow `Starter → ACPXer(claude) → Parametrizer → ACPXer(gemini) → Parametrizer → ACPXer(cursor) → File-Creator → Ender` runs three different LLMs back-to-back with **zero LLM operator turns** — fully unattended, schedulable via Croner, savable as `.flw`.
+
+    5. **Aurora Conduit gradient.** A new 4-color CSS gradient (`#0B1F3A → #5A1FB8 → #EC4899 → #22D3EE` — cosmic-navy → electric-violet → luminous-magenta → cyan-radiance) reads as "AI portal / multi-CLI conduit" and is visually distinct from the existing `.acpx-agent` exec-report row (fire-orange/coral/violet/black, used for LLM-driven ACPX). The user can tell at a glance which surface is in play. Sidebar icon inherits the same gradient via `applyAgentToolIconStyle()`; no JS-duplicated colors.
+
+    6. **Documentation as a graph for AI assistants.** Updates landed across every surface a less-clever AI in the project might consult: `prompt.pmt` rule 12 (Multi-Turn LLM now knows ACPXer is the answer for "draw a visual ACPX flow"), `agentic_skill.md` entry #58 (FlowCreator now generates ACPXer-based `.flw`s with the four canonical patterns: single-shot CLI run, visual multi-CLI relay, scheduled audit, branching on CLI failure), `monitoring-prompt.pmt` `ACPXER SPECIAL NOTES` block (FlowHypervisor watchdog won't false-flag a long drain or a `settle=timeout` line, but DOES flag `Command not resolvable on PATH`), `docs/claude/acpx.md` (deep architectural reference now includes the canvas counterpart), `docs/claude/agents.md` (catalog count bumped to 59), `docs/claude/exec-report.md` (clarifies why ACPXer is NOT in `_EXEC_REPORT_TOOLS` — that registry is LLM-tool-only), `docs/claude/gotchas.md` (`agent.*` import-from-pool gotcha), `Tlamatini/.agents/workflows/create_new_agent.md` (new pitfall #10 + ACPXer added to reference implementations as "agent that mirrors a Tlamatini runtime mechanic inline"). Six docs, one source of truth per concern.
 
 - **ACPX Reliability Pass — May 2026** — A series of cross-cutting changes that took ACPX execution from "hangs at 45 s per spawn on TUI agents" to "sub-second spawn + 2 s idle on silent REPLs". Bundles eight related improvements landed over two days of focused iteration:
 

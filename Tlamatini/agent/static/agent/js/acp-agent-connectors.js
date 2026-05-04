@@ -597,6 +597,25 @@ async function updateTeletlamatiniConnection(agentId, connectedAgentId, action, 
     }
 }
 
+async function updateAcpxerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
+    try {
+        const response = await fetch(`/agent/update_acpxer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- ACPXer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update ACPXer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating ACPXer ${agentId}:`, error);
+    }
+}
+
 async function updateTelegramrxConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_telegramrx_connection/${agentId}/`, {
