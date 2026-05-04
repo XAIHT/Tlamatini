@@ -8,10 +8,13 @@ docs/claude/acpx.md and ACPX.md.
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
+import time
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 # Make `agent.*` importable when this file is run via pytest from the repo root.
 HERE = Path(__file__).resolve()
@@ -279,3 +282,847 @@ class HelloWorldSkillSmokeTest(TestCase):
         self.assertEqual(fm.name, "hello-world")
         self.assertEqual(fm.runtime, "in-process")
         self.assertIn("Hello World", body)
+
+
+# ── Section A: ACPX tool surface ──────────────────────────────────────
+# These tests cover the expanded ACPX tool surface: per-event trimming,
+# transcript reads, session status / listing, the relay helper, and the
+# enriched acp_doctor envelope. They never spawn a real CLI; runtime
+# behavior is exercised by inserting fake AcpSession objects directly
+# into the runtime's in-memory _sessions dict.
+
+
+from agent.acpx.runtime import (  # noqa: E402
+    DEFAULT_MAX_EVENT_CHARS,
+    extract_last_assistant_text,
+    trim_event_payload,
+    trim_events,
+)
+from agent.acpx import tools as acpx_tools  # noqa: E402
+from agent.acpx.config import AcpxConfig  # noqa: E402
+from agent.acpx.runtime import AcpxRuntime, AcpSession  # noqa: E402
+
+
+def _make_runtime(state_dir: Path) -> AcpxRuntime:
+    """Build an AcpxRuntime that doesn't read config.json from disk."""
+    cfg = AcpxConfig(state_dir=str(state_dir),
+                     cwd=str(state_dir),
+                     timeout_seconds=5)
+    return AcpxRuntime(config=cfg)
+
+
+class _FakeProc:
+    """Minimal subprocess.Popen stand-in for tests."""
+
+    def __init__(self, alive: bool = True, pid: int = 4242):
+        self._alive = alive
+        self.pid = pid
+        self.returncode = None if alive else 0
+
+    def poll(self):
+        return None if self._alive else 0
+
+    def terminate(self):
+        self._alive = False
+        self.returncode = 0
+
+    def wait(self, timeout=None):  # noqa: ARG002
+        self._alive = False
+        return 0
+
+    def kill(self):
+        self._alive = False
+        self.returncode = -9
+
+
+def _install_fake_session(runtime: AcpxRuntime, session_id: str,
+                           agent_id: str = "claude",
+                           transcript_text: str = "",
+                           alive: bool = True) -> AcpSession:
+    """Place a fake AcpSession into the runtime so transcript/list/kill
+    paths can be exercised without spawning a real child."""
+    from agent.acpx.session_store import AcpSessionRecord, now_epoch
+
+    transcript_path = Path(runtime.config.state_dir) / f"{session_id}.transcript.ndjson"
+    transcript_path.parent.mkdir(parents=True, exist_ok=True)
+    transcript_path.write_text(transcript_text, encoding="utf-8")
+    record = AcpSessionRecord(
+        session_id=session_id,
+        name=f"{agent_id}-{session_id[:6]}",
+        agent_id=agent_id,
+        cwd=runtime.config.cwd or str(runtime.config.state_dir),
+        state_path=str(Path(runtime.config.state_dir) / f"{session_id}.json"),
+        transcript_path=str(transcript_path),
+        pid=4242,
+        created_at=now_epoch(),
+        last_active_at=now_epoch(),
+    )
+    runtime.session_store.save(record)
+    spec = next(iter(runtime.agent_registry.values()))  # any spec works for tests
+    sess = AcpSession(runtime=runtime, spec=spec,
+                      cwd=Path(record.cwd), mode="session", record=record)
+    sess.proc = _FakeProc(alive=alive)
+    record.pid = sess.proc.pid
+    runtime._sessions[session_id] = sess
+    return sess
+
+
+class EventTrimmingTests(TestCase):
+    """Item 9 — trim oversized event payloads at the tool boundary."""
+
+    def test_trim_event_payload_clips_each_known_key(self) -> None:
+        big = "x" * 5000
+        ev = {"event": "log", "text": big, "raw": big, "role": "assistant"}
+        out = trim_event_payload(ev, max_event_chars=100)
+        self.assertEqual(len(out["text"]), 100)
+        self.assertEqual(len(out["raw"]), 100)
+        self.assertTrue(out.get("_truncated"))
+        # Envelope fields are preserved verbatim.
+        self.assertEqual(out["event"], "log")
+        self.assertEqual(out["role"], "assistant")
+
+    def test_trim_event_payload_no_op_when_under_cap(self) -> None:
+        ev = {"event": "log", "text": "short"}
+        out = trim_event_payload(ev, max_event_chars=100)
+        self.assertEqual(out, {"event": "log", "text": "short"})
+        self.assertNotIn("_truncated", out)
+
+    def test_trim_events_applies_to_each(self) -> None:
+        events = [
+            {"event": "log", "text": "a" * 200},
+            {"event": "log", "text": "b" * 50},
+            {"done": True, "_synthetic": "idle"},
+        ]
+        out = trim_events(events, max_event_chars=100)
+        self.assertEqual(len(out[0]["text"]), 100)
+        self.assertTrue(out[0]["_truncated"])
+        self.assertEqual(out[1]["text"], "b" * 50)
+        self.assertNotIn("_truncated", out[1])
+        self.assertEqual(out[2], {"done": True, "_synthetic": "idle"})
+
+    def test_default_cap_is_two_kib(self) -> None:
+        self.assertEqual(DEFAULT_MAX_EVENT_CHARS, 2048)
+
+
+class LastAssistantExtractionTests(TestCase):
+    """Heuristic that powers acp_relay(transform='last_assistant_text')."""
+
+    def test_prefers_role_assistant(self) -> None:
+        events = [
+            {"event": "log", "text": "user: hi"},
+            {"role": "assistant", "content": "Trade-off paragraph."},
+            {"event": "log", "text": "trailing log noise"},
+        ]
+        text = extract_last_assistant_text(events)
+        self.assertEqual(text, "Trade-off paragraph.")
+
+    def test_falls_back_to_log_text_when_no_role(self) -> None:
+        events = [
+            {"event": "log", "text": "Line 1"},
+            {"event": "log", "text": "Line 2"},
+            {"done": True, "_synthetic": "idle"},
+        ]
+        text = extract_last_assistant_text(events)
+        self.assertEqual(text, "Line 1\nLine 2")
+
+    def test_drops_empty_payloads(self) -> None:
+        events = [
+            {"event": "log", "text": ""},
+            {"event": "log", "text": "real content"},
+            {"event": "log", "text": "   "},
+        ]
+        self.assertEqual(extract_last_assistant_text(events), "real content")
+
+    def test_empty_input_returns_empty(self) -> None:
+        self.assertEqual(extract_last_assistant_text([]), "")
+        self.assertEqual(extract_last_assistant_text([{"event": "log"}]), "")
+
+
+class TranscriptReadTests(TestCase):
+    """Item 2 — acp_transcript / runtime.read_transcript."""
+
+    def test_reads_and_parses_ndjson(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            transcript = (
+                json.dumps({"direction": "out", "text": "task", "ts": 1.0}) + "\n"
+                + json.dumps({"direction": "in", "raw": "hello", "ts": 2.0}) + "\n"
+                + json.dumps({"direction": "in", "raw": "world", "ts": 3.0}) + "\n"
+            )
+            _install_fake_session(runtime, "s1",
+                                   transcript_text=transcript)
+            result = runtime.read_transcript("s1", max_chars=8000)
+            self.assertEqual(len(result["events"]), 3)
+            self.assertIn("hello", result["text"])
+            self.assertIn("world", result["text"])
+            self.assertFalse(result["truncated"])
+            self.assertGreater(result["total_size"], 0)
+
+    def test_direction_filter_in(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            transcript = (
+                json.dumps({"direction": "out", "text": "task"}) + "\n"
+                + json.dumps({"direction": "in", "raw": "answer"}) + "\n"
+            )
+            _install_fake_session(runtime, "s2", transcript_text=transcript)
+            result = runtime.read_transcript("s2", direction="in")
+            self.assertEqual(len(result["events"]), 1)
+            self.assertEqual(result["events"][0]["raw"], "answer")
+
+    def test_max_chars_truncates_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            big = "z" * 5000
+            transcript = json.dumps({"direction": "in", "raw": big}) + "\n"
+            _install_fake_session(runtime, "s3", transcript_text=transcript)
+            result = runtime.read_transcript("s3", max_chars=100)
+            self.assertTrue(result["truncated"])
+            self.assertLessEqual(len(result["text"]), 100)
+
+    def test_unknown_session_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            from agent.acpx.runtime import AcpRuntimeError
+            with self.assertRaises(AcpRuntimeError) as ctx:
+                runtime.read_transcript("does-not-exist")
+            self.assertEqual(ctx.exception.code, "UNKNOWN_SESSION")
+
+    def test_acp_transcript_tool_returns_envelope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(
+                runtime, "s4",
+                transcript_text=json.dumps({"direction": "in",
+                                            "raw": "ok"}) + "\n",
+            )
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime):
+                raw = acpx_tools.acp_transcript.invoke({"session_id": "s4"})
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertEqual(envelope["session_id"], "s4")
+            self.assertEqual(len(envelope["events"]), 1)
+
+
+class SessionStatusAndListTests(TestCase):
+    """Items 4 & 5 — acp_session_status + acp_list_sessions."""
+
+    def test_list_sessions_reports_alive_and_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(runtime, "alive-1", agent_id="claude",
+                                   transcript_text="x" * 10, alive=True)
+            _install_fake_session(runtime, "dead-1", agent_id="gemini",
+                                   transcript_text="y" * 50, alive=False)
+            sessions = runtime.list_sessions()
+            self.assertEqual(len(sessions), 2)
+            ids = {s["session_id"]: s for s in sessions}
+            self.assertTrue(ids["alive-1"]["alive"])
+            self.assertFalse(ids["dead-1"]["alive"])
+            self.assertEqual(ids["alive-1"]["agent_id"], "claude")
+            self.assertGreater(ids["dead-1"]["transcript_size"], 0)
+
+    def test_session_status_unknown_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            from agent.acpx.runtime import AcpRuntimeError
+            with self.assertRaises(AcpRuntimeError) as ctx:
+                runtime.session_status("missing")
+            self.assertEqual(ctx.exception.code, "UNKNOWN_SESSION")
+
+    def test_session_status_alive_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(runtime, "live", alive=True,
+                                   transcript_text="data")
+            status = runtime.session_status("live")
+            self.assertTrue(status["alive"])
+            self.assertEqual(status["session_id"], "live")
+            self.assertGreater(status["transcript_size"], 0)
+            self.assertFalse(status["closed"])
+
+    def test_acp_list_sessions_tool_envelope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(runtime, "a", alive=True)
+            _install_fake_session(runtime, "b", alive=False)
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime):
+                raw = acpx_tools.acp_list_sessions.invoke({})
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertEqual(envelope["count"], 2)
+
+
+class KillReturnsTranscriptPathTests(TestCase):
+    """Item 8 — acp_kill always includes transcript_path in its return."""
+
+    def test_kill_returns_transcript_path_and_pid(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(runtime, "k1", agent_id="claude")
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime):
+                raw = acpx_tools.acp_kill.invoke({"session_id": "k1"})
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertEqual(envelope["killed"], "k1")
+            self.assertIn("transcript_path", envelope)
+            self.assertEqual(envelope["agent_id"], "claude")
+            self.assertEqual(envelope["pid"], 4242)
+
+    def test_kill_already_gone_still_returns_transcript_path_when_on_disk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            sess = _install_fake_session(runtime, "k2", agent_id="claude")
+            # Drop the in-memory session but keep the on-disk record.
+            runtime._sessions.pop("k2", None)
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime):
+                raw = acpx_tools.acp_kill.invoke({"session_id": "k2"})
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertTrue(envelope.get("already_gone"))
+            self.assertEqual(envelope["transcript_path"],
+                             sess.record.transcript_path)
+
+
+class DoctorEnumeratesAgentsTests(TestCase):
+    """Item 7 — acp_doctor exposes per-agent resolvable + cli_version."""
+
+    def test_doctor_details_is_per_agent_list_with_resolvable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            # Force every agent to look unresolvable so we don't spawn anything.
+            with patch("agent.acpx.runtime.is_executable_resolvable",
+                       return_value=False):
+                runtime.probe_availability()
+                report = runtime.doctor()
+            self.assertIn("details", report)
+            self.assertIsInstance(report["details"], list)
+            self.assertGreater(len(report["details"]), 0)
+            for entry in report["details"]:
+                self.assertIn("agent_id", entry)
+                self.assertIn("command", entry)
+                self.assertIn("resolvable", entry)
+                self.assertIn("cli_version", entry)
+                self.assertFalse(entry["resolvable"])
+                self.assertEqual(entry["cli_version"], "")
+            self.assertIn("probe", report)
+
+    def test_cli_version_cache_used_on_repeat(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            # First call seeds the cache; second must NOT re-run subprocess.
+            spec = next(iter(runtime.agent_registry.values()))
+            with patch("agent.acpx.runtime.is_executable_resolvable",
+                       return_value=True), \
+                 patch("agent.acpx.runtime.subprocess.run") as mock_run:
+                mock_run.return_value.stdout = "v1.2.3\n"
+                mock_run.return_value.stderr = ""
+                v1 = runtime._capture_cli_version(spec)
+                v2 = runtime._capture_cli_version(spec)
+                self.assertEqual(v1, "v1.2.3")
+                self.assertEqual(v2, "v1.2.3")
+                self.assertEqual(mock_run.call_count, 1)
+
+
+class AcpSpawnDrainKnobsTests(TestCase):
+    """Item 1 — acp_spawn exposes timeout/idle/grace/max_event_chars kwargs."""
+
+    @staticmethod
+    def _make_fake_spawned(tmp: str, *, agent_id: str, transport: str,
+                           spawn_returns_immediately: bool):
+        """Build a _FakeSpawned stub whose ``.spec`` exposes the new
+        agent_registry fields acp_spawn now consults."""
+        from agent.acpx.agent_registry import AcpAgentSpec
+
+        spec = AcpAgentSpec(
+            agent_id=agent_id, command=agent_id,
+            description=f"fake {agent_id}",
+            transport=transport,
+            spawn_returns_immediately=spawn_returns_immediately,
+        )
+
+        class _FakeSpawned:
+            pass
+
+        _FakeSpawned.spec = spec
+        _FakeSpawned.record = type("R", (), {
+            "session_id": f"spawned-{agent_id}",
+            "agent_id": agent_id,
+            "transcript_path": str(Path(tmp) / f"spawned-{agent_id}.transcript.ndjson"),
+        })
+        return _FakeSpawned
+
+    def test_spawn_passes_overrides_to_runtime_send(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            captured = {}
+
+            # JSON-ACP agent → caller overrides force a drain.
+            fake_spawned = self._make_fake_spawned(
+                tmp, agent_id="claude", transport="json-acp",
+                spawn_returns_immediately=False,
+            )
+
+            def fake_spawn(**kwargs):
+                Path(fake_spawned.record.transcript_path).touch()
+                return fake_spawned
+
+            def fake_send(session_id, text,
+                          timeout_seconds=None,
+                          idle_seconds=None,
+                          startup_grace_seconds=None):
+                captured["timeout_seconds"] = timeout_seconds
+                captured["idle_seconds"] = idle_seconds
+                captured["startup_grace_seconds"] = startup_grace_seconds
+                return [{"event": "log", "text": "ok"},
+                        {"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "spawn", side_effect=fake_spawn), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                raw = acpx_tools.acp_spawn.invoke({
+                    "agent_id": "claude",
+                    "task": "go",
+                    "timeout_seconds": 90,
+                    "idle_seconds": 12,
+                    "startup_grace_seconds": 20,
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertEqual(captured["timeout_seconds"], 90.0)
+            self.assertEqual(captured["idle_seconds"], 12.0)
+            self.assertEqual(captured["startup_grace_seconds"], 20.0)
+            self.assertFalse(envelope["spawned_immediately"])
+
+    def test_spawn_zero_overrides_use_defaults(self) -> None:
+        # JSON-ACP agent with spawn_returns_immediately=False, no
+        # caller overrides — runtime.send is called with the historic
+        # 45/6/12 defaults that the tool layer applies for the JSON-ACP
+        # path.
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            captured = {}
+
+            fake_spawned = self._make_fake_spawned(
+                tmp, agent_id="claude", transport="json-acp",
+                spawn_returns_immediately=False,
+            )
+
+            def fake_send(session_id, text,
+                          timeout_seconds=None,
+                          idle_seconds=None,
+                          startup_grace_seconds=None):
+                captured["timeout_seconds"] = timeout_seconds
+                captured["idle_seconds"] = idle_seconds
+                captured["startup_grace_seconds"] = startup_grace_seconds
+                return [{"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "spawn",
+                              side_effect=lambda **_: fake_spawned), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                Path(fake_spawned.record.transcript_path).touch()
+                acpx_tools.acp_spawn.invoke({"agent_id": "claude", "task": "go"})
+            self.assertEqual(captured["timeout_seconds"], 45.0)
+            self.assertEqual(captured["idle_seconds"], 6.0)
+            self.assertEqual(captured["startup_grace_seconds"], 12.0)
+
+
+class AcpSpawnImmediateReturnTests(TestCase):
+    """Fast-path: TUI agents (gemini/cursor/qwen/...) skip the drain on
+    acp_spawn so the LLM gets back the session_id sub-second instead of
+    waiting the full timeout. Caller can force a drain by passing any
+    of the timeout/idle/grace knobs explicitly."""
+
+    def test_tui_agent_returns_immediately_without_calling_send(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            send_called = {"count": 0}
+
+            fake_spawned = AcpSpawnDrainKnobsTests._make_fake_spawned(
+                tmp, agent_id="gemini", transport="tui-repl",
+                spawn_returns_immediately=True,
+            )
+
+            def fake_send(*args, **kwargs):
+                send_called["count"] += 1
+                return [{"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "spawn",
+                              side_effect=lambda **_: fake_spawned), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                Path(fake_spawned.record.transcript_path).touch()
+                raw = acpx_tools.acp_spawn.invoke({
+                    "agent_id": "gemini", "task": "go",
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertTrue(envelope["spawned_immediately"])
+            self.assertEqual(envelope["events"], [])
+            self.assertEqual(envelope["events_total"], 0)
+            self.assertEqual(envelope["transport"], "tui-repl")
+            # Critical: runtime.send was NOT called. This is the speedup.
+            self.assertEqual(send_called["count"], 0)
+
+    def test_tui_agent_drains_when_caller_forces_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            send_called = {"count": 0}
+
+            fake_spawned = AcpSpawnDrainKnobsTests._make_fake_spawned(
+                tmp, agent_id="gemini", transport="tui-repl",
+                spawn_returns_immediately=True,
+            )
+
+            def fake_send(*args, **kwargs):
+                send_called["count"] += 1
+                return [{"event": "log", "text": "drained"},
+                        {"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "spawn",
+                              side_effect=lambda **_: fake_spawned), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                Path(fake_spawned.record.transcript_path).touch()
+                raw = acpx_tools.acp_spawn.invoke({
+                    "agent_id": "gemini", "task": "go",
+                    "timeout_seconds": 60,  # caller forces drain
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertFalse(envelope["spawned_immediately"])
+            self.assertEqual(send_called["count"], 1)
+
+    def test_json_acp_agent_drains_on_spawn_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            send_called = {"count": 0}
+
+            fake_spawned = AcpSpawnDrainKnobsTests._make_fake_spawned(
+                tmp, agent_id="claude", transport="json-acp",
+                spawn_returns_immediately=False,
+            )
+
+            def fake_send(*args, **kwargs):
+                send_called["count"] += 1
+                return [{"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "spawn",
+                              side_effect=lambda **_: fake_spawned), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                Path(fake_spawned.record.transcript_path).touch()
+                raw = acpx_tools.acp_spawn.invoke({
+                    "agent_id": "claude", "task": "go",
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertFalse(envelope["spawned_immediately"])
+            self.assertEqual(send_called["count"], 1)
+
+
+class AgentRegistryTransportProfileTests(TestCase):
+    """The default registry must mark interactive TUI agents
+    (gemini, cursor, qwen, kiro, ...) as transport='tui-repl' with
+    spawn_returns_immediately=True so the runtime takes the fast path.
+    JSON-ACP agents (claude, codex, tlamatini self-host) keep the
+    blocking drain behavior."""
+
+    def test_tui_agents_have_fast_path_defaults(self) -> None:
+        from agent.acpx.agent_registry import build_agent_registry
+
+        reg = build_agent_registry()
+        for agent_id in ("gemini", "cursor", "qwen", "kiro", "kimi",
+                         "iflow", "kilocode", "opencode", "pi", "droid",
+                         "copilot"):
+            spec = reg[agent_id]
+            self.assertEqual(spec.transport, "tui-repl",
+                              f"{agent_id} should be tui-repl")
+            self.assertTrue(spec.spawn_returns_immediately,
+                             f"{agent_id} should spawn immediately")
+            # TUI defaults: short hard cap so a silent REPL returns fast.
+            self.assertLessEqual(spec.default_timeout_seconds or 99, 10)
+
+    def test_json_acp_agents_keep_blocking_drain(self) -> None:
+        from agent.acpx.agent_registry import build_agent_registry
+
+        reg = build_agent_registry()
+        for agent_id in ("claude", "codex", "tlamatini"):
+            spec = reg[agent_id]
+            self.assertEqual(spec.transport, "json-acp",
+                              f"{agent_id} should be json-acp")
+            self.assertFalse(spec.spawn_returns_immediately,
+                              f"{agent_id} should NOT spawn immediately")
+
+    def test_user_defined_unknown_agent_defaults_to_fast_path(self) -> None:
+        from agent.acpx.agent_registry import build_agent_registry
+
+        reg = build_agent_registry(overrides={"my_custom_cli": "/usr/bin/foo"})
+        spec = reg["my_custom_cli"]
+        self.assertEqual(spec.transport, "tui-repl")
+        self.assertTrue(spec.spawn_returns_immediately)
+
+
+class TransportAwareIdleRuleTests(TestCase):
+    """The idle-rule fix: TUI/one-shot transports must allow the idle
+    rule to fire even when the child has produced ZERO events. JSON-ACP
+    keeps the original "needs ≥1 event" gate (because a JSON-ACP child
+    is contractually expected to emit at least one event per turn)."""
+
+    def _spawn_silent_session(self, runtime, transport: str):
+        """Install a fake session whose stdin/stdout are wired to a
+        SpooledTemporaryFile pair — the child never produces output."""
+        from agent.acpx.agent_registry import AcpAgentSpec
+        from agent.acpx.session_store import AcpSessionRecord, now_epoch
+
+        sid = f"silent-{transport}"
+        transcript_path = Path(runtime.config.state_dir) / f"{sid}.transcript.ndjson"
+        transcript_path.parent.mkdir(parents=True, exist_ok=True)
+        record = AcpSessionRecord(
+            session_id=sid,
+            name=sid,
+            agent_id="silent",
+            cwd=str(runtime.config.state_dir),
+            state_path=str(Path(runtime.config.state_dir) / f"{sid}.json"),
+            transcript_path=str(transcript_path),
+            pid=4242,
+            created_at=now_epoch(),
+            last_active_at=now_epoch(),
+        )
+        runtime.session_store.save(record)
+        spec = AcpAgentSpec(agent_id="silent", command="silent",
+                            transport=transport)
+
+        class _SilentProc:
+            stdin_buf: list = []
+            returncode = None
+
+            class _Stdin:
+                @staticmethod
+                def write(s):
+                    _SilentProc.stdin_buf.append(s)
+
+                @staticmethod
+                def flush():
+                    pass
+
+                @staticmethod
+                def close():
+                    pass
+
+            class _Stdout:
+                # Block forever — simulates a TUI REPL that never emits.
+                @staticmethod
+                def readline():
+                    import time as _t
+                    _t.sleep(60)
+                    return ""
+
+            stdin = _Stdin
+            stdout = _Stdout
+
+            @staticmethod
+            def poll():
+                return None
+
+        sess = AcpSession(runtime=runtime, spec=spec,
+                          cwd=Path(record.cwd), mode="session", record=record)
+        sess.proc = _SilentProc
+        # We deliberately don't start the reader thread here so the
+        # queue stays empty for the duration of the test (faster).
+        runtime._sessions[sid] = sess
+        return sess
+
+    def test_tui_idle_rule_fires_with_zero_events(self) -> None:
+        """The fix: a TUI child that emits nothing must still complete
+        on the idle rule within startup_grace + idle, instead of waiting
+        the full timeout."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            sess = self._spawn_silent_session(runtime, transport="tui-repl")
+            t0 = time.time()
+            events = list(sess.send_turn(
+                "go", timeout_seconds=30.0,
+                idle_seconds=0.5, startup_grace_seconds=0.5,
+            ))
+            elapsed = time.time() - t0
+            self.assertGreaterEqual(len(events), 1)
+            self.assertEqual(events[-1]["_synthetic"], "idle")
+            self.assertEqual(events[-1]["events_seen"], 0)
+            self.assertEqual(events[-1]["transport"], "tui-repl")
+            # Must complete in ≤ grace+idle+slack, NOT timeout.
+            self.assertLess(elapsed, 5.0,
+                             f"TUI idle rule too slow: {elapsed:.2f}s")
+
+    def test_json_acp_still_requires_event_for_idle(self) -> None:
+        """Regression guard: JSON-ACP keeps the strict idle rule that
+        requires ≥1 event before completion."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            sess = self._spawn_silent_session(runtime, transport="json-acp")
+            t0 = time.time()
+            events = list(sess.send_turn(
+                "go", timeout_seconds=2.0,
+                idle_seconds=0.3, startup_grace_seconds=0.3,
+            ))
+            elapsed = time.time() - t0
+            self.assertGreaterEqual(len(events), 1)
+            # JSON-ACP with no events must hit the timeout, not idle.
+            self.assertEqual(events[-1]["_synthetic"], "timeout")
+            self.assertGreaterEqual(elapsed, 1.5)
+
+
+class AcpSendAndWaitTests(TestCase):
+    """Item 3 — acp_send_and_wait reports settled=True on idle drain."""
+
+    def test_returns_settled_true_on_idle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+
+            def fake_send(*args, **kwargs):
+                return [{"event": "log", "text": "answer"},
+                        {"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                raw = acpx_tools.acp_send_and_wait.invoke({
+                    "session_id": "s",
+                    "text": "next",
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertTrue(envelope["settled"])
+            self.assertEqual(envelope["events_total"], 2)
+
+    def test_returns_settled_false_on_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+
+            def fake_send(*args, **kwargs):
+                return [{"event": "log", "text": "partial"},
+                        {"done": True, "_synthetic": "timeout",
+                         "events_seen": 1}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                raw = acpx_tools.acp_send_and_wait.invoke({
+                    "session_id": "s",
+                    "text": "next",
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"])
+            self.assertFalse(envelope["settled"])
+
+
+class AcpRelayTests(TestCase):
+    """Item 6 — acp_relay copies last assistant text from src → dst."""
+
+    def test_relay_passes_extracted_text_to_dst_with_wrapping(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            transcript = (
+                json.dumps({"direction": "out", "text": "go"}) + "\n"
+                + json.dumps({"direction": "in",
+                               "raw": json.dumps({"role": "assistant",
+                                                  "content": "Trade-offs paragraph."})}) + "\n"
+            )
+            _install_fake_session(runtime, "src",
+                                   transcript_text=transcript)
+            _install_fake_session(runtime, "dst")
+
+            captured = {}
+
+            def fake_send(session_id, text, **kwargs):
+                captured["session_id"] = session_id
+                captured["text"] = text
+                return [{"event": "log", "text": "leg-b answer"},
+                        {"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                raw = acpx_tools.acp_relay.invoke({
+                    "session_id_src": "src",
+                    "session_id_dst": "dst",
+                    "transform": "last_assistant_text",
+                    "prefix": "Analysis: ",
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"], envelope)
+            self.assertEqual(envelope["session_id_src"], "src")
+            self.assertEqual(envelope["session_id_dst"], "dst")
+            self.assertTrue(envelope["settled"])
+            self.assertEqual(captured["session_id"], "dst")
+            self.assertIn("Analysis: ", captured["text"])
+            self.assertIn("Trade-offs paragraph.", captured["text"])
+
+    def test_relay_full_transcript_transform(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(
+                runtime, "src",
+                transcript_text=(
+                    json.dumps({"direction": "in", "raw": "leg-a-payload"}) + "\n"
+                ),
+            )
+            _install_fake_session(runtime, "dst")
+
+            sent = {}
+
+            def fake_send(session_id, text, **kwargs):
+                sent["text"] = text
+                return [{"done": True, "_synthetic": "idle"}]
+
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime), \
+                 patch.object(runtime, "send", side_effect=fake_send):
+                raw = acpx_tools.acp_relay.invoke({
+                    "session_id_src": "src",
+                    "session_id_dst": "dst",
+                    "transform": "full_transcript",
+                })
+            envelope = json.loads(raw)
+            self.assertTrue(envelope["ok"], envelope)
+            self.assertIn("leg-a-payload", sent["text"])
+
+    def test_relay_unknown_transform_returns_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime):
+                raw = acpx_tools.acp_relay.invoke({
+                    "session_id_src": "x",
+                    "session_id_dst": "y",
+                    "transform": "bogus",
+                })
+            envelope = json.loads(raw)
+            self.assertFalse(envelope["ok"])
+            self.assertEqual(envelope["code"], "BAD_TRANSFORM")
+
+    def test_relay_empty_source_returns_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = _make_runtime(Path(tmp))
+            _install_fake_session(runtime, "src",
+                                   transcript_text="")
+            _install_fake_session(runtime, "dst")
+            with patch.object(acpx_tools, "get_acpx_runtime",
+                              return_value=runtime):
+                raw = acpx_tools.acp_relay.invoke({
+                    "session_id_src": "src",
+                    "session_id_dst": "dst",
+                })
+            envelope = json.loads(raw)
+            self.assertFalse(envelope["ok"])
+            self.assertEqual(envelope["code"], "EMPTY_RELAY")

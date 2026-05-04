@@ -35,6 +35,14 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_kyber_keygen": ("kyberkeygen",    "Kyber Keygen"),
     "chat_agent_kyber_cipher": ("kybercipher",    "Kyber Cipher"),
     "chat_agent_kyber_deciph": ("kyberdecipher",  "Kyber Deciph"),
+    # ACPX child-process launchers and the Skill harness invoker —
+    # spawn / send / kill share the ``acpx`` agent_key so they merge
+    # into one "List of ACPx Operations" table; invoke_skill gets its
+    # own ``skill`` table.
+    "acp_spawn":               ("acpx",           "ACPx"),
+    "acp_send":                ("acpx",           "ACPx"),
+    "acp_kill":                ("acpx",           "ACPx"),
+    "invoke_skill":            ("skill",          "Skill"),
 }
 ```
 
@@ -42,7 +50,7 @@ Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the sa
 
 ## Pipeline
 
-1. **Capture** — `MultiTurnToolAgentExecutor._invoke_tool()` checks `_EXEC_REPORT_TOOLS.get(tool_name)` after every tool invocation. If the tool is in the map, it appends `{tool_name, agent_key, agent_display, command, success}` to `self._exec_report_entries`. Capture is **unconditional** (ignores the per-request flag) — this prevents a future whitelist-style bug from silently hiding data.
+1. **Capture** — `MultiTurnToolAgentExecutor._invoke_tool()` checks `_EXEC_REPORT_TOOLS.get(tool_name)` after every tool invocation. If the tool is in the map, it appends `{tool_name, agent_key, agent_display, command, success}` to `self._exec_report_entries`. Capture is **unconditional** (ignores the per-request flag) — this prevents a future whitelist-style bug from silently hiding data. **Capture also fires on the `tool.invoke(...)` exception path** with `success=False`, so ACPX/Skill rows still appear when the underlying CLI is missing on PATH, the harness raised, or the args were malformed (exactly the cases the user most needs to see). `_extract_exec_report_command(tool_input, tool_name)` is tool-name-aware: ACPX `acp_spawn` renders as `[<agent_id>] <task>`, `acp_send` as `[<session_id>] <text>`, `acp_kill` as `kill <session_id>`, and `invoke_skill` as `<skill_name>(<args>)`.
 2. **Flag** — `self._exec_report_enabled` is set from `payload["exec_report_enabled"]` at the start of `invoke()`. It only gates whether the entries are surfaced in the return dict under the `exec_report_enabled` key, not whether they are captured.
 3. **Return** — `_build_result_dict()` always emits `exec_report_entries` (list) and `exec_report_enabled` (bool) alongside `output` and `tool_calls_log`.
 4. **Chain forward** — `UnifiedAgentChain.invoke()` (and `UnifiedAgentRAGChain.invoke()`) pick up `exec_report_entries` from the executor's result and only add it to their own `result_dict` when the incoming payload had `exec_report_enabled=True`. **Note: `exec_report_enabled` is in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist — removing it silently breaks the whole feature** (see Recent Fixes / Gotchas).

@@ -1998,19 +1998,24 @@ Wrapped chat-agent launchers create isolated, sequenced runtime copies of select
 
 ### ACPX & Skills Tools
 
-Seven additional LangChain `@tool` functions are exposed by the [ACPX runtime](#acpx-external-coding-agent-runtime--skill-catalog). They are seeded as togglable rows in the `Tool` table by migration `0071_acpx_skills` and surface in the existing **Tools Dialog** UI.
+Twelve LangChain `@tool` functions are exposed by the [ACPX runtime](#acpx-external-coding-agent-runtime--skill-catalog). The original seven were seeded by migration `0071_acpx_skills`; the five additional tools (`acp_send_and_wait`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_relay`) were seeded by migration `0075_add_acpx_tool_surface`. All twelve are togglable through the **Tools Dialog** UI.
 
 | Tool | Description | Returns |
 |------|-------------|---------|
-| `acp_spawn` | Spawn an external coding-agent CLI (`claude`, `cursor`, `codex`, `gemini`, `qwen`, `pi`, `droid`, `iflow`, `kilocode`, `kimi`, `kiro`, `opencode`, `tlamatini`) as a child process and dispatch a task to it. Args: `agent_id`, `task`, optional `cwd`, `mode` (`session` / `one-shot`), `session_label`. | `{ ok, session_id, agent_id, transcript_path, events: [...] }` (last 32 events) or `{ ok: false, reason, code }`. |
-| `acp_send` | Send a follow-up turn to an existing session. Args: `session_id`, `text`, optional `timeout_seconds`. | `{ ok, events: [...] }` (last 64 events) or error envelope. |
-| `acp_kill` | Terminate a session and its child process. Args: `session_id`. | `{ ok, killed: "<session_id>" }`. |
-| `acp_doctor` | Health-probe the runtime by invoking the configured `probeAgent` with `--version`. | `{ ok, message, details: [...] }`. The outer `ok` reflects probe health, not tool execution. |
+| `acp_spawn` | Spawn an external coding-agent CLI (`claude`, `cursor`, `codex`, `gemini`, `qwen`, `pi`, `droid`, `iflow`, `kilocode`, `kimi`, `kiro`, `opencode`, `tlamatini`) as a child process and dispatch a task to it. Args: `agent_id`, `task`, optional `cwd`, `mode` (`session` / `one-shot`), `session_label`, plus drain knobs `timeout_seconds`, `idle_seconds`, `startup_grace_seconds`, `max_event_chars`. **TUI agents (gemini/cursor/qwen/...) return immediately with `spawned_immediately:true` for sub-second spawns**; pass any drain knob `>0` to force a drain on spawn. | `{ ok, session_id, agent_id, transport, transcript_path, events: [...], events_total, spawned_immediately }` or error envelope. |
+| `acp_send` | Send a follow-up turn to an existing session. Args: `session_id`, `text`, optional drain knobs (`timeout_seconds`, `idle_seconds`, `startup_grace_seconds`, `max_event_chars`). | `{ ok, events: [...], events_total }` or error envelope. |
+| `acp_send_and_wait` | Send a follow-up turn and **block until the child settles** (idle rule fires). Use this when you need a complete answer for hand-off. Args: `session_id`, `text`, `until_idle_seconds=10`, `max_wait_seconds=180`, `max_event_chars`. | `{ ok, events, events_total, settled }` — `settled=true` means the drain ended cleanly on idle, not on the timeout backstop. |
+| `acp_kill` | Terminate a session and its child process. Always returns the `transcript_path` so the caller can cite it as evidence in Exec Report rows. | `{ ok, killed, transcript_path, agent_id, pid }`. |
+| `acp_doctor` | Health-probe the runtime AND enumerate every registered ACP agent with on-PATH `resolvable` and `cli_version`. | `{ ok, message, details: [{agent_id, command, description, resolvable, cli_version}], probe: {agent_id, stdout, stderr} }`. |
+| `acp_transcript` | Read the on-disk NDJSON transcript for a session. Use for "harvest transcript", "cite evidence", "compress conversation" prompts — eliminates the `execute_command type/cat` workaround. Args: `session_id`, `max_chars=8000`, `direction="all" \| "in" \| "out"`. | `{ ok, session_id, transcript_path, events:[...], text, total_size, truncated }`. |
+| `acp_session_status` | Per-session status: alive, pid, transcript_size, last_event_at, closed. | `{ ok, session_id, agent_id, pid, alive, transcript_path, transcript_size, last_event_at, closed }`. |
+| `acp_list_sessions` | Enumerate live ACP sessions in this runtime. | `{ ok, sessions:[{session_id, agent_id, pid, alive, transcript_size, age_seconds, ...}], count }`. |
+| `acp_relay` | **Single-call hand-off** between sessions. Reads the source transcript, extracts the assistant text (or full transcript), wraps with `prefix`/`suffix`, sends to the destination, waits for it to settle. Args: `session_id_src`, `session_id_dst`, `transform="last_assistant_text" \| "full_transcript"`, `prefix`, `suffix`, `until_idle_seconds=10`, `max_wait_seconds=180`. **Replaces the 3-step transcript→manipulate→send dance.** | `{ ok, session_id_src, session_id_dst, transform, relayed_chars, preview, events, events_total, settled }`. |
 | `list_acp_agents` | List every registered ACP agent and whether each command resolves on PATH on this machine. | `{ ok, agents: [{ agent_id, command, description, resolvable }] }`. |
-| `invoke_skill` | Invoke a registered Tlamatini skill inside the `SkillHarness` (validates inputs, enforces budget, writes audit NDJSON). Args: `skill_name`, optional `args_json` (default `"{}"`). | `{ ok, skill, runtime, output, iterations_used, tokens_used, elapsed_seconds, audit_id }` or `{ ok: false, reason, code }`. |
+| `invoke_skill` | Invoke a registered Tlamatini skill inside the `SkillHarness` (validates inputs, enforces budget, writes audit NDJSON). Args: `skill_name`, optional `args_json` (default `"{}"`). | `{ ok, skill, runtime, output, iterations_used, tokens_used, elapsed_seconds, audit_id }` or error envelope. |
 | `list_skills` | List every registered skill (name + description + runtime). Optional `filter_keywords` filters by substring match. | `{ ok, skills: [{ name, description, runtime, acpx_agent? }] }`. |
 
-The full envelope shapes, lifecycle, and usage examples are documented in [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog).
+The full envelope shapes, lifecycle, transport profiles, and canonical flows are documented in [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog) and in [`docs/claude/acpx.md`](docs/claude/acpx.md).
 
 ---
 
@@ -3520,10 +3525,13 @@ The full design, every internal contract, and the rollout history are written up
 
 ### What ACPX Gives You
 
-- **External-CLI delegation.** When the LLM decides "this refactor should run in Cursor", it calls `acp_spawn(agent_id='cursor', task=...)`. ACPX spawns Cursor as a child, streams its stdout JSON back, persists the transcript, and returns the last 32 events.
+- **External-CLI delegation.** When the LLM decides "this refactor should run in Cursor", it calls `acp_spawn(agent_id='cursor', task=...)`. ACPX spawns Cursor as a child, streams its stdout back, persists the transcript, and returns the last 32 events. For TUI agents the spawn returns sub-second; the actual content drain happens on the next `acp_send` / `acp_send_and_wait` / `acp_transcript`.
 - **Markdown-driven skills.** Drop a `SKILL.md` under `agent/skills_pkg/<name>/` and the LLM gains a new capability with declared inputs/outputs/permissions/budget — invocable through `invoke_skill`. 20 seed skills ship in this revision.
 - **Permission gating.** Three modes — `approve-reads` (default), `approve-all` (DANGEROUS), `deny-all` — plus a non-interactive policy (`deny` / `fail`) for unattended runs. Every action goes through `agent/acpx/permissions.py::PermissionGate.decide()` — there is exactly one decision point.
-- **Audit trail on disk.** Every ACP child turn is captured in `<stateDir>/<session>.transcript.ndjson`. Every skill invocation is captured in `~/.tlamatini/skill-audit/<YYYY-MM>/<...>.ndjson`. The runtime is replayable byte-for-byte after the fact.
+- **Audit trail on disk.** Every ACP child turn is captured in `<stateDir>/<session>.transcript.ndjson`. Every skill invocation is captured in `~/.tlamatini/skill-audit/<YYYY-MM>/<...>.ndjson`. The runtime is replayable byte-for-byte after the fact. Use `acp_transcript(session_id)` to read it back from inside the LLM loop.
+- **Single-call hand-off between agents.** `acp_relay(session_id_src, session_id_dst, transform="last_assistant_text")` reads the source transcript, extracts the assistant text, and sends it to the destination session as a follow-up turn — collapsing the previously-required 3-step transcript→manipulate→send dance into one tool call. Powers the Multi-CLI Relay demo.
+- **Transport-aware fast path.** Each `agent_id` carries a `transport` profile (`json-acp` for `claude` / `codex` / `tlamatini`, `tui-repl` for `gemini` / `cursor` / `qwen` / `kiro` / ...). TUI agents use tight 8 s/2 s/3 s defaults and a transport-aware idle rule that fires even with zero events — so a silent REPL completes in seconds instead of waiting the full timeout. Per-leg latency dropped from ~91 s to **~9 s** (~10× faster end-to-end).
+- **Bounded LLM context.** Every event-returning tool caps each event body at `max_event_chars` (default 2048) before returning it to the LLM. A chatty REPL paste-back of a long document cannot blow the context budget on the next iteration. Trimmed events carry `_truncated: true`.
 - **OpenClaw compatibility.** The `agent_id` registry, the `permissionMode` vocabulary, and the SKILL.md frontmatter contract match OpenClaw's ACPX plugin verbatim. Skills written for one project run unmodified on the other.
 
 ### ACPX Mental Model
@@ -3653,37 +3661,44 @@ Plus a non-interactive policy (`acpx.nonInteractivePermissions`):
 
 ### ACPX Built-in Agent Registry
 
-`DEFAULT_ACP_AGENTS` in `agent/acpx/agent_registry.py` ships with 14 entries. The `agent_id` keys match OpenClaw's `acp-router` skill exactly so a skill written for one project picks the right CLI on the other:
+`DEFAULT_ACP_AGENTS` in `agent/acpx/agent_registry.py` ships with 14 entries. The `agent_id` keys match OpenClaw's `acp-router` skill exactly so a skill written for one project picks the right CLI on the other.
 
-| `agent_id` | Default command | Description |
-|------------|-----------------|-------------|
-| `claude` | `claude` | Anthropic Claude Code CLI |
-| `cursor` | `cursor-agent` | Cursor agent CLI |
-| `codex` | `codex` | OpenAI Codex (ACP path) |
-| `copilot` | `copilot` | GitHub Copilot CLI |
-| `gemini` | `gemini` | Google Gemini CLI |
-| `qwen` | `qwen-code` | Alibaba Qwen Code CLI |
-| `pi` | `pi` | Pi assistant CLI |
-| `droid` | `droid` | Factory Droid CLI |
-| `iflow` | `iflow` | iFlow CLI |
-| `kilocode` | `kilocode` | Kilocode CLI |
-| `kimi` | `kimi` | Kimi CLI |
-| `kiro` | `kiro` | Kiro CLI |
-| `opencode` | `opencode` | OpenCode CLI |
-| `tlamatini` | `<sys.executable> -m agent.acpx.self_acp_server` | Tlamatini-as-ACP-server (self-host, reserved slot) |
+Each spec carries a **transport profile** that controls how `runtime.send_turn` drives the child process. JSON-ACP agents speak the strict ACP envelope on stdout (drain waits for `done:true`); TUI-REPL agents are interactive and may emit zero stdout per turn when fed JSON on a piped stdin (drain uses the transport-aware idle rule with tight TUI defaults). For TUI agents, `acp_spawn` also returns the `session_id` immediately (sub-second) without draining the initial turn — the actual content drain happens on the next `acp_send` / `acp_send_and_wait` / `acp_transcript`. This is the primary reason ACPX execution is now ~10× faster end-to-end on multi-CLI relay flows.
 
-You can override any default and add new entries through `acpx.agents` in `config.json` (see [ACPX Settings](#acpx-settings-external-coding-agent-runtime--skills) for the full schema).
+| `agent_id` | Default command | Transport | Spawn returns immediately? | Default budgets (timeout/idle/grace) | Description |
+|------------|-----------------|-----------|---------------------------|--------------------------------------|-------------|
+| `claude` | `claude` | `json-acp` | No | 45 s / 6 s / 12 s | Anthropic Claude Code CLI |
+| `cursor` | `cursor-agent` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Cursor agent CLI |
+| `codex` | `codex` | `json-acp` | No | 45 s / 6 s / 12 s | OpenAI Codex (ACP path) |
+| `copilot` | `copilot` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | GitHub Copilot CLI |
+| `gemini` | `gemini` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Google Gemini CLI |
+| `qwen` | `qwen-code` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Alibaba Qwen Code CLI |
+| `pi` | `pi` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Pi assistant CLI |
+| `droid` | `droid` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Factory Droid CLI |
+| `iflow` | `iflow` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | iFlow CLI |
+| `kilocode` | `kilocode` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Kilocode CLI |
+| `kimi` | `kimi` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Kimi CLI |
+| `kiro` | `kiro` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | Kiro CLI |
+| `opencode` | `opencode` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s | OpenCode CLI |
+| `tlamatini` | `<sys.executable> -m agent.acpx.self_acp_server` | `json-acp` | No | 45 s / 6 s / 12 s | Tlamatini-as-ACP-server (self-host, reserved slot) |
+
+You can override any default and add new entries through `acpx.agents` in `config.json` (see [ACPX Settings](#acpx-settings-external-coding-agent-runtime--skills) for the full schema). Custom user-defined `agent_id`s default to `tui-repl` with the fast-path defaults.
 
 ### ACPX LangChain Tools
 
-The seven `@tool` functions live in `agent/acpx/tools.py`. Every tool returns a JSON string. Success envelopes always include `"ok": true`; failure envelopes always include `"ok": false`, `"reason"`, `"code"`. They never raise — every error is surfaced as a structured envelope.
+Twelve `@tool` functions live in `agent/acpx/tools.py` (the original seven from migration `0071_acpx_skills` plus five from migration `0075_add_acpx_tool_surface`). Every tool returns a JSON string. Success envelopes always include `"ok": true`; failure envelopes always include `"ok": false`, `"reason"`, `"code"`. They never raise — every error is surfaced as a structured envelope.
 
 | Tool | Inputs | Success keys |
 |------|--------|--------------|
-| `acp_spawn` | `agent_id`, `task`, `cwd?`, `mode?` (`session`/`one-shot`), `session_label?` | `session_id`, `agent_id`, `transcript_path`, `events` (last 32) |
-| `acp_send` | `session_id`, `text`, `timeout_seconds?` | `events` (last 64) |
-| `acp_kill` | `session_id` | `killed` |
-| `acp_doctor` | (none) | `message`, `details` (the `ok` field reflects probe health) |
+| `acp_spawn` | `agent_id`, `task`, `cwd?`, `mode?` (`session`/`one-shot`), `session_label?`, `timeout_seconds?`, `idle_seconds?`, `startup_grace_seconds?`, `max_event_chars?` | `session_id`, `agent_id`, `transport`, `transcript_path`, `events` (last 32, body-trimmed), `events_total`, `spawned_immediately` |
+| `acp_send` | `session_id`, `text`, `timeout_seconds?`, `idle_seconds?`, `startup_grace_seconds?`, `max_event_chars?` | `events` (last 64), `events_total` |
+| `acp_send_and_wait` | `session_id`, `text`, `until_idle_seconds=10`, `max_wait_seconds=180`, `max_event_chars?` | `events`, `events_total`, `settled` |
+| `acp_kill` | `session_id` | `killed`, `transcript_path`, `agent_id`, `pid` |
+| `acp_doctor` | (none) | `message`, `details` (per-agent `{agent_id, command, description, resolvable, cli_version}`), `probe` (`{agent_id, stdout, stderr}`) — outer `ok` reflects probe health |
+| `acp_transcript` | `session_id`, `max_chars=8000`, `direction="all" \| "in" \| "out"` | `transcript_path`, `events` (parsed NDJSON), `text`, `total_size`, `truncated` |
+| `acp_session_status` | `session_id` | `agent_id`, `pid`, `alive`, `transcript_path`, `transcript_size`, `last_event_at`, `closed` |
+| `acp_list_sessions` | (none) | `sessions` — list of `{session_id, agent_id, pid, alive, transcript_size, age_seconds, ...}`, `count` |
+| `acp_relay` | `session_id_src`, `session_id_dst`, `transform="last_assistant_text" \| "full_transcript"`, `prefix?`, `suffix?`, `until_idle_seconds=10`, `max_wait_seconds=180`, `max_event_chars?` | `session_id_src`, `session_id_dst`, `transform`, `relayed_chars`, `preview`, `events`, `events_total`, `settled` |
 | `list_acp_agents` | (none) | `agents` — list of `{ agent_id, command, description, resolvable }` |
 | `invoke_skill` | `skill_name`, `args_json?` (default `"{}"`) | `skill`, `runtime`, `output`, `iterations_used`, `tokens_used`, `elapsed_seconds`, `audit_id` |
 | `list_skills` | `filter_keywords?` | `skills` — list of `{ name, description, runtime, acpx_agent? }` |
@@ -3694,13 +3709,27 @@ Failure envelope is always `{ "ok": false, "reason": "...", "code": "..." }`. Co
 |------|---------|
 | `UNKNOWN_AGENT` | `agent_id` not in the registry. |
 | `AGENT_NOT_FOUND` | Command doesn't resolve on PATH (or absolute path doesn't exist). |
-| `UNKNOWN_SESSION` | `session_id` not tracked by the runtime singleton. |
+| `UNKNOWN_SESSION` | `session_id` not tracked by the runtime singleton (and no on-disk record). |
 | `PERMISSION_DENIED` | Permission gate refused (e.g. `permissionMode=deny-all`). |
 | `SPAWN_FAILED` | `subprocess.Popen` raised. |
+| `BAD_TRANSFORM` | `acp_relay` got a `transform` value other than `last_assistant_text` / `full_transcript`. |
+| `EMPTY_RELAY` | `acp_relay` source session produced no relayable text under the chosen transform. |
+| `TRANSCRIPT_READ_FAILED` | `acp_transcript` could not parse the NDJSON file. |
 | `UNKNOWN_SKILL` | `skill_name` not in the registry. |
 | `BAD_ARGS` | `args_json` did not decode to a JSON object. |
 | `BAD_JSON` | `args_json` is not valid JSON. |
 | `EXCEPTION` | Catch-all; envelope includes a tail of the traceback. |
+
+**Canonical ACPX flows** — recognized verbatim by the planner via `ACPX_CO_SELECTION_RULES` and by the LLM via rule 12 in `agent/prompt.pmt`:
+
+| Flow | Tool sequence |
+|------|---------------|
+| Spawn-and-go | `acp_doctor` → `acp_spawn(agent_id, task)` → `acp_send_and_wait(session_id, follow_up)` → `acp_kill(session_id)` |
+| Multi-CLI relay (leg A → leg B) | `acp_doctor` → `acp_spawn(leg_a, task_a)` → `acp_send_and_wait(session_a, ...)` → `acp_spawn(leg_b, prompt_template_b)` → **`acp_relay(session_a, session_b)`** → `acp_kill(session_a)` → `acp_kill(session_b)` |
+| Harvest transcript & report | (work) → `acp_transcript(session_id)` → `invoke_skill('summarize', {...})` → `chat_agent_file_creator(filepath, content)` → `chat_agent_notifier(...)` → `acp_kill` |
+| Skill-driven routing | `list_skills` → `invoke_skill('acp-router', {intent, prefer})` → `acp_spawn(<returned agent_id>, task)` → ... |
+
+The complete ACPX contract — definition, transport mechanics, runtime drain rules, "when the user says ACPX" decision matrix — lives in [`docs/claude/acpx.md`](docs/claude/acpx.md) (auto-imported by `CLAUDE.md`) and is mirrored in `agent/prompt.pmt` rule 12 so the LLM responds correctly the moment a user prompt mentions "ACPX", "ACPX mechanics", "use ACPX to ...", "leg A → leg B", "hand off", or any equivalent phrasing.
 
 ### ACPX Skill Catalog
 
@@ -5059,6 +5088,35 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 ## Changelog
 
 ### Recent Updates
+
+- **ACPX Reliability Pass — May 2026** — A series of cross-cutting changes that took ACPX execution from "hangs at 45 s per spawn on TUI agents" to "sub-second spawn + 2 s idle on silent REPLs". Bundles eight related improvements landed over two days of focused iteration:
+
+    1. **Expanded ACPX tool surface (5 new tools, migration `0075_add_acpx_tool_surface`).** `acp_send_and_wait`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_relay` — bringing the total ACPX/Skills tool count from 7 to 12. `acp_relay` collapses the otherwise-required transcript→manipulate→send dance into one tool call; `acp_send_and_wait` blocks until the child child settles (idle rule); `acp_transcript` eliminates `execute_command type/cat` workarounds for transcript harvesting; `acp_session_status` and `acp_list_sessions` give the LLM visibility into live runtime state. See the [ACPX & Skills Tools](#acpx--skills-tools) table for full envelopes.
+
+    2. **`acp_spawn` drain-knob exposure (item 1 of the surface redesign).** `acp_spawn` now accepts `timeout_seconds`, `idle_seconds`, `startup_grace_seconds`, and `max_event_chars` kwargs (mirroring `acp_send`'s `>0 else default` pattern). Lets the LLM request a longer drain on a per-call basis when the prompt explicitly says "wait for full answer" or names a slow REPL.
+
+    3. **`acp_kill` returns transcript path + agent_id + pid.** Previously returned only `{killed: session_id}`. Now `acp_kill` always emits `{transcript_path, agent_id, pid}` — even when the session is "already gone" — so downstream Exec Report rows can cite the path as evidence.
+
+    4. **`acp_doctor` enriched envelope.** Returns per-agent `details[]` with `{agent_id, command, description, resolvable, cli_version}` instead of the previous `[stdout, stderr]` pair. Probe stdout/stderr moved to a new `probe` field. The LLM can now branch on `details[].resolvable` deterministically — exactly the case the original Multi-CLI Relay demo prompt couldn't handle.
+
+    5. **Per-event payload trimming (`max_event_chars`, default 2048).** Every event-returning ACPX tool (`acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_relay`) now caps each event's `text/content/message/raw/delta/data` field structurally. A chatty REPL paste-back of a long document can no longer blow the LLM context budget on the next iteration. Trimmed events carry `_truncated: true`.
+
+    6. **Capability-registry boost for the new ACPX tools.** Without this, the new tools scored 8–10 in the planner and never made the 24-slot cut on real ACPX prompts (verified live in `tlamatini.log` — only 5 of 11 ACPX tools were being selected). Added rich `_EXTRA_HINTS_BY_TOOL_NAME` entries for all 12 ACPX/Skills tools (mirroring real prompt phrasing: "harvest transcript", "hand off", "leg A → leg B", "wait for the answer", "session_id alive", ...), an `_ACPX_SIGNAL_TOKENS` set whose tokens compound a +3-per-token boost (capped at +18) on ACPX tools, and an `ACPX_CO_SELECTION_RULES` map mirroring the existing run-control auto-injection: `acp_spawn` → auto-co-select `acp_doctor` + `acp_kill`; `acp_relay` → `acp_transcript` + `acp_kill`; `acp_send_and_wait` → `acp_transcript`. Live verification: planner scores went from 8–10 to **24–58** for every ACPX tool on the End-to-End ACPX Pipeline prompt, and **all 11 ACPX/Skills tools are now selected** (up from 5).
+
+    7. **Transport-aware drain redesign — the actual speedup.** Root cause analysis of the multi-minute hangs traced to a single `event_count > 0` predicate on the idle rule in `runtime.send_turn`: a TUI REPL (gemini, cursor, qwen, kiro, ...) almost never produces stdout when fed JSON on a piped stdin (Node.js block-buffers stdout to 64 KB when piped), so the idle rule never armed and **every** spawn burned the full `timeout_seconds` (45 s default). The redesign:
+        - `AcpAgentSpec` gains a `transport` field (`"json-acp"` / `"tui-repl"` / `"one-shot"`) plus `default_idle_seconds`, `default_startup_grace_seconds`, `default_timeout_seconds`, and `spawn_returns_immediately`.
+        - 11 TUI agents (gemini, cursor, qwen, kiro, kimi, iflow, kilocode, opencode, pi, droid, copilot) are marked `transport="tui-repl"` with TUI defaults of **8 s timeout / 2 s idle / 3 s grace** and `spawn_returns_immediately=True`.
+        - 3 JSON-ACP agents (claude, codex, tlamatini self-host) are marked `transport="json-acp"` and keep the historic blocking-drain behavior.
+        - `runtime.send_turn` now uses a daemon reader thread + `queue.Queue` (`get(timeout=0.1)`) instead of inline blocking `readline()`, so the loop wakes every 100 ms and remains interruptible on Windows.
+        - The idle rule is **transport-aware**: `tui-repl` and `one-shot` allow it to fire after `startup_grace + idle` seconds even with **zero events**; `json-acp` keeps the strict `event_count > 0` gate.
+        - `acp_spawn` honors `spawn_returns_immediately`: TUI agents return the `session_id` sub-second with `spawned_immediately:true` and an empty `events` array; the actual content drain happens on the next `acp_send` / `acp_send_and_wait` / `acp_transcript`. Caller can override by passing any drain knob `>0`.
+
+       **Measured impact** on a typical Multi-CLI Relay flow: per-leg latency drops from ~91 s (45 s spawn + 45 s send + 0.5 s kill) to **~9 s** (0.5 s immediate spawn + 2–8 s TUI fast-path send + 0.5 s kill). Two relay legs go from ~182 s to **~18 s — ~10× faster end-to-end**.
+
+    8. **Authoritative ACPX documentation.** New `docs/claude/acpx.md` (auto-imported via `CLAUDE.md`) and a new rule 12 in `agent/prompt.pmt` define ACPX explicitly for the LLM and any AI assistant onboarding the codebase: definition (Agent Communication Protocol eXtension), the 14-agent registry with transport profiles, all 12 LLM-facing tools with full signatures, four canonical flows (spawn-and-go / multi-CLI relay / harvest-transcript / skill-routing), the runtime drain mechanics, the permission model, and a "when the user says ACPX" decision matrix. Whenever the user says "ACPX", "ACPX mechanics", "use ACPX to ...", "spawn an ACP child", "leg A → leg B", "hand off", "multi-CLI", or anything semantically equivalent, the LLM and every AI assistant routes through this surface — they do not paraphrase, do not invent a workaround.
+
+    **Test coverage:** 60 ACPX runtime tests pass (`agent.acpx.tests`), 14 capability-registry tests (`AcpxCapabilityScoringTests` × 7, `AcpxPlannerCoSelectionTests` × 5, `AcpxNonAcpxRequestRegressionTests` × 2), plus the pre-existing 17 `Acpx*DjangoTests` and the 36 cross-cutting planner/exec-report classes — **127 ACPX-adjacent tests green, 0 regressions**, ruff clean. Files touched: `agent/acpx/agent_registry.py`, `agent/acpx/runtime.py`, `agent/acpx/tools.py`, `agent/acpx/__init__.py`, `agent/acpx/tests.py`, `agent/tools.py`, `agent/mcp_agent.py`, `agent/capability_registry.py`, `agent/global_execution_planner.py`, `agent/migrations/0075_add_acpx_tool_surface.py`, `agent/prompt.pmt`, `docs/claude/acpx.md`, `docs/claude/INDEX.md`, `CLAUDE.md`.
+
 - **Added ACPX Runtime + 20-Skill Catalog** - New `agent/acpx/` package implements an OpenClaw-compatible runtime that spawns external coding-agent CLIs (Claude Code, Cursor, Codex, Copilot, Gemini, Qwen, Pi, Droid, iFlow, Kilocode, Kimi, Kiro, OpenCode, plus a reserved `tlamatini` self-host slot) as child processes. Seven new LangChain `@tool`s (`acp_spawn` / `acp_send` / `acp_kill` / `acp_doctor` / `list_acp_agents` / `invoke_skill` / `list_skills`) are seeded as togglable rows in the `Tool` table by migration `0071_acpx_skills` (which also creates the `AcpAgent`, `Skill`, `AcpSession`, `SkillInvocation` models). Permission gating ships with three modes (`approve-reads` default, `approve-all` flagged dangerous, `deny-all`) plus a non-interactive policy (`deny`/`fail`). API keys are injected per-agent through `acpx.agents.<id>.env` so the spawned child reads e.g. `ANTHROPIC_API_KEY` without needing the operator to export it; the boot-time `ensure_acpx_block_in_config_json()` helper appends the documented default `acpx` block to existing `config.json` files atomically so upgrades are self-healing. 20 seed `SKILL.md` packages cover hello-world, skill-creator, acp-router, eight Tlamatini-specific maintenance skills, and ten OpenClaw-format ports (github, notion, jira, slack, gmail, todoist, trello, summarize, weather). Six demo prompts (`idPrompt` 25–30) ship in migrations `0072` and `0073`. Full design and rollout history in [`ACPX.md`](ACPX.md); operator reference in [ACPX: External Coding-Agent Runtime & Skill Catalog](#acpx-external-coding-agent-runtime--skill-catalog).
 - **Added TeleTlamatini Agent** - Long-running active agent that exposes the full Tlamatini chat (`agent_page.html` Multi-Turn behavior, including the per-agent Exec Report tables) over Telegram. Stays alive waiting for messages, password-gates each chat on first contact, uses an Ollama-backed completeness classifier to decide whether each user message is a clear and complete request (asking follow-up questions until it is), proxies the request into the local Tlamatini WebSocket chat with `multi_turn_enabled=true` and `exec_report_enabled=true`, sends the assembled answer back to the Telegram user, and starts the configured `target_agents` after every completed user request cycle. Unique 4-color gradient: Telegram-Blue → Sky → Amber → Crimson.
 - **Multi-Turn Planner Max-Tool Cap Lowered 50 → 20** - `build_global_execution_plan()` and `_select_planner_tool_names()` now default to `max_selected_tools=20` (configurable). After observing MXNet-installation sessions where the planner selected every tool at once due to keyword inflation, the default was reduced to 20 to force the scoring threshold to do the real filtering.

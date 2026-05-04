@@ -225,15 +225,44 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     // --- "Create Flow" button: visible only for bot messages from a
     //     successful multi-turn execution that used tools.
     //     The `answerSuccess` flag is determined server-side by an LLM
-    //     sub-prompt that classifies the answer as SUCCESS or FAILURE. ---
+    //     sub-prompt that classifies the answer as SUCCESS or FAILURE.
+    //
+    //     Additionally, every canonical agent name produced from the
+    //     tool-calls log MUST exist in the Agents sidebar (registered in
+    //     the DB). Otherwise the generated .flw would reference an agent
+    //     type the canvas cannot resolve, breaking the flow at load time.
+    //     We render the button asynchronously after _missingAgents()
+    //     resolves so we can disable + tooltip it when validation fails.
     if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog) && answerSuccess === true) {
         const createFlowBtn = document.createElement('button');
         createFlowBtn.classList.add('create-flow');
         createFlowBtn.innerHTML = '<i class="bi bi-diagram-3"></i> Create Flow';
         usernameDiv.appendChild(createFlowBtn);
 
-        createFlowBtn.addEventListener('click', () => {
-            _generateAndDownloadFlow(toolCallsLog);
+        // Start disabled until we've validated against the live agent
+        // registry; flips back on if every canonical name resolves.
+        createFlowBtn.disabled = true;
+        createFlowBtn.classList.add('create-flow-validating');
+        createFlowBtn.title = 'Validating agents…';
+
+        _missingAgents(toolCallsLog).then(missing => {
+            createFlowBtn.classList.remove('create-flow-validating');
+            if (missing.length === 0) {
+                createFlowBtn.disabled = false;
+                createFlowBtn.title = '';
+                createFlowBtn.addEventListener('click', () => {
+                    _generateAndDownloadFlow(toolCallsLog);
+                });
+            } else {
+                createFlowBtn.classList.add('create-flow-disabled');
+                createFlowBtn.title = 'Cannot create flow: ' + missing.length
+                    + ' agent type(s) not registered in the Agents sidebar — '
+                    + missing.join(', ');
+                console.warn('--- Create Flow: disabled, missing agents:', missing);
+            }
+        }).catch(err => {
+            console.error('--- Create Flow: validation failed, hiding button:', err);
+            createFlowBtn.remove();
         });
     }
 
@@ -300,6 +329,57 @@ const _DISPLAY_TO_CANONICAL = {
 /** Resolve a display name to the canonical DB agent name. */
 function _canonicalAgentName(displayName) {
     return _DISPLAY_TO_CANONICAL[displayName] || displayName;
+}
+
+/**
+ * Lazy-loaded set of agentDescription values that exist in the DB
+ * (i.e. are visible in the Agents sidebar). Cached for the lifetime of
+ * the page so repeated Create-Flow validations don't re-hit the server.
+ */
+let _agentRegistryPromise = null;
+function _loadAgentRegistry() {
+    if (_agentRegistryPromise === null) {
+        _agentRegistryPromise = fetch('/agent/list_all_agent_descriptions/')
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(data => new Set((data && data.descriptions) || []))
+            .catch(err => {
+                // Reset so a later message can retry the fetch.
+                _agentRegistryPromise = null;
+                throw err;
+            });
+    }
+    return _agentRegistryPromise;
+}
+
+/**
+ * Given a tool_calls_log, return the list of canonical agent names that
+ * the .flw generator would emit but that DON'T exist in the live Agents
+ * sidebar. Empty list = every node will resolve at canvas load.
+ *
+ * Includes the implicit Starter and Ender wrappers added by
+ * _generateAndDownloadFlow, so a flow with only Starter+Ender registered
+ * is not falsely declared incomplete on a missing custom-agent install.
+ */
+async function _missingAgents(toolCallsLog) {
+    const registry = await _loadAgentRegistry();
+    const required = new Set(['Starter', 'Ender']);
+    (toolCallsLog || [])
+        .filter(entry => entry && entry.success)
+        .forEach(entry => {
+            const displayName = entry.agent_display_name
+                || (entry.tool_name || 'Unknown')
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            required.add(_canonicalAgentName(displayName));
+        });
+    const missing = [];
+    required.forEach(name => {
+        if (!registry.has(name)) missing.push(name);
+    });
+    return missing;
 }
 
 /**

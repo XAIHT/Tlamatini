@@ -787,6 +787,177 @@ class ExecReportCaptureTests(TestCase):
         self.assertEqual(len(result['exec_report_entries']), 1)
         self.assertFalse(result['exec_report_entries'][0]['success'])
 
+    def test_acpx_and_skill_tools_are_captured_with_correct_keys_and_commands(self):
+        """ACPX child-process launchers (acp_spawn / acp_send / acp_kill)
+        and the Skill harness invoker (invoke_skill) must land in
+        exec_report_entries. The user explicitly asked: when ACPX is in
+        play during Multi-Turn, the per-agent operation tables are
+        fundamental — they must show regardless of SUCCESS/FAILURE.
+
+        acp_spawn, acp_send and acp_kill share the ``acpx`` agent_key on
+        purpose so they merge into one "List of ACPx Operations" table
+        in execution order. invoke_skill gets its own ``skill`` table.
+
+        Each entry's ``command`` field must use the tool-specific
+        formatter so the report shows meaningful intent (which CLI was
+        spawned, which skill was invoked, which session was killed)
+        instead of a raw dict dump."""
+        from langchain.tools import StructuredTool
+
+        def _stub(name, fields):
+            # StructuredTool lets the executor pass a multi-key dict
+            # matching the real ACPX tool signatures (acp_spawn takes
+            # agent_id+task+mode, acp_send takes session_id+text, etc.).
+            # langchain infers the schema from the function signature, so
+            # build a typed function with the exact kwargs each tool needs.
+            def runner(**kwargs):
+                return json.dumps({'ok': True, 'tool': name})
+            sig = ', '.join(f'{f}: str = ""' for f in fields)
+            body = ', '.join(f'{f}={f}' for f in fields)
+            ns = {'_runner_impl': runner}
+            exec(f'def runner_typed({sig}):\n    return _runner_impl({body})', ns)
+            return StructuredTool.from_function(
+                func=ns['runner_typed'], name=name, description=f'ACPX tool {name}.',
+            )
+
+        tools = [
+            _stub('acp_spawn', ['agent_id', 'task', 'mode']),
+            _stub('acp_send',  ['session_id', 'text']),
+            _stub('acp_kill',  ['session_id']),
+            _stub('invoke_skill', ['skill_name', 'args_json']),
+        ]
+        exe = self._build_executor(
+            tools=tools,
+            calls_per_turn=[
+                [
+                    ('acp_spawn', {
+                        'agent_id': 'cursor',
+                        'task': 'refactor the auth module',
+                        'mode': 'session',
+                    }),
+                ],
+                [
+                    ('acp_send', {
+                        'session_id': 'sess-42',
+                        'text': 'now also add unit tests',
+                    }),
+                ],
+                [
+                    ('invoke_skill', {
+                        'skill_name': 'notion',
+                        'args_json': '{"page":"home"}',
+                    }),
+                ],
+                [
+                    ('acp_kill', {'session_id': 'sess-42'}),
+                ],
+            ],
+        )
+        result = exe.invoke({'input': 'use acpx', 'exec_report_enabled': True})
+        entries = result['exec_report_entries']
+
+        # All four state-changing ACPX/skill calls must be captured.
+        self.assertEqual(len(entries), 4)
+        keys = [e['agent_key'] for e in entries]
+        displays = [e['agent_display'] for e in entries]
+        commands = [e['command'] for e in entries]
+
+        # spawn / send / kill all share the ``acpx`` key; invoke_skill
+        # owns the ``skill`` key.
+        self.assertEqual(keys, ['acpx', 'acpx', 'skill', 'acpx'])
+        self.assertEqual(displays, ['ACPx', 'ACPx', 'Skill', 'ACPx'])
+
+        # Tool-specific command formatters produce meaningful intent
+        # strings, not raw key=value dumps.
+        self.assertEqual(commands[0], '[cursor] refactor the auth module')
+        self.assertEqual(commands[1], '[sess-42] now also add unit tests')
+        self.assertEqual(commands[2], 'notion({"page":"home"})')
+        self.assertEqual(commands[3], 'kill sess-42')
+
+    def test_acpx_failure_and_skill_failure_are_captured_with_success_false(self):
+        """The user explicitly asked the tables to appear regardless of
+        whether the answer was correctly generated or not — so failed
+        ACPX / Skill calls must still produce exec_report_entries with
+        ``success=False``. Tests both the JSON ``status: 'error'`` path
+        and the JSON ``ok: false`` path that ACPX tools actually emit."""
+        from langchain.tools import StructuredTool
+
+        def _spawn_fail(agent_id: str = '', task: str = '', mode: str = '') -> str:
+            # Mirrors the ``acpx.tools._err`` envelope shape.
+            return json.dumps({
+                'status': 'error',
+                'reason': 'agent unhealthy',
+                'code': 'AGENT_UNHEALTHY',
+            })
+
+        def _skill_fail(skill_name: str = '', args_json: str = '') -> str:
+            return json.dumps({
+                'status': 'failed',
+                'reason': 'budget exceeded',
+            })
+
+        tools = [
+            StructuredTool.from_function(func=_spawn_fail, name='acp_spawn',
+                                         description='spawn'),
+            StructuredTool.from_function(func=_skill_fail, name='invoke_skill',
+                                         description='skill'),
+        ]
+        exe = self._build_executor(
+            tools=tools,
+            calls_per_turn=[[
+                ('acp_spawn', {'agent_id': 'kimi', 'task': 'do thing'}),
+                ('invoke_skill', {'skill_name': 'pdf-to-text'}),
+            ]],
+        )
+        result = exe.invoke({'input': 'fails', 'exec_report_enabled': True})
+        entries = result['exec_report_entries']
+
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(entries[0]['agent_key'], 'acpx')
+        self.assertFalse(entries[0]['success'])
+        self.assertEqual(entries[0]['command'], '[kimi] do thing')
+        self.assertEqual(entries[1]['agent_key'], 'skill')
+        self.assertFalse(entries[1]['success'])
+        self.assertEqual(entries[1]['command'], 'pdf-to-text')
+
+    def test_acpx_render_groups_spawn_send_kill_into_one_acpx_table(self):
+        """The renderer must merge acp_spawn + acp_send + acp_kill into a
+        single "List of ACPx Operations" table, in the order they
+        executed, regardless of SUCCESS/FAILURE on individual rows."""
+        from agent.services.response_parser import _render_exec_report_html
+
+        entries = [
+            {'tool_name': 'acp_spawn', 'agent_key': 'acpx',
+             'agent_display': 'ACPx', 'command': '[cursor] refactor', 'success': True},
+            {'tool_name': 'invoke_skill', 'agent_key': 'skill',
+             'agent_display': 'Skill', 'command': 'notion', 'success': False},
+            {'tool_name': 'acp_send', 'agent_key': 'acpx',
+             'agent_display': 'ACPx', 'command': '[sess-1] follow up', 'success': True},
+            {'tool_name': 'acp_kill', 'agent_key': 'acpx',
+             'agent_display': 'ACPx', 'command': 'kill sess-1', 'success': True},
+        ]
+        html = _render_exec_report_html(entries)
+
+        # Exactly one ACPx caption and one Skill caption — spawn/send/kill
+        # were merged into a single table.
+        self.assertEqual(html.count('List of ACPx Operations'), 1)
+        self.assertEqual(html.count('List of Skill Operations'), 1)
+        # All three ACPx commands appear in their merged table, in order.
+        spawn_idx = html.index('[cursor] refactor')
+        send_idx = html.index('[sess-1] follow up')
+        kill_idx = html.index('kill sess-1')
+        self.assertLess(spawn_idx, send_idx)
+        self.assertLess(send_idx, kill_idx)
+        # Per-agent CSS class on the captions so the gradient mirrors the
+        # canvas-item tile.
+        self.assertIn('exec-report-caption-acpx', html)
+        self.assertIn('exec-report-caption-skill', html)
+        # Failed Skill row carries the FAILURE verdict; ACPx successes
+        # carry SUCCESS — proving capture is independent of any
+        # downstream answer-success classification.
+        self.assertIn('>FAILURE<', html)
+        self.assertIn('>SUCCESS<', html)
+
     def test_exec_report_entries_are_emitted_even_when_flag_off(self):
         """The flag gates RENDERING, not CAPTURE. Capturing unconditionally
         means a future payload-whitelist bug cannot silently hide the data."""
@@ -1061,6 +1232,308 @@ class GlobalExecutionPlannerTests(TestCase):
         self.assertIn('chat_agent_run_log', plan.selected_tool_names)
         monitor_nodes = [node for node in plan.nodes if node.stage == 'monitor']
         self.assertGreaterEqual(len(monitor_nodes), 1)
+
+
+class AcpxCapabilityScoringTests(TestCase):
+    """
+    The ACPX tool surface (acp_send_and_wait, acp_transcript, acp_relay,
+    acp_session_status, acp_list_sessions) was originally invisible on
+    the planner path because each tool scored ~10 and lost the slot
+    race to higher-scoring chat_agent_* peers. These tests pin the
+    keyword-boost contract added by the ACPX-section-A follow-up so the
+    new tools reliably make the cut on real ACPX prompts.
+    """
+
+    @staticmethod
+    def _full_acpx_toolset():
+        """A representative slice of the live tool surface with both
+        ACPX tools and competing wrapped chat agents. Same shape as
+        what get_mcp_tools() produces in production."""
+        return [
+            SimpleNamespace(name='execute_file', description='Execute a Python file.'),
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+            SimpleNamespace(name='chat_agent_executer', description='Launch the Executer template agent.'),
+            SimpleNamespace(name='chat_agent_pythonxer', description='Launch the Pythonxer template agent.'),
+            SimpleNamespace(name='chat_agent_dockerer', description='Launch the Dockerer template agent.'),
+            SimpleNamespace(name='chat_agent_jenkinser', description='Launch the Jenkinser template agent.'),
+            SimpleNamespace(name='chat_agent_summarize_text', description='Summarize text.'),
+            SimpleNamespace(name='chat_agent_file_creator', description='Create files.'),
+            SimpleNamespace(name='chat_agent_notifier', description='Send a desktop notification.'),
+            SimpleNamespace(name='chat_agent_run_list', description='List wrapped runs.'),
+            SimpleNamespace(name='chat_agent_run_status', description='Get wrapped run status.'),
+            SimpleNamespace(name='chat_agent_run_log', description='Read wrapped run log.'),
+            SimpleNamespace(name='chat_agent_run_stop', description='Stop a wrapped run.'),
+            SimpleNamespace(name='acp_spawn', description='Spawn an external coding-agent CLI as an ACP child.'),
+            SimpleNamespace(name='acp_send', description='Send a follow-up turn to an existing ACP session.'),
+            SimpleNamespace(name='acp_send_and_wait', description='Send a follow-up turn and wait for the child to settle.'),
+            SimpleNamespace(name='acp_kill', description='Terminate an ACP session.'),
+            SimpleNamespace(name='acp_doctor', description='Run a health probe of the ACPX runtime.'),
+            SimpleNamespace(name='acp_transcript', description='Read the on-disk transcript for an ACP session.'),
+            SimpleNamespace(name='acp_session_status', description='Return the current status of one ACP session.'),
+            SimpleNamespace(name='acp_list_sessions', description='Enumerate live ACP sessions.'),
+            SimpleNamespace(name='acp_relay', description='Hand off content from one ACP session to another.'),
+            SimpleNamespace(name='list_acp_agents', description='List all registered ACP agents.'),
+            SimpleNamespace(name='invoke_skill', description='Invoke a registered Tlamatini skill.'),
+            SimpleNamespace(name='list_skills', description='List all registered Tlamatini skills.'),
+        ]
+
+    def test_acp_transcript_is_selected_on_harvest_transcript_prompt(self):
+        from agent.capability_registry import (
+            _normalize_text,
+            _score_capability,
+            _tokenize,
+            build_tool_capabilities,
+        )
+
+        tools = self._full_acpx_toolset()
+        prompt = (
+            "Step 5: harvest the transcript from acp_spawn session_id, "
+            "summarize it, and cite the transcript_path as evidence."
+        )
+        capabilities = build_tool_capabilities(tools)
+        text = _normalize_text(prompt)
+        toks = _tokenize(text)
+        scores = {c.tool_name: _score_capability(c, text, toks) for c in capabilities}
+
+        # acp_transcript must outscore any chat_agent_* peer on this prompt.
+        wrapped_peer_max = max(
+            score for name, score in scores.items() if name.startswith("chat_agent_")
+        )
+        self.assertGreater(scores["acp_transcript"], wrapped_peer_max,
+                            f"transcript={scores['acp_transcript']} peer_max={wrapped_peer_max}")
+
+    def test_acp_relay_is_selected_on_handoff_prompt(self):
+        from agent.capability_registry import (
+            _normalize_text,
+            _score_capability,
+            _tokenize,
+            build_tool_capabilities,
+        )
+
+        tools = self._full_acpx_toolset()
+        prompt = (
+            "Multi-CLI ACPX Relay demo: hand off the analysis from leg A to "
+            "leg B by relaying the transcript content into the second session."
+        )
+        capabilities = build_tool_capabilities(tools)
+        text = _normalize_text(prompt)
+        toks = _tokenize(text)
+        scores = {c.tool_name: _score_capability(c, text, toks) for c in capabilities}
+
+        self.assertGreaterEqual(scores["acp_relay"], 24,
+                                 f"acp_relay scored {scores['acp_relay']} (need ≥24)")
+
+    def test_acp_send_and_wait_is_selected_on_wait_for_answer_prompt(self):
+        from agent.capability_registry import (
+            _normalize_text,
+            _score_capability,
+            _tokenize,
+            build_tool_capabilities,
+        )
+
+        tools = self._full_acpx_toolset()
+        prompt = (
+            "Spawn the gemini agent and wait for the complete answer to "
+            "settle before continuing. Use synchronous send-and-wait."
+        )
+        capabilities = build_tool_capabilities(tools)
+        text = _normalize_text(prompt)
+        toks = _tokenize(text)
+        scores = {c.tool_name: _score_capability(c, text, toks) for c in capabilities}
+
+        self.assertGreaterEqual(scores["acp_send_and_wait"], 24)
+
+    def test_acp_session_status_and_list_score_above_threshold_on_status_prompt(self):
+        from agent.capability_registry import (
+            _normalize_text,
+            _score_capability,
+            _tokenize,
+            build_tool_capabilities,
+        )
+
+        tools = self._full_acpx_toolset()
+        prompt = (
+            "List all live ACP sessions and report which session_id is alive "
+            "with its pid and transcript size."
+        )
+        capabilities = build_tool_capabilities(tools)
+        text = _normalize_text(prompt)
+        toks = _tokenize(text)
+        scores = {c.tool_name: _score_capability(c, text, toks) for c in capabilities}
+
+        # Both must be well above the planner threshold of 6.
+        self.assertGreaterEqual(scores["acp_list_sessions"], 14)
+        self.assertGreaterEqual(scores["acp_session_status"], 14)
+
+    def test_select_tools_for_request_picks_acp_transcript_on_harvest_prompt(self):
+        tools = self._full_acpx_toolset()
+        selected = select_tools_for_request(
+            "Step 5: harvest the transcript via acp_transcript and cite "
+            "transcript_path as evidence in the report.",
+            tools,
+            max_selected=8,
+        )
+        names = {t.name for t in selected}
+        self.assertIn("acp_transcript", names)
+
+    def test_select_tools_for_request_picks_acp_relay_on_handoff_prompt(self):
+        tools = self._full_acpx_toolset()
+        selected = select_tools_for_request(
+            "Hand off the leg A transcript to leg B using acp_relay so the "
+            "second ACP child can produce a verdict.",
+            tools,
+            max_selected=8,
+        )
+        names = {t.name for t in selected}
+        self.assertIn("acp_relay", names)
+
+    def test_acpx_signal_token_boost_compounds(self):
+        """Multiple ACPX signal tokens compound to push scores past the
+        chat_agent_* peer plateau (the original failure mode at score=10)."""
+        from agent.capability_registry import (
+            _normalize_text,
+            _score_capability,
+            _tokenize,
+            build_tool_capabilities,
+        )
+
+        tools = self._full_acpx_toolset()
+        prompt = (
+            "ACPX run: spawn an agent_id child, harvest the transcript, "
+            "relay to a second session, then kill both legs."
+        )
+        capabilities = build_tool_capabilities(tools)
+        text = _normalize_text(prompt)
+        toks = _tokenize(text)
+        scores = {c.tool_name: _score_capability(c, text, toks) for c in capabilities}
+
+        # All four mutating ACPX tools should ride the boost above 18.
+        for name in ("acp_spawn", "acp_relay", "acp_transcript", "acp_kill"):
+            self.assertGreaterEqual(scores[name], 18,
+                                     f"{name}={scores[name]}")
+
+
+class AcpxPlannerCoSelectionTests(TestCase):
+    """
+    The planner must auto-co-select operational siblings of primary
+    ACPX tools (acp_spawn → acp_doctor + acp_kill, acp_relay →
+    acp_transcript + acp_kill). Same shape as the run-control
+    auto-injection contract.
+    """
+
+    @staticmethod
+    def _toolset():
+        return AcpxCapabilityScoringTests._full_acpx_toolset()
+
+    def test_acp_spawn_co_selects_doctor_and_kill_in_planner(self):
+        tools = self._toolset()
+        plan = build_global_execution_plan(
+            "Spawn the gemini agent_id with task 'analyze trade-offs' and "
+            "verify the ACPX runtime first.",
+            tools,
+            system_enabled=False,
+            files_enabled=False,
+            max_selected_tools=6,
+        )
+        self.assertIn("acp_spawn", plan.selected_tool_names)
+        self.assertIn("acp_doctor", plan.selected_tool_names)
+        self.assertIn("acp_kill", plan.selected_tool_names)
+
+    def test_acp_relay_co_selects_transcript_and_kill_in_planner(self):
+        tools = self._toolset()
+        plan = build_global_execution_plan(
+            "Use acp_relay to hand off content from session A to session B "
+            "as part of the multi-cli relay.",
+            tools,
+            system_enabled=False,
+            files_enabled=False,
+            max_selected_tools=6,
+        )
+        self.assertIn("acp_relay", plan.selected_tool_names)
+        self.assertIn("acp_transcript", plan.selected_tool_names)
+        self.assertIn("acp_kill", plan.selected_tool_names)
+
+    def test_acp_send_and_wait_co_selects_transcript_in_planner(self):
+        tools = self._toolset()
+        plan = build_global_execution_plan(
+            "Use acp_send_and_wait so the gemini child has time to produce "
+            "the complete answer; then summarize and cite evidence.",
+            tools,
+            system_enabled=False,
+            files_enabled=False,
+            max_selected_tools=6,
+        )
+        self.assertIn("acp_send_and_wait", plan.selected_tool_names)
+        self.assertIn("acp_transcript", plan.selected_tool_names)
+
+    def test_select_tools_for_request_co_selects_acpx_siblings(self):
+        tools = AcpxCapabilityScoringTests._full_acpx_toolset()
+        selected = select_tools_for_request(
+            "Spawn the gemini agent_id and have it analyze the project.",
+            tools,
+            max_selected=3,  # Force a tight cap to prove sibling injection works.
+        )
+        names = {t.name for t in selected}
+        self.assertIn("acp_spawn", names)
+        # Even with max_selected=3, doctor + kill must be auto-injected.
+        self.assertIn("acp_doctor", names)
+        self.assertIn("acp_kill", names)
+
+    def test_co_selection_is_idempotent_when_sibling_already_selected(self):
+        """If both acp_spawn and acp_kill score high enough independently,
+        the co-selection rule must not double-add or reorder them."""
+        tools = AcpxCapabilityScoringTests._full_acpx_toolset()
+        plan = build_global_execution_plan(
+            "Spawn the gemini agent_id, run the task, then call acp_kill on "
+            "the session.",
+            tools,
+            system_enabled=False,
+            files_enabled=False,
+            max_selected_tools=6,
+        )
+        # No duplicates in the selected list.
+        self.assertEqual(len(plan.selected_tool_names),
+                         len(set(plan.selected_tool_names)))
+        self.assertIn("acp_spawn", plan.selected_tool_names)
+        self.assertIn("acp_kill", plan.selected_tool_names)
+
+
+class AcpxNonAcpxRequestRegressionTests(TestCase):
+    """The new ACPX boosts must NOT bleed into requests that have nothing
+    to do with ACPX. Otherwise the planner would start auto-injecting
+    acp_doctor / acp_kill on shell-command requests."""
+
+    def test_pure_shell_request_does_not_pull_in_acpx_tools(self):
+        # Production always runs with at least one MCP context enabled, so
+        # the realistic threshold is 6, not the empty-context fallback of 2.
+        tools = AcpxCapabilityScoringTests._full_acpx_toolset()
+        plan = build_global_execution_plan(
+            "Run 'pip install requests' in the project directory.",
+            tools,
+            system_enabled=True,
+            files_enabled=True,
+            max_selected_tools=6,
+        )
+        for name in plan.selected_tool_names:
+            self.assertFalse(
+                name.startswith("acp_"),
+                f"unexpected ACPX tool {name} on a pure shell request",
+            )
+
+    def test_pure_summarization_request_does_not_pull_in_acpx_tools(self):
+        tools = AcpxCapabilityScoringTests._full_acpx_toolset()
+        plan = build_global_execution_plan(
+            "Summarize this README.md and produce a 5-bullet overview.",
+            tools,
+            system_enabled=True,
+            files_enabled=True,
+            max_selected_tools=6,
+        )
+        for name in plan.selected_tool_names:
+            self.assertFalse(
+                name.startswith("acp_"),
+                f"unexpected ACPX tool {name} on a pure summarization request",
+            )
 
 
 class FrozenModeCompatibilityTests(TestCase):

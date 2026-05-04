@@ -35,6 +35,44 @@ _RUN_CONTROL_TOOL_NAMES = (
     "chat_agent_run_log",
     "chat_agent_run_stop",
 )
+
+# ACPX tool name groups. Used by the planner to:
+#   1. Boost the new tool-surface scores via _EXTRA_HINTS_BY_TOOL_NAME so
+#      the LLM-facing planner picks them when the prompt mentions
+#      "transcript", "harvest", "relay", "hand off", "wait for answer",
+#      "session status", "list sessions", etc.
+#   2. Co-select operational siblings when a primary ACPX tool fires —
+#      e.g. selecting acp_spawn implies acp_kill / acp_doctor are
+#      operationally needed even if their individual score is low.
+ACPX_TOOL_NAMES = (
+    "acp_spawn",
+    "acp_send",
+    "acp_send_and_wait",
+    "acp_kill",
+    "acp_doctor",
+    "acp_transcript",
+    "acp_session_status",
+    "acp_list_sessions",
+    "acp_relay",
+    "list_acp_agents",
+    "invoke_skill",
+    "list_skills",
+)
+
+# When ANY of the keys in this map is selected, every name in the
+# corresponding tuple is auto-co-selected (regardless of its individual
+# score). The pattern mirrors the existing run-control auto-injection.
+ACPX_CO_SELECTION_RULES: dict[str, tuple[str, ...]] = {
+    # Spawning a child means the LLM will need to terminate it AND verify
+    # the runtime is healthy first. Doctor + kill are operational siblings.
+    "acp_spawn": ("acp_doctor", "acp_kill"),
+    # The relay helper depends on transcript reads from the source session
+    # and a kill of the destination once the hand-off is logged.
+    "acp_relay": ("acp_transcript", "acp_kill"),
+    # send-and-wait usually appears in flows that also need transcript
+    # capture for evidence rows in the Exec Report.
+    "acp_send_and_wait": ("acp_transcript",),
+}
 _EXTRA_HINTS_BY_TOOL_NAME = {
     "get_current_time": ("time", "date", "day", "clock", "today", "now"),
     "execute_file": ("script", "python", "run file", "execute file", "launch script"),
@@ -59,6 +97,94 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
     "chat_agent_run_status": ("run status", "status", "running"),
     "chat_agent_run_log": ("run log", "logs", "output"),
     "chat_agent_run_stop": ("stop run", "cancel run", "terminate run"),
+    # ── ACPX tool surface ────────────────────────────────────────────
+    # Hints are tuned so the prompts in agent/migrations/0072 + 0073
+    # (and the End-to-End ACPX Pipeline / Multi-CLI ACPX Relay demos)
+    # actually score these tools above the planner's max_selected cap.
+    # The corpus that the planner sees includes phrases like "harvest
+    # transcript", "hand off content", "spawn a peer agent", "wait for
+    # a complete answer", "pin leg A to gemini", etc., so we mirror
+    # those phrases here.
+    "acp_spawn": (
+        "spawn", "spawn an agent", "spawn child", "spawn a child",
+        "spawn an external", "external coding agent", "external cli",
+        "acp_spawn", "acpx", "acp ", "spawn the cli", "launch cli",
+        "launch claude", "launch cursor", "launch gemini", "launch codex",
+        "launch qwen", "launch agent_id", "launch session",
+        "agent_id", "leg a", "leg b", "first child", "second child",
+    ),
+    "acp_send": (
+        "follow-up turn", "follow up turn", "next turn", "send turn",
+        "continue with that session", "continue session",
+        "acp_send", "send to session", "talk to session",
+        "ask the session", "send the next prompt", "next prompt",
+    ),
+    "acp_send_and_wait": (
+        "wait for", "wait for the answer", "wait for a complete answer",
+        "wait for the full answer", "until idle", "settle",
+        "settled", "complete answer", "synchronous", "sync send",
+        "send and wait", "block until", "wait until done",
+        "acp_send_and_wait", "wait for the child",
+    ),
+    "acp_kill": (
+        "kill session", "kill the session", "terminate session",
+        "graceful kill", "dual graceful kill", "tear down session",
+        "close session", "stop the child", "stop the agent",
+        "acp_kill", "killed", "killed=true",
+        "shut down the session", "end the session",
+    ),
+    "acp_doctor": (
+        "doctor", "acp doctor", "acp_doctor", "health probe",
+        "is acpx healthy", "acpx availability", "details array",
+        "ok is true", "ok is false", "probe agent",
+        "acpx runtime health", "runtime health",
+    ),
+    "acp_transcript": (
+        "transcript", "harvest transcript", "harvest the transcript",
+        "transcript path", "read transcript", "read the transcript",
+        "transcript_path", "ndjson", "compress the transcript",
+        "summarize the transcript", "fetch transcript",
+        "acp_transcript", "transcript content", "evidence",
+        "cite transcript", "transcript evidence", "harvest",
+    ),
+    "acp_session_status": (
+        "session status", "is session alive", "is the session alive",
+        "session alive", "session pid", "session_id status",
+        "transcript size", "last event", "alive",
+        "acp_session_status",
+    ),
+    "acp_list_sessions": (
+        "list sessions", "list acp sessions", "list active sessions",
+        "enumerate sessions", "all sessions", "live sessions",
+        "open sessions", "running sessions",
+        "acp_list_sessions",
+    ),
+    "acp_relay": (
+        "relay", "hand off", "hand-off", "handoff",
+        "hand off content", "hand-off content", "hand-off pattern",
+        "pass the analysis", "pass the transcript",
+        "feed the output", "feed the answer", "send leg a output",
+        "send leg-a output", "leg a to leg b", "leg-a to leg-b",
+        "from session a", "from session b", "into session a",
+        "into session b", "src to dst", "source to destination",
+        "acp_relay", "multi-cli relay",
+    ),
+    "list_acp_agents": (
+        "list acp agents", "list agents", "registered agents",
+        "available agents", "which agents are resolvable",
+        "resolvable", "agent_id list", "list_acp_agents",
+        "acp registry",
+    ),
+    "invoke_skill": (
+        "invoke skill", "invoke_skill", "invoke a skill",
+        "run skill", "skill harness", "skill_name",
+        "summarize skill", "fallback skill",
+        "tlamatini skill", "execute skill",
+    ),
+    "list_skills": (
+        "list skills", "list_skills", "available skills",
+        "registered skills", "skill catalog", "what skills",
+    ),
 }
 _CONTEXT_HINTS = {
     "system_context": (
@@ -161,6 +287,20 @@ def build_tool_capabilities(tools: Iterable) -> list[ToolCapability]:
     return capabilities
 
 
+_ACPX_SIGNAL_TOKENS = frozenset({
+    # Tokens that indicate the user is talking about the ACPX surface,
+    # used as a multiplier source so multiple hits compound rather than
+    # plateauing at the per-phrase cap.
+    "acp", "acpx", "acp_spawn", "acp_send", "acp_kill", "acp_doctor",
+    "acp_transcript", "acp_relay", "acp_session_status", "acp_list_sessions",
+    "spawn", "transcript", "transcripts", "harvest", "relay",
+    "handoff", "settle", "settled", "leg", "session_id", "session",
+    "agent_id", "gemini", "claude", "cursor", "codex", "qwen",
+    "doctor", "kill", "killed", "skill", "skill_name", "invoke",
+    "openclaw",
+})
+
+
 def _score_capability(capability: ToolCapability, request_text: str, request_tokens: set[str]) -> int:
     score = 0
 
@@ -195,6 +335,22 @@ def _score_capability(capability: ToolCapability, request_text: str, request_tok
 
     if capability.long_running and any(token in request_tokens for token in {"monitor", "watch", "track", "poll"}):
         score += 3
+
+    # ── ACPX boost ────────────────────────────────────────────────────
+    # Without this, the new ACPX surface tools (acp_send_and_wait,
+    # acp_transcript, acp_relay, acp_session_status, acp_list_sessions)
+    # score in the 8-10 band on real ACPX prompts and lose the 11-of-24
+    # planner slot race to higher-scoring chat_agent_* peers. The boost
+    # mirrors the run-control auto-selection rule by recognizing that
+    # an ACPX prompt body is itself a strong signal — multiple ACPX
+    # signal tokens compound here instead of plateauing on phrase caps.
+    if capability.tool_name in ACPX_TOOL_NAMES:
+        signal_hits = len(request_tokens & _ACPX_SIGNAL_TOKENS)
+        if signal_hits > 0:
+            # +3 per signal token, capped at +18. Three or more ACPX
+            # signal tokens reliably push every ACPX tool above 24,
+            # ahead of the chat_agent_* peer group.
+            score += min(signal_hits * 3, 18)
 
     return score
 
@@ -264,6 +420,16 @@ def select_tools_for_request(request_text: str, tools: Iterable, max_selected: i
         for control_name in _RUN_CONTROL_TOOL_NAMES:
             if any(tool.name == control_name for tool in tools_list):
                 selected_names.add(control_name)
+
+    # ACPX co-selection: when a primary ACPX tool is selected, pull in
+    # its operational siblings even if their own score didn't make the
+    # cut. Same shape as the run-control auto-injection above.
+    available_names = {tool.name for tool in tools_list}
+    for primary, siblings in ACPX_CO_SELECTION_RULES.items():
+        if primary in selected_names:
+            for sibling in siblings:
+                if sibling in available_names:
+                    selected_names.add(sibling)
 
     selected_tools = [tool for tool in tools_list if tool.name in selected_names]
     return selected_tools or tools_list

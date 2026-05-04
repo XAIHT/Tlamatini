@@ -181,6 +181,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
 - **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 57 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md
 - **Gotchas & reference** — Claude API client, build/lint, hardcoded assumptions, recent fixes, roadmap, work-style preferences: @docs/claude/gotchas.md

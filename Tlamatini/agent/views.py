@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import AgentMessage
 from django.contrib.auth import authenticate, login, logout
@@ -196,6 +196,16 @@ def load_agent_description_view(request, agent_name):
         return HttpResponse(content, content_type="text/plain")
     except Agent.DoesNotExist:
         return HttpResponse("Agent not found in database", status=404)
+
+def list_all_agent_descriptions_view(request):
+    # Used by the chat UI's "Create Flow" gate to validate that every
+    # canonical agent name produced from the tool-calls log corresponds
+    # to a real entry in the Agents sidebar. Returns a JSON array of
+    # agentDescription strings (the same value the sidebar shows).
+    descriptions = list(
+        Agent.objects.order_by('idAgent').values_list('agentDescription', flat=True)
+    )
+    return JsonResponse({'descriptions': descriptions})
 
 @login_required
 def agentic_control_panel(request):

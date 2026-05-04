@@ -1,0 +1,218 @@
+# Tlamatini — ACPX (Agent Communication Protocol eXtension)
+
+This file is the authoritative reference for what **ACPX** means in Tlamatini, the mechanics it implements, and the contract every part of the system (LLM, planner, tools, frontend) honors. Whenever the user mentions "ACPX", "ACPX mechanics", "ACP child", "use ACPX to ...", "spawn an external CLI", "leg A → leg B", "multi-CLI relay", "hand off transcript", or anything semantically equivalent, route them through this surface — do not paraphrase, do not invent a workaround.
+
+---
+
+## Definition
+
+**ACPX = Agent Communication Protocol eXtension.**
+
+It is Tlamatini's runtime for spawning **external coding-agent CLIs** as out-of-process child processes, talking to them over stdin/stdout, persisting the conversation as an NDJSON transcript, and brokering the whole thing to the LLM as Tlamatini tools.
+
+ACPX is a **Python port of OpenClaw's ACPX plugin** (`extensions/acpx/`). The surface is API-compatible: `agent_id` mapping, `permissionMode` vocabulary, and the `SKILL.md` frontmatter contract all match verbatim, so any acp-router skill written for OpenClaw runs unmodified on Tlamatini and vice versa.
+
+---
+
+## Supported external coding agents (the `agent_id` registry)
+
+Defined in `agent/acpx/agent_registry.py::DEFAULT_ACP_AGENTS`. Each agent has a transport profile that controls how the runtime drives the child:
+
+| `agent_id` | Default command | Transport | Spawn returns immediately? | Default budgets (timeout / idle / grace) |
+|---|---|---|---|---|
+| `claude` | `claude` | `json-acp` | No (drains on spawn) | 45 s / 6 s / 12 s |
+| `codex` | `codex` | `json-acp` | No | 45 s / 6 s / 12 s |
+| `tlamatini` | `python -m agent.acpx.self_acp_server` | `json-acp` | No | 45 s / 6 s / 12 s |
+| `gemini` | `gemini` | `tui-repl` | **Yes** (sub-second) | 8 s / 2 s / 3 s |
+| `cursor` | `cursor-agent` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `qwen` | `qwen-code` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `kiro` | `kiro` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `kimi` | `kimi` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `iflow` | `iflow` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `kilocode` | `kilocode` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `opencode` | `opencode` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `pi` | `pi` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `droid` | `droid` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+| `copilot` | `copilot` | `tui-repl` | **Yes** | 8 s / 2 s / 3 s |
+
+User overrides go in `config.json`:
+
+```json
+{
+  "acpx": {
+    "agents": {
+      "claude": { "command": "C:/Users/me/AppData/Roaming/npm/claude.cmd" },
+      "cursor": { "command": "/usr/local/bin/cursor-agent" }
+    }
+  }
+}
+```
+
+Custom `agent_id`s declared via overrides default to `tui-repl` with the fast-path defaults.
+
+---
+
+## The 12 ACPX/Skill tools (LLM-facing surface)
+
+All tools return a JSON envelope. The LLM never raises — every error is `{"ok": false, "reason": "...", "code": "..."}`.
+
+### Health & enumeration
+- `acp_doctor()` — health probe + per-agent enumeration.
+  - Returns `{ok, message, details:[{agent_id, command, description, resolvable, cli_version}], probe:{agent_id, stdout, stderr}}`.
+  - **Always call first** when an ACPX flow starts so the LLM knows which `agent_id`s are resolvable on this host.
+- `list_acp_agents()` — same enumeration without the version probe (cheaper).
+
+### Session lifecycle
+- `acp_spawn(agent_id, task, cwd="", mode="session", session_label="", timeout_seconds=0, idle_seconds=0, startup_grace_seconds=0, max_event_chars=0)`
+  - Spawns a child for `agent_id`, dispatches `task`.
+  - For TUI agents: returns sub-second with `spawned_immediately:true` and an empty `events` array. The drain happens on the next call.
+  - For JSON-ACP agents: drains until `done:true` or the configured timeout.
+  - Returns `{session_id, agent_id, transport, transcript_path, events, events_total, spawned_immediately}`.
+- `acp_send(session_id, text, timeout_seconds=0, idle_seconds=0, startup_grace_seconds=0, max_event_chars=0)`
+  - Send a follow-up turn to an existing session.
+- `acp_send_and_wait(session_id, text, until_idle_seconds=10, max_wait_seconds=180, max_event_chars=0)`
+  - Same as `acp_send` but blocks until the child settles (idle rule fires).
+  - Returns `{events, events_total, settled}` — `settled=True` means the drain ended on the idle rule (clean), not the timeout backstop.
+  - **Prefer this for "wait for the full answer" / "complete answer" / "settle" prompts.**
+- `acp_kill(session_id)` — terminate the child process. Returns `{killed, transcript_path, agent_id, pid}`.
+
+### Reads
+- `acp_transcript(session_id, max_chars=8000, direction="all")` — read the on-disk transcript (`{events, text, total_size, truncated, transcript_path}`). `direction` ∈ `"all" | "in" | "out"`.
+- `acp_session_status(session_id)` — `{alive, pid, transcript_size, last_event_at, closed}`.
+- `acp_list_sessions()` — enumerate all live sessions in the runtime.
+
+### Hand-off
+- `acp_relay(session_id_src, session_id_dst, transform="last_assistant_text", prefix="", suffix="", until_idle_seconds=10, max_wait_seconds=180, max_event_chars=0)`
+  - Single-call hand-off: reads the source transcript, extracts the assistant text (or `transform="full_transcript"`), wraps with optional `prefix`/`suffix`, sends to the destination session, waits for it to settle.
+  - **One tool call replaces a 3-step dance** (`acp_transcript` → string-manipulate → `acp_send`). Always prefer it on relay/hand-off prompts.
+
+### Skills
+- `list_skills(filter_keywords="")` — list registered SKILL.md packages.
+- `invoke_skill(skill_name, args_json)` — run a skill inside the SkillHarness. The skill `acp-router` is the canonical companion: it picks the best `agent_id` for an intent.
+
+---
+
+## Canonical ACPX flows the LLM must recognize
+
+### 1. Spawn-and-go (single agent)
+```
+acp_doctor
+  → acp_spawn(agent_id, initial_task)
+    → acp_send_and_wait(session_id, follow_up_question)
+      → acp_kill(session_id)
+```
+
+### 2. Multi-CLI relay (leg A → leg B)
+```
+acp_doctor
+  → acp_spawn(leg_a_id, task_a)
+    → acp_send_and_wait(session_a, ...)         # let A produce its answer
+      → acp_spawn(leg_b_id, prompt_template_b)  # B's prompt template
+        → acp_relay(session_a, session_b)       # ONE call: hand off A's text to B
+          → acp_kill(session_a)
+            → acp_kill(session_b)
+```
+
+A single `acp_relay` replaces the otherwise-required `acp_transcript` → string-manipulate → `acp_send` sequence.
+
+### 3. Harvest transcript & report
+```
+... do the work via acp_spawn / acp_send_and_wait ...
+  → acp_transcript(session_id)
+    → invoke_skill('summarize', {text, target_words})   # compress
+      → chat_agent_file_creator(filepath, content)      # write report
+        → chat_agent_notifier(title, message)           # signal done
+          → acp_kill(session_id)
+```
+
+### 4. Skill-driven agent routing
+```
+list_skills
+  → invoke_skill('acp-router', {intent: '...', prefer: 'gemini'})
+    → acp_spawn(<returned agent_id>, task)
+      → ...
+```
+
+---
+
+## Required behavior (contract the LLM honors)
+
+1. **Always call `acp_doctor` first** on an ACPX flow so the LLM knows which `agent_id`s are resolvable. Branch on `details[].resolvable`.
+2. **Capture `session_id` on every `acp_spawn`** — every follow-up tool call needs it.
+3. **Always call `acp_kill` at the end of each session you spawned.** Sessions left alive count against the runtime's session cap.
+4. **Use the dedicated ACPX tool, never an `execute_command` workaround.** Reading a transcript via `type` / `cat` is wrong — use `acp_transcript`.
+5. **Honor named `agent_id`s.** If the user says "pin leg A to gemini", pass exactly `agent_id="gemini"`. If gemini isn't resolvable, announce the fallback in one short line and pick another resolvable id.
+6. **For "complete answer" / "wait for full answer" / slow REPL prompts**: prefer `acp_send_and_wait` with `until_idle_seconds=15, max_wait_seconds=180`, or pass `timeout_seconds=120, idle_seconds=15` to `acp_send`. The default TUI 8 s timeout is tuned for "session stays alive cheaply", not "produce a full essay".
+7. **For relay/hand-off prompts**: always `acp_relay`, never the manual transcript-and-send dance.
+8. **Operational siblings** of every ACPX flow:
+   - `chat_agent_file_creator` — write the report.
+   - `chat_agent_notifier` — signal completion.
+   - `invoke_skill` — for `summarize` / `acp-router` skills.
+
+---
+
+## Runtime mechanics (what happens inside the box)
+
+`agent/acpx/runtime.py::AcpSession.send_turn` is the heart. Per turn:
+
+1. **Write `{"task":"...","mode":"session"}\n` to child stdin** (and `close()` for `transport="one-shot"`).
+2. **Daemon reader thread** drains child stdout into a `queue.Queue` line-by-line. Cross-platform; needed because Windows `readline()` on a pipe cannot be interrupted.
+3. **Drain loop** wakes every 100 ms (queue `get(timeout=0.1)`) and checks four completion conditions, in order:
+   1. The child emits a JSON line with `"done": true` (strict ACP).
+   2. The child closes stdout (process exit) — reader pushes a `None` sentinel.
+   3. `timeout_seconds` elapsed (hard backstop) — yields `{done:true, _synthetic:"timeout", events_seen, transport}`.
+   4. **Idle rule** fires — yields `{done:true, _synthetic:"idle", idle_seconds, events_seen, transport}`. The transport-aware variant of this rule is the real fix for slow ACPX execution:
+      - `transport="json-acp"`: idle rule arms only after `event_count > 0` AND `now - last_event_at >= idle_seconds` AND `now - started_at >= startup_grace_seconds`. (A JSON-ACP child contractually emits at least one event per turn.)
+      - `transport="tui-repl"` / `"one-shot"`: idle rule arms after `now - started_at >= startup_grace_seconds + idle_seconds` **even with zero events**. A silent TUI is, by definition, finished; the previous code waited the full timeout because it required `event_count > 0`.
+
+4. **Every line received and the outbound task itself are appended to the per-session NDJSON transcript** at `<state_dir>/<session_id>.transcript.ndjson`. The transcript is what `acp_transcript` and `acp_relay` read from.
+
+`acp_spawn` honors `spawn_returns_immediately`: for TUI agents it returns the `session_id` sub-second without draining; the drain happens on the next `acp_send` / `acp_send_and_wait` / `acp_transcript`. The LLM can override with `timeout_seconds>0` to force a drain on spawn.
+
+---
+
+## Permission model
+
+`agent/acpx/permissions.py::PermissionGate` enforces three modes (matching OpenClaw's vocabulary verbatim):
+
+- `approve-reads` (default) — read actions are auto-approved; write actions go through the gate.
+- `approve-all` — flagged dangerous; auto-approves everything.
+- `deny-all` — blocks all spawns. `acp_spawn` raises `PERMISSION_DENIED`.
+
+`non_interactive` policy is `deny | fail` for unattended runs.
+
+---
+
+## Files involved
+
+- `agent/acpx/agent_registry.py` — `DEFAULT_ACP_AGENTS`, `AcpAgentSpec` (transport, defaults, `spawn_returns_immediately`), `build_agent_registry`.
+- `agent/acpx/runtime.py` — `AcpxRuntime`, `AcpSession`, daemon reader thread, transport-aware idle rule, doctor, list_sessions, session_status, read_transcript, kill (returns record), event trimming, last-assistant extraction.
+- `agent/acpx/tools.py` — the 12 LangChain `@tool` functions.
+- `agent/acpx/session_store.py` — `FileSessionStore`, reset-aware semantics.
+- `agent/acpx/permissions.py` — permission gate.
+- `agent/acpx/config.py` — config schema mirror of OpenClaw's plugin.json.
+- `agent/acpx/windows_spawn.py` — Windows-aware command resolution.
+- `agent/acpx/tests.py` — 60 unit tests covering every tool + the redesigned drain.
+- `agent/capability_registry.py` — `_EXTRA_HINTS_BY_TOOL_NAME` ACPX entries, `_ACPX_SIGNAL_TOKENS` boost, `ACPX_CO_SELECTION_RULES` (sibling auto-injection).
+- `agent/global_execution_planner.py` — applies `ACPX_CO_SELECTION_RULES` so e.g. selecting `acp_spawn` auto-co-selects `acp_doctor` + `acp_kill`.
+- `agent/mcp_agent.py` — `_EXEC_REPORT_TOOLS` registers ACPX rows under `agent_key="acpx"` so spawn / send / send_and_wait / kill / relay merge into one Exec Report table.
+- `agent/prompt.pmt` rule 12 — the LLM-facing version of this contract.
+
+---
+
+## When the user says "ACPX" (decision matrix)
+
+| User says... | You do... |
+|---|---|
+| "Use ACPX to ..." / "ACPX mechanics" / "ACP child" | Recognize as an ACPX request. Run a canonical flow per the prompt's steps. |
+| "Spawn a child" / "external coding agent" | `acp_doctor` → `acp_spawn`. |
+| "Wait for the full answer" / "complete answer" | `acp_send_and_wait` with longer `until_idle_seconds`. |
+| "Harvest the transcript" / "cite the transcript" | `acp_transcript`. |
+| "Hand off" / "leg A → leg B" / "relay" / "multi-CLI" | `acp_relay`. |
+| "Pin leg A to gemini" | `agent_id="gemini"` exactly. Fallback only if not resolvable. |
+| "Is the session alive?" / "session status" | `acp_session_status`. |
+| "List sessions" / "what's running" | `acp_list_sessions`. |
+| "Kill the session" / "terminate" / "graceful kill" | `acp_kill`. |
+| "Pick the best agent for ..." | `invoke_skill('acp-router', {intent, prefer})`. |
+| "Summarize the transcript" | `acp_transcript` → `invoke_skill('summarize', {...})`. |
+| Anything not in this table but mentioning ACPX | Run `acp_doctor` first to ground yourself, then pick the closest flow. |

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from .capability_registry import (
+    ACPX_CO_SELECTION_RULES,
     _RUN_CONTROL_TOOL_NAMES,
     _RUN_ID_RE,
     _normalize_text,
@@ -184,6 +185,20 @@ def _select_planner_tool_names(
                 selected_run_control_names.append(control_name)
                 if control_name not in selected_names:
                     selected_names.append(control_name)
+
+    # ACPX co-selection: if a primary ACPX tool made the cut, pull in
+    # its operational siblings (e.g. acp_spawn → acp_doctor + acp_kill,
+    # acp_relay → acp_transcript + acp_kill). The siblings bypass the
+    # max_selected cap on purpose — they are operationally required, not
+    # additional candidates. Same shape as run-control auto-injection.
+    available_names = {tool.name for tool in tools_list}
+    for primary, siblings in ACPX_CO_SELECTION_RULES.items():
+        if primary in selected_names:
+            for sibling in siblings:
+                if sibling in available_names and sibling not in selected_names:
+                    selected_names.append(sibling)
+                    logger.info("[Planner._select] CO-SELECTED tool=%s reason=acpx_sibling_of:%s",
+                                sibling, primary)
 
     ordered_selected_names = tuple(
         tool.name for tool in tools_list

@@ -89,6 +89,23 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_kyber_keygen":   ("kyberkeygen",    "Kyber Keygen"),
     "chat_agent_kyber_cipher":   ("kybercipher",    "Kyber Cipher"),
     "chat_agent_kyber_deciph":   ("kyberdecipher",  "Kyber Deciph"),
+    # ACPX child-process launchers (spawn / send-turn / kill an external
+    # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
+    # All three share the ``acpx`` agent_key on purpose so spawn + every
+    # follow-up send + the eventual kill merge into a single ACPx table
+    # in execution order.
+    "acp_spawn":                 ("acpx",           "ACPx"),
+    "acp_send":                  ("acpx",           "ACPx"),
+    "acp_send_and_wait":         ("acpx",           "ACPx"),
+    "acp_kill":                  ("acpx",           "ACPx"),
+    # acp_relay is state-changing on the destination session: it sends a
+    # turn there. Group it under the same ``acpx`` key so a relay run
+    # appears in execution order alongside spawn/send/kill.
+    "acp_relay":                 ("acpx",           "ACPx"),
+    # Markdown-driven Skill invocation through the SkillHarness. Treated
+    # as state-changing because a skill can run @tool commands, write
+    # files, hit external APIs, or delegate to ACPX itself.
+    "invoke_skill":              ("skill",          "Skill"),
 }
 
 
@@ -237,13 +254,23 @@ class MultiTurnToolAgentExecutor:
         self._tool_call_counts: Dict[str, int] = {}
 
     @staticmethod
-    def _extract_exec_report_command(tool_input: Any) -> str:
+    def _extract_exec_report_command(tool_input: Any, tool_name: str = "") -> str:
         """Pull a human-readable "command / intent" string out of the tool
-        input dict so it can be rendered in the Exec report. Covers both
-        direct @tool inputs (``{"command": "..."}`` / ``{"path_filename":
-        "..."}``) and wrapped chat-agent launches (``{"__arg1": "..."}`` /
-        ``{"request": "..."}``). Falls back to a compact ``key=value`` summary
-        so the report never shows an empty cell.
+        input dict so it can be rendered in the Exec report. Covers:
+
+        - direct @tool inputs (``{"command": "..."}`` / ``{"path_filename":
+          "..."}``)
+        - wrapped chat-agent launches (``{"__arg1": "..."}`` /
+          ``{"request": "..."}``)
+        - ACPX child-process launchers (``acp_spawn`` shows
+          ``[<agent_id>] <task>``, ``acp_send`` shows the turn text,
+          ``acp_kill`` shows ``kill <session_id>``)
+        - Skill harness invocations (``invoke_skill`` shows
+          ``<skill_name>(<args>)``)
+
+        Falls back to a compact ``key=value`` summary so the report never
+        shows an empty cell. ``tool_name`` is optional only for backward
+        compatibility with older callers; new code should always pass it.
         """
         if tool_input is None:
             return ""
@@ -251,6 +278,45 @@ class MultiTurnToolAgentExecutor:
             return tool_input
         if not isinstance(tool_input, dict):
             return str(tool_input)
+
+        # ACPX / Skill tool-specific formatters. These use argument keys
+        # the legacy tools never use, and the user wants the report to
+        # show the meaningful intent (which CLI was spawned, which skill
+        # was invoked, which session was killed) rather than a raw
+        # key=value dump.
+        if tool_name == "acp_spawn":
+            agent_id = str(tool_input.get("agent_id") or "").strip()
+            task = str(tool_input.get("task") or "").strip()
+            if agent_id and task:
+                return f"[{agent_id}] {task}"
+            return task or agent_id or ""
+        if tool_name in ("acp_send", "acp_send_and_wait"):
+            text = str(tool_input.get("text") or "").strip()
+            session_id = str(tool_input.get("session_id") or "").strip()
+            if session_id and text:
+                return f"[{session_id}] {text}"
+            return text or session_id or ""
+        if tool_name == "acp_kill":
+            session_id = str(tool_input.get("session_id") or "").strip()
+            return f"kill {session_id}" if session_id else "kill"
+        if tool_name == "acp_relay":
+            src = str(tool_input.get("session_id_src") or "").strip()
+            dst = str(tool_input.get("session_id_dst") or "").strip()
+            transform = str(tool_input.get("transform") or "last_assistant_text").strip()
+            if src and dst:
+                return f"relay [{src}] → [{dst}] ({transform})"
+            return transform
+        if tool_name == "invoke_skill":
+            skill_name = str(tool_input.get("skill_name") or "").strip()
+            args_json = tool_input.get("args_json")
+            if args_json in (None, "", {}):
+                return skill_name
+            args_repr = (
+                args_json if isinstance(args_json, str)
+                else json.dumps(args_json, ensure_ascii=False, sort_keys=True)
+            )
+            return f"{skill_name}({args_repr})" if skill_name else args_repr
+
         for key in ("command", "path_filename", "request", "__arg1"):
             value = tool_input.get(key)
             if value:
@@ -295,6 +361,23 @@ class MultiTurnToolAgentExecutor:
                 "success": False,
                 "agent_display_name": _tool_name_to_agent_display(tool_name),
             })
+            # ── Exec report capture (exception path) ──
+            # The tables must show what was attempted regardless of whether
+            # the underlying tool returned cleanly, raised, or the wrapping
+            # answer was later classified FAILURE. Skipping capture here
+            # would silently drop ACPX/Skill rows whenever the child CLI is
+            # missing on PATH, the harness raised, or the tool args were
+            # malformed — exactly the cases the user most needs to see.
+            exec_report_spec = _EXEC_REPORT_TOOLS.get(tool_name)
+            if exec_report_spec is not None:
+                agent_key, agent_display = exec_report_spec
+                self._exec_report_entries.append({
+                    "tool_name": tool_name,
+                    "agent_key": agent_key,
+                    "agent_display": agent_display,
+                    "command": self._extract_exec_report_command(tool_input, tool_name),
+                    "success": False,
+                })
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' raised an exception: {exc}",
@@ -336,7 +419,7 @@ class MultiTurnToolAgentExecutor:
                 "tool_name": tool_name,
                 "agent_key": agent_key,
                 "agent_display": agent_display,
-                "command": self._extract_exec_report_command(tool_input),
+                "command": self._extract_exec_report_command(tool_input, tool_name),
                 "success": call_success,
             })
 

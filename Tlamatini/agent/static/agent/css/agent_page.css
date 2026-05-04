@@ -176,6 +176,24 @@ body.resizing {
     color: white;
 }
 
+.create-flow[disabled],
+.create-flow.create-flow-disabled,
+.create-flow.create-flow-validating {
+    cursor: not-allowed;
+    opacity: 0.45;
+    background: transparent;
+    color: #ececf1;
+    border-color: #555;
+}
+
+.create-flow[disabled]:hover,
+.create-flow.create-flow-disabled:hover,
+.create-flow.create-flow-validating:hover {
+    background: transparent;
+    color: #ececf1;
+    border-color: #555;
+}
+
 .user-message .username {
     color: #A893F3;
 }
@@ -980,6 +998,22 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* ACPx — fire-orange/coral/violet/black, mirrors .canvas-item.acpx-agent
+   in agentic_control_panel.css. State-changing because acp_spawn /
+   acp_send / acp_kill all touch a real external CLI subprocess. */
+.exec-report-caption-acpx {
+    background: linear-gradient(135deg, #BF360C 0%, #E64A19 33%, #6A1B9A 66%, #212121 100%);
+    color: #ffffff;
+}
+
+/* Skill — purple/indigo/cyan/teal, mirrors .canvas-item.skill-agent in
+   agentic_control_panel.css. Captures invoke_skill calls executed
+   through SkillHarness. */
+.exec-report-caption-skill {
+    background: linear-gradient(135deg, #4527A0 0%, #6A1B9A 33%, #00838F 66%, #00BFA5 100%);
+    color: #ffffff;
+}
+
 .exec-report-table thead th {
     padding: 0.4rem 0.75rem;
     text-align: left;
@@ -1009,7 +1043,9 @@ body.resizing-vertical {
 .exec-report-kyberkeygen thead th,
 .exec-report-kybercipher thead th,
 .exec-report-kyberdecipher thead th,
-.exec-report-jdecompiler thead th {
+.exec-report-jdecompiler thead th,
+.exec-report-acpx thead th,
+.exec-report-skill thead th {
     color: #f5f5f5;
     background: rgba(0, 0, 0, 0.55);
     border-bottom: 1px solid rgba(0, 0, 0, 0.35);
@@ -1089,3 +1125,5 @@ body.resizing-vertical {
 .exec-report-kyberkeygen .exec-report-cmd    { border-left: 3px solid #7B2FBE; }
 .exec-report-kybercipher .exec-report-cmd    { border-left: 3px solid #D35400; }
 .exec-report-kyberdecipher .exec-report-cmd  { border-left: 3px solid #D94F7A; }
+.exec-report-acpx .exec-report-cmd           { border-left: 3px solid #BF360C; }
+.exec-report-skill .exec-report-cmd          { border-left: 3px solid #4527A0; }

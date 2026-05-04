@@ -2801,8 +2801,13 @@ def get_mcp_tools():
         from .acpx import (
             acp_spawn,
             acp_send,
+            acp_send_and_wait,
             acp_kill,
             acp_doctor,
+            acp_transcript,
+            acp_session_status,
+            acp_list_sessions,
+            acp_relay,
             list_acp_agents,
             invoke_skill,
             list_skills,
@@ -2811,10 +2816,20 @@ def get_mcp_tools():
             tools.append(acp_spawn)
         if global_state.get_state('tool_acpx-send_status', 'enabled') == 'enabled':
             tools.append(acp_send)
+        if global_state.get_state('tool_acpx-send-and-wait_status', 'enabled') == 'enabled':
+            tools.append(acp_send_and_wait)
         if global_state.get_state('tool_acpx-kill_status', 'enabled') == 'enabled':
             tools.append(acp_kill)
         if global_state.get_state('tool_acpx-doctor_status', 'enabled') == 'enabled':
             tools.append(acp_doctor)
+        if global_state.get_state('tool_acpx-transcript_status', 'enabled') == 'enabled':
+            tools.append(acp_transcript)
+        if global_state.get_state('tool_acpx-session-status_status', 'enabled') == 'enabled':
+            tools.append(acp_session_status)
+        if global_state.get_state('tool_acpx-list-sessions_status', 'enabled') == 'enabled':
+            tools.append(acp_list_sessions)
+        if global_state.get_state('tool_acpx-relay_status', 'enabled') == 'enabled':
+            tools.append(acp_relay)
         if global_state.get_state('tool_acpx-list-agents_status', 'enabled') == 'enabled':
             tools.append(list_acp_agents)
         if global_state.get_state('tool_acpx-invoke-skill_status', 'enabled') == 'enabled':

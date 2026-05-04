@@ -29,6 +29,7 @@ urlpatterns = [
     path('load_tool/<str:tool_name>/', secure_get(views.load_tool_view), name='load_tool'),
     path('load_agent/<str:agent_name>/', secure_get(views.load_agent_view), name='load_agent'),
     path('load_agent_description/<str:agent_name>/', secure_get(views.load_agent_description_view), name='load_agent_description'),
+    path('list_all_agent_descriptions/', secure_get(views.list_all_agent_descriptions_view), name='list_all_agent_descriptions'),
     path('load_agent_config/<str:agent_name>/', secure_get(views.load_agent_config_view), name='load_agent_config'),
     path('agentic_control_panel/', secure_get(views.agentic_control_panel), name='agentic_control_panel'),
     path('save_agent_config/<str:agent_name>/', secure_post(views.save_agent_config_view), name='save_agent_config'),
