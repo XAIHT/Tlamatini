@@ -443,9 +443,18 @@ def main():
     # filter rationale.
     hooks_dir = Path(__file__).with_name('pyinstaller_hooks')
 
+    icon_path = Path(__file__).with_name('Tlamatini.ico')
+    icon_args: list[str] = []
+    if icon_path.exists():
+        icon_args.append(f'--icon={icon_path}')
+        print(f"Embedding application icon: {icon_path}")
+    else:
+        print(f"WARNING: {icon_path} not found — Tlamatini.exe will have no embedded icon.")
+
     command = [
         sys.executable, '-m', 'PyInstaller', '--name', 'manage', '--console', '--noconfirm',
         f'--additional-hooks-dir={hooks_dir}',
+        *icon_args,
         *dll_args,
         f'--add-data=Tlamatini/agent/templates{separator}agent/templates',
         f'--add-data=Tlamatini/agent/static{separator}agent/static',

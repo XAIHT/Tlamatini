@@ -45,25 +45,29 @@ if (-not (Test-Path $installDir)) {
 }
 
 $installDir = (Resolve-Path $installDir).Path
-$ps1Path = Join-Path $installDir "Tlamatini.ps1"
+$exePath = Join-Path $installDir "Tlamatini.exe"
 $iconPath = Join-Path $installDir "Tlamatini.ico"
 
 Write-Host "Install directory: $installDir" -ForegroundColor White
 
-# Validate Tlamatini.ps1
-if (-not (Test-Path $ps1Path)) {
-    Write-Host "Error: Tlamatini.ps1 not found at: $ps1Path" -ForegroundColor Red
+# Validate Tlamatini.exe — the shortcut now targets the executable directly
+# (instead of going through powershell.exe + Tlamatini.ps1) so the running
+# console window picks up the .exe's embedded icon. Windows Terminal does
+# not honor a shortcut's IconLocation for its hosted tab, so the only way
+# to brand the running window is to launch the iconned .exe itself.
+if (-not (Test-Path $exePath)) {
+    Write-Host "Error: Tlamatini.exe not found at: $exePath" -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit 1
 }
-Write-Host "[OK] Tlamatini.ps1 found: $ps1Path" -ForegroundColor Green
+Write-Host "[OK] Tlamatini.exe found: $exePath" -ForegroundColor Green
 
 # Check icon
 if (Test-Path $iconPath) {
     Write-Host "[OK] Icon found: $iconPath" -ForegroundColor Green
 } else {
     Write-Host "[!] Warning: Tlamatini.ico not found at $iconPath" -ForegroundColor Yellow
-    Write-Host "    Shortcuts will use default PowerShell icon." -ForegroundColor Yellow
+    Write-Host "    Shortcut will fall back to the .exe's embedded icon." -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -83,21 +87,42 @@ If WScript.Arguments.Count < 1 Then
 End If
 
 strInstallDir = WScript.Arguments(0)
-strPowerShellScript = objFSO.BuildPath(strInstallDir, "Tlamatini.ps1")
+strExePath = objFSO.BuildPath(strInstallDir, "Tlamatini.exe")
 strIconPath = objFSO.BuildPath(strInstallDir, "Tlamatini.ico")
 
-' Function to create shortcut
+' Resolve %SystemRoot% explicitly. WScript.Shell.ExpandEnvironmentStrings
+' avoids depending on %WINDIR% being present in the spawning environment.
+strConhostPath = objShell.ExpandEnvironmentStrings("%SystemRoot%\System32\conhost.exe")
+
+' Function to create shortcut.
+'
+' Why conhost.exe is the TargetPath (and NOT powershell.exe or Tlamatini.exe):
+'   - On Windows 11 24H2+ Microsoft made Windows Terminal the default
+'     terminal application. WT does NOT honor a child .exe's embedded icon,
+'     does NOT honor the shortcut's IconLocation for the hosted tab, and
+'     does NOT honor SetConsoleIcon / WM_SETICON. So a shortcut targeting
+'     Tlamatini.exe directly STILL shows the cmd ">_" icon when WT hosts.
+'   - Explicitly invoking conhost.exe with Tlamatini.exe as its argument
+'     forces the legacy Windows Console Host to own the window, REGARDLESS
+'     of the user's "Default terminal application" setting. Conhost honors
+'     embedded .exe icons, IconLocation, AND the SetConsoleTitle/WM_SETICON
+'     calls Tlamatini's manage.py issues at startup.
+'   - This is the only single-shortcut design that survives every Windows
+'     11 default-terminal permutation we have observed.
 Sub CreateShortcut(shortcutPath)
     Set objShortcut = objShell.CreateShortcut(shortcutPath)
-    objShortcut.TargetPath = "powershell.exe"
-    objShortcut.Arguments = "-ExecutionPolicy Bypass -NoProfile -File """ & strPowerShellScript & """"
+    objShortcut.TargetPath = strConhostPath
+    objShortcut.Arguments = """" & strExePath & """"
     objShortcut.WorkingDirectory = strInstallDir
     objShortcut.Description = "Tlamatini Development Server"
     objShortcut.WindowStyle = 1
 
-    ' Set icon if it exists
+    ' Set icon: prefer the standalone .ico (sharper at all sizes for the
+    ' .lnk file in Explorer/Desktop); fall back to the .exe's embedded icon.
     If objFSO.FileExists(strIconPath) Then
         objShortcut.IconLocation = strIconPath & ",0"
+    Else
+        objShortcut.IconLocation = strExePath & ",0"
     End If
 
     objShortcut.Save

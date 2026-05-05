@@ -43,12 +43,15 @@ if (-not (Test-Path $installDir)) {
 }
 
 $installDir = (Resolve-Path $installDir).Path
-$ps1Path = Join-Path $installDir "Tlamatini.ps1"
+$exePath = Join-Path $installDir "Tlamatini.exe"
 $icoPath = Join-Path $installDir "Tlamatini.ico"
 
-# Validate required files
-if (-not (Test-Path $ps1Path)) {
-    Write-Error "Tlamatini.ps1 not found at: $ps1Path"
+# Validate required files. The .flw open-command now invokes Tlamatini.exe
+# directly (manage.py already detects a single .flw arg and rewrites argv to
+# `runserver --noreload`), so the running window is owned by Tlamatini.exe
+# and inherits its embedded icon — instead of inheriting cmd/powershell's.
+if (-not (Test-Path $exePath)) {
+    Write-Error "Tlamatini.exe not found at: $exePath"
     exit 1
 }
 
@@ -56,7 +59,7 @@ if (-not (Test-Path $icoPath)) {
     Write-Warning "Tlamatini.ico not found at $icoPath - icon will not be set."
 }
 
-$ps1Path = (Resolve-Path $ps1Path).Path
+$exePath = (Resolve-Path $exePath).Path
 if (Test-Path $icoPath) {
     $icoPath = (Resolve-Path $icoPath).Path
 }
@@ -138,7 +141,7 @@ Write-Host ""
 # ============================================================
 Write-Host "Registering .flw file association..." -ForegroundColor Cyan
 Write-Host "  InstallDir: $installDir" -ForegroundColor Cyan
-Write-Host "  Script:     $ps1Path" -ForegroundColor Cyan
+Write-Host "  Target exe: $exePath" -ForegroundColor Cyan
 Write-Host "  Icon:       $icoPath" -ForegroundColor Cyan
 
 try {
@@ -166,10 +169,18 @@ try {
         Write-Host "  [OK] Set DefaultIcon -> $icoPath,0" -ForegroundColor Green
     }
 
-    # 2e. Set open command: launch via cmd.exe /k -> powershell -> Tlamatini.ps1
+    # 2e. Set open command: launch via conhost.exe explicitly, NOT directly
+    # via Tlamatini.exe. Reason: on Windows 11 24H2+ the default terminal is
+    # Windows Terminal, which categorically ignores a child .exe's embedded
+    # icon, the shortcut's IconLocation, and SetConsoleIcon. Invoking
+    # conhost.exe explicitly forces the legacy console host (which DOES
+    # honor all three) regardless of the user's "Default terminal app"
+    # setting. manage.py detects a single .flw arg and rewrites argv to
+    # `runserver --noreload`, so passing the .flw path through still works.
+    $conhostPath = Join-Path $env:SystemRoot "System32\conhost.exe"
     $commandKey = "$progIdKey\shell\open\command"
     New-Item -Path $commandKey -Force | Out-Null
-    $openCmd = "cmd.exe /k powershell.exe -ExecutionPolicy Bypass -NoProfile -File `"$ps1Path`" -FlowFile `"%1`""
+    $openCmd = "`"$conhostPath`" `"$exePath`" `"%1`""
     Set-ItemProperty -Path $commandKey -Name "(Default)" -Value $openCmd
     Write-Host "  [OK] Set open command -> $openCmd" -ForegroundColor Green
 
@@ -206,7 +217,7 @@ try {
 
     Write-Host ""
     Write-Host "SUCCESS: .flw files are now associated with Tlamatini!" -ForegroundColor Green
-    Write-Host "Double-clicking a .flw file will launch Tlamatini.ps1 (not Tlamatini.exe directly)." -ForegroundColor Cyan
+    Write-Host "Double-clicking a .flw file will launch Tlamatini.exe directly." -ForegroundColor Cyan
 
 }
 catch {
