@@ -50,14 +50,13 @@ $iconPath = Join-Path $installDir "Tlamatini.ico"
 
 Write-Host "Install directory: $installDir" -ForegroundColor White
 
-# Validate Tlamatini.exe — the shortcut launches via conhost.exe so the
-# legacy Console Host owns the window (which honors WM_SETICON and the
-# .exe's embedded icon for title bar, taskbar, and Alt-Tab). If conhost
-# is unavailable the VBScript falls back to targeting Tlamatini.exe
-# directly — the app still launches but the running-window icon may show
-# the generic terminal glyph when Windows Terminal is the default host.
-# manage.py pins the CWD to os.path.dirname(sys.executable) on startup,
-# so all assets resolve relative to the .exe regardless of launch method.
+# Validate Tlamatini.exe — the shortcut targets Tlamatini.exe directly.
+# manage.py handles console branding (title + icon) via _brand_console_window()
+# and _set_app_user_model_id() on startup, so no conhost.exe wrapper is needed.
+# Previous versions used conhost.exe as the shortcut target to force the legacy
+# Console Host, but conhost.exe does not reliably accept arbitrary executables
+# as arguments on modern Windows — especially under restrictive Group Policy /
+# AppLocker / WDAC configurations — causing the shortcut to silently do nothing.
 if (-not (Test-Path $exePath)) {
     Write-Host "Error: Tlamatini.exe not found at: $exePath" -ForegroundColor Red
     Read-Host "Press Enter to exit"
@@ -93,31 +92,17 @@ strInstallDir = WScript.Arguments(0)
 strExePath = objFSO.BuildPath(strInstallDir, "Tlamatini.exe")
 strIconPath = objFSO.BuildPath(strInstallDir, "Tlamatini.ico")
 
-' Resolve conhost.exe — the preferred TargetPath.  Launching via conhost
-' forces the legacy Console Host to own the window even when Windows
-' Terminal is the user's default terminal, which lets WM_SETICON, the
-' embedded .exe icon, and the shortcut's IconLocation all take effect on
-' the title bar, taskbar, and Alt-Tab.
-'
-' If conhost is not found (very unlikely, but possible on stripped-down
-' images) the shortcut falls back to targeting Tlamatini.exe directly.
-' The app still launches — manage.py pins the CWD and brands the window
-' regardless — but the running-window icon may show the generic terminal
-' glyph under WT.
-strConhostPath = objShell.ExpandEnvironmentStrings("%SystemRoot%\System32\conhost.exe")
-bUseConhost = objFSO.FileExists(strConhostPath)
+' Target Tlamatini.exe directly.  manage.py brands the console window
+' (title + icon) via _brand_console_window() and _set_app_user_model_id()
+' on startup, so no conhost.exe wrapper is needed.  Previous versions
+' wrapped via conhost.exe but that fails silently on machines with
+' restrictive Group Policy / AppLocker / WDAC.
 
 Sub CreateShortcut(shortcutPath)
     Set objShortcut = objShell.CreateShortcut(shortcutPath)
 
-    If bUseConhost Then
-        objShortcut.TargetPath = strConhostPath
-        objShortcut.Arguments = """" & strExePath & """"
-    Else
-        objShortcut.TargetPath = strExePath
-        objShortcut.Arguments = ""
-    End If
-
+    objShortcut.TargetPath = strExePath
+    objShortcut.Arguments = ""
     objShortcut.WorkingDirectory = strInstallDir
     objShortcut.Description = "Tlamatini Development Server"
     objShortcut.WindowStyle = 1
@@ -131,11 +116,7 @@ Sub CreateShortcut(shortcutPath)
     End If
 
     objShortcut.Save
-    If bUseConhost Then
-        WScript.Echo "[OK] Created (via conhost): " & shortcutPath
-    Else
-        WScript.Echo "[OK] Created (direct exe):  " & shortcutPath
-    End If
+    WScript.Echo "[OK] Created: " & shortcutPath
 End Sub
 
 ' Create desktop shortcut
@@ -153,22 +134,61 @@ WScript.Echo "Shortcuts created successfully!"
 $vbsPath = Join-Path $scriptDir "CreateShortcut_Temp.vbs"
 $vbsScript | Out-File -FilePath $vbsPath -Encoding ASCII
 
-# Execute the VBScript, passing the install directory as argument
+# Try VBScript first, fall back to pure PowerShell COM if cscript is blocked
+$vbsSuccess = $false
 try {
     $output = & cscript.exe //NoLogo $vbsPath "$installDir" 2>&1
-    $output | ForEach-Object { Write-Host $_ -ForegroundColor Green }
-
-    # Clean up the temporary VBS file
-    Remove-Item $vbsPath -ErrorAction SilentlyContinue
-
-    Write-Host ""
-    Write-Host "You can now:" -ForegroundColor Cyan
-    Write-Host "  1. Double-click the shortcut on your desktop" -ForegroundColor White
-    Write-Host "  2. Double-click 'Tlamatini.lnk' in $installDir" -ForegroundColor White
-    Write-Host "  3. Pin the shortcut to the taskbar or Start menu" -ForegroundColor White
-
+    if ($LASTEXITCODE -eq 0) {
+        $output | ForEach-Object { Write-Host $_ -ForegroundColor Green }
+        $vbsSuccess = $true
+    }
 } catch {
-    Write-Host "Error creating shortcuts: $_" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Please check that the installation directory is writable." -ForegroundColor Yellow
+    Write-Host "[!] cscript.exe failed or is blocked by policy — using PowerShell fallback." -ForegroundColor Yellow
 }
+
+# Clean up the temporary VBS file regardless
+Remove-Item $vbsPath -ErrorAction SilentlyContinue
+
+# PowerShell COM fallback — works even when cscript/wscript are blocked by
+# AppLocker / WDAC / Group Policy, because WScript.Shell COM is still
+# accessible from PowerShell running under -ExecutionPolicy Bypass.
+if (-not $vbsSuccess) {
+    Write-Host "Creating shortcuts via PowerShell COM fallback..." -ForegroundColor White
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+
+        function New-TlamatiniShortcut($lnkPath) {
+            $sc = $shell.CreateShortcut($lnkPath)
+            $sc.TargetPath = $exePath
+            $sc.Arguments = ""
+            $sc.WorkingDirectory = $installDir
+            $sc.Description = "Tlamatini Development Server"
+            $sc.WindowStyle = 1
+            if (Test-Path $iconPath) {
+                $sc.IconLocation = "$iconPath,0"
+            } else {
+                $sc.IconLocation = "$exePath,0"
+            }
+            $sc.Save()
+            Write-Host "[OK] Created: $lnkPath" -ForegroundColor Green
+        }
+
+        # Desktop shortcut
+        $desktopPath = [Environment]::GetFolderPath("Desktop")
+        New-TlamatiniShortcut (Join-Path $desktopPath "Tlamatini.lnk")
+
+        # Local shortcut in install directory
+        New-TlamatiniShortcut (Join-Path $installDir "Tlamatini.lnk")
+
+        Write-Host ""
+        Write-Host "Shortcuts created successfully!" -ForegroundColor Green
+    } catch {
+        Write-Host "Error creating shortcuts via PowerShell: $_" -ForegroundColor Red
+    }
+}
+
+Write-Host ""
+Write-Host "You can now:" -ForegroundColor Cyan
+Write-Host "  1. Double-click the shortcut on your desktop" -ForegroundColor White
+Write-Host "  2. Double-click 'Tlamatini.lnk' in $installDir" -ForegroundColor White
+Write-Host "  3. Pin the shortcut to the taskbar or Start menu" -ForegroundColor White
