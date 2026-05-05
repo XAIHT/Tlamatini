@@ -169,18 +169,20 @@ try {
         Write-Host "  [OK] Set DefaultIcon -> $icoPath,0" -ForegroundColor Green
     }
 
-    # 2e. Set open command: launch via conhost.exe explicitly, NOT directly
-    # via Tlamatini.exe. Reason: on Windows 11 24H2+ the default terminal is
-    # Windows Terminal, which categorically ignores a child .exe's embedded
-    # icon, the shortcut's IconLocation, and SetConsoleIcon. Invoking
-    # conhost.exe explicitly forces the legacy console host (which DOES
-    # honor all three) regardless of the user's "Default terminal app"
-    # setting. manage.py detects a single .flw arg and rewrites argv to
+    # 2e. Set open command: launch via conhost.exe so the legacy Console
+    # Host owns the window (honors WM_SETICON, embedded .exe icon, and
+    # IconLocation for title bar, taskbar, and Alt-Tab). Falls back to
+    # targeting Tlamatini.exe directly if conhost is not found.
+    # manage.py detects a single .flw arg and rewrites argv to
     # `runserver --noreload`, so passing the .flw path through still works.
     $conhostPath = Join-Path $env:SystemRoot "System32\conhost.exe"
     $commandKey = "$progIdKey\shell\open\command"
     New-Item -Path $commandKey -Force | Out-Null
-    $openCmd = "`"$conhostPath`" `"$exePath`" `"%1`""
+    if (Test-Path $conhostPath) {
+        $openCmd = "`"$conhostPath`" `"$exePath`" `"%1`""
+    } else {
+        $openCmd = "`"$exePath`" `"%1`""
+    }
     Set-ItemProperty -Path $commandKey -Name "(Default)" -Value $openCmd
     Write-Host "  [OK] Set open command -> $openCmd" -ForegroundColor Green
 

@@ -8,15 +8,33 @@ import sys
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
 
+def _set_app_user_model_id():
+    """Set the explicit AppUserModelID for taskbar identity.
+
+    Must be called BEFORE any window is created.  This ensures that:
+    - The running window groups with the pinned desktop shortcut
+    - "Pin to taskbar" from the running instance preserves the Tlamatini icon
+    - The process is identified distinctly even when hosted by Windows Terminal
+
+    The ID follows Microsoft's recommended CompanyName.ProductName.SubProduct
+    pattern.  Failures are silent — identity is cosmetic.
+    """
+    if os.name != 'nt':
+        return
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "XAIHT.Tlamatini.Server"
+        )
+    except Exception:
+        pass
+
+
+_set_app_user_model_id()
+
+
 def _brand_console_window():
     """Set the console window's title and icon as early as possible.
-
-    This is the **fourth and fifth bulletproof-icon layers**. The first three
-    layers (icon embedded in Tlamatini.exe, shortcut launching conhost.exe
-    explicitly, .flw association going through conhost.exe) make sure the
-    legacy console host owns the window — but if any of them are bypassed
-    (a user runs Tlamatini.exe directly from a Windows Terminal tab, for
-    instance) we still want a clean title and icon.
 
     - SetConsoleTitleW: honored by BOTH conhost AND Windows Terminal. So even
       when WT is the host, the tab title becomes "Tlamatini" instead of the

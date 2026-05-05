@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -92,7 +93,15 @@ class SkillAuditLog:
         self.skill_name = skill_name
         self.user_id = user_id
         if base_dir is None:
-            base_dir = Path.home() / ".tlamatini" / "skill-audit"
+            # Keep state under the installation directory, not the user's
+            # home folder (which may be permission-restricted on corporate
+            # machines).  Same _app_base_dir logic as acpx/config.py.
+            import sys
+            if getattr(sys, "frozen", False):
+                _app_base = Path(os.path.dirname(sys.executable))
+            else:
+                _app_base = Path(__file__).resolve().parent.parent  # agent/
+            base_dir = _app_base / ".tlamatini" / "skill-audit"
         self.dir = base_dir / time.strftime("%Y-%m")
         self.dir.mkdir(parents=True, exist_ok=True)
         self.path = self.dir / f"{int(time.time())}_{skill_name}_{self.id[:8]}.ndjson"

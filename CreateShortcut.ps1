@@ -50,11 +50,14 @@ $iconPath = Join-Path $installDir "Tlamatini.ico"
 
 Write-Host "Install directory: $installDir" -ForegroundColor White
 
-# Validate Tlamatini.exe — the shortcut now targets the executable directly
-# (instead of going through powershell.exe + Tlamatini.ps1) so the running
-# console window picks up the .exe's embedded icon. Windows Terminal does
-# not honor a shortcut's IconLocation for its hosted tab, so the only way
-# to brand the running window is to launch the iconned .exe itself.
+# Validate Tlamatini.exe — the shortcut launches via conhost.exe so the
+# legacy Console Host owns the window (which honors WM_SETICON and the
+# .exe's embedded icon for title bar, taskbar, and Alt-Tab). If conhost
+# is unavailable the VBScript falls back to targeting Tlamatini.exe
+# directly — the app still launches but the running-window icon may show
+# the generic terminal glyph when Windows Terminal is the default host.
+# manage.py pins the CWD to os.path.dirname(sys.executable) on startup,
+# so all assets resolve relative to the .exe regardless of launch method.
 if (-not (Test-Path $exePath)) {
     Write-Host "Error: Tlamatini.exe not found at: $exePath" -ForegroundColor Red
     Read-Host "Press Enter to exit"
@@ -90,29 +93,31 @@ strInstallDir = WScript.Arguments(0)
 strExePath = objFSO.BuildPath(strInstallDir, "Tlamatini.exe")
 strIconPath = objFSO.BuildPath(strInstallDir, "Tlamatini.ico")
 
-' Resolve %SystemRoot% explicitly. WScript.Shell.ExpandEnvironmentStrings
-' avoids depending on %WINDIR% being present in the spawning environment.
-strConhostPath = objShell.ExpandEnvironmentStrings("%SystemRoot%\System32\conhost.exe")
-
-' Function to create shortcut.
+' Resolve conhost.exe — the preferred TargetPath.  Launching via conhost
+' forces the legacy Console Host to own the window even when Windows
+' Terminal is the user's default terminal, which lets WM_SETICON, the
+' embedded .exe icon, and the shortcut's IconLocation all take effect on
+' the title bar, taskbar, and Alt-Tab.
 '
-' Why conhost.exe is the TargetPath (and NOT powershell.exe or Tlamatini.exe):
-'   - On Windows 11 24H2+ Microsoft made Windows Terminal the default
-'     terminal application. WT does NOT honor a child .exe's embedded icon,
-'     does NOT honor the shortcut's IconLocation for the hosted tab, and
-'     does NOT honor SetConsoleIcon / WM_SETICON. So a shortcut targeting
-'     Tlamatini.exe directly STILL shows the cmd ">_" icon when WT hosts.
-'   - Explicitly invoking conhost.exe with Tlamatini.exe as its argument
-'     forces the legacy Windows Console Host to own the window, REGARDLESS
-'     of the user's "Default terminal application" setting. Conhost honors
-'     embedded .exe icons, IconLocation, AND the SetConsoleTitle/WM_SETICON
-'     calls Tlamatini's manage.py issues at startup.
-'   - This is the only single-shortcut design that survives every Windows
-'     11 default-terminal permutation we have observed.
+' If conhost is not found (very unlikely, but possible on stripped-down
+' images) the shortcut falls back to targeting Tlamatini.exe directly.
+' The app still launches — manage.py pins the CWD and brands the window
+' regardless — but the running-window icon may show the generic terminal
+' glyph under WT.
+strConhostPath = objShell.ExpandEnvironmentStrings("%SystemRoot%\System32\conhost.exe")
+bUseConhost = objFSO.FileExists(strConhostPath)
+
 Sub CreateShortcut(shortcutPath)
     Set objShortcut = objShell.CreateShortcut(shortcutPath)
-    objShortcut.TargetPath = strConhostPath
-    objShortcut.Arguments = """" & strExePath & """"
+
+    If bUseConhost Then
+        objShortcut.TargetPath = strConhostPath
+        objShortcut.Arguments = """" & strExePath & """"
+    Else
+        objShortcut.TargetPath = strExePath
+        objShortcut.Arguments = ""
+    End If
+
     objShortcut.WorkingDirectory = strInstallDir
     objShortcut.Description = "Tlamatini Development Server"
     objShortcut.WindowStyle = 1
@@ -126,7 +131,11 @@ Sub CreateShortcut(shortcutPath)
     End If
 
     objShortcut.Save
-    WScript.Echo "[OK] Created: " & shortcutPath
+    If bUseConhost Then
+        WScript.Echo "[OK] Created (via conhost): " & shortcutPath
+    Else
+        WScript.Echo "[OK] Created (direct exe):  " & shortcutPath
+    End If
 End Sub
 
 ' Create desktop shortcut

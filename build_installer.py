@@ -396,9 +396,19 @@ def main():
     print("\n--- Setting up Release folder ---")
     release_dir = root / "dist" / "Tlamatini_Release"
     if release_dir.exists():
-        shutil.rmtree(release_dir, onerror=_on_rmtree_error)
+        clean_directory(release_dir)
 
-    installer_dir.rename(release_dir)
+    # Retry the rename — on Windows, antivirus/indexer/Explorer may briefly
+    # hold a handle on the directory after rmtree returns.
+    for attempt in range(1, 6):
+        try:
+            installer_dir.rename(release_dir)
+            break
+        except PermissionError as e:
+            if attempt == 5:
+                raise
+            print(f"  Rename attempt {attempt}/5 failed ({e}), retrying in 2s...")
+            time.sleep(2)
     print(f"Renamed {installer_dir.name}/ → {release_dir.name}/")
 
     # ── 8) Move pkg.zip into the release folder (no duplicate) ───────

@@ -6,8 +6,8 @@ Tlamatini reads ACPX config from the same `config.json` Tlamatini already
 uses for the rest of the system. The config block lives under the top-level
 key "acpx". When the key is missing, we fall back to a permissive-but-safe
 default that:
-    - Uses the user's home dir as cwd
-    - Stores ACP session state under <user-home>/.tlamatini/acpx-state/
+    - Uses the process cwd as cwd
+    - Stores ACP session state under <app-base>/.tlamatini/acpx-state/
     - permissionMode = "approve-reads"   (writes require approval)
     - nonInteractivePermissions = "deny" (deny-on-no-prompt is safer)
     - timeoutSeconds = 120
@@ -161,9 +161,24 @@ def _coerce_agents_env(raw: Any) -> Dict[str, Dict[str, str]]:
     return out
 
 
+def _app_base_dir() -> Path:
+    """Return the application base directory (where config.json lives).
+
+    - Frozen mode: directory containing the executable.
+    - Source mode: ``agent/`` (two parents up from this file).
+
+    This keeps all runtime state under the installation directory,
+    avoiding writes to the user's home folder — which may be
+    permission-restricted on corporate machines.
+    """
+    import sys
+    if getattr(sys, "frozen", False):
+        return Path(os.path.dirname(sys.executable))
+    return Path(__file__).resolve().parent.parent          # agent/
+
+
 def _default_state_dir() -> str:
-    home = Path(os.path.expanduser("~"))
-    return str(home / ".tlamatini" / "acpx-state")
+    return str(_app_base_dir() / ".tlamatini" / "acpx-state")
 
 
 def _default_cwd() -> str:
@@ -265,7 +280,9 @@ DEFAULT_ACPX_CONFIG_BLOCK: Dict[str, Any] = {
     "cwd": "",
     "_acpx_stateDir_comment": (
         "Where AcpSession transcripts and per-session JSON records are "
-        "written. Empty string = ~/.tlamatini/acpx-state/."
+        "written. Empty string = <app-base>/.tlamatini/acpx-state/ "
+        "(kept under the installation directory to avoid writes to "
+        "restricted user-profile folders on corporate machines)."
     ),
     "stateDir": "",
     "_acpx_probeAgent_comment": (
