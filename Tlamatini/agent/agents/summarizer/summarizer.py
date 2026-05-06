@@ -417,6 +417,33 @@ def poll_source_agents(source_agents: List[str], system_prompt: str,
     return event_triggered
 
 
+def _build_default_oneshot_prompt(target_words: int) -> str:
+    """Default summarization prompt used when the caller did not supply a
+    `system_prompt` in one-shot mode. Tuned to be short, neutral, and to
+    honor `target_words` when given without forcing it as a hard limit."""
+    if target_words and target_words > 0:
+        return (
+            f"Summarize the following text in approximately {target_words} words. "
+            "Preserve the central claim, named entities, and key technical details. "
+            "Do not add facts that are not in the source. Output only the summary text."
+        )
+    return (
+        "Summarize the following text concisely. Preserve the central claim, "
+        "named entities, and key technical details. Do not add facts that are "
+        "not in the source. Output only the summary text."
+    )
+
+
+def run_oneshot_summary(input_text: str, system_prompt: str, target_words: int,
+                        host: str, model: str) -> str:
+    """One-shot summarization path. Sends `input_text` directly to the LLM
+    with the resolved system prompt and returns the summary string. Errors
+    propagate as RuntimeError so the caller can decide how to surface them."""
+    effective_prompt = (system_prompt or '').strip() or _build_default_oneshot_prompt(target_words)
+    summary = query_ollama(host, model, effective_prompt, input_text)
+    return summary
+
+
 def main():
     config = load_config()
 
@@ -427,25 +454,63 @@ def main():
         logging.info("=" * 60)
 
     try:
-        source_agents = config.get('source_agents', [])
-        system_prompt = config.get('system_prompt', '')
-        llm_config = config.get('llm', {})
+        source_agents = config.get('source_agents', []) or []
+        system_prompt = config.get('system_prompt', '') or ''
+        llm_config = config.get('llm', {}) or {}
         host = llm_config.get('host', 'http://localhost:11434')
         model = llm_config.get('model', 'llama3.1:8b')
         poll_interval = config.get('poll_interval', 5)
-        target_agents = config.get('target_agents', [])
+        target_agents = config.get('target_agents', []) or []
+        input_text = (config.get('input_text', '') or '').strip()
+        try:
+            target_words = int(config.get('target_words', 0) or 0)
+        except (TypeError, ValueError):
+            target_words = 0
 
         logging.info("SUMMARIZER AGENT STARTED")
         logging.info(f"Source agents: {source_agents}")
         logging.info(f"Model: {model} @ {host}")
         logging.info(f"Poll interval: {poll_interval}s")
         logging.info(f"Targets: {target_agents}")
+        logging.info(f"One-shot input_text length: {len(input_text)} chars; target_words={target_words}")
         logging.info("=" * 60)
 
         event_triggered = False
 
-        if not source_agents:
-            logging.error("No source_agents configured. Connect source agents on the canvas.")
+        # ── One-shot text mode ──────────────────────────────────────────
+        # Triggered when the chat tool `chat_agent_summarize_text` (or any
+        # caller) sets `input_text` and leaves `source_agents` empty. We
+        # bypass the polling loop entirely and emit a single INI_SECTION
+        # block so Parametrizer / Exec Report consume the result the same
+        # way they consume a polling-mode summary.
+        if input_text and not source_agents:
+            try:
+                summary = run_oneshot_summary(
+                    input_text, system_prompt, target_words, host, model
+                )
+            except RuntimeError as exc:
+                logging.error(f"One-shot summarization failed: {exc}")
+                summary = ""
+
+            logging.info(
+                "INI_SECTION_SUMMARIZER<<<\n"
+                f"model: {model}\n"
+                "source: input_text\n"
+                f"target_words: {target_words}\n"
+                "\n"
+                f"{summary}\n"
+                ">>>END_SECTION_SUMMARIZER"
+            )
+
+            # In one-shot mode any non-empty summary counts as success and
+            # downstream agents are triggered (mirrors the polling path's
+            # behavior on [EVENT_TRIGGERED]).
+            event_triggered = bool(summary.strip())
+        elif not source_agents:
+            logging.error(
+                "No source_agents configured. Connect source agents on the canvas, "
+                "or set `input_text` in config.yaml for one-shot mode."
+            )
         elif not system_prompt.strip():
             logging.error("No system_prompt configured. Set the 'system_prompt' field in config.yaml.")
         else:

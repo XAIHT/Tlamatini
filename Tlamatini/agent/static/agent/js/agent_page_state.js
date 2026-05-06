@@ -171,6 +171,7 @@ const maximalTheoricTokens = 12500;
 const MAX_MCPS = 32;
 const MULTI_TURN_STORAGE_KEY = 'multiTurnEnabled';
 const EXEC_REPORT_STORAGE_KEY = 'execReportEnabled';
+const ACPX_STORAGE_KEY = 'acpxEnabled';
 
 // --- Static DOM references ---
 const textEditorPre = document.querySelector('#text-editor pre');
@@ -191,6 +192,7 @@ const reConnectButton = document.getElementById('re-connect-button');
 const cleanHistoryButton = document.getElementById('clean-history');
 const multiTurnCheckbox = document.getElementById('multi-turn-enabled');
 const execReportCheckbox = document.getElementById('exec-report-enabled');
+const acpxCheckbox = document.getElementById('acpx-enabled');
 const contextMenuButton = document.getElementById('context-menu-button');
 const mcpsMenuButton = document.getElementById('mcps-menu-button');
 const agentsMenuButton = document.getElementById('agents-menu-button');
@@ -279,6 +281,39 @@ function applyStoredExecReportState() { // eslint-disable-line no-unused-vars
     }
 
     execReportCheckbox.checked = enabled;
+}
+
+function isAcpxEnabled() { // eslint-disable-line no-unused-vars
+    return !!(acpxCheckbox && acpxCheckbox.checked);
+}
+
+function persistAcpxState(enabled) { // eslint-disable-line no-unused-vars
+    try {
+        sessionStorage.setItem(ACPX_STORAGE_KEY, enabled ? 'true' : 'false');
+    } catch (err) {
+        console.error('Failed to persist ACPX state:', err);
+    }
+}
+
+function applyStoredAcpxState() { // eslint-disable-line no-unused-vars
+    if (!acpxCheckbox) {
+        return;
+    }
+
+    // Default ON: when nothing has been persisted yet, leave ACPX enabled so
+    // Tlamatini boots into the ACPX-aided Multi-Turn behavior. The user has
+    // to explicitly untick the box to fall back to legacy mechanics.
+    let enabled = true;
+    try {
+        const stored = sessionStorage.getItem(ACPX_STORAGE_KEY);
+        if (stored !== null) {
+            enabled = stored === 'true';
+        }
+    } catch (err) {
+        console.error('Failed to restore ACPX state:', err);
+    }
+
+    acpxCheckbox.checked = enabled;
 }
 
 // --- Open in... dropdown references ---

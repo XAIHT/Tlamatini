@@ -18,14 +18,30 @@
 # Source agents whose log files will be monitored/summarized
 source_agents: []
 
+# One-shot text mode (used by the chat tool `chat_agent_summarize_text`).
+# When `input_text` is non-empty and `source_agents` is empty, this agent
+# bypasses the log-polling loop, sends the text directly to the LLM with
+# `system_prompt` (auto-built from `target_words` when not provided), emits
+# one INI_SECTION_SUMMARIZER block with the result, and triggers
+# `target_agents`. Leave both `input_text` and `target_words` at their
+# defaults to keep the canvas log-polling behavior untouched.
+input_text: ""
+
+# Optional soft target length for the one-shot summary (in words). 0 = no
+# explicit target. Only honored in one-shot mode; ignored when polling.
+target_words: 0
+
 # Multi-line system prompt sent to the LLM along with the log content.
-# The prompt MUST instruct the LLM to output:
+# In log-polling mode the prompt MUST instruct the LLM to output:
 #   outcome_word:[EVENT_TRIGGERED]  when a positive event is found
 #   outcome_word:[NONE]             when nothing is detected
 # Example:
 #   "You must look in the log files if there is a login-name or password,
 #    and if found then print FOUND_CREDS:[EVENT_TRIGGERED],
 #    otherwise print NOTHING_INTERESTING_FOUND:[NONE]"
+# In one-shot mode (when `input_text` is set), this prompt is used as-is.
+# If left empty in one-shot mode, a default summarization prompt is built
+# from `target_words`.
 system_prompt: ""
 
 # LLM connection settings (Ollama)

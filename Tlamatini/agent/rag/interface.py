@@ -626,14 +626,20 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         raw_text = question.get("input", "")
         multi_turn_enabled = bool(question.get("multi_turn_enabled", False))
         exec_report_enabled = bool(question.get("exec_report_enabled", False)) and multi_turn_enabled
+        # ACPX defaults to ENABLED so the modern ACPX-aided behavior is the
+        # baseline. Only an explicit ``False`` from the toolbar checkbox flips
+        # the system back onto its legacy Multi-Turn / one-shot flow.
+        acpx_enabled = bool(question.get("acpx_enabled", True))
     elif isinstance(question, str):
         raw_text = question
         multi_turn_enabled = False
         exec_report_enabled = False
+        acpx_enabled = True
     else:
         raw_text = str(question)
         multi_turn_enabled = False
         exec_report_enabled = False
+        acpx_enabled = True
 
     try:
         with open(os.path.join(application_path, 'config.json'), 'r', encoding='utf-8') as f:
@@ -648,13 +654,24 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         global_state.set_state('rag_chain_ready', True)
         return str(response)
 
-    if not multi_turn_enabled and not is_valid_prompt(raw_text):
+    # Both Multi-Turn and ACPX bypass the prompt-shape and access-validation
+    # gates. The reasoning is identical for both: when the LLM has agentic
+    # tooling bound (Multi-Turn's tool surface, or ACPX's external CLI
+    # surface), the user's request is allowed to be free-form ("spawn claude
+    # and ask it ...", "run the Skill Catalog Carnival demo, please.") rather
+    # than the imperative shape `is_valid_prompt` enforces for the legacy
+    # one-shot path. Likewise the access validator can reject any prompt
+    # mentioning paths the operator-style flow needs to reference.
+    bypass_prompt_validation = bool(multi_turn_enabled) or bool(acpx_enabled)
+
+    if not bypass_prompt_validation and not is_valid_prompt(raw_text):
         response = ('Please rephrase your input as a clear question or command. '
                    'Examples: "How do I...?", "What is...?", "Show me...", "Create a...", or "Explain..."')
         global_state.set_state('rag_chain_ready', True)
         return str(response)
-    if multi_turn_enabled and not is_valid_prompt(raw_text):
-        print("--- ask_rag: multi-turn enabled; bypassing prompt-shape validation ---")
+    if bypass_prompt_validation and not is_valid_prompt(raw_text):
+        reason = "multi-turn" if multi_turn_enabled else "ACPX"
+        print(f"--- ask_rag: {reason} enabled; bypassing prompt-shape validation ---")
 
     # ── Parallel classifier execution with sequential evaluation ──
     # Both classifiers are independent and stateless: each receives only
@@ -675,8 +692,9 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         _inet_executor.shutdown(wait=False)  # don't block; we'll .result() later
 
     # ── BARRIER STEP 1: access validation (security gate, evaluated first) ──
-    if multi_turn_enabled:
-        print("--- ask_rag: multi-turn enabled; bypassing prompt access-validation chain ---")
+    if bypass_prompt_validation:
+        reason = "multi-turn" if multi_turn_enabled else "ACPX"
+        print(f"--- ask_rag: {reason} enabled; bypassing prompt access-validation chain ---")
         access_rejection = None
     else:
         access_rejection = _validate_accesses_in_prompt(raw_text)
@@ -695,6 +713,10 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         payload["multi_turn_enabled"] = multi_turn_enabled
     if exec_report_enabled:
         payload["exec_report_enabled"] = True
+    # Always forward acpx_enabled so the planner / executor can filter the
+    # ACPX tool surface out of the bound tools when the user has unticked
+    # the "ACPX" toolbar checkbox.
+    payload["acpx_enabled"] = acpx_enabled
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException

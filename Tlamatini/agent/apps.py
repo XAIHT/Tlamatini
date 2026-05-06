@@ -125,7 +125,7 @@ class AgentConfig(AppConfig):
             try:
                 import os
                 import shutil
-                
+
                 # Determine pool path based on frozen mode
                 if getattr(sys, "frozen", False):
                     exe_dir = os.path.dirname(sys.executable)
@@ -133,7 +133,7 @@ class AgentConfig(AppConfig):
                 else:
                     module_dir = os.path.dirname(os.path.abspath(__file__))
                     pool_path = os.path.join(module_dir, 'agents', 'pools')
-                
+
                 if os.path.exists(pool_path):
                     for item in os.listdir(pool_path):
                         item_path = os.path.join(pool_path, item)
@@ -146,6 +146,50 @@ class AgentConfig(AppConfig):
                     print(f"--- Pools directory does not exist, skipping cleanup: {pool_path}")
             except Exception:
                 logging.exception("Failed to cleanup pool directory")
+
+            # Cleanup .tlamatini runtime artifact directories on startup.
+            # Two siblings live under <app-base>/.tlamatini/ and accumulate
+            # garbage every run:
+            #   - acpx-state/   ACPX session JSON + per-session transcript
+            #                   NDJSON written by AcpSession.send_turn /
+            #                   _oneshot_send_turn (agent/acpx/runtime.py)
+            #   - skill-audit/<YYYY-MM>/  one NDJSON per SkillHarness invocation
+            #                             written by SkillAuditLog
+            #                             (agent/skills/harness.py)
+            # We wipe their CONTENTS (not the parent .tlamatini/ folder) so
+            # any future sibling under .tlamatini/ is preserved untouched.
+            # Path resolution mirrors _app_base_dir() in agent/acpx/config.py
+            # and SkillAuditLog.__init__ in agent/skills/harness.py — the
+            # writers' authoritative source of truth.
+            try:
+                import os
+                import shutil
+
+                if getattr(sys, "frozen", False):
+                    app_base = os.path.dirname(sys.executable)
+                else:
+                    app_base = os.path.dirname(os.path.abspath(__file__))  # agent/
+
+                for subdir in ('acpx-state', 'skill-audit'):
+                    target = os.path.join(app_base, '.tlamatini', subdir)
+                    if not os.path.exists(target):
+                        print(f"--- {subdir} directory does not exist, skipping cleanup: {target}")
+                        continue
+
+                    removed = 0
+                    for item in os.listdir(target):
+                        item_path = os.path.join(target, item)
+                        try:
+                            if os.path.isdir(item_path):
+                                shutil.rmtree(item_path)
+                            else:
+                                os.remove(item_path)
+                            removed += 1
+                        except Exception as inner_err:
+                            print(f"--- Warning: failed to remove {item_path}: {inner_err}")
+                    print(f"--- Cleaned up {removed} entr{'y' if removed == 1 else 'ies'} from {target}")
+            except Exception:
+                logging.exception("Failed to cleanup .tlamatini runtime artifact directories")
 
             # Register cleanup handlers for shutdown (Ctrl+C, window close, etc.)
             import atexit

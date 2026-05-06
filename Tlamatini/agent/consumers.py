@@ -543,7 +543,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=True):
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -565,6 +565,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     "conversation_user_id": conversation_user.id,
                     "multi_turn_enabled": bool(multi_turn_enabled),
                     "exec_report_enabled": exec_report_enabled,
+                    "acpx_enabled": bool(acpx_enabled),
                 },
                 inet_enabled=self.inet_enabled
             )
@@ -614,6 +615,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
             message = text_data_json['message']
             multi_turn_enabled = bool(text_data_json.get('multi_turn_enabled', False))
             exec_report_enabled = bool(text_data_json.get('exec_report_enabled', False)) and multi_turn_enabled
+            # ACPX defaults to ENABLED. The frontend always sends an explicit
+            # boolean, but if it is ever missing we keep the ACPX surface live
+            # so Tlamatini's default behavior is the modern, ACPX-aided flow.
+            acpx_enabled = bool(text_data_json.get('acpx_enabled', True))
 
             if 'type' in text_data_json:
                 type = text_data_json['type']
@@ -1114,6 +1119,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 message, user,
                 multi_turn_enabled=multi_turn_enabled,
                 exec_report_enabled=exec_report_enabled,
+                acpx_enabled=acpx_enabled,
             ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")

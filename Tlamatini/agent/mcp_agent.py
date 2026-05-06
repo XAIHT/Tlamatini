@@ -6,6 +6,7 @@ from typing import Dict, Any, Tuple
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
+from .acpx import filter_acpx_tools
 from .capability_registry import select_tools_for_request
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
@@ -917,6 +918,13 @@ class CapabilityAwareToolAgentExecutor:
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
         # Exec report is multi-turn-only: outside multi-turn we strip it.
         exec_report_enabled = bool(payload.get("exec_report_enabled", False)) and multi_turn_enabled
+        # ACPX defaults to ENABLED. When the toolbar checkbox is unticked we
+        # filter every LLM-facing ACPX tool out of self.tools BEFORE planning
+        # or capability-based selection runs, so the entire ACPX surface
+        # disappears from the request's bound tool set and the system falls
+        # back to legacy Multi-Turn / one-shot mechanics.
+        acpx_enabled = bool(payload.get("acpx_enabled", True))
+        request_tools = filter_acpx_tools(self.tools, acpx_enabled)
         global_execution_plan = payload.get("global_execution_plan")
 
         with scoped_request_state(
@@ -924,7 +932,21 @@ class CapabilityAwareToolAgentExecutor:
             suppress_visible_consoles=multi_turn_enabled,
         ):
             if not multi_turn_enabled:
-                print("--- CapabilityAwareToolAgentExecutor: multi-turn disabled; using legacy full-tool binding ---")
+                print(
+                    "--- CapabilityAwareToolAgentExecutor: multi-turn disabled; "
+                    f"using legacy full-tool binding (acpx_enabled={acpx_enabled}) ---"
+                )
+                # Legacy path: rebuild a one-shot executor over the request-scoped
+                # tool set so disabling ACPX in legacy mode also strips the ACPX
+                # tools from the LLM's bind_tools() list.
+                if not acpx_enabled:
+                    legacy_executor = MultiTurnToolAgentExecutor(
+                        llm=self.llm,
+                        system_prompt=_build_system_prompt(self.preeliminary_prompt, request_tools),
+                        tools=request_tools,
+                        max_iterations=self.max_iterations,
+                    )
+                    return legacy_executor.invoke({"input": input_text})
                 return self.legacy_executor.invoke({"input": input_text})
 
             selected_tools = None
@@ -932,12 +954,12 @@ class CapabilityAwareToolAgentExecutor:
                 planned_tool_names = selected_tool_names_from_plan(global_execution_plan)
                 if planned_tool_names:
                     selected_tools = [
-                        tool for tool in self.tools
+                        tool for tool in request_tools
                         if tool.name in set(planned_tool_names)
                     ]
                     print(
                         "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
-                        f"with {len(selected_tools)} planned tools"
+                        f"with {len(selected_tools)} planned tools (acpx_enabled={acpx_enabled})"
                     )
                 else:
                     print(
@@ -945,14 +967,15 @@ class CapabilityAwareToolAgentExecutor:
                         "falling back to capability-based selection"
                     )
             if not selected_tools:
-                selected_tools = select_tools_for_request(input_text, self.tools)
+                selected_tools = select_tools_for_request(input_text, request_tools)
                 if not selected_tools:
-                    selected_tools = self.tools
+                    selected_tools = request_tools
 
             selected_names = [tool.name for tool in selected_tools]
             print(
                 "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; "
-                f"selected {len(selected_tools)}/{len(self.tools)} tools: {selected_names}"
+                f"selected {len(selected_tools)}/{len(request_tools)} tools "
+                f"(acpx_enabled={acpx_enabled}): {selected_names}"
             )
             executor = self._get_executor_for_tools(selected_tools)
             executor_payload = {"input": input_text}

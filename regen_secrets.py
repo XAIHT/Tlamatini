@@ -13,6 +13,7 @@ Targeted files (resolved relative to this script):
         ANTHROPIC_API_KEY  (top + acpx.agents.claude.env)
         GEMINI_API_KEY     (top + acpx.agents.gemini.env)
         GOOGLE_API_KEY     (acpx.agents.gemini.env, alias)
+        OPENAI_API_KEY     (acpx.agents.codex.env)
         ollama_token       (top)
 
     Tlamatini/agent/agents/telegramer/config.yaml
@@ -132,6 +133,7 @@ def patch_config_json(mode: str, keys: Dict[str, str], dry_run: bool) -> List[st
     set_acpx_env("claude", "ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
     set_acpx_env("gemini", "GEMINI_API_KEY",    "GEMINI_API_KEY")
     set_acpx_env("gemini", "GOOGLE_API_KEY",    "GOOGLE_API_KEY")
+    set_acpx_env("codex",  "OPENAI_API_KEY",    "OPENAI_API_KEY")
 
     serialized = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     if not dry_run:

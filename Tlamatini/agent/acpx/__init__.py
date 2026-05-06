@@ -60,6 +60,36 @@ from .tools import (
     list_skills,
 )
 
+
+# Canonical names of every LLM-facing tool that drives the ACPX surface.
+# Used by the chat toolbar's "ACPX" checkbox: when the user unticks it,
+# the request-scoped tool list is filtered through ``filter_acpx_tools``
+# so the unified-agent executor never even sees these tools, which forces
+# Tlamatini back onto its legacy Multi-Turn / one-shot behavior.
+ACPX_TOOL_NAMES: frozenset[str] = frozenset({
+    "acp_spawn",
+    "acp_send",
+    "acp_send_and_wait",
+    "acp_kill",
+    "acp_doctor",
+    "acp_transcript",
+    "acp_session_status",
+    "acp_list_sessions",
+    "acp_relay",
+    "list_acp_agents",
+    "invoke_skill",
+    "list_skills",
+})
+
+
+def filter_acpx_tools(tools, acpx_enabled: bool):
+    """Return ``tools`` unchanged when ACPX is enabled; otherwise drop every
+    LLM-facing ACPX/Skill tool so the planner and executor behave as if the
+    ACPX surface had never been registered."""
+    if acpx_enabled:
+        return list(tools)
+    return [t for t in tools if getattr(t, "name", None) not in ACPX_TOOL_NAMES]
+
 __all__ = [
     "AcpxConfig",
     "PERMISSION_MODES",
@@ -91,4 +121,6 @@ __all__ = [
     "list_acp_agents",
     "invoke_skill",
     "list_skills",
+    "ACPX_TOOL_NAMES",
+    "filter_acpx_tools",
 ]

@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -396,7 +396,8 @@ document.getElementById('chat-form').onsubmit = function (e) {
         const messageSent = sendChatSocketMessage(JSON.stringify({
             'message': rawMessage,
             'multi_turn_enabled': isMultiTurnEnabled(),
-            'exec_report_enabled': isExecReportEnabled()
+            'exec_report_enabled': isExecReportEnabled(),
+            'acpx_enabled': isAcpxEnabled()
         }));
         if (!messageSent) {
             return;
@@ -423,6 +424,7 @@ window.onload = () => {
     updateViewContextDirMenuState();
     applyStoredMultiTurnState();
     applyStoredExecReportState();
+    applyStoredAcpxState();
     if (openButton) {
         openButton.addEventListener('click', (e) => {
             e.preventDefault();
@@ -614,6 +616,11 @@ window.onload = () => {
     if (execReportCheckbox) {
         execReportCheckbox.addEventListener('change', function () {
             persistExecReportState(!!this.checked);
+        });
+    }
+    if (acpxCheckbox) {
+        acpxCheckbox.addEventListener('change', function () {
+            persistAcpxState(!!this.checked);
         });
     }
     syncClearContextMenuState();

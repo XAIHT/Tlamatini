@@ -21,6 +21,7 @@ from ..global_execution_planner import (
     summarize_global_execution_plan,
 )
 from ..tools import get_mcp_tools
+from ..acpx import filter_acpx_tools
 from .utils import _pack_context, _unique_filenames_from_split
 
 # Try to import SystemRAGChain for system resource integration
@@ -136,9 +137,16 @@ def _ensure_global_execution_plan(payload: dict) -> dict:
 
     try:
         chat_history_text = _extract_chat_history_text(payload)
+        # When the user has unticked the toolbar "ACPX" checkbox, strip every
+        # ACPX/Skill tool BEFORE the planner sees the candidate set so the
+        # generated plan can never reference an acp_* tool. This also keeps
+        # the planner's keyword-based scoring from boosting ACPX rows on
+        # requests that mention "acpx" verbatim while ACPX is disabled.
+        acpx_enabled = bool(payload.get("acpx_enabled", True))
+        candidate_tools = filter_acpx_tools(get_mcp_tools(), acpx_enabled)
         plan = build_global_execution_plan(
             str(payload.get("input", "") or ""),
-            get_mcp_tools(),
+            candidate_tools,
             system_enabled=_system_context_enabled(),
             files_enabled=_files_context_enabled(),
             chat_history_text=chat_history_text,

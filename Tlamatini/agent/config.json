@@ -157,7 +157,14 @@
     "_acpx_mcpServers_comment": "Optional named MCP servers to inject into ACP child sessions at spawn time. Empty by default. Each entry: { command: 'python', args: ['-m', '...'], env: {...} }.",
     "mcpServers": {},
     "_acpx_agents_comment": "Per-agent_id command overrides. Empty = use the built-in registry (claude/cursor/codex/copilot/gemini/qwen/pi/droid/iflow/kilocode/kimi/kiro/opencode/tlamatini). Override when the binary lives outside PATH. Each entry can carry an optional 'env' map injected at spawn time.",
-    "agents": {}
+    "agents": {
+      "codex": {
+        "command": "C:/Users/angel/AppData/Roaming/npm/codex.cmd",
+        "env": {
+          "OPENAI_API_KEY": "<OPENAI_API_KEY goes here>"
+        }
+      }
+    }
   },
   "_section_acpx_skills": "Skills are loaded from agent/skills_pkg/<dir>/SKILL.md. The catalog is self-discovering; nothing in config.json controls it. Run `python manage.py acpx_lint` to validate the catalog.",
   "_section_acpx_tools": "ACPX exposes 7 LangChain @tools to the unified agent (acp_spawn / acp_send / acp_kill / acp_doctor / list_acp_agents / invoke_skill / list_skills). Each is a row in the Tool table seeded by migration 0071_acpx_skills and is independently toggleable through the existing tools dialog UI."
