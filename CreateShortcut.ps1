@@ -47,16 +47,21 @@ if (-not (Test-Path $installDir)) {
 $installDir = (Resolve-Path $installDir).Path
 $exePath = Join-Path $installDir "Tlamatini.exe"
 $iconPath = Join-Path $installDir "Tlamatini.ico"
+$conhostPath = Join-Path $env:SystemRoot "System32\conhost.exe"
 
 Write-Host "Install directory: $installDir" -ForegroundColor White
 
-# Validate Tlamatini.exe -- the shortcut targets Tlamatini.exe directly.
-# manage.py handles console branding (title + icon) via _brand_console_window()
-# and _set_app_user_model_id() on startup, so no conhost.exe wrapper is needed.
-# Previous versions used conhost.exe as the shortcut target to force the legacy
-# Console Host, but conhost.exe does not reliably accept arbitrary executables
-# as arguments on modern Windows -- especially under restrictive Group Policy /
-# AppLocker / WDAC configurations -- causing the shortcut to silently do nothing.
+# Two launch strategies:
+#   * conhost.exe wrapper -- the shortcut target is conhost.exe and the
+#     argument is Tlamatini.exe.  Forces the legacy Console Host to own the
+#     window even when Windows Terminal is the default host, so WM_SETICON
+#     and the embedded .exe icon take effect on the title bar.
+#   * Direct Tlamatini.exe -- the shortcut targets the .exe straight.  Works
+#     on machines with restrictive Group Policy / AppLocker / WDAC where
+#     conhost.exe is allowed to run but is silently prevented from launching
+#     arbitrary child executables, which made earlier "always wrap" versions
+#     produce shortcuts that did nothing when clicked.
+# We probe end-to-end at install time and pick the right one for THIS host.
 if (-not (Test-Path $exePath)) {
     Write-Host "Error: Tlamatini.exe not found at: $exePath" -ForegroundColor Red
     Read-Host "Press Enter to exit"
@@ -72,6 +77,48 @@ if (Test-Path $iconPath) {
     Write-Host "    Shortcut will fall back to the .exe's embedded icon." -ForegroundColor Yellow
 }
 
+function Test-ConhostWrapperUsable {
+    # Returns $true only when `conhost.exe <child.exe>` can actually launch
+    # its child end-to-end.  On AppLocker / WDAC / restrictive-Group-Policy
+    # machines the conhost binary itself is allowed (it's system-essential)
+    # but the parent->child launch is silently blocked, which is the exact
+    # failure mode that made the unconditional wrapper produce dead
+    # shortcuts.  We exercise the same chain with a benign, fast,
+    # always-available probe: cmd.exe /c exit 0.
+    if (-not (Test-Path $conhostPath)) {
+        Write-Host "[probe] conhost.exe not found; using direct exe target." -ForegroundColor Gray
+        return $false
+    }
+    try {
+        $proc = Start-Process -FilePath $conhostPath `
+            -ArgumentList @('cmd.exe', '/c', 'exit 0') `
+            -PassThru -WindowStyle Hidden -ErrorAction Stop
+        $exited = $proc.WaitForExit(5000)
+        if (-not $exited) {
+            try { $proc.Kill() } catch {}
+            Write-Host "[probe] conhost.exe wrapper probe timed out; treating host as restricted." -ForegroundColor Gray
+            return $false
+        }
+        if ($proc.ExitCode -eq 0) {
+            return $true
+        }
+        Write-Host "[probe] conhost.exe wrapper probe exited with code $($proc.ExitCode); treating host as restricted." -ForegroundColor Gray
+        return $false
+    } catch {
+        Write-Host "[probe] conhost.exe wrapper probe threw: $_" -ForegroundColor Gray
+        return $false
+    }
+}
+
+$useConhost = Test-ConhostWrapperUsable
+if ($useConhost) {
+    Write-Host "[OK] conhost.exe wrapper is usable -- shortcut will force legacy console host (icon shows correctly under Windows Terminal default)." -ForegroundColor Green
+} else {
+    Write-Host "[!] conhost.exe wrapper is NOT usable on this machine -- shortcut will target Tlamatini.exe directly." -ForegroundColor Yellow
+    Write-Host "    Title bar will read 'Tlamatini' but the running-window icon may show the host's default glyph." -ForegroundColor Yellow
+}
+$useConhostFlag = if ($useConhost) { '1' } else { '0' }
+
 Write-Host ""
 Write-Host "Creating shortcuts using VBScript helper..." -ForegroundColor White
 Write-Host ""
@@ -82,33 +129,45 @@ $vbsScript = @"
 Set objShell = CreateObject("WScript.Shell")
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-' Read install directory from command-line argument
-If WScript.Arguments.Count < 1 Then
-    WScript.Echo "Error: install directory argument required."
+' Args: 0 = install directory, 1 = useConhost flag ("1" or "0")
+If WScript.Arguments.Count < 2 Then
+    WScript.Echo "Error: install directory and useConhost flag arguments required."
     WScript.Quit 1
 End If
 
 strInstallDir = WScript.Arguments(0)
+bUseConhost = (WScript.Arguments(1) = "1")
 strExePath = objFSO.BuildPath(strInstallDir, "Tlamatini.exe")
 strIconPath = objFSO.BuildPath(strInstallDir, "Tlamatini.ico")
+strConhostPath = objShell.ExpandEnvironmentStrings("%SystemRoot%\System32\conhost.exe")
 
-' Target Tlamatini.exe directly.  manage.py brands the console window
-' (title + icon) via _brand_console_window() and _set_app_user_model_id()
-' on startup, so no conhost.exe wrapper is needed.  Previous versions
-' wrapped via conhost.exe but that fails silently on machines with
-' restrictive Group Policy / AppLocker / WDAC.
+' Two strategies, decided by the PowerShell-side probe:
+'   bUseConhost = True  -> wrap with conhost.exe so the running-window icon
+'                          is the .exe's embedded Tlamatini icon under any
+'                          terminal host (Windows Terminal ignores
+'                          WM_SETICON, so the wrapper is the only way).
+'   bUseConhost = False -> target Tlamatini.exe directly; required on
+'                          AppLocker / WDAC / restrictive-policy machines
+'                          where the wrapper produces dead shortcuts.
 
 Sub CreateShortcut(shortcutPath)
     Set objShortcut = objShell.CreateShortcut(shortcutPath)
 
-    objShortcut.TargetPath = strExePath
-    objShortcut.Arguments = ""
+    If bUseConhost Then
+        objShortcut.TargetPath = strConhostPath
+        objShortcut.Arguments = """" & strExePath & """"
+    Else
+        objShortcut.TargetPath = strExePath
+        objShortcut.Arguments = ""
+    End If
     objShortcut.WorkingDirectory = strInstallDir
     objShortcut.Description = "Tlamatini Development Server"
     objShortcut.WindowStyle = 1
 
     ' Set icon: prefer the standalone .ico (sharper at all sizes for the
     ' .lnk file in Explorer/Desktop); fall back to the .exe's embedded icon.
+    ' This is independent of TargetPath -- it controls the .lnk's icon in
+    ' Explorer/Desktop, not the running console-window icon.
     If objFSO.FileExists(strIconPath) Then
         objShortcut.IconLocation = strIconPath & ",0"
     Else
@@ -116,7 +175,11 @@ Sub CreateShortcut(shortcutPath)
     End If
 
     objShortcut.Save
-    WScript.Echo "[OK] Created: " & shortcutPath
+    If bUseConhost Then
+        WScript.Echo "[OK] Created (via conhost): " & shortcutPath
+    Else
+        WScript.Echo "[OK] Created (direct exe):  " & shortcutPath
+    End If
 End Sub
 
 ' Create desktop shortcut
@@ -137,7 +200,7 @@ $vbsScript | Out-File -FilePath $vbsPath -Encoding ASCII
 # Try VBScript first, fall back to pure PowerShell COM if cscript is blocked
 $vbsSuccess = $false
 try {
-    $output = & cscript.exe //NoLogo $vbsPath "$installDir" 2>&1
+    $output = & cscript.exe //NoLogo $vbsPath "$installDir" "$useConhostFlag" 2>&1
     if ($LASTEXITCODE -eq 0) {
         $output | ForEach-Object { Write-Host $_ -ForegroundColor Green }
         $vbsSuccess = $true
@@ -159,18 +222,24 @@ if (-not $vbsSuccess) {
 
         function New-TlamatiniShortcut($lnkPath) {
             $sc = $shell.CreateShortcut($lnkPath)
-            $sc.TargetPath = $exePath
-            $sc.Arguments = ""
-            $sc.WorkingDirectory = $installDir
+            if ($script:useConhost) {
+                $sc.TargetPath = $script:conhostPath
+                $sc.Arguments = "`"$script:exePath`""
+            } else {
+                $sc.TargetPath = $script:exePath
+                $sc.Arguments = ""
+            }
+            $sc.WorkingDirectory = $script:installDir
             $sc.Description = "Tlamatini Development Server"
             $sc.WindowStyle = 1
-            if (Test-Path $iconPath) {
-                $sc.IconLocation = "$iconPath,0"
+            if (Test-Path $script:iconPath) {
+                $sc.IconLocation = "$script:iconPath,0"
             } else {
-                $sc.IconLocation = "$exePath,0"
+                $sc.IconLocation = "$script:exePath,0"
             }
             $sc.Save()
-            Write-Host "[OK] Created: $lnkPath" -ForegroundColor Green
+            $tag = if ($script:useConhost) { "via conhost" } else { "direct exe" }
+            Write-Host "[OK] Created ($tag): $lnkPath" -ForegroundColor Green
         }
 
         # Desktop shortcut
