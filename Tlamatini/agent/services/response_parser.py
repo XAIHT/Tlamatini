@@ -36,6 +36,113 @@ def _html_escape(text):
     )
 
 
+# --- ASCII / box-drawing diagram rendering ----------------------------------
+# Diagrams produced by the LLM (rule 13 in prompt.pmt) need a fixed-width font
+# and preserved whitespace, otherwise the columns drift in the chat's default
+# proportional font. Two pipelines feed the same renderer:
+#   1. Explicit BEGIN-DIAGRAM / END-DIAGRAM blocks (when the LLM cooperates).
+#   2. Auto-detection of consecutive lines that look like ASCII art (safety
+#      net for older messages and uncooperative outputs).
+# Both replace the matched region with a placeholder of the form
+#   \x00DGRM_<idx>\x00
+# so the bold/inline-code/lang-marker substitutions that run later cannot
+# touch the diagram contents. Placeholders are restored last, expanding into
+# <pre class="ascii-diagram">HTML-escaped diagram</pre>.
+
+# U+2500..U+257F = the full Unicode "Box Drawing" block (─, │, ┌, ┐, ┼, etc.)
+_BOX_DRAWING_RE = re.compile('[─-╿]')
+# Common arrow / triangle glyphs used in flowcharts: ▲ ▼ ▶ ◀ → ← ↑ ↓ and the
+# 8 directional arrows in U+2190..U+2199.
+_FLOWCHART_ARROW_RE = re.compile('[▲▼▶◀←-↙]')
+_ASCII_ART_RUN_RE = re.compile(r'[+\-=|]{3,}')
+_PIPED_BOX_LINE_RE = re.compile(r'^\s*\|.*\|\s*$')
+_DIAGRAM_PLACEHOLDER_RE = re.compile(r'\x00DGRM_\d+\x00')
+
+
+def _is_diagram_line(line):
+    """Heuristic: does this single line look like part of an ASCII diagram?"""
+    if not line.strip():
+        return False
+    if _DIAGRAM_PLACEHOLDER_RE.search(line):
+        # Lines that already collapsed into a placeholder count as diagram
+        # rows so adjacent diagram-like lines extend the same block.
+        return True
+    if _BOX_DRAWING_RE.search(line):
+        return True
+    if _FLOWCHART_ARROW_RE.search(line):
+        return True
+    if _ASCII_ART_RUN_RE.search(line):
+        return True
+    if _PIPED_BOX_LINE_RE.match(line):
+        return True
+    return False
+
+
+def _wrap_diagram_blocks(llm_response):
+    """Replace explicit BEGIN-DIAGRAM blocks AND auto-detected ASCII-art runs
+    with `\\x00DGRM_<idx>\\x00` placeholders. Returns
+    (transformed_text, placeholder_html_list). Pure text-in / text-out — no
+    side effects, so the caller can run later HTML substitutions safely.
+    """
+    placeholders = []
+
+    def _make_placeholder(body):
+        body = body.strip("\r\n")
+        idx = len(placeholders)
+        placeholders.append(
+            f'<pre class="ascii-diagram">{_html_escape(body)}</pre>'
+        )
+        return f'\x00DGRM_{idx}\x00'
+
+    # Pass 1 — explicit BEGIN-DIAGRAM / END-DIAGRAM blocks (the cooperative
+    # path; mirrors the BEGIN-CODE / END-CODE convention).
+    llm_response = re.sub(
+        constants.REGEX_DIAGRAM_BLOCK,
+        lambda m: _make_placeholder(m.group(1)),
+        llm_response,
+        flags=re.IGNORECASE,
+    )
+
+    # Pass 2 — auto-detect runs of >= 2 consecutive diagram-like lines, with
+    # at most one blank line allowed inside the run. Trims trailing blanks.
+    lines = llm_response.split("\n")
+    out_lines = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        if _is_diagram_line(lines[i]):
+            j = i + 1
+            saw_blank = False
+            while j < n:
+                if _is_diagram_line(lines[j]):
+                    saw_blank = False
+                    j += 1
+                elif not lines[j].strip() and not saw_blank:
+                    saw_blank = True
+                    j += 1
+                else:
+                    break
+            while j > i and not lines[j - 1].strip():
+                j -= 1
+            if j - i >= 2:
+                out_lines.append(_make_placeholder("\n".join(lines[i:j])))
+                i = j
+                continue
+        out_lines.append(lines[i])
+        i += 1
+    llm_response = "\n".join(out_lines)
+
+    return llm_response, placeholders
+
+
+def _restore_diagram_placeholders(text, placeholders):
+    """Swap each `\\x00DGRM_<idx>\\x00` token back to its
+    <pre class="ascii-diagram">…</pre> HTML."""
+    for idx, html in enumerate(placeholders):
+        text = text.replace(f'\x00DGRM_{idx}\x00', html)
+    return text
+
+
 def _render_exec_report_html(exec_report_entries):
     """Build the HTML rendered at the tail of a multi-turn answer when the
     user enabled the Exec report toggle. Entries are grouped by
@@ -191,6 +298,13 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     llm_response = re.sub(constants.REGEX_CODE_END, "", llm_response)
     llm_response = re.sub(constants.REGEX_CODE_APOS, "", llm_response)
 
+    # ASCII / box-drawing diagram capture — must run BEFORE the bold / inline
+    # code / lang-marker / END-RESPONSE substitutions below, otherwise those
+    # regex passes can mangle box-drawing characters and inline `*` / `` ` ``
+    # glyphs that legitimately appear inside a diagram. Placeholders are
+    # restored after every substitution has finished.
+    llm_response, _diagram_placeholders = _wrap_diagram_blocks(llm_response)
+
     langs = re.findall(constants.REGEX_LANG_MARKER, llm_response)
     for lang in langs:
         llm_response = re.sub(r'\r?\n[ \t]*' + re.escape(lang) + r'\r?\n', f'\n  {lang}:\n', llm_response)
@@ -209,7 +323,12 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         lambda m: '<br>',
         llm_response
     )
-    print("\n--- The LLM response after cleaning is: <<<<<\n"+llm_response+"\n>>>>>")   
+
+    # Swap diagram placeholders back to their <pre class="ascii-diagram">…
+    # </pre> HTML now that no further regex passes will run over the answer.
+    llm_response = _restore_diagram_placeholders(llm_response, _diagram_placeholders)
+
+    print("\n--- The LLM response after cleaning is: <<<<<\n"+llm_response+"\n>>>>>")
 
     print("\n--- The final parsed/cleaned LLM response is: "+llm_response)
 

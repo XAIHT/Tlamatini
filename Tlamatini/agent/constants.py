@@ -35,6 +35,11 @@ REGEX_SNIPPET_WITH_LANG = r'```(python|bash|javascript|java|c|c\+\+|c#|php|ruby|
 REGEX_DOUBLE_BR = r'(<br>\n?)+'
 REGEX_LANG_MARKER = r'\r?\n[ \t]*(python|bash|javascript|java|c|c\+\+|c#|php|ruby|go|lisp|fortran|basic|assembler|html|css|sql|yaml|typescript|cuda|xml|json)\r?\n'
 
+# Regex pattern for ASCII / box-drawing diagrams emitted by the LLM
+# between BEGIN-DIAGRAM / END-DIAGRAM wrappers (rule 13 in prompt.pmt).
+# Mirrors the BEGIN-CODE / END-CODE pair but without a filename slot.
+REGEX_DIAGRAM_BLOCK = r'(?:BEGIN-DIAGRAM|begin-diagram)\s*\r?\n([\s\S]*?)\r?\n?(?:END-DIAGRAM|end-diagram)'
+
 # Greeting patterns
 REGEX_GREETING = r"^\s*(hello|hi|hey|thanks|thank you|you are awesome|awesome)\b.*$"
 

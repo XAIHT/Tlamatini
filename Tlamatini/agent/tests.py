@@ -4456,3 +4456,181 @@ class NotifierOneshotModeTests(TestCase):
                 self.assertIn('BUILD DONE', payload['matches'])
                 self.assertTrue(payload['sound_enabled'])
                 self.assertEqual(payload['outcome_detail'], 'Build finished successfully')
+
+
+class DiagramRenderingTests(TestCase):
+    """The chat container renders bot messages in a proportional font, so ASCII /
+    box-drawing diagrams emitted by the LLM lose their column alignment unless
+    they are wrapped in a fixed-width <pre> block. The pipeline supports two
+    surfaces: explicit BEGIN-DIAGRAM / END-DIAGRAM blocks (rule 13 in
+    prompt.pmt) and an auto-detection safety net for older messages and
+    uncooperative outputs. These tests pin both."""
+
+    def _wrap(self, text):
+        from agent.services.response_parser import _wrap_diagram_blocks
+        return _wrap_diagram_blocks(text)
+
+    def _process(self, raw):
+        """Drive the full process_llm_response pipeline against a raw LLM
+        answer, return the persisted bot-message text. Patches the answer
+        analyzer + Channel layer so the test stays focused on rendering."""
+        from agent.services.response_parser import process_llm_response
+
+        async def _analyzer(_text):
+            return True
+
+        with patch(
+            'agent.services.response_parser.analyze_answer_success',
+            side_effect=_analyzer,
+        ):
+            return async_to_sync(process_llm_response)(
+                raw,
+                None,
+                None,
+                None,
+                conversation_user=None,
+                tool_calls_log=None,
+                multi_turn_used=False,
+                exec_report_enabled=False,
+                exec_report_entries=None,
+            )
+
+    def test_explicit_begin_diagram_block_is_wrapped_in_pre_ascii_diagram(self):
+        text = (
+            "Here is the architecture:\n"
+            "BEGIN-DIAGRAM\n"
+            "+----------+      +----------+\n"
+            "|  Client  | ---> |  Server  |\n"
+            "+----------+      +----------+\n"
+            "END-DIAGRAM\n"
+            "Hope that helps."
+        )
+        wrapped, placeholders = self._wrap(text)
+        self.assertEqual(len(placeholders), 1)
+        self.assertIn('class="ascii-diagram"', placeholders[0])
+        # Box-drawing chars must be HTML-escaped or copied verbatim — but the
+        # `|`, `+`, `-` we put in are safe; what we DO need is the literal
+        # diagram preserved and NOT touched by later regex passes.
+        self.assertIn('|  Client  | ---&gt; |  Server  |', placeholders[0])
+        # Surrounding prose remains. Wrappers themselves are gone.
+        self.assertIn('Here is the architecture:', wrapped)
+        self.assertNotIn('BEGIN-DIAGRAM', wrapped)
+        self.assertNotIn('END-DIAGRAM', wrapped)
+        self.assertIn('\x00DGRM_0\x00', wrapped)
+
+    def test_unicode_box_drawing_block_is_auto_detected_without_wrappers(self):
+        # The LLM forgot the BEGIN-DIAGRAM wrappers. Auto-detection must
+        # still wrap the run because of the U+2500..U+257F characters.
+        text = (
+            "Auto-detect this:\n"
+            "┌──────────┐      ┌──────────┐\n"
+            "│  Client  │ ───▶ │  Server  │\n"
+            "└──────────┘      └──────────┘\n"
+            "Done."
+        )
+        wrapped, placeholders = self._wrap(text)
+        self.assertEqual(len(placeholders), 1)
+        self.assertIn('class="ascii-diagram"', placeholders[0])
+        # The Unicode box-drawing chars must round-trip into the placeholder
+        # (HTML-escaped output preserves them — they're not <, >, &, " or ').
+        self.assertIn('┌──────────┐', placeholders[0])
+        self.assertIn('│  Client  │', placeholders[0])
+        # Adjacent prose is untouched.
+        self.assertIn('Auto-detect this:', wrapped)
+        self.assertIn('Done.', wrapped)
+
+    def test_single_diagram_line_is_not_auto_wrapped(self):
+        # A single line with `---` should NOT be promoted to a diagram block;
+        # the auto-detector requires at least 2 consecutive diagram-like lines
+        # to avoid wrapping innocuous separators in prose.
+        text = "First paragraph.\n---\nSecond paragraph."
+        wrapped, placeholders = self._wrap(text)
+        self.assertEqual(placeholders, [])
+        self.assertEqual(wrapped, text)
+
+    def test_inline_code_inside_diagram_is_not_substituted(self):
+        # The bold and inline-code substitutions in process_llm_response would
+        # otherwise turn `**foo**` -> <strong>foo</strong> and `` `bar` `` ->
+        # <code>bar</code> even when those characters appear inside the
+        # diagram. The placeholder mechanism must protect them.
+        raw = (
+            "Setup:\n"
+            "BEGIN-DIAGRAM\n"
+            "| **bold-looking** | `code-looking` |\n"
+            "+------------------+----------------+\n"
+            "END-DIAGRAM\n"
+            "END-RESPONSE"
+        )
+        final = self._process(raw)
+        self.assertIn('class="ascii-diagram"', final)
+        # Bold/code regex MUST NOT have fired inside the diagram.
+        self.assertNotIn('<strong>bold-looking</strong>', final)
+        self.assertNotIn('<code>code-looking</code>', final)
+        # The diagram body, HTML-escaped, must round-trip.
+        self.assertIn('| **bold-looking** | `code-looking` |', final)
+
+    def test_lowercase_begin_diagram_wrappers_also_match(self):
+        # Mirror the BEGIN-CODE/begin-code lenience.
+        text = (
+            "begin-diagram\n"
+            "A --> B\n"
+            "B --> C\n"
+            "end-diagram"
+        )
+        wrapped, placeholders = self._wrap(text)
+        self.assertEqual(len(placeholders), 1)
+        self.assertIn('A --&gt; B', placeholders[0])
+
+    def test_multiple_diagrams_get_distinct_placeholders(self):
+        text = (
+            "First:\n"
+            "BEGIN-DIAGRAM\n"
+            "A --> B\n"
+            "B --> C\n"
+            "END-DIAGRAM\n"
+            "Second:\n"
+            "BEGIN-DIAGRAM\n"
+            "X --> Y\n"
+            "Y --> Z\n"
+            "END-DIAGRAM"
+        )
+        wrapped, placeholders = self._wrap(text)
+        self.assertEqual(len(placeholders), 2)
+        self.assertIn('\x00DGRM_0\x00', wrapped)
+        self.assertIn('\x00DGRM_1\x00', wrapped)
+        self.assertIn('A --&gt; B', placeholders[0])
+        self.assertIn('X --&gt; Y', placeholders[1])
+
+    def test_full_pipeline_renders_diagram_after_all_substitutions(self):
+        raw = (
+            "Diagram time:\n"
+            "BEGIN-DIAGRAM\n"
+            "[Client] -> [Server]\n"
+            "[Server] -> [DB]\n"
+            "END-DIAGRAM\n"
+            "Notes: **important**\n"
+            "END-RESPONSE"
+        )
+        final = self._process(raw)
+        # Diagram is wrapped.
+        self.assertIn('<pre class="ascii-diagram">', final)
+        self.assertIn('[Client] -&gt; [Server]', final)
+        # Bold OUTSIDE the diagram still runs.
+        self.assertIn('<strong>important</strong>', final)
+        # END-RESPONSE has been collapsed to <br>.
+        self.assertNotIn('END-RESPONSE', final)
+        # Wrappers are no longer in the rendered HTML.
+        self.assertNotIn('BEGIN-DIAGRAM', final)
+        self.assertNotIn('END-DIAGRAM', final)
+
+    def test_prose_with_arrows_but_only_one_line_is_left_alone(self):
+        # A single line containing an arrow glyph is NOT a diagram. Two or
+        # more consecutive lines ARE.
+        single = "We use ▲ for upward."
+        wrapped, placeholders = self._wrap(single)
+        self.assertEqual(placeholders, [])
+        self.assertEqual(wrapped, single)
+
+        multi = "▲\n▼\n"
+        wrapped, placeholders = self._wrap(multi)
+        self.assertEqual(len(placeholders), 1)
