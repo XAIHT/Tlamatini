@@ -1031,19 +1031,22 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 ### 38. Summarizer
-- **Purpose**: Continuously polls log files from source agents and sends their content to an LLM with a configurable system prompt to detect events. When the LLM response contains [EVENT_TRIGGERED], starts all configured downstream target agents.
-- **Used for**: Performing LLM-powered semantic analysis of agent log files to detect complex events that cannot be captured by simple string pattern matching. It continuously polls source agent logs and feeds content to an LLM with a custom system prompt, triggering downstream agents when the LLM determines an event has occurred.
-- **Aimed at**: Enabling intelligent, context-aware event detection in workflows — where the condition to react to requires understanding meaning, not just matching text. Ideal for detecting trends, anomalies, or multi-line patterns that require semantic comprehension.
-- **Application example**: A Summarizer monitors an Apirer's log with the prompt "Determine if the API response indicates degraded performance (latency > 2000ms or error rate > 5%)". When the LLM detects degraded performance, it outputs [EVENT_TRIGGERED] and the Summarizer starts a Notifier and a Telegramer to alert the SRE team.
+- **Purpose**: Two operating modes selected by config. **Polling mode** (default canvas behavior): continuously polls log files from `source_agents` and sends each log to an LLM with `system_prompt` to detect events; when the LLM response contains `[EVENT_TRIGGERED]`, starts all configured downstream target agents. **One-shot mode** (used by the chat tool `chat_agent_summarize_text`): when `input_text` is non-empty AND `source_agents` is empty, the agent bypasses the polling loop entirely, sends `input_text` directly to the LLM with the resolved prompt, emits exactly one `INI_SECTION_SUMMARIZER<<<` block (so Parametrizer / Exec Report consume it identically to a polling-mode result), and triggers `target_agents` whenever the summary is non-empty.
+- **Used for**: Performing LLM-powered semantic analysis of agent log files to detect complex events that cannot be captured by simple string pattern matching, OR summarizing a verbatim block of text in a single shot from a chat-driven request.
+- **Aimed at**: Enabling intelligent, context-aware event detection in workflows; one-shot mode also doubles as the canonical "summarize this text" tool for the LLM operator.
+- **Application example (polling)**: A Summarizer monitors an Apirer's log with the prompt "Determine if the API response indicates degraded performance (latency > 2000ms or error rate > 5%)". When the LLM detects degraded performance, it outputs `[EVENT_TRIGGERED]` and the Summarizer starts a Notifier and a Telegramer to alert the SRE team.
+- **Application example (one-shot)**: After an ACPXer harvests a long transcript, the LLM calls `chat_agent_summarize_text` with `input_text='<full transcript>'` and `target_words=80`; the agent emits one INI_SECTION_SUMMARIZER block whose `response_body` carries the ~80-word digest, which a downstream Parametrizer pipes into a File-Creator or Telegramer.
 - **Pool name pattern**: `summarizer_<n>`
-- **Starts other agents**: YES (when a positive event is detected in any source agent log)
+- **Starts other agents**: YES (polling: when `[EVENT_TRIGGERED]` is detected; one-shot: when the summary is non-empty)
 - **Config parameters**:
-  - `source_agents`: [] (upstream agents whose log files will be monitored)
-  - `system_prompt`: "" (multi-line prompt instructing the LLM what to look for in logs)
+  - `source_agents`: [] (upstream agents whose log files will be monitored — leave empty for one-shot mode)
+  - `input_text`: "" (one-shot only — verbatim text to summarize. When non-empty AND `source_agents` is empty, the agent skips the polling loop)
+  - `target_words`: 0 (one-shot only — soft target length. When >0 and no `system_prompt` is provided, a default summarization prompt is built from this number; ignored in polling mode)
+  - `system_prompt`: "" (in polling mode: multi-line prompt instructing the LLM to emit `[EVENT_TRIGGERED]` / `[NONE]`. In one-shot mode: the prompt is used as-is. If left empty in one-shot mode, a default summarization prompt is built from `target_words`)
   - `llm.host`: "http://localhost:11434" (Ollama server URL)
   - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
-  - `poll_interval`: 5 (seconds between log file polling cycles)
-  - `target_agents`: [] (downstream agents to start when an event is triggered)
+  - `poll_interval`: 5 (seconds between log file polling cycles — ignored in one-shot mode)
+  - `target_agents`: [] (downstream agents to start when an event is triggered or the one-shot summary is non-empty)
 
 ### 39. FlowHypervisor
 - **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system. Users can provide custom `user_instructions` to fine-tune supervision (e.g. dismiss known false positives, adjust sensitivity, add domain rules).

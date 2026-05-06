@@ -9,6 +9,7 @@ Follow this guide when adding:
 - a real MCP-style runtime service
 - a context preprocessor that injects prompt context
 - a LangChain `@tool` used by the unified agent
+- a **Skill** (`SKILL.md` package run by `SkillHarness`)
 - or a combination of those pieces
 
 Use the word "MCP" carefully. In this codebase it can mean three different things:
@@ -18,6 +19,8 @@ Use the word "MCP" carefully. In this codebase it can mean three different thing
 3. A LangChain tool returned by `agent/tools.py:get_mcp_tools()`
 
 If you do not separate those three layers before coding, you will probably modify the wrong files.
+
+A **Skill** is a fourth, distinct surface — it is NOT an MCP, NOT a `Tool` row, and NOT a `@tool` function. Skills are markdown packages discovered at runtime by `agent/skills/registry.py` and invoked by the LLM through the two stable tools `list_skills` / `invoke_skill`. Adding a skill is much lighter weight than adding a tool: drop a new `agent/skills_pkg/<name>/SKILL.md` file with a YAML frontmatter, and the registry picks it up on next reload. No migrations, no UI checkboxes, no chain-rebuilding wiring. Use this surface when the capability is procedural ("here is how to do X step-by-step") rather than imperative ("here is a knob that does X").
 
 ## Mandatory First Decision
 
@@ -63,6 +66,20 @@ Examples:
 - inventory summary
 - environment snapshot
 
+### `Skill` (markdown-defined SKILL.md package)
+
+Choose this when the capability is **procedural** — a documented runbook the LLM can call by name, where the body of the skill is the instruction set rather than the implementation. The LLM invokes the skill via the always-on `invoke_skill(skill_name, args_json)` tool; the body of `SKILL.md` is fed back to the LLM as the runbook to follow, and `requires_tools` in the frontmatter declares which Tlamatini tools the skill expects to call along the way.
+
+Examples:
+
+- `acp-router` — picks the best `agent_id` for a stated intent (claude / cursor / gemini / qwen / ...). Pure routing decision, no implementation surface.
+- `summarize` — instruct the LLM how to compress a transcript, with target word counts and tone guidance.
+- `setup-new-acpx-key` — multi-step procedure to inject a credential into `data.keys`, `config.json` (top-level + `acpx.agents.<id>.env`), and verify via `acp_doctor`.
+- `tlamatini_csrf_exempt_audit` / `tlamatini_planner_trace_replay` / `tlamatini_flw_doctor` — internal audit-and-fix runbooks the LLM can invoke when working ON the Tlamatini codebase itself.
+- `gmail` / `slack` / `github` / `jira` / `notion` / `todoist` / `trello` / `weather` — integration stubs that document how to call the corresponding chat.ai-style MCPs once they are connected.
+
+A skill is implemented as a single file: `agent/skills_pkg/<skill_name>/SKILL.md`. The frontmatter is YAML and declares `name`, `description`, `metadata.tlamatini.{requires_tools,requires_mcps,budget,permissions,inputs,outputs,triggers}`. The body is the runbook the LLM follows. The registry validates against `agent/skills_pkg/_meta/schema.json` and tolerates parse failures (a bad skill is skipped with a warning, not a startup error).
+
 ### `Both`
 
 Choose this only when the model needs both:
@@ -70,7 +87,7 @@ Choose this only when the model needs both:
 - pre-fetched context for reasoning
 - and a separate imperative action later
 
-Do not choose `Both` unless you can point to one concrete context payload and one concrete action tool. Most requests are only one of the three action buckets above OR an MCP context provider.
+Do not choose `Both` unless you can point to one concrete context payload and one concrete action tool. Most requests are only one of the four action buckets above OR an MCP context provider.
 
 ## Stop And Correct Yourself If
 
@@ -625,10 +642,108 @@ If you added an MCP context provider, verify:
 
 If you added multiple buckets, verify each checklist independently.
 
+## Skill Workflow (SKILL.md package)
+
+Follow these steps when the requested feature is a **procedural runbook** rather than an imperative tool or context provider.
+
+### Step 1: Decide whether a skill is the right surface
+
+A skill is the right choice when:
+
+- the capability is mostly *instructions* the LLM should follow, not new code that needs to run inside Tlamatini
+- the capability composes existing tools (`acp_*`, `chat_agent_*`, `execute_command`, MCP fetches) into a documented sequence
+- the capability is internal-tooling (audit / lint / refactor / replay) that the LLM should be able to invoke by name when asked
+- you would otherwise be writing a long inline prompt every time you wanted the LLM to do this thing
+
+A skill is NOT the right choice when:
+
+- the capability needs new Python that the LLM cannot supply at runtime (write a `@tool` instead)
+- the capability needs to spawn a long-running subprocess (write a wrapped chat-agent tool instead)
+- the capability needs to inject context into the prompt before the LLM answers (write an MCP context provider instead)
+
+### Step 2: Drop a new SKILL.md package under `agent/skills_pkg/`
+
+Create one directory per skill:
+
+```
+agent/skills_pkg/<skill_name>/SKILL.md
+```
+
+The `<skill_name>` is the leaf directory name. The frontmatter `name` must match it (or the frontmatter wins if both are set). Use `kebab-case` for the directory and the `name` field; convert to `snake_case` only inside Python imports.
+
+Minimal frontmatter shape (mirror an existing skill — `acp_router/SKILL.md` is the canonical example):
+
+```yaml
+---
+name: my-skill
+description: One-sentence purpose of this skill.
+metadata:
+  openclaw:
+    emoji: "🛠️"
+  tlamatini:
+    runtime: in-process
+    requires_tools: ["acp_doctor", "chat_agent_file_creator"]
+    requires_mcps: []
+    budget:
+      max_iterations: 10
+      max_seconds: 180
+      max_tokens: 16000
+    permissions:
+      filesystem:
+        read:  ["path/glob"]
+        write: ["path/glob"]
+      shell: []
+      network: deny
+      db: deny
+    inputs:
+      - { name: input_arg,  type: string, required: true,  description: "..." }
+    outputs:
+      - { name: result,     type: string, required: true }
+    triggers:
+      keywords:   ["...", "..."]
+      file_globs: ["..."]
+---
+
+# Skill Name
+
+The body of the skill is the runbook the LLM will follow when it calls
+`invoke_skill('my-skill', {...})`. Write it like a procedure, not like documentation:
+
+1. First do X.
+2. Then do Y.
+3. If Z is true, do W; else do V.
+```
+
+### Step 3: Validate against the schema
+
+`agent/skills_pkg/_meta/schema.json` defines the frontmatter contract; `agent/skills_pkg/_meta/lint.py` is the linter the registry uses internally. The skill_creator skill ships `scripts/quick_validate.py` for ad-hoc validation:
+
+```bash
+python Tlamatini/agent/skills_pkg/skill_creator/scripts/quick_validate.py \
+    Tlamatini/agent/skills_pkg/<skill_name>/SKILL.md
+```
+
+A skill that fails to parse is skipped on startup with a logger warning — it does NOT crash Django. But it also will not be invokable. Always validate before assuming the skill is registered.
+
+### Step 4: Verify discovery and invocation
+
+Restart Django (the registry caches discoveries with a 30-second freshness window). In the chat with **Multi-Turn + ACPX both enabled** (since `list_skills` / `invoke_skill` live on the ACPX surface), ask:
+
+1. "List the available skills." — `list_skills` should return the new entry with the description and runtime fields.
+2. "Invoke the `<skill_name>` skill with `<args>`." — the LLM picks `invoke_skill(...)`, the harness validates inputs against the frontmatter contract, runs the skill body, and returns the structured outputs.
+
+### Step 5: NO database migration, NO frontend wiring, NO `@tool` registration
+
+Skills are intentionally lightweight: they have no `Tool` row, no `Mcp` row, no checkbox in the UI, no entry in `chat_agent_registry.py`, no `_EXEC_REPORT_TOOLS` mapping. They are markdown packages that the LLM picks up via `list_skills` / `invoke_skill`. If you find yourself editing any of the above files, you are doing too much — back out and reconfirm whether you actually need a skill or one of the heavier surfaces.
+
+### Step 6: Keep the skill in sync with reality
+
+Skills are read-once at registration; the body is what the LLM follows. If the underlying tools the skill calls change shape (renamed `acp_*` tool, new required arg on `chat_agent_*`, removed MCP), update the skill body. The `tlamatini_csrf_exempt_audit` / `tlamatini_planner_trace_replay` / `tlamatini_flw_doctor` skills are particularly sensitive to this — they are runbooks against the Tlamatini codebase itself and will silently misfire if a referenced file path moves.
+
 ## Final Rule
 
 Answer this question explicitly before coding:
 
-"Am I adding a direct @tool, a wrapped chat-agent tool, an MCP context provider, or more than one of those?"
+"Am I adding a direct @tool, a wrapped chat-agent tool, an MCP context provider, a Skill (`SKILL.md` package), or more than one of those?"
 
 If that answer is not written down first, the implementation will usually end up in the wrong files.

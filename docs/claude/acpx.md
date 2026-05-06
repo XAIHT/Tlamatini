@@ -12,6 +12,12 @@ It is Tlamatini's runtime for spawning **external coding-agent CLIs** as out-of-
 
 ACPX is a **Python port of OpenClaw's ACPX plugin** (`extensions/acpx/`). The surface is API-compatible: `agent_id` mapping, `permissionMode` vocabulary, and the `SKILL.md` frontmatter contract all match verbatim, so any acp-router skill written for OpenClaw runs unmodified on Tlamatini and vice versa.
 
+### ACPX toolbar toggle (per-request enable/disable)
+
+The chat toolbar exposes three checkboxes: **Multi-Turn**, **Exec Report**, and **ACPX**. The ACPX checkbox (`#acpx-enabled` in `agent/templates/agent/agent_page.html`) sends an `acpx_enabled` boolean on every WebSocket request. `agent/rag/interface.py::ask_rag` reads it (defaulting to `True` for object payloads, `True` for raw-string payloads), pipes it into the chain payload, and the planner / executor call `agent.acpx.filter_acpx_tools(tools, acpx_enabled)` to strip the entire ACPX/Skill tool surface (the 12 names listed below) from the bound tool list whenever the flag is `False`. The result is that **a Multi-Turn request with ACPX unticked behaves exactly like the legacy pre-ACPX Multi-Turn flow** — no `acp_*` / `*_skill` tools are even visible to the planner. `bypass_prompt_validation` is computed as `multi_turn_enabled OR acpx_enabled`, so the system still skips prompt-shape validation when only ACPX is checked (which is the right behavior because ACPX flows are LLM-operator flows, not Q&A).
+
+The 12 ACPX/Skill tool names live in `agent.acpx.ACPX_TOOL_NAMES` (a `frozenset`) and are also registered in `_EXEC_REPORT_TOOLS` (in `agent/mcp_agent.py`) under `agent_key="acpx"` for the spawn/send/wait/kill family and `agent_key="skill"` for `invoke_skill`, so the Exec Report still merges all spawn/send/wait/kill rows into one "List of ACPx Operations" table when the user re-enables ACPX. Adding a 13th LLM-facing ACPX tool requires updating BOTH `ACPX_TOOL_NAMES` AND the executor whitelist in `unified.py` — the same drop-on-rebuild bug class that bit `exec_report_enabled` once already.
+
 ---
 
 ## Supported external coding agents (the `agent_id` registry)

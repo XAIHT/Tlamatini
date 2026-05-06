@@ -70,7 +70,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 ---
 
-## All 60 Workflow Agent Types
+## All 59 Workflow Agent Types
 
 ### Control Agents
 - **Starter** - Entry point, launches first agents
@@ -144,6 +144,8 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **Whatsapper** - WhatsApp messages (TextMeBot)
 - **TelegramRX** - Telegram message receiver
 - **FlowHypervisor** - LLM-powered flow health monitor (system agent)
+
+> **Note**: TeleTlamatini and WhatsTlamatini are **active** agents (they DO start `target_agents` after each completed user request cycle), so they are listed under Action Agents above — not here. Their long-running listener nature is documented as a "long-running" trait in the FlowHypervisor monitoring contract.
 
 ---
 

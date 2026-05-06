@@ -188,7 +188,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   ">>>END_SECTION_<AGENT_TYPE>" — end of a unified structured output section
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
-  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer).
+  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
