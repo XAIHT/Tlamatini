@@ -7,7 +7,7 @@ import re
 import subprocess
 import tokenize
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -349,6 +349,42 @@ def recent_commits(limit: int = 10) -> list[CommitInfo]:
     return commits
 
 
+def recent_week_commits(days: int = 7) -> list[CommitInfo]:
+    since = (datetime.now().astimezone() - timedelta(days=days)).isoformat()
+    raw = git("log", f"--since={since}", "--format=%h%x1f%cI%x1f%s")
+    commits: list[CommitInfo] = []
+    for line in raw.splitlines():
+        short_hash, committed_at, subject = line.split("\x1f", 2)
+        commits.append(CommitInfo(short_hash, committed_at, subject))
+    return commits
+
+
+def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
+    subjects = [commit.subject.lower() for commit in commits]
+    highlights: list[str] = []
+    if any("acpx" in subject for subject in subjects):
+        highlights.append(
+            "ACPX advanced significantly this week: runtime scaffolding, tool surface, skills, transport-aware execution, and enable/disable behavior were all touched."
+        )
+    if any("shortcut" in subject or "restrictive" in subject or "policy" in subject for subject in subjects):
+        highlights.append(
+            "Windows deployment hardening continued with CreateShortcut fixes and improved behavior on restricted-policy machines."
+        )
+    if any("scroll" in subject or "icon" in subject or "web page" in subject or "scheme" in subject for subject in subjects):
+        highlights.append(
+            "The operator surface evolved too: ACP/ACPX visual mechanics, canvas scrolling, icons, and page framing all received polish."
+        )
+    if any("persistent" in subject or "execution table" in subject or "summarizer" in subject for subject in subjects):
+        highlights.append(
+            "Execution observability improved through persistent execution tables, summarizer work, and the broader reportability push around agent runs."
+        )
+    if any("document" in subject or "docs" in subject or "framing" in subject for subject in subjects):
+        highlights.append(
+            "Documentation itself changed during the week, so the regenerated dossier must be treated as part of the tracked operator surface."
+        )
+    return highlights or ["Git history shows iterative maintenance across ACPX, packaging, UX, documentation, and cleanup work during the last seven days."]
+
+
 def workflow_agents() -> list[str]:
     agents_root = PROJECT_DIR / "agent" / "agents"
     names = []
@@ -375,6 +411,7 @@ def collect_context() -> dict:
     total_lines = sum(row.total_lines for row in language_rows)
     agents = workflow_agents()
     reference_media = extract_reference_media()
+    weekly = recent_week_commits()
 
     context = {
         "generated_at": local_stamp(),
@@ -399,6 +436,8 @@ def collect_context() -> dict:
         "html_templates": len(list((PROJECT_DIR / "agent" / "templates" / "agent").glob("*.html"))),
         "migrations": len(list((PROJECT_DIR / "agent" / "migrations").glob("*.py"))) - 1,
         "recent_commits": recent_commits(),
+        "weekly_commits": weekly,
+        "weekly_highlights": weekly_highlights(weekly),
         "reference_media": reference_media,
     }
     return context
@@ -435,6 +474,83 @@ HOW_TO_USE = [
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Open `/agentic_control_panel/` to drag agents, connect them, configure each node, validate, start, pause/resume, stop, and save `.flw` workflows.",
     "Use `python build.py`, `python build_uninstaller.py`, and `python build_installer.py` only when producing a packaged Windows release.",
+]
+
+DESIGN_PRINCIPLES = [
+    "Evidence-first answers: Tlamatini grounds responses in selected project context and hybrid retrieval rather than freeform model memory.",
+    "Explicit orchestration: checked Multi-Turn uses a visible tool loop, capability scoring, and staged planning instead of a single opaque call.",
+    "Runtime isolation: wrapped chat-agent copies run in session-scoped folders so template agents remain pristine while live runs stay inspectable.",
+    "Operator truth over vibes: Exec Report tables, tlamatini.log, skill audits, and ACPX transcripts make the system auditable after execution.",
+]
+
+INSTALLATION_GUIDE = [
+    "Python 3.12.10 is the strongly recommended source-mode version in the README, and the codebase has been tested most deeply there.",
+    "Source installs require a clone, virtual environment, dependency install from `requirements.txt`, migrations, a superuser, static collection, and then the web server.",
+    "You can run either the checked-in cloud/back-end defaults from `Tlamatini/agent/config.json` or a local Ollama-backed configuration with matching model names.",
+    "Packaged Windows installs create a default `user / changeme` account; manual source installs use your own `createsuperuser` account instead.",
+]
+
+CONFIGURATION_GUIDE = [
+    "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
+    "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
+    "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid.",
+    "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
+]
+
+RUNNING_GUIDE = [
+    "Development server: `python Tlamatini/manage.py runserver --noreload`.",
+    "Preferred async/dev bootstrap: `python Tlamatini/manage.py startserver`, which starts MCP services before the Django server.",
+    "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
+    "Startup cleans pool state, repopulates the agent registry, launches MCP metrics/file-search servers, and then serves HTTP plus WebSocket traffic.",
+]
+
+RELEASE_GUIDE = [
+    "Release production is a three-step pipeline: `build.py` -> `build_uninstaller.py` -> `build_installer.py`.",
+    "The final distributable is the full `dist/Tlamatini_Release/` folder, not a stray executable copied outside its payload.",
+    "Current `build.py` treats `README.md` and `jd-cli/` as required post-build assets and fails hard if those payloads are missing.",
+    "Bundled support scripts cover shortcut creation/removal, `.flw` association, the PowerShell launcher, and Windows-specific installer ergonomics.",
+]
+
+EXEC_REPORT_GUIDE = [
+    "Exec Report is a Multi-Turn-only transparency layer that appends one operation table per state-changing agent family to the final answer.",
+    "Rows are recorded from the live tool-call stream rather than guessed from the LLM prose, so the report is the operational ground truth.",
+    "Each row receives a SUCCESS/FAILURE verdict from raw tool returns, making long installs, deployments, and remediations inspectable after the fact.",
+]
+
+ACPX_GUIDE = [
+    "ACPX lets Tlamatini spawn external coding-agent CLIs such as Codex, Claude Code, Cursor, Gemini, Qwen, and others as managed child processes.",
+    "It pairs those agents with markdown-driven `SKILL.md` packages, validated I/O contracts, permission gating, and append-only audit logs.",
+    "Transport-aware drain rules and bounded event bodies reduce latency while protecting the LLM context budget during external-agent relays.",
+    "The operator-facing references are `README.md` and `ACPX.md`, while the implementation lives under `agent/acpx/`, `agent/skills/`, and `agent/skills_pkg/`.",
+]
+
+APP_LOG_GUIDE = [
+    "The built-in `tlamatini.log` file captures both stdout and stderr through a tee stream initialized in `manage.py` before Django starts.",
+    "In source mode the log sits next to `manage.py`; in frozen mode it lives next to the executable.",
+    "Immediate flush behavior makes the log the primary forensic artifact for startup problems, warnings, tracebacks, and runtime diagnostics.",
+]
+
+OLLAMA_COMMANDS = "\n".join(
+    [
+        '$env:OLLAMA_INSTALL_DIR = "$env:LOCALAPPDATA\\Programs\\Ollama"',
+        "irm https://ollama.com/install.ps1 | iex",
+        "ollama --version",
+        "ollama serve",
+        "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
+        "ollama pull qwen3-embedding:8b",
+        "ollama pull glm-5:cloud",
+        "ollama pull qwen3.5:cloud",
+        "ollama pull gpt-oss:120b-cloud",
+        "ollama pull qwen3.5:397b-cloud",
+        "ollama pull llama3.2-vision:11b",
+    ]
+)
+
+OLLAMA_GUIDE = [
+    "Open a normal PowerShell window, not an elevated one, for the safest no-admin Windows installation path.",
+    "Install into `%LOCALAPPDATA%\\Programs\\Ollama` with the official PowerShell installer script and then reopen PowerShell so PATH updates are visible.",
+    "Verify the CLI with `ollama --version`, start `ollama serve` if the background service is not already active, and confirm `http://127.0.0.1:11434/api/tags` responds.",
+    "Pull the default repository model tags exactly as written if you want the shipped config and agent templates to work unchanged.",
 ]
 
 ARCHITECTURE_LAYERS = [
@@ -569,6 +685,10 @@ def split_lines(text: str, per_page: int) -> list[str]:
     return ["\n".join(lines[index : index + per_page]) for index in range(0, len(lines), per_page)]
 
 
+def split_items(items: list, size: int) -> list[list]:
+    return [items[index : index + size] for index in range(0, len(items), size)]
+
+
 def pdf_page_footer(canvas, doc) -> None:
     canvas.saveState()
     canvas.setStrokeColor(colors.HexColor("#8f5c35"))
@@ -640,6 +760,18 @@ def build_pdf(context: dict) -> None:
     story.append(p("2. Architecture Layers", styles["h1"]))
     arch_rows = [["Layer", "Role"]] + [[layer, desc] for layer, desc in ARCHITECTURE_LAYERS]
     story.append(table(arch_rows, widths=[1.75 * inch, 5.0 * inch], font_size=8))
+    story.append(p("Design principles", styles["h2"]))
+    for item in DESIGN_PRINCIPLES:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(PageBreak())
+
+    story.append(p("3. Installation, Configuration, and Everyday Use", styles["h1"]))
+    story.append(p("Installation essentials", styles["h2"]))
+    for item in INSTALLATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Configuration essentials", styles["h2"]))
+    for item in CONFIGURATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("How to use it", styles["h2"]))
     for item in HOW_TO_USE:
         story.append(bullet(item, styles["bullet"]))
@@ -662,13 +794,38 @@ def build_pdf(context: dict) -> None:
     )
     story.append(PageBreak())
 
-    story.append(p("3. Agent Catalog and Runtime Model", styles["h1"]))
+    story.append(p("4. Ollama Setup Without Administrative Rights", styles["h1"]))
+    for item in OLLAMA_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("No-admin Ollama commands and default model pulls", styles["h2"]))
+    story.append(Preformatted(OLLAMA_COMMANDS, styles["mono"]))
+    story.append(PageBreak())
+
+    story.append(p("5. Runtime, Release, and Operator Diagnostics", styles["h1"]))
+    story.append(p("Running the application", styles["h2"]))
+    for item in RUNNING_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Release pipeline", styles["h2"]))
+    for item in RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Exec Report", styles["h2"]))
+    for item in EXEC_REPORT_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("ACPX and skills", styles["h2"]))
+    for item in ACPX_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Application log", styles["h2"]))
+    for item in APP_LOG_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(PageBreak())
+
+    story.append(p("6. Agent Catalog and Runtime Model", styles["h1"]))
     story.append(p(f"Tlamatini currently exposes {context['workflow_agent_count']} workflow-agent templates.", styles["body"]))
     story.append(table([["Category", "Representative agents"]] + AGENT_CATEGORIES, widths=[1.85 * inch, 4.9 * inch], font_size=7.8))
     story.append(p("All workflow agents follow a common deployment pattern: template directory, YAML configuration, session-scoped pool copy, PID/status/log files, target/source wiring, and optional reanimation state.", styles["body"]))
     story.append(PageBreak())
 
-    story.append(p("4. Repository Facts", styles["h1"]))
+    story.append(p("7. Repository Facts and Git Changes", styles["h1"]))
     repo_rows = [
         ["Metric", "Value"],
         ["Tracked files in git", f"{context['tracked_files']}"],
@@ -686,9 +843,21 @@ def build_pdf(context: dict) -> None:
     for commit in context["recent_commits"]:
         commit_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
     story.append(table(commit_rows, widths=[1.0 * inch, 0.8 * inch, 4.9 * inch], font_size=7))
+    story.append(p("Git changes from the last 7 days", styles["h2"]))
+    for item in context["weekly_highlights"]:
+        story.append(bullet(item, styles["bullet"]))
+    weekly_chunks = split_items(context["weekly_commits"], 12)
+    for index, chunk in enumerate(weekly_chunks, 1):
+        story.append(p(f"Weekly commit appendix {index} of {len(weekly_chunks)}", styles["h2"]))
+        weekly_rows = [["Date", "Commit", "Subject"]]
+        for commit in chunk:
+            weekly_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
+        story.append(table(weekly_rows, widths=[1.0 * inch, 0.8 * inch, 4.9 * inch], font_size=7))
+        if index != len(weekly_chunks):
+            story.append(PageBreak())
     story.append(PageBreak())
 
-    story.append(p("5. Effective Line Inventory by Language", styles["h1"]))
+    story.append(p("8. Effective Line Inventory by Language", styles["h1"]))
     story.append(
         p(
             "Methodology: tracked text files only. Blank lines and comment-only lines are excluded. Python counts also remove module, class, and function docstrings detected through AST parsing.",
@@ -711,14 +880,14 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Total effective lines: {context['total_effective_lines']:,}", styles["h2"]))
     story.append(PageBreak())
 
-    story.append(p("6. Largest Effective Source Files", styles["h1"]))
+    story.append(p("9. Largest Effective Source Files", styles["h1"]))
     largest_rows = [["Path", "Language", "Effective", "Total"]]
     for file_stat in context["file_rows"][:25]:
         largest_rows.append([file_stat.path, file_stat.language, f"{file_stat.effective_lines:,}", f"{file_stat.total_lines:,}"])
     story.append(table(largest_rows, widths=[4.0 * inch, 1.2 * inch, 0.75 * inch, 0.75 * inch], font_size=6.7))
     story.append(PageBreak())
 
-    story.append(p("7. Complete Tracked File Tree (Repository Appendix)", styles["h1"]))
+    story.append(p("10. Complete Tracked File Tree (Repository Appendix)", styles["h1"]))
     TREE_OUTPUT.write_text(context["tree_text"], encoding="utf-8")
     tree_chunks = split_lines(context["tree_text"], 76)
     for index, chunk in enumerate(tree_chunks, 1):
@@ -974,7 +1143,19 @@ def build_ppt(context: dict) -> None:
         cover,
     )
     add_text(slide, audit, 0.9, 2.0, 5.5, 0.6, "El Saber Cosmico del Desarrollo", 24, THEME["white"], False, name="cover-tag", font="Aptos Display")
-    add_text(slide, audit, 0.9, 2.76, 5.8, 1.0, "Local AI developer assistant with RAG, Multi-Turn orchestration, 57 agents, visual workflows, and Windows packaging.", 17, THEME["muted"], False, name="cover-body")
+    add_text(
+        slide,
+        audit,
+        0.9,
+        2.76,
+        6.3,
+        1.0,
+        f"Local AI developer assistant with RAG, Multi-Turn orchestration, {context['workflow_agent_count']} agents, ACPX delegation, visual workflows, and Windows packaging.",
+        17,
+        THEME["muted"],
+        False,
+        name="cover-body",
+    )
     add_metric_card(slide, audit, 0.9, 4.25, 1.75, "Files", str(context["tracked_files"]), THEME["jade"], "cover-m1")
     add_metric_card(slide, audit, 2.85, 4.25, 1.75, "Agents", str(context["workflow_agent_count"]), THEME["copper"], "cover-m2")
     add_metric_card(slide, audit, 4.8, 4.25, 1.95, "Effective", f"{context['total_effective_lines']:,}", THEME["amber"], "cover-m3")
@@ -1000,6 +1181,10 @@ def build_ppt(context: dict) -> None:
     add_flow_boxes(slide, audit, 0.82, 2.0, ["Browser", "Channels", "RAG", "Planner", "Tools", "Answer"], THEME["jade"])
     add_panel(slide, audit, 0.78, 3.25, 5.85, 3.05, "Request path", HOW_IT_WORKS[:3], THEME["jade"], "works-a", 15)
     add_panel(slide, audit, 6.92, 3.25, 5.55, 3.05, "Runtime path", HOW_IT_WORKS[3:], THEME["copper"], "works-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Design Principles", "how the software is shaped", THEME["amber"])
+    add_panel(slide, audit, 0.82, 1.72, 11.55, 4.75, "Core design choices", DESIGN_PRINCIPLES, THEME["amber"], "design", 16)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "RAG And Context Engine", "retrieval core", THEME["amber"])
@@ -1044,7 +1229,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["copper"], "acp-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "The 57 Guardians", "workflow agent catalog", THEME["copper"])
+    slide, audit = add_slide(prs, f"The {context['workflow_agent_count']} Guardians", "workflow agent catalog", THEME["copper"])
     left = [f"{name}: {desc}" for name, desc in AGENT_CATEGORIES[:4]]
     right = [f"{name}: {desc}" for name, desc in AGENT_CATEGORIES[4:]]
     add_panel(slide, audit, 0.72, 1.56, 5.95, 5.1, "Agent families", left, THEME["copper"], "agents-a", 13)
@@ -1085,6 +1270,38 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "checklist", 15)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Installation And Configuration", "README-backed operator path", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.85, 4.95, "Install essentials", INSTALLATION_GUIDE, THEME["jade"], "install-a", 15)
+    add_panel(slide, audit, 6.92, 1.6, 5.55, 4.95, "Config essentials", CONFIGURATION_GUIDE, THEME["copper"], "install-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Ollama Without Admin Rights", "local model setup on Windows", THEME["amber"])
+    add_text(slide, audit, 0.85, 1.72, 11.55, 3.45, OLLAMA_COMMANDS, 9, THEME["white"], False, name="ollama-commands", font="Cascadia Mono")
+    add_panel(slide, audit, 0.85, 5.32, 11.55, 1.0, "Checklist", OLLAMA_GUIDE[:2], THEME["amber"], "ollama-check", 14)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Ollama Readiness", "service, API, and model pulls", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Service and API", OLLAMA_GUIDE[2:], THEME["jade"], "ollama-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Default pull set", [
+        "qwen3-embedding:8b",
+        "glm-5:cloud",
+        "qwen3.5:cloud",
+        "gpt-oss:120b-cloud",
+        "qwen3.5:397b-cloud",
+        "llama3.2-vision:11b",
+    ], THEME["copper"], "ollama-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Running Modes", "development, MCP bootstrap, and ASGI", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "How to run", RUNNING_GUIDE, THEME["copper"], "run-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "What startup does", [
+        "Initializes Django and runtime guards in manage.py.",
+        "Cleans pool state and repopulates the Agent table from current disk templates.",
+        "Launches MCP metrics and gRPC file-search servers before steady-state traffic.",
+        "Handles shutdown by killing tracked/untracked agent processes and clearing pool artifacts.",
+    ], THEME["jade"], "run-b", 15)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Packaging Path", "source usage is separate from release building", THEME["amber"])
     add_flow_boxes(slide, audit, 1.15, 2.0, ["build.py", "pkg.zip", "build_uninstaller", "Uninstaller", "build_installer", "Release"], THEME["amber"])
     add_panel(slide, audit, 0.92, 3.35, 11.35, 2.55, "Release rule", [
@@ -1092,6 +1309,28 @@ def build_ppt(context: dict) -> None:
         "The final distributable is the full `dist/Tlamatini_Release/` folder, not one executable copied out of context.",
         "Installer scripts register shortcuts and `.flw` file associations and place the uninstaller next to the app.",
     ], THEME["amber"], "packaging", 16)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Exec Report", "show-your-work visibility for Multi-Turn", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Why it exists", EXEC_REPORT_GUIDE, THEME["jade"], "exec-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Operator effect", [
+        "Tables appear only for state-changing agent families that actually fired.",
+        "Verdicts are derived from real tool returns, not inferred from prose summaries.",
+        "This is the audit surface that makes long jobs debuggable from the chat output itself.",
+    ], THEME["amber"], "exec-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "ACPX And Skills", "external coding-agent runtime", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What ACPX adds", ACPX_GUIDE, THEME["copper"], "acpx-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Files and operator model", [
+        "`agent/acpx/` hosts the runtime, permission gate, registry, and tools.",
+        "`agent/skills/` and `agent/skills_pkg/` host the in-process skill harness and markdown catalog.",
+        "Transcripts and audit logs are persisted so external delegation stays replayable.",
+    ], THEME["jade"], "acpx-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Application Log", "tlamatini.log as forensic truth", THEME["amber"])
+    add_panel(slide, audit, 0.85, 1.75, 11.45, 4.6, "How the log works", APP_LOG_GUIDE, THEME["amber"], "log", 17)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Repository Facts", "current head inventory", THEME["jade"])
@@ -1123,10 +1362,21 @@ def build_ppt(context: dict) -> None:
     add_text(slide, audit, 0.85, 1.72, 11.7, 4.85, file_table_text(context["file_rows"]), 8, THEME["white"], False, name="largest-table", font="Cascadia Mono")
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Latest Optimizations", "recent current-head changes, not the whole story", THEME["amber"])
-    latest = [f"{iso_date(c.committed_at)} | {c.short_hash} | {c.subject}" for c in context["recent_commits"][:6]]
-    add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "Latest commits", latest, THEME["amber"], "latest", 13)
+    slide, audit = add_slide(prs, "Last 7 Days In Git", "recent changes according to git history", THEME["amber"])
+    add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "Weekly highlights", context["weekly_highlights"], THEME["amber"], "latest", 15)
     audit_layout(audit, len(prs.slides))
+
+    weekly_chunks = split_items(context["weekly_commits"], 6)
+    for idx, chunk in enumerate(weekly_chunks, 1):
+        slide, audit = add_slide(
+            prs,
+            f"Weekly Commit Appendix {idx}/{len(weekly_chunks)}",
+            "all last-week commits from git",
+            THEME["copper"] if idx % 2 else THEME["jade"],
+        )
+        weekly_lines = [f"{iso_date(c.committed_at)} | {c.short_hash} | {c.subject}" for c in chunk]
+        add_panel(slide, audit, 0.82, 1.68, 11.55, 4.86, "Commit timeline", weekly_lines, THEME["copper"] if idx % 2 else THEME["jade"], f"week-{idx}", 12)
+        audit_layout(audit, len(prs.slides))
 
     tree_chunks = split_lines(context["tree_text"], 31)
     for idx, chunk in enumerate(tree_chunks, 1):
@@ -1171,6 +1421,8 @@ def serialize_context(context: dict) -> dict:
         "language_rows": [row.__dict__ for row in context["language_rows"]],
         "largest_files": [row.__dict__ for row in context["file_rows"][:50]],
         "recent_commits": [row.__dict__ for row in context["recent_commits"]],
+        "weekly_commits": [row.__dict__ for row in context["weekly_commits"]],
+        "weekly_highlights": context["weekly_highlights"],
         "workflow_agents": context["workflow_agents"],
     }
 
