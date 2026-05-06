@@ -50,13 +50,13 @@ $iconPath = Join-Path $installDir "Tlamatini.ico"
 
 Write-Host "Install directory: $installDir" -ForegroundColor White
 
-# Validate Tlamatini.exe — the shortcut targets Tlamatini.exe directly.
+# Validate Tlamatini.exe -- the shortcut targets Tlamatini.exe directly.
 # manage.py handles console branding (title + icon) via _brand_console_window()
 # and _set_app_user_model_id() on startup, so no conhost.exe wrapper is needed.
 # Previous versions used conhost.exe as the shortcut target to force the legacy
 # Console Host, but conhost.exe does not reliably accept arbitrary executables
-# as arguments on modern Windows — especially under restrictive Group Policy /
-# AppLocker / WDAC configurations — causing the shortcut to silently do nothing.
+# as arguments on modern Windows -- especially under restrictive Group Policy /
+# AppLocker / WDAC configurations -- causing the shortcut to silently do nothing.
 if (-not (Test-Path $exePath)) {
     Write-Host "Error: Tlamatini.exe not found at: $exePath" -ForegroundColor Red
     Read-Host "Press Enter to exit"
@@ -143,13 +143,13 @@ try {
         $vbsSuccess = $true
     }
 } catch {
-    Write-Host "[!] cscript.exe failed or is blocked by policy — using PowerShell fallback." -ForegroundColor Yellow
+    Write-Host "[!] cscript.exe failed or is blocked by policy -- using PowerShell fallback." -ForegroundColor Yellow
 }
 
 # Clean up the temporary VBS file regardless
 Remove-Item $vbsPath -ErrorAction SilentlyContinue
 
-# PowerShell COM fallback — works even when cscript/wscript are blocked by
+# PowerShell COM fallback -- works even when cscript/wscript are blocked by
 # AppLocker / WDAC / Group Policy, because WScript.Shell COM is still
 # accessible from PowerShell running under -ExecutionPolicy Bypass.
 if (-not $vbsSuccess) {
