@@ -176,6 +176,11 @@ CHANNEL_LAYERS = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "suppress_runtime_poller_ok": {
+            "()": "tlamatini.logging_filters.SuppressRuntimePollerOk",
+        },
+    },
     "formatters": {
         "chat_runtime": {
             "format": "%(asctime)s [%(name)s] %(levelname)s %(message)s",
@@ -213,6 +218,9 @@ LOGGING = {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
+        },
+        "django.channels.server": {
+            "filters": ["suppress_runtime_poller_ok"],
         },
     },
 }
