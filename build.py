@@ -478,6 +478,7 @@ def main():
         '--hidden-import=tlamatini.asgi',
         '--hidden-import=tlamatini.middleware',
         '--hidden-import=tlamatini.context_processors',
+        '--hidden-import=tlamatini.logging_filters',
         '--hidden-import=unstructured',
         '--hidden-import=filesearch_pb2',
         '--hidden-import=filesearch_pb2_grpc',
