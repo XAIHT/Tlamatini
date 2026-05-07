@@ -95,6 +95,11 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # etc.). Shoter remains read-only (it only observes the screen) so
     # it stays out of the report on purpose.
     "chat_agent_keyboarder":     ("keyboarder",     "Keyboarder"),
+    # Mouser is state-changing: it moves the system mouse pointer and
+    # may issue a click — both observable side-effects on the desktop
+    # (focus changes, foreground-window switch, button events fired at
+    # whatever window happens to be at the target coordinates).
+    "chat_agent_mouser":         ("mouser",         "Mouser"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every
@@ -816,7 +821,8 @@ You have access to the following tools. Use them proactively whenever the user's
 - **Send Telegram message** → `chat_agent_telegramer`
 - **Send WhatsApp message** → `chat_agent_whatsapper`
 - **Desktop notification** → `chat_agent_notifier` (with title='...' and message='...')
-- **Take a screenshot** → `chat_agent_shoter` (also useful as a verification step after launching a desktop app — pair with `chat_agent_image_interpreter` to read what's on screen)
+- **Take a screenshot** → `chat_agent_shoter` (silent — file saved to disk, NO viewer popup. Pair with `chat_agent_image_interpreter` to read what's on screen. NEVER follow with `launch_view_image` — that would pop a viewer window and steal focus from the workflow's target app)
+- **Move the mouse / click a window to focus it before typing** → `chat_agent_mouser` (with movement_type='localized' and end_posx=... and end_posy=... and button_click='left'). Use this BEFORE `chat_agent_keyboarder` whenever the target app may not already have focus (e.g. after launching Notepad — click into its edit area first, then type)
 - **Type into a desktop app / send keystrokes / press hotkeys** → `chat_agent_keyboarder` (with input_sequence="..." — literal text wraps in quotes; key names and `+`-joined chords go bare; comma-separated. Example: `"home, 'Hello world', enter"`)
 - **Analyze an image** → `chat_agent_image_interpreter` (with images_pathfilenames='...')
 - **Create a file** → `chat_agent_file_creator` (with filepath='...' and content='...')
