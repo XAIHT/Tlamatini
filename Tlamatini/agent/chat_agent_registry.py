@@ -247,7 +247,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_shoter",
         tool_description="Chat-Agent-Shoter",
         display_name="Shoter",
-        purpose="Take a silent screenshot of the current screen and save it to disk — the file is NEVER opened in a viewer (no popup, no focus stolen). Use when the user asks for a screenshot, screen capture, or visual snapshot of what's on screen — also useful as a verification step after launching a desktop application. Always pair with chat_agent_image_interpreter to read what's on screen; NEVER follow chat_agent_shoter with launch_view_image — that would pop a viewer window and steal focus from the workflow's target app (e.g. Notepad), breaking subsequent chat_agent_keyboarder / chat_agent_mouser steps.",
+        purpose="Take a silent screenshot of the current screen and save it to disk — the file is NEVER opened in a viewer (no popup, no focus stolen). Use when the user asks for a screenshot, screen capture, or visual snapshot of what's on screen — also useful as a verification step after launching a desktop application AND as a verification step after closing one (so you can confirm the target window is gone and no residual 'Save changes?' / 'Confirm exit' dialog is still on screen waiting for a button click). Always pair with chat_agent_image_interpreter to read what's on screen; NEVER follow chat_agent_shoter with launch_view_image — that would pop a viewer window and steal focus from the workflow's target app (e.g. Notepad), breaking subsequent chat_agent_keyboarder / chat_agent_mouser steps.",
         example_request="Take screenshot with output_dir='E:\\Screenshots'",
         aliases=("shoter", "screenshot", "screen capture"),
         security_hints=(
@@ -262,7 +262,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_mouser",
         tool_description="Chat-Agent-Mouser",
         display_name="Mouser",
-        purpose="Move the mouse pointer and optionally click — needed to focus a desktop window before typing into it (e.g. click into Notepad's editing area before chat_agent_keyboarder types). Two modes: movement_type='localized' moves to (end_posx, end_posy) — set actual_position=false plus ini_posx/ini_posy if you want to start from a fixed point instead of the current cursor — and optionally fires button_click ∈ {none|left|right|middle|double-left|double-right|double-middle} once the target is reached. movement_type='random' wanders the screen for total_time seconds (no click). Pair with chat_agent_executer (to launch the target app), chat_agent_shoter + chat_agent_image_interpreter (to find where to click), then chat_agent_keyboarder (to type after clicking).",
+        purpose="Move the mouse pointer and optionally click — needed to focus a desktop window before typing into it (e.g. click into Notepad's editing area before chat_agent_keyboarder types). Two modes: movement_type='localized' moves to (end_posx, end_posy) — set actual_position=false plus ini_posx/ini_posy if you want to start from a fixed point instead of the current cursor — and optionally fires button_click ∈ {none|left|right|middle|double-left|double-right|double-middle} once the target is reached. movement_type='random' wanders the screen for total_time seconds (no click). Pair with chat_agent_executer (to launch the target app), chat_agent_shoter + chat_agent_image_interpreter (to find where to click), then chat_agent_keyboarder (to type after clicking). For CLOSING a window at the end of the workflow, prefer chat_agent_keyboarder with input_sequence='alt+f4' over hunting the X button by pixel — it is faster, locale-independent, and always lands on the focused window; only use Mouser to click 'Don't Save' / 'Cancel' if a save dialog appears AND alt-letter shortcuts (alt+n / alt+s / alt+c) cannot be sent for some reason.",
         example_request="Move mouse with movement_type='localized' and end_posx=600 and end_posy=400 and button_click='left'",
         aliases=("mouser", "mouse", "move mouse", "click", "pointer"),
         security_hints=(
@@ -279,7 +279,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_keyboarder",
         tool_description="Chat-Agent-Keyboarder",
         display_name="Keyboarder",
-        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). Use when the user asks to type something into a desktop app, drive a UI with keystrokes, send hotkeys (Ctrl+C, Alt+Tab, Win+R, ...), or replay a key sequence as if a human were pressing keys. Pair with chat_agent_executer (to launch the target app) and chat_agent_shoter / chat_agent_image_interpreter (to verify the window is ready before typing).",
+        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). Use when the user asks to type something into a desktop app, drive a UI with keystrokes, send hotkeys (Ctrl+C, Alt+Tab, Win+R, ...), or replay a key sequence as if a human were pressing keys. Pair with chat_agent_executer (to launch the target app) and chat_agent_shoter / chat_agent_image_interpreter (to verify the window is ready before typing). WINDOW CLEANUP — every desktop-UI workflow you start MUST end by closing the window you opened: send 'alt+f4' to close the active window; if the app raises a 'Save changes?' confirmation (Notepad, Word, most editors) the standard English buttons are 'Save' (alt+s), 'Don't Save' (alt+n), 'Cancel' (alt+c or escape) — when the workflow only typed demo text and the file does NOT need to be kept, send 'alt+n' to discard. If alt-letter shortcuts are unavailable (non-English UI, custom dialog), navigate with 'tab' until the desired button is focused, then 'enter'. After the close sequence, take a chat_agent_shoter screenshot to verify the window is actually gone and no residual dialog is left on screen.",
         example_request="Type with input_sequence=\"'Hi, I'm Tlamatini', enter\" and stride_delay=80",
         aliases=("keyboarder", "keyboard", "type", "press keys", "send keys", "hotkey"),
         security_hints=(
@@ -288,6 +288,10 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "simulate keyboard", "simulate typing", "as if typing",
             "if I were typing", "write into notepad", "type in notepad",
             "ctrl+c", "ctrl+v", "alt+tab", "win+r", "enter key",
+            "close window", "close the window", "close notepad", "close the app",
+            "alt+f4", "dismiss dialog", "dismiss the dialog", "don't save",
+            "discard changes", "discard the file", "save dialog", "save prompt",
+            "clean up the window", "shut the window", "exit the app",
         ),
     ),
     ChatWrappedAgentSpec(
