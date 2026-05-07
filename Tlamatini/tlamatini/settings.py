@@ -177,8 +177,8 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
-        "suppress_runtime_poller_ok": {
-            "()": "tlamatini.logging_filters.SuppressRuntimePollerOk",
+        "suppress_http_get_200": {
+            "()": "tlamatini.logging_filters.SuppressHttpGet200",
         },
     },
     "formatters": {
@@ -220,7 +220,7 @@ LOGGING = {
             "propagate": False,
         },
         "django.channels.server": {
-            "filters": ["suppress_runtime_poller_ok"],
+            "filters": ["suppress_http_get_200"],
         },
     },
 }

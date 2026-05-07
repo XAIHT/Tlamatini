@@ -1,16 +1,22 @@
 import logging
 
 
-_RUNTIME_POLLER_PATH = "/agent/check_chat_runtimes_status/"
-
-
-class SuppressRuntimePollerOk(logging.Filter):
-    """Drop daphne's per-request access log line for the chat-runtime status
-    poller when it returns HTTP 200. Non-200 responses still log normally."""
+class SuppressHttpGet200(logging.Filter):
+    """Drop daphne's per-request access log line for any HTTP GET that
+    returned 200. Non-200 GETs (4xx, 5xx, redirects) and non-GET methods
+    still log normally so signal is preserved when something actually
+    goes wrong."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         args = record.args
-        if isinstance(args, dict):
-            if args.get("path") == _RUNTIME_POLLER_PATH and args.get("status") == 200:
-                return False
-        return True
+        if not isinstance(args, dict):
+            return True
+        method = str(args.get("method", "")).upper()
+        if method != "GET":
+            return True
+        status = args.get("status")
+        try:
+            status_int = int(status) if status is not None else None
+        except (TypeError, ValueError):
+            return True
+        return status_int != 200
