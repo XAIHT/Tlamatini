@@ -1021,6 +1021,14 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* Keyboarder — red/orange/yellow/green, mirrors .canvas-item.keyboarder-agent
+   in agentic_control_panel.css. State-changing because every keystroke
+   targets the active foreground window. */
+.exec-report-caption-keyboarder {
+    background: linear-gradient(135deg, #F44336 0%, #FF9800 33%, #FFEB3B 66%, #4CAF50 100%);
+    color: #ffffff;
+}
+
 /* ACPx — fire-orange/coral/violet/black, mirrors .canvas-item.acpx-agent
    in agentic_control_panel.css. State-changing because acp_spawn /
    acp_send / acp_kill all touch a real external CLI subprocess. */
@@ -1067,6 +1075,7 @@ body.resizing-vertical {
 .exec-report-kybercipher thead th,
 .exec-report-kyberdecipher thead th,
 .exec-report-jdecompiler thead th,
+.exec-report-keyboarder thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {
     color: #f5f5f5;
@@ -1148,5 +1157,6 @@ body.resizing-vertical {
 .exec-report-kyberkeygen .exec-report-cmd    { border-left: 3px solid #7B2FBE; }
 .exec-report-kybercipher .exec-report-cmd    { border-left: 3px solid #D35400; }
 .exec-report-kyberdecipher .exec-report-cmd  { border-left: 3px solid #D94F7A; }
+.exec-report-keyboarder .exec-report-cmd     { border-left: 3px solid #F44336; }
 .exec-report-acpx .exec-report-cmd           { border-left: 3px solid #BF360C; }
 .exec-report-skill .exec-report-cmd          { border-left: 3px solid #4527A0; }

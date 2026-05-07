@@ -35,6 +35,9 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_kyber_keygen": ("kyberkeygen",    "Kyber Keygen"),
     "chat_agent_kyber_cipher": ("kybercipher",    "Kyber Cipher"),
     "chat_agent_kyber_deciph": ("kyberdecipher",  "Kyber Deciph"),
+    # Keyboarder is state-changing — keystrokes target the foreground
+    # window. Shoter remains read-only (it only observes the screen).
+    "chat_agent_keyboarder":   ("keyboarder",     "Keyboarder"),
     # ACPX child-process launchers and the Skill harness invoker —
     # spawn / send / kill share the ``acpx`` agent_key so they merge
     # into one "List of ACPx Operations" table; invoke_skill gets its
@@ -46,7 +49,7 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
 }
 ```
 
-Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the same agent share an `agent_key` on purpose — their rows merge into one "List of <Agent> Operations" table. Read-only tools (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer) and everything in `_MANAGEMENT_TOOLS` are intentionally absent.
+Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the same agent share an `agent_key` on purpose — their rows merge into one "List of <Agent> Operations" table. Read-only tools (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer) and everything in `_MANAGEMENT_TOOLS` are intentionally absent. **Keyboarder is state-changing** — keystrokes affect whichever window currently has focus — so `chat_agent_keyboarder` IS captured under `agent_key="keyboarder"`. Shoter is the only desktop-UI agent that stays out of the report (taking a screenshot is purely observational).
 
 **Note on the visual ACPXer agent**: ACPXer is a *canvas* workflow node, not an LLM-invoked tool, so it does NOT contribute rows to `_EXEC_REPORT_TOOLS`. The Exec Report only covers tools the LLM calls in Multi-Turn mode. When the LLM drives ACPX via `acp_spawn` / `acp_send` / `acp_send_and_wait` / `acp_kill` / `acp_relay`, those calls already merge into the "List of ACPx Operations" table under `agent_key="acpx"`. If a future wrapped chat-agent (`chat_agent_acpxer`) is added so the LLM can launch the visual ACPXer node from chat, register it as `("chat_agent_acpxer", ("acpxer", "ACPXer"))` so it gets its own table — distinct from the existing `acpx` rows, since the visual surface is a different operational concept (one canvas node = one full lifecycle, vs. the 12 tools' fine-grained primitives).
 

@@ -90,6 +90,11 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_kyber_keygen":   ("kyberkeygen",    "Kyber Keygen"),
     "chat_agent_kyber_cipher":   ("kybercipher",    "Kyber Cipher"),
     "chat_agent_kyber_deciph":   ("kyberdecipher",  "Kyber Deciph"),
+    # Keyboarder is state-changing: every keystroke affects whichever
+    # window currently has focus (typing into Notepad, firing hotkeys,
+    # etc.). Shoter remains read-only (it only observes the screen) so
+    # it stays out of the report on purpose.
+    "chat_agent_keyboarder":     ("keyboarder",     "Keyboarder"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every
@@ -811,7 +816,8 @@ You have access to the following tools. Use them proactively whenever the user's
 - **Send Telegram message** → `chat_agent_telegramer`
 - **Send WhatsApp message** → `chat_agent_whatsapper`
 - **Desktop notification** → `chat_agent_notifier` (with title='...' and message='...')
-- **Take a screenshot** → `chat_agent_shoter`
+- **Take a screenshot** → `chat_agent_shoter` (also useful as a verification step after launching a desktop app — pair with `chat_agent_image_interpreter` to read what's on screen)
+- **Type into a desktop app / send keystrokes / press hotkeys** → `chat_agent_keyboarder` (with input_sequence="..." — literal text wraps in quotes; key names and `+`-joined chords go bare; comma-separated. Example: `"home, 'Hello world', enter"`)
 - **Analyze an image** → `chat_agent_image_interpreter` (with images_pathfilenames='...')
 - **Create a file** → `chat_agent_file_creator` (with filepath='...' and content='...')
 - **Extract text from documents** → `chat_agent_file_extractor` (with path='...')
