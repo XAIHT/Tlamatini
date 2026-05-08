@@ -10,17 +10,19 @@
 - `agent_page_state.js` - Client state
 - `agent_page_ui.js` - General UI utilities
 
-## ACP Workflow Designer (11 modules)
+## ACP Workflow Designer (12 modules + 1 entry point)
 - `agentic_control_panel.js` - Entry point
 - `acp-globals.js` - Shared global state, plus `updateCanvasContentSize()` (canvas-growth helper — see ACP Canvas DOM Contract below)
 - `acp-canvas-core.js` - Canvas rendering, drag-and-drop, classMap, connection handlers
 - `acp-canvas-undo.js` - Undo/redo state (1024 actions)
+- `acp-undo-manager.js` - Undo stack manager (works with `acp-canvas-undo.js`)
 - `acp-agent-connectors.js` - 50+ agent connection handlers
 - `acp-control-buttons.js` - Start/stop/pause/hypervisor
 - `acp-file-io.js` - .flw save/load
 - `acp-running-state.js` - LED indicators, process monitoring
 - `acp-session.js` - Session pool management
 - `acp-layout.js` - Canvas layout utilities
+- `acp-parametrizer-dialog.js` - Parametrizer's interconnection-mapping dialog
 - `acp-validate.js` - Flow validation engine
 
 ## ACP Canvas DOM Contract (scrollable canvas)
@@ -40,8 +42,11 @@ Consequences that MUST be respected by any new canvas code:
 
 If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.), it almost always belongs as a child of `#canvas-content`, not `#submonitor-container`, so it shares the coordinate frame with the items it visualizes.
 
-## Shared
+## Shared / chat-runtime auxiliary (5 modules)
 - `canvas_item_dialog.js` - Agent config dialog on canvas
 - `contextual_menus.js` - Right-click menus
 - `tools_dialog.js` - Tool enable/disable dialog
-- `acp-undo-manager.js` - Undo stack manager
+- `chat_page_runtime_poller.js` - Chat-side wrapped-runtime poller (status / log / wait helpers)
+- `shared-runtime-dialogs.js` - Shared modal dialog widgets used by chat + ACP runtime views
+
+**Total: 26 JS modules** (8 chat + 12 ACP + 1 ACP entry-point + 5 shared/chat-runtime auxiliary).

@@ -38,18 +38,24 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # Keyboarder is state-changing — keystrokes target the foreground
     # window. Shoter remains read-only (it only observes the screen).
     "chat_agent_keyboarder":   ("keyboarder",     "Keyboarder"),
+    # Mouser is state-changing — moving the pointer and clicking fires
+    # button events at whatever window is at the target coordinates and
+    # may switch the foreground window. Captured under its own agent_key.
+    "chat_agent_mouser":       ("mouser",         "Mouser"),
     # ACPX child-process launchers and the Skill harness invoker —
-    # spawn / send / kill share the ``acpx`` agent_key so they merge
-    # into one "List of ACPx Operations" table; invoke_skill gets its
-    # own ``skill`` table.
+    # spawn / send / send_and_wait / kill / relay all share the ``acpx``
+    # agent_key so they merge into one "List of ACPx Operations" table;
+    # invoke_skill gets its own ``skill`` table.
     "acp_spawn":               ("acpx",           "ACPx"),
     "acp_send":                ("acpx",           "ACPx"),
+    "acp_send_and_wait":       ("acpx",           "ACPx"),
     "acp_kill":                ("acpx",           "ACPx"),
+    "acp_relay":               ("acpx",           "ACPx"),
     "invoke_skill":            ("skill",          "Skill"),
 }
 ```
 
-Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the same agent share an `agent_key` on purpose — their rows merge into one "List of <Agent> Operations" table. Read-only tools (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer) and everything in `_MANAGEMENT_TOOLS` are intentionally absent. **Keyboarder is state-changing** — keystrokes affect whichever window currently has focus — so `chat_agent_keyboarder` IS captured under `agent_key="keyboarder"`. Shoter is the only desktop-UI agent that stays out of the report (taking a screenshot is purely observational).
+Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the same agent share an `agent_key` on purpose — their rows merge into one "List of <Agent> Operations" table. Read-only tools (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer, Sleeper, `chat_agent_run_*`, `window_present`) and everything in `_MANAGEMENT_TOOLS` are intentionally absent. **Keyboarder and Mouser are state-changing** — keystrokes target the focused window and pointer events fire at whichever window sits at the target coordinates — so `chat_agent_keyboarder` and `chat_agent_mouser` ARE captured under `agent_key="keyboarder"` and `agent_key="mouser"` respectively. Shoter is the only desktop-UI agent that stays out of the report (taking a screenshot is purely observational).
 
 **Note on the visual ACPXer agent**: ACPXer is a *canvas* workflow node, not an LLM-invoked tool, so it does NOT contribute rows to `_EXEC_REPORT_TOOLS`. The Exec Report only covers tools the LLM calls in Multi-Turn mode. When the LLM drives ACPX via `acp_spawn` / `acp_send` / `acp_send_and_wait` / `acp_kill` / `acp_relay`, those calls already merge into the "List of ACPx Operations" table under `agent_key="acpx"`. If a future wrapped chat-agent (`chat_agent_acpxer`) is added so the LLM can launch the visual ACPXer node from chat, register it as `("chat_agent_acpxer", ("acpxer", "ACPXer"))` so it gets its own table — distinct from the existing `acpx` rows, since the visual surface is a different operational concept (one canvas node = one full lifecycle, vs. the 12 tools' fine-grained primitives).
 
