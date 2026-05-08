@@ -552,9 +552,14 @@ def main():
             else:
                 print(f"WARNING: {src} not found; skipping copy.")
 
-        # Required root-level assets for the installed application
+        # Required root-level assets for the installed application.
+        # ``agents_descriptions.md`` is the authoritative source for the
+        # workflow-agent sidebar tooltips and the canvas Description dialog
+        # — it must ship next to the executable so ``agent.views`` can
+        # resolve it in frozen mode just like in source mode.
         required_file_copies = {
             Path("README.md"): dist_manage / "README.md",
+            Path("agents_descriptions.md"): dist_manage / "agents_descriptions.md",
         }
         for src, dst in required_file_copies.items():
             if not src.exists():

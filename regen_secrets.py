@@ -27,6 +27,14 @@ Targeted files (resolved relative to this script):
         password,
         tlamatini.username, tlamatini.password
 
+    Tlamatini/agent/agents/emailer/config.yaml
+        smtp.username, smtp.password (Gmail app password from
+        https://myaccount.google.com/apppasswords)
+
+    Tlamatini/agent/agents/recmailer/config.yaml
+        imap.username, imap.password (Gmail app password from
+        https://myaccount.google.com/apppasswords)
+
 YAML files are edited line-by-line so all comments survive intact. The JSON
 file is round-tripped through json.load/dump (its existing format already uses
 indent=2 and pseudo "_section_*" comment-keys that survive verbatim).
@@ -55,6 +63,8 @@ CONFIG_JSON = REPO_ROOT / "Tlamatini" / "agent" / "config.json"
 TELEGRAMER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "telegramer" / "config.yaml"
 TELEGRAMRX_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "telegramrx" / "config.yaml"
 TELETLAMATINI_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "teletlamatini" / "config.yaml"
+EMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "emailer" / "config.yaml"
+RECMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "recmailer" / "config.yaml"
 
 
 def placeholder(name: str) -> str:
@@ -165,6 +175,16 @@ TELETLAMATINI_RULES: List[Tuple[List[str], str]] = [
     (["password"],              "TELETLAMATINI_PASSWORD"),
     (["tlamatini", "username"], "TLAMATINI_USERNAME"),
     (["tlamatini", "password"], "TLAMATINI_PASSWORD"),
+]
+
+EMAILER_RULES: List[Tuple[List[str], str]] = [
+    (["smtp", "username"], "EMAILER_USERNAME"),
+    (["smtp", "password"], "EMAILER_PASSWORD"),
+]
+
+RECMAILER_RULES: List[Tuple[List[str], str]] = [
+    (["imap", "username"], "RECMAILER_USERNAME"),
+    (["imap", "password"], "RECMAILER_PASSWORD"),
 ]
 
 
@@ -309,6 +329,8 @@ def main() -> int:
         patch_yaml(TELEGRAMER_YAML,    TELEGRAMER_RULES,    args.mode, keys, args.dry_run),
         patch_yaml(TELEGRAMRX_YAML,    TELEGRAMRX_RULES,    args.mode, keys, args.dry_run),
         patch_yaml(TELETLAMATINI_YAML, TELETLAMATINI_RULES, args.mode, keys, args.dry_run),
+        patch_yaml(EMAILER_YAML,       EMAILER_RULES,       args.mode, keys, args.dry_run),
+        patch_yaml(RECMAILER_YAML,     RECMAILER_RULES,     args.mode, keys, args.dry_run),
     ]
     for block in reports:
         for line in block:

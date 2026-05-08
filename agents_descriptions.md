@@ -1,0 +1,150 @@
+# Tlamatini — Agent Descriptions
+
+This file is the **authoritative source of human-readable descriptions** for every workflow agent shown in the Agentic Control Panel sidebar of Tlamatini.
+
+The Django view `agent.views.agentic_control_panel` parses the table rows under `## Workflow Agents` below and injects the `Description` column into the page as `agent_purpose_map` JSON. The frontend (`acp-canvas-core.js`) reads that JSON and uses the text as the **hover tooltip** over each sidebar agent and as the **Description** dialog body when the user right-clicks an agent on the canvas.
+
+Editing a row's `Description` cell here changes both:
+- the documentation read by humans, AND
+- the live UI text displayed to end users.
+
+The lookup is case- and punctuation-insensitive: the key for each row is `re.sub(r'[^a-z0-9]+', '', name.lower())`. So "Kyber-KeyGen", "Kyber KeyGen", and "kyberkeygen" all resolve to the same description.
+
+Descriptions are written for **non-expert readers** — when in doubt, prefer the longer, friendlier phrasing over a terse one-liner. A user who has never seen the agent before should be able to understand **what it does, when to use it, and what its main inputs/outputs are** from a single tooltip read.
+
+---
+
+## Workflow Agents
+
+The visual workflow designer ships with **60 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
+
+### Control Agents
+
+These agents shape the lifecycle of a flow: when it begins, when it ends, and what gets cleaned up afterward.
+
+| Agent | Description |
+|-------|-------------|
+| **Starter** | The entry point of every flow. When the user clicks *Start*, the Starter is the first agent that runs; its only job is to launch the agents listed in its `target_agents`. Think of it as the green "Play" button of the canvas — it does no real work itself, it simply kicks off the chain. |
+| **Ender** | Terminates a flow gracefully. Kills every agent listed in its `target_agents`, then launches anything wired into its `output_agents` (typically a FlowBacker for backups, followed by Cleaners that wipe transient files). Use Ender at the bottom of every flow that should shut down on its own. |
+| **Stopper** | A surgical "kill the noisy neighbor" agent. It watches the logs of one or more `source_agents` and, when a configured pattern appears (e.g. `FAILED`, `out of memory`), terminates exactly those source agents — without bringing the whole flow down. Stopper does NOT start downstream agents; it is purely a controlled-shutdown tool. |
+| **Cleaner** | The post-mortem janitor. After an Ender or FlowBacker completes, the Cleaner deletes the `.log` and `.pid` files of the agents it was wired to, returning the session pool to a clean slate. It is the only agent that should be wired AFTER Ender. |
+| **Sleeper** | A timed pause. Waits for a configured number of milliseconds, then starts everything in `target_agents`. Useful for rate-limiting polling loops, giving an external service time to settle, or building "every N seconds" cycles when paired with a Raiser. |
+| **Croner** | A clock-driven trigger. Wakes up at the configured `HH:MM` every day and starts its `target_agents`. Good for nightly backups, scheduled reports, or any "run this every day at 3 AM" flow. Pair it with Gatewayer if you also want event-driven triggers in the same flow. |
+
+### Routing Agents
+
+These agents decide WHERE the flow goes next based on what they observe in upstream logs or user input.
+
+| Agent | Description |
+|-------|-------------|
+| **Raiser** | An event-driven launcher. Continuously watches the logs of its `source_agents` for a configured `pattern`. When the pattern appears, it fires every agent in `target_agents`. Raiser is the bread-and-butter bridge between *passive* monitoring agents and *active* action agents — anywhere you want "when X happens, do Y", a Raiser is the right answer. |
+| **Forker** | An automatic A/B router. Watches its source agents for two distinct sets of patterns (`pattern_a` and `pattern_b`); whichever set matches first determines which path the flow takes next (`target_agents_a` or `target_agents_b`). Use it whenever a single upstream signal can mean two different things and each meaning has its own downstream chain. |
+| **Asker** | An interactive A/B chooser. When it runs, it pops a dialog in the chat UI asking the user to pick Path A or Path B (with optional captions like "Approve" / "Reject"). The chosen path's `target_agents` are launched and the rejected path is left untouched. Has a 5-minute timeout. Perfect for human-in-the-loop approvals or a/b experiments. |
+| **Counter** | A persistent tally with threshold-based routing. Each time it runs it increments a stored counter and compares it against a `threshold_value`. If the counter is below the threshold it fires `target_agents_l` (less); if it has reached or passed the threshold it fires `target_agents_g` (greater). The count survives flow restarts via reanim files, so it can drive "do this 5 times then do that" loops. |
+
+### Logic Gates
+
+These agents hold the flow until specific upstream conditions are met — they are pure synchronization primitives.
+
+| Agent | Description |
+|-------|-------------|
+| **AND** | A two-input AND gate. Fires its `target_agents` only when BOTH `source_1` AND `source_2` have produced their respective patterns. The match is *latched*: once a source matches, that side stays satisfied until the gate fires. Use it to require two parallel branches to both succeed before continuing. |
+| **OR** | A two-input OR gate. Fires its `target_agents` when EITHER `source_1` OR `source_2` produces its pattern, whichever happens first. Use it for "the first one wins" patterns, e.g. continue as soon as either of two redundant data sources finishes. |
+| **Barrier** | An N-input barrier (a generalized AND). Waits until ALL configured `source_agents` have started, then fires its `target_agents`. The first source to arrive becomes the polling watcher; every subsequent arrival drops a flag file and the gate releases when all flags are present. Designed for fan-in synchronization across many parallel branches without any race conditions. |
+
+### Action Agents
+
+These are the agents that *do real work* — running commands, hitting APIs, producing files, calling LLMs, automating the desktop.
+
+| Agent | Description |
+|-------|-------------|
+| **Executer** | Runs an arbitrary shell command and triggers its `target_agents` when the command finishes. The command's stdout and stderr are captured to its log file. The simplest, most flexible "do something on this machine" agent — anywhere you would have typed a command into a terminal, an Executer can do it for you. |
+| **Pythonxer** | Runs an inline Python script (provided as a YAML string) with optional Ruff lint validation. The script can use any installed package; downstream agents are only triggered if the script exits with code 0. An optional `execute_forked_window` flag opens the script in a new console for live stdout. Great for ad-hoc data wrangling, custom logic, or anything you'd write a one-off `.py` file for. |
+| **Sqler** | Executes a Python block against a Microsoft SQL Server instance using `pyodbc`. The script receives `cursor` and `conn` as injected globals so you can write `cursor.execute("SELECT ...")` directly. Triggers downstream agents when the SQL completes successfully. Use it for ETL steps, schema checks, data exports, or anything that needs a real SQL session. |
+| **Mongoxer** | Executes a Python block against a MongoDB database using `pymongo`. The script receives a pre-connected `db` object so you can write `db.users.find({...})` directly. Triggers downstream agents on success. The MongoDB twin of Sqler — perfect for document-store reads, writes, and aggregations inside a flow. |
+| **Crawler** | A developer-oriented web crawler with built-in LLM analysis. Fetches a URL via HTTP GET and captures **raw content by default** (full HTML, inline JS, CSS, headers, JSON-LD, data-* attributes, the lot) or plain text on demand. Optionally walks all links on the same domain or every link found. The result is sent to an Ollama model with a developer-centric system prompt that produces a structured analysis. Outstanding for security audits, competitive analysis, or any "tell me what this page actually does" task. |
+| **Googler** | Performs a Google search for a configured query using a real headless browser (Playwright), opens the top N result pages, extracts their readable text, and writes the lot to an output file plus its log. Where Crawler hits a single URL you already know, Googler is the agent for "find me anything on the web about X" — it discovers the URLs first and then reads them. |
+| **Apirer** | An HTTP/REST API client agent. Performs a configurable GET / POST / PUT / DELETE request with arbitrary headers, body, and timeout, then logs the response status, body and round-trip latency in milliseconds. Authorization headers are masked in the log for security. Triggers downstream agents regardless of HTTP outcome (so retries and error branches are wired downstream, not inside the agent). |
+| **Gitter** | A Git operations agent. Runs `clone`, `pull`, `push`, `commit`, `checkout`, `branch`, `diff`, `log`, `status`, or any custom git command against a local repository, capturing both stdout and stderr into a structured `<git {command}> RESPONSE { ... }` block. Use it for unattended sync, CI-style builds that pull before they run, scheduled commits of generated artifacts, or audit trails of repository state. |
+| **Ssher** | Runs a shell command on a remote host over SSH using a pre-configured key. Captures stdout and stderr and triggers `target_agents` on success. The "Executer for somebody else's box" — pair it with Scper to push a script first and then run it remotely. |
+| **Scper** | Transfers a file to or from a remote host over SCP using a pre-configured SSH key. Direction is either `send` (local → remote) or `receive` (remote → local). The file-transfer companion of Ssher; together they cover almost every "do something on the staging server" scenario. |
+| **Dockerer** | A Docker / docker-compose front-end. Runs `up`, `down`, `restart`, `stop`, `build`, `logs`, `ps`, `pull`, etc. against a configured `compose_file` or against the local Docker daemon. Use it to spin a container up before a test runs, stream logs into a flow, or tear down environments at the end of a run. |
+| **Kuberneter** | A `kubectl` front-end. Runs commands like `get`, `apply`, `logs`, `exec` against a configured namespace, with arbitrary extra arguments or a fully custom command line. Lets a flow inspect, deploy to, or debug a Kubernetes cluster as a normal step in your canvas. |
+| **Pser** | An LLM-powered process finder. Given a `likely_process_name` (e.g. "vscode" or "the python that runs my web server"), it lists running processes and asks an Ollama model to identify the best semantic match. Useful when an automation needs to react to "the user's editor" or "their dev server" without knowing the exact binary name in advance. |
+| **Jenkinser** | Triggers a job on a Jenkins server. Handles the CSRF crumb dance, posts build parameters, logs the response, and starts downstream agents regardless of trigger result. Use it inside any flow that needs to nudge a CI pipeline (e.g. "after my commits land, kick the deploy job"). |
+| **Prompter** | Sends a configured prompt to an Ollama LLM and logs the response into a structured `INI_SECTION_PROMPTER` block. This is the simplest "ask the local LLM something" agent — use it for one-shot generation steps that downstream agents can then parse, or as the LLM-side of a Parametrizer chain. |
+| **Summarizer** | Two modes in one agent. **Polling mode**: continuously watches the logs of its `source_agents` and feeds new content to an Ollama model with a configurable system prompt; when the LLM detects a positive event (writes `[EVENT_TRIGGERED]`), it fires `target_agents`. **One-shot mode** (when `input_text` is provided directly): summarizes that text once with a target word count and emits a single `INI_SECTION_SUMMARIZER` block. Pair it with File-Interpreter or Crawler to compress long content into something a downstream agent can act on. |
+| **File-Interpreter** | Reads and interprets documents — DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, and more — extracting text and (optionally) embedded images. Three reading modes: `fast` (text only), `complete` (text + images dumped to a sibling `images/` folder), and `summarized` (text + LLM-generated summary). Outputs neatly structured INI/END_FILE blocks per file. Wildcards are supported, so a single agent can process an entire folder of documents in one run. |
+| **File-Extractor** | The "give me the raw text" sibling of File-Interpreter. Reads a path or wildcard pattern, extracts plaintext using the same multi-format support, and falls back to a `strings`-style scan for unknown binary types. No LLM, no summarization, no image dumping — just text. Ideal as the first hop in a pipeline that ends in Parametrizer → another agent's `buffer` field. |
+| **Image-Interpreter** | Vision-LLM image describer. Sends one or more images to a vision-capable Ollama model with a custom (or default) system prompt and writes a textual description into structured `INI_IMAGE_FILE` blocks. Accepts wildcards, a directory, a File-Interpreter pool name, or a single file. Supports 12+ image formats (JPG, PNG, GIF, BMP, TIFF, WebP, SVG, ICO, HEIC, AVIF). The eyes of any flow that needs to look at screenshots, charts, or photos. |
+| **J-Decompiler** | A Java decompiler. Scans a directory (or wildcard list) for `.class`, `.jar`, `.war`, and `.ear` files and uses the bundled `jd-cli` tool to generate human-readable Java sources next to each artefact (or into sibling directories for archives). Use it to inspect third-party JARs, recover sources from build artefacts, or audit obfuscated code. |
+| **Mover** | Moves or copies files. Accepts a list of source patterns (with wildcards), a destination folder, an `operation` (move / copy), an optional `recursive` flag for sub-directory traversal, and `filetype_exclusions` to skip certain extensions or filenames. Use it to herd outputs into the right folder, archive logs, or stage artefacts for the next pipeline step. |
+| **Deleter** | Deletes files matching one or more patterns (with wildcards) from a target location. Supports `recursive` directory descent, `filetype_exclusions`, and two modes: `immediate` (delete on start) or `event` (delete only when an upstream pattern is detected). Use it for cleanup phases, scratch-space management, or pattern-driven log rotation. |
+| **File-Creator** | Writes a file with arbitrary content to a specified path, then triggers downstream agents (regardless of the write outcome). The content is taken verbatim from the YAML config, so you can use it to write JSON, scripts, fixtures, prompt templates — anything. Often the last step of a Parametrizer chain that materializes an LLM-generated artefact onto disk. |
+| **Shoter** | Takes a screenshot of the primary display and saves it to `output_dir`. Read-only and side-effect-free, so it does not appear in the Exec Report. Combine it with Image-Interpreter to give the LLM "eyes" on the desktop, or use it to capture proof-of-execution snapshots inside CI-style flows. |
+| **Mouser** | Programmatic mouse control via PyAutoGUI. Either moves the pointer randomly for a duration (anti-idle behavior) or to a specific screen coordinate ("localized" mode); in localized mode it can also issue a configured click after the destination is reached (none / left / right / middle / double-left / double-right / double-middle). Use it to drive desktop UIs from a flow when no API is available. |
+| **Keyboarder** | Programmatic keyboard control via PyAutoGUI. Sends a sequence of keystrokes that mixes literal text (single- or double-quoted), bare key names (e.g. `enter`, `tab`, `f5`), and `+`-joined chords (e.g. `ctrl+s`, `ctrl+shift+t`), with a configurable inter-stroke delay. Pair it with Mouser and Shoter to automate any GUI app for which there is no scripting interface. |
+
+### Notification Agents
+
+These are *terminal* agents — they react to upstream events but do NOT start anything else. Their job is to tell the outside world that something happened.
+
+| Agent | Description |
+|-------|-------------|
+| **Notifier** | The browser-notification agent. Watches its `source_agents` for any of a comma-separated list of `search_strings` and, on a match, drops a `notification.json` file that the Tlamatini chat UI polls and renders as an in-page toast (with optional sound). Per-source file offsets and reanim files mean it never re-processes old log content even across restarts. |
+| **Emailer** | Sends an SMTP email when triggered. Configurable sender, password, list of recipients, subject, and body. Common pattern: wire a Raiser to detect the success or failure of an upstream pipeline and have it trigger Emailer to notify a team mailing list. |
+| **RecMailer** | An IMAP email receiver with LLM analysis. Polls a configured inbox, downloads new messages, and asks an Ollama model whether the body matches one of your `keywords_or_phrases`. Logs every match with the configured `outcome_word`. Use it to make a flow react to a real email arriving, e.g. an alert from an external SaaS. |
+| **WhatsApper** | Sends WhatsApp messages via the **TextMeBot** API in response to log patterns. Watches its `source_agents` in parallel threads, summarizes any matched issue with an Ollama model, and posts the summary to a configured phone number. Handy as a "page my own phone when the build breaks" channel. |
+| **Telegramer** | Sends a Telegram message via a Telegram bot token to a configured `chat_id`. The lightweight Telegram counterpart of Emailer — perfect for personal alerts, build-bot posts to a team channel, or anything where a Telegram message is the right shape of notification. |
+| **TelegramRX** | Receives messages on a Telegram bot and writes them into the agent's log so downstream agents (typically a Raiser) can react. Use it to make a flow listen for commands sent to a bot, e.g. "type `/deploy` in Telegram and the production deploy chain runs". |
+| **Monitor Log** | A pure log-file watcher with LLM event detection. Polls a configured `logfile_path`, feeds new lines to an Ollama model, and logs `outcome_word` (default `TARGET_FOUND`) when a match is detected. Designed to be the upstream `source_agents` of a Raiser — together they form the canonical "react to a log line" mini-flow. |
+| **Monitor Netstat** | The network-port version of Monitor Log. Polls the system's open TCP/UDP connections, feeds them to the LLM, and emits `TARGET_FOUND` when the configured network condition matches. Use it for "alert me if port X opens" or "fire when no connection to host Y exists for N seconds". |
+| **FlowHypervisor** | The flow's own watchdog. A system-managed agent that watches every other agent's log on a configurable poll interval, asks an Ollama model whether the flow as a whole is healthy, and writes either `OK` or `ATTENTION NEEDED { explanation }` to its own log. The chat UI reads those entries and surfaces problems as ATTENTION! alerts. Auto-stops when there are no other agents running, and self-stops after 3 idle cycles as a safety net. |
+
+### Utility Agents
+
+Glue and infrastructure agents — they do not directly produce output but make the rest of the canvas easier to wire.
+
+| Agent | Description |
+|-------|-------------|
+| **Parametrizer** | The interconnection engine. Reads structured output from an upstream "source agent" (one of: Apirer, Gitter, Kuberneter, Crawler, Summarizer, Prompter, FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, ACPXer) and writes selected fields into a downstream "target agent's" `config.yaml` via a visual interconnection scheme. When multiple output elements exist (e.g. Crawler returns 5 URLs), it iterates: fill config, start target, wait, repeat. The agent that turns a static canvas into a real data pipeline. |
+| **FlowBacker** | A passive backup utility. When triggered (typically by Ender), it copies the entire deployed session pool directory to a configured `target_directory`, overwriting any previous backup of the same session, then launches its `target_agents` (Cleaners). The "save before you wipe" step in any flow that ends with cleanup. |
+| **FlowCreator** | The AI flow designer. Reads `agentic_skill.md` (Tlamatini's library of canonical flow patterns) and asks an Ollama model to generate a complete `.flw` workflow JSON from a natural-language description. Use it to bootstrap a flow without dragging-and-wiring by hand: describe what you want, FlowCreator emits a flow you can then refine on the canvas. |
+| **Gatewayer** | The inbound gateway. A long-running agent that listens for external events on either an HTTP webhook (default `127.0.0.1:8787`) or a folder-drop watcher, normalizes each event into a canonical envelope, persists it to disk, and dispatches downstream agents serially. Supports bearer-token, HMAC, and IP-allowlist authentication, plus dedup, persistence, and crash recovery. The agent that lets the outside world *call into* a flow — webhooks, IoT pushes, SaaS callbacks, scheduled batch drops, all welcome. |
+| **Gateway Relayer** | A deterministic, no-LLM relay that bridges third-party webhook formats (e.g. GitHub's `X-Hub-Signature-256`) into Gatewayer's expected `timestamp + body` HMAC scheme. Validates the upstream provider's signature, transforms the payload, signs it for Gatewayer, and forwards it. Use it whenever you want a flow to receive native GitHub / GitLab / Stripe / Shopify webhooks without patching Gatewayer itself. |
+| **NodeManager** | A long-running infrastructure registry. Maintains a live inventory of local and remote nodes, probes each one's health (ping, TCP, SSH, WinRM, HTTP), classifies state (`ONLINE` / `OFFLINE` / `DEGRADED` / `UNKNOWN`), detects capability changes, persists state across restarts, exports filtered manifests on demand, and triggers `target_agents` on configured node events. The control-tower agent for fleets of machines. |
+
+### Cryptography Agents
+
+Post-quantum cryptography primitives, deterministic and short-running.
+
+| Agent | Description |
+|-------|-------------|
+| **Kyber-KeyGen** | Generates a CRYSTALS-Kyber post-quantum public/private key pair in base64. Three variants are supported: `kyber-512`, `kyber-768` (default), and `kyber-1024`. Output is logged in a structured block so a downstream Parametrizer can route the keys directly into Kyber-Cipher and Kyber-DeCipher. |
+| **Kyber-Cipher** | Encrypts a plaintext buffer with a CRYSTALS-Kyber public key. Internally uses Kyber **encapsulation** to derive a shared secret and AES-256-CTR to encrypt the buffer; the agent logs the encapsulation, IV, and cipher text in base64, all wired so they can be piped into Kyber-DeCipher by Parametrizer. |
+| **Kyber-DeCipher** | The inverse of Kyber-Cipher. Decrypts a base64 cipher text using the matching CRYSTALS-Kyber **private key** plus the encapsulation and IV that Kyber-Cipher emitted. Emits the recovered plaintext into its log, ready for File-Creator or another consumer. |
+
+### Multi-Channel Bridges
+
+Long-running listeners that bridge external messaging platforms into the full Multi-Turn Tlamatini chat (with tools, context, ACPX, and Exec Report).
+
+| Agent | Description |
+|-------|-------------|
+| **TeleTlamatini** | A long-running Telegram bot that bridges authorized Telegram users into the **full Multi-Turn + Exec Report Tlamatini chat**. Each user message is treated as a chat turn; the answer (including tool calls, ACPX runs, and Exec Report tables) is rendered back into Telegram. Authorization is by Telegram user ID. The "use Tlamatini from your phone, while away from the keyboard" agent. |
+| **WhatsTlamatini** | The WhatsApp twin of TeleTlamatini, built on the **Meta WhatsApp Cloud API**. Inbound messages arrive via a stdlib webhook listener; outbound replies are POSTed to the Graph API. Same Multi-Turn + Exec Report bridging, just over WhatsApp instead of Telegram. |
+
+### External Coding-Agent Driver
+
+The visual canvas counterpart of the 12 LLM-facing `acp_*` ACPX tools.
+
+| Agent | Description |
+|-------|-------------|
+| **ACPXer** | Drives one external coding-agent CLI session per run — Claude Code, Codex, Cursor, Gemini, Qwen, the Tlamatini self-host, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Droid, or Copilot. The agent spawns the chosen `agent_id`, sends its `task`, waits for the child to settle (using a transport-aware drain rule), captures the assistant's last reply, and then kills the child cleanly. Output is emitted as a Parametrizer-compatible `INI_SECTION_ACPXER` block (`agent_id`, `session_id`, `transport`, `settle`, `transcript_path`, `response_body`), so chains of ACPXer nodes connected through Parametrizers form a fully visual multi-CLI relay — three different LLMs arguing back and forth in an unattended pipeline. |
+
+---
+
+## Notes on Maintenance
+
+- **Adding a new agent**: append a new row to the relevant table above using the same Markdown format. The parser only requires `^\|\s*\*\*<Name>\*\*\s*\|\s*<description>\s*\|`. Section headings (`### ...`) are ignored by the parser; they exist purely for human readers.
+- **Renaming an agent**: change the `**Name**` cell — but remember the lookup is normalized to lowercase alphanumeric, so `**Kyber-KeyGen**`, `**KyberKeyGen**`, and `**kyber keygen**` all hit the same slot. As long as your normalization matches the DB display name, the tooltip stays connected.
+- **Frozen builds**: `build.py` copies this file into `dist/manage/agents_descriptions.md` so it ends up in the install directory next to `Tlamatini.exe`. The view loader probes `agents_descriptions.md` first, then falls back to `README.md` (so older deployments that haven't updated yet still work).

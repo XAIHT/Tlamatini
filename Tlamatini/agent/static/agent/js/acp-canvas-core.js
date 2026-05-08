@@ -113,7 +113,7 @@ function hideAgentPurposeTooltip() {
 
 function showAgentPurposeTooltip(agentToolItem, clientX, clientY) {
     const tooltip = ensureAgentPurposeTooltip();
-    const purpose = agentToolItem?.dataset.agentPurpose || 'No description was found for this agent in README.md.';
+    const purpose = agentToolItem?.dataset.agentPurpose || 'No description was found for this agent in agents_descriptions.md.';
     const formatter = typeof window.renderAgentDescriptionHtml === 'function'
         ? window.renderAgentDescriptionHtml
         : (text) => text;

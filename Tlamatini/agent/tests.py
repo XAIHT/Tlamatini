@@ -10,7 +10,7 @@ import sys
 import tempfile
 import tempfile as _acpx_tempfile
 from functools import lru_cache
-from pathlib import Path as _AcpxPath
+from pathlib import Path, Path as _AcpxPath
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, call, patch
 
@@ -4634,3 +4634,330 @@ class DiagramRenderingTests(TestCase):
         multi = "▲\n▼\n"
         wrapped, placeholders = self._wrap(multi)
         self.assertEqual(len(placeholders), 1)
+
+
+class AgentDescriptionsFileTests(TestCase):
+    """The shipped ``agents_descriptions.md`` must be present at the repo root
+    and parse cleanly. These guard the artefact end users actually consume."""
+
+    def setUp(self):
+        self.project_root = Path(__file__).resolve().parents[2]
+        self.descriptions_path = self.project_root / 'agents_descriptions.md'
+
+    def test_descriptions_file_exists_at_project_root(self):
+        self.assertTrue(
+            self.descriptions_path.exists(),
+            f"agents_descriptions.md must live next to manage.py for the "
+            f"loader's __file__-anchored resolution to find it. Looked at: "
+            f"{self.descriptions_path}",
+        )
+
+    def test_descriptions_file_contains_workflow_agents_heading(self):
+        text = self.descriptions_path.read_text(encoding='utf-8')
+        self.assertIn(
+            '## Workflow Agents', text,
+            "Parser only reads rows under '## Workflow Agents'. Without that "
+            "exact level-2 heading the entire file is invisible to it.",
+        )
+
+    def test_descriptions_file_parses_to_at_least_sixty_entries(self):
+        # 60 = current agent count. Allow growth ('>='); flag shrinkage hard
+        # so accidental row deletions don't slip through review.
+        with open(self.descriptions_path, 'r', encoding='utf-8') as handle:
+            purpose_map = views._parse_agent_purpose_map(handle.readlines())
+        self.assertGreaterEqual(
+            len(purpose_map), 60,
+            f"Expected >=60 entries; got {len(purpose_map)}. "
+            f"Did a row get deleted or its **Name** wrapping break?",
+        )
+
+    def test_every_description_is_non_empty_after_strip(self):
+        with open(self.descriptions_path, 'r', encoding='utf-8') as handle:
+            purpose_map = views._parse_agent_purpose_map(handle.readlines())
+        empties = [k for k, v in purpose_map.items() if not v.strip()]
+        self.assertEqual(
+            empties, [],
+            f"Empty descriptions defeat the whole point of the file: {empties}",
+        )
+
+    def test_no_description_contains_unescaped_pipe(self):
+        # The parser regex stops at the first `|` after the description.
+        # An unescaped pipe inside a description silently truncates it.
+        with open(self.descriptions_path, 'r', encoding='utf-8') as handle:
+            purpose_map = views._parse_agent_purpose_map(handle.readlines())
+        with_pipe = [k for k, v in purpose_map.items() if '|' in v]
+        self.assertEqual(
+            with_pipe, [],
+            f"Descriptions containing '|' get truncated by the parser: {with_pipe}",
+        )
+
+
+class AgentDescriptionsCoverageTests(TestCase):
+    """For every workflow-agent folder under ``agent/agents/``, the loader
+    must return a non-empty description. This is the regression-catcher: a
+    new agent added to the codebase but forgotten in agents_descriptions.md
+    will fail this test."""
+
+    EXCLUDED_DIRS = frozenset({'pools'})
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        agents_dir = Path(__file__).resolve().parent / 'agents'
+        cls.folder_keys: dict[str, str] = {}
+        for child in sorted(agents_dir.iterdir()):
+            if not child.is_dir():
+                continue
+            if child.name.lower() in cls.EXCLUDED_DIRS:
+                continue
+            cls.folder_keys[child.name] = views._normalize_agent_purpose_key(child.name)
+
+    def test_every_agent_folder_has_a_loader_entry(self):
+        purpose_map = views._load_agent_purpose_map()
+        missing = [
+            f"{folder} (key='{key}')"
+            for folder, key in self.folder_keys.items()
+            if not purpose_map.get(key, '').strip()
+        ]
+        self.assertEqual(
+            missing, [],
+            "Every agent folder under agent/agents/ must have a non-empty "
+            "row in agents_descriptions.md. Missing entries:\n  - "
+            + '\n  - '.join(missing),
+        )
+
+    def test_normalization_is_idempotent_and_punctuation_insensitive(self):
+        # Sanity: the normalizer collapses every variant of an identifier
+        # to the same key, so 'Kyber-KeyGen' / 'kyber keygen' / 'kyberkeygen'
+        # all hit the same dict slot.
+        for variant in ('Kyber-KeyGen', 'kyber keygen', 'KyberKeyGen', 'KYBER_KEYGEN'):
+            self.assertEqual(views._normalize_agent_purpose_key(variant), 'kyberkeygen')
+        for variant in ('Gateway Relayer', 'gateway-relayer', 'GATEWAY_RELAYER'):
+            self.assertEqual(views._normalize_agent_purpose_key(variant), 'gatewayrelayer')
+
+    def test_explicit_migration_display_names_all_resolve(self):
+        # Each *_add_*.py migration writes a specific agentDescription string.
+        # The frontend feeds those exact strings through normalization, so
+        # the loader must return a real description for every one.
+        purpose_map = views._load_agent_purpose_map()
+        migrations_dir = Path(__file__).resolve().parent / 'migrations'
+        display_name_re = re.compile(r"agentDescription='([^']+)'")
+        seen: set[str] = set()
+        for migration in migrations_dir.glob('*_add_*.py'):
+            text = migration.read_text(encoding='utf-8')
+            for match in display_name_re.finditer(text):
+                # Skip the .filter() / .delete() callsites; only collect the
+                # values written by .create(). Both look identical in this
+                # regex so we just dedup by display name.
+                seen.add(match.group(1))
+        unresolved = sorted(
+            name for name in seen
+            if not purpose_map.get(views._normalize_agent_purpose_key(name), '').strip()
+        )
+        self.assertEqual(
+            unresolved, [],
+            f"Migration-declared display names with no description: {unresolved}",
+        )
+
+
+class AgentDescriptionsParserBoundaryTests(TestCase):
+    """The parser walks ``## Workflow Agents`` to the next ``## `` heading.
+    These tests pin that boundary contract so future edits don't accidentally
+    hide rows or pull in unrelated tables."""
+
+    def test_subsection_h3_does_not_terminate_the_section(self):
+        markdown = (
+            "# Title\n"
+            "## Workflow Agents\n"
+            "### Control Agents\n"
+            "| Agent | Description |\n"
+            "|-------|-------------|\n"
+            "| **Starter** | Kicks off a flow. |\n"
+            "### Action Agents\n"
+            "| **Executer** | Runs a shell command. |\n"
+            "## Notes\n"
+            "| **NotAnAgent** | This row lives outside the Workflow Agents section. |\n"
+        )
+        result = views._parse_agent_purpose_map(markdown.splitlines(keepends=True))
+        self.assertEqual(result.get('starter'), 'Kicks off a flow.')
+        self.assertEqual(result.get('executer'), 'Runs a shell command.')
+        self.assertNotIn('notanagent', result)
+
+    def test_h2_heading_after_workflow_agents_terminates_parse(self):
+        markdown = (
+            "## Workflow Agents\n"
+            "| **Starter** | Inside the section. |\n"
+            "## Some Other Section\n"
+            "| **Ghost** | Outside the section. |\n"
+        )
+        result = views._parse_agent_purpose_map(markdown.splitlines(keepends=True))
+        self.assertIn('starter', result)
+        self.assertNotIn('ghost', result)
+
+    def test_table_header_and_separator_rows_are_skipped(self):
+        markdown = (
+            "## Workflow Agents\n"
+            "| Agent | Description |\n"
+            "|-------|-------------|\n"
+            "| **Starter** | Real row. |\n"
+        )
+        result = views._parse_agent_purpose_map(markdown.splitlines(keepends=True))
+        self.assertEqual(set(result), {'starter'})
+
+    def test_missing_workflow_agents_heading_yields_empty_map(self):
+        markdown = "## Random\n| **Starter** | nope |\n"
+        self.assertEqual(views._parse_agent_purpose_map(markdown.splitlines(keepends=True)), {})
+
+
+class AgentDescriptionsLoaderResolutionTests(TestCase):
+    """Resolution order, fallback, and frozen-mode path probing.
+    Each test isolates the loader from the real filesystem so behavior is
+    deterministic regardless of what's actually on disk."""
+
+    SAMPLE_PRIMARY = (
+        "## Workflow Agents\n"
+        "| **Alpha** | Description from primary file. |\n"
+    )
+    SAMPLE_FALLBACK = (
+        "## Workflow Agents\n"
+        "| **Alpha** | Description from fallback. |\n"
+        "| **Beta** | Only in fallback. |\n"
+    )
+
+    def _isolated_loader(self, files: dict[str, str]):
+        """Return a loader that only sees the supplied (path -> content)
+        mapping, with everything else patched away."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        candidate_paths: list[str] = []
+        for relative, content in files.items():
+            full = root / relative
+            full.parent.mkdir(parents=True, exist_ok=True)
+            full.write_text(content, encoding='utf-8')
+            candidate_paths.append(str(full))
+        # Always include both 'preferred' and 'fallback' positions so the
+        # loader's iteration order is exercised — even if only one exists.
+        for relative in ('agents_descriptions.md', 'README.md'):
+            full = root / relative
+            if str(full) not in candidate_paths:
+                candidate_paths.append(str(full))
+        return candidate_paths
+
+    def test_primary_file_wins_over_fallback_when_both_present(self):
+        candidates = self._isolated_loader({
+            'agents_descriptions.md': self.SAMPLE_PRIMARY,
+            'README.md': self.SAMPLE_FALLBACK,
+        })
+        with patch.object(views, '_resolve_agent_descriptions_search_paths',
+                          return_value=candidates):
+            result = views._load_agent_purpose_map()
+        self.assertEqual(result.get('alpha'), 'Description from primary file.')
+        self.assertNotIn('beta', result, "Fallback must not be merged on top of primary.")
+
+    def test_falls_back_to_readme_when_primary_missing(self):
+        candidates = self._isolated_loader({
+            # primary intentionally absent
+            'README.md': self.SAMPLE_FALLBACK,
+        })
+        with patch.object(views, '_resolve_agent_descriptions_search_paths',
+                          return_value=candidates):
+            result = views._load_agent_purpose_map()
+        self.assertEqual(result.get('alpha'), 'Description from fallback.')
+        self.assertEqual(result.get('beta'), 'Only in fallback.')
+
+    def test_falls_back_to_readme_when_primary_has_no_workflow_agents_section(self):
+        # Empty parse should NOT short-circuit — try the next candidate.
+        candidates = self._isolated_loader({
+            'agents_descriptions.md': "# Just a heading, no workflow agents table.\n",
+            'README.md': self.SAMPLE_FALLBACK,
+        })
+        with patch.object(views, '_resolve_agent_descriptions_search_paths',
+                          return_value=candidates):
+            result = views._load_agent_purpose_map()
+        self.assertEqual(result.get('alpha'), 'Description from fallback.')
+
+    def test_returns_empty_dict_without_raising_when_all_sources_missing(self):
+        candidates = self._isolated_loader({})  # nothing on disk
+        with patch.object(views, '_resolve_agent_descriptions_search_paths',
+                          return_value=candidates):
+            result = views._load_agent_purpose_map()
+        self.assertEqual(result, {})
+
+    def test_search_paths_always_include_project_root_pair(self):
+        with patch.object(views, 'sys', create=False) as mock_sys:
+            # Simulate non-frozen interpreter
+            mock_sys.frozen = False
+            # Real os.path needs to keep working — only sys is patched.
+            paths = views._resolve_agent_descriptions_search_paths()
+        names = [Path(p).name for p in paths]
+        self.assertIn('agents_descriptions.md', names)
+        self.assertIn('README.md', names)
+        self.assertEqual(
+            names.index('agents_descriptions.md'),
+            0,
+            "agents_descriptions.md must be probed BEFORE README.md so an "
+            "explicit description always wins over the legacy fallback.",
+        )
+
+    def test_frozen_mode_adds_executable_dir_probes(self):
+        fake_exe_dir = Path(tempfile.mkdtemp(prefix='tlamatini_frozen_'))
+        self.addCleanup(shutil.rmtree, fake_exe_dir, ignore_errors=True)
+        fake_executable = fake_exe_dir / 'Tlamatini.exe'
+        fake_executable.write_bytes(b'')
+
+        with patch.object(views.sys, 'frozen', True, create=True), \
+             patch.object(views.sys, 'executable', str(fake_executable)):
+            paths = views._resolve_agent_descriptions_search_paths()
+
+        normalized = {os.path.normcase(os.path.abspath(p)) for p in paths}
+        for must_have in ('agents_descriptions.md', 'README.md'):
+            expected = os.path.normcase(os.path.abspath(str(fake_exe_dir / must_have)))
+            self.assertIn(
+                expected, normalized,
+                f"Frozen-mode probe missing {must_have} next to the executable. "
+                f"Got: {sorted(normalized)}",
+            )
+
+    def test_search_paths_are_deduplicated(self):
+        # If __file__ and sys.executable collapse to the same dir (which can
+        # happen in some PyInstaller layouts), the loader must not double-probe.
+        paths = views._resolve_agent_descriptions_search_paths()
+        normalized = [os.path.normcase(os.path.abspath(p)) for p in paths]
+        self.assertEqual(
+            len(normalized), len(set(normalized)),
+            f"Duplicate candidate paths slipped through dedup: {normalized}",
+        )
+
+    def test_legacy_alias_points_to_new_loader(self):
+        # The old name is preserved so any out-of-tree caller (dev script,
+        # scheduled remote agent) keeps working without code changes.
+        self.assertIs(views._load_agent_purpose_map_from_readme, views._load_agent_purpose_map)
+
+
+class AgentDescriptionsViewIntegrationTests(TestCase):
+    """The view feeds the loaded map into the template via ``json_script``.
+    Pin the contract that the view exposes the dict as a real dict (so it
+    serializes to JSON) and that the live shipped file populates it."""
+
+    def test_loaded_map_is_a_plain_dict_for_json_script(self):
+        # Django's json_script filter only handles JSON-serializable values.
+        # A custom object would silently render as garbage.
+        purpose_map = views._load_agent_purpose_map()
+        self.assertIsInstance(purpose_map, dict)
+        # All keys/values must be strings — the JS map is `Record<string, string>`.
+        for key, value in purpose_map.items():
+            self.assertIsInstance(key, str, f"Non-string key: {key!r}")
+            self.assertIsInstance(value, str, f"Non-string value for {key!r}: {value!r}")
+
+    def test_shipped_file_yields_a_non_empty_map(self):
+        # The whole point of the original bug fix: this dict must NOT be empty
+        # in production. If it ever returns to empty silently, the tooltip UI
+        # falls back to 'No description was found...' for every agent.
+        purpose_map = views._load_agent_purpose_map()
+        self.assertGreater(
+            len(purpose_map), 0,
+            "Loader returned an empty map — the entire workflow-agent tooltip "
+            "system would be broken. Check that agents_descriptions.md exists "
+            "at the project root (or next to the executable in frozen mode).",
+        )

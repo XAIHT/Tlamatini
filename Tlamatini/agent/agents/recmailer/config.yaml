@@ -5,8 +5,8 @@ poll_interval: 10
 imap:
   host: "imap.gmail.com"
   port: 993
-  username: ""
-  password: ""
+  username: <RECMAILER_USERNAME goes here>
+  password: <RECMAILER_PASSWORD goes here>
   use_ssl: true
   folder: "INBOX"
 

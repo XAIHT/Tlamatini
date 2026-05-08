@@ -317,7 +317,7 @@ function openDescriptionDialog(canvasItem) {
     if (purpose) {
         descriptionContent.innerHTML = renderAgentDescriptionHtml(purpose);
     } else {
-        descriptionContent.textContent = 'No description was found for this agent in README.md.';
+        descriptionContent.textContent = 'No description was found for this agent in agents_descriptions.md.';
     }
 
     descriptionOverlay.style.display = 'block';

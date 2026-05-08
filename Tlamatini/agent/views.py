@@ -27,24 +27,50 @@ def _normalize_agent_purpose_key(value: str) -> str:
     return re.sub(r'[^a-z0-9]+', '', (value or '').lower())
 
 
-def _load_agent_purpose_map_from_readme() -> dict[str, str]:
+def _resolve_agent_descriptions_search_paths() -> list[str]:
     """
-    Read the Workflow Agents tables from README.md and extract Purpose column text.
-    The resulting map is keyed by an alphanumeric-normalized agent identifier.
+    Build the ordered list of locations to probe for the workflow-agents
+    description tables. ``agents_descriptions.md`` is the authoritative
+    source; ``README.md`` is kept as a legacy fallback so older deployments
+    that haven't been re-bundled yet still produce tooltips.
+
+    The list works for both source-mode (file lives at the repo root next to
+    ``manage.py``) and frozen-mode (file is copied next to the executable
+    by ``build.py`` and resolved via ``sys.executable``'s directory).
     """
-    readme_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        'README.md',
-    )
+    candidates: list[str] = []
+
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates.extend([
+        os.path.join(project_root, 'agents_descriptions.md'),
+        os.path.join(project_root, 'README.md'),
+    ])
+
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        candidates.extend([
+            os.path.join(exe_dir, 'agents_descriptions.md'),
+            os.path.join(exe_dir, 'README.md'),
+        ])
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for candidate in candidates:
+        normalized = os.path.normcase(os.path.abspath(candidate))
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(candidate)
+    return ordered
+
+
+def _parse_agent_purpose_map(lines) -> dict[str, str]:
+    """
+    Parse a Markdown stream and extract every ``## Workflow Agents`` table
+    row of the form ``| **Name** | <description> |``. The resulting map is
+    keyed by an alphanumeric-normalized agent identifier.
+    """
     purpose_map: dict[str, str] = {}
-
-    try:
-        with open(readme_path, 'r', encoding='utf-8') as readme_file:
-            lines = readme_file.readlines()
-    except OSError as exc:
-        print(f"Warning: Could not load agent purposes from README.md: {exc}")
-        return purpose_map
-
     in_workflow_agents_section = False
     row_pattern = re.compile(r'^\|\s*\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|')
 
@@ -73,6 +99,36 @@ def _load_agent_purpose_map_from_readme() -> dict[str, str]:
             purpose_map[normalized_key] = purpose
 
     return purpose_map
+
+
+def _load_agent_purpose_map() -> dict[str, str]:
+    """
+    Load the Workflow Agents description map from the first available source.
+    Probes ``agents_descriptions.md`` first (authoritative) and falls back to
+    ``README.md`` for backward compatibility, in both source-mode and
+    frozen-mode locations.
+    """
+    last_error: Optional[Exception] = None
+    for path in _resolve_agent_descriptions_search_paths():
+        try:
+            with open(path, 'r', encoding='utf-8') as handle:
+                lines = handle.readlines()
+        except OSError as exc:
+            last_error = exc
+            continue
+
+        purpose_map = _parse_agent_purpose_map(lines)
+        if purpose_map:
+            return purpose_map
+
+    if last_error is not None:
+        print(f"Warning: Could not load agent purposes from any known source: {last_error}")
+    return {}
+
+
+# Legacy alias preserved so any out-of-tree callers (e.g. dev scripts or
+# scheduled remote agents that imported the old name) keep working.
+_load_agent_purpose_map_from_readme = _load_agent_purpose_map
 
 def home(request):
     return HttpResponse("Hello, World!")
@@ -221,7 +277,7 @@ def agentic_control_panel(request):
 
     context = {
         'ollama_base_url': ollama_base_url,
-        'agent_purpose_map': _load_agent_purpose_map_from_readme(),
+        'agent_purpose_map': _load_agent_purpose_map(),
     }
 
     # --- .FLW File Association Support ---
