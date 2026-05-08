@@ -27,12 +27,40 @@ password: <TELETLAMATINI_PASSWORD goes here>
 
 # ── Tlamatini chat backend ─────────────────────────────────────────────────
 # ws_url is auto-derived from base_url if omitted.
+#
+# The three feature flags below mirror the chat toolbar checkboxes
+# (Multi-Turn, Exec Report, ACPX). Each Telegram message TeleTlamatini
+# forwards to Tlamatini carries these flags verbatim, so a Telegram user
+# gets exactly the same operational surface as a browser user.
+#
+#   * multi_turn_enabled  — request-scoped global execution plan, dynamic
+#                            tool binding, up to 256 tool-call iterations,
+#                            wrapped chat-agent dedup. Required for ACPX.
+#   * exec_report_enabled — appends per-agent execution tables (Executer,
+#                            Pythonxer, ACPx, Skill, ...) to the answer.
+#   * acpx_enabled        — exposes the 12 ACPX/Skill tools (acp_doctor,
+#                            acp_spawn, acp_send, acp_send_and_wait, acp_kill,
+#                            acp_relay, acp_transcript, acp_session_status,
+#                            acp_list_sessions, list_acp_agents, list_skills,
+#                            invoke_skill) so the LLM can run the COMPLETE
+#                            ACPX scheme — spawn external coding-agent CLIs
+#                            (claude / codex / cursor / gemini / qwen / ...),
+#                            relay between them, harvest transcripts, and
+#                            invoke SKILL.md packages — directly from a
+#                            Telegram message. When false, those tool names
+#                            are filtered out of the planner's bound tool list
+#                            (legacy Multi-Turn / one-shot behavior).
+#                            Practical pairing is `multi_turn_enabled: true`
+#                            + `exec_report_enabled: true` + `acpx_enabled:
+#                            true`, which gives the Telegram user the full
+#                            "Tlamatini-as-operator" experience over the bot.
 tlamatini:
   base_url: "http://127.0.0.1:8000"
   username: <TLAMATINI_USERNAME goes here>
   password: <TLAMATINI_PASSWORD goes here>
   multi_turn_enabled: true
   exec_report_enabled: true
+  acpx_enabled: true
   total_timeout: 1800              # hard ceiling for one request (seconds)
   response_idle_timeout: 8         # WS-silence after first frame to call it done
 

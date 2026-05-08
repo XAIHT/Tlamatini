@@ -453,6 +453,7 @@ class TlamatiniBridge:
         password: str,
         multi_turn_enabled: bool,
         exec_report_enabled: bool,
+        acpx_enabled: bool,
         total_timeout: float,
         idle_timeout: float = 8.0,
     ):
@@ -462,6 +463,14 @@ class TlamatiniBridge:
         self.password = password
         self.multi_turn_enabled = multi_turn_enabled
         self.exec_report_enabled = exec_report_enabled
+        # ACPX gate — when True, Tlamatini exposes the 12 ACPX/Skill tools to
+        # the planner for this request, which means the LLM can run the
+        # complete ACPX schemes (acp_doctor → acp_spawn → acp_send_and_wait →
+        # acp_relay → acp_kill, plus list_skills / invoke_skill). When False,
+        # `agent.acpx.filter_acpx_tools()` strips them out and the request
+        # falls back to the legacy Multi-Turn / one-shot flow. Mirrors the
+        # `#acpx-enabled` toolbar checkbox in the chat UI.
+        self.acpx_enabled = acpx_enabled
         self.total_timeout = float(total_timeout)
         self.idle_timeout = float(idle_timeout)
 
@@ -630,12 +639,14 @@ class TlamatiniBridge:
             'message': user_message,
             'multi_turn_enabled': bool(self.multi_turn_enabled),
             'exec_report_enabled': bool(self.exec_report_enabled),
+            'acpx_enabled': bool(self.acpx_enabled),
         }
         await self._ws.send(json.dumps(send_payload))
         logging.info(
             f"{log_tag} bridge: sent (len={len(user_message)}, "
             f"multi_turn={self.multi_turn_enabled}, "
-            f"exec_report={self.exec_report_enabled})"
+            f"exec_report={self.exec_report_enabled}, "
+            f"acpx={self.acpx_enabled})"
         )
 
         final_html: Optional[str] = None
@@ -796,6 +807,12 @@ def _resolve_tlamatini_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
         'password': tla.get('password', 'changeme'),
         'multi_turn_enabled': bool(tla.get('multi_turn_enabled', True)),
         'exec_report_enabled': bool(tla.get('exec_report_enabled', True)),
+        # ACPX defaults to False at the resolver level (matching the chat
+        # toolbar's system-wide default) so a TeleTlamatini deploy from
+        # before this change keeps its legacy behavior. The shipped
+        # config.yaml sets `acpx_enabled: true` so fresh deploys can drive
+        # the full ACPX scheme out of the box.
+        'acpx_enabled': bool(tla.get('acpx_enabled', False)),
         'total_timeout': float(tla.get('total_timeout', 1800)),
         'idle_timeout': float(tla.get('response_idle_timeout', 8)),
     }
@@ -806,7 +823,9 @@ _MSG_PASSWORD_PROMPT = "🔒 Send the access password to use this bot."
 _MSG_AUTH_REJECTED = "❌ Wrong password. Try again."
 _MSG_AUTH_OK = (
     "✅ Authenticated. Send any request — I'll forward it to Tlamatini "
-    "(Multi-Turn + Exec Report). For example: \"What's my CPU usage?\"."
+    "(Multi-Turn + Exec Report + ACPX). For example: \"What's my CPU "
+    "usage?\" or \"Use ACPX to spawn claude and ask it to summarize the "
+    "current branch\"."
 )
 _MSG_WORKING = "🔄 Working on your request..."
 _MSG_NEED_INFO = "🟡 I need a bit more detail:"
@@ -876,6 +895,7 @@ async def _telegram_main_loop(config: Dict[str, Any]):
         password=tla_cfg['password'],
         multi_turn_enabled=tla_cfg['multi_turn_enabled'],
         exec_report_enabled=tla_cfg['exec_report_enabled'],
+        acpx_enabled=tla_cfg['acpx_enabled'],
         total_timeout=tla_cfg['total_timeout'],
         idle_timeout=tla_cfg['idle_timeout'],
     )
@@ -1067,6 +1087,7 @@ async def _telegram_main_loop(config: Dict[str, Any]):
         f"TeleTlamatini ready. completeness_check={cc_cfg['enabled']} "
         f"multi_turn={tla_cfg['multi_turn_enabled']} "
         f"exec_report={tla_cfg['exec_report_enabled']} "
+        f"acpx={tla_cfg['acpx_enabled']} "
         f"target_agents={target_agents}"
     )
     try:
