@@ -626,20 +626,20 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         raw_text = question.get("input", "")
         multi_turn_enabled = bool(question.get("multi_turn_enabled", False))
         exec_report_enabled = bool(question.get("exec_report_enabled", False)) and multi_turn_enabled
-        # ACPX defaults to ENABLED so the modern ACPX-aided behavior is the
-        # baseline. Only an explicit ``False`` from the toolbar checkbox flips
-        # the system back onto its legacy Multi-Turn / one-shot flow.
-        acpx_enabled = bool(question.get("acpx_enabled", True))
+        # ACPX defaults to DISABLED so the legacy Multi-Turn / one-shot flow
+        # is the baseline. Only an explicit ``True`` from the toolbar checkbox
+        # opts the request into the ACPX-aided flow.
+        acpx_enabled = bool(question.get("acpx_enabled", False))
     elif isinstance(question, str):
         raw_text = question
         multi_turn_enabled = False
         exec_report_enabled = False
-        acpx_enabled = True
+        acpx_enabled = False
     else:
         raw_text = str(question)
         multi_turn_enabled = False
         exec_report_enabled = False
-        acpx_enabled = True
+        acpx_enabled = False
 
     try:
         with open(os.path.join(application_path, 'config.json'), 'r', encoding='utf-8') as f:

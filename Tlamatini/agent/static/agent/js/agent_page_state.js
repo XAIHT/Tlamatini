@@ -300,10 +300,10 @@ function applyStoredAcpxState() { // eslint-disable-line no-unused-vars
         return;
     }
 
-    // Default ON: when nothing has been persisted yet, leave ACPX enabled so
-    // Tlamatini boots into the ACPX-aided Multi-Turn behavior. The user has
-    // to explicitly untick the box to fall back to legacy mechanics.
-    let enabled = true;
+    // Default OFF: when nothing has been persisted yet, leave ACPX disabled
+    // so Tlamatini boots into the legacy Multi-Turn / one-shot behavior. The
+    // user has to explicitly tick the box to opt into the ACPX-aided flow.
+    let enabled = false;
     try {
         const stored = sessionStorage.getItem(ACPX_STORAGE_KEY);
         if (stored !== null) {

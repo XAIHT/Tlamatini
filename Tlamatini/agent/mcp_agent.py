@@ -966,12 +966,13 @@ class CapabilityAwareToolAgentExecutor:
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
         # Exec report is multi-turn-only: outside multi-turn we strip it.
         exec_report_enabled = bool(payload.get("exec_report_enabled", False)) and multi_turn_enabled
-        # ACPX defaults to ENABLED. When the toolbar checkbox is unticked we
+        # ACPX defaults to DISABLED. The user must explicitly tick the
+        # toolbar checkbox to opt into the ACPX-aided flow; otherwise we
         # filter every LLM-facing ACPX tool out of self.tools BEFORE planning
         # or capability-based selection runs, so the entire ACPX surface
-        # disappears from the request's bound tool set and the system falls
-        # back to legacy Multi-Turn / one-shot mechanics.
-        acpx_enabled = bool(payload.get("acpx_enabled", True))
+        # is invisible to the request and the system runs the legacy
+        # Multi-Turn / one-shot mechanics.
+        acpx_enabled = bool(payload.get("acpx_enabled", False))
         request_tools = filter_acpx_tools(self.tools, acpx_enabled)
         global_execution_plan = payload.get("global_execution_plan")
 

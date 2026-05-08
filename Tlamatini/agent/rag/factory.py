@@ -142,7 +142,7 @@ def _ensure_global_execution_plan(payload: dict) -> dict:
         # generated plan can never reference an acp_* tool. This also keeps
         # the planner's keyword-based scoring from boosting ACPX rows on
         # requests that mention "acpx" verbatim while ACPX is disabled.
-        acpx_enabled = bool(payload.get("acpx_enabled", True))
+        acpx_enabled = bool(payload.get("acpx_enabled", False))
         candidate_tools = filter_acpx_tools(get_mcp_tools(), acpx_enabled)
         plan = build_global_execution_plan(
             str(payload.get("input", "") or ""),

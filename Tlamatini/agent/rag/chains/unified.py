@@ -211,10 +211,10 @@ class UnifiedAgentChain:
             "context": payload.get("context", ""),
             "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
             "exec_report_enabled": bool(payload.get("exec_report_enabled", False)),
-            # acpx_enabled defaults to True so a missing key still drives the
-            # modern ACPX-aided behavior; only an explicit False filters the
-            # ACPX tool surface out of the executor.
-            "acpx_enabled": bool(payload.get("acpx_enabled", True)),
+            # acpx_enabled defaults to False so a missing key drops back to
+            # the legacy Multi-Turn / one-shot behavior; only an explicit True
+            # opts the request into the ACPX tool surface.
+            "acpx_enabled": bool(payload.get("acpx_enabled", False)),
             "global_execution_plan": payload.get("global_execution_plan"),
             "planner_summary": payload.get("planner_summary", ""),
         }
@@ -278,7 +278,7 @@ User Question: {enhanced_input}"""
                     "input": enhanced_input,
                     "multi_turn_enabled": payload.get("multi_turn_enabled", False),
                     "exec_report_enabled": exec_report_enabled,
-                    "acpx_enabled": bool(payload.get("acpx_enabled", True)),
+                    "acpx_enabled": bool(payload.get("acpx_enabled", False)),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 },
@@ -745,7 +745,7 @@ User Question: {enhanced_input}"""
                     "input": enhanced_input,
                     "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
                     "exec_report_enabled": exec_report_enabled,
-                    "acpx_enabled": bool(payload.get("acpx_enabled", True)),
+                    "acpx_enabled": bool(payload.get("acpx_enabled", False)),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 },
