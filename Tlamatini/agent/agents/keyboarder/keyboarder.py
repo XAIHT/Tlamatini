@@ -215,37 +215,187 @@ def remove_pid_file():
             return
 
 def split_sequence(seq_str):
-    result = []
+    """Tokenize a Keyboarder ``input_sequence`` into ``[(type, value), ...]``.
+
+    The format is comma-separated tokens; quoted tokens (``'foo bar'`` or
+    ``"foo bar"``) are typed literally, unquoted tokens are key-press
+    commands (``enter``, ``ctrl+s``).
+
+    **Apostrophe / quote escaping inside a quoted literal:**
+
+    * SQL / YAML-single-quoted style: ``''`` decodes to ``'`` inside a
+      single-quoted literal, ``""`` decodes to ``"`` inside a double-quoted
+      one (so ``'Hi, I''m Tlamatini'`` types ``Hi, I'm Tlamatini``).
+    * Backslash style: ``\\'`` decodes to ``'`` and ``\\"`` to ``"`` (so
+      ``'Hi, I\\'m Tlamatini'`` is equivalent).
+
+    **Robust fallback:** if a tokenization yields exactly one unquoted token
+    and that token isn't a recognized key / ``+``-chord of recognized keys,
+    treat the entire raw input as a literal string and type it. This makes
+    the agent forgiving when an LLM forgets the quotes around literal text
+    (``Hi!, I'm Tlamatini`` types literally instead of being parsed as
+    ``Hi!`` + ``I'm Tlamatini``, which would silently no-op).
+    """
+    # Pass 1 — comma-split, tracking which quote (if any) is active and
+    # honouring backslash + SQL-doubling escapes. The "is this quote a
+    # closer or an internal apostrophe?" disambiguation mirrors the
+    # wrapper's ``_closes_outer_quote`` heuristic: a quote char inside a
+    # quoted literal is a closer ONLY if it is followed (after optional
+    # whitespace) by a comma or end-of-input. Otherwise it's an internal
+    # apostrophe — common in ``'Hi!, I'm Tlamatini'`` — and the state
+    # stays open. Without this, the closing ``'`` toggles the state back
+    # on after the internal one, swallowing the rest of the sequence.
+    raw_tokens = []
     current = []
     in_single = False
     in_double = False
-    for char in seq_str:
+    escape_next = False
+    n = len(seq_str)
+    i = 0
+
+    def _is_quote_closer(idx, quote_char):
+        probe = idx + 1
+        while probe < n and seq_str[probe] in (' ', '\t'):
+            probe += 1
+        if probe >= n:
+            return True
+        return seq_str[probe] == ','
+
+    while i < n:
+        char = seq_str[i]
+        if escape_next:
+            current.append(char)
+            escape_next = False
+            i += 1
+            continue
+        if char == '\\' and (in_single or in_double):
+            current.append(char)
+            escape_next = True
+            i += 1
+            continue
         if char == "'" and not in_double:
+            # SQL-style ``''`` doubling collapses to one literal apostrophe
+            # WITHOUT toggling the quote state.
+            if in_single and i + 1 < n and seq_str[i + 1] == "'":
+                current.append("'")
+                current.append("'")
+                i += 2
+                continue
+            if in_single and not _is_quote_closer(i, "'"):
+                # Internal apostrophe (e.g. in ``I'm``); stay inside the
+                # literal so the matching closing ``'`` lands the token.
+                current.append("'")
+                i += 1
+                continue
             in_single = not in_single
             current.append(char)
-        elif char == '"' and not in_single:
+            i += 1
+            continue
+        if char == '"' and not in_single:
+            if in_double and i + 1 < n and seq_str[i + 1] == '"':
+                current.append('"')
+                current.append('"')
+                i += 2
+                continue
+            if in_double and not _is_quote_closer(i, '"'):
+                current.append('"')
+                i += 1
+                continue
             in_double = not in_double
             current.append(char)
-        elif char == ',' and not in_single and not in_double:
-            result.append("".join(current).strip())
+            i += 1
+            continue
+        if char == ',' and not in_single and not in_double:
+            raw_tokens.append("".join(current).strip())
             current = []
-        else:
-            current.append(char)
+            i += 1
+            continue
+        current.append(char)
+        i += 1
     if current:
-        result.append("".join(current).strip())
-    
+        raw_tokens.append("".join(current).strip())
+
     parsed = []
-    for token in result:
+    for token in raw_tokens:
         if not token:
             continue
         if (token.startswith("'") and token.endswith("'") and len(token) >= 2) or \
            (token.startswith('"') and token.endswith('"') and len(token) >= 2):
-            parsed.append(('string', token[1:-1]))
-        else:
-            keys = [k.strip().lower() for k in token.split('+') if k.strip()]
-            if keys:
-                parsed.append(('keys', keys))
+            outer = token[0]
+            inner = token[1:-1]
+            inner = _decode_literal_escapes(inner, outer)
+            parsed.append(('string', inner))
+            continue
+        keys = [k.strip().lower() for k in token.split('+') if k.strip()]
+        if keys:
+            parsed.append(('keys', keys))
+
+    # Robust fallback: a single unquoted token that doesn't resolve to known
+    # keys becomes a literal string. Also covers the LLM-forgot-the-quotes
+    # case (``Hi!, I'm Tlamatini`` arrives unquoted; without this, every
+    # token would silently no-op on press()).
+    if len(parsed) >= 1 and all(t == 'keys' for t, _ in parsed):
+        unrecognized = any(
+            not _all_keys_recognized(value)
+            for kind, value in parsed
+            if kind == 'keys'
+        )
+        if unrecognized:
+            return [('string', seq_str.strip())]
+
     return parsed
+
+
+def _decode_literal_escapes(inner, outer_quote):
+    """Decode ``''`` / ``""`` and ``\\'`` / ``\\"`` inside a quoted literal."""
+    if not inner:
+        return inner
+    out = []
+    i = 0
+    n = len(inner)
+    while i < n:
+        char = inner[i]
+        if char == '\\' and i + 1 < n:
+            nxt = inner[i + 1]
+            if nxt == outer_quote or nxt == '\\':
+                out.append(nxt)
+                i += 2
+                continue
+        if char == outer_quote and i + 1 < n and inner[i + 1] == outer_quote:
+            out.append(outer_quote)
+            i += 2
+            continue
+        out.append(char)
+        i += 1
+    return ''.join(out)
+
+
+# Set of pyautogui-recognized key names (lowercased). Used by the robust
+# fallback in split_sequence to decide whether an unquoted token is a real
+# key or just a piece of literal text the LLM forgot to quote.
+_RECOGNIZED_KEYS: set = {
+    'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s',
+    't','u','v','w','x','y','z',
+    '0','1','2','3','4','5','6','7','8','9',
+    'enter','return','tab','space','spacebar','backspace','del','delete','esc',
+    'escape','home','end','pageup','pagedown','pgup','pgdn','insert','ins',
+    'up','down','left','right',
+    'f1','f2','f3','f4','f5','f6','f7','f8','f9','f10','f11','f12',
+    'shift','shiftleft','shiftright','ctrl','ctrlleft','ctrlright','control',
+    'alt','altleft','altright','altgr','win','winleft','winright','windows',
+    'window','command','option','meta','fn','capslock','caps','mayus','mayuscula',
+    'numlock','scrolllock','printscreen','pause','apps',
+    '<-(left arrow)','->(right arrow)','down arrow','up arrow',
+}
+
+
+def _all_keys_recognized(keys):
+    """Return True if every key in ``keys`` is a recognized key name."""
+    for k in keys:
+        if k.strip().lower() not in _RECOGNIZED_KEYS:
+            return False
+    return True
+
 
 def get_pyautogui_key(key):
     """Normalize key names"""

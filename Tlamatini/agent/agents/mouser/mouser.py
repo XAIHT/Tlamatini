@@ -337,6 +337,35 @@ def normalize_button_click(button_click: str) -> str:
     return normalized if normalized in supported else 'none'
 
 
+def _drag_button_for_click(normalized_click: str) -> str:
+    """Return the pyautogui button name to hold during a drag.
+
+    ``none`` defaults to ``left`` (the only sensible drag default), and the
+    ``double-*`` variants collapse to their single-click counterparts because
+    a held-down "double click" is not a real interaction.
+    """
+    if normalized_click in ('none', 'left', 'double-left'):
+        return 'left'
+    if normalized_click in ('right', 'double-right'):
+        return 'right'
+    if normalized_click in ('middle', 'double-middle'):
+        return 'middle'
+    return 'left'
+
+
+def _emit_section(fields: dict, body: str) -> None:
+    """Emit an INI_SECTION_MOUSER<<< block atomically (single logging.info call).
+
+    Mirrors the Shoter / ACPXer / Parametrizer-source convention so this
+    agent's structured output is consumable by the Multi-Turn LLM (via the
+    wrapped chat-agent run-result KV promotion) AND the Parametrizer's
+    canvas pipeline (registered in views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS
+    and parametrizer.SECTION_AGENT_TYPES).
+    """
+    header = "\n".join(f"{key}: {value}" for key, value in fields.items())
+    logging.info("INI_SECTION_MOUSER<<<\n" + header + "\n\n" + body + "\n>>>END_SECTION_MOUSER")
+
+
 def issue_click_after_reaching_target(end_posx: int, end_posy: int, button_click: str):
     if pyautogui is None:
         logging.error("pyautogui is not installed. Cannot issue click.")
@@ -371,11 +400,12 @@ def issue_click_after_reaching_target(end_posx: int, end_posy: int, button_click
 
 
 def move_mouse_localized(ini_posx: int, ini_posy: int, end_posx: int, end_posy: int,
-                         use_actual_position: bool, button_click: str):
-    """Move the mouse from an initial position to a final position."""
+                         use_actual_position: bool, button_click: str) -> bool:
+    """Move the mouse from an initial position to a final position. Returns
+    True if the configured click was issued at the destination."""
     if pyautogui is None:
         logging.error("pyautogui is not installed. Cannot move mouse.")
-        return
+        return False
 
     try:
         if not use_actual_position:
@@ -395,10 +425,192 @@ def move_mouse_localized(ini_posx: int, ini_posy: int, end_posx: int, end_posy: 
         )
         logging.info(f"Mouse moved to ({end_posx}, {end_posy}).")
         issue_click_after_reaching_target(end_posx, end_posy, button_click)
+        return normalize_button_click(button_click) != 'none'
     except pyautogui.FailSafeException:
         logging.warning("Fail-safe triggered during localized movement, skipping movement.")
+        return False
     except Exception as e:
         logging.warning(f"Localized mouse movement error: {e}, skipping movement.")
+        return False
+
+
+def click_at_current_position(button_click: str) -> tuple:
+    """Issue a click at wherever the pointer currently is. Returns (x, y, clicked)."""
+    if pyautogui is None:
+        logging.error("pyautogui is not installed. Cannot click.")
+        return (0, 0, False)
+    current_x, current_y = pyautogui.position()
+    issue_click_after_reaching_target(current_x, current_y, button_click)
+    return (current_x, current_y, normalize_button_click(button_click) != 'none')
+
+
+def drag_mouse(ini_posx: int, ini_posy: int, end_posx: int, end_posy: int,
+               use_actual_position: bool, button_click: str) -> bool:
+    """Drag from a start point to an end point with `button_click` held down.
+
+    A drag with ``button_click='none'`` defaults to a left-button drag — the only
+    sensible behaviour, since a "drag without holding any button" is just a move.
+    """
+    if pyautogui is None:
+        logging.error("pyautogui is not installed. Cannot drag.")
+        return False
+
+    normalized_click = normalize_button_click(button_click)
+    drag_button = _drag_button_for_click(normalized_click)
+
+    try:
+        if not use_actual_position:
+            logging.info(f"Drag start: moving to ({ini_posx}, {ini_posy})...")
+            pyautogui.moveTo(ini_posx, ini_posy, duration=0.4, tween=pyautogui.easeInOutQuad)
+        else:
+            cx, cy = pyautogui.position()
+            logging.info(f"Drag start: using current position ({cx}, {cy}).")
+
+        duration = random.uniform(0.8, 1.8)
+        logging.info(f"Dragging with button={drag_button!r} to ({end_posx}, {end_posy}) over {duration:.2f}s...")
+        pyautogui.dragTo(
+            end_posx,
+            end_posy,
+            duration=duration,
+            button=drag_button,
+            tween=pyautogui.easeInOutQuad,
+        )
+        logging.info(f"Drag completed at ({end_posx}, {end_posy}).")
+        return True
+    except pyautogui.FailSafeException:
+        logging.warning("Fail-safe triggered during drag, skipping.")
+        return False
+    except Exception as e:
+        logging.warning(f"Drag error: {e}, skipping.")
+        return False
+
+
+def scroll_at_current(scroll_amount: int) -> tuple:
+    """Scroll the wheel `scroll_amount` clicks at the current pointer position."""
+    if pyautogui is None:
+        logging.error("pyautogui is not installed. Cannot scroll.")
+        return (0, 0, False)
+    try:
+        x, y = pyautogui.position()
+        clicks = int(scroll_amount)
+        if clicks == 0:
+            logging.warning("scroll_amount=0; nothing to scroll.")
+            return (x, y, False)
+        logging.info(f"Scrolling {clicks} click(s) at ({x}, {y})...")
+        pyautogui.scroll(clicks)
+        logging.info("Scroll completed.")
+        return (x, y, True)
+    except Exception as e:
+        logging.warning(f"Scroll error: {e}, skipping.")
+        return (0, 0, False)
+
+
+def _resolve_window_anchor(win, anchor: str) -> tuple:
+    """Compute (x, y) inside `win` for the requested anchor.
+
+    Falls back to the window center when the anchor name is unknown so a typo
+    never breaks the click — just lands somewhere safe.
+    """
+    anchor = (anchor or 'center').strip().lower()
+    left, top, width, height = win.left, win.top, win.width, win.height
+    cx = left + max(width // 2, 1)
+    cy = top + max(height // 2, 1)
+    if anchor == 'topleft':
+        return (left + 8, top + 8)
+    if anchor == 'topright':
+        return (left + width - 8, top + 8)
+    if anchor == 'bottomleft':
+        return (left + 8, top + height - 8)
+    if anchor == 'bottomright':
+        return (left + width - 8, top + height - 8)
+    if anchor == 'titlebar':
+        return (cx, top + 12)
+    return (cx, cy)
+
+
+def click_at_window(window_title: str, anchor: str, button_click: str) -> tuple:
+    """Find a window by title (substring match), focus it, click the anchor.
+
+    Returns (x, y, clicked, located_via). On no match returns (0, 0, False, "no_match").
+    Designed as the canonical "focus this window before typing" primitive — bypasses
+    the Shoter→Image-Interpreter→coords dance entirely for a known window title.
+    """
+    if pyautogui is None:
+        logging.error("pyautogui is not installed. Cannot click_at_window.")
+        return (0, 0, False, "pyautogui_missing")
+    title = (window_title or '').strip()
+    if not title:
+        logging.error("window_title is empty for movement_type='click_at_window'.")
+        return (0, 0, False, "no_window_title")
+    try:
+        get_windows = getattr(pyautogui, 'getWindowsWithTitle', None)
+        if get_windows is None:
+            logging.error("pyautogui.getWindowsWithTitle is not available on this platform.")
+            return (0, 0, False, "platform_unsupported")
+        candidates = get_windows(title) or []
+        candidates = [w for w in candidates if getattr(w, 'width', 0) > 0 and getattr(w, 'height', 0) > 0]
+        if not candidates:
+            logging.warning(f"No window matched title={title!r}.")
+            return (0, 0, False, "no_match")
+        win = candidates[0]
+        try:
+            if hasattr(win, 'activate'):
+                win.activate()
+        except Exception as activate_err:
+            logging.debug(f"Window activate failed (non-fatal): {activate_err}")
+        target_x, target_y = _resolve_window_anchor(win, anchor)
+        logging.info(
+            f"Window match: title={getattr(win, 'title', '?')!r} "
+            f"rect=({win.left},{win.top},{win.width},{win.height}); anchor={anchor!r} "
+            f"→ click at ({target_x}, {target_y})."
+        )
+        duration = random.uniform(0.4, 1.0)
+        pyautogui.moveTo(target_x, target_y, duration=duration, tween=pyautogui.easeInOutQuad)
+        issue_click_after_reaching_target(target_x, target_y, button_click)
+        clicked = normalize_button_click(button_click) != 'none'
+        return (target_x, target_y, clicked, "window_title")
+    except Exception as e:
+        logging.warning(f"click_at_window error: {e}")
+        return (0, 0, False, f"error:{e}")
+
+
+def click_at_located_image(image_path: str, confidence: float, button_click: str) -> tuple:
+    """Locate a reference image on screen and click its center.
+
+    Returns (x, y, clicked, located_via). On no match returns (0, 0, False, "no_match").
+    Uses ``pyautogui.locateCenterOnScreen`` which falls back to opencv-python (cv2)
+    when ``confidence`` is supplied — required for antialiased UI icons / DPI scaling.
+    """
+    if pyautogui is None:
+        logging.error("pyautogui is not installed. Cannot click_at_located_image.")
+        return (0, 0, False, "pyautogui_missing")
+    if not image_path or not os.path.isfile(image_path):
+        logging.error(f"locate_image_path is not a valid file: {image_path!r}")
+        return (0, 0, False, "no_image_file")
+    try:
+        try:
+            conf = float(confidence)
+        except (TypeError, ValueError):
+            conf = 0.8
+        conf = max(0.5, min(1.0, conf))
+        try:
+            location = pyautogui.locateCenterOnScreen(image_path, confidence=conf)
+        except TypeError:
+            # Older pyautogui without confidence support — fall back to exact match.
+            location = pyautogui.locateCenterOnScreen(image_path)
+        if location is None:
+            logging.warning(f"Reference image not found on screen: {image_path!r} (confidence={conf}).")
+            return (0, 0, False, "no_match")
+        target_x, target_y = int(location[0]), int(location[1])
+        logging.info(f"Located reference image at ({target_x}, {target_y}); clicking.")
+        duration = random.uniform(0.4, 1.0)
+        pyautogui.moveTo(target_x, target_y, duration=duration, tween=pyautogui.easeInOutQuad)
+        issue_click_after_reaching_target(target_x, target_y, button_click)
+        clicked = normalize_button_click(button_click) != 'none'
+        return (target_x, target_y, clicked, "locate_image")
+    except Exception as e:
+        logging.warning(f"click_at_located_image error: {e}")
+        return (0, 0, False, f"error:{e}")
 
 
 def main():
@@ -412,49 +624,150 @@ def main():
 
     try:
         target_agents = config.get('target_agents', [])
-        movement_type = config.get('movement_type', 'random')
+        movement_type = str(config.get('movement_type', 'random') or 'random').strip().lower()
         button_click = config.get('button_click', 'none')
+        normalized_click = normalize_button_click(button_click)
 
         logging.info("MOUSER AGENT STARTED")
         logging.info(f"Movement type: {movement_type}")
-        logging.info(f"Configured button click: {normalize_button_click(button_click)}")
+        logging.info(f"Configured button click: {normalized_click}")
         logging.info(f"Targets: {target_agents}")
+
+        # Outcome fields populated by whichever branch runs — drives the
+        # INI_SECTION_MOUSER block emitted at the end.
+        end_x = 0
+        end_y = 0
+        clicked = False
+        located_via = "manual"
+        outcome_body = ""
 
         if movement_type == 'random':
             total_time = config.get('total_time', 30)
             logging.info(f"Total time: {total_time}s")
-            if normalize_button_click(button_click) != 'none':
+            if normalized_click != 'none':
                 logging.info("button_click is ignored when movement_type is random.")
             try:
                 move_mouse_random(float(total_time))
+                if pyautogui is not None:
+                    end_x, end_y = pyautogui.position()
+                located_via = "random"
+                outcome_body = f"Random wander completed for {total_time}s; final cursor at ({end_x}, {end_y})."
             except Exception as e:
                 logging.warning(f"Random mouse movement failed: {e}")
+                outcome_body = f"Random wander failed: {e}"
 
         elif movement_type == 'localized':
             use_actual_position = config.get('actual_position', True)
             ini_posx = config.get('ini_posx', 0)
             ini_posy = config.get('ini_posy', 0)
-            end_posx = config.get('end_posx', 500)
-            end_posy = config.get('end_posy', 500)
+            end_posx = int(config.get('end_posx', 500))
+            end_posy = int(config.get('end_posy', 500))
 
             logging.info(f"Actual position: {use_actual_position}")
             if not use_actual_position:
                 logging.info(f"Initial position: ({ini_posx}, {ini_posy})")
             logging.info(f"Final position: ({end_posx}, {end_posy})")
-            logging.info(f"Localized button_click: {normalize_button_click(button_click)}")
+            logging.info(f"Localized button_click: {normalized_click}")
 
             try:
-                move_mouse_localized(
+                clicked = move_mouse_localized(
                     int(ini_posx), int(ini_posy),
-                    int(end_posx), int(end_posy),
+                    end_posx, end_posy,
                     bool(use_actual_position),
                     button_click
                 )
+                end_x, end_y = end_posx, end_posy
+                located_via = "manual"
+                outcome_body = (
+                    f"Moved to ({end_x}, {end_y}); click={normalized_click}; "
+                    f"clicked={clicked}."
+                )
             except Exception as e:
                 logging.warning(f"Localized mouse movement failed: {e}")
+                outcome_body = f"Localized movement failed: {e}"
+
+        elif movement_type == 'click':
+            try:
+                end_x, end_y, clicked = click_at_current_position(button_click)
+                located_via = "current_position"
+                outcome_body = (
+                    f"Clicked at current position ({end_x}, {end_y}); "
+                    f"click={normalized_click}; clicked={clicked}."
+                )
+            except Exception as e:
+                logging.warning(f"Click at current position failed: {e}")
+                outcome_body = f"Click failed: {e}"
+
+        elif movement_type == 'drag':
+            use_actual_position = config.get('actual_position', True)
+            ini_posx = config.get('ini_posx', 0)
+            ini_posy = config.get('ini_posy', 0)
+            end_posx = int(config.get('end_posx', 500))
+            end_posy = int(config.get('end_posy', 500))
+            try:
+                ok = drag_mouse(
+                    int(ini_posx), int(ini_posy),
+                    end_posx, end_posy,
+                    bool(use_actual_position),
+                    button_click
+                )
+                end_x, end_y = end_posx, end_posy
+                clicked = ok  # drag IS a click-and-hold-and-release operation
+                located_via = "manual"
+                outcome_body = (
+                    f"Drag from ({ini_posx},{ini_posy}) → ({end_x},{end_y}) "
+                    f"with button={_drag_button_for_click(normalized_click)}; ok={ok}."
+                )
+            except Exception as e:
+                logging.warning(f"Drag failed: {e}")
+                outcome_body = f"Drag failed: {e}"
+
+        elif movement_type == 'scroll':
+            scroll_amount = int(config.get('scroll_amount', 0) or 0)
+            end_x, end_y, ok = scroll_at_current(scroll_amount)
+            located_via = "current_position"
+            outcome_body = f"Scrolled {scroll_amount} click(s) at ({end_x}, {end_y}); ok={ok}."
+
+        elif movement_type == 'click_at_window':
+            window_title = config.get('window_title', '')
+            window_anchor = config.get('window_anchor', 'center')
+            end_x, end_y, clicked, located_via = click_at_window(
+                window_title, window_anchor, button_click
+            )
+            outcome_body = (
+                f"click_at_window(title={window_title!r}, anchor={window_anchor!r}) "
+                f"→ ({end_x}, {end_y}); located_via={located_via}; clicked={clicked}."
+            )
+
+        elif movement_type == 'locate_image':
+            locate_image_path = config.get('locate_image_path', '')
+            locate_confidence = config.get('locate_confidence', 0.8)
+            end_x, end_y, clicked, located_via = click_at_located_image(
+                locate_image_path, locate_confidence, button_click
+            )
+            outcome_body = (
+                f"locate_image(path={locate_image_path!r}, confidence={locate_confidence}) "
+                f"→ ({end_x}, {end_y}); located_via={located_via}; clicked={clicked}."
+            )
+
         else:
             logging.error(f"Unknown movement_type: {movement_type}")
             sys.exit(1)
+
+        # Emit the structured-output block. Atomic single logging.info call —
+        # downstream Parametrizer + the wrapped tool's KV promotion both rely
+        # on this block being intact.
+        _emit_section(
+            {
+                "movement_type": movement_type,
+                "end_posx": end_x,
+                "end_posy": end_y,
+                "button_click": normalized_click,
+                "clicked": str(bool(clicked)).lower(),
+                "located_via": located_via,
+            },
+            outcome_body or "Mouser run completed.",
+        )
 
         # Trigger downstream agents
         total_triggered = 0

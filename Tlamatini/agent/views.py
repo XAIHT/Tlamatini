@@ -8168,6 +8168,8 @@ PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
     'gateway_relayer': ['event_type', 'delivery_id', 'action', 'ref', 'repository', 'sender', 'body'],
     'googler': ['url', 'status', 'content_length', 'response_body'],
     'acpxer': ['agent_id', 'session_id', 'transport', 'settle', 'transcript_path', 'response_body'],
+    'shoter': ['output_path', 'output_dir', 'filename', 'response_body'],
+    'mouser': ['movement_type', 'end_posx', 'end_posy', 'button_click', 'clicked', 'located_via', 'response_body'],
 }
 
 # Allowed source agent base names

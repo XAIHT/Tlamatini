@@ -34,6 +34,7 @@ _RUN_CONTROL_TOOL_NAMES = (
     "chat_agent_run_status",
     "chat_agent_run_log",
     "chat_agent_run_stop",
+    "chat_agent_run_wait",
 )
 
 # ACPX tool name groups. Used by the planner to:
@@ -184,6 +185,70 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
     "list_skills": (
         "list skills", "list_skills", "available skills",
         "registered skills", "skill catalog", "what skills",
+    ),
+    # ── Desktop-UI tool surface ──────────────────────────────────────
+    # Wrapped chat-agent tools that interact with the live desktop. The
+    # planner historically failed to prioritise these on prompts like
+    # "type X into notepad", "press the keys", "as if I were typing"
+    # because the wrapped specs' implicit hints (derived from the agent
+    # description) didn't include the natural-language verbs the user
+    # actually uses. Adding explicit signal tokens here lifts these
+    # tools above the cap on those prompts.
+    "chat_agent_keyboarder": (
+        "keyboarder", "keyboard", "type", "typed", "typing", "to type",
+        "press", "press the keys", "press the key", "pressing keys",
+        "keystrokes", "send keys", "send the keys", "input the text",
+        "as if i were typing", "like i were pressing", "like if i were pressing",
+        "as if i pressed", "simulate typing", "simulated typing",
+        "hotkey", "hot key", "keyboard shortcut", "shortcut",
+        "alt+f4", "alt+n", "ctrl+s", "ctrl+c", "ctrl+v",
+        "type into notepad", "type in notepad", "type into", "type in",
+        "write into notepad", "write to notepad",
+        "insert the text", "insert text",
+    ),
+    "chat_agent_mouser": (
+        "mouser", "mouse", "click", "click on", "double click",
+        "double-click", "right click", "right-click", "drag",
+        "drag and drop", "move the mouse", "move the cursor",
+        "mouse cursor", "mouse pointer", "pointer", "scroll",
+        "click button", "click the button", "press the mouse",
+        # Locate-then-click vocabulary — the planner must surface Mouser
+        # whenever the user names a target by appearance / window / label.
+        "click save", "click ok", "click cancel", "click apply", "click submit",
+        "click yes", "click no", "click close", "click next", "click finish",
+        "click on the button", "tap the button", "press the button on screen",
+        "focus the window", "focus window", "click into", "click in",
+        "click center", "click top-right", "click bottom-left",
+        "find the button", "find the button on screen", "locate the button",
+        "locate the image", "locate image", "click where",
+        # New movement_type modes the LLM can pick.
+        "click_at_window", "click at window", "locate_image",
+        "scroll up", "scroll down", "scroll wheel",
+        "drag from", "drag to", "drag selection",
+    ),
+    "chat_agent_shoter": (
+        "screenshot", "screen capture", "capture the screen",
+        "take a screenshot", "snap screenshot", "shoter",
+        "grab the screen", "snapshot of the screen",
+    ),
+    "window_present": (
+        "is notepad open", "is notepad running", "is the window open",
+        "window present", "window is visible", "visible on screen",
+        "is the application open", "is the app open",
+        "check if notepad", "did notepad open", "did the window open",
+        "window exists", "find window", "window title",
+    ),
+    "chat_agent_sleeper": (
+        "wait", "wait for", "wait n seconds", "wait 30 seconds",
+        "wait a few seconds", "wait some seconds", "sleep",
+        "pause for", "pause", "delay", "hold for",
+        "milliseconds", "for n seconds", "after n seconds",
+    ),
+    "chat_agent_run_wait": (
+        "wait for the run", "wait for run", "wait for run_id",
+        "wait until the run finishes", "block until run finishes",
+        "wait for the agent to finish", "wait for agent",
+        "drain the run", "settle the run",
     ),
 }
 _CONTEXT_HINTS = {

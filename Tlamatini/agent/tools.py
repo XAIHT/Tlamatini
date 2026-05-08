@@ -637,22 +637,31 @@ def _split_assignment_segment(segment):
 
 
 def _unquote_preserving_backslashes(value_text):
-    """Strip a surrounding matching single/double quote pair and decode ONLY
-    the two escape sequences that are genuinely ambiguous without decoding:
-    ``\\\\`` (literal backslash) and ``\\<outer-quote>`` (embedded matching
-    quote). Every other backslash-prefixed byte (``\\a``, ``\\b``, ``\\t``,
-    ``\\v``, ``\\n``, ``\\r``, ``\\x07``, ``\\D``, ``\\A`` …) is kept verbatim.
-    This mirrors YAML single-quoted / Python raw-string semantics and
-    supersedes ``ast.literal_eval`` for scalar assignments, where Python
-    literal semantics would turn ``C:\\angys`` into ``C:\\x07ngys`` and break
+    """Strip a surrounding matching single/double quote pair and decode the
+    embedded-quote escape sequences that LLMs reliably produce:
+
+    * ``\\\\`` → literal backslash
+    * ``\\<outer-quote>`` → embedded matching quote (Python / C / shell style)
+    * a doubled outer quote (SQL / YAML single-quoted style) decodes to a
+      single literal quote: ``'I''m'`` → ``I'm`` (and analogously for double
+      quotes). LLMs reach for SQL-style doubling whenever they need to
+      escape an apostrophe inside ``input_sequence='Hi!, I''m Tlamatini'``
+      — without this decode, ``''`` survives all the way into the
+      keyboarder, which then types two consecutive apostrophes.
+
+    Every other backslash-prefixed byte (``\\a``, ``\\b``, ``\\t``, ``\\v``,
+    ``\\n``, ``\\r``, ``\\x07``, ``\\D``, ``\\A`` …) is kept verbatim. This
+    mirrors YAML single-quoted / Python raw-string semantics and supersedes
+    ``ast.literal_eval`` for scalar assignments, where Python literal
+    semantics would turn ``C:\\angys`` into ``C:\\x07ngys`` and break
     ``chat_agent_file_creator`` / every other Windows-path-bearing wrapped
-    agent. Multi-line scripts that actually need ``\\n``/``\\t`` expansion
+    agent. Multi-line scripts that actually need ``\\n`` / ``\\t`` expansion
     already flow through the triple-quoted branch, which keeps
     ``ast.literal_eval``.
     """
     outer_quote = value_text[0]
     inner = value_text[1:-1]
-    if '\\' not in inner:
+    if '\\' not in inner and (outer_quote * 2) not in inner:
         return inner
 
     out = []
@@ -670,6 +679,12 @@ def _unquote_preserving_backslashes(value_text):
                 out.append(outer_quote)
                 i += 2
                 continue
+        # SQL / YAML-single-quoted convention: a doubled outer quote inside
+        # the literal decodes to a single literal quote. ``'I''m'`` → ``I'm``.
+        if char == outer_quote and i + 1 < n and inner[i + 1] == outer_quote:
+            out.append(outer_quote)
+            i += 2
+            continue
         out.append(char)
         i += 1
     return ''.join(out)
@@ -881,6 +896,34 @@ def _extract_string_key_from_get_call(node):
     return None
 
 
+def _extract_default_from_get_call(node):
+    """Return ``(has_default, default_value)`` for a ``config.get(key, default)``.
+
+    ``has_default`` is True when the call site provides any second positional
+    argument; ``default_value`` is the literal Python value if it can be
+    statically evaluated (``''``, ``[]``, ``False``, ``None``, etc.) — otherwise
+    a sentinel ``object()`` is returned and the caller should treat the default
+    as opaque-but-present.
+    """
+    if not isinstance(node, ast.Call):
+        return False, None
+    if not isinstance(node.func, ast.Attribute) or node.func.attr != 'get':
+        return False, None
+    if len(node.args) < 2:
+        return False, None
+    default_node = node.args[1]
+    literal = _safe_literal_eval(default_node)
+    if literal is None and not isinstance(default_node, ast.Constant):
+        # Default expression is non-literal (e.g. another variable). The
+        # script clearly tolerates the key being absent, so signal "default
+        # present but opaque" via a sentinel.
+        return True, _DEFAULT_SENTINEL
+    return True, literal
+
+
+_DEFAULT_SENTINEL = object()
+
+
 def _safe_literal_eval(node):
     try:
         return ast.literal_eval(node)
@@ -892,10 +935,22 @@ class _ConfigRequirementAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.variable_to_key = {}
         self.required_keys = set()
+        # Keys that are read via ``config.get(key, <default>)`` with an
+        # explicit default literal. The caller is signalling that the
+        # empty/absent case is supported, so even if a downstream
+        # ``if not <var>`` guard exists, the key MUST NOT be flagged as
+        # mandatory by the runtime gate. Without this exclusion,
+        # ``filetype_exclusions: ""`` (a perfectly valid default) gets
+        # rejected and the LLM has to guess strings like ``'[]'`` to
+        # satisfy a check that never should have fired.
+        self.keys_with_explicit_default = set()
 
     def visit_Assign(self, node):
         key_name = _extract_string_key_from_get_call(node.value)
         if key_name:
+            has_default, _default_value = _extract_default_from_get_call(node.value)
+            if has_default:
+                self.keys_with_explicit_default.add(key_name)
             for target in node.targets:
                 if isinstance(target, ast.Name):
                     self.variable_to_key[target.id] = key_name
@@ -904,6 +959,9 @@ class _ConfigRequirementAnalyzer(ast.NodeVisitor):
     def visit_AnnAssign(self, node):
         key_name = _extract_string_key_from_get_call(node.value)
         if key_name and isinstance(node.target, ast.Name):
+            has_default, _default_value = _extract_default_from_get_call(node.value)
+            if has_default:
+                self.keys_with_explicit_default.add(key_name)
             self.variable_to_key[node.target.id] = key_name
         self.generic_visit(node)
 
@@ -963,7 +1021,18 @@ def _extract_required_key_names(agent_script_path):
 
     analyzer = _ConfigRequirementAnalyzer()
     analyzer.visit(tree)
-    return {_normalize_identifier(key) for key in analyzer.required_keys if key}
+    # Exclude any key that is read with an explicit default at its call site —
+    # ``config.get(key, '')`` / ``config.get(key, [])`` etc. signal that the
+    # script tolerates the empty case, regardless of any downstream
+    # ``if not <var>`` early-exit guard. Without this exclusion the
+    # _find_missing_required_config_paths gate (tools.py:1029) rejects any
+    # legitimately-empty default and forces the LLM into a retry storm.
+    excluded = {_normalize_identifier(key) for key in analyzer.keys_with_explicit_default if key}
+    return {
+        _normalize_identifier(key)
+        for key in analyzer.required_keys
+        if key and _normalize_identifier(key) not in excluded
+    }
 
 
 def _extract_config_comment_hints(config_path):
@@ -1048,6 +1117,61 @@ def _find_missing_required_config_paths(config, config_path, agent_script_path):
 
     missing_items.sort(key=lambda item: _format_config_path(item['path']))
     return missing_items
+
+
+# Wrapped chat-agents whose INI_SECTION_<TYPE><<< KV header should be
+# promoted to top-level keys on the tool's JSON result. This lets the
+# Multi-Turn LLM see e.g. ``output_path`` as a first-class field instead
+# of having to grep the log_excerpt for a saved-file path.
+_PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
+    "shoter": ("output_path", "output_dir", "filename"),
+    "mouser": (
+        "movement_type", "end_posx", "end_posy",
+        "button_click", "clicked", "located_via",
+    ),
+}
+
+
+_INI_SECTION_BLOCK_RE = re.compile(
+    r"INI_SECTION_(?P<type>[A-Z0-9_]+)<<<\s*\n(?P<body>.*?)\n>>>END_SECTION_(?P=type)",
+    re.DOTALL,
+)
+
+
+def _maybe_promote_section_fields_to_payload(payload, spec) -> None:
+    """If the spec is in ``_PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR`` and the
+    log_excerpt contains an ``INI_SECTION_<TYPE><<<`` block, lift its KV
+    header fields onto ``payload`` (without overwriting existing keys).
+
+    Called from ``_launch_wrapped_chat_agent``. Failure is silent — the
+    feature is purely additive and must never block a successful run.
+    """
+    promote = _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR.get(getattr(spec, "template_dir", ""))
+    if not promote:
+        return
+    log_excerpt = payload.get("log_excerpt") or ""
+    if not log_excerpt:
+        return
+    match = _INI_SECTION_BLOCK_RE.search(log_excerpt)
+    if not match:
+        return
+    body = match.group("body")
+    # The Parametrizer convention is: KV header lines until the first
+    # blank line, then the body becomes ``response_body``.
+    header_lines = []
+    for raw_line in body.splitlines():
+        if raw_line.strip() == "":
+            break
+        header_lines.append(raw_line)
+    for line in header_lines:
+        if ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key = key.strip()
+        value = value.strip()
+        if not key or key not in promote:
+            continue
+        payload.setdefault(key, value)
 
 
 def _resolve_template_agent_script_path(template_agent):
@@ -1552,6 +1676,13 @@ def _launch_wrapped_chat_agent(spec, request):
     payload["display_name"] = spec.display_name
     payload["assignment_notes"] = assignment_notes
     payload["long_running"] = spec.long_running
+    # Surface INI_SECTION_<TYPE><<< KV header fields (e.g. shoter's
+    # ``output_path``) as top-level keys on the wrapped tool result, so the
+    # LLM does not have to parse the log_excerpt to discover the agent's
+    # primary output. Existing keys are NOT overwritten — this is purely
+    # additive. Safe for canvas behaviour because the agent itself emits
+    # the same block to its own log unchanged.
+    _maybe_promote_section_fields_to_payload(payload, spec)
 
     logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH RESULT =====")
     logger.info("[tools._launch_wrapped_chat_agent]   run_id      = %s", run.runId)
@@ -2747,6 +2878,122 @@ def googler(query: str, number_of_results: int = 5) -> str:
     return "\n".join(output_parts)
 
 
+@tool
+def window_present(title: str) -> str:
+    """Check whether a desktop window matching ``title`` is currently visible.
+
+    Fast (<100 ms) yes/no helper for desktop-UI flows. Uses
+    ``pyautogui.getWindowsWithTitle`` (case-insensitive substring match)
+    to enumerate top-level windows and returns a JSON string with::
+
+        {"present": true/false, "matches": [{"title": ..., "is_active": true/false}, ...]}
+
+    Use this tool — NOT ``chat_agent_image_interpreter`` — when you only need
+    to know "is window X open?". It costs <100 ms vs. the 20–30 s vision-LLM
+    round-trip and never blocks the multi-turn budget. Good for: confirming
+    Notepad opened after `chat_agent_executer`, confirming the window is
+    gone after `alt+f4`, checking that a save dialog is or isn't on screen.
+
+    Reserve `chat_agent_image_interpreter` for genuine vision tasks
+    (reading text from a screenshot, describing chart contents, OCR).
+
+    Input:
+    - title: substring to match against window titles (e.g. "Notepad",
+      "Save As", "Untitled"). Case-insensitive. Empty string returns all
+      visible windows.
+    """
+    try:
+        import pyautogui
+    except Exception as exc:
+        return _tool_output({
+            "present": False,
+            "matches": [],
+            "error": f"pyautogui import failed: {exc}",
+        })
+    try:
+        needle = (title or "").strip().lower()
+        windows = pyautogui.getAllWindows()
+        matches = []
+        active_handle = None
+        try:
+            active = pyautogui.getActiveWindow()
+            active_handle = getattr(active, "_hWnd", None) if active else None
+        except Exception:
+            active_handle = None
+        for window in windows:
+            window_title = getattr(window, "title", "") or ""
+            if not window_title:
+                continue
+            if needle and needle not in window_title.lower():
+                continue
+            handle = getattr(window, "_hWnd", None)
+            matches.append({
+                "title": window_title,
+                "is_active": bool(active_handle is not None and handle == active_handle),
+            })
+        return _tool_output({
+            "present": bool(matches),
+            "matches": matches[:32],  # cap to avoid flooding the LLM
+            "match_count": len(matches),
+            "title_query": title,
+        })
+    except Exception as exc:
+        return _tool_output({
+            "present": False,
+            "matches": [],
+            "error": f"window_present failed: {exc}",
+        })
+
+
+@tool
+def chat_agent_run_wait(run_id: str, max_seconds: int = 120, poll_interval_seconds: int = 2) -> str:
+    """Block until a chat-agent run finishes, OR ``max_seconds`` elapses.
+
+    Sister tool to ``chat_agent_run_status`` / ``chat_agent_run_log`` /
+    ``chat_agent_run_stop``. Use this INSTEAD of looping
+    ``chat_agent_run_status`` calls when you launched a long-running wrapped
+    chat-agent (image_interpreter, crawler, etc.) and only need the final
+    result. One call replaces a 5+ iteration polling loop.
+
+    Returns the same JSON envelope as ``chat_agent_run_status`` once the run
+    has finished (or once the timeout fires — in that case the run is still
+    running and ``status`` will be ``"running"``; the LLM should call
+    ``chat_agent_run_stop`` if it wants to give up, or ``chat_agent_run_wait``
+    again with a longer timeout).
+
+    Input:
+    - run_id: full run_id or short prefix returned by the launching tool.
+    - max_seconds: hard upper bound on the wait (default 120, max 600).
+    - poll_interval_seconds: server-side poll cadence (default 2; min 1).
+    """
+    normalized = _normalize_run_id(run_id)
+    run = get_chat_agent_run(normalized)
+    if run is None:
+        return _tool_output({
+            "status": "error",
+            "message": f"Wrapped chat-agent run '{normalized}' was not found.",
+        })
+    try:
+        max_s = max(1, min(int(max_seconds), 600))
+    except Exception:
+        max_s = 120
+    try:
+        poll_s = max(1, int(poll_interval_seconds))
+    except Exception:
+        poll_s = 2
+    elapsed = 0
+    import time as _time
+    while elapsed < max_s:
+        run.refresh_from_db()
+        if str(run.status or "").lower() != "running":
+            break
+        _time.sleep(poll_s)
+        elapsed += poll_s
+    payload = serialize_chat_agent_run(run, include_log_excerpt=True)
+    payload["waited_seconds"] = elapsed
+    return _tool_output(payload)
+
+
 def get_mcp_tools():
     """
     Returns a list of all tools available to the MCP.
@@ -2789,6 +3036,10 @@ def get_mcp_tools():
         tools.append(chat_agent_run_log)
     if global_state.get_state('tool_chat-agent-run-stop_status', 'enabled') == 'enabled':
         tools.append(chat_agent_run_stop)
+    if global_state.get_state('tool_chat-agent-run-wait_status', 'enabled') == 'enabled':
+        tools.append(chat_agent_run_wait)
+    if global_state.get_state('tool_window-present_status', 'enabled') == 'enabled':
+        tools.append(window_present)
     if global_state.get_state('tool_googler_status', 'enabled') == 'enabled':
         tools.append(googler)
     for spec in WRAPPED_CHAT_AGENT_SPECS:

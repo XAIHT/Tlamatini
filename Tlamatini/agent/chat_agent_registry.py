@@ -247,7 +247,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_shoter",
         tool_description="Chat-Agent-Shoter",
         display_name="Shoter",
-        purpose="Take a silent screenshot of the current screen and save it to disk — the file is NEVER opened in a viewer (no popup, no focus stolen). Use when the user asks for a screenshot, screen capture, or visual snapshot of what's on screen — also useful as a verification step after launching a desktop application AND as a verification step after closing one (so you can confirm the target window is gone and no residual 'Save changes?' / 'Confirm exit' dialog is still on screen waiting for a button click). Always pair with chat_agent_image_interpreter to read what's on screen; NEVER follow chat_agent_shoter with launch_view_image — that would pop a viewer window and steal focus from the workflow's target app (e.g. Notepad), breaking subsequent chat_agent_keyboarder / chat_agent_mouser steps.",
+        purpose="Take a silent screenshot of the current screen and save it to disk — the file is NEVER opened in a viewer (no popup, no focus stolen). The wrapped result includes a top-level 'output_path' field with the absolute path of the saved PNG, so you do NOT need to parse the log to find it. Use when the user asks for a screenshot, screen capture, or visual snapshot of what's on screen, OR as a final verification step at the end of a desktop-UI workflow (after closing the target window) to confirm the desktop is back to its baseline state. DO NOT use it as an 'is the window open?' gate between launching an app and the first Keyboarder/Mouser action — `chat_agent_executer` returning exit_code=0 already proves the launch succeeded; for an explicit yes/no window check, use `chat_agent_window_present` (it's <100 ms) instead of pairing Shoter with the 20–30 s `chat_agent_image_interpreter` vision call. Reserve `chat_agent_image_interpreter` for genuine vision tasks (reading content, OCR, describing a chart) — never for binary 'is X visible?' checks. NEVER follow chat_agent_shoter with launch_view_image — that would pop a viewer window and steal focus from the workflow's target app (e.g. Notepad), breaking subsequent chat_agent_keyboarder / chat_agent_mouser steps.",
         example_request="Take screenshot with output_dir='E:\\Screenshots'",
         aliases=("shoter", "screenshot", "screen capture"),
         security_hints=(
@@ -262,15 +262,63 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_mouser",
         tool_description="Chat-Agent-Mouser",
         display_name="Mouser",
-        purpose="Move the mouse pointer and optionally click — needed to focus a desktop window before typing into it (e.g. click into Notepad's editing area before chat_agent_keyboarder types). Two modes: movement_type='localized' moves to (end_posx, end_posy) — set actual_position=false plus ini_posx/ini_posy if you want to start from a fixed point instead of the current cursor — and optionally fires button_click ∈ {none|left|right|middle|double-left|double-right|double-middle} once the target is reached. movement_type='random' wanders the screen for total_time seconds (no click). Pair with chat_agent_executer (to launch the target app), chat_agent_shoter + chat_agent_image_interpreter (to find where to click), then chat_agent_keyboarder (to type after clicking). For CLOSING a window at the end of the workflow, prefer chat_agent_keyboarder with input_sequence='alt+f4' over hunting the X button by pixel — it is faster, locale-independent, and always lands on the focused window; only use Mouser to click 'Don't Save' / 'Cancel' if a save dialog appears AND alt-letter shortcuts (alt+n / alt+s / alt+c) cannot be sent for some reason.",
-        example_request="Move mouse with movement_type='localized' and end_posx=600 and end_posy=400 and button_click='left'",
-        aliases=("mouser", "mouse", "move mouse", "click", "pointer"),
+        purpose=(
+            "Move the mouse pointer and click anywhere on the desktop — the canonical "
+            "primitive for focusing a window, clicking a button, dragging a selection, or "
+            "scrolling. Seven movement_type modes (pick the one that matches the task, do "
+            "NOT default to 'localized' when a smarter mode exists):\n"
+            "  • 'click_at_window' (PREFERRED for focus-the-window-then-type) — set "
+            "    window_title='Notepad' (or any substring of the title) and window_anchor "
+            "    ∈ {center|topleft|topright|bottomleft|bottomright|titlebar} (default "
+            "    'center'); the agent looks the window up via pyautogui.getWindowsWithTitle, "
+            "    moves to the anchor and fires button_click. Bullet-proof and locale-independent "
+            "    — NO screenshot / vision LLM needed.\n"
+            "  • 'locate_image' — set locate_image_path='C:\\path\\to\\button.png' (and "
+            "    optionally locate_confidence ∈ [0.5, 1.0], default 0.8); the agent runs "
+            "    pyautogui.locateCenterOnScreen on the live desktop and clicks the center of "
+            "    the first match. Use when you have a reference image of the exact button/icon.\n"
+            "  • 'localized' — pre-computed (end_posx, end_posy); set actual_position=false "
+            "    plus ini_posx/ini_posy to start from a fixed point instead of the current "
+            "    cursor. Use when you already have pixel coordinates (e.g. parsed out of an "
+            "    Image-Interpreter answer).\n"
+            "  • 'click' — click at the CURRENT pointer position (no move). Useful as the "
+            "    second step of a chain after another tool moved the cursor.\n"
+            "  • 'drag' — drag from (ini_posx, ini_posy) to (end_posx, end_posy) holding "
+            "    button_click (defaults to left for 'none'). Use for selections, sliders, "
+            "    drag-and-drop.\n"
+            "  • 'scroll' — roll the wheel scroll_amount clicks at the current pointer "
+            "    position (positive = up, negative = down).\n"
+            "  • 'random' — wander randomly for total_time seconds (no click).\n"
+            "button_click ∈ {none|left|right|middle|double-left|double-right|double-middle} "
+            "for any mode that fires a click.\n\n"
+            "RESULT FIELDS (promoted to top-level keys on the wrapped tool's JSON return): "
+            "movement_type, end_posx, end_posy, button_click, clicked (true/false), "
+            "located_via ∈ {manual|window_title|locate_image|current_position|random|no_match|"
+            "platform_unsupported|no_image_file|no_window_title}. When located_via='no_match' "
+            "the target wasn't found — adjust the title/image/confidence and retry once.\n\n"
+            "Pair with chat_agent_executer (launch app), chat_agent_keyboarder (type after "
+            "clicking), and — only when no window title is known and no reference image exists "
+            "— chat_agent_shoter + chat_agent_image_interpreter to extract (x, y) coordinates. "
+            "For CLOSING a window, prefer chat_agent_keyboarder('alt+f4') over hunting the X "
+            "button by pixel; only use Mouser on 'Don't Save'/'Cancel' if alt-letter shortcuts "
+            "(alt+n/alt+s/alt+c) are unavailable."
+        ),
+        example_request="Click Notepad's editing area with movement_type='click_at_window' and window_title='Notepad' and window_anchor='center' and button_click='left'",
+        aliases=("mouser", "mouse", "move mouse", "click", "pointer", "drag", "scroll"),
         security_hints=(
             "mouse", "move mouse", "move the mouse", "mouse pointer",
             "click", "click on", "left click", "right click", "double click",
+            "double-click", "middle click", "triple click",
             "focus window", "focus the window", "focus notepad",
-            "click into", "click in", "click the window",
-            "point to", "move pointer", "drag",
+            "click into", "click in", "click the window", "click the button",
+            "click on the button", "click save", "click ok", "click cancel",
+            "click yes", "click no", "click submit", "click apply",
+            "press the button on screen", "tap the button",
+            "point to", "move pointer", "move the cursor", "move the pointer",
+            "drag", "drag and drop", "drag from", "drag to",
+            "scroll", "scroll up", "scroll down", "scroll wheel",
+            "locate the button", "locate image", "find the button on screen",
+            "click where", "click at", "click center", "click top-right",
         ),
     ),
     ChatWrappedAgentSpec(
@@ -279,8 +327,8 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_keyboarder",
         tool_description="Chat-Agent-Keyboarder",
         display_name="Keyboarder",
-        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). Use when the user asks to type something into a desktop app, drive a UI with keystrokes, send hotkeys (Ctrl+C, Alt+Tab, Win+R, ...), or replay a key sequence as if a human were pressing keys. Pair with chat_agent_executer (to launch the target app) and chat_agent_shoter / chat_agent_image_interpreter (to verify the window is ready before typing). WINDOW CLEANUP — every desktop-UI workflow you start MUST end by closing the window you opened: send 'alt+f4' to close the active window; if the app raises a 'Save changes?' confirmation (Notepad, Word, most editors) the standard English buttons are 'Save' (alt+s), 'Don't Save' (alt+n), 'Cancel' (alt+c or escape) — when the workflow only typed demo text and the file does NOT need to be kept, send 'alt+n' to discard. If alt-letter shortcuts are unavailable (non-English UI, custom dialog), navigate with 'tab' until the desired button is focused, then 'enter'. After the close sequence, take a chat_agent_shoter screenshot to verify the window is actually gone and no residual dialog is left on screen.",
-        example_request="Type with input_sequence=\"'Hi, I'm Tlamatini', enter\" and stride_delay=80",
+        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). Use when the user asks to type something into a desktop app, drive a UI with keystrokes, send hotkeys (Ctrl+C, Alt+Tab, Win+R, ...), or replay a key sequence as if a human were pressing keys. Pair with chat_agent_executer (to launch the target app). INPUT_SEQUENCE FORMAT (READ CAREFULLY): comma-separated tokens; literal text MUST be wrapped in single quotes ('like this'); key names go bare (enter, esc, tab); chord keys join with + (ctrl+s, alt+f4). To embed an apostrophe inside single-quoted literal text, double it SQL-style ('I''m' types I'm) OR backslash-escape it ('I\\'m' types I'm). DO NOT double the OUTER quotes (''text'' is wrong). Correct examples: 'Hi, I''m Tlamatini', enter — types `Hi, I'm Tlamatini` then presses Enter. 'Hello world', tab, ctrl+s — types `Hello world` then Tab then saves. If you forget the quotes around text, the agent falls back to typing the entire input literally — but quoting is the canonical form. WINDOW CLEANUP — every desktop-UI workflow you start MUST end by closing the window you opened: send 'alt+f4' to close the active window; if the app raises a 'Save changes?' confirmation (Notepad, Word, most editors) the standard English buttons are 'Save' (alt+s), 'Don't Save' (alt+n), 'Cancel' (alt+c or escape) — when the workflow only typed demo text and the file does NOT need to be kept, send 'alt+n' to discard. If alt-letter shortcuts are unavailable (non-English UI, custom dialog), navigate with 'tab' until the desired button is focused, then 'enter'.",
+        example_request="Type with input_sequence=\"'Hi!, I''m Tlamatini', enter\" and stride_delay=80",
         aliases=("keyboarder", "keyboard", "type", "press keys", "send keys", "hotkey"),
         security_hints=(
             "keyboard", "keystrokes", "type into", "type text", "type the text",
@@ -431,6 +479,27 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         security_hints=("receive email", "mailbox", "imap", "read email"),
         poll_window_seconds=3,
         long_running=True,
+    ),
+    ChatWrappedAgentSpec(
+        key="sleeper",
+        template_dir="sleeper",
+        tool_name="chat_agent_sleeper",
+        tool_description="Chat-Agent-Sleeper",
+        display_name="Sleeper",
+        purpose="Sleep for a deterministic number of milliseconds and then return — the canonical 'wait N seconds' helper for desktop-UI flows. Use whenever the user says 'wait', 'pause', 'hold for', 'sleep' between two actions in a chained workflow (e.g. 'open notepad, type X, wait 30 seconds, close it'). Pass duration_ms in milliseconds (30 seconds = 30000). Do NOT spin chat_agent_pythonxer for time.sleep, do NOT use chat_agent_executer with `timeout /t` — both are slower, larger blast radius, and not what the user expects when they ask for a simple wait.",
+        example_request="Sleep with duration_ms=30000",
+        aliases=("sleeper", "sleep", "wait", "pause", "delay"),
+        security_hints=(
+            "wait", "wait for", "wait n seconds", "wait 30 seconds",
+            "wait some seconds", "wait a few seconds", "sleep",
+            "pause", "pause for", "delay", "hold for",
+            "milliseconds", "ms", "duration_ms",
+        ),
+        # Sleeper IS long-running by definition — for a 30 s wait we want the
+        # tool to drain inside the wrapped runtime so the LLM sees a single
+        # blocking call rather than poll/run_status round-trips.
+        poll_window_seconds=600,
+        long_running=False,
     ),
 )
 

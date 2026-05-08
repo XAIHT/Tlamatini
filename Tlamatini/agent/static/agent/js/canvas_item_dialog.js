@@ -101,7 +101,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 } else if (key === 'crawl_type') {
                     options = ['small-range', 'medium-range', 'large-range'];
                 } else if (key === 'movement_type') {
-                    options = ['random', 'localized'];
+                    options = ['random', 'localized', 'click', 'drag', 'scroll', 'click_at_window', 'locate_image'];
                 } else if (key === 'reading_type') {
                     options = ['fast', 'complete', 'summarized'];
                 } else if (key === 'kyber_variant') {

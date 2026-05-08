@@ -342,6 +342,18 @@ def main():
         try:
             saved_path = capture_screenshot(output_dir)
             logging.info(f"✅ Screenshot saved: {saved_path}")
+            # Emit a Parametrizer-compatible block so downstream agents
+            # (and the Multi-Turn LLM) can read the path verbatim instead
+            # of guessing at the auto-numbered shoter_<n> sub-folder layout.
+            # Atomicity matters: keep this in a single logging.info() call.
+            logging.info(
+                "INI_SECTION_SHOTER<<<\n"
+                f"output_path: {saved_path}\n"
+                f"output_dir: {os.path.dirname(saved_path)}\n"
+                f"filename: {os.path.basename(saved_path)}\n\n"
+                f"Screenshot saved to {saved_path}\n"
+                ">>>END_SECTION_SHOTER"
+            )
         except Exception as e:
             logging.error(f"❌ Screenshot capture failed: {e}")
             sys.exit(1)

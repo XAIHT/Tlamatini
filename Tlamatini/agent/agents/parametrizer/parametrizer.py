@@ -84,6 +84,8 @@ SECTION_AGENT_TYPES = [
     'gatewayer', 'gateway_relayer',
     'googler',
     'acpxer',
+    'shoter',
+    'mouser',
 ]
 
 

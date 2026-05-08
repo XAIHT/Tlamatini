@@ -1,25 +1,66 @@
 # Mouser Agent Configuration
 
-# Movement type: "random" or "localized"
+# Movement type — picks which steering routine runs:
+#   - "random"          : wander randomly across the screen for `total_time` seconds (no click)
+#   - "localized"       : move from start to (end_posx, end_posy) and optionally fire `button_click`
+#   - "click"           : click at the CURRENT pointer position (no movement) — useful in chains
+#   - "drag"            : press `button_click` at (ini_posx, ini_posy), drag to (end_posx, end_posy), release
+#   - "scroll"          : roll the wheel `scroll_amount` clicks at the current pointer position
+#                         (positive = scroll up, negative = scroll down)
+#   - "click_at_window" : look up the window matching `window_title`, compute the anchor
+#                         (`window_anchor`), move there and fire `button_click`. Bullet-proof
+#                         "focus this window before typing into it".
+#   - "locate_image"    : find `locate_image_path` on the current screen via template match
+#                         (pyautogui.locateCenterOnScreen, confidence=`locate_confidence`),
+#                         move to that center and fire `button_click`. Use when a reference
+#                         image of the target button/icon is available on disk.
 movement_type: "random"
 
-# Whether to use current mouse position as starting point (only for "localized")
+# Whether to use current mouse position as starting point (only for "localized" / "drag")
 actual_position: true
 
-# Initial position (used only when movement_type is "localized" and actual_position is false)
+# Initial position (used only when movement_type is "localized"/"drag" and actual_position is false)
 ini_posx: 0
 ini_posy: 0
 
-# Final position (used only when movement_type is "localized")
+# Final position (used only when movement_type is "localized" / "drag")
 end_posx: 500
 end_posy: 500
 
-# Optional click to issue after the localized final position is effectively reached.
-# Supported values: none, left, right, middle, double-left, double-right, double-middle
+# Optional click to issue after the localized final position is effectively reached
+# (also used as the held button for "drag" and the click for "click" / "click_at_window" /
+# "locate_image"). Supported values: none, left, right, middle,
+# double-left, double-right, double-middle
 button_click: "none"
 
 # Total time in seconds for random mouse movement
 total_time: 30
+
+# --- click_at_window mode -----------------------------------------------------
+# Title (or substring) of the window to focus. Matches via pyautogui.getWindowsWithTitle.
+# Example: "Notepad", "Untitled - Notepad", "Save As".
+window_title: ""
+
+# Where inside the matched window to land:
+#   center | topleft | topright | bottomleft | bottomright | titlebar
+# "titlebar" lands on the middle of the title bar (good for raising the window
+# without triggering controls); "center" lands on the editing area for typical apps.
+window_anchor: "center"
+
+# --- locate_image mode --------------------------------------------------------
+# Absolute path to a reference image (PNG/BMP) of the target button/icon. The agent
+# runs pyautogui.locateCenterOnScreen on the live desktop and clicks at the center
+# of the first match. Requires opencv-python (already a transitive dep) for confidence.
+locate_image_path: ""
+
+# Match confidence in [0.5, 1.0]. Lower = more permissive (handles antialiasing /
+# DPI scaling); higher = stricter. Default 0.8 works for most antialiased UI assets.
+locate_confidence: 0.8
+
+# --- scroll mode --------------------------------------------------------------
+# Number of wheel clicks. Positive = scroll up, negative = scroll down.
+# Typical values: 3 (small scroll up), -10 (large scroll down).
+scroll_amount: 0
 
 # Downstream agents to start after execution
 target_agents: []

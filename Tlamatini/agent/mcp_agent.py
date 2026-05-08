@@ -46,6 +46,13 @@ _MANAGEMENT_TOOLS: set[str] = {
     "chat_agent_run_status",
     "chat_agent_run_log",
     "chat_agent_run_stop",
+    # Inspection / polling helpers — same role as the run_* siblings above.
+    # window_present is a <100 ms yes/no probe of the desktop window list;
+    # chat_agent_run_wait is a single-call replacement for a polling loop.
+    # Neither is a canvas agent, so they must not surface in tool_calls_log
+    # entries that drive Create Flow / agent-registry validation.
+    "chat_agent_run_wait",
+    "window_present",
 }
 
 
@@ -343,12 +350,14 @@ class MultiTurnToolAgentExecutor:
         if tool is None:
             logger.warning("[MultiTurnExecutor._invoke_tool] Tool '%s' NOT FOUND in tool_map. Available: %s",
                            tool_name, list(self.tool_map.keys()))
-            self._tool_calls_log.append({
-                "tool_name": tool_name,
-                "args": tool_call.get("args", {}),
-                "success": False,
-                "agent_display_name": _tool_name_to_agent_display(tool_name),
-            })
+            display_name = _tool_name_to_agent_display(tool_name)
+            if display_name is not None:
+                self._tool_calls_log.append({
+                    "tool_name": tool_name,
+                    "args": tool_call.get("args", {}),
+                    "success": False,
+                    "agent_display_name": display_name,
+                })
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' is not available in this session.",
@@ -366,12 +375,14 @@ class MultiTurnToolAgentExecutor:
             result = tool.invoke(tool_input)
         except Exception as exc:
             logger.error("[MultiTurnExecutor._invoke_tool] Tool '%s' raised exception: %s", tool_name, exc, exc_info=True)
-            self._tool_calls_log.append({
-                "tool_name": tool_name,
-                "args": dict(tool_input) if isinstance(tool_input, dict) else {},
-                "success": False,
-                "agent_display_name": _tool_name_to_agent_display(tool_name),
-            })
+            display_name = _tool_name_to_agent_display(tool_name)
+            if display_name is not None:
+                self._tool_calls_log.append({
+                    "tool_name": tool_name,
+                    "args": dict(tool_input) if isinstance(tool_input, dict) else {},
+                    "success": False,
+                    "agent_display_name": display_name,
+                })
             # ── Exec report capture (exception path) ──
             # The tables must show what was attempted regardless of whether
             # the underlying tool returned cleanly, raised, or the wrapping
@@ -410,12 +421,14 @@ class MultiTurnToolAgentExecutor:
         except (json.JSONDecodeError, TypeError):
             pass
 
-        self._tool_calls_log.append({
-            "tool_name": tool_name,
-            "args": dict(tool_input) if isinstance(tool_input, dict) else {},
-            "success": call_success,
-            "agent_display_name": _tool_name_to_agent_display(tool_name),
-        })
+        display_name = _tool_name_to_agent_display(tool_name)
+        if display_name is not None:
+            self._tool_calls_log.append({
+                "tool_name": tool_name,
+                "args": dict(tool_input) if isinstance(tool_input, dict) else {},
+                "success": call_success,
+                "agent_display_name": display_name,
+            })
 
         # ── Exec report capture ──
         # Always record entries for any tool in _EXEC_REPORT_TOOLS, regardless
@@ -442,12 +455,22 @@ class MultiTurnToolAgentExecutor:
     # Repetition detection helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _call_signature(tool_calls) -> str:
-        """Return a deterministic string fingerprint for a list of tool calls."""
+    @classmethod
+    def _call_signature(cls, tool_calls) -> str:
+        """Return a deterministic string fingerprint for a list of tool calls.
+
+        Polling/management tools listed in ``_TOOL_QUOTA_EXEMPT`` are excluded
+        from the signature on purpose: calling ``chat_agent_run_status`` with
+        the same ``run_id`` 3+ times while the underlying child is still
+        ``status=running`` is legitimate progress, not a repetition. Counting
+        them tripped the breaker on long-running tools (image_interpreter,
+        crawler) before the LLM had any new information to act on.
+        """
         parts = []
         for call in sorted(tool_calls, key=lambda c: c.get("name", "")):
             name = call.get("name", "")
+            if name in cls._TOOL_QUOTA_EXEMPT:
+                continue
             args = call.get("args") or {}
             parts.append(f"{name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}")
         return "|".join(parts)
@@ -470,6 +493,8 @@ class MultiTurnToolAgentExecutor:
         "chat_agent_run_status",
         "chat_agent_run_log",
         "chat_agent_run_stop",
+        "chat_agent_run_wait",
+        "window_present",
         "get_current_time",
     }
     # Tools for which a soft-warn nudge recommends a specialized alternative.
@@ -571,8 +596,17 @@ class MultiTurnToolAgentExecutor:
                 return self._build_result_dict(str(answer))
 
             # --- Repetition detection ---
+            # An empty signature means every tool in this turn is in
+            # ``_TOOL_QUOTA_EXEMPT`` (polling / management). Skip the
+            # repetition check entirely for that turn — polling a running
+            # child is the whole point of those tools.
             sig = self._call_signature(tool_calls)
-            if sig == last_signature:
+            if sig == "":
+                # Reset the counter so a real tool call coming after a
+                # polling burst can still be detected as repeating.
+                last_signature = None
+                repeat_count = 0
+            elif sig == last_signature:
                 repeat_count += 1
             else:
                 last_signature = sig
@@ -682,12 +716,14 @@ class MultiTurnToolAgentExecutor:
                         )
                         # Record the attempt in the log so Create-Flow / Exec Report
                         # can still see that the LLM tried (with success=False).
-                        self._tool_calls_log.append({
-                            "tool_name": tool_name,
-                            "args": dict(tool_call.get("args", {}) or {}),
-                            "success": False,
-                            "agent_display_name": _tool_name_to_agent_display(tool_name),
-                        })
+                        display_name = _tool_name_to_agent_display(tool_name)
+                        if display_name is not None:
+                            self._tool_calls_log.append({
+                                "tool_name": tool_name,
+                                "args": dict(tool_call.get("args", {}) or {}),
+                                "success": False,
+                                "agent_display_name": display_name,
+                            })
                         continue
                     if prior_count + 1 == self._TOOL_QUOTA_SOFT_WARN:
                         hint = self._TOOL_ALTERNATIVE_HINT.get(
