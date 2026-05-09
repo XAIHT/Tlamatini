@@ -61,7 +61,7 @@ smtp:
   # App passwords look like: "abcd efgh ijkl mnop" → use "abcdefghijklmnop"
   # ==========================================================================
   username: <EMAILER_USERNAME goes here>
-  password: <EMAILER_PASSWORD goes here>  # Use App Password if MFA is enabled!
+  password: "<EMAILER_PASSWORD goes here>"  # Use App Password if MFA is enabled!
   
   # ==========================================================================
   # SECURITY SETTINGS - IMPORTANT!

@@ -9,13 +9,98 @@ from typing import Any
 
 import yaml
 
-from .agent_contracts import AgentContract, get_agent_contract, resolve_agent_type
+from .agent_contracts import AgentContract, get_agent_contract, get_password_paths, resolve_agent_type
 from .agent_paths import get_agents_root, get_session_pool_path, pool_name_to_agent_type
 from .flow_spec import FlowNode, FlowSpec, normalize_flow_payload
 
 
 class FlowCompileError(Exception):
     pass
+
+
+class _QuotedStr(str):
+    """String subclass marking a value that must be emitted with double quotes
+    in YAML output. The `_AgentConfigYamlDumper` registers a representer that
+    forces ``style='"'`` for any instance of this class, so e.g. an Emailer
+    SMTP App Password is always written as ``password: "wvqt jved ymfm kexc"``
+    no matter how PyYAML's default scalar logic would have rendered the raw
+    string."""
+
+
+class _AgentConfigYamlDumper(yaml.SafeDumper):
+    """Per-call Dumper subclass so the str / _QuotedStr representers do NOT
+    leak into PyYAML's global representer table (which would affect every
+    other yaml.dump call site in the process — Django views, tests, agents'
+    own offset/state files, etc.)."""
+
+
+def _str_representer(dumper, value):
+    if "\n" in value:
+        if not value.endswith("\n"):
+            value = value + "\n"
+        return dumper.represent_scalar("tag:yaml.org,2002:str", value, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value)
+
+
+def _quoted_str_representer(dumper, value):
+    return dumper.represent_scalar("tag:yaml.org,2002:str", str(value), style='"')
+
+
+_AgentConfigYamlDumper.add_representer(str, _str_representer)
+_AgentConfigYamlDumper.add_representer(_QuotedStr, _quoted_str_representer)
+
+
+def _wrap_password_values(config: dict[str, Any], password_paths: tuple[str, ...]) -> dict[str, Any]:
+    if not password_paths:
+        return config
+    result = deepcopy(config)
+    for dotted in password_paths:
+        parts = [part for part in dotted.split(".") if part]
+        if not parts:
+            continue
+        parent: Any = result
+        for part in parts[:-1]:
+            if not isinstance(parent, dict):
+                parent = None
+                break
+            parent = parent.get(part)
+        if isinstance(parent, dict) and parts[-1] in parent:
+            current = parent[parts[-1]]
+            if current is None:
+                parent[parts[-1]] = _QuotedStr("")
+            elif isinstance(current, _QuotedStr):
+                continue
+            elif isinstance(current, str):
+                parent[parts[-1]] = _QuotedStr(current)
+            else:
+                parent[parts[-1]] = _QuotedStr(str(current))
+    return result
+
+
+def dump_agent_config_yaml(
+    config: dict[str, Any],
+    path: Path,
+    agent_type: str | None = None,
+) -> None:
+    """Write `config` to `path` as YAML. When `agent_type` matches an agent
+    that declares `password_paths`, every value at those dotted paths is
+    force-double-quoted via `_QuotedStr` + `_AgentConfigYamlDumper`. This is
+    the single dump path used by the Flow Compiler (Start / Validate), the
+    canvas item-dialog save endpoint, and the per-agent connection-update
+    views — so a password set via any of those surfaces lands on disk
+    embraced by `"`, exactly as the user requires.
+    """
+    pwd_paths = get_password_paths(agent_type) if agent_type else ()
+    payload = _wrap_password_values(config, pwd_paths)
+    with Path(path).open("w", encoding="utf-8") as handle:
+        yaml.dump(
+            payload,
+            handle,
+            Dumper=_AgentConfigYamlDumper,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
 
 
 def _deep_merge(base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
@@ -28,17 +113,12 @@ def _deep_merge(base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]
     return result
 
 
-def _safe_yaml_dump(data: dict[str, Any], path: Path) -> None:
-    def str_representer(dumper, value):
-        if "\n" in value:
-            if not value.endswith("\n"):
-                value = value + "\n"
-            return dumper.represent_scalar("tag:yaml.org,2002:str", value, style="|")
-        return dumper.represent_scalar("tag:yaml.org,2002:str", value)
-
-    yaml.add_representer(str, str_representer)
-    with path.open("w", encoding="utf-8") as handle:
-        yaml.dump(data, handle, default_flow_style=False, allow_unicode=True, sort_keys=False)
+def _safe_yaml_dump(data: dict[str, Any], path: Path, agent_type: str | None = None) -> None:
+    """Backwards-compatible alias for `dump_agent_config_yaml`. Internal-only
+    callers (this module) pass `agent_type` so password fields get force-quoted;
+    callers that don't know the agent type get the same multiline-aware dump
+    behavior as before, just without the password-quoting layer."""
+    dump_agent_config_yaml(data, path, agent_type)
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -289,7 +369,7 @@ def compile_flow_spec(
         config = configs[node.id]
         if write:
             pool_dir = _ensure_pool_agent(node, pool_path)
-            _safe_yaml_dump(config, pool_dir / "config.yaml")
+            _safe_yaml_dump(config, pool_dir / "config.yaml", node.agent_type)
             if node.agent_type == "parametrizer":
                 count = _write_parametrizer_scheme(pool_dir, _parametrizer_mappings_for_node(spec, node))
                 if count:

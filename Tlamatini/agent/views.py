@@ -25,7 +25,11 @@ from .services.agent_contracts import (
     list_contract_summaries,
 )
 from .services.agent_paths import pool_name_to_agent_type
-from .services.flow_compiler import compile_flow_payload, list_pool_agents_for_validation
+from .services.flow_compiler import (
+    compile_flow_payload,
+    dump_agent_config_yaml,
+    list_pool_agents_for_validation,
+)
 from .services.flow_spec import normalize_flow_payload, flow_spec_to_legacy_json
 
 
@@ -1164,21 +1168,13 @@ def save_agent_config_view(request, agent_name):
                 merged_config.pop('llm', None)
             merged_config.pop('poll_interval', None)
 
-        # Custom representer for multiline strings to use literal block style (|)
-        def str_representer(dumper, data):
-            if '\n' in data:
-                # Ensure trailing newline to avoid "|-" (strip indicator)
-                if not data.endswith('\n'):
-                    data = data + '\n'
-                # Use literal block style for multiline strings
-                return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-            return dumper.represent_scalar('tag:yaml.org,2002:str', data)
-        
-        yaml.add_representer(str, str_representer)
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(merged_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-        
+        # Centralized dump path: handles multiline-string literal-block style
+        # AND force-double-quotes any registered password field for the agent
+        # (e.g. emailer's smtp.password, recmailer's imap.password). Using the
+        # shared helper keeps the canvas item-dialog save, the .flw deploy,
+        # the Start sequence, and the connection-update views in lockstep.
+        dump_agent_config_yaml(merged_config, config_path, base_folder_name)
+
         print(f"[SAVE] Config saved to: {config_path}")
         return HttpResponse(json.dumps({
             "success": True, 
@@ -1445,30 +1441,22 @@ def update_emailer_connection_view(request, agent_name):
         elif action == 'remove':
             if connected_pool_name in config[list_key]:
                 config[list_key].remove(connected_pool_name)
-        
-        # Custom representer for multiline strings
-        def str_representer(dumper, data):
-            if '\n' in data:
-                if not data.endswith('\n'):
-                    data = data + '\n'
-                return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-            return dumper.represent_scalar('tag:yaml.org,2002:str', data)
-        
-        yaml.add_representer(str, str_representer)
-        
-        # Save updated config
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-        
+
+        # Save updated config via the shared dump helper so the SMTP password
+        # (declared as `password_paths=("smtp.password",)` on the emailer
+        # contract) is force-double-quoted on every write — including this
+        # connection-update path, not just FlowCreator's compile path.
+        dump_agent_config_yaml(config, config_path, 'emailer')
+
         return HttpResponse(json.dumps({
             "success": True,
             "message": f"{'Added' if action == 'add' else 'Removed'} {connected_pool_name} {'to' if action == 'add' else 'from'} {list_key}",
             "config": config
         }), content_type='application/json')
-        
+
     except json.JSONDecodeError as e:
         return HttpResponse(json.dumps({
-            "success": False, 
+            "success": False,
             "message": f"Invalid JSON: {str(e)}"
         }), content_type='application/json', status=400)
     except Exception as e:
@@ -6066,10 +6054,12 @@ def update_recmailer_connection_view(request, agent_name):
             
             config['source_agents'] = source_agents
             msg = f'Updated source_agents: {source_agents}'
-        
-        # 6. Save Config
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        # 6. Save Config — shared dump helper so the IMAP password
+        # (declared as `password_paths=("imap.password",)` on the recmailer
+        # contract) is force-double-quoted on every write — including this
+        # connection-update path, not just FlowCreator's compile path.
+        dump_agent_config_yaml(config, config_path, 'recmailer')
 
         return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:

@@ -46,6 +46,7 @@ class AgentContract:
     never_starts_targets: bool = False
     parametrizer_fields: tuple[str, ...] = field(default_factory=tuple)
     secret_paths: tuple[str, ...] = field(default_factory=tuple)
+    password_paths: tuple[str, ...] = field(default_factory=tuple)
     special: str = ""
 
     def __post_init__(self):
@@ -144,6 +145,22 @@ _NEVER_START_TARGETS = {
 }
 
 
+# Dotted paths inside an agent's config.yaml whose value MUST be force-quoted
+# (double-quoted) when written to disk. App passwords for Gmail/Outlook/etc.
+# are word-tokens separated by spaces (e.g. "wvqt jved ymfm kexc"), and a
+# default-flow yaml.dump of a string with leading-zero-like tokens or unusual
+# characters can drift between quoted and unquoted forms across writes — which
+# the user does not want for credentials. Forcing the quotes also makes the
+# password visually delimited in the source file, so it cannot be silently
+# truncated by an in-line trailing comment. The Flow Compiler, the canvas
+# item-dialog save endpoint, and the per-agent connection-update views all
+# go through the same dump helper and read this map.
+_PASSWORD_PATHS_BY_AGENT: dict[str, tuple[str, ...]] = {
+    "emailer": ("smtp.password",),
+    "recmailer": ("imap.password",),
+}
+
+
 def _read_template_config(agent_type: str) -> dict[str, Any]:
     config_path = get_agents_root() / agent_type / "config.yaml"
     if not config_path.exists():
@@ -178,6 +195,7 @@ def _discover_contracts_from_disk() -> dict[str, AgentContract]:
             input_field_by_slot=input_fields,
             never_starts_targets=agent_type in _NEVER_START_TARGETS,
             parametrizer_fields=_PARAMETRIZER_OUTPUT_FIELDS.get(agent_type, ()),
+            password_paths=_PASSWORD_PATHS_BY_AGENT.get(agent_type, ()),
         )
     return discovered
 
@@ -187,15 +205,30 @@ def get_agent_contracts() -> dict[str, AgentContract]:
     contracts = _discover_contracts_from_disk()
     for agent_type, contract in _BUILTIN_CONTRACTS.items():
         parametrizer_fields = _PARAMETRIZER_OUTPUT_FIELDS.get(agent_type, contract.parametrizer_fields)
+        password_paths = _PASSWORD_PATHS_BY_AGENT.get(agent_type, contract.password_paths)
+        overrides: dict[str, Any] = {}
         if parametrizer_fields != contract.parametrizer_fields:
+            overrides["parametrizer_fields"] = parametrizer_fields
+        if password_paths != contract.password_paths:
+            overrides["password_paths"] = password_paths
+        if overrides:
             contract = AgentContract(
                 **{
                     **contract.__dict__,
-                    "parametrizer_fields": parametrizer_fields,
+                    **overrides,
                 }
             )
         contracts[agent_type] = contract
     return contracts
+
+
+def get_password_paths(agent_type: str) -> tuple[str, ...]:
+    """Return the dotted paths whose values must be force-quoted in YAML
+    output for a given agent. Falls back to an empty tuple for unknown
+    agent types so callers can pass it directly to the dump helper."""
+    if not agent_type:
+        return ()
+    return get_agent_contract(agent_type).password_paths
 
 
 @lru_cache(maxsize=1)

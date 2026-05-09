@@ -191,8 +191,25 @@ RECMAILER_RULES: List[Tuple[List[str], str]] = [
 _KEY_RE = re.compile(r"^(?P<indent>\s*)(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*:(?P<rest>.*)$")
 
 
-def _quote_value(value: str) -> str:
-    """Render a YAML scalar that won't be re-parsed as int/bool/null/list/etc."""
+def _force_quote(value: str) -> str:
+    """Always emit `value` as a YAML double-quoted scalar, with the standard
+    PyYAML escaping for embedded backslashes and quotes."""
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def _quote_value(value: str, *, force_quote: bool = False) -> str:
+    """Render a YAML scalar that won't be re-parsed as int/bool/null/list/etc.
+
+    `force_quote=True` is used for credential fields (passwords, app passwords)
+    so the result is ALWAYS double-quoted on disk, regardless of whether the
+    raw value would otherwise have been emitted bare. The Emailer/Recmailer
+    runtime contracts require the password to be embraced by `"` at every
+    write site so it survives round-trips and stays visually delimited from
+    trailing comments.
+    """
+    if force_quote:
+        return _force_quote(value)
     if value == "":
         return '""'
     # Numeric-looking → wrap in quotes only when the original spot expected a string.
@@ -212,18 +229,26 @@ def _quote_value(value: str) -> str:
         value != value.strip()
     )
     if needs_quote:
-        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
+        return _force_quote(value)
     return value
 
 
 def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
                      mode: str, keys: Dict[str, str],
-                     file_label: str) -> Tuple[str, List[str]]:
+                     file_label: str,
+                     *,
+                     force_quote_passwords: bool = False) -> Tuple[str, List[str]]:
     """
     Walk `text` line-by-line and rewrite the value of each `yaml_path`.
     Indent-based path tracking is good enough for our hand-written YAML files
     (no anchors, no flow-style nested mappings, no sequences-of-mappings).
+
+    When `force_quote_passwords=True`, any rule whose YAML path ends in
+    `password` is rendered as a YAML double-quoted scalar regardless of value
+    shape. This is enabled for the Emailer and Recmailer rule sets so the
+    on-disk password line always reads `password: "<...>"` — both for the
+    push-able placeholder and for the keyed real value. Other rule sets keep
+    the original value-shape-driven quoting heuristic.
     """
     lines = text.splitlines(keepends=False)
     # Pre-compute target last-key + parent-key chain by indent depth.
@@ -259,7 +284,16 @@ def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
 
         path, data_key = rule
         new_val = resolve_value(mode, keys, data_key)
-        formatted = _quote_value(new_val)
+        # When `force_quote_passwords` is on (Emailer / Recmailer rule sets),
+        # any path ending in `password` is rendered as a YAML double-quoted
+        # scalar regardless of value shape. Push-able placeholder and keyed
+        # real value both land as `password: "<...>"`.
+        force_quote = (
+            force_quote_passwords
+            and bool(path)
+            and path[-1].lower() == "password"
+        )
+        formatted = _quote_value(new_val, force_quote=force_quote)
         # Preserve any inline comment after the value.
         comment_match = re.search(r"\s+#.*$", rest)
         comment = comment_match.group(0) if comment_match else ""
@@ -281,13 +315,15 @@ def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
 
 
 def patch_yaml(path: Path, rules: List[Tuple[List[str], str]],
-               mode: str, keys: Dict[str, str], dry_run: bool) -> List[str]:
+               mode: str, keys: Dict[str, str], dry_run: bool,
+               *, force_quote_passwords: bool = False) -> List[str]:
     if not path.exists():
         return [f"SKIP  {path} (missing)"]
     original = path.read_text(encoding="utf-8")
     new_text, changes = _patch_yaml_text(
         original, rules, mode, keys,
         file_label=str(path.relative_to(REPO_ROOT)).replace("\\", "/"),
+        force_quote_passwords=force_quote_passwords,
     )
     if not dry_run:
         atomic_write(path, new_text)
@@ -329,8 +365,10 @@ def main() -> int:
         patch_yaml(TELEGRAMER_YAML,    TELEGRAMER_RULES,    args.mode, keys, args.dry_run),
         patch_yaml(TELEGRAMRX_YAML,    TELEGRAMRX_RULES,    args.mode, keys, args.dry_run),
         patch_yaml(TELETLAMATINI_YAML, TELETLAMATINI_RULES, args.mode, keys, args.dry_run),
-        patch_yaml(EMAILER_YAML,       EMAILER_RULES,       args.mode, keys, args.dry_run),
-        patch_yaml(RECMAILER_YAML,     RECMAILER_RULES,     args.mode, keys, args.dry_run),
+        patch_yaml(EMAILER_YAML,       EMAILER_RULES,       args.mode, keys, args.dry_run,
+                   force_quote_passwords=True),
+        patch_yaml(RECMAILER_YAML,     RECMAILER_RULES,     args.mode, keys, args.dry_run,
+                   force_quote_passwords=True),
     ]
     for block in reports:
         for line in block:
