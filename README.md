@@ -404,8 +404,8 @@ Goal: run a shell command, take a screenshot, end.
 5. Connect: Starter → Executer → Shoter → Ender (drag from the right edge of one to the left edge of the next).
 6. Double-click **Executer**, set `command` to `dir C:\` (or `ls /tmp`).
 7. Double-click **Shoter**, set `output_dir` to a writable folder.
-8. Double-click **Ender**, confirm `target_agents` lists Starter, Executer, Shoter (Ender's job is to terminate them on completion).
-9. Click **✓ Validate** — Tlamatini runs structural checks (no orphans, no self-connections, terminal agents reachable).
+8. Leave **Ender** wiring to Tlamatini. Validate/Start will calculate Ender's `target_agents` kill list from the arrows.
+9. Click **✓ Validate** — Tlamatini compiles the visible canvas, then runs structural checks (no orphans, no self-connections, terminal agents reachable).
 10. Click **▶ Start**. LEDs go green, then gray. Open `output_dir` — there's a screenshot.
 
 ### 4.3. Saving and loading `.flw` files
@@ -655,7 +655,7 @@ The skill writes `data.keys`, patches both `config.json` layers, optionally exte
 
 ### 5.7. ACPXer — the visual canvas counterpart
 
-**ACPXer** (#59 in the agent sidebar) is the canvas-facing version of the 12 LLM-facing tools. One ACPXer node = one full ACPX session lifecycle. It is **self-contained** — does NOT import `agent.acpx` — because pool subprocesses can't import `agent.*`. Mirrors the runtime's transport-aware drain inline (~120 lines), writes byte-identical NDJSON transcripts, and emits Parametrizer-compatible `INI_SECTION_ACPXER<<<` blocks.
+**ACPXer** is the canvas-facing version of the 12 LLM-facing tools. One ACPXer node = one full ACPX session lifecycle. It is **self-contained** — does NOT import `agent.acpx` — because pool subprocesses can't import `agent.*`. Mirrors the runtime's transport-aware drain inline (~120 lines), writes byte-identical NDJSON transcripts, and emits Parametrizer-compatible `INI_SECTION_ACPXER<<<` blocks.
 
 Canonical visual relay flow:
 
@@ -686,7 +686,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 59 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 60 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
@@ -719,7 +719,7 @@ The final distributable is `dist/Tlamatini_Release/` — zip the folder, share i
 7. Registers `.flw` to open with Tlamatini.
 8. Cleans the PyInstaller bundle path from helper subprocess environments.
 
-Frozen mode resolves `config.json` from the executable directory (or `CONFIG_PATH` env var). Template-agent discovery checks both `<install_dir>/agents` and `<install_dir>/Tlamatini/agent/agents`. `_resolve_python_executable()` tries `PYTHON_HOME` → bundled `python.exe` → PATH.
+Frozen mode resolves `config.json` from the executable directory (or `CONFIG_PATH` env var). Template-agent discovery uses `<install_dir>/agents` in frozen mode and `Tlamatini/agent/agents/` in source mode. `_resolve_python_executable()` tries `PYTHON_HOME` → bundled `python.exe` → PATH.
 
 ### 6.6. Source mode vs Frozen mode: why flows still work
 
@@ -853,7 +853,38 @@ Frontend (toggles) → WebSocket → AgentConsumer → ask_rag() (skips prompt-s
           → broadcast → frontend renders, shows Create Flow if all 4 gates pass
 ```
 
-### 8.4. Agent catalog (the 59 types, by family)
+### 8.4. Agent contracts and the Flow Compiler
+
+Tlamatini has two ways to create flows:
+
+1. The chat can infer a flow from Multi-Turn tool calls.
+2. The ACP canvas can build a flow by dragging agents and drawing arrows.
+
+Those two paths now meet at the same backend contract layer. This is important because flow files are not just pictures. A flow must eventually become a set of real agent folders, and every folder needs a correct `config.yaml`.
+
+The contract layer is intentionally small:
+
+| File | What it does |
+|---|---|
+| `agent/services/agent_paths.py` | Finds the correct `agents/` and `agents/pools/` folders in both source mode and frozen mode. It also normalizes names like `TeleTlamatini`, `tele-tlamatini`, and `teletlamatini` into the same agent type. |
+| `agent/services/agent_contracts.py` | Describes what each agent needs: which config fields hold incoming agents, which fields hold outgoing agents, which agents are singletons, which agents are long-running, which agents should be hidden from validation, which Parametrizer fields can be mapped, and which secrets must be redacted before export. |
+| `agent/services/flow_spec.py` | Converts old and new `.flw` shapes into one clean `FlowSpec`. It accepts legacy `sourceIndex` / `targetIndex` links and newer stable `sourceId` / `targetId` links. |
+| `agent/services/flow_compiler.py` | Converts a `FlowSpec` into the actual pool configs. In dry-run mode it returns the configs for validation. In write mode it updates the current session pool before Start runs. |
+
+For beginners, the rule is: **the canvas or chat creates a flow idea, then the Flow Compiler turns that idea into executable agent folders.**
+
+The compiler does a few quiet but important safety jobs:
+
+- It starts from each agent template's `config.yaml`, then merges only the node's custom settings.
+- It clears and rebuilds managed connection fields, so stale arrows from an old pool do not survive by accident.
+- It understands special agent wiring such as `AND`, `OR`, `Asker`, `Forker`, `Counter`, `Ender`, `Stopper`, and `Cleaner`.
+- It writes `interconnection-scheme.csv` for Parametrizer nodes when mappings are saved in the `.flw`.
+- It keeps FlowCreator and FlowHypervisor out of runtime validation because they are helper/control agents, not normal flow workers.
+- It redacts known secrets for remote chat ingress agents such as **TeleTlamatini** and **WhatsTlamatini** when chat-created flows are exported.
+
+This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
+
+### 8.5. Agent catalog (the 60 types, by family)
 
 | Family | Members |
 |---|---|
@@ -890,20 +921,29 @@ Per-agent details (config knobs, lifecycle, naming convention, log markers): see
 - "Tool X is not available" → the planner did not bind X. Check `[Planner._select]` console lines, add matching keywords to your prompt, or raise `max_selected_tools`.
 - 100 iterations exhausted → likely a busy-poll loop. Use `chat_agent_sleeper` / `chat_agent_run_wait` instead.
 
-### 9.4. ACPX / external CLIs
+### 9.4. Chat-created flows and ACP validation
+
+- **Create Flow downloads a `.flw`, but it looks simpler than the chat transcript.** That is normal. The file stores the flow structure, node config, connections, and artifacts. It does not store the entire conversation.
+- **Create Flow fails from the chat.** The browser first asks `/agent/flow_from_tool_calls/` to normalize the draft. If that endpoint fails, the frontend falls back to the older browser-only export so you do not lose the flow draft.
+- **A TeleTlamatini or WhatsTlamatini flow is missing passwords or tokens after export.** That is intentional. Known secret fields are redacted when the chat exports a flow. Re-enter secrets in the agent config before running the flow.
+- **Validate shows stale connections.** Validate now asks `/agent/compile_flow/` for a dry-run compile of the live canvas instead of trusting whatever is already in the pool. If the canvas still looks wrong, save the `.flw`, reload it, and check the browser console for a compile error.
+- **Start runs an older version of the flow.** Start now compiles the visible canvas in write mode before launching. If you still see old behavior, clear the pool from the ACP close/clear controls, load the `.flw` again, and run Validate once before Start.
+- **Parametrizer mappings disappear after reload.** Save the flow after creating mappings. New `.flw` files store mappings under `artifacts.parametrizerMappings`, and the loader restores them into each Parametrizer node.
+
+### 9.5. ACPX / external CLIs
 
 - `acp_doctor` says agent not resolvable → CLI not on `PATH`, or set `acpx.agents.<id>.command` to the absolute path.
 - Transcript only shows outbound prompts on Windows → your build is older than May 2026. Update — fix is `transport="oneshot-prompt"` for claude/gemini/cursor/qwen/codex.
 - API key not picked up → per-agent `acpx.agents.<id>.env` wins over exported shell vars; check both.
 - Session left running → always end with `acp_kill`. If a request times out, manually `acp_list_sessions` + `acp_kill`.
 
-### 9.5. Frozen build / installer
+### 9.6. Frozen build / installer
 
 - Wrong config used → place `config.json` next to the exe, or set `CONFIG_PATH`.
 - Missing templates → verify `agents/` exists in the install. Rebuild if `README.md`, `jd-cli/`, or template directories are missing.
 - Restrictive Group Policy blocks shortcuts → `CreateShortcut.ps1` falls back to user-scoped Desktop / Start Menu paths.
 
-### 9.6. Logs to consult first
+### 9.7. Logs to consult first
 
 | What | Where |
 |---|---|

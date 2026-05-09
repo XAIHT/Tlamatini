@@ -349,7 +349,7 @@ def recent_commits(limit: int = 10) -> list[CommitInfo]:
     return commits
 
 
-def recent_week_commits(days: int = 7) -> list[CommitInfo]:
+def recent_week_commits(days: int = 21) -> list[CommitInfo]:
     since = (datetime.now().astimezone() - timedelta(days=days)).isoformat()
     raw = git("log", f"--since={since}", "--format=%h%x1f%cI%x1f%s")
     commits: list[CommitInfo] = []
@@ -364,11 +364,23 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("acpx" in subject for subject in subjects):
         highlights.append(
-            "ACPX advanced significantly this week: runtime scaffolding, tool surface, skills, transport-aware execution, and enable/disable behavior were all touched."
+            "ACPX advanced significantly during the last 3 weeks: runtime scaffolding, tool surface, skills, transport-aware execution, and enable/disable behavior were all touched."
         )
     if any("shortcut" in subject or "restrictive" in subject or "policy" in subject for subject in subjects):
         highlights.append(
             "Windows deployment hardening continued with CreateShortcut fixes and improved behavior on restricted-policy machines."
+        )
+    if any("teletlamatini" in subject for subject in subjects):
+        highlights.append(
+            "TeleTlamatini grew throughout the window, including agent/runtime updates, config movement, FlowCreator/ACPX integration, and related documentation changes."
+        )
+    if any("compiler" in subject or "contract" in subject for subject in subjects):
+        highlights.append(
+            "The most recent changes introduced a flow compiler / agent-contract direction, extending the system design beyond chat and visual orchestration alone."
+        )
+    if any("multi-turn" in subject or "multi turn" in subject or "tool quota" in subject for subject in subjects):
+        highlights.append(
+            "Multi-Turn behavior kept evolving across the period through quota tuning, execution-table persistence, autonomous-action improvements, and broader tool enablement."
         )
     if any("scroll" in subject or "icon" in subject or "web page" in subject or "scheme" in subject for subject in subjects):
         highlights.append(
@@ -382,7 +394,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "Documentation itself changed during the week, so the regenerated dossier must be treated as part of the tracked operator surface."
         )
-    return highlights or ["Git history shows iterative maintenance across ACPX, packaging, UX, documentation, and cleanup work during the last seven days."]
+    return highlights or ["Git history shows iterative maintenance across ACPX, packaging, UX, documentation, and cleanup work during the last 3 weeks."]
 
 
 def workflow_agents() -> list[str]:
@@ -843,12 +855,12 @@ def build_pdf(context: dict) -> None:
     for commit in context["recent_commits"]:
         commit_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
     story.append(table(commit_rows, widths=[1.0 * inch, 0.8 * inch, 4.9 * inch], font_size=7))
-    story.append(p("Git changes from the last 7 days", styles["h2"]))
+    story.append(p("Git changes from the last 3 weeks", styles["h2"]))
     for item in context["weekly_highlights"]:
         story.append(bullet(item, styles["bullet"]))
     weekly_chunks = split_items(context["weekly_commits"], 12)
     for index, chunk in enumerate(weekly_chunks, 1):
-        story.append(p(f"Weekly commit appendix {index} of {len(weekly_chunks)}", styles["h2"]))
+        story.append(p(f"3-week commit appendix {index} of {len(weekly_chunks)}", styles["h2"]))
         weekly_rows = [["Date", "Commit", "Subject"]]
         for commit in chunk:
             weekly_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
@@ -1362,16 +1374,16 @@ def build_ppt(context: dict) -> None:
     add_text(slide, audit, 0.85, 1.72, 11.7, 4.85, file_table_text(context["file_rows"]), 8, THEME["white"], False, name="largest-table", font="Cascadia Mono")
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Last 7 Days In Git", "recent changes according to git history", THEME["amber"])
-    add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "Weekly highlights", context["weekly_highlights"], THEME["amber"], "latest", 15)
+    slide, audit = add_slide(prs, "Last 3 Weeks In Git", "recent changes according to git history", THEME["amber"])
+    add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "3-week highlights", context["weekly_highlights"], THEME["amber"], "latest", 15)
     audit_layout(audit, len(prs.slides))
 
     weekly_chunks = split_items(context["weekly_commits"], 6)
     for idx, chunk in enumerate(weekly_chunks, 1):
         slide, audit = add_slide(
             prs,
-            f"Weekly Commit Appendix {idx}/{len(weekly_chunks)}",
-            "all last-week commits from git",
+            f"3-Week Commit Appendix {idx}/{len(weekly_chunks)}",
+            "all last-3-weeks commits from git",
             THEME["copper"] if idx % 2 else THEME["jade"],
         )
         weekly_lines = [f"{iso_date(c.committed_at)} | {c.short_hash} | {c.subject}" for c in chunk]

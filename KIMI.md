@@ -16,7 +16,10 @@
 **What it is**: A locally-deployed AI developer assistant built with Django, featuring:
 - Advanced RAG system (FAISS + BM25 hybrid, metadata extraction, context budgeting, fallback mode)
 - Request-scoped Multi-Turn orchestration with dynamic tool binding and global execution planning
-- Visual Agentic Workflow Designer (ACP) with 57+ drag-and-drop agent types
+- **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
+- **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
+- **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
+- Visual Agentic Workflow Designer (ACP) with **60+** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -25,13 +28,14 @@
 
 ## 2. Architecture Overview
 
-### The Five Layers
+### The Five Layers (plus ACPX & Flow Compiler)
 
 ```
 Layer 1: Persisted Toggles (Database)
   - Mcp model rows: UI toggles for MCP context providers
   - Tool model rows: UI toggles for unified-agent tools
   - Agent model rows: Agent type registry (sidebar list)
+  - AcpAgent / Skill model rows: ACPX registry and skill catalog
   - Loaded by consumers.py, converted to status flags in factory.py
 
 Layer 2: Runtime MCP Services
@@ -54,19 +58,33 @@ Layer 5: Unified-Agent Tools
   - Defined in tools.py as synchronous @tool functions
   - Returned by get_mcp_tools() (misnamed — returns LangChain tools, NOT MCP services)
   - Only active when unified-agent chain is selected
+
+Layer 6: ACPX Multi-Agent Orchestrator
+  - AcpxRuntime singleton (agent/acpx/runtime.py)
+  - Spawns external CLIs over stdin/stdout with transport-aware drain loops
+  - 12 LangChain tools exposed to the LLM (spawn, send, kill, relay, transcript, etc.)
+  - Skills harness (agent/skills/harness.py) with budget enforcement and audit logging
+  - Gated by frontend ACPX checkbox; disabled by default
+
+Layer 7: Flow Compiler (Backend)
+  - AgentContract registry (agent/services/agent_contracts.py) defines every agent's connection semantics
+  - FlowSpec normalizer (agent/services/flow_spec.py) ingests schema-v2 canvas JSON
+  - FlowCompiler (agent/services/flow_compiler.py) generates runnable pool configs
+  - Validation and execution now go through the compiler for consistency
 ```
 
 ### Request Flow
 
-1. User sends message via WebSocket (optionally with `multi_turn_enabled`)
+1. User sends message via WebSocket (optionally with `multi_turn_enabled`, `acpx_enabled`)
 2. `AgentConsumer` receives and routes
 3. Context determination (RAG loaded?)
 4. Internet check (classify if web search needed)
 5. Chain selection (RAG / Basic / Unified Agent)
 6. Multi-Turn gate: checked = planner/dynamic binding; unchecked = legacy one-shot
-7. Context prefetch (system/file MCP)
-8. Execution loop (tool calls, wrapped agent monitoring)
-9. Streaming response via WebSocket
+7. ACPX gate: when checked, ACPX/Skill tools are added to planner surface; when unchecked, they are stripped
+8. Context prefetch (system/file MCP)
+9. Execution loop (tool calls, wrapped agent monitoring, ACPX session management)
+10. Streaming response via WebSocket
 
 ### Technology Stack
 
@@ -79,6 +97,7 @@ Layer 5: Unified-Agent Tools
 | Database | SQLite |
 | Communication | WebSockets, gRPC (grpcio 1.76.0) |
 | Packaging | PyInstaller, NSIS installer |
+| ACPX | Subprocess Popen, NDJSON transcripts, ThreadPoolExecutor |
 
 ---
 
@@ -92,12 +111,14 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 57-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 60-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
+│   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
 │   └── gotchas.md                  # Claude API client, build/lint, hardcoded assumptions, recent fixes
 ├── README.md                       # Full user-facing documentation (very large, 4000+ lines)
 ├── NEW_AGENT_RECOMMENDATIONS.md    # Roadmap for new agents (Tester, Reviewer, etc.)
+├── ACPX.md                         # High-level ACPX concept and vision document
 ├── build.py                        # PyInstaller build script
 ├── build_installer.py              # NSIS-based installer builder
 ├── build_uninstaller.py            # Uninstaller builder
@@ -114,11 +135,12 @@ Tlamatini/                          # Git root
 │   │   └── create_new_mcp.md       # ** SKILL: MCP/tool creation guide **
 │   │
 │   ├── tlamatini/                  # Django project config
-│   │   ├── settings.py             # Django settings (Channels, WhiteNoise)
+│   │   ├── settings.py             # Django settings (Channels, WhiteNoise, logging filters)
 │   │   ├── urls.py                 # Root URL routing
 │   │   ├── asgi.py                 # ASGI config with WebSocket routing
 │   │   ├── middleware.py           # Custom middlewares
-│   │   └── context_processors.py   # Template context processors
+│   │   ├── context_processors.py   # Template context processors
+│   │   └── logging_filters.py      # SuppressHttpGet200 filter
 │   │
 │   ├── agent/                      # Core Django app (ALL business logic)
 │   │   ├── prompt.pmt              # System prompt template for chat LLM
@@ -126,7 +148,7 @@ Tlamatini/                          # Git root
 │   │   ├── config_loader.py        # Frozen/source-aware config reader
 │   │   ├── views.py                # 103+ HTTP endpoints
 │   │   ├── consumers.py            # WebSocket consumer (async chat handler)
-│   │   ├── models.py               # 13 database models
+│   │   ├── models.py               # 17 database models
 │   │   ├── urls.py                 # URL routing
 │   │   ├── tools.py                # LangChain @tool definitions and wrapped chat-agent launchers
 │   │   ├── mcp_agent.py            # MCP unified agent builder and multi-turn executor
@@ -136,14 +158,46 @@ Tlamatini/                          # Git root
 │   │   ├── chat_agent_runtime.py   # Wrapped-runtime lifecycle helpers
 │   │   ├── global_state.py         # Thread-safe singleton (Singleton pattern)
 │   │   ├── constants.py            # Application constants and regex patterns
+│   │   ├── path_guard.py           # Path validation for dangerous operations
+│   │   │
+│   │   ├── acpx/                   # ACPX runtime package
+│   │   │   ├── __init__.py         # Public exports, ACPX_TOOL_NAMES, filter_acpx_tools
+│   │   │   ├── config.py           # AcpxConfig, load_acpx_config(), backfill helper
+│   │   │   ├── agent_registry.py   # DEFAULT_ACP_AGENTS (14 specs), AcpAgentSpec
+│   │   │   ├── runtime.py          # AcpxRuntime, AcpSession, drain loop
+│   │   │   ├── session_store.py    # FileSessionStore, transcript persistence
+│   │   │   ├── permissions.py      # PermissionGate (approve-reads / approve-all / deny-all)
+│   │   │   ├── windows_spawn.py    # Windows command resolution
+│   │   │   ├── tools.py            # 12 LangChain @tool functions for ACPX
+│   │   │   ├── service.py          # boot_acpx(), boot_skills() — Django startup hooks
+│   │   │   └── tests.py            # ~60 unit tests
+│   │   │
+│   │   ├── skills/                 # Skills runtime package
+│   │   │   ├── frontmatter.py      # YAML frontmatter + markdown body parser
+│   │   │   ├── registry.py         # SkillRegistry — filesystem discovery of skills_pkg/
+│   │   │   ├── io_contract.py      # Input/output validation with type coercion
+│   │   │   └── harness.py          # SkillHarness — budget enforcement, audit logging, dispatch
+│   │   │
+│   │   ├── skills_pkg/             # Skill content packages (22+ SKILL.md files)
+│   │   │   ├── hello_world/
+│   │   │   ├── acp_router/
+│   │   │   ├── github/
+│   │   │   ├── gmail/
+│   │   │   ├── jira/
+│   │   │   ├── slack/
+│   │   │   ├── notion/
+│   │   │   ├── summarize/
+│   │   │   ├── weather/
+│   │   │   ├── skill_creator/
+│   │   │   └── tlamatini_*/        # Internal Tlamatini skills
 │   │   │
 │   │   ├── rag/                    # RAG system package
-│   │   │   ├── factory.py          # Chain builders, MCP context patching
-│   │   │   ├── interface.py        # Public API (ask_rag)
+│   │   │   ├── factory.py          # Chain builders, MCP context patching, ACPX filter
+│   │   │   ├── interface.py        # Public API (ask_rag), acpx_enabled extraction
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 57+ workflow agent templates
+│   │   ├── agents/                 # 60+ workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -160,9 +214,9 @@ Tlamatini/                          # Git root
 │   │   │   ├── apirer/             # HTTP/REST API request agent
 │   │   │   ├── jenkinser/          # CI/CD pipeline trigger
 │   │   │   ├── gitter/             # Git operations
-│   │   │   ├── pser/               # PowerShell commands
+│   │   │   ├── pser/               # Process finder (fuzzy/semantic name matching)
 │   │   │   ├── prompter/           # LLM prompt execution
-│   │   │   ├── summarizer/         # Log monitoring with LLM event detection
+│   │   │   ├── summarizer/         # Log monitoring + one-shot text summarization
 │   │   │   ├── crawler/            # Developer-oriented web crawler
 │   │   │   ├── googler/            # Google search (Playwright + text extraction)
 │   │   │   ├── file_creator/       # File creation utility
@@ -170,9 +224,9 @@ Tlamatini/                          # Git root
 │   │   │   ├── file_interpreter/   # Document parsing and text/image extraction
 │   │   │   ├── image_interpreter/  # LLM vision-based image analysis
 │   │   │   ├── j_decompiler/       # Java artifact decompiler (jd-cli)
-│   │   │   ├── shoter/             # Screenshot capture
-│   │   │   ├── mouser/             # Mouse pointer movement (PyAutoGUI)
-│   │   │   ├── keyboarder/         # Keyboard typing / hotkey automation
+│   │   │   ├── shoter/             # Screenshot capture (silent, structured output)
+│   │   │   ├── mouser/             # Mouse pointer movement (7 movement types)
+│   │   │   ├── keyboarder/         # Keyboard typing / hotkey automation (robust parser)
 │   │   │   ├── mover/              # File move/copy with glob patterns
 │   │   │   ├── deleter/            # File deletion with glob patterns
 │   │   │   ├── gatewayer/          # HTTP webhook / folder-drop ingress
@@ -186,7 +240,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── and/                # AND logic gate
 │   │   │   ├── or/                 # OR logic gate
 │   │   │   ├── forker/             # Automatic A/B path router
-│   │   │   ├── asker/              # Interactive A/B path chooser
+│   │   │   ├── asker/              # Interactive A/B path chooser (chat + canvas)
 │   │   │   ├── counter/            # Persistent counter with threshold routing
 │   │   │   ├── croner/             # Scheduled trigger
 │   │   │   ├── sleeper/            # Delay agent
@@ -200,11 +254,23 @@ Tlamatini/                          # Git root
 │   │   │   ├── monitor_netstat/    # LLM-powered network port monitor
 │   │   │   ├── kyber_keygen/       # CRYSTALS-Kyber key pair generation
 │   │   │   ├── kyber_cipher/       # CRYSTALS-Kyber encryption
-│   │   │   └── kyber_decipher/     # CRYSTALS-Kyber decryption
+│   │   │   ├── kyber_decipher/     # CRYSTALS-Kyber decryption
+│   │   │   ├── acpxer/             # ACPX session driver for external CLIs
+│   │   │   ├── teletlamatini/      # Telegram bot bridge to Tlamatini chat
+│   │   │   └── whatstlamatini/     # WhatsApp Cloud API bridge to Tlamatini chat
+│   │   │
+│   │   ├── services/               # Backend services
+│   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
+│   │   │   ├── answer_analizer.py  # SUCCESS/FAILURE classification
+│   │   │   ├── flow_compiler.py    # Compile FlowSpec into runnable pool configs
+│   │   │   ├── agent_contracts.py  # AgentContract registry and redaction
+│   │   │   ├── agent_paths.py      # Filesystem/naming utilities for agent pools
+│   │   │   ├── flow_spec.py        # FlowSpec schema-v2 normalizer
+│   │   │   └── test_flow_contracts.py  # Flow compiler + contract tests
 │   │   │
 │   │   ├── templates/agent/        # HTML templates
 │   │   ├── static/agent/           # Frontend assets
-│   │   │   ├── js/                 # 23 JS modules (8 chat + 11 ACP + 4 shared)
+│   │   │   ├── js/                 # 26+ JS modules (8 chat + 14 ACP + 4 shared)
 │   │   │   ├── css/                # Stylesheets
 │   │   │   └── sounds/             # Audio alerts
 │   │   └── migrations/             # Django migrations
@@ -237,16 +303,22 @@ Key config keys:
 - Context limits: `max_doc_chars`, `max_context_chars`, `context_budget_allocation`
 - Internet search: `internet_classifier_model`, `web_summarizer_model`, `web_context_max_chars`
 - MCP services: `mcp_system_server_host`, `mcp_system_server_port`, `mcp_files_search_server_port`
+- **ACPX block** (auto-backfilled on upgrade):
+  - `permissionMode`: `"approve-reads"` or `"approve-all"` or `"deny-all"`
+  - `nonInteractivePermissions`: `"deny"` or `"fail"`
+  - `timeoutSeconds`: 120
+  - `pluginToolsMcpBridge`: false
+  - Per-agent overrides under `agents.{agent_id}` for command, transport, budgets
 
 ---
 
-## 5. Database Models (13 models in agent/models.py)
+## 5. Database Models (17 models in agent/models.py)
 
 Key models:
 - `AgentMessage` - Chat messages (user, conversation_user, message, timestamp)
 - `LLMProgram` / `LLMSnippet` - Saved code/program content
 - `Prompt` / `Omission` - Prompt templates and file omission patterns
-- `ContextCache` - SHA1-hashed query → context blob caching
+- `ContextCache` - SHA1-hashed query to context blob caching
 - `Mcp` - MCP UI toggle rows (idMcp, mcpName, mcpDescription, mcpContent)
 - `Tool` - Tool UI toggle rows (idTool, toolName, toolDescription, toolContent)
 - `Agent` - Agent type registry (idAgent, agentName, agentDescription, agentContent)
@@ -254,6 +326,10 @@ Key models:
 - `ChatAgentRun` - Wrapped chat-agent run records (runId, status, pid, etc.)
 - `Asset` - Generic asset storage
 - `SessionState` - Persists user session state across reconnections (24h expiry)
+- `AcpAgent` - ACPX agent registry rows (mirrored from DEFAULT_ACP_AGENTS on boot)
+- `Skill` - Skill catalog rows (mirrored from skills_pkg/ on boot)
+- `AcpSession` - Persisted ACPX session metadata
+- `SkillInvocation` - Individual skill invocation records
 
 ---
 
@@ -271,9 +347,11 @@ Located in `agent/rag/`. Advanced custom pipeline:
 Chain types in `agent/rag/chains/`:
 - `basic.py`: BasicPromptOnlyChain (no docs, fallback)
 - `history_aware.py`: History-aware RAG with reranking
-- `unified.py`: Tool-enabled agent chains (LangGraph)
+- `unified.py`: Tool-enabled agent chains (LangGraph) with `_invoke_unified_agent_with_retry` — exponential backoff (0.5s, 1s, 2s) for transient 502/503/504/socket errors. When fallback to basic LLM occurs and multi-turn was requested, a visible system notice is prepended so the user knows tools were not executed.
 
-`factory.py` builds chains and monkey-patches `invoke()` to inject MCP context from sidecars.
+`factory.py` builds chains and monkey-patches `invoke()` to inject MCP context from sidecars. Now also filters ACPX tools via `filter_acpx_tools()` when `acpx_enabled` is false.
+
+`interface.py` extracts `acpx_enabled` from requests. Both **multi-turn** and **ACPX** now bypass the `is_valid_prompt` shape validator and the access-validation security gate, because agentic flows need free-form prompts.
 
 ---
 
@@ -287,25 +365,33 @@ Chain types in `agent/rag/chains/`:
 5. Wrapped agents launch in headless/background mode (no console popups)
 6. `MultiTurnToolAgentExecutor` deduplicates wrapped chat-agent calls with identical arguments
 7. After final answer, `services/answer_analizer.py` classifies as SUCCESS/FAILURE
-8. Frontend renders "Create Flow" button on SUCCESS → converts tool-call log into downloadable `.flw`
+8. Frontend renders "Create Flow" button on SUCCESS, converts tool-call log into downloadable `.flw`
 
 ### When Multi-Turn is UNCHECKED:
 - Legacy one-shot behavior preserved exactly
 - Legacy prompt validation, legacy MCP context prefetch, full-tool binding, visible-console launch
 
+### ACPX Gating
+- `CapabilityAwareToolAgentExecutor` accepts `acpx_enabled` from payload
+- When **disabled** (default), `filter_acpx_tools` strips all 12 ACPX/Skill tools from the LLM-facing surface before planning or capability selection
+- When **enabled**, ACPX tools are added to planner surface and co-selection rules apply (e.g., `acp_spawn` auto-co-selects `acp_doctor` + `acp_kill`)
+
 ### Global Execution Planner (`global_execution_planner.py`)
-- Builds DAG with nodes: `prefetch` → `execute` → `monitor` → `answer`
+- Builds DAG with nodes: `prefetch` to `execute` to `monitor` to `answer`
 - `CapabilityRegistry` (`capability_registry.py`) scores tools/capabilities against request text
-- Short follow-up scoring: ≤4 meaningful tokens boosts scores from last 4 chat messages (+15 max)
+- Short follow-up scoring: 4 or fewer meaningful tokens boosts scores from last 4 chat messages (+15 max)
 - Planner threshold = 6 if contexts selected, else 2
-- Run-control tools (list/status/log/stop) auto-injected when wrapped agents selected
+- Run-control tools (list/status/log/stop/wait/present) auto-injected when wrapped agents selected
+- ACPX co-selection rules in `capability_registry.py`: selecting `acp_spawn` also selects `acp_doctor` and `acp_kill`
 
 ### MultiTurnToolAgentExecutor (`mcp_agent.py`)
 - Explicit multi-turn tool loop (not opaque AgentExecutor)
 - Max iterations: 256 (configurable)
-- Repetition detection: `_REPEAT_LIMIT = 3` consecutive identical tool-call rounds → injects stop nudge
-- Empty final response nudge: asks model to summarize tool results
+- **Tool quota caps**: `_TOOL_QUOTA_SOFT_WARN` = 64, `_TOOL_QUOTA_HARD_STOP` = 256. Polling/management tools exempt. Soft cap injects planner hint nudging LLM toward specialized alternative. Hard cap short-circuits with forced final answer.
+- **Repetition detection fixes**: Exempted polling/management tools from call-signature fingerprint so legitimate `run_status` loops do not trip the repetition breaker. Empty signatures reset the repeat counter.
+- **Exec report enrichment**: Specialized formatters for ACPX tools and skill invocations
 - Wrapped agent dedup: hashes `tool_name + sorted-JSON args` into `_wrapped_agent_signatures`
+- Empty final response nudge: asks model to summarize tool results
 
 ---
 
@@ -326,21 +412,40 @@ Chain types in `agent/rag/chains/`:
 - `googler` — Google search via Playwright (MUST run in ThreadPoolExecutor due to Django Channels async loop)
 - `execute_netstat` — network connections
 - `get_current_time` — current time
+- `window_present(title)` — Fast (under 100 ms) yes/no window probe via PyAutoGUI
+- `chat_agent_run_wait(run_id, max_seconds, poll_interval_seconds)` — Blocking wait for a wrapped chat-agent run
+
+**ACPX Tools** (defined in `agent/acpx/tools.py`, 12 tools):
+- `acp_doctor` — Health check / enumerate available ACP agents
+- `acp_spawn(agent_id, task, ...)` — Spawn external CLI session
+- `acp_send(session_id, text)` — Send follow-up to existing session
+- `acp_send_and_wait(session_id, text)` — Send and drain until completion
+- `acp_kill(session_id)` — Terminate session
+- `acp_transcript(session_id)` — Read NDJSON transcript
+- `acp_session_status(session_id)` — Get session status
+- `acp_list_sessions` — List active sessions
+- `acp_relay(source_session_id, destination_session_id)` — Hand off transcript content
+- `list_acp_agents` — List registered ACP agents
+- `list_skills` — List available skills
+- `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-32+ specs in `WRAPPED_CHAT_AGENT_SPECS`. Key ones:
+36 specs in `WRAPPED_CHAT_AGENT_SPECS`. Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
 - `chat_agent_send_email`, `chat_agent_telegramer`, `chat_agent_whatsapper`
-- `chat_agent_notifier`, `chat_agent_shoter`
+- `chat_agent_notifier`, `chat_agent_shoter`, `chat_agent_mouser`, `chat_agent_keyboarder`
 - `chat_agent_file_creator`, `chat_agent_move_file`, `chat_agent_deleter`
 - `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`
 - `chat_agent_summarize_text`, `chat_agent_prompter`, `chat_agent_crawler`
-- `chat_agent_pser` (PowerShell), `chat_agent_jenkinser`
+- `chat_agent_pser` (process finder), `chat_agent_jenkinser`
 - `chat_agent_monitor_log`, `chat_agent_monitor_netstat` (long-running)
 - `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph`
 - `chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop` (management)
+- `chat_agent_run_wait` (blocking wait)
+- `chat_agent_sleeper` (delay helper)
+- `chat_agent_asker` (interactive A/B choice)
 
 Each `ChatWrappedAgentSpec` has: key, template_dir, tool_name (must start with `chat_agent_`), display_name, purpose, example_request, aliases, security_hints, poll_window_seconds, long_running.
 
@@ -359,6 +464,8 @@ Wrapped chat-agent tools return JSON string with: `run_id`, `status`, `log_excer
 2. A persisted UI toggle stored in the `Mcp` database table
 3. A LangChain tool returned by `get_mcp_tools()` (misnamed!)
 
+**ACPX is NOT an MCP service** — it is a separate child-process orchestrator with its own runtime, registry, and tool surface.
+
 ### Current Real Runtime Services:
 - **System-Metrics**: `mcp_system_server.py` (WebSocket JSON) + `mcp_system_client.py`
 - **Files-Search**: `mcp_files_search_server.py` (gRPC) + `mcp_files_search_client.py`
@@ -373,11 +480,71 @@ Wrapped chat-agent tools return JSON string with: `run_id`, `status`, `log_excer
 
 ---
 
-## 10. Agentic Workflow Designer (ACP)
+## 10. ACPX System
+
+**ACPX = Agent Communication Protocol eXtension.** Tlamatini's runtime for spawning external coding-agent CLIs as child processes.
+
+### Transport Modes
+
+| Transport | Agents | Mechanism | Default Budgets (timeout/idle/grace) |
+|---|---|---|---|
+| `oneshot-prompt` | claude, cursor, gemini, qwen, codex | Re-spawns CLI per turn with prompt as CLI arg, captures stdout/stderr to EOF | 180 s / 10 s / 2 s |
+| `json-acp` | tlamatini (self-host) | Strict JSON envelope on stdin; drain until `"done": true` | 45 s / 6 s / 12 s |
+| `tui-repl` | kiro, kimi, iflow, kilocode, opencode, pi, droid, copilot | Long-lived REPL over stdin/stdout. Daemon reader thread pumps stdout into queue. | 8 s / 2 s / 3 s |
+| `one-shot` | (configurable) | Single task per process; stdin closes after first write | — |
+
+The **`oneshot-prompt` transport is the critical Windows fix**: TUI CLIs detect piped stdout and refuse to flush when run as a long-lived child. By re-spawning per turn with a non-interactive flag, the runtime actually captures the answer.
+
+### Session Lifecycle
+1. **Boot** — `service.boot_acpx()` on daemon thread at Django startup: constructs `AcpxRuntime`, probes health, syncs `AcpAgent` DB rows, backfills `config.json`
+2. **Spawn** — `acp_spawn()` resolves command via `windows_spawn.py`, creates `FileSessionStore` record, spawns `subprocess.Popen`
+3. **Drain Loop** — Daemon reader thread pumps stdout into `queue.Queue`. Checks: JSON `"done": true`, stdout closed, hard timeout, transport-aware idle rule
+4. **Kill** — `acp_kill()` terminates child (`terminate` to 3s grace to `kill`), marks record `closed=True`
+5. **Transcript** — NDJSON lines with `direction`, `text`/`raw`, `ts` at `<state_dir>/<session_id>.transcript.ndjson`
+
+### Permission Model
+`PermissionGate` enforces three modes:
+- **`approve-reads`** (default) — reads auto-approved; writes/shell/network need interactive prompt. Unattended non-interactive policy: `deny` = deny and continue; `fail` = hard fail
+- **`approve-all`** — flagged dangerous; auto-approves everything
+- **`deny-all`** — hard wall; `acp_spawn` raises `PERMISSION_DENIED`
+
+### Skills
+Skills are **markdown-driven capability packages** defined by a `SKILL.md` file with YAML frontmatter + markdown body.
+
+Frontmatter contract:
+```yaml
+---
+name: skill-name
+description: One-line description.
+metadata:
+  tlamatini:
+    runtime: in-process          # or acpx
+    acpx_agent: claude           # required when runtime=acpx
+    requires_tools: [...]
+    requires_mcps:  [...]
+    budget: { max_iterations: 12, max_seconds: 180, max_tokens: 30000 }
+    permissions: { filesystem: {...}, shell: [...], network: deny, db: deny }
+    inputs:  [{ name: x, type: string, required: true }]
+    outputs: [{ name: y, type: string, required: true }]
+    triggers: { keywords: [...], file_globs: [...] }
+---
+```
+
+**Harness execution** (`invoke_skill`):
+1. Registry lookup (auto-reloads if stale over 30s)
+2. Input validation with type coercion
+3. Audit open to `~/.tlamatini/skill-audit/<YYYY-MM>/...ndjson`
+4. Dispatch: `in-process` = plan envelope; `acpx` = spawn child agent
+5. Output validation
+6. Return JSON envelope with `skill`, `output`, `iterations_used`, `tokens_used`, `elapsed_seconds`, `audit_id`
+
+---
+
+## 11. Agentic Workflow Designer (ACP)
 
 Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 
-### Frontend Modules (23 JS files):
+### Frontend Modules (26+ JS files):
 **Chat Interface (8)**:
 - `agent_page_init.js` — WebSocket setup, app initialization
 - `agent_page_chat.js` — Chat message handling, Flow-Generator mapping
@@ -385,21 +552,24 @@ Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 - `agent_page_context.js` — RAG context management
 - `agent_page_dialogs.js` — Modal dialogs
 - `agent_page_layout.js` — UI layout
-- `agent_page_state.js` — Client state
+- `agent_page_state.js` — Client state (ACPX toggle state)
 - `agent_page_ui.js` — General UI utilities
 
-**ACP Workflow Designer (11)**:
+**ACP Workflow Designer (14)**:
 - `agentic_control_panel.js` — Entry point
 - `acp-globals.js` — Shared global state, `updateCanvasContentSize()`
 - `acp-canvas-core.js` — Canvas rendering, drag-and-drop, classMap, connection handlers (6 touch points per agent)
 - `acp-canvas-undo.js` — Undo/redo state (1024 actions)
-- `acp-agent-connectors.js` — 50+ agent connection handlers
-- `acp-control-buttons.js` — Start/stop/pause/hypervisor
-- `acp-file-io.js` — .flw save/load
+- `acp-agent-connectors.js` — 60+ agent connection handlers
+- `acp-control-buttons.js` — Start/stop/pause/hypervisor; now calls `compileCurrentACPFlow({ mode: 'write' })` before start
+- `acp-file-io.js` — .flw save/load; uses `buildACPFlowSnapshot()` for schema-v2 JSON
 - `acp-running-state.js` — LED indicators, process monitoring
 - `acp-session.js` — Session pool management
 - `acp-layout.js` — Canvas layout utilities
-- `acp-validate.js` — Flow validation engine
+- `acp-validate.js` — Flow validation engine; now calls `compileCurrentACPFlow({ mode: 'dry_run' })` first
+- `acp-flow-snapshot.js` — DOM walker that builds schema-v2 JSON with `parametrizerMappings` artifact
+- `acp-parametrizer-dialog.js` — Parametrizer mapping UI
+- `chat_page_runtime_poller.js` — Chat runtime status polling
 
 **Shared (4)**:
 - `canvas_item_dialog.js` — Agent config dialog on canvas
@@ -426,20 +596,20 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 | Context | Transform | "Node Manager" | "Shoter" |
 |---|---|---|---|
-| CSS classMap key | `name.toLowerCase().replace(/\s+/g, '-')` | `'node-manager'` | `'shoter'` |
-| Sidebar visual | Same as classMap via `getAgentTypeClass()` | `'node-manager'` | `'shoter'` |
-| Connection handlers | `name.toLowerCase()` (preserves spaces) | `'node manager'` | `'shoter'` |
+| CSS classMap key | lowercase, spaces to hyphens | `node-manager` | `shoter` |
+| Sidebar visual | Same as classMap via `getAgentTypeClass()` | `node-manager` | `shoter` |
+| Connection handlers | lowercase (preserves spaces) | `node manager` | `shoter` |
 
 **For multi-word agents**, the forms DIFFER:
-- classMap key and sidebar visual resolver use **hyphens**: `'node-manager'`
-- Connection handlers use **spaces**: `'node manager'`
+- classMap key and sidebar visual resolver use **hyphens**: `node-manager`
+- Connection handlers use **spaces**: `node manager`
 
 ### CSS Gradient Rule
 Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_control_panel.css`. The sidebar icon inherits this automatically through `applyAgentToolIconStyle()` — NEVER duplicate gradient strings in `populateAgentsList()`.
 
 ---
 
-## 11. All 57 Workflow Agent Types
+## 12. All 60+ Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -452,7 +622,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 ### Routing Agents
 - **Raiser** — Watches source log for pattern, starts downstream when found
 - **Forker** — Auto-routes to Path A or B based on two patterns
-- **Asker** — Interactive A/B choice for user (dialog popup)
+- **Asker** — Interactive A/B choice for user (dialog popup or chat inline)
 - **Counter** — Persistent counter, routes L (< threshold) or G (>= threshold)
 
 ### Logic Gates
@@ -462,58 +632,62 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ### Action Agents
 - **Executer** — Shell commands
-- **Pythonxer** — Inline Python (exit code gating)
+- **Pythonxer** — Inline Python (exit code gating, Ruff validation)
 - **Prompter** — LLM prompt execution
-- **Summarizer** — LLM text/log summarization
-- **Crawler** — Web crawling with LLM analysis
-- **Googler** — Google search + text extraction (Playwright)
+- **Summarizer** — Log monitoring + one-shot text summarization
+- **Crawler** — Developer-oriented web crawler with LLM analysis
+- **Googler** — Google search + text extraction (Playwright, MUST run in ThreadPoolExecutor)
 - **Apirer** — HTTP REST API calls
 - **Gitter** — Git operations
 - **Ssher** — SSH remote commands
 - **Scper** — SCP file transfer
-- **Dockerer** — Docker commands
-- **Kuberneter** — kubectl commands
-- **Pser** — PowerShell commands
-- **Jenkinser** — Jenkins job triggers
-- **Sqler** — SQL queries (external window)
-- **Mongoxer** — MongoDB operations (external window)
+- **Dockerer** — Docker container management
+- **Kuberneter** — Kubernetes command executor
+- **Pser** — Process finder (fuzzy/semantic name matching)
+- **Jenkinser** — CI/CD pipeline trigger
+- **Sqler** — SQL Server query execution (external window)
+- **Mongoxer** — MongoDB script execution (external window)
 - **Mover** — File move/copy with glob patterns
 - **Deleter** — File deletion with glob patterns
-- **Shoter** — Screenshot capture
-- **Mouser** — Mouse/keyboard simulation (PyAutoGUI)
-- **Keyboarder** — Keyboard typing / hotkey automation
+- **Shoter** — Screenshot capture (silent, structured output)
+- **Mouser** — Mouse pointer movement (7 movement types)
+- **Keyboarder** — Keyboard typing / hotkey automation (robust parser)
 - **File-Creator** — Creates files with specified content
-- **File-Interpreter** — LLM reads and interprets file contents
+- **File-Interpreter** — Document parsing and text/image extraction
 - **File-Extractor** — Raw text extraction (PDF, DOCX, etc.)
-- **Image-Interpreter** — LLM vision analysis
+- **Image-Interpreter** — LLM vision-based image analysis
 - **J-Decompiler** — JAR/WAR decompilation (bundled jd-cli)
-- **Telegramer** — Sends Telegram messages
+- **Telegramer** — Telegram message sender
+- **ACPXer** — ACPX session driver for external CLIs
+- **Teletlamatini** — Telegram bot bridge to Tlamatini chat
+- **WhatsTlamatini** — WhatsApp Cloud API bridge to Tlamatini chat
 
 ### Cryptography Agents
 - **Kyber-KeyGen** — CRYSTALS-Kyber key pair generation (post-quantum)
-- **Kyber-Cipher** — Kyber encryption
-- **Kyber-DeCipher** — Kyber decryption
+- **Kyber-Cipher** — CRYSTALS-Kyber encryption
+- **Kyber-DeCipher** — CRYSTALS-Kyber decryption
 
 ### Utility Agents
 - **Parametrizer** — Maps structured output from one agent into another's config.yaml (strict single-lane queue)
-- **FlowBacker** — Backs up session logs/configs
-- **Gatewayer** — HTTP webhook ingress + folder-drop watcher
-- **Gateway-Relayer** — Bridges GitHub/GitLab webhooks into Gatewayer
+- **FlowBacker** — Session backup and cleanup handoff
+- **Gatewayer** — HTTP webhook / folder-drop ingress
+- **Gateway-Relayer** — Bridges provider webhooks into Gatewayer
 - **Node-Manager** — Infrastructure registry and node supervision
+- **FlowCreator** — AI-powered flow designer
+- **FlowHypervisor** — System-managed LLM anomaly detector
 
 ### Terminal/Monitoring Agents (do NOT start downstream)
 - **Monitor-Log** — LLM-powered log file monitor
 - **Monitor-Netstat** — LLM-powered network port monitor
-- **Emailer** — SMTP email on pattern detection
+- **Emailer** — SMTP email sender on pattern detection
 - **RecMailer** — IMAP email receiver/monitor
 - **Notifier** — Desktop notification + sound
-- **Whatsapper** — WhatsApp messages (TextMeBot)
+- **Whatsapper** — WhatsApp notifications (TextMeBot)
 - **TelegramRX** — Telegram message receiver
-- **FlowHypervisor** — LLM-powered flow health monitor (system agent)
 
 ---
 
-## 12. Agent Creation System
+## 13. Agent Creation System
 
 Every agent follows the **exact same 8-step process** documented in `Tlamatini/.agents/workflows/create_new_agent.md`.
 
@@ -534,8 +708,9 @@ agent/agents/<agent_name>/
    - `is_agent_running`, `wait_for_agents_to_stop`, `start_agent`
    - `write_pid_file`, `remove_pid_file`
 5. **Concurrency guard**: `wait_for_agents_to_stop(target_agents)` BEFORE `start_agent()` loop
-6. Reanimation support: `_IS_REANIMATED` before `logging.basicConfig`, marker log in `main()`
+6. Reanimation support: `_IS_REANIMATED` before `logging.basicConfig(...)`, marker log in `main()`
 7. If agent polls source logs: implement `reanim*.pos` offset persistence
+8. Validate dangerous paths with `path_guard.validate_tool_path()` when applicable
 
 ### Connection Fields Rules
 - `target_agents: []` — if agent starts downstream agents
@@ -563,7 +738,7 @@ Rules:
 
 ---
 
-## 13. Parametrizer & Interconnection
+## 14. Parametrizer & Interconnection
 
 Parametrizer (`agent/agents/parametrizer/parametrizer.py`) maps structured outputs from source agents into target agents' `config.yaml`.
 
@@ -579,7 +754,7 @@ Parametrizer (`agent/agents/parametrizer/parametrizer.py`) maps structured outpu
 
 ---
 
-## 14. Exec Report
+## 15. Exec Report
 
 When "Exec Report" toolbar checkbox is ticked alongside Multi-Turn, final answer gets HTML tables appended — one per kind of state-changing agent that fired.
 
@@ -592,6 +767,9 @@ When "Exec Report" toolbar checkbox is ticked alongside Multi-Turn, final answer
 6. `AgentConsumer.queue_llm_retrieval()` reads state, passes to `process_llm_response`
 7. `_render_exec_report_html()` in `services/response_parser.py` groups by `agent_key` in **first-appearance order**
 8. Appended to `llm_response` before WebSocket broadcast
+
+### ACPX & Skill Exec Report Enrichment
+`mcp_agent.py` contains specialized formatters for ACPX tools (`acp_spawn`, `acp_send`, etc.) and skill invocations (`invoke_skill`). These emit enriched `agent_key` / `Display Name` pairs so ACPX sessions and skill calls appear in the exec report alongside traditional wrapped agents.
 
 ### CRITICAL ORDERING CONTRACT
 In `process_llm_response()`, `save_message()` MUST run AFTER exec-report HTML is appended. Order:
@@ -606,11 +784,11 @@ In `process_llm_response()`, `save_message()` MUST run AFTER exec-report HTML is
 2. `agent/static/agent/css/agent_page.css` → add `.exec-report-caption-<agent_key>` + `.exec-report-<agent_key> .exec-report-cmd`
 3. If caption background dark, add to `thead th` dark-tinted selector list
 
-Skip for read-only/monitoring agents (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer, FlowHypervisor).
+Skip for read-only/monitoring agents (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer, FlowHypervisor, ACPXer in relay mode).
 
 ---
 
-## 15. Create Flow from Multi-Turn
+## 16. Create Flow from Multi-Turn
 
 Successful Multi-Turn responses can become `.flw` workflows via the "Create Flow" button.
 
@@ -630,7 +808,7 @@ If a wrapped chat-agent tool should produce populated `.flw` nodes, add branch i
 
 ---
 
-## 16. Frontend Architecture Details
+## 17. Frontend Architecture Details
 
 ### WebSocket Message Types (Client → Server)
 - `set-canvas-as-context` / `unset-canvas-as-context`
@@ -647,6 +825,7 @@ If a wrapped chat-agent tool should produce populated `.flw` nodes, add branch i
 - `set-tools`
 - `set-agents`
 - `run-flow` / `pause-flow` / `stop-flow`
+- Chat payload now includes `acpx_enabled` boolean alongside `multi_turn_enabled` and `exec_report_enabled`
 
 ### WebSocket Message Types (Server → Client)
 - `agent_message` — main chat message
@@ -655,9 +834,12 @@ If a wrapped chat-agent tool should produce populated `.flw` nodes, add branch i
 - `session-restored`
 - `context-path-set`
 
+### ACPX Toggle State
+`agent_page_state.js` manages `ACPX_STORAGE_KEY = 'acpxEnabled'` in `localStorage`. The checkbox `acpxCheckbox` (`#acpx-enabled`) is read on every WebSocket send and its state is persisted across page reloads. Same pattern as Multi-Turn and Exec Report toggles.
+
 ---
 
-## 17. Build & Packaging
+## 18. Build & Packaging
 
 ```bash
 # Step 1: Build the app
@@ -683,7 +865,7 @@ npm run lint
 
 ---
 
-## 18. Skills Available in Project
+## 19. Skills Available in Project
 
 ### `Tlamatini/.agents/workflows/create_new_agent.md`
 Complete 8-step guide for creating workflow agents. Covers: backend script + config, Django view + URL, DB migration, CSS gradient, JS integration (4 files), FlowCreator skill update, README updates, linting.
@@ -694,13 +876,16 @@ Guide for adding MCP-backed capabilities or tools. Emphasizes classifying reques
 ### `Tlamatini/agent/agents/flowcreator/agentic_skill.md`
 Reference for FlowCreator AI to design flows. Key principles: minimize agents, sequential chains, lean Starter, terminal agents at END.
 
+### `Tlamatini/agent/skills_pkg/skill_creator/SKILL.md`
+Guide for creating new skills: YAML frontmatter contract, input/output validation, budget enforcement, and OpenClaw-compatible surface.
+
 ### External Skills (in `.codex/skills/`)
 - `full-project-pdf-dossier/SKILL.md` — Complete project PDF dossier generation
 - `overlap-safe-pptx-dossier/SKILL.md` — Technical PPTX deck creation (Tlamatini-style)
 
 ---
 
-## 19. Coding Conventions & Critical Rules
+## 20. Coding Conventions & Critical Rules
 
 ### Python
 - Synchronous `@tool` functions in `tools.py`
@@ -728,7 +913,7 @@ Reference for FlowCreator AI to design flows. Key principles: minimize agents, s
 
 ---
 
-## 20. Common Pitfalls (from create_new_agent.md)
+## 21. Common Pitfalls
 
 1. **Naming drift** — `agentDescription` transforms differently in CSS classMap, sidebar, and connection handlers
 2. **Empty-string overwrites** — backend deep-merges posted JSON over template config.yaml. Use "omit if empty" semantics
@@ -739,10 +924,13 @@ Reference for FlowCreator AI to design flows. Key principles: minimize agents, s
 7. **Flow-Generator `_mapToolArgsToAgentConfig` miss** — without it, generated `.flw` nodes have no config fields set
 8. **Forgetting the 6 JS edit locations** in `acp-canvas-core.js`
 9. **CSS gradient duplicated in JS** — never hard-code gradient in `populateAgentsList()`
+10. **ACPX transport mismatch on Windows** — TUI CLIs (Kimi, Kiro, etc.) detect piped stdout and refuse to flush in long-lived REPL mode. Use `oneshot-prompt` transport for these agents.
+11. **Skill frontmatter missing `tlamatini` block** — without it, the harness cannot validate inputs, enforce budgets, or dispatch correctly.
+12. **ACPX permission mode surprise** — default is `approve-reads`; writes/shell/network in non-interactive mode will be denied or failed silently depending on `nonInteractivePermissions`.
 
 ---
 
-## 21. Known Hardcoded Assumptions
+## 22. Known Hardcoded Assumptions
 
 1. `factory.py` recognizes only `System-Metrics` and `Files-Search` by description
 2. Frontend MCP dialog is hardcoded for two checkboxes
@@ -759,10 +947,13 @@ Reference for FlowCreator AI to design flows. Key principles: minimize agents, s
 13. `UnifiedAgentChain.invoke()` has hardcoded payload key whitelist — new flags MUST be added or silently dropped
 14. Exec Report capture point is `_invoke_tool()`, not chain layer
 15. Flow-Generator emits cardinal-suffixed pool names (`executer_1`, `executer_2`)
+16. `DEFAULT_ACP_AGENTS` in `agent_registry.py` is hardcoded (14 specs). New ACP agents require a code change and DB sync on boot.
+17. `oneshot-prompt` transport is the **only** reliable Windows capture mode for TUI CLIs.
+18. Skill registry auto-reloads only if stale > 30s. Rapid skill iteration requires restarting Django or waiting.
 
 ---
 
-## 22. Recent Fixes to Remember
+## 23. Recent Fixes to Remember
 
 - **Planner statelessness on short follow-ups** — Solved by passing `chat_history_text` into planner. Preserve this argument.
 - **Wrapped chat-agent dedup** — `_wrapped_agent_signatures` set in `MultiTurnToolAgentExecutor`. Do not remove.
@@ -770,10 +961,14 @@ Reference for FlowCreator AI to design flows. Key principles: minimize agents, s
 - **Cancel/rebuild race** — `consumers.py` now `await`s `setup_rag_chain()` during cancel. Must not use `asyncio.create_task(...)`.
 - **Exec-report persistence ordering** — `save_message()` must run AFTER exec-report HTML append in `process_llm_response()`.
 - **ACP canvas DOM split** — `#canvas-content` vs `#submonitor-container`. All coordinate math uses `canvasContent.getBoundingClientRect()`.
+- **ACPX oneshot-prompt transport** — Critical Windows fix. TUI CLIs (Kimi, Kiro, etc.) now re-spawn per turn with prompt as CLI arg instead of long-lived REPL.
+- **ACPX gating** — `filter_acpx_tools()` strips all 12 ACPX/Skill tools when `acpx_enabled=false`. Do not bypass this gate.
+- **Repetition detection exemptions** — Polling/management tools (`run_status`, `run_log`, `session_status`, `list_sessions`, etc.) are exempt from call-signature fingerprinting so legitimate wait loops don't trip the repetition breaker.
+- **Tool quota caps** — Soft warn at 64 calls, hard stop at 256. Polling/management tools exempt from both caps.
 
 ---
 
-## 23. Roadmap: Recommended New Agents
+## 24. Roadmap: Recommended New Agents
 
 From `NEW_AGENT_RECOMMENDATIONS.md`:
 
@@ -793,7 +988,7 @@ From `NEW_AGENT_RECOMMENDATIONS.md`:
 
 ---
 
-## 24. System Prompt & LLM Identity
+## 25. System Prompt & LLM Identity
 
 The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. The LLM identity is **"Tlamatini"** (Nahuatl for "one who knows"). Key rules in prompt:
 1. Referenced rephrases must be ignored
@@ -806,10 +1001,11 @@ The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. The LLM identi
 8. In Multi-Turn, the LLM is an OPERATOR, not just an advisor
 9. Up to 256 multi-turn iterations available
 10. Identity: the LLM IS Tlamatini
+11. In ACPX mode, the LLM may spawn external child agents; it must respect permission gates and budget limits
 
 ---
 
-## 25. Application Log (tlamatini.log)
+## 26. Application Log (tlamatini.log)
 
 `Tlamatini/manage.py` defines `_TeeStream` wrapper replacing `sys.stdout` and `sys.stderr` BEFORE Django initializes.
 
@@ -823,7 +1019,7 @@ When asked to debug, `tlamatini.log` is the first artifact to consult.
 
 ---
 
-## 26. How to Run
+## 27. How to Run
 
 ```bash
 cd Tlamatini
@@ -839,7 +1035,7 @@ Default credentials (installer builds): `user` / `changeme`
 
 ---
 
-## 27. File Paths Quick Reference
+## 28. File Paths Quick Reference
 
 | Purpose | Path |
 |---------|------|
@@ -854,15 +1050,26 @@ Default credentials (installer builds): `user` / `changeme`
 | HTTP views | `Tlamatini/agent/views.py` |
 | Response parser / exec report | `Tlamatini/agent/services/response_parser.py` |
 | Answer analyzer | `Tlamatini/agent/services/answer_analizer.py` |
+| Flow compiler | `Tlamatini/agent/services/flow_compiler.py` |
+| Flow spec normalizer | `Tlamatini/agent/services/flow_spec.py` |
+| Agent contracts | `Tlamatini/agent/services/agent_contracts.py` |
 | RAG factory | `Tlamatini/agent/rag/factory.py` |
 | RAG interface | `Tlamatini/agent/rag/interface.py` |
 | Agent models | `Tlamatini/agent/models.py` |
 | Global state | `Tlamatini/agent/global_state.py` |
 | Path guard | `Tlamatini/agent/path_guard.py` |
+| ACPX runtime | `Tlamatini/agent/acpx/runtime.py` |
+| ACPX tools | `Tlamatini/agent/acpx/tools.py` |
+| ACPX config | `Tlamatini/agent/acpx/config.py` |
+| ACPX registry | `Tlamatini/agent/acpx/agent_registry.py` |
+| ACPX permissions | `Tlamatini/agent/acpx/permissions.py` |
+| Skills harness | `Tlamatini/agent/skills/harness.py` |
+| Skills registry | `Tlamatini/agent/skills/registry.py` |
 | Build script | `build.py` |
 | Installer builder | `build_installer.py` |
 | Skill: create agent | `Tlamatini/.agents/workflows/create_new_agent.md` |
 | Skill: create MCP | `Tlamatini/.mcps/create_new_mcp.md` |
+| Skill: create skill | `Tlamatini/agent/skills_pkg/skill_creator/SKILL.md` |
 | Agent boilerplate reference | `Tlamatini/agent/agents/shoter/shoter.py` |
 | Parametrizer | `Tlamatini/agent/agents/parametrizer/parametrizer.py` |
 | ACP CSS | `Tlamatini/agent/static/agent/css/agentic_control_panel.css` |
@@ -871,7 +1078,10 @@ Default credentials (installer builds): `user` / `changeme`
 | ACP connectors | `Tlamatini/agent/static/agent/js/acp-agent-connectors.js` |
 | ACP undo | `Tlamatini/agent/static/agent/js/acp-canvas-undo.js` |
 | ACP file I/O | `Tlamatini/agent/static/agent/js/acp-file-io.js` |
+| ACP flow snapshot | `Tlamatini/agent/static/agent/js/acp-flow-snapshot.js` |
+| ACP parametrizer dialog | `Tlamatini/agent/static/agent/js/acp-parametrizer-dialog.js` |
 | Chat message handler | `Tlamatini/agent/static/agent/js/agent_page_chat.js` |
+| Chat state (ACPX toggle) | `Tlamatini/agent/static/agent/js/agent_page_state.js` |
 
 ---
 
