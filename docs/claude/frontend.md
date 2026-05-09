@@ -10,7 +10,7 @@
 - `agent_page_state.js` - Client state
 - `agent_page_ui.js` - General UI utilities
 
-## ACP Workflow Designer (12 modules + 1 entry point)
+## ACP Workflow Designer (13 modules + 1 entry point)
 - `agentic_control_panel.js` - Entry point
 - `acp-globals.js` - Shared global state, plus `updateCanvasContentSize()` (canvas-growth helper — see ACP Canvas DOM Contract below)
 - `acp-canvas-core.js` - Canvas rendering, drag-and-drop, classMap, connection handlers
@@ -18,12 +18,13 @@
 - `acp-undo-manager.js` - Undo stack manager (works with `acp-canvas-undo.js`)
 - `acp-agent-connectors.js` - 50+ agent connection handlers
 - `acp-control-buttons.js` - Start/stop/pause/hypervisor
-- `acp-file-io.js` - .flw save/load
+- `acp-file-io.js` - .flw save/load (calls `buildACPFlowSnapshot()` for save; calls `getSavedParametrizerMappings()` on load to re-hydrate Parametrizer artifacts whether they were persisted in `_parametrizer_mappings` per-node or in the snapshot's `artifacts.parametrizerMappings` map)
+- `acp-flow-snapshot.js` - **Canvas-snapshot bridge to the backend Flow Compiler** — `buildACPFlowSnapshot()` produces the `schemaVersion: 2` JSON the backend understands (nodes with `id`, `text`, position, `agentPurpose`, `configData`; connections with both indexes AND ids; `artifacts.parametrizerMappings` keyed by node id). `compileCurrentACPFlow({mode})` POSTs it to `/agent/compile_flow/`; called by Save (mode=dry-run via Validate) and by the Start sequence (mode=`write`) so the live canvas is recompiled into `config.yaml` files before any agent runs
 - `acp-running-state.js` - LED indicators, process monitoring
 - `acp-session.js` - Session pool management
 - `acp-layout.js` - Canvas layout utilities
 - `acp-parametrizer-dialog.js` - Parametrizer's interconnection-mapping dialog
-- `acp-validate.js` - Flow validation engine
+- `acp-validate.js` - Flow validation engine (POSTs the snapshot to `/agent/compile_flow/` mode=`dry_run` and renders the returned warnings + per-agent compiled config — same path Start uses with mode=`write`)
 
 ## ACP Canvas DOM Contract (scrollable canvas)
 
@@ -49,4 +50,13 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `chat_page_runtime_poller.js` - Chat-side wrapped-runtime poller (status / log / wait helpers)
 - `shared-runtime-dialogs.js` - Shared modal dialog widgets used by chat + ACP runtime views
 
-**Total: 26 JS modules** (8 chat + 12 ACP + 1 ACP entry-point + 5 shared/chat-runtime auxiliary).
+**Total: 27 JS modules** (8 chat + 13 ACP + 1 ACP entry-point + 5 shared/chat-runtime auxiliary).
+
+## Flow Compiler Pipeline (canvas / chat → backend → pool)
+
+Two browser surfaces produce flows; both compile through the **same** backend Agent Contract registry before they ever reach disk:
+
+1. **ACP canvas → `/agent/compile_flow/`** — Save / Validate / Start all build a snapshot via `buildACPFlowSnapshot()` (`acp-flow-snapshot.js`) and POST it. Start passes `mode: 'write'` so the canvas state lands in the session pool before agents launch (this is why an edited-but-unsaved canvas now behaves identically to a freshly loaded `.flw`); Validate passes `mode: 'dry_run'` and renders the returned compiled-config preview without touching disk.
+2. **Chat Create-Flow → `/agent/flow_from_tool_calls/`** — When the toolbar Create-Flow button fires, `_normalizeChatFlowBeforeDownload()` in `agent_page_chat.js` POSTs the legacy draft (built from `tool_calls_log`) to the backend, which runs it through `normalize_flow_payload()` → `flow_spec_to_legacy_json(redact=True)` and returns a `.flw` JSON whose secrets are redacted and whose canonical agent / pool names match the registry. The browser then downloads that normalized blob (with a graceful fallback to the legacy un-normalized draft if the backend is unreachable, so an offline frozen install still produces a usable `.flw`).
+
+Both surfaces share `agent/services/flow_spec.py` (the in-memory `FlowSpec` representation), `agent/services/agent_contracts.py` (per-agent connection-field shape and `parametrizer_fields`), and `agent/services/flow_compiler.py` (the compile + write pipeline). The `_parametrizer_mappings` array on a Parametrizer node's config and the `artifacts.parametrizerMappings` object on the snapshot are **two valid persistence shapes for the same data** — `getSavedParametrizerMappings()` in `acp-file-io.js` accepts either when a `.flw` is loaded, so older files keep working.

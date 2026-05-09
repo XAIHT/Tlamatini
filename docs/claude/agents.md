@@ -1,5 +1,29 @@
 # Tlamatini — Agents (Creation, Catalog, FlowCreator, FlowHypervisor)
 
+## Backend Agent Contract Registry (`agent/services/agent_contracts.py`)
+
+Since the Flow Compiler / Contracts pass (May 2026), every connection-shape decision the canvas, the `.flw` loader, the Validate dialog, and the Start sequence make is funneled through a single backend registry: `get_agent_contracts()` in `agent/services/agent_contracts.py`. Each agent is described by an immutable `AgentContract` dataclass:
+
+| Field | Meaning |
+|---|---|
+| `agent_type` | Canonical normalized id, e.g. `node_manager`, `gateway_relayer`, `kyber_keygen` |
+| `display_name` | Human-readable name, e.g. `Node Manager`, `ACPXer`, `SSHer` (capitalization quirks centralized in `agent_paths.display_name_from_agent_type`) |
+| `aliases` | Extra names that resolve to this agent type (gives "Node Manager" → `node_manager` for free) |
+| `input_field_by_slot` / `output_field_by_slot` | Per-slot connection-field shape: which YAML key a connection on slot 0/1/2 of the canvas writes into. Forker/Asker put slot 2 into `target_agents_b`, Counter puts slot 2 into `target_agents_g`, AND/OR put slot 2 into `source_agent_2`, and so on |
+| `connection_fields` | Every field name the registry treats as a connection (`source_agents`, `target_agents`, `output_agents`, `source_agent_1/2`, `target_agents_a/b/l/g`) — used to clear stale wiring before recompiling |
+| `parametrizer_fields` | Tuple of fields a downstream Parametrizer can address. Centralizes what used to live in `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` (e.g. `apirer` exposes `url`, `response_body`; `acpxer` exposes `agent_id`, `session_id`, `transport`, `settle`, `transcript_path`, `response_body`) |
+| `secret_paths` | Dotted paths inside `config.yaml` that must be redacted from `.flw` exports (e.g. `tlamatini.password`) |
+| `no_input` / `no_output` | True for endpoints (Starter has no input; FlowCreator/FlowHypervisor have neither) |
+| `exclude_from_validation` | True for FlowCreator and FlowHypervisor (system agents that never appear in the validation list) |
+| `singleton` | True when only one instance is allowed on the canvas (FlowCreator, FlowHypervisor) — affects pool naming (`flowcreator` instead of `flowcreator_1`) |
+| `long_running` | True for FlowHypervisor / TeleTlamatini / WhatsTlamatini — informs the watchdog and the Start sequence |
+| `never_starts_targets` | True for Stopper / Cleaner — the canvas wiring still draws but the agent does not auto-launch its `target_agents` |
+| `special` | Marker for Ender (`output_agents` = launch list, `target_agents` = kill list) and Parametrizer (artifact-driven mappings) |
+
+`get_agent_contract(value)` resolves an agent name through the alias map and returns the contract; unknown names get a synthesized default contract. The registry is `lru_cache(maxsize=1)`'d so the disk-discovery + builtin-overrides pass runs exactly once per process.
+
+The registry is exposed to the frontend via `GET /agent/agent_contracts/` (returns `list_contract_summaries()`), to the Validate button via `list_pool_agents_for_validation()` in `flow_compiler.py`, and to both `.flw` save/load and Start via `compile_flow_payload()`.
+
 ## Creating a New Agent (Step-by-Step)
 
 **Full guide**: `Tlamatini/.agents/workflows/create_new_agent.md`
@@ -70,7 +94,9 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 ---
 
-## All 59 Workflow Agent Types
+## All 60 Workflow Agent Types
+
+> **Single source of truth for descriptions**: `agents_descriptions.md` at the repo root. The Django view `agent.views.agentic_control_panel` parses the `## Workflow Agents` tables in that file (with `README.md` as a legacy fallback for older deployments) and injects the `Description` column into the page as `agent_purpose_map` JSON. The frontend uses each entry as the **hover tooltip** over the sidebar agent and as the **canvas Description dialog body** on right-click. Editing a row's `Description` cell there changes both human docs AND the live UI text. `build.py` ships `agents_descriptions.md` next to the executable in frozen mode so the resolution works in both modes. The lookup is case- and punctuation-insensitive (`re.sub(r'[^a-z0-9]+', '', name.lower())`), so `Kyber-KeyGen`, `Kyber KeyGen`, and `kyberkeygen` all map to the same entry.
 
 ### Control Agents
 - **Starter** - Entry point, launches first agents
@@ -131,6 +157,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 ### Utility Agents
 - **Parametrizer** - Maps structured output from one agent into another's config.yaml (strict single-lane queue)
 - **FlowBacker** - Backs up session logs/configs
+- **FlowCreator** - LLM-powered flow designer (system agent, singleton, no canvas connections); reads `agentic_skill.md` and emits a `.flw` JSON
 - **Gatewayer** - HTTP webhook ingress + folder-drop watcher
 - **Gateway-Relayer** - Bridges GitHub/GitLab webhooks into Gatewayer
 - **Node-Manager** - Infrastructure registry and node supervision

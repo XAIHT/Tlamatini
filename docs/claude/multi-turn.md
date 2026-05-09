@@ -31,15 +31,20 @@ Pipeline:
 2. **Success classification**: `services/answer_analizer.py::analyze_answer_success()` asks the configured `chained-model` to classify the final answer as `SUCCESS` or `FAILURE`. It is a deliberate LLM-based classifier (no regex/keyword heuristics). On internal error it fails **open** (returns `True`) so the button is not hidden unnecessarily. Max answer length sent for classification is 4000 chars.
 3. **WebSocket broadcast**: `consumers.py` attaches `tool_calls_log` and `answer_success` to the outgoing `agent_message` frame.
 4. **Button gate (frontend)**: `agent_page_chat.js` renders the "Create Flow" button only when Multi-Turn was enabled, `answer_success` is true, the tool-call log is non-empty, and the user is not anonymous.
-5. **Flow synthesis**: The frontend walks the tool-call log, maps each tool name to its sidebar agent display name, lays out nodes left-to-right, wires sequential `target_agents` connections, and emits a `.flw` JSON file that is downloaded by the browser.
+5. **Flow synthesis (frontend draft)**: The frontend walks the tool-call log, maps each tool name to its sidebar agent display name, lays out nodes left-to-right, wires sequential `target_agents` connections, and assembles a legacy-shaped `flowData` object.
+6. **Backend normalization (`/agent/flow_from_tool_calls/`)**: `_normalizeChatFlowBeforeDownload()` POSTs the draft (plus the original `tool_calls_log`) to `flow_from_tool_calls_view`, which runs it through `flow_spec.normalize_flow_payload()` and returns `flow_spec_to_legacy_json(spec, redact=True)` — a registry-canonical `.flw` whose agent names match the contracts and whose `secret_paths` are stripped. **Failure mode**: if the request fails (offline frozen install, backend down) the browser falls back to the original legacy draft so the user still gets a usable file.
+7. **Download**: Whichever shape comes back is `Blob`-wrapped and downloaded under a timestamped filename.
 
 Files involved:
 
 - `agent/services/answer_analizer.py` — SUCCESS/FAILURE classifier
 - `agent/services/response_parser.py` — strips `END-RESPONSE` sentinel and related artifacts
+- `agent/services/flow_spec.py` — `normalize_flow_payload` / `flow_spec_to_legacy_json` (called by `flow_from_tool_calls_view`)
+- `agent/services/flow_compiler.py` — shared `compile_flow_payload` so chat-generated flows produce the same registry-canonical artifacts as canvas-generated ones
 - `agent/mcp_agent.py` — `_tool_calls_log` accumulation and wrapped-agent dedup
 - `agent/consumers.py` — broadcasts `tool_calls_log` + `answer_success`
-- `agent/static/agent/js/agent_page_chat.js` — button render + `.flw` generator
+- `agent/views.py::flow_from_tool_calls_view` — backend normalizer endpoint
+- `agent/static/agent/js/agent_page_chat.js` — button render + `_generateAndDownloadFlow` (now `async`) + `_normalizeChatFlowBeforeDownload`
 - `agent/static/agent/css/agent_page.css` — `.create-flow` button styling
 
 ---

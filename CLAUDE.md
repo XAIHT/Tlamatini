@@ -10,7 +10,8 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 - An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode)
 - A request-scoped **Multi-Turn orchestration layer** with dynamic tool binding and global execution planning
-- A **Visual Agentic Workflow Designer** (ACP) with 59 drag-and-drop agent types
+- A **Visual Agentic Workflow Designer** (ACP) with 60 drag-and-drop agent types
+- A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **Skills system** — markdown-defined `SKILL.md` packages run by `SkillHarness`. The LLM invokes them through `list_skills` / `invoke_skill`. Built-in skills include `acp-router`, `summarize`, `setup-new-acpx-key`, `skill-creator`, `tlamatini_*` (audit / lint / refactor helpers), and integration stubs (gmail, slack, github, jira, notion, todoist, trello, weather)
 - **Multi-model LLM support** (Ollama local, Anthropic Claude cloud, Qwen vision)
@@ -38,12 +39,14 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 59-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 60-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   └── gotchas.md                  # Claude API client, build/lint, hardcoded assumptions, recent fixes
 ├── README.md                       # Full user-facing documentation (very large)
+├── agents_descriptions.md          # ** Authoritative source for sidebar agent tooltips & canvas Description dialogs ** — Django view parses the `## Workflow Agents` tables and injects them into the page as `agent_purpose_map`. README.md is kept as a legacy fallback only
 ├── ACPX.md                         # Standalone ACPX overview / OpenClaw compatibility note
+├── BookOfTlamatini.md              # Long-form narrative changelog / "Recent Updates" book (separate from README.md since 16b789a)
 ├── build.py                        # PyInstaller build script
 ├── build_installer.py              # NSIS-based installer builder
 ├── build_uninstaller.py            # Uninstaller builder
@@ -109,7 +112,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 59 workflow agent templates
+│   │   ├── agents/                 # 60 workflow agent templates
 │   │   │   ├── flowcreator/
 │   │   │   │   └── agentic_skill.md  # ** SKILL: FlowCreator AI reference **
 │   │   │   ├── flowhypervisor/
@@ -121,18 +124,22 @@ Tlamatini/                          # Git root
 │   │   │   ├── teletlamatini/      # Telegram bridge into the full Multi-Turn Tlamatini chat
 │   │   │   ├── whatstlamatini/     # WhatsApp Cloud API bridge into the full Multi-Turn Tlamatini chat
 │   │   │   ├── acpxer/             # Visual canvas counterpart of the 12 ACPX tools
-│   │   │   └── ... (59 total agent directories)
+│   │   │   └── ... (60 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py
 │   │   │
 │   │   ├── imaging/                # Dual-backend image analysis (Claude + Qwen)
-│   │   ├── services/               # filesystem.py, response_parser.py, answer_analizer.py
+│   │   ├── services/               # filesystem.py, response_parser.py, answer_analizer.py, agent_contracts.py, agent_paths.py, flow_spec.py, flow_compiler.py
+│   │   │   ├── agent_contracts.py  # AgentContract registry — per-agent connection-field shape, parametrizer source-fields, secret_paths, never_starts_targets, exclude_from_validation; lru_cached, alias-normalized, disk-discovered + builtin overrides
+│   │   │   ├── agent_paths.py      # Frozen/source-aware agent-pool path resolution + canvas-id → pool-name normalization (handles `Node Manager` → `node_manager`, `Gateway-Relayer` → `gateway_relayer`, `(2)` cardinal stripping)
+│   │   │   ├── flow_spec.py        # `FlowNode` / `FlowConnection` / `FlowSpec` dataclasses + `normalize_flow_payload()` / `flow_spec_to_legacy_json()` — schema_version=2 in-memory representation that both surfaces (canvas snapshot AND chat tool-call log) compile through
+│   │   │   └── flow_compiler.py    # `compile_flow_spec()` / `compile_flow_payload()` / `list_pool_agents_for_validation()` — wires connections per contract, redacts secrets, writes `config.yaml` + `interconnection-scheme.csv` to the session pool, used by both the Start sequence (mode='write') and the Validate dialog (mode='dry_run')
 │   │   ├── doc_generation/         # refresh_project_docs.py, mardown_to_pdf.py
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 26 JS modules (8 chat + 12 ACP + 1 ACP entry + 5 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js)
+│   │   │   ├── js/                 # 27 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 5 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations (latest: 0081_add_window_present_and_run_wait_tools)
@@ -171,7 +178,8 @@ LLM Backends: Ollama (local) | Anthropic Claude (cloud) | Qwen (vision)
 7. ACPX gate: when `acpx_enabled=False`, `agent.acpx.filter_acpx_tools()` strips every ACPX/Skill tool name from the bound tool list before the planner / executor see them, forcing the system back onto its legacy Multi-Turn / one-shot behavior
 8. Context prefetch (system/file MCP)
 9. Execution loop (tool calls, wrapped agent monitoring, ACPX child-process drain)
-10. Streaming response via WebSocket; on success, the chat header renders a **Create Flow** button that converts the executed tool-call log into a downloadable `.flw`
+10. Streaming response via WebSocket; on success, the chat header renders a **Create Flow** button that converts the executed tool-call log into a downloadable `.flw` (the browser POSTs the legacy draft to `/agent/flow_from_tool_calls/`, which normalizes it through `FlowSpec` and redacts known secret fields before download)
+11. Start sequence (canvas Start button) compiles the live snapshot through `/agent/compile_flow/` (mode=`write`) before it executes any agent — so a flow that was edited or loaded since the last write goes through the **same** Agent Contract validation as a `.flw` saved fresh, and Validate uses mode=`dry_run` to preview the same agent/config shape without touching disk
 
 ---
 
@@ -213,7 +221,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Architecture & core systems** — config, system prompt & identity, the Five Layers, application log, doc generation, database models: @docs/claude/architecture.md
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
-- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 59 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 60 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
 - **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, ACPX toolbar toggle, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, Skills system (SKILL.md packages), key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md

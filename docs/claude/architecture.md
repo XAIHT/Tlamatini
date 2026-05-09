@@ -96,6 +96,25 @@ Output artifact: `tlamatini_app_summary.pdf` in the repository root.
 
 ---
 
+## Services Layer (agent/services)
+
+The `agent/services/` package owns cross-cutting backend logic that does not fit cleanly into a chain, a tool, or an agent script. As of May 2026 it groups three concerns:
+
+**Answer / response post-processing**
+- `response_parser.py` — strips the `END-RESPONSE` sentinel and miscellaneous LLM-output artifacts; renders the per-agent **Exec Report** HTML and appends it to the answer in the order documented in `docs/claude/exec-report.md`
+- `answer_analizer.py` *(sic, typo preserved)* — LLM-based SUCCESS/FAILURE classifier used by Multi-Turn's Create-Flow gate; fails open on internal errors
+- `filesystem.py` — filesystem helpers shared across views and tools
+
+**Agent contracts & flow compilation** (commit `0bea21d`, May 2026)
+- `agent_paths.py` — Frozen/source-aware resolution of `agents/` root and the per-session pool, plus canvas-id ↔ pool-name normalization (handles `Node Manager` → `node_manager`, `Gateway-Relayer` → `gateway_relayer`, `(2)` cardinal stripping)
+- `agent_contracts.py` — `AgentContract` registry: per-agent connection-field shape (`input_field_by_slot` / `output_field_by_slot`), `parametrizer_fields`, `secret_paths`, plus `singleton` / `long_running` / `never_starts_targets` / `exclude_from_validation` flags. Discovers contracts from disk and merges builtin overrides; lru-cached and alias-normalized
+- `flow_spec.py` — `FlowNode` / `FlowConnection` / `FlowSpec` dataclasses + `normalize_flow_payload()` / `flow_spec_to_legacy_json()`. The `schemaVersion: 2` in-memory representation that both surfaces (canvas snapshot from `acp-flow-snapshot.js` AND chat tool-call log from `agent_page_chat.js`) compile through
+- `flow_compiler.py` — `compile_flow_spec()` / `compile_flow_payload()` (called from `views.compile_flow_view` and `views.flow_from_tool_calls_view`) and `list_pool_agents_for_validation()` (the new ground-truth replacement for the legacy `os.listdir` loop in Validate). Wires every connection per its contract, clears stale connection fields before re-writing, redacts `secret_paths` from `.flw` exports, and writes both `config.yaml` and `interconnection-scheme.csv` to the session pool when called with `write=True`. Coverage: `agent/test_flow_contracts.py`
+
+The frontend reaches this layer over three new endpoints: `POST /agent/compile_flow/`, `POST /agent/flow_from_tool_calls/`, and `GET /agent/agent_contracts/` — all wired in `agent/urls.py`.
+
+---
+
 ## Database Models (13 models in agent/models.py)
 
 Key models:
