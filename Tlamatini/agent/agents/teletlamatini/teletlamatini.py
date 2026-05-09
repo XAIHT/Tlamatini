@@ -821,12 +821,22 @@ def _resolve_tlamatini_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
 # Hard-coded user-facing strings (formerly configurable via 9 different keys).
 _MSG_PASSWORD_PROMPT = "🔒 Send the access password to use this bot."
 _MSG_AUTH_REJECTED = "❌ Wrong password. Try again."
-_MSG_AUTH_OK = (
-    "✅ Authenticated. Send any request — I'll forward it to Tlamatini "
-    "(Multi-Turn + Exec Report + ACPX). For example: \"What's my CPU "
-    "usage?\" or \"Use ACPX to spawn claude and ask it to summarize the "
-    "current branch\"."
-)
+def _format_auth_ok(multi_turn_enabled: bool, exec_report_enabled: bool, acpx_enabled: bool) -> str:
+    flags = []
+    if multi_turn_enabled:
+        flags.append("Multi-Turn")
+    if exec_report_enabled:
+        flags.append("Exec Report")
+    if acpx_enabled:
+        flags.append("ACPX")
+    suffix = f" ({' + '.join(flags)})" if flags else " (legacy one-shot)"
+    examples = ["\"What's my CPU usage?\""]
+    if acpx_enabled:
+        examples.append("\"Use ACPX to spawn claude and ask it to summarize the current branch\"")
+    return (
+        "✅ Authenticated. Send any request — I'll forward it to Tlamatini"
+        f"{suffix}. For example: {' or '.join(examples)}."
+    )
 _MSG_WORKING = "🔄 Working on your request..."
 _MSG_NEED_INFO = "🟡 I need a bit more detail:"
 _MSG_EMPTY_RESULT = "⚠️ Tlamatini returned an empty response."
@@ -1028,7 +1038,11 @@ async def _telegram_main_loop(config: Dict[str, Any]):
                         chat_state['phase'] = PHASE_READY
                         chat_state['conversation'] = []
                         await _persist()
-                        await client.send_message(event.chat, _MSG_AUTH_OK)
+                        await client.send_message(event.chat, _format_auth_ok(
+                            tla_cfg['multi_turn_enabled'],
+                            tla_cfg['exec_report_enabled'],
+                            tla_cfg['acpx_enabled'],
+                        ))
                     elif not password_gate:
                         # No password configured → first message acts as request
                         chat_state['phase'] = PHASE_READY
