@@ -65,6 +65,12 @@ function extractOutputConnections(config, agentType) {
     if (Array.isArray(config.target_agents_b)) {
         connections.push(...config.target_agents_b);
     }
+    if (Array.isArray(config.target_agents_l)) {
+        connections.push(...config.target_agents_l);
+    }
+    if (Array.isArray(config.target_agents_g)) {
+        connections.push(...config.target_agents_g);
+    }
 
     // Ender/Stopper/Cleaner output_agents
     if (Array.isArray(config.output_agents)) {
@@ -81,10 +87,14 @@ function extractOutputConnections(config, agentType) {
  * @returns {string[]} - Array of source agent folder names
  */
 function extractSourceConnections(config) {
+    const sources = [];
     if (Array.isArray(config.source_agents)) {
-        return [...config.source_agents];
+        sources.push(...config.source_agents);
     }
-    return [];
+    if (config.source_agent_1) sources.push(config.source_agent_1);
+    if (config.source_agent_2) sources.push(config.source_agent_2);
+    if (config.source_agent) sources.push(config.source_agent);
+    return sources;
 }
 
 /**
@@ -94,16 +104,25 @@ function extractSourceConnections(config) {
 async function runFlowValidation() {
     console.log('--- [Validate] Starting flow validation...');
 
-    // Step A: List all agents in the pool
+    // Step A: Compile the current canvas snapshot when the backend contract
+    // compiler is available. This avoids validating stale pool configs.
     let agentsData;
     try {
-        const response = await fetch('/agent/validate_flow/', {
-            method: 'GET',
-            headers: getHeaders(),
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
-        agentsData = result.agents || [];
+        if (typeof window.compileCurrentACPFlow === 'function') {
+            const result = await window.compileCurrentACPFlow({ mode: 'dry_run' });
+            agentsData = result.agents || [];
+            if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+                console.warn('--- [Validate] Flow compiler warnings:', result.warnings);
+            }
+        } else {
+            const response = await fetch('/agent/validate_flow/', {
+                method: 'GET',
+                headers: getHeaders(),
+                credentials: 'same-origin'
+            });
+            const result = await response.json();
+            agentsData = result.agents || [];
+        }
     } catch (error) {
         console.error('--- [Validate] Error fetching pool agents:', error);
         showValidationResultDialog(false, ['Failed to read agent configurations: ' + error.message]);

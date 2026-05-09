@@ -20,6 +20,13 @@ import time
 import re
 
 from .chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
+from .services.agent_contracts import (
+    get_parametrizer_source_fields,
+    list_contract_summaries,
+)
+from .services.agent_paths import pool_name_to_agent_type
+from .services.flow_compiler import compile_flow_payload, list_pool_agents_for_validation
+from .services.flow_spec import normalize_flow_payload, flow_spec_to_legacy_json
 
 
 def _normalize_agent_purpose_key(value: str) -> str:
@@ -7412,10 +7419,64 @@ def update_mouser_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
+@csrf_exempt
+@require_POST
+def compile_flow_view(request):
+    """
+    Compile a client-side flow snapshot against the backend agent contracts.
+
+    mode='dry_run' returns the same agent/config shape used by Validate
+    without writing to disk. mode='write' updates the current session pool.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}')
+        flow_data = data.get('flow') if isinstance(data.get('flow'), dict) else data
+        mode = str(data.get('mode') or '').lower()
+        write = bool(data.get('write')) or mode in {'write', 'sync', 'start'}
+        result = compile_flow_payload(flow_data, request=request, write=write)
+        return JsonResponse(result)
+    except Exception as e:
+        print(f"[FLOW COMPILE] Error compiling flow: {e}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def flow_from_tool_calls_view(request):
+    """
+    Normalize a Chat-created flow before download.
+
+    The browser still provides a legacy .flw-shaped draft during the staged
+    rollout. The backend normalizes it through FlowSpec and redacts known
+    secret fields, so the saved artifact is portable in source and frozen
+    modes.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}')
+        flow_data = data.get('flow_data') or data.get('flow')
+        if not isinstance(flow_data, dict):
+            return JsonResponse({"success": False, "message": "Missing flow_data"}, status=400)
+        spec = normalize_flow_payload(flow_data)
+        return JsonResponse({
+            "success": True,
+            "flow": flow_spec_to_legacy_json(spec, redact=True),
+        })
+    except Exception as e:
+        print(f"[CHAT FLOW] Error normalizing flow: {e}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def agent_contracts_view(request):
+    """Return the backend agent-contract registry for diagnostics/UI use."""
+    return JsonResponse({"success": True, "contracts": list_contract_summaries()})
+
+
 def validate_flow_view(request):
     """
     List all agents in the session pool and return their config.yaml data.
-    Excludes FlowCreator agents. Used by the Validate button to build
+    Excludes non-runtime validation agents. Used by the Validate button to build
     the NxN adjacency matrix on the frontend.
 
     Returns JSON: { agents: [ { folder_name, agent_type, config }, ... ] }
@@ -7427,41 +7488,8 @@ def validate_flow_view(request):
             'message': 'Pool directory not found or empty'
         }), content_type='application/json')
 
-    agents = []
     try:
-        for folder_name in sorted(os.listdir(pool_path)):
-            folder_path = os.path.join(pool_path, folder_name)
-            if not os.path.isdir(folder_path):
-                continue
-
-            # Determine agent type from folder name (strip cardinal suffix)
-            # e.g., starter_1 -> starter, monitor_log_2 -> monitor_log
-            parts = folder_name.rsplit('_', 1)
-            if len(parts) == 2 and parts[1].isdigit():
-                agent_type = parts[0]
-            else:
-                agent_type = folder_name
-
-            # Skip FlowCreator and FlowHypervisor agents
-            if agent_type.lower() in ('flowcreator', 'flowhypervisor'):
-                continue
-
-            # Read config.yaml
-            config_path = os.path.join(folder_path, 'config.yaml')
-            config = {}
-            if os.path.exists(config_path):
-                try:
-                    with open(config_path, 'r', encoding='utf-8') as f:
-                        config = yaml.safe_load(f) or {}
-                except Exception as e:
-                    print(f"[VALIDATE] Warning: Could not read config for {folder_name}: {e}")
-
-            agents.append({
-                'folder_name': folder_name,
-                'agent_type': agent_type,
-                'config': config
-            })
-
+        agents = list_pool_agents_for_validation(request)
     except Exception as e:
         print(f"[VALIDATE] Error listing pool agents: {e}")
         return HttpResponse(json.dumps({
@@ -8206,27 +8234,7 @@ def update_parametrizer_connection_view(request, agent_name):
 # Every section-generating agent uses the unified INI_SECTION / END_SECTION
 # format.  KV header fields appear before the first blank line; content
 # after the blank line is stored as 'response_body'.
-PARAMETRIZER_SOURCE_OUTPUT_FIELDS = {
-    'apirer': ['url', 'response_body'],
-    'gitter': ['git_command', 'response_body'],
-    'kuberneter': ['parameters', 'status', 'response_body'],
-    'crawler': ['label', 'model', 'url', 'crawl_type', 'content_mode', 'response_body'],
-    'summarizer': ['model', 'source', 'response_body'],
-    'file_interpreter': ['file_path', 'mode', 'response_body'],
-    'image_interpreter': ['file_path', 'response_body'],
-    'file_extractor': ['file_path', 'response_body'],
-    'prompter': ['model', 'response_body'],
-    'flowcreator': ['model', 'response_body'],
-    'kyber_keygen': ['public_key', 'private_key'],
-    'kyber_cipher': ['encapsulation', 'initialization_vector', 'cipher_text'],
-    'kyber_decipher': ['deciphered_buffer'],
-    'gatewayer': ['event_id', 'event_type', 'session_id', 'correlation_id', 'content_type', 'method', 'path', 'body'],
-    'gateway_relayer': ['event_type', 'delivery_id', 'action', 'ref', 'repository', 'sender', 'body'],
-    'googler': ['url', 'status', 'content_length', 'response_body'],
-    'acpxer': ['agent_id', 'session_id', 'transport', 'settle', 'transcript_path', 'response_body'],
-    'shoter': ['output_path', 'output_dir', 'filename', 'response_body'],
-    'mouser': ['movement_type', 'end_posx', 'end_posy', 'button_click', 'clicked', 'located_via', 'response_body'],
-}
+PARAMETRIZER_SOURCE_OUTPUT_FIELDS = get_parametrizer_source_fields()
 
 # Allowed source agent base names
 PARAMETRIZER_ALLOWED_SOURCES = set(PARAMETRIZER_SOURCE_OUTPUT_FIELDS.keys())
@@ -8289,11 +8297,9 @@ def _flatten_parametrizer_target_config(config, excluded_keys, parent_key=''):
 
 def _get_source_base_name(agent_pool_name):
     """Extract base agent name from pool name for Parametrizer validation."""
-    for known_base in PARAMETRIZER_ALLOWED_SOURCES:
-        if agent_pool_name == known_base or agent_pool_name.startswith(known_base + '_'):
-            suffix = agent_pool_name[len(known_base):]
-            if suffix == '' or (suffix.startswith('_') and suffix[1:].isdigit()):
-                return known_base
+    source_base = pool_name_to_agent_type(agent_pool_name)
+    if source_base in PARAMETRIZER_ALLOWED_SOURCES:
+        return source_base
     return None
 
 

@@ -250,7 +250,7 @@ const AGENT_TYPE_CLASS_MAP = {
 const agentToolIconStyleCache = new Map();
 
 function normalizeAgentTypeName(agentName) {
-    return String(agentName || '').trim().toLowerCase().replace(/\s+/g, '-');
+    return String(agentName || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
 }
 
 function getAgentTypeClass(agentName) {

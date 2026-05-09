@@ -198,6 +198,20 @@ If you need **parallel fan-out**, **many targets from one source**, or **many so
 
 ---
 
+### Agent Contract / Flow Compiler Rule
+
+Tlamatini now compiles Chat-created flows and ACP canvas snapshots through a backend agent contract registry before validation or start. When generating a flow:
+
+- Use canonical template names and pool names only: `starter_1`, `executer_1`, `gateway_relayer_1`, etc.
+- Do not embed absolute source-mode paths such as `C:/Development/...` or installed paths beside `Tlamatini.exe` in `.flw` output.
+- Preserve Parametrizer mappings as flow artifacts and as `_parametrizer_mappings` in the Parametrizer node config so the compiler can regenerate `interconnection-scheme.csv`.
+- Treat TeleTlamatini and WhatsTlamatini as long-running remote chat ingress super-agents. They can trigger `target_agents` after each completed remote request, but they are not normal Chat-wrapped tools and should not be used as Parametrizer sources unless a future version emits structured `INI_SECTION_*` segments.
+- For Ender, `source_agents` are visual inputs, `target_agents` are the kill list, and `output_agents` are the cleanup/backup agents launched after termination.
+
+This rule exists so the same flow works in both source mode and frozen installed mode.
+
+---
+
 ## Pause, Resume & Reanimation Mechanics
 
 Flows have three runtime states: **STOPPED**, **RUNNING**, and **PAUSED**. Understanding these transitions is critical for designing agents that behave correctly across interruptions.

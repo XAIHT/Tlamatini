@@ -25,30 +25,35 @@ if (saveBtn) {
             filename += '.flw';
         }
 
-        const nodes = Array.from(document.querySelectorAll('.canvas-item'));
-        const nodeMap = new Map();
-        const nodesData = [];
+        let data;
+        if (typeof window.buildACPFlowSnapshot === 'function') {
+            data = window.buildACPFlowSnapshot();
+        } else {
+            const nodes = Array.from(document.querySelectorAll('.canvas-item'));
+            const nodeMap = new Map();
+            const nodesData = [];
 
-        nodes.forEach((node, index) => {
-            nodeMap.set(node, index);
-            const agentName = node.dataset.agentName || node.firstChild.textContent;
-            nodesData.push({
-                text: agentName,
-                left: node.style.left,
-                top: node.style.top,
-                agentPurpose: node.dataset.agentPurpose || getAgentPurposeForName(agentName),
-                configData: ACP.nodeConfigs.get(node.id) || null
+            nodes.forEach((node, index) => {
+                nodeMap.set(node, index);
+                const agentName = node.dataset.agentName || node.firstChild.textContent;
+                nodesData.push({
+                    text: agentName,
+                    left: node.style.left,
+                    top: node.style.top,
+                    agentPurpose: node.dataset.agentPurpose || getAgentPurposeForName(agentName),
+                    configData: ACP.nodeConfigs.get(node.id) || null
+                });
             });
-        });
 
-        const connectionsData = ACP.connections.map(conn => ({
-            sourceIndex: nodeMap.get(conn.source),
-            targetIndex: nodeMap.get(conn.target),
-            inputSlot: conn.inputSlot || 0,
-            outputSlot: conn.outputSlot || 0
-        }));
+            const connectionsData = ACP.connections.map(conn => ({
+                sourceIndex: nodeMap.get(conn.source),
+                targetIndex: nodeMap.get(conn.target),
+                inputSlot: conn.inputSlot || 0,
+                outputSlot: conn.outputSlot || 0
+            }));
 
-        const data = { nodes: nodesData, connections: connectionsData };
+            data = { nodes: nodesData, connections: connectionsData };
+        }
 
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -138,6 +143,27 @@ if (fileCloseBtn) {
 // ========================================
 // LOAD DIAGRAM
 // ========================================
+
+function getSavedParametrizerMappings(data, nodeData, resolvedNodeId, configData) {
+    if (configData && Array.isArray(configData._parametrizer_mappings)) {
+        return configData._parametrizer_mappings;
+    }
+    const artifacts = data && data.artifacts ? data.artifacts : {};
+    const stores = [
+        artifacts.parametrizerMappings,
+        artifacts.parametrizer_mappings,
+        artifacts.parametrizerSchemes,
+        artifacts.parametrizer_schemes
+    ];
+    const keys = [resolvedNodeId, nodeData && nodeData.id, nodeData && nodeData.text].filter(Boolean);
+    for (const store of stores) {
+        if (!store || typeof store !== 'object') continue;
+        for (const key of keys) {
+            if (Array.isArray(store[key])) return store[key];
+        }
+    }
+    return [];
+}
 
 /**
  * Load a diagram from a parsed JSON data object.
@@ -262,6 +288,21 @@ async function loadDiagram(data) {
                     if (response.ok) {
                         const result = await response.json();
                         console.log(`--- Deployed agent ${newItem.id} with saved config:`, result.path);
+                        if (lowerName === 'parametrizer') {
+                            const mappings = getSavedParametrizerMappings(data, nodeData, newItem.id, nodeData.configData);
+                            if (mappings.length > 0) {
+                                await fetch(`/agent/save_parametrizer_scheme/${newItem.id}/`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', ...getHeaders() },
+                                    credentials: 'same-origin',
+                                    body: JSON.stringify({ mappings })
+                                });
+                                ACP.nodeConfigs.set(newItem.id, {
+                                    ...(ACP.nodeConfigs.get(newItem.id) || {}),
+                                    _parametrizer_mappings: mappings
+                                });
+                            }
+                        }
                     } else {
                         console.error(`--- Failed to deploy agent ${newItem.id}:`, response.statusText);
                     }
@@ -429,8 +470,10 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'file-interpreter': await updateFileInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'gatewayer': await updateGatewayerConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'gateway relayer': await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'node manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'gateway relayer':
+                case 'gateway-relayer': await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'node manager':
+                case 'node-manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'file-creator': await updateFileCreatorConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'file-extractor': await updateFileExtractorConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kyber-keygen': await updateKyberKeygenConnection(sourceId, targetId, 'add', 'target'); break;
@@ -496,8 +539,10 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'file-interpreter': await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gatewayer': await updateGatewayerConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'gateway relayer': await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'node manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'gateway relayer':
+                case 'gateway-relayer': await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'node manager':
+                case 'node-manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-creator': await updateFileCreatorConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-extractor': await updateFileExtractorConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kyber-keygen': await updateKyberKeygenConnection(targetId, sourceId, 'add', 'source'); break;

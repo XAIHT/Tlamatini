@@ -408,7 +408,7 @@ async function _missingAgents(toolCallsLog) {
  *    the template's legitimate default value. Always prefer omission to
  *    an empty string.
  */
-function _generateAndDownloadFlow(toolCallsLog) {
+async function _generateAndDownloadFlow(toolCallsLog) {
     // 1) Keep EVERY successful tool call — preserves order + fidelity.
     //    Each entry → its own flow node; no dedup by agent type.
     const successfulCalls = (toolCallsLog || [])
@@ -502,7 +502,8 @@ function _generateAndDownloadFlow(toolCallsLog) {
         });
     }
 
-    const flowData = { nodes: nodes, connections: connections };
+    let flowData = { nodes: nodes, connections: connections };
+    flowData = await _normalizeChatFlowBeforeDownload(toolCallsLog, flowData);
 
     // 5) Prompt user for filename and trigger download
     let filename = prompt('Enter a name for the flow file:', 'multi-turn-flow');
@@ -523,6 +524,28 @@ function _generateAndDownloadFlow(toolCallsLog) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     console.log('--- Create Flow: downloaded ' + filename);
+}
+
+async function _normalizeChatFlowBeforeDownload(toolCallsLog, flowData) {
+    try {
+        const response = await fetch('/agent/flow_from_tool_calls/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': typeof getCsrfToken === 'function' ? getCsrfToken() : ''
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ tool_calls_log: toolCallsLog || [], flow_data: flowData })
+        });
+        const result = await response.json();
+        if (response.ok && result.success && result.flow) {
+            return result.flow;
+        }
+        console.warn('--- Create Flow: backend normalization unavailable, using legacy flow:', result);
+    } catch (err) {
+        console.warn('--- Create Flow: backend normalization failed, using legacy flow:', err);
+    }
+    return flowData;
 }
 
 /**

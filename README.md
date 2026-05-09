@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> A locally-deployed AI developer assistant: hybrid RAG (FAISS + BM25), Multi-Turn tool orchestration, ACPX delegation to external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …), and a visual workflow designer with **59 drag-and-drop agents**.
+> A locally-deployed AI developer assistant: hybrid RAG (FAISS + BM25), Multi-Turn tool orchestration, ACPX delegation to external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …), and a visual workflow designer with **60 drag-and-drop agents**.
 >
 > Site: **<https://xaiht.org>** · One-minute teaser: **<https://youtu.be/a51miZ1JIe0>**
 >
@@ -32,15 +32,17 @@
   - [3.6. Tutorial: the **Exec Report** toggle](#36-tutorial-the-exec-report-toggle)
   - [3.7. Tutorial: the **ACPX** toggle](#37-tutorial-the-acpx-toggle)
   - [3.8. From chat to flow: the **Create Flow** button](#38-from-chat-to-flow-the-create-flow-button)
+  - [3.9. Why Chat-created flows are safer now](#39-why-chat-created-flows-are-safer-now)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
   - [4.3. Saving and loading `.flw` files](#43-saving-and-loading-flw-files)
-  - [4.4. Pause, Resume, Stop](#44-pause-resume-stop)
-  - [4.5. FlowHypervisor (watchdog)](#45-flowhypervisor-watchdog)
-  - [4.6. FlowCreator (let an LLM design the flow)](#46-flowcreator-let-an-llm-design-the-flow)
-  - [4.7. Parametrizer (chain outputs into the next agent's config)](#47-parametrizer-chain-outputs-into-the-next-agents-config)
-  - [4.8. Gatewayer (external triggers)](#48-gatewayer-external-triggers)
+  - [4.4. Validate and Start now compile the live canvas](#44-validate-and-start-now-compile-the-live-canvas)
+  - [4.5. Pause, Resume, Stop](#45-pause-resume-stop)
+  - [4.6. FlowHypervisor (watchdog)](#46-flowhypervisor-watchdog)
+  - [4.7. FlowCreator (let an LLM design the flow)](#47-flowcreator-let-an-llm-design-the-flow)
+  - [4.8. Parametrizer (chain outputs into the next agent's config)](#48-parametrizer-chain-outputs-into-the-next-agents-config)
+  - [4.9. Gatewayer (external triggers)](#49-gatewayer-external-triggers)
 - [5. ACPX — External Coding-Agent CLIs as Tools](#5-acpx--external-coding-agent-clis-as-tools)
   - [5.1. What ACPX is](#51-what-acpx-is)
   - [5.2. Supported `agent_id`s and transports](#52-supported-agent_ids-and-transports)
@@ -55,6 +57,7 @@
   - [6.3. Step 2 — `build_uninstaller.py`](#63-step-2--build_uninstallerpy)
   - [6.4. Step 3 — `build_installer.py`](#64-step-3--build_installerpy)
   - [6.5. What the installer does on the end-user box](#65-what-the-installer-does-on-the-end-user-box)
+  - [6.6. Source mode vs Frozen mode: why flows still work](#66-source-mode-vs-frozen-mode-why-flows-still-work)
 - [7. Configuration (`Tlamatini/agent/config.json`)](#7-configuration-tlamatiniagentconfigjson)
   - [7.1. LLM and unified-agent](#71-llm-and-unified-agent)
   - [7.2. RAG](#72-rag)
@@ -64,14 +67,16 @@
   - [8.1. Big picture](#81-big-picture)
   - [8.2. The five layers](#82-the-five-layers)
   - [8.3. Multi-Turn execution pipeline](#83-multi-turn-execution-pipeline)
-  - [8.4. Agent catalog (the 59 types, by family)](#84-agent-catalog-the-59-types-by-family)
+  - [8.4. Agent contracts and the Flow Compiler](#84-agent-contracts-and-the-flow-compiler)
+  - [8.5. Agent catalog (the 60 types, by family)](#85-agent-catalog-the-60-types-by-family)
 - [9. Troubleshooting](#9-troubleshooting)
   - [9.1. Ollama / models](#91-ollama--models)
   - [9.2. RAG / context](#92-rag--context)
   - [9.3. Multi-Turn / planner](#93-multi-turn--planner)
-  - [9.4. ACPX / external CLIs](#94-acpx--external-clis)
-  - [9.5. Frozen build / installer](#95-frozen-build--installer)
-  - [9.6. Logs to consult first](#96-logs-to-consult-first)
+  - [9.4. Chat-created flows and ACP validation](#94-chat-created-flows-and-acp-validation)
+  - [9.5. ACPX / external CLIs](#95-acpx--external-clis)
+  - [9.6. Frozen build / installer](#96-frozen-build--installer)
+  - [9.7. Logs to consult first](#97-logs-to-consult-first)
 - [10. Contributing & License](#10-contributing--license)
   - [10.1. Contributing](#101-contributing)
   - [10.2. Acknowledgments](#102-acknowledgments)
@@ -83,7 +88,7 @@
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, and a drag-and-drop workflow designer with 59 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, and a drag-and-drop workflow designer with 60 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -338,6 +343,29 @@ You can re-open it in `/agentic_control_panel/` and run it as an unattended work
 
 The button gates on four conditions: Multi-Turn was on, ≥1 mappable tool succeeded, an LLM-based classifier marked the answer SUCCESS (fails open on internal error), and the user is logged in.
 
+### 3.9. Why Chat-created flows are safer now
+
+Older Chat-created `.flw` files were generated almost entirely in the browser. That worked for simple chains, but it meant the browser had to remember many backend facts:
+
+- what each agent is called on disk;
+- which config field means "my input";
+- which config field means "my output";
+- which agents are special, like Ender or Parametrizer;
+- which values are safe to save into a portable `.flw` file.
+
+That is a lot of responsibility for a button.
+
+Now the browser still builds the first draft, but the backend normalizes it through the **Agent Contract Registry** before the file is downloaded. In plain English: Tlamatini checks the flow against the same agent rules that ACP uses to run it.
+
+What this means for you:
+
+1. Repeated tools stay repeated. If Multi-Turn ran Executer five times, the flow contains five Executer nodes, not one overwritten node.
+2. Agent names are normalized. Names like `Kyber-KeyGen`, `kyber_keygen`, and `Kyber Keygen` are resolved to the right template.
+3. Secrets are protected where the contract knows about them. Remote chat super-agents such as TeleTlamatini and WhatsTlamatini have credential-like fields redacted on export.
+4. The `.flw` file stays portable. It does not store `C:/Development/...` or the installed app path beside `Tlamatini.exe`.
+
+If backend normalization is temporarily unavailable, the old browser generator remains as a fallback so the button does not become useless.
+
 ---
 
 ## 4. Visual Workflow Designer (`/agentic_control_panel/`)
@@ -384,7 +412,65 @@ Goal: run a shell command, take a screenshot, end.
 
 **💾 Save** — pick a name. You get a JSON file with positions, configs, and connections. Distribute to colleagues; they **📂 Load** the same file and run the same flow. `.flw` is also what the chat's **Create Flow** button emits.
 
-### 4.4. Pause, Resume, Stop
+A `.flw` file is meant to describe the **idea of the flow**, not the exact machine it was created on. A good `.flw` says:
+
+- "There is a Starter here."
+- "There is an Executer there."
+- "Starter connects to Executer."
+- "Executer uses this script."
+
+It should **not** say:
+
+- "This flow only works from `C:/Development/Tlamatini/...`."
+- "This flow only works from the install folder on Angel's PC."
+- "This Parametrizer mapping exists somewhere in a temporary pool directory, good luck."
+
+Saved flows now carry a small `schemaVersion` plus an `artifacts` section. The most important artifact today is Parametrizer mappings. When you save a flow with a Parametrizer, Tlamatini keeps the mapping in the `.flw`. When you load the flow later, Tlamatini recreates `interconnection-scheme.csv` for that Parametrizer in the current session pool.
+
+For a beginner, the practical rule is simple: **if you configured Parametrizer with the mapping dialog, Save/Load should remember that mapping.**
+
+### 4.4. Validate and Start now compile the live canvas
+
+This is the most important reliability change in the visual designer.
+
+Before, Validate mostly read whatever agent configs already existed in the pool directory. That could become stale:
+
+1. You drag nodes around.
+2. You load a `.flw`.
+3. You edit a config.
+4. You reconnect an edge.
+5. The pool directory still contains an older `config.yaml`.
+6. Validate or Start reads that older file and acts confused.
+
+Now ACP takes a fresh **snapshot of the canvas** before validation and start. The snapshot includes:
+
+- every visible node;
+- each node's position;
+- every connection;
+- input and output slot numbers;
+- current in-browser config;
+- Parametrizer mappings.
+
+The backend then compiles that snapshot into real pool `config.yaml` files using the Agent Contract Registry. In beginner terms: **the picture on the screen becomes the source of truth.**
+
+What happens when you click **✓ Validate**:
+
+1. Browser captures the live canvas.
+2. Backend compiles it in dry-run mode.
+3. Frontend validates the compiled configs.
+4. Nothing is written to disk just for validation.
+
+What happens when you click **▶ Start**:
+
+1. Browser captures the live canvas.
+2. Backend compiles it in write mode.
+3. Pool folders/configs are updated.
+4. Logs are cleared.
+5. Starter agents launch.
+
+This removes a whole class of "I swear I connected it correctly, why is it running the old thing?" problems.
+
+### 4.5. Pause, Resume, Stop
 
 | Button | What happens |
 |---|---|
@@ -394,11 +480,11 @@ Goal: run a shell command, take a screenshot, end.
 
 This is why long-running workflows (Crawler scraping 10k URLs, Parametrizer iterating segments) survive pauses.
 
-### 4.5. FlowHypervisor (watchdog)
+### 4.6. FlowHypervisor (watchdog)
 
 Click **⚠ Hypervisor** — a system FlowHypervisor agent starts watching every running agent. It is an LLM that reads each agent's log, builds an NxN connection matrix from the canvas wiring, and emits exactly **`OK`** or **`ATTENTION NEEDED { explanation }`**. If it raises, the browser pops an alert. Add custom rules to `user_instructions` in its config.
 
-### 4.6. FlowCreator (let an LLM design the flow)
+### 4.7. FlowCreator (let an LLM design the flow)
 
 Drag **FlowCreator**, double-click, and type a natural-language objective:
 
@@ -406,7 +492,7 @@ Drag **FlowCreator**, double-click, and type a natural-language objective:
 
 Click **Generate**. FlowCreator reads `agentic_skill.md` (its design playbook), produces a JSON flow description, and renders agents + connections onto the canvas. Tweak and run.
 
-### 4.7. Parametrizer (chain outputs into the next agent's config)
+### 4.8. Parametrizer (chain outputs into the next agent's config)
 
 Tlamatini agents communicate through **log files** and **`config.yaml`**. Parametrizer is the bridge: it reads structured segments from a source agent's log, injects mapped values into a target agent's `config.yaml`, runs the target, restores the config, advances the cursor, repeats.
 
@@ -431,7 +517,21 @@ Apirer ─► Parametrizer ─► Kyber-Cipher
 
 Apirer hits 3 endpoints → 3 `INI_SECTION_APIRER<<<` blocks → Parametrizer maps `response_body → buffer` → Kyber-Cipher runs 3 times, encrypting each body. No manual config editing. Pause-safe. Single-lane queue.
 
-### 4.8. Gatewayer (external triggers)
+The mapping dialog is now part of normal flow persistence:
+
+1. Connect exactly one source into Parametrizer.
+2. Connect Parametrizer to exactly one target.
+3. Double-click Parametrizer.
+4. Click a source field on the left.
+5. Click a target config field or target marker on the right.
+6. Save mappings.
+7. Save the `.flw`.
+
+When the `.flw` is loaded later, Tlamatini restores the mappings and writes the Parametrizer's `interconnection-scheme.csv` again. You do not need to remember which pool directory had the CSV.
+
+One limitation is intentional: one Parametrizer is a **single-lane queue** from one source to one target. If one API response must feed Emailer and File-Creator, use two Parametrizers.
+
+### 4.9. Gatewayer (external triggers)
 
 Two trigger modes:
 
@@ -620,6 +720,34 @@ The final distributable is `dist/Tlamatini_Release/` — zip the folder, share i
 8. Cleans the PyInstaller bundle path from helper subprocess environments.
 
 Frozen mode resolves `config.json` from the executable directory (or `CONFIG_PATH` env var). Template-agent discovery checks both `<install_dir>/agents` and `<install_dir>/Tlamatini/agent/agents`. `_resolve_python_executable()` tries `PYTHON_HOME` → bundled `python.exe` → PATH.
+
+### 6.6. Source mode vs Frozen mode: why flows still work
+
+Tlamatini has two operational modes:
+
+| Mode | What it means | Where agent templates live |
+|---|---|---|
+| **Source / Not-Frozen** | You run `python Tlamatini/manage.py runserver --noreload` from a cloned repo. | `Tlamatini/agent/agents/` |
+| **Frozen / Installed** | You run the packaged `Tlamatini.exe` from the installer. | `<install_dir>/agents/` |
+
+The new Flow Compiler was built to respect both modes. It does **not** assume your repo is at `C:/Development/Tlamatini`, and it does **not** assume the installed app lives in a specific Program Files folder.
+
+The compiler asks Tlamatini at runtime:
+
+1. "Am I frozen?"
+2. "Where are the agent templates?"
+3. "Where is this user's session pool?"
+4. "Which agent contract applies to this node?"
+
+Then it writes only into the current pool:
+
+```text
+agents/pools/<session_id>/<agent_name_n>/config.yaml
+```
+
+That path exists in both modes. In source mode it is under the repo's `Tlamatini/agent/agents/pools/`. In frozen mode it is under the installed app's `agents/pools/`.
+
+For users, the takeaway is simpler: **a `.flw` saved in source mode should load in an installed build, and a `.flw` saved in an installed build should load back in source mode.**
 
 ---
 

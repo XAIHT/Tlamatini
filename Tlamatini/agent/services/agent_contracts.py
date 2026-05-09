@@ -1,0 +1,266 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from dataclasses import dataclass, field
+from functools import lru_cache
+from typing import Any
+
+import yaml
+
+from .agent_paths import (
+    display_name_from_agent_type,
+    get_agents_root,
+    normalize_agent_type,
+)
+
+
+DEFAULT_CONNECTION_FIELDS = (
+    "source_agents",
+    "target_agents",
+    "output_agents",
+    "source_agent",
+    "target_agent",
+    "source_agent_1",
+    "source_agent_2",
+    "target_agents_a",
+    "target_agents_b",
+    "target_agents_l",
+    "target_agents_g",
+)
+
+
+@dataclass(frozen=True)
+class AgentContract:
+    agent_type: str
+    display_name: str = ""
+    aliases: tuple[str, ...] = field(default_factory=tuple)
+    source_list_field: str = "source_agents"
+    output_field_by_slot: dict[int, str] = field(default_factory=lambda: {0: "target_agents"})
+    input_field_by_slot: dict[int, str] = field(default_factory=lambda: {0: "source_agents"})
+    connection_fields: tuple[str, ...] = DEFAULT_CONNECTION_FIELDS
+    no_input: bool = False
+    no_output: bool = False
+    exclude_from_validation: bool = False
+    singleton: bool = False
+    long_running: bool = False
+    never_starts_targets: bool = False
+    parametrizer_fields: tuple[str, ...] = field(default_factory=tuple)
+    secret_paths: tuple[str, ...] = field(default_factory=tuple)
+    special: str = ""
+
+    def __post_init__(self):
+        object.__setattr__(self, "agent_type", normalize_agent_type(self.agent_type))
+        if not self.display_name:
+            object.__setattr__(self, "display_name", display_name_from_agent_type(self.agent_type))
+
+    @property
+    def script_name(self) -> str:
+        return f"{self.agent_type}.py"
+
+    @property
+    def normalized_aliases(self) -> tuple[str, ...]:
+        values = {self.agent_type, normalize_agent_type(self.display_name)}
+        values.update(normalize_agent_type(alias) for alias in self.aliases)
+        return tuple(sorted(value for value in values if value))
+
+
+def _contract(agent_type: str, **kwargs: Any) -> AgentContract:
+    return AgentContract(agent_type=agent_type, **kwargs)
+
+
+_PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
+    "apirer": ("url", "response_body"),
+    "gitter": ("git_command", "response_body"),
+    "kuberneter": ("parameters", "status", "response_body"),
+    "crawler": ("label", "model", "url", "crawl_type", "content_mode", "response_body"),
+    "summarizer": ("model", "source", "response_body"),
+    "file_interpreter": ("file_path", "mode", "response_body"),
+    "image_interpreter": ("file_path", "response_body"),
+    "file_extractor": ("file_path", "response_body"),
+    "prompter": ("model", "response_body"),
+    "flowcreator": ("model", "response_body"),
+    "kyber_keygen": ("public_key", "private_key"),
+    "kyber_cipher": ("encapsulation", "initialization_vector", "cipher_text"),
+    "kyber_decipher": ("deciphered_buffer",),
+    "gatewayer": ("event_id", "event_type", "session_id", "correlation_id", "content_type", "method", "path", "body"),
+    "gateway_relayer": ("event_type", "delivery_id", "action", "ref", "repository", "sender", "body"),
+    "googler": ("url", "status", "content_length", "response_body"),
+    "acpxer": ("agent_id", "session_id", "transport", "settle", "transcript_path", "response_body"),
+    "shoter": ("output_path", "output_dir", "filename", "response_body"),
+    "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
+}
+
+
+_BUILTIN_CONTRACTS: dict[str, AgentContract] = {
+    "starter": _contract("starter", no_input=True),
+    "flowcreator": _contract("flowcreator", no_input=True, no_output=True, singleton=True, exclude_from_validation=True),
+    "flowhypervisor": _contract("flowhypervisor", no_input=True, no_output=True, singleton=True, exclude_from_validation=True, long_running=True),
+    "ender": _contract("ender", output_field_by_slot={0: "output_agents"}, special="ender"),
+    "stopper": _contract("stopper", output_field_by_slot={0: "output_agents"}, never_starts_targets=True),
+    "cleaner": _contract("cleaner", output_field_by_slot={0: "output_agents"}, never_starts_targets=True),
+    "asker": _contract("asker", output_field_by_slot={0: "target_agents_a", 1: "target_agents_a", 2: "target_agents_b"}),
+    "forker": _contract("forker", output_field_by_slot={0: "target_agents_a", 1: "target_agents_a", 2: "target_agents_b"}),
+    "counter": _contract("counter", output_field_by_slot={0: "target_agents_l", 1: "target_agents_l", 2: "target_agents_g"}),
+    "and": _contract("and", input_field_by_slot={0: "source_agent_1", 1: "source_agent_1", 2: "source_agent_2"}),
+    "or": _contract("or", input_field_by_slot={0: "source_agent_1", 1: "source_agent_1", 2: "source_agent_2"}),
+    "parametrizer": _contract("parametrizer", special="parametrizer"),
+    "teletlamatini": _contract(
+        "teletlamatini",
+        long_running=True,
+        special="remote_chat_ingress",
+        secret_paths=(
+            "telegram.api_hash",
+            "telegram.bot_token",
+            "password",
+            "tlamatini.password",
+        ),
+    ),
+    "whatstlamatini": _contract(
+        "whatstlamatini",
+        long_running=True,
+        special="remote_chat_ingress",
+        secret_paths=(
+            "whatsapp.app_secret",
+            "whatsapp.verify_token",
+            "whatsapp.access_token",
+            "password",
+            "tlamatini.password",
+        ),
+    ),
+    "telegramrx": _contract("telegramrx", long_running=True, never_starts_targets=True),
+    "gatewayer": _contract("gatewayer", long_running=True),
+    "gateway_relayer": _contract("gateway_relayer", long_running=True, aliases=("gateway-relayer", "gateway relayer")),
+    "node_manager": _contract("node_manager", long_running=True, aliases=("node-manager", "node manager")),
+}
+
+
+_NEVER_START_TARGETS = {
+    "emailer",
+    "monitor_log",
+    "monitor_netstat",
+    "recmailer",
+    "whatsapper",
+    "telegramrx",
+}
+
+
+def _read_template_config(agent_type: str) -> dict[str, Any]:
+    config_path = get_agents_root() / agent_type / "config.yaml"
+    if not config_path.exists():
+        return {}
+    try:
+        with config_path.open("r", encoding="utf-8") as handle:
+            data = yaml.safe_load(handle) or {}
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _discover_contracts_from_disk() -> dict[str, AgentContract]:
+    root = get_agents_root()
+    discovered: dict[str, AgentContract] = {}
+    if not root.exists():
+        return discovered
+
+    for item in sorted(root.iterdir()):
+        if not item.is_dir() or item.name.lower() in {"pools", "__pycache__"}:
+            continue
+        agent_type = normalize_agent_type(item.name)
+        config = _read_template_config(agent_type)
+        output_fields = {0: "target_agents"}
+        input_fields = {0: "source_agents"}
+        if "output_agents" in config and "target_agents" not in config:
+            output_fields = {0: "output_agents"}
+
+        discovered[agent_type] = _contract(
+            agent_type,
+            output_field_by_slot=output_fields,
+            input_field_by_slot=input_fields,
+            never_starts_targets=agent_type in _NEVER_START_TARGETS,
+            parametrizer_fields=_PARAMETRIZER_OUTPUT_FIELDS.get(agent_type, ()),
+        )
+    return discovered
+
+
+@lru_cache(maxsize=1)
+def get_agent_contracts() -> dict[str, AgentContract]:
+    contracts = _discover_contracts_from_disk()
+    for agent_type, contract in _BUILTIN_CONTRACTS.items():
+        parametrizer_fields = _PARAMETRIZER_OUTPUT_FIELDS.get(agent_type, contract.parametrizer_fields)
+        if parametrizer_fields != contract.parametrizer_fields:
+            contract = AgentContract(
+                **{
+                    **contract.__dict__,
+                    "parametrizer_fields": parametrizer_fields,
+                }
+            )
+        contracts[agent_type] = contract
+    return contracts
+
+
+@lru_cache(maxsize=1)
+def _alias_map() -> dict[str, str]:
+    result: dict[str, str] = {}
+    for agent_type, contract in get_agent_contracts().items():
+        for alias in contract.normalized_aliases:
+            result[alias] = agent_type
+    return result
+
+
+def resolve_agent_type(value: str) -> str:
+    normalized = normalize_agent_type(value)
+    return _alias_map().get(normalized, normalized)
+
+
+def get_agent_contract(value: str) -> AgentContract:
+    agent_type = resolve_agent_type(value)
+    contracts = get_agent_contracts()
+    if agent_type in contracts:
+        return contracts[agent_type]
+    return _contract(agent_type)
+
+
+def get_parametrizer_source_fields() -> dict[str, list[str]]:
+    return {
+        agent_type: list(contract.parametrizer_fields)
+        for agent_type, contract in get_agent_contracts().items()
+        if contract.parametrizer_fields
+    }
+
+
+def redact_config_for_export(agent_type: str, config: dict[str, Any]) -> dict[str, Any]:
+    contract = get_agent_contract(agent_type)
+    if not contract.secret_paths:
+        return dict(config)
+
+    redacted = deepcopy(config)
+    for dotted_path in contract.secret_paths:
+        parts = dotted_path.split(".")
+        parent: Any = redacted
+        for part in parts[:-1]:
+            if not isinstance(parent, dict):
+                parent = None
+                break
+            parent = parent.get(part)
+        if isinstance(parent, dict) and parts[-1] in parent and parent[parts[-1]]:
+            parent[parts[-1]] = "__REDACTED__"
+    return redacted
+
+
+def list_contract_summaries() -> list[dict[str, Any]]:
+    summaries = []
+    for contract in sorted(get_agent_contracts().values(), key=lambda c: c.agent_type):
+        summaries.append(
+            {
+                "agent_type": contract.agent_type,
+                "display_name": contract.display_name,
+                "aliases": list(contract.normalized_aliases),
+                "no_input": contract.no_input,
+                "no_output": contract.no_output,
+                "exclude_from_validation": contract.exclude_from_validation,
+                "long_running": contract.long_running,
+                "parametrizer_fields": list(contract.parametrizer_fields),
+                "special": contract.special,
+            }
+        )
+    return summaries

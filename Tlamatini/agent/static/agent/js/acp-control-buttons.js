@@ -59,8 +59,27 @@ async function executeStartSequence() {
         console.warn('--- [Start Sequence] Warning: Error killing processes (continuing anyway):', killError);
     }
 
-    // Step 2: Ensure ALL canvas agents exist in pool
-    console.log('--- [Start Sequence] 2. Ensuring all canvas agents exist in pool directory...');
+    // Step 2: Compile the live canvas snapshot into the session pool. This
+    // keeps Start from running stale config.yaml files after edits/load.
+    if (typeof window.compileCurrentACPFlow === 'function') {
+        console.log('--- [Start Sequence] 2. Compiling current flow snapshot...');
+        try {
+            const compileResult = await window.compileCurrentACPFlow({ mode: 'write' });
+            if (Array.isArray(compileResult.warnings) && compileResult.warnings.length > 0) {
+                console.warn('--- [Start Sequence] Flow compiler warnings:', compileResult.warnings);
+            }
+        } catch (compileError) {
+            console.error('--- [Start Sequence] Flow compile failed:', compileError);
+            alert('Could not compile the current flow before starting: ' + compileError.message);
+            isBusyProcessing = false;
+            updateControlButtonStates();
+            try { $("#starter-execution-dialog").dialog("close"); } catch (_err) {}
+            return;
+        }
+    }
+
+    // Step 3: Ensure ALL canvas agents exist in pool and scripts are fresh
+    console.log('--- [Start Sequence] 3. Ensuring all canvas agents exist in pool directory...');
     const allCanvasItems = document.querySelectorAll('#submonitor-container .canvas-item');
     const deployPromises = Array.from(allCanvasItems).map(async (item) => {
         try {
@@ -83,8 +102,8 @@ async function executeStartSequence() {
     await Promise.all(deployPromises);
     console.log('--- [Start Sequence] Agent existence check complete');
 
-    // Step 3: Clear all agent log files before starting
-    console.log('--- [Start Sequence] 3. Clearing all agent log files...');
+    // Step 4: Clear all agent log files before starting
+    console.log('--- [Start Sequence] 4. Clearing all agent log files...');
     try {
         const clearResponse = await fetch('/agent/clear_agent_logs/', {
             method: 'POST', headers: getHeaders(), credentials: 'same-origin'
@@ -99,8 +118,8 @@ async function executeStartSequence() {
         console.warn('--- Warning: Error clearing log files (continuing anyway):', clearError);
     }
 
-    // Step 4: Execute ALL starter agents in parallel (fire and forget)
-    console.log('--- [Start Sequence] 4. Executing Starter agents...');
+    // Step 5: Execute ALL starter agents in parallel (fire and forget)
+    console.log('--- [Start Sequence] 5. Executing Starter agents...');
     const executionPromises = starterInfo.map(async ({ id }) => {
         try {
             const response = await fetch(`/agent/execute_starter_agent/${id}/`, {
@@ -118,10 +137,10 @@ async function executeStartSequence() {
         console.log('--- All execution requests sent:', results);
     });
 
-    // Step 5: Start FlowHypervisor if present on canvas
+    // Step 6: Start FlowHypervisor if present on canvas
     const flowHypervisor = document.querySelector('#submonitor-container .canvas-item.flowhypervisor-agent');
     if (flowHypervisor) {
-        console.log('--- [Start Sequence] 5. Executing FlowHypervisor...');
+        console.log('--- [Start Sequence] 6. Executing FlowHypervisor...');
         startSystemManagedFlowHypervisor(flowHypervisor.id);
     }
 

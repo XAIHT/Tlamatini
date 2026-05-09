@@ -58,7 +58,7 @@ function _showParametrizerError(message) {
 
     dialog.innerHTML = `
         <h3 style="margin-top:0; color:#FF6D00;">Parametrizer Validation Error</h3>
-        <p style="color:#ccc; line-height:1.6;">${message}</p>
+        <p style="color:#ccc; line-height:1.6;">${_escapeParametrizerHtml(message)}</p>
         <button id="parametrizer-error-ok" style="
             margin-top:15px; padding:8px 30px; border:none; border-radius:5px;
             background:linear-gradient(135deg, #311B92, #AA00FF);
@@ -90,6 +90,16 @@ function _buildParametrizerTargetSlotKey(targetParam, targetMarker = '') {
 
 function _buildParametrizerMappingKey(mapping) {
     return `${mapping.source_field}=>${_buildParametrizerTargetSlotKey(mapping.target_param, mapping.target_marker)}`;
+}
+
+
+function _escapeParametrizerHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 
@@ -153,11 +163,11 @@ function _renderParametrizerMappingDialog(agentId, data) {
         <h3 style="margin:0 0 5px; background: linear-gradient(135deg, #311B92, #AA00FF, #FF6D00, #00E5FF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             background-clip: text; font-size: 1.3em;">
-            Parametrizer Mapping: ${agentId}
+            Parametrizer Mapping: ${_escapeParametrizerHtml(agentId)}
         </h3>
         <p style="margin:0; color:#999; font-size:0.85em;">
-            Source: <strong style="color:#00E5FF">${source_agent}</strong> &rarr;
-            Target: <strong style="color:#FF6D00">${target_agent}</strong>
+            Source: <strong style="color:#00E5FF">${_escapeParametrizerHtml(source_agent)}</strong> &rarr;
+            Target: <strong style="color:#FF6D00">${_escapeParametrizerHtml(target_agent)}</strong>
         </p>
         <p style="margin:5px 0 0; color:#777; font-size:0.8em;">
             Click a source field (left), then click a target parameter (right) to create a mapping.
@@ -225,7 +235,7 @@ function _renderParametrizerMappingDialog(agentId, data) {
         });
         if (markers.length > 0) {
             item.innerHTML = `
-                <span>${param}</span>
+                <span>${_escapeParametrizerHtml(param)}</span>
                 <span style="float:right; color:#AA00FF; font-size:0.75em;">${markers.length} marker${markers.length === 1 ? '' : 's'}</span>
             `;
         } else {
@@ -466,7 +476,7 @@ function _renderParametrizerMappingDialog(agentId, data) {
 
     // Clear all
     clearBtn.addEventListener('click', () => {
-        mappings.clear();
+        mappings.length = 0;
         selectedSource = null;
         updateHighlights();
         updateLines();
