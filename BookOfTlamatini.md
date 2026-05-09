@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, a visual workflow designer, and 59 drag-and-drop agent types.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, a visual workflow designer, 60 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 
@@ -15,7 +15,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the four toolbar checkboxes (Multi-Turn, Exec Report, ACPX, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
-- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 59 workflow agents.
+- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 60 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -52,7 +52,7 @@ The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 1. **A real RAG pipeline** that reads your project files, classifies their architectural roles, and grounds answers in your real source code.
 2. **Multi-Turn mode** that turns the chat into a tool operator: the LLM can run shell commands, hit APIs, send emails, take screenshots, type into windows, query SQL — and chain those steps to finish the job.
 3. **ACPX** that lets the LLM delegate sub-tasks to external coding-agent CLIs you already have installed (Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, and more).
-4. **A visual workflow designer** where you drag 59 different agent types onto a canvas, wire them up, and run the result as an unattended `.flw` workflow.
+4. **A visual workflow designer** where you drag 60 different agent types onto a canvas, wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
 
 Everything is local. No cloud lock-in (though cloud LLMs are an option). The whole app packages into a standalone Windows `.exe` if you want to ship it.
 
@@ -525,6 +525,8 @@ Starter ──► Crawler ──► File Creator ──► Ender
 
 You can immediately re-open it in `/agentic_control_panel/` and run it as an unattended workflow — the LLM is no longer involved.
 
+**Behind the scenes** (since commit `0bea21d`, May 2026), clicking Create Flow does NOT just dump the legacy draft. The browser POSTs the draft + `tool_calls_log` to `/agent/flow_from_tool_calls/`, which runs it through `agent/services/flow_spec.py::normalize_flow_payload()` and returns `flow_spec_to_legacy_json(spec, redact=True)` — a registry-canonical `.flw` whose agent / pool names match the backend Agent Contract registry and whose known secret fields (e.g. `tlamatini.password`) are stripped before the file ever touches your disk. If the round-trip fails (offline frozen install, backend down), the browser gracefully falls back to the un-normalized legacy draft so you still get a usable file.
+
 ---
 
 # Part III — The Visual Workflow Designer
@@ -759,9 +761,11 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 59 workflow-agent types. Spotlight chapters for **Parametrizer** (§23) and **Gatewayer** (§24) above.
+A compact reference for all 60 workflow-agent types. Spotlight chapters for **Parametrizer** (§23) and **Gatewayer** (§24) above.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
+
+> **Description-tooltip source.** The hover tooltip and right-click "Description" dialog both pull their text from `agents_descriptions.md` at the repo root (the Django view parses its `## Workflow Agents` tables and injects them as `agent_purpose_map`). `README.md` is kept as a legacy fallback only. Editing a row in `agents_descriptions.md` changes both human docs AND the live UI text.
 
 ## Control
 
@@ -1536,6 +1540,14 @@ The backend currently exposes 103 routes. Highlights:
 | `/check_flowhypervisor_alert/<agent_name>/` | GET |
 | `/validate_flow/` | GET |
 
+### Flow Compiler & Agent Contracts (since commit `0bea21d`, May 2026)
+
+| Endpoint | Method | Notes |
+|---|---|---|
+| `/agent/compile_flow/` | POST | Backend Flow Compiler. Body: `{ "mode": "dry_run"\|"write", "flow": <ACP snapshot> }`. Save / Validate use `dry_run`; Start uses `write` to materialize `config.yaml` and `interconnection-scheme.csv` into the session pool. |
+| `/agent/flow_from_tool_calls/` | POST | Chat Create-Flow normalizer. Body: `{ "tool_calls_log": [...], "flow_data": <legacy draft> }`. Returns a registry-canonical, secret-redacted `.flw` JSON. |
+| `/agent/agent_contracts/` | GET | Returns the live `AgentContract` registry summary — connection-field shape, parametrizer source-fields, secret paths, singleton/long-running/never-starts-targets/excluded-from-validation flags. Used for diagnostics and for any out-of-tree client (e.g. a future MCP server) that needs to introspect the agent surface. |
+
 ### Connection updates (canvas auto-configuration)
 
 `/update_<agent>_connection/<agent_name>/` for every agent type that has connections — Starter, Ender, Stopper, Raiser, Emailer, Monitor-Log, Notifier, Executer, Pythonxer, Sqler, Whatsapper, Recmailer, OR, AND, Croner, Mover, Mouser, Keyboarder, Sleeper, Cleaner, Deleter, Asker, Forker, Dockerer, Pser, Kuberneter, Apirer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Counter, File-Interpreter, Image-Interpreter, Gatewayer, Gateway-Relayer, Node-Manager, File-Creator, File-Extractor, J-Decompiler, Kyber-KeyGen/Cipher/DeCipher, Parametrizer, FlowBacker, Barrier, Googler, TeleTlamatini, WhatsTlamatini, ACPXer.
@@ -1769,6 +1781,12 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Flow Compiler + Agent Contracts + 60-agent catalog — May 2026** — A backend pipeline that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, secret-redacted, source-and-frozen-portable `config.yaml` files (commit `0bea21d`). Four new modules under `agent/services/`: `agent_contracts.py` (the `AgentContract` registry — per-agent connection-field shape per slot, parametrizer source-fields, `secret_paths`, plus `singleton` / `long_running` / `never_starts_targets` / `exclude_from_validation` flags; lru-cached, alias-normalized, disk-discovered + builtin overrides), `agent_paths.py` (frozen/source-aware pool resolution + canvas-id normalization that handles `Node Manager` → `node_manager`, `Gateway-Relayer` → `gateway_relayer`, `(2)` cardinal stripping), `flow_spec.py` (`FlowNode` / `FlowConnection` / `FlowSpec` dataclasses + `normalize_flow_payload()` / `flow_spec_to_legacy_json(redact=True)` — schema_version=2 in-memory representation that both browser surfaces compile through), and `flow_compiler.py` (`compile_flow_spec()` / `compile_flow_payload()` / `list_pool_agents_for_validation()` — wires every connection per its contract, clears stale wiring before re-writing, redacts secrets, and writes `config.yaml` + `interconnection-scheme.csv` into the session pool when called with `write=True`). Three new endpoints expose the pipeline: `POST /agent/compile_flow/` (called from the new `acp-flow-snapshot.js::compileCurrentACPFlow` with `mode='write'` from Start and `mode='dry_run'` from Validate), `POST /agent/flow_from_tool_calls/` (called from `agent_page_chat.js::_normalizeChatFlowBeforeDownload`), and `GET /agent/agent_contracts/` (registry diagnostics). **User-visible effect**: Start now compiles the live canvas before launching agents, so an edited-but-unsaved canvas behaves identically to a fresh `.flw` load; Create Flow downloads are now registry-canonical and have known secret fields stripped server-side; Validate previews the same compiled output Start would write, without touching disk. The catalog count is now **60** (was 59 — FlowCreator was always present on disk and in `agents_descriptions.md` but missing from the AI-onboarding catalog list). Coverage: `Tlamatini/agent/test_flow_contracts.py` pins source-mode resolution, alias normalization, the Ender kill-list contract, and Parametrizer-mappings-as-CSV-artifact behavior.
+
+- **`agents_descriptions.md` becomes the authoritative source for sidebar tooltips and canvas Description dialogs — May 2026** — A new file at the repo root (commit `88dd99b`) holds the human-readable description for every workflow agent in `## Workflow Agents` Markdown tables. The Django view `agent.views.agentic_control_panel` parses it via `_load_agent_purpose_map()` → `_resolve_agent_descriptions_search_paths()`, probing `agents_descriptions.md` first (next to `manage.py` in source mode, next to `sys.executable` in frozen mode) and falling back to `README.md` only if it's absent or yields zero rows. The lookup is case- and punctuation-insensitive — `re.sub(r'[^a-z0-9]+', '', name.lower())` keys "Kyber-KeyGen", "Kyber KeyGen", and "kyberkeygen" to the same row. Editing a row changes both human docs AND the live UI text — **there is no other source of truth**. `build.py` ships `agents_descriptions.md` next to the executable in frozen mode (`required_file_copies` was extended). UI fallback strings in `acp-canvas-core.js::showAgentPurposeTooltip` and `contextual_menus.js::openDescriptionDialog` were updated to mention the new file. The legacy alias `_load_agent_purpose_map_from_readme = _load_agent_purpose_map` is preserved so any out-of-tree caller keeps working. Companion change: `regen_secrets.py` was extended to scrub `emailer/config.yaml` and `recmailer/config.yaml` (Gmail app-password fields). Coverage: `agent/tests.py::AgentPurposeMapResolutionTests`.
+
+- **TeleTlamatini Three-Flag Bridging (Multi-Turn + Exec Report + ACPX) — May 2026** — Each Telegram message TeleTlamatini forwards to Tlamatini now carries `multi_turn_enabled`, `exec_report_enabled`, AND `acpx_enabled` verbatim (commit `1287e56`), so a Telegram user gets exactly the operational surface a browser user with all three checkboxes ticked would. `TlamatiniBridge.__init__` accepts `acpx_enabled`, includes it in the request envelope, and logs it; `agent/agents/teletlamatini/config.yaml` ships `acpx_enabled: true` so a fresh deploy can drive the full ACPX scheme out of the box. The resolver-level default stays `False` — that's the legacy-deploy backstop, not the user-facing knob. Practical pairing for users wiring TeleTlamatini today: leave all three flags `true` in `config.yaml`, and Telegram becomes a full ACPX-aware Tlamatini console — "use ACPX to spawn claude and ask it to summarize the current branch" works the same from a phone. WhatsTlamatini is the next mirror candidate; until then it remains Multi-Turn + Exec Report only.
 
 - **Autonomous Multi-Turn Mode + 4 New Wrapped Tools (Sleeper, Mouser, run_wait, window_present) — May 2026** — A focused pass to make Multi-Turn fully autonomous on desktop-UI tasks ("open notepad, type X, wait 30 s, close it" — five tool calls, no vision LLM, no polling). Eight changes landed together (commit `84de29b`):
     1. **Repetition-breaker exemption** for the new background-friendly waiters so they don't get short-circuited as duplicates.
