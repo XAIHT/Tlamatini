@@ -2553,7 +2553,7 @@ def execute_starter_agent_view(request, agent_name):
         # Write PID file for fast status checking
         _write_pid_file(agent_dir, process.pid)
         print(f"[EXECUTE] Started {pool_folder_name} with PID: {process.pid}")
-        
+
         return HttpResponse(json.dumps({
             "success": True,
             "message": f"Started {pool_folder_name}",
@@ -2789,15 +2789,15 @@ def execute_ender_agent_view(request, agent_name):
                 "message": f"Agent script not found: {base_folder_name}.py"
             }), content_type='application/json', status=404)
         
-        # Execute the ender agent
-        # Execute the ender agent
         python_cmd = get_python_command()
+        agent_env = get_agent_env()
         
         if sys.platform.startswith('win'):
             # Windows: create new process group
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
+                env=agent_env,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
             )
         else:
@@ -2805,12 +2805,30 @@ def execute_ender_agent_view(request, agent_name):
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
+                env=agent_env,
                 start_new_session=True
             )
         
         # Write PID file for fast status checking
         _write_pid_file(agent_dir, process.pid)
         print(f"[EXECUTE] Started {pool_folder_name} with PID: {process.pid}")
+
+        log_file_path = os.path.join(agent_dir, f"{pool_folder_name}.log")
+        time.sleep(0.2)
+        exit_code = process.poll()
+        if exit_code is not None and not os.path.exists(log_file_path):
+            try:
+                os.remove(os.path.join(agent_dir, "agent.pid"))
+            except OSError:
+                pass
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": (
+                    f"{pool_folder_name} exited before creating its log "
+                    f"(exit code {exit_code}). Check Python/PYTHON_HOME dependencies."
+                ),
+                "pid": process.pid
+            }), content_type='application/json', status=500)
         
         return HttpResponse(json.dumps({
             "success": True,

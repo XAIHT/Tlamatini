@@ -366,7 +366,7 @@ if (btnStop) {
         console.log('--- Ender info collected:', enderInfo);
 
         const justBeforeEndingTimestamp = Date.now();
-        showEnderExecutionDialog(enderInfo, justBeforeEndingTimestamp);
+        const dialog = showEnderExecutionDialog();
 
         // Pre-check if all target agents are already down
         let allAgentsAlreadyDown = true;
@@ -394,22 +394,45 @@ if (btnStop) {
             return;
         }
 
-        // Execute ALL ender agents in parallel (fire and forget)
+        // Execute ALL ender agents in parallel, then begin log polling only
+        // after the backend has accepted every launch request.
         const executionPromises = enderInfo.map(async ({ id }) => {
             try {
                 const response = await fetch(`/agent/execute_ender_agent/${id}/`, {
                     method: 'POST', headers: getHeaders(), credentials: 'same-origin'
                 });
-                const result = await response.json();
-                return { agentId: id, success: result.success, pid: result.pid, message: result.message };
+                let result;
+                try {
+                    result = await response.json();
+                } catch (_err) {
+                    result = {};
+                }
+                return {
+                    agentId: id,
+                    success: response.ok && result.success !== false,
+                    pid: result.pid,
+                    message: result.message || result.error || `HTTP ${response.status}`
+                };
             } catch (error) {
                 return { agentId: id, success: false, message: error.message };
             }
         });
 
-        Promise.all(executionPromises).then(results => {
-            console.log('--- All ender execution requests sent:', results);
-        });
+        const executionResults = await Promise.all(executionPromises);
+        console.log('--- All ender execution requests sent:', executionResults);
+
+        const failedLaunches = executionResults.filter(result => !result.success);
+        if (failedLaunches.length > 0) {
+            const byId = new Map(enderInfo.map(info => [info.id, info.displayName]));
+            const messages = failedLaunches.map(result => {
+                const label = byId.get(result.agentId) || result.agentId;
+                return `${label}: ${result.message || 'launch failed'}`;
+            });
+            showEnderResult(false, messages, dialog);
+            return;
+        }
+
+        pollForEnderLogFiles(enderInfo, justBeforeEndingTimestamp, dialog);
     });
 }
 
@@ -418,9 +441,10 @@ if (btnStop) {
 // ========================================
 
 /**
- * Show the Ender Execution Dialog with spinner and poll for log file creation.
+ * Show the Ender Execution Dialog with spinner.
+ * Polling starts only after all Ender launch requests succeed.
  */
-function showEnderExecutionDialog(enderInfo, justBeforeEndingTimestamp) {
+function showEnderExecutionDialog() {
     const dialog = $("#ender-execution-dialog");
     const titleEl = document.getElementById('ender-execution-title');
     const spinnerContainer = document.getElementById('ender-execution-spinner-container');
@@ -457,7 +481,7 @@ function showEnderExecutionDialog(enderInfo, justBeforeEndingTimestamp) {
         buttons: []
     });
 
-    pollForEnderLogFiles(enderInfo, justBeforeEndingTimestamp, dialog);
+    return dialog;
 }
 
 /**
