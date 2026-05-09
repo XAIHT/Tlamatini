@@ -102,11 +102,15 @@ email:
   bcc_addresses: []
   
   # Email subject template
-  # Available placeholders: {source_agent}, {timestamp}
+  # Available placeholders: {source_agent}, {matched_line}, {timestamp}, {log_file}
+  # Unknown placeholders survive as literal text and log a WARNING — they
+  # never crash the send (see _safe_format in emailer.py).
   subject: "[EMAILER ALERT] Pattern detected from {source_agent}"
-  
+
   # Email body template
   # Available placeholders: {source_agent}, {matched_line}, {timestamp}, {log_file}
+  # Unknown placeholders survive as literal text and log a WARNING — they
+  # never crash the send (see _safe_format in emailer.py).
   body: |
     ============================================================
     EMAILER AGENT - PATTERN DETECTION ALERT

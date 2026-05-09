@@ -12,6 +12,7 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler to prevent "forrtl: error (200)"
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+import re
 import time
 import yaml
 import logging
@@ -20,6 +21,36 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from typing import List, Dict, Optional
+
+
+class _SafeFormatDict(dict):
+    """str.format_map() helper: missing placeholders survive as literal '{name}'."""
+
+    def __missing__(self, key):
+        return '{' + key + '}'
+
+
+_PLACEHOLDER_RX = re.compile(r'\{([A-Za-z_][A-Za-z0-9_]*)\}')
+
+
+def _safe_format(template: str, values: Dict[str, str], where: str) -> str:
+    """Format `template` with `values`, never raising on unknown placeholders.
+
+    Unknown `{name}` tokens are left as literals in the output and a single
+    WARNING is logged listing them, so a typo in the user's config (e.g.
+    `{matched_text}` instead of `{matched_line}`) is visible without losing
+    the whole email.
+    """
+    if not isinstance(template, str):
+        return template
+    referenced = set(_PLACEHOLDER_RX.findall(template))
+    unknown = referenced - set(values.keys())
+    if unknown:
+        logging.warning(
+            f"⚠️ {where}: unknown placeholder(s) {sorted(unknown)} — "
+            f"known: {sorted(values.keys())}; left as literal text"
+        )
+    return template.format_map(_SafeFormatDict(values))
 
 # Set working directory to script location
 try:
@@ -274,20 +305,18 @@ def send_email_smtp(smtp_config: Dict, email_config: Dict, subject: str, body: s
     import socket
 
     try:
-        # Format body with event details
+        # Format body and subject with event details. Unknown {placeholders}
+        # in user-supplied templates survive as literals and emit one WARNING
+        # — they must NEVER crash the send (see _safe_format).
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        formatted_body = body.format(
-            source_agent=source_agent,
-            matched_line=matched_line,
-            timestamp=timestamp,
-            log_file=log_path or "N/A"
-        )
-        
-        # Format subject with event details
-        formatted_subject = subject.format(
-            source_agent=source_agent,
-            timestamp=timestamp
-        )
+        placeholders = {
+            'source_agent': source_agent,
+            'matched_line': matched_line,
+            'timestamp': timestamp,
+            'log_file': log_path or "N/A",
+        }
+        formatted_body = _safe_format(body, placeholders, where="email body")
+        formatted_subject = _safe_format(subject, placeholders, where="email subject")
         
         # Create message
         msg = MIMEMultipart()
