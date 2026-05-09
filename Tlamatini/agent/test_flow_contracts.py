@@ -117,6 +117,92 @@ class FlowContractTests(SimpleTestCase):
         self.assertEqual(spec.connections[0].source_id, "starter-1")
         self.assertEqual(spec.connections[0].target_id, "executer-1")
 
+    def test_dialog_edited_source_agents_survive_canvas_compile(self):
+        # User opened the Configure dialog on raiser_1 and set source_agents
+        # to ['executer_1'] manually. The canvas wires emailer_1 -> raiser_1.
+        # With "dialog edits always win", the compiled raiser_1 must keep
+        # the user's value AND pick up the canvas wire ('emailer_1') without
+        # losing the dialog edit.
+        spec = FlowSpec(
+            nodes=[
+                FlowNode(id="starter-1", text="Starter"),
+                FlowNode(id="emailer-1", text="Emailer"),
+                FlowNode(
+                    id="raiser-1",
+                    text="Raiser",
+                    config={"source_agents": ["executer_1"], "target_agents": ["emailer_1"]},
+                ),
+                FlowNode(id="executer-1", text="Executer"),
+            ],
+            connections=[
+                FlowConnection(source_id="starter-1", target_id="emailer-1"),
+                FlowConnection(source_id="emailer-1", target_id="raiser-1"),
+                FlowConnection(source_id="raiser-1", target_id="executer-1"),
+            ],
+        )
+
+        result = compile_flow_spec(spec, write=False)
+        by_name = {agent["folder_name"]: agent for agent in result["agents"]}
+        raiser_cfg = by_name["raiser_1"]["config"]
+        # Dialog-set value preserved
+        self.assertIn("executer_1", raiser_cfg["source_agents"])
+        self.assertIn("emailer_1", raiser_cfg["target_agents"])
+        # Canvas wire still adds via _add_unique
+        self.assertIn("emailer_1", raiser_cfg["source_agents"])
+        self.assertIn("executer_1", raiser_cfg["target_agents"])
+
+    def test_dialog_edited_ender_kill_list_is_preserved(self):
+        # Ender's kill-list special case must respect a user-populated
+        # target_agents instead of overwriting it with the upstream traversal.
+        spec = FlowSpec(
+            nodes=[
+                FlowNode(id="starter-1", text="Starter"),
+                FlowNode(id="executer-1", text="Executer"),
+                FlowNode(
+                    id="ender-1",
+                    text="Ender",
+                    config={"target_agents": ["executer_1"]},
+                ),
+            ],
+            connections=[
+                FlowConnection(source_id="starter-1", target_id="executer-1"),
+                FlowConnection(source_id="executer-1", target_id="ender-1"),
+            ],
+        )
+
+        result = compile_flow_spec(spec, write=False)
+        by_name = {agent["folder_name"]: agent for agent in result["agents"]}
+        # User-set kill list preserved verbatim — starter_1 NOT auto-added.
+        self.assertEqual(by_name["ender_1"]["config"]["target_agents"], ["executer_1"])
+
+    def test_dialog_edited_source_agent_singleton_is_preserved(self):
+        # AND-gate uses singleton fields source_agent_1 / source_agent_2.
+        # A dialog-set value must survive the canvas-wiring pass, and the
+        # other slot must still get its canvas value.
+        spec = FlowSpec(
+            nodes=[
+                FlowNode(id="starter-1", text="Starter"),
+                FlowNode(id="emailer-1", text="Emailer"),
+                FlowNode(id="executer-1", text="Executer"),
+                FlowNode(
+                    id="and-1",
+                    text="AND",
+                    config={"source_agent_1": "user_pinned_source"},
+                ),
+            ],
+            connections=[
+                FlowConnection(source_id="starter-1", target_id="emailer-1"),
+                FlowConnection(source_id="emailer-1", target_id="and-1", input_slot=0),
+                FlowConnection(source_id="executer-1", target_id="and-1", input_slot=2),
+            ],
+        )
+
+        result = compile_flow_spec(spec, write=False)
+        by_name = {agent["folder_name"]: agent for agent in result["agents"]}
+        and_cfg = by_name["and_1"]["config"]
+        self.assertEqual(and_cfg.get("source_agent_1"), "user_pinned_source")
+        self.assertEqual(and_cfg.get("source_agent_2"), "executer_1")
+
     def test_teletlamatini_export_redacts_known_secrets(self):
         config = {
             "telegram": {"api_hash": "secret-hash", "bot_token": "secret-token"},

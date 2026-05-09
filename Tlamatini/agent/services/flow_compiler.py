@@ -151,23 +151,24 @@ def _add_unique(config: dict[str, Any], key: str, value: str) -> None:
 
 
 def _set_connection_field(config: dict[str, Any], key: str, value: str) -> None:
+    # Dialog-edited values always win over canvas-derived wiring. Singleton
+    # connection fields are filled only when the user has not set them; list
+    # fields get the canvas-derived entry appended via `_add_unique`, which
+    # is already a no-op when the entry is present.
     if key in {"source_agent", "target_agent", "source_agent_1", "source_agent_2"}:
-        config[key] = value
+        if not config.get(key):
+            config[key] = value
     else:
         _add_unique(config, key, value)
 
 
-def _clear_managed_connections(config: dict[str, Any], contract: AgentContract) -> dict[str, Any]:
-    preserved = {}
+def _snapshot_managed_connections(config: dict[str, Any], contract: AgentContract) -> dict[str, Any]:
+    snapshot = {}
     for field_name in contract.connection_fields:
         if field_name not in config:
             continue
-        preserved[field_name] = deepcopy(config[field_name])
-        if field_name in {"source_agent", "target_agent", "source_agent_1", "source_agent_2"}:
-            config[field_name] = ""
-        else:
-            config[field_name] = []
-    return preserved
+        snapshot[field_name] = deepcopy(config[field_name])
+    return snapshot
 
 
 def _template_config(agent_type: str) -> dict[str, Any]:
@@ -209,7 +210,12 @@ def _compiled_configs(spec: FlowSpec) -> tuple[dict[str, dict[str, Any]], list[s
     for node in spec.nodes:
         contract = get_agent_contract(node.agent_type)
         merged = _deep_merge(_template_config(node.agent_type), _strip_internal_config(node.config))
-        preserved[node.id] = _clear_managed_connections(merged, contract)
+        # Snapshot connection fields BEFORE the canvas-wiring pass mutates
+        # `merged`. The snapshot is used by the Ender kill-list special case
+        # below to detect a user-edited `target_agents` and keep it verbatim.
+        # We deliberately do NOT clear the fields anymore: dialog edits win,
+        # canvas wires only contribute via `_add_unique` / "fill if empty".
+        preserved[node.id] = _snapshot_managed_connections(merged, contract)
         configs[node.id] = merged
 
     nodes = _node_by_id(spec)
@@ -240,15 +246,21 @@ def _compiled_configs(spec: FlowSpec) -> tuple[dict[str, dict[str, Any]], list[s
             _set_connection_field(configs[target.id], input_field, source.pool_name)
 
     # Ender has a special kill-list contract: direct input is graphical,
-    # target_agents is every upstream runtime agent except cleaners.
+    # target_agents is every upstream runtime agent except cleaners. With
+    # "dialog edits always win", a user-populated `target_agents` is kept
+    # verbatim — the kill-list derivation only fires when the field was
+    # empty BEFORE the canvas pass touched it.
     for node in spec.nodes:
         if node.agent_type != "ender":
             continue
+        user_targets = preserved.get(node.id, {}).get("target_agents")
+        if isinstance(user_targets, list) and user_targets:
+            configs[node.id]["target_agents"] = user_targets
+            continue
         incoming = [conn.source_id for conn in spec.connections if conn.target_id == node.id]
         if not incoming:
-            old_targets = preserved.get(node.id, {}).get("target_agents")
-            if isinstance(old_targets, list):
-                configs[node.id]["target_agents"] = old_targets
+            if isinstance(user_targets, list):
+                configs[node.id]["target_agents"] = user_targets
             continue
         kill_list: list[str] = []
         for incoming_id in incoming:
