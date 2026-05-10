@@ -107,7 +107,7 @@ Everything runs locally. The whole app packages into a one-click Windows `.exe` 
 - [Loading a complete project and summarizing its source code](https://www.youtube.com/watch?v=Lrpbt_dPIXw)
 - [Installing OpenCV end-to-end in Multi-Turn](https://www.youtube.com/watch?v=bBlqbZVK-Wk)
 - [Uninstalling Poco — Exec Report and matching flow](https://www.youtube.com/watch?v=E5vi0q5FxXQ)
-- [Designing a flow with FlowCreator's help](https://www.youtube.com/watch?v=Tgoa7Tmoo0o)
+- [Implementing a FlowCreator-aided agentic flow](https://www.youtube.com/watch?v=3Pno6s4xVsE)
 
 ---
 
