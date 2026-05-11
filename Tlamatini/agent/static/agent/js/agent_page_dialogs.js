@@ -19,6 +19,39 @@ function styleDialogButtons() {
 }
 
 /**
+ * Compute a grid layout (columns + dialog width) for a checkbox list that
+ * never exceeds the viewport. Returns {cols, width}.
+ *
+ * Why: the previous formula (`cols = ceil(sqrt(N * 1.618))`, `width = cols * 220`)
+ * had no upper bound. With 60+ wrapped chat-agent tools the dialog grew past
+ * 2000 px and clipped the right edge off-screen on a 1280-wide window.
+ *
+ * How to apply: golden-ratio still picks the natural shape, but the width is
+ * clamped to 90vw, then cols is reduced (down to a 1-col minimum) until each
+ * column gets at least `minColWidth` px of usable space inside the dialog.
+ */
+function computeCheckboxGridLayout(itemCount, options = {}) {
+    const minDialogWidth = options.minDialogWidth || 450;
+    const minColWidth = options.minColWidth || 200;
+    const dialogChrome = options.dialogChrome || 60; // padding + scrollbar room
+    const viewportCap = Math.max(minDialogWidth, Math.floor(window.innerWidth * 0.9));
+
+    if (itemCount <= 10) {
+        return { cols: 1, width: minDialogWidth };
+    }
+
+    let cols = Math.max(2, Math.ceil(Math.sqrt(itemCount * 1.618)));
+    let width = Math.max(minDialogWidth, cols * (minColWidth + 20));
+
+    if (width > viewportCap) {
+        width = viewportCap;
+        const usable = Math.max(minColWidth, width - dialogChrome);
+        cols = Math.max(1, Math.floor(usable / minColWidth));
+    }
+    return { cols, width };
+}
+
+/**
  * Build the standard two-button array for jQuery UI dialogs.
  */
 function makeDialogButtons(callbackOnContinue, callbackOnCancel) {
@@ -142,31 +175,15 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
         closeText: "",
         open: function () {
             document.body.style.overflow = 'hidden';
-            
-            // Layout Calculation
-            const itemCount = tools.length;
-            let cols = 1;
-            let dialogWidth = 450;
-            
-            if (itemCount > 10) {
-                // Golden ratio approximation for columns ~ sqrt(N / 1.618) or sqrt(N * 1.618)
-                // We want wider than tall, so cols > rows. 
-                // cols * rows >= N -> cols * (cols / 1.618) = N -> cols^2 = N * 1.618
-                cols = Math.ceil(Math.sqrt(itemCount * 1.618));
-                // Ensure cols is at least 2 if > 10
-                cols = Math.max(2, cols);
-                // Calculate appropriate width (e.g., ~220px per column minimum)
-                dialogWidth = Math.max(450, cols * 220);
-                
-                // Set the dialog width dynamically
-                $(this).dialog("option", "width", dialogWidth);
-            } else {
-                $(this).dialog("option", "width", dialogWidth);
-            }
+
+            const { cols, width: dialogWidth } = computeCheckboxGridLayout(tools.length);
+            $(this).dialog("option", "width", dialogWidth);
+            $(this).dialog("option", "maxWidth", Math.floor(window.innerWidth * 0.9));
+            $(this).dialog("option", "maxHeight", Math.floor(window.innerHeight * 0.9));
 
             // Apply Grid Layout to the list container
             toolMcpsList.style.display = 'grid';
-            toolMcpsList.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            toolMcpsList.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
             toolMcpsList.style.gap = '8px 15px'; // row gap, column gap
             toolMcpsList.style.listStyleType = 'none'; // Remove bullets
             toolMcpsList.style.padding = '0';
@@ -179,18 +196,21 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
             toolMcpsList.innerHTML = '';
             for (const tool of tools) {
                 const listElement = document.createElement('li');
+                listElement.style.minWidth = '0';
                 const checkbox = document.createElement('input');
                 const label = document.createElement('label');
                 const wrapper = document.createElement('div');
                 wrapper.style.display = 'flex';
                 wrapper.style.alignItems = 'center';
                 wrapper.style.marginBottom = '4px';
+                wrapper.style.minWidth = '0';
 
                 checkbox.type = 'checkbox';
                 checkbox.id = tool.name;
                 checkbox.style.marginRight = '8px';
                 checkbox.style.accentColor = '#55BBAA';
-                
+                checkbox.style.flexShrink = '0';
+
                 label.htmlFor = tool.name;
                 label.innerText = tool.description;
                 label.setAttribute('id', 'label-' + tool.name);
@@ -198,6 +218,9 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
                 label.style.cursor = 'pointer';
                 label.style.margin = '0';
                 label.style.fontSize = '0.95em';
+                label.style.wordBreak = 'break-word';
+                label.style.overflowWrap = 'anywhere';
+                label.style.minWidth = '0';
                 
                 wrapper.appendChild(checkbox);
                 wrapper.appendChild(label);
@@ -250,31 +273,20 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
         closeText: "",
         open: function () {
             document.body.style.overflow = 'hidden';
-            
-            // Layout Calculation
-            const itemCount = agents.length;
-            let cols = 1;
-            let dialogWidth = 450;
-            
-            if (itemCount > 10) {
-                // Golden ratio approximation for columns ~ sqrt(N * 1.618)
-                cols = Math.ceil(Math.sqrt(itemCount * 1.618));
-                cols = Math.max(2, cols);
-                dialogWidth = Math.max(450, cols * 220); // Give enough room per column
-                
-                $(this).dialog("option", "width", dialogWidth);
-            } else {
-                $(this).dialog("option", "width", dialogWidth);
-            }
+
+            const { cols, width: dialogWidth } = computeCheckboxGridLayout(agents.length);
+            $(this).dialog("option", "width", dialogWidth);
+            $(this).dialog("option", "maxWidth", Math.floor(window.innerWidth * 0.9));
+            $(this).dialog("option", "maxHeight", Math.floor(window.innerHeight * 0.9));
 
             // Apply Grid Layout
             agentsList.style.display = 'grid';
-            agentsList.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            agentsList.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
             agentsList.style.gap = '8px 15px';
             agentsList.style.listStyleType = 'none';
             agentsList.style.padding = '0';
             agentsList.style.margin = '15px 0';
-            agentsList.style.maxHeight = '60vh'; 
+            agentsList.style.maxHeight = '60vh';
             agentsList.style.overflowY = 'auto';
             agentsList.style.overflowX = 'hidden';
 
@@ -282,18 +294,21 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
             agentsList.innerHTML = '';
             for (const agent of agents) {
                 const listElement = document.createElement('li');
+                listElement.style.minWidth = '0';
                 const checkbox = document.createElement('input');
                 const label = document.createElement('label');
                 const wrapper = document.createElement('div');
                 wrapper.style.display = 'flex';
                 wrapper.style.alignItems = 'center';
                 wrapper.style.marginBottom = '4px';
+                wrapper.style.minWidth = '0';
 
                 checkbox.type = 'checkbox';
                 checkbox.id = agent.name;
                 checkbox.style.marginRight = '8px';
                 checkbox.style.accentColor = '#55BBAA';
-                
+                checkbox.style.flexShrink = '0';
+
                 label.htmlFor = agent.name;
                 // Use description if available, fallback to upper-cased name
                 label.innerText = agent.description || (agent.name.charAt(0).toUpperCase() + agent.name.slice(1));
@@ -302,6 +317,9 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
                 label.style.cursor = 'pointer';
                 label.style.margin = '0';
                 label.style.fontSize = '0.95em';
+                label.style.wordBreak = 'break-word';
+                label.style.overflowWrap = 'anywhere';
+                label.style.minWidth = '0';
                 
                 wrapper.appendChild(checkbox);
                 wrapper.appendChild(label);
