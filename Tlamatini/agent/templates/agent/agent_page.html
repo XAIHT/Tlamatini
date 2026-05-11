@@ -101,6 +101,16 @@
                   id="agentic-control-panel" target="_blank" rel="noopener">Agentic Control Panel</a></li>
             </ul>
           </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="config-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Config</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="config-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="config-models"
+                  onclick="OpenConfigModelsDialog(event);">Models</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="config-urls"
+                  onclick="OpenConfigUrlsDialog(event);">URLs</a></li>
+            </ul>
+          </li>
           {% if request.user.is_staff %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="admin-menu-button" role="button" data-bs-toggle="dropdown"
@@ -224,6 +234,105 @@
     <div>
       <ul id="agents-list"></ul>
     </div>
+  </div>
+  <div id="config-models-dialog-message" title="" style="display: none;">
+    <h5 id="config-models-primary-dialog-legend"></h5>
+    <p id="config-models-secondary-dialog-legend"></p>
+    <form id="config-models-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-embeding-model">Embedding</label>
+        <input class="config-form-input" id="config-models-embeding-model" type="text" spellcheck="false"
+          data-config-key="embeding-model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-chained-model">Chained</label>
+        <input class="config-form-input" id="config-models-chained-model" type="text" spellcheck="false"
+          data-config-key="chained-model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-access-aimed-prompt-model">Access aimed</label>
+        <input class="config-form-input" id="config-models-access-aimed-prompt-model" type="text" spellcheck="false"
+          data-config-key="access_aimed_prompt_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-unified-agent-model">Unified</label>
+        <input class="config-form-input" id="config-models-unified-agent-model" type="text" spellcheck="false"
+          data-config-key="unified_agent_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-image-interpreter-model">Image interpreter</label>
+        <input class="config-form-input" id="config-models-image-interpreter-model" type="text" spellcheck="false"
+          data-config-key="image_interpreter_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-mcp-files-search-model">MCP Files search</label>
+        <input class="config-form-input" id="config-models-mcp-files-search-model" type="text" spellcheck="false"
+          data-config-key="mcp_files_search_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-internet-classifier-model">Internet classifier</label>
+        <input class="config-form-input" id="config-models-internet-classifier-model" type="text" spellcheck="false"
+          data-config-key="internet_classifier_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-web-summarizer-model">Summarizer</label>
+        <input class="config-form-input" id="config-models-web-summarizer-model" type="text" spellcheck="false"
+          data-config-key="web_summarizer_model">
+      </div>
+    </form>
+  </div>
+  <div id="config-urls-dialog-message" title="" style="display: none;">
+    <h5 id="config-urls-primary-dialog-legend"></h5>
+    <p id="config-urls-secondary-dialog-legend"></p>
+    <form id="config-urls-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-ollama-base-url">Ollama base</label>
+        <input class="config-form-input" id="config-urls-ollama-base-url" type="text" spellcheck="false"
+          data-config-key="ollama_base_url" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-unified-agent-base-url">Unified base</label>
+        <input class="config-form-input" id="config-urls-unified-agent-base-url" type="text" spellcheck="false"
+          data-config-key="unified_agent_base_url" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-image-interpreter-base-url">Image interpreter base</label>
+        <input class="config-form-input" id="config-urls-image-interpreter-base-url" type="text" spellcheck="false"
+          data-config-key="image_interpreter_base_url" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-system-server-host">MCP System server IP</label>
+        <input class="config-form-input" id="config-urls-mcp-system-server-host" type="text" spellcheck="false"
+          data-config-key="mcp_system_server_host" data-config-type="host">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-system-server-port">MCP System Server port</label>
+        <input class="config-form-input" id="config-urls-mcp-system-server-port" type="number" min="1" max="65535"
+          spellcheck="false" data-config-key="mcp_system_server_port" data-config-type="port">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-system-client-uri">MCP System Client Uri</label>
+        <input class="config-form-input" id="config-urls-mcp-system-client-uri" type="text" spellcheck="false"
+          data-config-key="mcp_system_client_uri" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-files-search-server-host">MCP Files Server IP</label>
+        <input class="config-form-input" id="config-urls-mcp-files-search-server-host" type="text" spellcheck="false"
+          data-config-key="mcp_files_search_server_host" data-config-type="host">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-files-search-server-port">MCP Files Server Port</label>
+        <input class="config-form-input" id="config-urls-mcp-files-search-server-port" type="number" min="1" max="65535"
+          spellcheck="false" data-config-key="mcp_files_search_server_port" data-config-type="port">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-files-search-client-uri">MCP Files Client Uri</label>
+        <input class="config-form-input" id="config-urls-mcp-files-search-client-uri" type="text" spellcheck="false"
+          data-config-key="mcp_files_search_client_uri" data-config-type="url">
+      </div>
+    </form>
   </div>
   <div id="modal" class="modal">
     <div class="modal-content">

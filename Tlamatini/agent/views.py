@@ -20,6 +20,7 @@ import time
 import re
 
 from .chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
+from .config_loader import load_config, save_config_updates
 from .services.agent_contracts import (
     get_parametrizer_source_fields,
     list_contract_summaries,
@@ -186,15 +187,16 @@ def agent_page(request):
         for m in messages
     ]
 
-    # Load ollama_base_url from config.json
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-    ollama_base_url = 'http://localhost:11434'  # default fallback
+    # Resolve ollama_base_url through config_loader so source AND frozen builds
+    # read from the same file the Config dialogs save to. Hardcoding __file__
+    # here used to ship the stale bundled copy in frozen mode and would
+    # silently desync from a freshly-saved <exe_dir>/config.json.
+    ollama_base_url = 'http://localhost:11434'
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            ollama_base_url = config.get('ollama_base_url', ollama_base_url)
+        config = load_config(force_reload=True)
+        ollama_base_url = config.get('ollama_base_url', ollama_base_url)
     except Exception as e:
-        print(f"Warning: Could not load ollama_base_url from config.json: {e}")
+        print(f"Warning: Could not load ollama_base_url via config_loader: {e}")
 
     return render(request, 'agent/agent_page.html', {
         'initial_messages': initial_messages,
@@ -276,15 +278,16 @@ def list_all_agent_descriptions_view(request):
 
 @login_required
 def agentic_control_panel(request):
-    # Load ollama_base_url from config.json
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-    ollama_base_url = 'http://localhost:11434'  # default fallback
+    # Resolve ollama_base_url through config_loader so source AND frozen builds
+    # read from the same file the Config dialogs save to. Hardcoding __file__
+    # here used to ship the stale bundled copy in frozen mode and would
+    # silently desync from a freshly-saved <exe_dir>/config.json.
+    ollama_base_url = 'http://localhost:11434'
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            ollama_base_url = config.get('ollama_base_url', ollama_base_url)
+        config = load_config(force_reload=True)
+        ollama_base_url = config.get('ollama_base_url', ollama_base_url)
     except Exception as e:
-        print(f"Warning: Could not load ollama_base_url from config.json: {e}")
+        print(f"Warning: Could not load ollama_base_url via config_loader: {e}")
 
     context = {
         'ollama_base_url': ollama_base_url,
@@ -7425,6 +7428,232 @@ def update_mouser_connection_view(request, agent_name):
     except Exception as e:
         print(f"Error updating Mouser connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+# ============================================================================
+# Config dialog endpoints (Config -> Models / URLs in the navbar)
+# ----------------------------------------------------------------------------
+# Both dialogs share the same load endpoint, which returns the exact subset of
+# config.json the dialog needs. The save endpoints validate types server-side
+# (defense in depth — the browser already validated, but never trust the wire)
+# before merging into config.json through ``save_config_updates``.
+# ============================================================================
+
+CONFIG_MODEL_KEYS: tuple[str, ...] = (
+    "embeding-model",
+    "chained-model",
+    "access_aimed_prompt_model",
+    "unified_agent_model",
+    "image_interpreter_model",
+    "mcp_files_search_model",
+    "internet_classifier_model",
+    "web_summarizer_model",
+)
+
+CONFIG_URL_KEYS: tuple[str, ...] = (
+    "ollama_base_url",
+    "unified_agent_base_url",
+    "image_interpreter_base_url",
+    "mcp_system_server_host",
+    "mcp_system_server_port",
+    "mcp_system_client_uri",
+    "mcp_files_search_server_host",
+    "mcp_files_search_server_port",
+    "mcp_files_search_client_uri",
+)
+
+CONFIG_URL_URL_FIELDS: frozenset[str] = frozenset({
+    "ollama_base_url",
+    "unified_agent_base_url",
+    "image_interpreter_base_url",
+    "mcp_system_client_uri",
+    "mcp_files_search_client_uri",
+})
+CONFIG_URL_HOST_FIELDS: frozenset[str] = frozenset({
+    "mcp_system_server_host",
+    "mcp_files_search_server_host",
+})
+CONFIG_URL_PORT_FIELDS: frozenset[str] = frozenset({
+    "mcp_system_server_port",
+    "mcp_files_search_server_port",
+})
+
+_HOSTNAME_RE = re.compile(
+    r"^(?=.{1,253}$)"
+    r"(?!-)[A-Za-z0-9-]{1,63}(?<!-)"
+    r"(?:\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$"
+)
+_IPV4_RE = re.compile(
+    r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
+    r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+)
+
+
+def _validate_url_value(value) -> str | None:
+    if not isinstance(value, str):
+        return "must be a string"
+    candidate = value.strip()
+    if not candidate:
+        return "must not be empty"
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(candidate)
+    except Exception:
+        return "is not a valid URL"
+    if parsed.scheme not in {"http", "https", "ws", "wss"}:
+        return "must use http(s):// or ws(s):// scheme"
+    if not parsed.netloc:
+        return "must include a host"
+    return None
+
+
+def _validate_host_value(value) -> str | None:
+    if not isinstance(value, str):
+        return "must be a string"
+    candidate = value.strip()
+    if not candidate:
+        return "must not be empty"
+    if _IPV4_RE.match(candidate):
+        return None
+    if _HOSTNAME_RE.match(candidate):
+        return None
+    return "must be a hostname (e.g. localhost) or IPv4 address"
+
+
+def _validate_port_value(value) -> tuple[str | None, int | None]:
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return ("must be an integer between 1 and 65535", None)
+    if port < 1 or port > 65535:
+        return ("must be between 1 and 65535", None)
+    return (None, port)
+
+
+@login_required
+def load_config_section_view(request, section: str):
+    """
+    Return the current values for the ``models`` or ``urls`` config dialog.
+    Always returns strings (or stringified ints) so the frontend can drop them
+    straight into ``<input>`` values.
+    """
+    section = (section or "").strip().lower()
+    if section not in {"models", "urls"}:
+        return JsonResponse({"success": False, "error": f"unknown config section: {section}"}, status=400)
+
+    config = load_config(force_reload=True)
+    keys = CONFIG_MODEL_KEYS if section == "models" else CONFIG_URL_KEYS
+    values: dict[str, str] = {}
+    for key in keys:
+        raw = config.get(key, "")
+        if raw is None:
+            values[key] = ""
+        else:
+            values[key] = str(raw)
+    return JsonResponse({"success": True, "section": section, "values": values})
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_config_models_view(request):
+    """
+    Persist the 8 model fields from the Config -> Models dialog. Each value
+    must be a non-empty string. The browser already validates against the
+    Ollama catalog; this endpoint only enforces type/shape so a malformed
+    request never lands in config.json.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"success": False, "error": f"invalid JSON: {exc}"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"success": False, "error": "payload must be a JSON object"}, status=400)
+
+    errors: dict[str, str] = {}
+    updates: dict[str, str] = {}
+    for key in CONFIG_MODEL_KEYS:
+        if key not in payload:
+            errors[key] = "missing"
+            continue
+        value = payload[key]
+        if not isinstance(value, str):
+            errors[key] = "must be a string"
+            continue
+        trimmed = value.strip()
+        if not trimmed:
+            errors[key] = "must not be empty"
+            continue
+        updates[key] = trimmed
+
+    if errors:
+        return JsonResponse({"success": False, "errors": errors}, status=400)
+
+    try:
+        path_written = save_config_updates(updates)
+    except Exception as exc:
+        print(f"[CONFIG] Error saving models config: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+    return JsonResponse({"success": True, "path": path_written, "updated_keys": list(updates.keys())})
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_config_urls_view(request):
+    """
+    Persist the 9 URL/host/port fields from the Config -> URLs dialog.
+    URLs must parse with an http(s)://ws(s):// scheme and a host. Hostnames
+    must match an IPv4 or RFC-1123 hostname pattern. Ports must be 1..65535.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"success": False, "error": f"invalid JSON: {exc}"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"success": False, "error": "payload must be a JSON object"}, status=400)
+
+    errors: dict[str, str] = {}
+    updates: dict[str, object] = {}
+    for key in CONFIG_URL_KEYS:
+        if key not in payload:
+            errors[key] = "missing"
+            continue
+        value = payload[key]
+        if key in CONFIG_URL_URL_FIELDS:
+            err = _validate_url_value(value)
+            if err:
+                errors[key] = err
+            else:
+                updates[key] = value.strip()
+        elif key in CONFIG_URL_HOST_FIELDS:
+            err = _validate_host_value(value)
+            if err:
+                errors[key] = err
+            else:
+                updates[key] = value.strip()
+        elif key in CONFIG_URL_PORT_FIELDS:
+            err, port = _validate_port_value(value)
+            if err:
+                errors[key] = err
+            else:
+                updates[key] = port
+
+    if errors:
+        return JsonResponse({"success": False, "errors": errors}, status=400)
+
+    try:
+        path_written = save_config_updates(updates)
+    except Exception as exc:
+        print(f"[CONFIG] Error saving urls config: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+    return JsonResponse({"success": True, "path": path_written, "updated_keys": list(updates.keys())})
 
 
 @csrf_exempt
