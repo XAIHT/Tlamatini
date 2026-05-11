@@ -734,6 +734,68 @@ body.resizing-vertical {
     text-overflow: ellipsis;
 }
 
+/* Config dialog (Models / URLs) — same chrome as the rest of the
+   jQuery UI dialogs, but a vertically-stacked form with a label column
+   on the left and an input column on the right. */
+.config-form {
+    display: grid;
+    grid-template-columns: minmax(140px, 220px) minmax(220px, 1fr);
+    gap: 10px 18px;
+    margin: 8px 0 6px;
+    width: 100%;
+    text-align: left;
+}
+
+.config-form-row {
+    display: contents;
+}
+
+.config-form-label {
+    color: #e0e0e0;
+    font-size: 0.95em;
+    font-weight: 600;
+    align-self: center;
+    margin: 0;
+    padding-right: 4px;
+    word-break: break-word;
+}
+
+.config-form-input {
+    background-color: #40414F;
+    color: #ffffff;
+    border: 1px solid #5c6275;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.95em;
+    font-family: 'Nunito', sans-serif;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.config-form-input:focus {
+    border-color: #55BBAA;
+    box-shadow: 0 0 0 2px rgba(85, 187, 170, 0.25);
+}
+
+.config-form-input.config-form-invalid {
+    border-color: #e57373;
+    box-shadow: 0 0 0 2px rgba(229, 115, 115, 0.25);
+}
+
+/* Hide the native number-input spinners — looks cleaner inside the dialog */
+.config-form-input[type="number"]::-webkit-outer-spin-button,
+.config-form-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.config-form-input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 /* About dialog */
 .about-overlay {
     position: fixed;

@@ -67,3 +67,41 @@ def get_int_config_value(key: str, default: int, *, minimum: int | None = None) 
     if minimum is not None:
         value = max(value, minimum)
     return value
+
+
+def save_config_updates(updates: dict[str, Any]) -> str:
+    """
+    Atomically merge ``updates`` into config.json, preserving every other key
+    (including the ``_comment`` / ``_section_*`` annotations) and invalidate
+    the in-process cache so subsequent ``load_config()`` calls see the new
+    values.
+
+    Returns the absolute path that was written.
+    """
+    global _CONFIG_CACHE, _CONFIG_CACHE_PATH
+
+    if not isinstance(updates, dict):
+        raise TypeError("save_config_updates requires a dict of updates")
+
+    config_path = find_config_path()
+    if not config_path:
+        raise FileNotFoundError("config.json could not be located on disk")
+
+    with open(config_path, "r", encoding="utf-8") as file_handle:
+        existing = json.load(file_handle)
+
+    if not isinstance(existing, dict):
+        raise ValueError("config.json must be a JSON object at the top level")
+
+    for key, value in updates.items():
+        existing[key] = value
+
+    tmp_path = config_path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as file_handle:
+        json.dump(existing, file_handle, indent=2, ensure_ascii=False)
+        file_handle.write("\n")
+    os.replace(tmp_path, config_path)
+
+    _CONFIG_CACHE = None
+    _CONFIG_CACHE_PATH = None
+    return config_path

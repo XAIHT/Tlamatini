@@ -354,6 +354,133 @@ function renderAgentsDialog() {
 }
 
 // ----------------------------------------------------------------
+// Config dialogs (Models / URLs)
+// ----------------------------------------------------------------
+
+/**
+ * Build a Save/Cancel button pair for the config dialogs. The "Save"
+ * callback returns a Promise<boolean>: when it resolves to ``true`` the
+ * dialog closes; when ``false`` the dialog stays open so the user can
+ * correct the invalid inputs and try again.
+ */
+function makeSaveCancelButtons(asyncOnSave, onCancel) {
+    return [
+        {
+            text: "Save",
+            click: function () {
+                const $dlg = $(this);
+                const saveBtn = $dlg.parent().find('.ui-dialog-buttonpane button:contains("Save")');
+                const cancelBtn = $dlg.parent().find('.ui-dialog-buttonpane button:contains("Cancel")');
+                saveBtn.prop('disabled', true);
+                cancelBtn.prop('disabled', true);
+                Promise.resolve()
+                    .then(() => (asyncOnSave ? asyncOnSave() : true))
+                    .then(success => {
+                        saveBtn.prop('disabled', false);
+                        cancelBtn.prop('disabled', false);
+                        if (success === true) {
+                            $dlg.dialog("close");
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Save handler threw:', err);
+                        saveBtn.prop('disabled', false);
+                        cancelBtn.prop('disabled', false);
+                    });
+            }
+        },
+        {
+            text: "Cancel",
+            click: function () {
+                $(this).dialog("close");
+                if (onCancel != null) {
+                    onCancel();
+                }
+            }
+        }
+    ];
+}
+
+function _styleSaveCancelButtons() {
+    $('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
+    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+}
+
+function preRenderConfigModelsDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
+    configModelsDialogMessage.title = message;
+    configModelsPrimaryDialogLegend.innerText = primaryText;
+    configModelsSecondaryDialogLegend.innerText = secondaryText;
+
+    try {
+        if ($("#config-models-dialog-message").hasClass('ui-dialog-content')) {
+            $("#config-models-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("config-models dialog destroy ignored:", e);
+    }
+
+    $("#config-models-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 600,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+        open: function () { document.body.style.overflow = 'hidden'; },
+        close: function () { document.body.style.overflow = ''; },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+        },
+        buttons: makeSaveCancelButtons(typeof _saveConfigModels === 'function' ? _saveConfigModels : null, null)
+    });
+}
+
+function renderConfigModelsDialog() { // eslint-disable-line no-unused-vars
+    _styleSaveCancelButtons();
+    $("#config-models-dialog-message").dialog("open");
+    $("#config-models-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
+    _styleSaveCancelButtons();
+}
+
+function preRenderConfigUrlsDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
+    configUrlsDialogMessage.title = message;
+    configUrlsPrimaryDialogLegend.innerText = primaryText;
+    configUrlsSecondaryDialogLegend.innerText = secondaryText;
+
+    try {
+        if ($("#config-urls-dialog-message").hasClass('ui-dialog-content')) {
+            $("#config-urls-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("config-urls dialog destroy ignored:", e);
+    }
+
+    $("#config-urls-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 600,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+        open: function () { document.body.style.overflow = 'hidden'; },
+        close: function () { document.body.style.overflow = ''; },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+        },
+        buttons: makeSaveCancelButtons(typeof _saveConfigUrls === 'function' ? _saveConfigUrls : null, null)
+    });
+}
+
+function renderConfigUrlsDialog() { // eslint-disable-line no-unused-vars
+    _styleSaveCancelButtons();
+    $("#config-urls-dialog-message").dialog("open");
+    $("#config-urls-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
+    _styleSaveCancelButtons();
+}
+
+// ----------------------------------------------------------------
 // Async loaders (omissions, MCPs, tools, agents)
 // ----------------------------------------------------------------
 
