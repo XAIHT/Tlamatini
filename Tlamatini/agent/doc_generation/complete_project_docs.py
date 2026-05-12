@@ -367,6 +367,14 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("gpu" in subject or "autoload" in subject or "spining" in subject for subject in subjects):
+        highlights.append(
+            f"GPU-host behavior changed during the {RECENT_GIT_WINDOW_LABEL}: performance hooks, model-pinning startup behavior, and autoload-at-restart reliability were all touched."
+        )
+    if any("reconnection" in subject or ("config" in subject and "dialog" in subject) for subject in subjects):
+        highlights.append(
+            "The config-plane UI grew another safety layer: when model/URL dialog saves materially change live runtime inputs, the chat now prompts the operator to reconnect before trusting the current session state."
+        )
     if any("acpx" in subject for subject in subjects):
         highlights.append(
             f"ACPX-related work remained visible during the {RECENT_GIT_WINDOW_LABEL}: runtime, documentation, or operator-surface changes were still part of the active maintenance stream."
@@ -469,6 +477,7 @@ SYSTEM_OVERVIEW = [
 WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
+    "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
     "Lets users design, validate, save, pause, resume, and stop visual workflows through the Agentic Control Panel.",
@@ -479,6 +488,7 @@ WHAT_IT_DOES = [
 HOW_IT_WORKS = [
     "Browser UI sends chat and workflow requests through Django views and Channels WebSockets.",
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
+    "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
     "ACP flows deploy session-scoped pool instances, wire config values, validate NxN graph rules, and execute through Starter-driven flow semantics.",
@@ -496,6 +506,7 @@ HOW_TO_USE = [
 DESIGN_PRINCIPLES = [
     "Evidence-first answers: Tlamatini grounds responses in selected project context and hybrid retrieval rather than freeform model memory.",
     "Explicit orchestration: checked Multi-Turn uses a visible tool loop, capability scoring, and staged planning instead of a single opaque call.",
+    "Fail-open diagnostics: GPU pressure probes and session-restore safeguards warn early without breaking CPU-only or degraded environments.",
     "Runtime isolation: wrapped chat-agent copies run in session-scoped folders so template agents remain pristine while live runs stay inspectable.",
     "Operator truth over vibes: Exec Report tables, tlamatini.log, skill audits, and ACPX transcripts make the system auditable after execution.",
 ]
@@ -510,6 +521,7 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
+    "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid.",
     "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
 ]
@@ -518,7 +530,21 @@ RUNNING_GUIDE = [
     "Development server: `python Tlamatini/manage.py runserver --noreload`.",
     "Preferred async/dev bootstrap: `python Tlamatini/manage.py startserver`, which starts MCP services before the Django server.",
     "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
+    "Current startup also re-applies GPU-performance / Ollama-pinning hooks in the background on supported NVIDIA Windows hosts, so restart-time behavior stays closer to the tuned development baseline.",
     "Startup cleans pool state, repopulates the agent registry, launches MCP metrics/file-search servers, and then serves HTTP plus WebSocket traffic.",
+]
+
+EMBEDDING_GUARD_GUIDE = [
+    "README and BookOfTlamatini now document an embedding-memory pre-flight guard for GPU hosts before a directory-context load starts its FAISS embedding burst.",
+    "On supported NVIDIA hosts it estimates embedding-model VRAM pressure, and when the projected load is too high it emits a non-blocking warning chat bubble instead of silently letting RAM<->VRAM thrash surprise the operator.",
+    "CPU-only, AMD, and Apple-Silicon hosts stay fail-open: the guard becomes a no-op when the NVIDIA probe does not apply.",
+    "The practical operator response is straightforward: switch to a smaller embedding model, reconnect if needed, or proceed knowingly with the heavier model.",
+]
+
+RECENT_RUNTIME_SAFEGUARDS = [
+    "Config -> Models and Config -> URLs dialogs now track their pre-edit baseline and can show a reconnect-required dialog when the saved values change what the live chat session should trust.",
+    "The restored-session autoload path now buffers early WebSocket frames so context-loading spinners and disabled-input state are not lost during automatic reconnect/restore flows.",
+    "Startup and restart behavior now also re-apply GPU performance and Ollama keep-alive hooks in the background on supported NVIDIA Windows hosts, improving warm-model readiness without blocking Django boot.",
 ]
 
 RELEASE_GUIDE = [
@@ -575,7 +601,7 @@ ARCHITECTURE_LAYERS = [
     ("Django/Channels", "Authentication, views, WebSockets, session state, message persistence, and ASGI startup."),
     ("RAG and context", "Metadata extraction, text splitting, FAISS/BM25 retrieval, context budgeting, and fallback behavior."),
     ("Multi-Turn engine", "Capability registry, global execution planner, explicit tool loop, answer parsing, and answer-success classification."),
-    ("Tools and agents", "Core tools, MCP context providers, wrapped chat-agent launchers, and 57 visual workflow agent templates."),
+    ("Tools and agents", "Core tools, MCP context providers, wrapped chat-agent launchers, and the current 60 visual workflow agent templates."),
     ("Packaging", "PyInstaller build scripts, shortcut registration, `.flw` association, installer, uninstaller, and release folder assembly."),
 ]
 
@@ -821,6 +847,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("5. Runtime, Release, and Operator Diagnostics", styles["h1"]))
     story.append(p("Running the application", styles["h2"]))
     for item in RUNNING_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Embedding-memory pre-flight guard", styles["h2"]))
+    for item in EMBEDDING_GUARD_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Reconnect and restart safeguards", styles["h2"]))
+    for item in RECENT_RUNTIME_SAFEGUARDS:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Release pipeline", styles["h2"]))
     for item in RELEASE_GUIDE:
@@ -1307,6 +1339,11 @@ def build_ppt(context: dict) -> None:
         "qwen3.5:397b-cloud",
         "llama3.2-vision:11b",
     ], THEME["copper"], "ollama-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "GPU Guard And Reconnect UX", "README and Book driven operator safeguards", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Embedding-memory pre-flight guard", EMBEDDING_GUARD_GUIDE, THEME["amber"], "guard-a", 14)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reconnect and restart safeguards", RECENT_RUNTIME_SAFEGUARDS, THEME["jade"], "guard-b", 14)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Running Modes", "development, MCP bootstrap, and ASGI", THEME["copper"])
