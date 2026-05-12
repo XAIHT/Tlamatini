@@ -1263,6 +1263,29 @@ chatSocket.onmessage = function (e) {
     chatLog.scrollTop = chatLog.scrollHeight;
 };
 
+// Drain any frames the temporary buffer in agent_page_state.js captured
+// before this real handler was installed. Critical for the auto-load case:
+// the server's `session-restored` frame arrives immediately on connect,
+// well before chat.js finishes loading, and without this drain the
+// loading=true flag never reaches disableControlsDuringOperation() and
+// the spinner is silently skipped.
+try {
+    if (typeof _pendingChatSocketMessages !== 'undefined'
+        && _pendingChatSocketMessages.length) {
+        const queued = _pendingChatSocketMessages.splice(0);
+        console.log(`--- Draining ${queued.length} buffered WebSocket frame(s) into real onmessage handler`);
+        for (const queuedEvent of queued) {
+            try {
+                chatSocket.onmessage(queuedEvent);
+            } catch (err) {
+                console.error('Error replaying buffered chat-socket frame:', err);
+            }
+        }
+    }
+} catch (err) {
+    console.error('Buffer-drain failed:', err);
+}
+
 chatSocket.onopen = function () {
     console.log('--- Chat socket connected');
     restoreConnectedSocketUi();

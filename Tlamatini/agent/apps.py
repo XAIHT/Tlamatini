@@ -37,6 +37,23 @@ class AgentConfig(AppConfig):
             if not should_start:
                 return
 
+            # GPU max-performance + Ollama keep_alive=-1 pin. Runs on a
+            # daemon thread so a slow nvidia-smi or cold-loading model
+            # never delays Daphne. See agent/gpu_perf.py for the full
+            # contract and the reason this fixes the "context loading
+            # sometimes takes hours" laptop-GPU thermal-throttle +
+            # model-eviction symptom.
+            try:
+                from .gpu_perf import start_in_background as _start_gpu_perf
+                from .config_loader import load_config as _load_config_for_perf
+                try:
+                    _perf_cfg = _load_config_for_perf()
+                except Exception:
+                    _perf_cfg = None
+                _start_gpu_perf(_perf_cfg)
+            except Exception:
+                logging.exception("Failed to launch gpu_perf boot")
+
             # Cleanup AgentProcess records on startup
             try:
                 AgentProcess.objects.all().delete()
