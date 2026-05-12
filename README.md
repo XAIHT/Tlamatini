@@ -20,9 +20,10 @@
   - [2.1. Prerequisites](#21-prerequisites)
   - [2.2. Install Ollama (no admin rights)](#22-install-ollama-no-admin-rights)
   - [2.3. Pull the default models](#23-pull-the-default-models)
-  - [2.4. Clone, install, migrate](#24-clone-install-migrate)
-  - [2.5. Run the server (not-frozen)](#25-run-the-server-not-frozen)
-  - [2.6. Log in for the first time](#26-log-in-for-the-first-time)
+  - [2.4. Cloud models require an Ollama Pro/Max plan](#24-cloud-models-require-an-ollama-promax-plan)
+  - [2.5. Clone, install, migrate](#25-clone-install-migrate)
+  - [2.6. Run the server (not-frozen)](#26-run-the-server-not-frozen)
+  - [2.7. Log in for the first time](#27-log-in-for-the-first-time)
 - [3. Using the Chat (`/agent/`)](#3-using-the-chat-agent)
   - [3.1. Chat layout in 30 seconds](#31-chat-layout-in-30-seconds)
   - [3.2. Setting code as context](#32-setting-code-as-context)
@@ -178,7 +179,25 @@ You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§7
 
 > **Optional: swap to a higher-detail embedding model.** If your retrieval quality on dense, technical corpora is not good enough with the default, you can switch to `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing `embeding-model` in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than `Nomic-Embed-Text:latest` (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (see [§9](#9-embedding-memory-pre-flight-guard)) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
-### 2.4. Clone, install, migrate
+### 2.4. Cloud models require an Ollama Pro/Max plan
+
+Four of the six default model tags in [§2.3](#23-pull-the-default-models) carry the `:cloud` suffix — `glm-5:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those are **Ollama Cloud** models: they live on Ollama's servers, not on your machine, and `ollama pull` only registers a stub that proxies inference to the cloud. Reaching that cloud requires a logged-in Ollama account and a subscription tier that allows the workload you intend to run.
+
+The plan structure (prices are deliberately omitted from this README because they change — check **<https://ollama.com/pricing>** for the current numbers):
+
+![Ollama plan structure — Free / Pro / Max](OllamaPricing.png)
+
+| Plan | Cloud-model access | Why it matters for Tlamatini |
+|---|---|---|
+| **Free** | 1 cloud model concurrently, light usage. Local open-weights models are unlimited. | Enough to *try* a single cloud model for a one-shot chat. **Not enough** for Tlamatini's default config, which pins different cloud models for chat (`glm-5:cloud`), FlowCreator (`qwen3.5:397b-cloud`), several workflow agents (`gpt-oss:120b-cloud`), and vision (`qwen3.5:cloud`) — so a real Multi-Turn run typically needs 2–3 cloud models loaded at once. |
+| **Pro** | 3 concurrent cloud models, ~50× the Free monthly quota, access to the larger cloud-only models, ability to upload / share private models. | The realistic minimum for running Tlamatini out-of-the-box with its shipped cloud-model defaults — Multi-Turn + Exec Report + occasional Image-Interpreter calls. |
+| **Max** | 10 concurrent cloud models, ~5× the Pro quota, designed for sustained heavy agentic workloads. | Recommended for long-running ACPX relays, FlowHypervisor-supervised flows, and Croner-driven unattended runs that chain many cloud calls per hour. |
+
+**If you do not want to subscribe**, you can run Tlamatini entirely on local open-weights models. Edit `Tlamatini/agent/config.json` (`chained-model`, `unified_agent_model`, `mcp_file_search_model`, `flow_creator_model`, `image_interpreter_model`) and every agent `config.yaml` that names a `:cloud` tag, and swap them for a model you have pulled locally (for example, `llama3.1:8b`, `qwen2.5-coder:14b`, `mistral-nemo:12b`). Performance and quality will scale with your GPU/CPU — Multi-Turn and ACPX both work fine on a sufficiently large local model.
+
+**API keys are separate.** This subscription only governs `*:cloud` Ollama models. The ACPX runtime can additionally spawn external coding-agent CLIs that bring their own credentials (Anthropic API key for `claude`, OpenAI key for `codex`, Google key for `gemini`, etc.) — those are configured in `Tlamatini/agent/config.json` under `acpx.agents.<id>.env` and are unaffected by your Ollama plan. See [§5.6](#56-api-key-setup-the-easy-button) for the easy-button setup.
+
+### 2.5. Clone, install, migrate
 
 ```bash
 git clone https://github.com/XAIHT/Tlamatini.git
@@ -197,7 +216,7 @@ python Tlamatini/manage.py createsuperuser
 python Tlamatini/manage.py collectstatic --noinput
 ```
 
-### 2.5. Run the server (not-frozen)
+### 2.6. Run the server (not-frozen)
 
 ```bash
 python Tlamatini/manage.py runserver --noreload
@@ -207,7 +226,7 @@ python Tlamatini/manage.py runserver --noreload
 
 The console title becomes `Tlamatini` and stdout/stderr are tee'd into `Tlamatini/tlamatini.log` (truncated on every start). When debugging, `tlamatini.log` is the first thing to read.
 
-### 2.6. Log in for the first time
+### 2.7. Log in for the first time
 
 Open `http://127.0.0.1:8000/` and log in with the superuser you just created. Then:
 

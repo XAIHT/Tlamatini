@@ -12,7 +12,7 @@
 
 Tlamatini does a lot. This README is organized so you can stop reading at the depth you need.
 
-- **Part I — Getting Tlamatini Running**: prerequisites, Ollama, install, first login. *Read this once.*
+- **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the four toolbar checkboxes (Multi-Turn, Exec Report, ACPX, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
 - **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 60 workflow agents.
@@ -27,7 +27,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Appendix C** — Full changelog (preserved verbatim).
 - **Appendix D** — Acknowledgments / Contributing / License.
 
-If you only have ten minutes, read Part I §3–§5 (install + first login), then Part II §11 (Multi-Turn).
+If you only have ten minutes, read Part I §3–§7 (install + first login), then Part II §12 (Multi-Turn).
 
 ---
 
@@ -134,9 +134,52 @@ Some pulls are large and slow. Start them, walk away, come back.
 
 > **Free to substitute.** None of the model tags above are mandatory. If you prefer a different local model, edit the relevant entry in `config.json` (Part VII) or the agent's `config.yaml`. Just match the model name to something `ollama list` actually returns.
 
-> **High-detail embedding opt-in.** If your retrieval quality on dense, technical corpora is not good enough with `Nomic-Embed-Text:latest`, you can swap it for `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing the `embeding-model` key in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than the default (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (Part §32) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
+> **High-detail embedding opt-in.** If your retrieval quality on dense, technical corpora is not good enough with `Nomic-Embed-Text:latest`, you can swap it for `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing the `embeding-model` key in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than the default (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (Part §33) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
-## 5. Installing Tlamatini
+## 5. Cloud models require an Ollama Pro/Max plan
+
+Four of the six default model tags in chapter §4 carry the `:cloud` suffix — `glm-5:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command only registers a thin stub on the local daemon that proxies inference requests to Ollama's servers. To make those proxied requests actually return something, three things have to be true: you have an Ollama account, you are signed in on the host that runs Tlamatini, and the account is on a subscription tier that allows the workload you are about to run.
+
+### 5.1. The three tiers, in plain English
+
+This README deliberately omits dollar amounts because the pricing changes over time. Check the current numbers on **<https://ollama.com/pricing>**. The plan structure (Free, Pro, Max) and what each one lets you do with cloud models is what matters here:
+
+![Ollama plan structure — Free / Pro / Max (prices intentionally not shown — check ollama.com/pricing)](OllamaPricing.png)
+
+| Plan | Cloud-model entitlements | Honest fit for Tlamatini |
+|---|---|---|
+| **Free** | 1 cloud model concurrent, light monthly usage, access to a smaller subset of cloud-only models. Unlimited *local* open-weights models. | OK for kicking the tires with a single cloud-backed chat. **Not enough** to run Tlamatini's stock config, because a normal Multi-Turn session can easily touch two or three cloud models in the same request (chat model, FlowCreator model when Create Flow fires, vision model when an Image-Interpreter step runs). The second concurrent model will simply 429. |
+| **Pro** | 3 concurrent cloud models, ~50× the Free monthly quota, full access to the larger cloud-only models (the `*120b-cloud`, `*397b-cloud` tags Tlamatini ships with), and you can upload / share your own private models. | The realistic minimum to run Tlamatini out of the box with the model tags from chapter §4 *as written*. Comfortable for interactive Multi-Turn + Exec Report use, occasional FlowCreator runs, and a handful of ACPX relays per day. |
+| **Max** | 10 concurrent cloud models, ~5× the Pro quota, intended for sustained heavy agentic workloads. | Recommended if you live in long-running ACPX relays, FlowHypervisor-supervised flows, or Croner-driven unattended runs that chain many cloud calls per hour. Also the right choice when several wrapped chat-agents (Summarizer, File-Interpreter, Image-Interpreter, Prompter…) fan out cloud calls concurrently inside a single Multi-Turn iteration. |
+
+### 5.2. What if I do not want to subscribe?
+
+Tlamatini does not *require* Ollama Cloud. The cloud tags are convenience defaults — large, capable models you do not need to host yourself. You can run the whole stack on local open-weights models instead. Open `Tlamatini/agent/config.json` and replace every cloud tag with a model you have pulled locally:
+
+| Config key | Default (cloud) | A reasonable local substitute |
+|---|---|---|
+| `chained-model` | `glm-5:cloud` | `qwen2.5-coder:14b` or `llama3.1:8b` |
+| `unified_agent_model` | `glm-5:cloud` | same as above |
+| `mcp_file_search_model` | `glm-5:cloud` | same as above |
+| `flow_creator_model` | `qwen3.5:397b-cloud` | `qwen2.5:32b` or any large local model you can fit in VRAM |
+| `image_interpreter_model` | `qwen3.5:cloud` | `llama3.2-vision:11b` (already in chapter §4's pull list as the local fallback) |
+
+Then also walk through `Tlamatini/agent/agents/*/config.yaml` and replace any cloud tag the agent templates name (several workflow agents — Prompter, Summarizer, Monitor-Log, FlowHypervisor, Recmailer, Whatsapper, File-Interpreter — all default to `gpt-oss:120b-cloud`). After the swap, restart Tlamatini. Quality and latency will scale with your hardware, but Multi-Turn and ACPX both work fine on a sufficiently large local model.
+
+### 5.3. This subscription is separate from your coding-agent API keys
+
+The Ollama plan only governs `*:cloud` Ollama models. If you plan to use **ACPX** (chapter §45) to delegate sub-tasks to external coding-agent CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, …), each of those carries its own credentials: the Anthropic API key for `claude`, OpenAI for `codex`, Google for `gemini`, and so on. Those keys are configured in `Tlamatini/agent/config.json` under the top-level fields *and* the per-agent `acpx.agents.<id>.env` blocks, and they are completely independent of your Ollama subscription. The `setup-new-acpx-key` skill (chapter §15) automates that wiring.
+
+### 5.4. Troubleshooting the cloud path
+
+| Symptom | Likely cause | What to try |
+|---|---|---|
+| `ollama pull glm-5:cloud` succeeds but inference returns "unauthorized" / "401" | Not signed in to Ollama on this host. | Run `ollama signin` (or use the Ollama desktop app) and confirm `ollama whoami` prints your account. |
+| Inference returns "rate limit exceeded" / "429" right after a Multi-Turn step | Your plan's concurrent-model or monthly-usage cap is full. | Either upgrade the plan, drop concurrency by running fewer wrapped agents in parallel, or swap one of the cloud tags for a local model in `config.json`. |
+| Inference returns "model not available on this plan" | The tag you pulled is gated to a higher tier (Pro/Max only). | Check `ollama.com/pricing` for which models each tier covers, and pick a tag your plan includes — or upgrade. |
+| Tlamatini chat says "Ollama backend unreachable" | Local daemon is down, **not** a cloud problem. | `ollama serve` and `Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing` per chapter §3.3. Cloud requests still go through the local daemon. |
+
+## 6. Installing Tlamatini
 
 You have three paths. Pick one.
 
@@ -159,7 +202,7 @@ python Tlamatini/manage.py createsuperuser
 python Tlamatini/manage.py collectstatic --noinput
 ```
 
-When the migrations finish and you have a superuser, run the server (chapter 6).
+When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
@@ -177,7 +220,7 @@ That is it. Double-click the desktop shortcut to launch.
 
 See **Part VIII — Deploying & Packaging**. Three scripts, run in order: `build.py` → `build_uninstaller.py` → `build_installer.py`.
 
-## 6. First login
+## 7. First login
 
 After step 5 (any path), run the server:
 
@@ -203,7 +246,7 @@ After login you arrive at the welcome page. Click into **`/agent/`** for the cha
 
 # Part II — Using the Chat (the dummy walkthrough)
 
-## 7. A tour of the chat page
+## 8. A tour of the chat page
 
 Open `/agent/`. Here is what you are looking at:
 
@@ -231,7 +274,7 @@ The four checkboxes in the toolbar are **the** thing to learn. Each one is expla
 
 The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for the main model-name fields and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
 
-## 8. Asking your first question (no toggles)
+## 9. Asking your first question (no toggles)
 
 Leave every checkbox unticked. This is the **simplest** possible chat: one question in, one answer out.
 
@@ -249,7 +292,7 @@ What is happening under the hood:
 
 This is the **legacy one-shot chat path**. It is fast, deterministic, and uses no tools. It is also intentionally limited: the LLM cannot run anything on your machine, cannot search the web, cannot read files. For that, you tick checkboxes.
 
-## 9. Setting code as context
+## 10. Setting code as context
 
 Most of the time, you want the bot to answer questions about *your* code, not generic Python. Click **Context** in the top nav:
 
@@ -270,7 +313,7 @@ The bot will quote real files, reference real classes, and stay grounded. If it 
 
 One subtle but important reliability fix landed here: when a browser refresh restores a saved context, the chat input is now disabled immediately and remains disabled until the contextual RAG chain has really finished rebuilding. In older builds, the user could briefly type into a half-restored session because the welcome-back banner arrived before the context-loading lifecycle had finished.
 
-## 10. The "Add internet context" toggle
+## 11. The "Add internet context" toggle
 
 Tick **Add internet context** when the question genuinely needs information from the web. Examples:
 
@@ -282,7 +325,7 @@ Tlamatini classifies your question with a small LLM call ("does this need the we
 
 Leave it **unticked** for everything that does not need fresh web data. The classifier is fast but a web round-trip still adds latency.
 
-## 11. The "Multi-Turn" toggle (turning Tlamatini into a *doer*)
+## 12. The "Multi-Turn" toggle (turning Tlamatini into a *doer*)
 
 This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* things. With Multi-Turn ticked, Tlamatini can *do* them.
 
@@ -319,7 +362,7 @@ What just happened: the planner picked `chat_agent_shoter` (the wrapped Shoter a
 ### What you'll see if it goes well
 
 - The LLM does **not** ask you for permission to take the screenshot — Multi-Turn means "you're an operator, not an advisor."
-- A **Create Flow** button appears in the message header (chapter 15 explains it).
+- A **Create Flow** button appears in the message header (chapter 16 explains it).
 - The answer ends in a period, with no `END-RESPONSE` sentinel leaking through.
 
 ### Common pitfalls
@@ -339,7 +382,7 @@ Multi-Turn and **Set context** stack. If your project is loaded as context, the 
 
 The planner pulls `chat_agent_executer` for the shell call; the loaded context tells the LLM where the model lives.
 
-## 12. The "Exec Report" toggle (seeing every step)
+## 13. The "Exec Report" toggle (seeing every step)
 
 ### What it does
 
@@ -350,7 +393,7 @@ This is the "show your work" view. It is the ground-truth counterpart to the pro
 ### When to use it
 
 - Always when you are debugging a Multi-Turn run.
-- Always when you want to convert a chat into a flow (chapter 15).
+- Always when you want to convert a chat into a flow (chapter 16).
 - Whenever you want to be sure what *actually* happened on disk / on the network.
 
 ### Step-by-step
@@ -387,7 +430,7 @@ Read-only tools (Crawler, Googler, Prompter, Summarizer, File-Interpreter, File-
 
 The Exec Report tables are **persisted into the chat history**, not just broadcast live. Reload the page — the tables are still there. This is intentional, and the order in `process_llm_response()` is strict: classify success → append exec-report HTML → save → broadcast. Do not reorder.
 
-## 13. The "ACPX" toggle (delegating to external coding-agent CLIs)
+## 14. The "ACPX" toggle (delegating to external coding-agent CLIs)
 
 ### What it does
 
@@ -415,7 +458,7 @@ Picture it like this:
 └──────────────────────────────────────┘
 ```
 
-The full ACPX deep-dive is in **Part VI §44**. This chapter is just the toolbar walkthrough.
+The full ACPX deep-dive is in **Part VI §45**. This chapter is just the toolbar walkthrough.
 
 ### When to use it
 
@@ -449,7 +492,7 @@ Then put your API key into `Tlamatini/agent/config.json`:
 }
 ```
 
-(Two layers — top-level for Tlamatini's own Anthropic calls, and `acpx.agents.claude.env` for the spawned `claude` CLI. The skill `setup-new-acpx-key` automates this; see chapter 14.)
+(Two layers — top-level for Tlamatini's own Anthropic calls, and `acpx.agents.claude.env` for the spawned `claude` CLI. The skill `setup-new-acpx-key` automates this; see chapter 15.)
 
 Now in the chat, tick **Multi-Turn** AND **ACPX** AND **Exec Report**, and type:
 
@@ -474,7 +517,7 @@ You will see:
 | Session left running | Always end with `acp_kill`. The LLM is rule-instructed to do so, but if a request times out, manually call `acp_list_sessions` and `acp_kill`. |
 | API key not picked up | Order matters: per-agent `acpx.agents.<id>.env` wins over a shell-exported variable. Double-check both layers. |
 
-## 14. Combining the four toggles — worked examples
+## 15. Combining the four toggles — worked examples
 
 ### Example A — "Set up a new ACPX agent_id from scratch"
 
@@ -508,7 +551,7 @@ You get a quoted-and-cited answer in <2 seconds. No tools, no wait, no overhead.
 
 Multi-Turn suppresses console pop-ups for wrapped runtimes; Exec Report gives you an audit table after.
 
-## 15. From chat to flow — the Create Flow button
+## 16. From chat to flow — the Create Flow button
 
 When a Multi-Turn run **succeeds** and used at least one state-changing tool, Tlamatini renders a **Create Flow** button in the message header. Click it to download a `.flw` JSON file that mirrors the exact tool sequence the LLM ran, laid out left-to-right, ready to load in the visual designer.
 
@@ -537,7 +580,7 @@ You can immediately re-open it in `/agentic_control_panel/` and run it as an una
 
 # Part III — The Visual Workflow Designer
 
-## 16. Why drag-and-drop flows
+## 17. Why drag-and-drop flows
 
 The chat is amazing for one-off tasks. But some jobs you want to:
 
@@ -548,7 +591,7 @@ The chat is amazing for one-off tasks. But some jobs you want to:
 
 Those are flows. You drag agents from a sidebar onto a canvas, draw lines between them, configure their parameters, save the result as a `.flw` file, and run it.
 
-## 17. Anatomy of the canvas
+## 18. Anatomy of the canvas
 
 Open `/agentic_control_panel/`:
 
@@ -581,7 +624,7 @@ A few facts about the canvas you need to internalize:
 
 Another recent change matters if you use the config dialogs heavily: dialog-edited wiring fields now survive the compile pass. In practice that means a user-edited `source_agents`, `target_agents`, or Ender kill list is preserved, while the canvas still contributes its live connections where appropriate. Validate and Start no longer flatten those deliberate edits back into stale pool defaults.
 
-## 18. Your first flow (3-agent example)
+## 19. Your first flow (3-agent example)
 
 Goal: run a shell command, take a screenshot, end.
 
@@ -600,13 +643,13 @@ Goal: run a shell command, take a screenshot, end.
 
 You'll see LEDs go green, then sequential outputs in the log viewer, then everything turns gray. Open your `output_dir` — there is a screenshot.
 
-## 19. Saving and loading `.flw` files
+## 20. Saving and loading `.flw` files
 
 Click **💾 Save**, pick a name. You get a JSON file with all node positions, configs, and connections. Distribute it; somebody else loads it via **📂 Load**, gets the same flow.
 
-`.flw` files are also what the chat's **Create Flow** button (chapter 15) emits.
+`.flw` files are also what the chat's **Create Flow** button (chapter 16) emits.
 
-## 20. Pause, Resume, and Stop
+## 21. Pause, Resume, and Stop
 
 The three buttons each do something different:
 
@@ -620,7 +663,7 @@ This is why long-running workflows (Crawler scraping 10,000 URLs, Parametrizer i
 
 The stop path also got harder to break in mixed flows. Current builds are better at killing lingering session processes during cleanup, so a half-manual / half-compiled run is less likely to leave zombie agents behind before the next start.
 
-## 21. FlowHypervisor (your watchdog)
+## 22. FlowHypervisor (your watchdog)
 
 Click **⚠ Hypervisor** and a system-managed FlowHypervisor agent starts watching every other running agent. It is an LLM that:
 
@@ -631,7 +674,7 @@ Click **⚠ Hypervisor** and a system-managed FlowHypervisor agent starts watchi
 
 If a problem fires, the browser shows an alert dialog. You can append your own rules to the watchdog through the FlowHypervisor agent's `user_instructions` config field — useful for "don't flag this known false-positive" or "wake me if X is silent for >10 min."
 
-## 22. FlowCreator — let an LLM design the flow for you
+## 23. FlowCreator — let an LLM design the flow for you
 
 Drag a **FlowCreator** node onto the canvas, double-click it, and type a natural-language objective:
 
@@ -641,7 +684,7 @@ Click **Generate**. FlowCreator reads `agentic_skill.md` (its design playbook), 
 
 This is the highest-leverage feature for non-technical users: you describe what you want, the system *draws* the flow.
 
-## 23. Parametrizer (chaining outputs into the next agent's config)
+## 24. Parametrizer (chaining outputs into the next agent's config)
 
 This is the agent that makes multi-stage pipelines work without manual `config.yaml` editing.
 
@@ -703,7 +746,7 @@ Apirer ──▶ Parametrizer ──▶ Kyber-Cipher
 
 No manual config editing. No race conditions. Pause-safe.
 
-## 24. Gatewayer (external triggers into a flow)
+## 25. Gatewayer (external triggers into a flow)
 
 Gatewayer is the **inbound gateway** — the entrypoint that lets external systems kick off your flow.
 
@@ -771,7 +814,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 60 workflow-agent types. Spotlight chapters for **Parametrizer** (§23) and **Gatewayer** (§24) above.
+A compact reference for all 60 workflow-agent types. Spotlight chapters for **Parametrizer** (§24) and **Gatewayer** (§25) above.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -847,9 +890,9 @@ A compact reference for all 60 workflow-agent types. Spotlight chapters for **Pa
 
 | Agent | Purpose |
 |---|---|
-| **Parametrizer** | Strict single-lane queue mapping source-agent log segments into target-agent config. (See §23.) |
+| **Parametrizer** | Strict single-lane queue mapping source-agent log segments into target-agent config. (See §24.) |
 | **FlowBacker** | Post-Ender backup of session logs/configs. |
-| **Gatewayer** | Inbound HTTP webhook / folder-drop ingress. (See §24.) |
+| **Gatewayer** | Inbound HTTP webhook / folder-drop ingress. (See §25.) |
 | **Gateway-Relayer** | Bridges provider webhooks (GitHub) into Gatewayer's HMAC format. |
 | **Node-Manager** | Live infrastructure registry; probes nodes via ping/TCP/SSH/WinRM/HTTP. |
 
@@ -864,13 +907,13 @@ A compact reference for all 60 workflow-agent types. Spotlight chapters for **Pa
 | **Notifier** | Browser notification + sound on pattern detection (LangGraph). |
 | **Whatsapper** | WhatsApp messages via TextMeBot. |
 | **TelegramRX** | Telegram message receiver. |
-| **FlowHypervisor** | LLM watchdog over running agents. (See §21.) |
+| **FlowHypervisor** | LLM watchdog over running agents. (See §22.) |
 
 ## AI / design
 
 | Agent | Purpose |
 |---|---|
-| **FlowCreator** | LLM that designs flows from natural-language objectives. (See §22.) |
+| **FlowCreator** | LLM that designs flows from natural-language objectives. (See §23.) |
 
 ---
 
@@ -878,7 +921,7 @@ A compact reference for all 60 workflow-agent types. Spotlight chapters for **Pa
 
 Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually enabled/disabled via the **Tools Dialog** in the chat.
 
-## 25. Core tools
+## 26. Core tools
 
 | Tool | What it does |
 |---|---|
@@ -897,7 +940,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 26. Wrapped chat-agent tools (36)
+## 27. Wrapped chat-agent tools (36)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -911,7 +954,7 @@ Each wrapped tool launches an isolated, sequenced runtime copy of a workflow age
 | **Routing** | `chat_agent_asker` |
 | **Crawling, monitoring, APIs, prompts, crypto** | `chat_agent_crawler`, `chat_agent_monitor_log`, `chat_agent_monitor_netstat`, `chat_agent_apirer`, `chat_agent_prompter`, `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph` |
 
-## 27. Wrapped runtime lifecycle tools (6)
+## 28. Wrapped runtime lifecycle tools (6)
 
 After launching a wrapped agent, you can monitor and control it:
 
@@ -924,7 +967,7 @@ After launching a wrapped agent, you can monitor and control it:
 | `chat_agent_run_wait` | **Block** until a run reaches a terminal status (or `max_seconds` fires). Replaces busy-poll loops. |
 | `window_present(title)` | Fast (<100 ms) yes/no helper for "is this window open?" — use this instead of `chat_agent_image_interpreter` for window-presence gates. |
 
-## 28. ACPX & Skills tools (12)
+## 29. ACPX & Skills tools (12)
 
 The ACPX/Skill surface. Every tool returns a JSON envelope. Failure envelopes are always `{ ok: false, reason: "...", code: "..." }`.
 
@@ -951,7 +994,7 @@ The 21 seed skills (`agent/skills_pkg/<name>/SKILL.md`) cover: `hello-world`, `s
 
 This is the deep-dive section. Skip if you only want to use Tlamatini.
 
-## 29. The big picture
+## 30. The big picture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -982,7 +1025,7 @@ This is the deep-dive section. Skip if you only want to use Tlamatini.
        └─────────────────────────┘   └──────────────────────────┘
 ```
 
-## 30. The Five Layers
+## 31. The Five Layers
 
 The system is organized in five conceptual layers. Each layer has a single responsibility.
 
@@ -994,7 +1037,7 @@ The system is organized in five conceptual layers. Each layer has a single respo
 | **4. Main answer chains** | Basic / History-aware / Unified chains. `factory.py` monkey-patches `invoke()` to wire context from sidecars. | `agent/rag/chains/` |
 | **5. Unified-agent tools** | Synchronous LangChain `@tool` functions returned by `get_mcp_tools()`. Only active when the unified-agent chain is selected. | `agent/tools.py` |
 
-## 31. RAG pipeline
+## 32. RAG pipeline
 
 When you set a directory as context:
 
@@ -1008,7 +1051,7 @@ When you set a directory as context:
 
 If embedding fails (out-of-memory), **memory-insufficient fallback** kicks in: the loaded source files are packed into a raw context block and injected directly into the prompt-only / unified-agent path. You get reduced retrieval quality, not a wiped chat.
 
-## 32. Embedding-memory pre-flight guard (GPU hosts)
+## 33. Embedding-memory pre-flight guard (GPU hosts)
 
 When you click **Set directory as context** in the Context menu, Tlamatini is about to do something dangerously bursty: walk every text file under the path, split each into chunks, push every chunk through Ollama's embedding API to build a FAISS index, and only then return control to the chat. On a laptop or consumer GPU this is the moment of truth — if the embedding model needs more VRAM than the GPU can spare, Ollama starts evicting and re-loading on every batch, and what should be a thirty-second operation turns into a multi-hour stall while RAM and VRAM swap back and forth across the PCIe bus. The dev box this codebase is calibrated on — an RTX 4070 Laptop with 8 188 MiB of VRAM — sees exactly this with the default embedding model `qwen3-embedding:8b`, which sits at ~6.24 GB resident, 77.9 % of total. Add a chat model on top, and the GPU is over capacity.
 
@@ -1126,7 +1169,7 @@ python manage.py test agent.test_embedding_memory_guard --verbosity=2
 
 Forty-nine tests in roughly 2.3 seconds, no database setup, no GPU required.
 
-## 33. Multi-Turn execution pipeline
+## 34. Multi-Turn execution pipeline
 
 Below the toolbar checkbox, here is what really happens when you tick **Multi-Turn**:
 
@@ -1174,7 +1217,7 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
 
 The capability-aware selector scores each tool with name match (+14 exact), alias / hint phrase match (+10–12), example-request token overlap (up to +3), description token overlap (up to +10), plus a +15 history-aware boost on short follow-ups (≤4 meaningful tokens). The cap is 20 tools per request by default — lowered from 50 after observing keyword inflation pulled in everything.
 
-## 34. ACPX runtime mechanics
+## 35. ACPX runtime mechanics
 
 ACPX is a Python port of OpenClaw's ACPX plugin. The `agent_id` mapping, `permissionMode` vocabulary, and SKILL.md frontmatter contract match OpenClaw verbatim.
 
@@ -1216,7 +1259,7 @@ Plus a non-interactive policy (`deny` / `fail`) for unattended runs.
 
 The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing tools. One ACPXer node = one ACPX session lifecycle. It mirrors the runtime mechanics inline (in ~120 lines) because workflow agents in the pool run as separate Python subprocesses and cannot import `agent.acpx`. The transcript format is byte-identical, so an ACPXer transcript is interchangeable with a chat-driven one.
 
-## 35. Database models
+## 36. Database models
 
 13 models in `agent/models.py`. The ones that matter day-to-day:
 
@@ -1236,7 +1279,7 @@ The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing too
 | `AgentProcess` | Tracked PIDs for canvas agents. Cleared on shutdown. |
 | `Omission` | Secret-redaction patterns for context. |
 
-## 36. The application log (`tlamatini.log`)
+## 37. The application log (`tlamatini.log`)
 
 `Tlamatini/manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` **before Django initializes**. Every print, every Django logger (they all use `StreamHandler`), and every tool's stdout/stderr lands in both the console and a single file:
 
@@ -1254,7 +1297,7 @@ Characteristics:
 
 When debugging an issue, `tlamatini.log` is the first artifact to consult.
 
-## 37. ASCII / box-drawing diagrams in chat
+## 38. ASCII / box-drawing diagrams in chat
 
 LLM-generated ASCII art / flowcharts / column layouts render in the chat with a fixed-width font and preserved whitespace. The LLM is instructed (rule 13 in `prompt.pmt`) to wrap diagrams in `BEGIN-DIAGRAM` / `END-DIAGRAM` markers. There is also auto-detection: any run of consecutive lines containing box-drawing characters (`│┃|─━┌┐└┘├┤┬┴┼╭╮╯╰`), arrow glyphs (`▲▼►◄→←↑↓`), or ASCII-art runs (`+`, `-`, `=`, `|`) is wrapped automatically. Both pipelines emit `<pre class="ascii-diagram">…</pre>` HTML.
 
@@ -1270,7 +1313,7 @@ The main file is `Tlamatini/agent/config.json`.
 | Frozen | `<install-dir>/config.json` next to the executable |
 | Both | `CONFIG_PATH` env var, if set, wins over both |
 
-## 38. LLM settings
+## 39. LLM settings
 
 ```json
 {
@@ -1303,7 +1346,7 @@ The main file is `Tlamatini/agent/config.json`.
 
 You can still edit `config.json` by hand, but you no longer have to for the common cases. The chat navbar's `Config -> Models` dialog writes the model-name subset, and `Config -> URLs` writes the endpoint / host / port subset. The browser validates shape first, the backend validates again, and `config_loader.save_config_updates()` merges only the changed keys atomically into whichever `config.json` is active for the current mode (source or frozen).
 
-## 39. RAG settings
+## 40. RAG settings
 
 ```json
 {
@@ -1341,7 +1384,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 40. Internet search settings
+## 41. Internet search settings
 
 ```json
 {
@@ -1354,7 +1397,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 41. MCP services
+## 42. MCP services
 
 ```json
 {
@@ -1367,7 +1410,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 42. ACPX settings
+## 43. ACPX settings
 
 The whole `acpx` block is **optional**. When missing or partial, every value falls back to a safe default. On first boot of an upgrade build, `agent/acpx/service.py::boot_acpx()` calls `ensure_acpx_block_in_config_json()` and **appends the documented default block to your existing `config.json` atomically**.
 
@@ -1466,7 +1509,7 @@ Instead of editing `config.json` by hand, in chat (Multi-Turn + ACPX ticked):
 
 The skill walks itself through writing `data.keys`, patching both `config.json` layers, optionally extending `regen_secrets.py`, and verifying via `acp_doctor`.
 
-## 43. Image interpreter
+## 44. Image interpreter
 
 ```json
 {
@@ -1476,7 +1519,7 @@ The skill walks itself through writing `data.keys`, patching both `config.json` 
 }
 ```
 
-## 44. Advanced options
+## 45. Advanced options
 
 ```json
 {
@@ -1496,7 +1539,7 @@ The skill walks itself through writing `data.keys`, patching both `config.json` 
 
 # Part VIII — Deploying & Packaging
 
-## 45. The three-step build pipeline
+## 46. The three-step build pipeline
 
 ```
 build.py  ──►  build_uninstaller.py  ──►  build_installer.py
@@ -1537,7 +1580,7 @@ python build_installer.py
 
 Requires `pkg.zip` and `Uninstaller.exe` from steps 1 and 2. Builds `install.py` with `--onedir --windowed` and a splash screen, copies `pkg.zip` and `Uninstaller.exe` into `dist/Installer/`, and assembles `dist/Tlamatini_Release/` with SHA-256 verification.
 
-## 46. What the installer does
+## 47. What the installer does
 
 When an end user runs `Installer.exe`:
 
@@ -1550,14 +1593,14 @@ When an end user runs `Installer.exe`:
 7. Registers `.flw` extension to open with Tlamatini.
 8. Cleans the PyInstaller bundle path from helper subprocess environments so PowerShell helpers and Explorer restarts don't stall.
 
-## 47. What the uninstaller does
+## 48. What the uninstaller does
 
 1. Removes shortcuts (with Explorer restart for immediate effect).
 2. Unregisters the `.flw` association and clears cached shell state.
 3. Deletes all application files **except** `<install_path>/Tlamatini/agents/*` (preserves user-created agents).
 4. Removes the install directory if empty.
 
-## 48. Frozen-mode behavior
+## 49. Frozen-mode behavior
 
 The Multi-Turn implementation carries frozen-build awareness in supporting runtime code:
 
@@ -1571,7 +1614,7 @@ The Multi-Turn implementation carries frozen-build awareness in supporting runti
 
 # Part IX — The Command Deck (API + WebSocket)
 
-## 49. WebSocket protocol
+## 50. WebSocket protocol
 
 Endpoint: `ws://<host>/ws/agent/`.
 
@@ -1622,7 +1665,7 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 
 A successful Multi-Turn message also carries `tool_calls_log`, `multi_turn_used`, `answer_success` for the Create Flow gate.
 
-## 50. HTTP endpoints
+## 51. HTTP endpoints
 
 The backend currently exposes 103 routes. Highlights:
 
@@ -1719,7 +1762,7 @@ Plus the Parametrizer-specific pair:
 
 # Part X — Survival Guide (Troubleshooting)
 
-## 51. Common issues
+## 52. Common issues
 
 ### Ollama connection failed
 
@@ -1785,7 +1828,7 @@ If transcripts only show outbound prompts and no inbound responses, your build i
 - Read the Forker/Asker log for pattern-matching diagnostics.
 - Asker only: did the browser dialog appear? Check console errors.
 
-## 52. Debug mode
+## 53. Debug mode
 
 ```json
 {
@@ -1810,12 +1853,12 @@ INFO-level loggers configured in `tlamatini/settings.py`:
 
 All log lines are prefixed with timestamp and logger name (e.g. `2026-04-13 12:28:39 [agent.tools] INFO …`).
 
-## 53. Log locations
+## 54. Log locations
 
 | What | Where |
 |---|---|
 | Django / Multi-Turn console | stdout |
-| **Application-wide** | `Tlamatini/tlamatini.log` (truncated on every start; see §35) |
+| **Application-wide** | `Tlamatini/tlamatini.log` (truncated on every start; see §36) |
 | ACP workflow agent logs | `<pool_directory>/<agent_name>/<agent_name>.log` |
 | Chat-launched wrapped agents | `agent/agents/pools/_chat_runs_/<agent>_<seq>_<id>/<agent>_<seq>_<id>.log` (failed runs preserved) |
 
@@ -1912,7 +1955,7 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 
 ### Recent Updates
 
-- **Embedding-Memory Pre-Flight Guard — 2026-05-12** — A new module (`agent/embedding_memory_guard.py`) catches the "context loading hangs for hours" failure mode on GPU hosts before the embed burst starts. The guard is wired into `agent/consumers.py::setup_contextual_rag_chain` exactly once: after the consumer broadcasts `MSG_AGENT_LOADING_CONTEXT` and before it schedules the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives `FAISS.from_documents(...)`. It runs **only** when an NVIDIA GPU is detected via the cached `gpu_perf._has_nvidia_gpu()` probe — CPU-only, AMD, and Apple Silicon hosts skip the check silently and the legacy load path is unchanged. Three-tier VRAM prediction: Tier A reads `size_vram` verbatim from `GET /api/ps` when the model is already resident (exact daemon ground truth); Tier B computes `parameter_count × bits_per_weight(quant) / 8 × overhead` from `POST /api/show`, with a standard llama.cpp / GGUF bits-per-weight table (`F16`=16, `Q8_0`=8.5, `Q4_K_M`=4.83, `Q2_K`=2.96 …) and a 2-tier overhead multiplier (×1.40 for ≥1B-param models, ×2.20 for sub-1B) calibrated against measurements on the dev box's RTX 4070 Laptop (`qwen3-embedding:8b` predicts 6.36 GB vs measured 6.24 GB, +1.9 %; `Nomic-Embed-Text:latest` predicts 603 MB vs measured 600 MB, +0.5 %); Tier C returns `None` for cloud models (`:cloud` suffix), missing Ollama, or any probe failure (fail-open). When predicted VRAM is at least **80 %** of the *smallest* GPU's total VRAM (smallest because Ollama loads each model into a single device by default), the consumer broadcasts an HTML chat-bubble warning naming the model, the percent, the threshold, and a projected FAISS index size — informational and non-blocking. Test coverage: **49 tests** in `agent/test_embedding_memory_guard.py`, organized into seven `SimpleTestCase` classes; the `NoGpuCompatibilityTests` class alone is **28 tests** covering every `nvidia-smi` / Ollama / path-input / driver-crash failure mode, with `test_real_entry_point_call_never_raises` as the CI gate that exercises the live subprocess + urllib paths and asserts the return is **either** `None` **or** a well-formed warning dict on any host. Book chapter §32 documents the full user-facing surface; README chapter 9 mirrors it as the reference companion.
+- **Embedding-Memory Pre-Flight Guard — 2026-05-12** — A new module (`agent/embedding_memory_guard.py`) catches the "context loading hangs for hours" failure mode on GPU hosts before the embed burst starts. The guard is wired into `agent/consumers.py::setup_contextual_rag_chain` exactly once: after the consumer broadcasts `MSG_AGENT_LOADING_CONTEXT` and before it schedules the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives `FAISS.from_documents(...)`. It runs **only** when an NVIDIA GPU is detected via the cached `gpu_perf._has_nvidia_gpu()` probe — CPU-only, AMD, and Apple Silicon hosts skip the check silently and the legacy load path is unchanged. Three-tier VRAM prediction: Tier A reads `size_vram` verbatim from `GET /api/ps` when the model is already resident (exact daemon ground truth); Tier B computes `parameter_count × bits_per_weight(quant) / 8 × overhead` from `POST /api/show`, with a standard llama.cpp / GGUF bits-per-weight table (`F16`=16, `Q8_0`=8.5, `Q4_K_M`=4.83, `Q2_K`=2.96 …) and a 2-tier overhead multiplier (×1.40 for ≥1B-param models, ×2.20 for sub-1B) calibrated against measurements on the dev box's RTX 4070 Laptop (`qwen3-embedding:8b` predicts 6.36 GB vs measured 6.24 GB, +1.9 %; `Nomic-Embed-Text:latest` predicts 603 MB vs measured 600 MB, +0.5 %); Tier C returns `None` for cloud models (`:cloud` suffix), missing Ollama, or any probe failure (fail-open). When predicted VRAM is at least **80 %** of the *smallest* GPU's total VRAM (smallest because Ollama loads each model into a single device by default), the consumer broadcasts an HTML chat-bubble warning naming the model, the percent, the threshold, and a projected FAISS index size — informational and non-blocking. Test coverage: **49 tests** in `agent/test_embedding_memory_guard.py`, organized into seven `SimpleTestCase` classes; the `NoGpuCompatibilityTests` class alone is **28 tests** covering every `nvidia-smi` / Ollama / path-input / driver-crash failure mode, with `test_real_entry_point_call_never_raises` as the CI gate that exercises the live subprocess + urllib paths and asserts the return is **either** `None` **or** a well-formed warning dict on any host. Book chapter §33 documents the full user-facing surface; README chapter 9 mirrors it as the reference companion.
 
 - **Chat-page configuration dialogs + restore-flow reliability + canvas/stop polish — 2026-05-09 to 2026-05-11** — The `/agent/` navbar now includes **Config -> Models** and **Config -> URLs** (commit `ac747e3`). These dialogs load a validated subset of `config.json`, let the user edit the common model-name and endpoint fields from the browser, then save through `config_loader.save_config_updates()` so source-mode and frozen-mode builds write to the same effective config file. The views `load_config_section_view`, `save_config_models_view`, and `save_config_urls_view` enforce server-side validation for strings, URLs, hosts, and ports. Companion UI work enlarged and cleaned up the **Configure MCPs** dialog (`b286cd6`) and improved the chat/canvas vertical divider behavior on the main page (`1e62faa`). Another reliability fix (`484b8ec`) closes the old initial context-load race: when a saved session is restored, the frontend now keeps the input disabled until the contextual RAG chain is really ready, instead of briefly unlocking after the welcome-back banner. On the workflow side, dialog edits now win over stale pool wiring during compilation (`04502c3`), and the mixed-flow stop path is better at killing lingering processes before the next run (`6b0e3aa`).
 
