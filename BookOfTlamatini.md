@@ -113,7 +113,7 @@ A normal HTTP response (any non-error code) means Ollama is reachable.
 Tlamatini ships with default model names in `Tlamatini/agent/config.json` and several agent `config.yaml` files. Pull them exactly as written:
 
 ```powershell
-ollama pull qwen3-embedding:8b
+ollama pull Nomic-Embed-Text:latest
 ollama pull glm-5:cloud
 ollama pull qwen3.5:cloud
 ollama pull gpt-oss:120b-cloud
@@ -123,7 +123,7 @@ ollama pull llama3.2-vision:11b
 
 | Model tag | Used by |
 |---|---|
-| `qwen3-embedding:8b` | RAG embedding model |
+| `Nomic-Embed-Text:latest` | RAG embedding model (default — light VRAM footprint, ~600 MB resident) |
 | `glm-5:cloud` | Default chat model + Multi-Turn unified-agent model + MCP file-search model |
 | `qwen3.5:cloud` | Default Image-Interpreter vision model |
 | `gpt-oss:120b-cloud` | Several workflow-agent templates (Monitor Log, Notifier, Prompter, Summarizer, Pser, Recmailer, Whatsapper, File-Interpreter, FlowHypervisor) |
@@ -133,6 +133,8 @@ ollama pull llama3.2-vision:11b
 Some pulls are large and slow. Start them, walk away, come back.
 
 > **Free to substitute.** None of the model tags above are mandatory. If you prefer a different local model, edit the relevant entry in `config.json` (Part VII) or the agent's `config.yaml`. Just match the model name to something `ollama list` actually returns.
+
+> **High-detail embedding opt-in.** If your retrieval quality on dense, technical corpora is not good enough with `Nomic-Embed-Text:latest`, you can swap it for `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing the `embeding-model` key in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than the default (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (Part §32) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
 ## 5. Installing Tlamatini
 
@@ -1272,7 +1274,7 @@ The main file is `Tlamatini/agent/config.json`.
 
 ```json
 {
-  "embeding-model": "qwen3-embedding:8b",
+  "embeding-model": "Nomic-Embed-Text:latest",
   "chained-model": "glm-5:cloud",
   "ollama_base_url": "http://127.0.0.1:11434",
   "ollama_token": "",

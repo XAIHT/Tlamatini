@@ -5,7 +5,7 @@
 Main config: `Tlamatini/agent/config.json`
 
 Key settings:
-- `embeding-model`: Embedding model for RAG
+- `embeding-model`: Embedding model for RAG. **Default**: `Nomic-Embed-Text:latest` (~600 MB resident VRAM, low-footprint baseline that works on 8 GB consumer GPUs). For higher-detail retrieval on dense technical corpora, users can switch to `qwen3-embedding:8b` from the **Config → Models** menu — **with caution**, since that model needs roughly **10× more VRAM** (~6.24 GB resident on Q4_K_M) and will trip the embedding-memory pre-flight guard on smaller GPUs.
 - `chained-model`: Primary chat model
 - `unified_agent_model`: Model for multi-turn tool loop
 - `ollama_base_url`: Ollama server URL
