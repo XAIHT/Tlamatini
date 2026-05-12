@@ -263,6 +263,10 @@ function disableControlsDuringOperation() {
     contextMenuButton.removeAttribute('data-bs-toggle');
     mcpsMenuButton.setAttribute('disabled', 'disabled');
     mcpsMenuButton.removeAttribute('data-bs-toggle');
+    if (configMenuButton) {
+        configMenuButton.setAttribute('disabled', 'disabled');
+        configMenuButton.removeAttribute('data-bs-toggle');
+    }
     if (openInDropdownItem) {
         openInDropdownItem.style.display = 'none';
     }
@@ -328,6 +332,10 @@ function enableControlsAfterOperation() {
     contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
     mcpsMenuButton.removeAttribute('disabled', 'disabled');
     mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    if (configMenuButton) {
+        configMenuButton.removeAttribute('disabled');
+        configMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    }
     updateOpenInMenuState();
     // Re-enable the "Configure Agents" entry
     const configureAgentsItem = document.getElementById('enable-agents');
