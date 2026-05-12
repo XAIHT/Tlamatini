@@ -288,7 +288,7 @@ Main config: `Tlamatini/agent/config.json`
 Frozen builds resolve config from install directory next to executable. Source mode resolves from `Tlamatini/agent/config.json`. `CONFIG_PATH` env var overrides both.
 
 Key config keys:
-- `embeding-model`: Embedding model for RAG
+- `embeding-model`: Embedding model for RAG. **Default**: `Nomic-Embed-Text:latest` (~600 MB resident VRAM). High-detail opt-in: `qwen3-embedding:8b` via **Config → Models** menu — uses roughly **10× more VRAM** (~6.24 GB resident on Q4_K_M), so it will trip the embedding-memory pre-flight guard on 8 GB consumer GPUs.
 - `chained-model`: Primary chat model
 - `unified_agent_model`: Model for multi-turn tool loop
 - `ollama_base_url`: Ollama server URL

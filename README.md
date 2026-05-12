@@ -157,7 +157,7 @@ Tlamatini expects Ollama at `http://127.0.0.1:11434`.
 ### 2.3. Pull the default models
 
 ```powershell
-ollama pull qwen3-embedding:8b
+ollama pull Nomic-Embed-Text:latest
 ollama pull glm-5:cloud
 ollama pull qwen3.5:cloud
 ollama pull gpt-oss:120b-cloud
@@ -167,7 +167,7 @@ ollama pull llama3.2-vision:11b
 
 | Tag | Used for |
 |---|---|
-| `qwen3-embedding:8b` | RAG embeddings |
+| `Nomic-Embed-Text:latest` | RAG embeddings (default — small VRAM footprint, ~600 MB resident) |
 | `glm-5:cloud` | Default chat + Multi-Turn unified-agent + MCP file-search |
 | `qwen3.5:cloud` | Default vision (Image-Interpreter) |
 | `gpt-oss:120b-cloud` | Several workflow-agent templates (Monitor-Log, Notifier, Prompter, Summarizer, …) |
@@ -175,6 +175,8 @@ ollama pull llama3.2-vision:11b
 | `llama3.2-vision:11b` | Local vision fallback |
 
 You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§7.1](#71-llm-and-unified-agent)) or the relevant agent's `config.yaml`.
+
+> **Optional: swap to a higher-detail embedding model.** If your retrieval quality on dense, technical corpora is not good enough with the default, you can switch to `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing `embeding-model` in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than `Nomic-Embed-Text:latest` (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (see [§9](#9-embedding-memory-pre-flight-guard)) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
 ### 2.4. Clone, install, migrate
 
@@ -779,7 +781,7 @@ For users, the takeaway is simpler: **a `.flw` saved in source mode should load 
 
 ```json
 {
-  "embeding-model": "qwen3-embedding:8b",
+  "embeding-model": "Nomic-Embed-Text:latest",
   "chained-model": "glm-5:cloud",
   "ollama_base_url": "http://127.0.0.1:11434",
   "ollama_token": "",

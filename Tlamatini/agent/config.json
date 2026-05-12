@@ -1,7 +1,7 @@
 {
   "_comment": "Optimized RAG Configuration for Tlamatini",
   "_embedding_model_comment": "Switched from qwen3-embedding:8b (7.5 GB VRAM, 91% saturation on RTX 4070 Laptop) to nomic-embed-text:v1.5 (~270 MB VRAM). Frees ~7.2 GB VRAM, eliminates RAM<->VRAM swap thrash on embed calls, and is ~30x faster per chunk on this card. Run 'ollama pull nomic-embed-text:v1.5' once before first context-load. To revert, set back to qwen3-embedding:8b and bump chunk-size/k-* knobs back up.",
-  "embeding-model": "qwen3-embedding:8b",
+  "embeding-model": "Nomic-Embed-Text:latest",
   "chained-model": "glm-5.1:cloud",
   "access_aimed_prompt_model": "glm-5.1:cloud",
   "ollama_base_url": "http://127.0.0.1:11434",
