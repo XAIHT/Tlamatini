@@ -415,12 +415,44 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     {'type': 'agent_message', 'message': constants.MSG_AGENT_LOADING_CONTEXT, 'username': 'Tlamatini'}
                 )
                 print("--- Bot loading context broadcast to room.")
-                
+
+                # Pre-flight: embedding-memory warning when an NVIDIA GPU is
+                # detected AND the configured embedding model is predicted
+                # to occupy more than 80% of total VRAM. Fail-open: any
+                # probe error just skips the warning and the load proceeds.
+                # CPU-only / AMD / Apple Silicon hosts return None and never
+                # see this branch fire. See agent/embedding_memory_guard.py.
+                try:
+                    from .embedding_memory_guard import (
+                        check_embedding_memory_for_directory,
+                        format_warning_message,
+                    )
+                    from .config_loader import load_config as _load_cfg_for_guard
+                    _guard_cfg = await asyncio.to_thread(_load_cfg_for_guard)
+                    _guard_warning = await asyncio.to_thread(
+                        check_embedding_memory_for_directory,
+                        path_only, _guard_cfg, self.omissions, filename,
+                    )
+                    if _guard_warning:
+                        _msg = format_warning_message(_guard_warning)
+                        if _msg:
+                            await self.channel_layer.group_send(   # type: ignore
+                                self.room_group_name,
+                                {'type': 'agent_message', 'message': _msg, 'username': 'Tlamatini'}
+                            )
+                            print(
+                                f"--- [EMBED-MEM] Warning sent: model={_guard_warning['model']} "
+                                f"predicted={_guard_warning['predicted_vram_bytes']/1024/1024:.0f} MiB "
+                                f"percent={_guard_warning['percent']:.1f}%"
+                            )
+                except Exception as _guard_exc:
+                    print(f"--- [EMBED-MEM] Pre-flight check skipped (fail-open): {_guard_exc}")
+
                 # Check for cancellation before the blocking call
                 if global_state.get_state('cancel_generation'):
                     print("--- [CANCEL] Contextual setup cancelled before LLM creation ---")
                     return
-                
+
                 self.rag_chain = await asyncio.to_thread(setup_llm_with_context, path_only, self.agents, self.mcps, self.tools, self.omissions, filename)
                 
                 # Check for cancellation after the blocking call completed
