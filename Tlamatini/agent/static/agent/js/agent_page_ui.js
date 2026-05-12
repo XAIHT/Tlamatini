@@ -199,6 +199,21 @@ function isBusyMessageContext(message) {
     );
 }
 
+// Matches the two welcome-back banners the consumer sends right after a
+// browser refresh restores a saved session (with or without a custom
+// context). They are purely informational — the loading lifecycle is
+// driven by MSG_AGENT_LOADING_CONTEXT / MSG_AGENT_READY, so callers use
+// this check to keep the input disabled while ``lapseLoadingContext`` is
+// true and skip re-enabling for a banner that does not change state.
+function isSessionRestoredInfoMessage(message) {
+    if (!message) return false;
+    const m = String(message).toLowerCase();
+    return (
+        m.includes("welcome back, session and context restored")
+        || m.includes("welcome back, session restored")
+    );
+}
+
 function debounce(func, wait = 250) {
     let timeout;
     return function (...args) {

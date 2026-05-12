@@ -128,12 +128,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # Reuse existing RAG chain - don't rebuild
             print(f"--- Reusing existing RAG chain from global_state for user {user_id}")
             self.rag_chain = existing_rag_chain
-            
+
             # Notify frontend of restored session
             if existing_context:
                 session_state = await self.get_session_state(user) if user and user.is_authenticated else None
                 if session_state:
-                    await self.send_session_restored(session_state)
+                    await self.send_session_restored(session_state, loading=False)
             
             # Send "Restored the last session" message - with or without context
             if existing_context:
@@ -167,8 +167,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 session_state = await self.get_session_state(user)
                 if session_state and session_state.context_path and not session_state.is_expired():
                     print(f"--- Restoring session state: {session_state.context_type} - {session_state.context_path}")
-                    # Notify frontend of restored session
-                    await self.send_session_restored(session_state)
+                    # Notify frontend of restored session — loading=True so the
+                    # client disables the input immediately, before the welcome
+                    # message and well before the contextual setup eventually
+                    # broadcasts MSG_AGENT_LOADING_CONTEXT.
+                    await self.send_session_restored(session_state, loading=True)
                     # Send welcome message with context restored
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
@@ -188,16 +191,24 @@ class AgentConsumer(AsyncWebsocketConsumer):
             else:
                 asyncio.create_task(self.setup_rag_chain())
     
-    async def send_session_restored(self, session_state):
-        """Notify frontend that a session was restored."""
+    async def send_session_restored(self, session_state, loading=False):
+        """Notify frontend that a session was restored.
+
+        ``loading`` is True when the consumer is about to schedule a heavy
+        ``setup_contextual_rag_chain`` task — the client uses it to disable
+        the chat input until ``MSG_AGENT_READY`` arrives, so the user cannot
+        send a request that would be answered without the restored context
+        actually being loaded yet.
+        """
         try:
             await self.send(text_data=json.dumps({
                 'type': 'session-restored',
                 'context_path': session_state.context_path,
                 'context_type': session_state.context_type,
-                'context_filename': session_state.context_filename
+                'context_filename': session_state.context_filename,
+                'loading': bool(loading),
             }))
-            print("--- Session restored notification sent to client.")
+            print(f"--- Session restored notification sent to client (loading={bool(loading)}).")
         except Exception as e:
             print(f"Error sending session restored notification: {e}")
     

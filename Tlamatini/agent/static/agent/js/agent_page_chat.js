@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_chat.js  –  Chat messaging, WebSocket & form submit
 // ============================================================
-/* global applyContextUiState */
+/* global applyContextUiState, isSessionRestoredInfoMessage */
 
 const HTML_ENTITY_MAP = {
     '&amp;': '&',
@@ -191,6 +191,13 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     } else if (message.toLowerCase().includes("referenced rephrase:")) {
         setTitleBusy(true);
         console.log("--- Referenced Rephrase: message received: " + message);
+    } else if (lapseLoadingContext === true && isSessionRestoredInfoMessage(message)) {
+        // The "Welcome back…" message arrives between the session-restored
+        // event (which disabled the input) and the eventual loading-context
+        // broadcast. It is purely informational — do NOT re-enable controls
+        // here or the user would be allowed to send a request before the
+        // contextual RAG chain has finished rebuilding.
+        console.log("--- Session-restored welcome message received while context is loading — leaving controls disabled.");
     } else {
         enableControlsAfterOperation();
     }
@@ -1162,6 +1169,18 @@ chatSocket.onmessage = function (e) {
         if (data.context_path) {
             applyContextUiState(data.context_path, data.context_type, data.context_filename);
             console.log('--- Context UI restored: ' + data.context_path);
+        }
+        // When the server still has to (re)build the contextual RAG chain, it
+        // sets ``loading: true``. Disable the chat input + buttons immediately
+        // so the user cannot send a request before MSG_AGENT_LOADING_CONTEXT
+        // (and later MSG_AGENT_READY) finish the lifecycle. Without this, the
+        // welcome-back message between session-restored and the eventual
+        // loading-context broadcast would otherwise leave controls enabled.
+        if (data.loading === true) {
+            setTitleBusy(true);
+            disableControlsDuringOperation();
+            lapseLoadingContext = true;
+            console.log('--- Session-restored: contextual RAG chain is still loading — input disabled until ready.');
         }
         return;
     }
