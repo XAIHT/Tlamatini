@@ -17,7 +17,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
 - **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 60 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
-- **Part VI — Inside Tlamatini**: architecture, RAG, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
+- **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
 - **Part VIII — Deploying & Packaging**: build, installer, frozen mode.
 - **Part IX — The Command Deck**: WebSocket protocol, HTTP endpoints.
@@ -1006,7 +1006,125 @@ When you set a directory as context:
 
 If embedding fails (out-of-memory), **memory-insufficient fallback** kicks in: the loaded source files are packed into a raw context block and injected directly into the prompt-only / unified-agent path. You get reduced retrieval quality, not a wiped chat.
 
-## 32. Multi-Turn execution pipeline
+## 32. Embedding-memory pre-flight guard (GPU hosts)
+
+When you click **Set directory as context** in the Context menu, Tlamatini is about to do something dangerously bursty: walk every text file under the path, split each into chunks, push every chunk through Ollama's embedding API to build a FAISS index, and only then return control to the chat. On a laptop or consumer GPU this is the moment of truth — if the embedding model needs more VRAM than the GPU can spare, Ollama starts evicting and re-loading on every batch, and what should be a thirty-second operation turns into a multi-hour stall while RAM and VRAM swap back and forth across the PCIe bus. The dev box this codebase is calibrated on — an RTX 4070 Laptop with 8 188 MiB of VRAM — sees exactly this with the default embedding model `qwen3-embedding:8b`, which sits at ~6.24 GB resident, 77.9 % of total. Add a chat model on top, and the GPU is over capacity.
+
+The **embedding-memory pre-flight guard** (`Tlamatini/agent/embedding_memory_guard.py`, introduced 2026-05-12) catches the problem before the embed burst starts. It runs only when an NVIDIA GPU is detected. On CPU-only, AMD, and Apple Silicon hosts it is a silent no-op, and the legacy load path is unchanged. The guard is informational and non-blocking — it raises a chat-bubble warning, then lets the load proceed. The choice of whether to wait it out, hit Cancel, or change models in `config.json` belongs to the user.
+
+### Where the guard fires
+
+There is exactly one hook in the codebase, and it lives in `agent/consumers.py::setup_contextual_rag_chain`. After the consumer broadcasts the "Loading context…" banner to the chat (`MSG_AGENT_LOADING_CONTEXT`), and before it schedules the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives `FAISS.from_documents(...)`, the guard runs inside its own `asyncio.to_thread` — both so a slow `nvidia-smi` probe never blocks the Channels event loop, and so the whole step can be wrapped in `try/except Exception` to enforce a strict fail-open contract.
+
+```
+WebSocket "set-directory-as-context"
+        ↓
+consumers.py:setup_contextual_rag_chain(path_only)
+        ↓
+broadcast MSG_AGENT_LOADING_CONTEXT  ──→  user sees "Loading context…"
+        ↓
+► embedding_memory_guard.check_embedding_memory_for_directory(...)
+        │
+        ├── returns None     → proceed silently
+        │                      (no GPU, under threshold, or any probe failed)
+        │
+        └── returns warning  → broadcast HTML warning chat bubble
+                             → proceed anyway (informational, non-blocking)
+        ↓
+asyncio.to_thread(setup_llm_with_context, ...)
+        └─ OllamaEmbeddings + FAISS.from_documents(...)   ← the VRAM burst
+```
+
+If anything goes wrong inside the guard — `nvidia-smi` missing, Ollama unreachable, a JSON-shape change in a future Ollama release — the `try/except` swallows the exception, prints a one-line `--- [EMBED-MEM] Pre-flight check skipped (fail-open): …` to `tlamatini.log`, and the load continues. A diagnostic must never block the user. This is the same fail-open philosophy `agent/gpu_perf.py` uses for its model-pinning hook, and it pairs naturally with the existing `_has_nvidia_gpu()` cache that the guard re-uses for its first gate.
+
+### Detection — who pays for the check
+
+The guard's very first action is to ask the cached `gpu_perf._has_nvidia_gpu()` probe whether this host has an NVIDIA GPU at all. That helper runs `nvidia-smi -L` exactly once per process and caches the result in a module-level boolean. On a CPU-only Linux or Windows machine, an AMD GPU, or Apple Silicon, the probe returns `False` once at server start, and **every subsequent call to the guard returns `None` immediately** — no subprocesses spawned, no HTTP calls made, no overhead beyond a single boolean check.
+
+This is the portability guarantee. A fresh `git pull` on a no-GPU box behaves exactly as before the guard existed. The 28 dedicated no-GPU compatibility tests in `agent/test_embedding_memory_guard.py::NoGpuCompatibilityTests` pin the contract in place; the most consequential of them, `test_real_entry_point_call_never_raises`, calls the real entry point with the real subprocess + real urllib code paths and asserts the return is **either** `None` **or** a well-formed warning dict — never an exception. The same test passes on this RTX 4070 dev box and on a CPU-only CI image.
+
+### Three-tier VRAM prediction
+
+When the GPU gate passes, the guard predicts the embedding model's resident VRAM in three tiers, in priority order — each more accurate than the next is convenient:
+
+**Tier A — model already resident.** A `GET /api/ps` against the Ollama daemon returns a list of currently-loaded models, each with a `size_vram` field that is the exact bytes Ollama allocated for that model. If the configured `embeding-model` shows up in the list, the guard uses `size_vram` verbatim. There is no estimation here — this is daemon ground truth.
+
+**Tier B — model on disk but not loaded.** A `POST /api/show` returns the model's metadata: parameter count, quantization level, embedding dimension, layer count, attention shape. The guard computes weights bytes as `parameter_count × bits_per_weight(quant) / 8`, then multiplies by an overhead factor that accounts for KV cache, activation buffers, and the GGML allocator's slack. The bits-per-weight table follows the standard llama.cpp / GGUF averages — `F16` is 16 bits, `Q8_0` is 8.5, `Q4_K_M` is 4.83, `Q2_K` is 2.96. Unknown quants fall back to a conservative `5.0`. The overhead is **×1.40** for models with at least one billion parameters and **×2.20** for sub-1 B models, where the proportional cost of fixed KV/buffer overhead is larger.
+
+**Tier C — anything else.** If Ollama is down, the model has not been pulled, or it is a cloud model (`:cloud` suffix), the guard returns `None` and lets the load proceed. This is fail-open by design.
+
+The overhead numbers are not guesses; they were calibrated on this dev box against two real models:
+
+| Model | params × bits/8 (raw) | × overhead = predicted | Ollama-reported resident | error |
+|---|---|---|---|---|
+| `qwen3-embedding:8b` (Q4_K_M) | 4.54 GB | **6.36 GB** (× 1.40) | 6.24 GB | +1.9 % |
+| `Nomic-Embed-Text:latest` (F16) | 274 MB | **603 MB** (× 2.20) | 600 MB | +0.5 % |
+
+Both predictions land within 2 % of the measured value. The two-tier overhead split (large vs small) gives a tighter fit than any single multiplier would have. When a future model family proves the calibration off by more than 10 %, the two `_OVERHEAD_*` constants in the module are the only knobs to recalibrate.
+
+The same `/api/show` payload also tells the guard the model's embedding dimension. The key is architecture-prefixed — `qwen3.embedding_length=4096`, `nomic-bert.embedding_length=768` — and the guard finds it by suffix match, so a new architecture (whatever Ollama adopts next) does not need code changes.
+
+### What VRAM is the model competing against?
+
+The guard reads total VRAM via `nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits`, parses one integer per line, and **picks the smallest of the values**. Why the smallest? Because Ollama loads each model into a **single device** by default. Using the sum of all GPUs would silently under-report the constraint on a heterogeneous rig (e.g. an 8 GiB laptop card paired with a 4 GiB eGPU), and using the largest would mis-predict on the bad cases the warning is meant to catch. The smallest single-GPU value is the conservative constraint.
+
+The 80 % threshold then compares: when **predicted_vram ≥ 0.80 × smallest_gpu_total**, the warning fires. The threshold is a function argument (default `0.80`) so the trigger can be tuned per installation. The number was picked to leave room for chat-model overhead, OS-reserved memory, and the activation buffers Ollama needs on every embed batch — anything tighter than 80 % is already in the "expect slow embed throughput or RAM↔VRAM swap" zone.
+
+### The chat-bubble warning
+
+When the threshold trips, the guard returns a structured dict and the consumer renders it as an HTML chat bubble — the same `agent_message` surface the chat already uses for every Tlamatini-side message. A real example from this dev box, with the threshold artificially lowered to 70 % so `qwen3-embedding:8b` trips:
+
+> ⚠️ **Embedding-memory warning**
+>
+> Embedding model `qwen3-embedding:8b` needs ~6,378 MiB of VRAM (currently resident in VRAM), which is **77.9 %** of the smallest GPU's total (8,188 MiB) — above the safety threshold of 70 %.
+>
+> Projected FAISS vector store (RAM, not VRAM): ~28 MiB across 1,847 chunks at dim 4096.
+>
+> Context loading will continue, but expect slow embedding throughput or RAM↔VRAM swap. To eliminate the pressure, switch `embeding-model` in `config.json` to a smaller model (e.g. `nomic-embed-text:v1.5`) and restart.
+
+Notice the source qualifier: *currently resident in VRAM* means the prediction came from Tier A — exact `/api/ps`. *Estimated from model parameters* means Tier B. The user always knows whether they are looking at ground truth or an extrapolation.
+
+The FAISS line is an informational projection. The guard pre-scans the chosen directory the same way `CustomTextLoader` will, applying the same exclusions (`package-lock.json`, `yarn.lock`, `*.<user-omitted>`, …), and counts projected chunks per file using `ceil(file_size / (chunk_size − chunk_overlap))`, capped by `max_chunks_per_file`. Multiplied by `embedding_dim × 4` bytes (float32 vector storage), that gives the FAISS index's RAM footprint. This is **not** VRAM; FAISS lives on CPU. It is shown for one reason: very large directories produce very large indexes that can matter for the host's RAM budget independently of the GPU question.
+
+### Tuning, overrides, and explicit non-goals
+
+The guard exposes four knobs, all in the module:
+
+| Knob | Default | When to change |
+|---|---|---|
+| `threshold` (function argument) | `0.80` | Pass `0.70` on small GPUs (6 GB cards) where 80 % is already too tight. |
+| `_OVERHEAD_LARGE` constant | `1.40` | Recalibrate against `/api/ps` if a new model family proves it off by > 10 %. |
+| `_OVERHEAD_SMALL` constant | `2.20` | Same calibration story for sub-1 B models. |
+| `_QUANT_BITS` dict | standard table | Add an entry when a new GGUF quant ships. |
+
+And four things the guard deliberately does **not** do:
+
+It does not abort context loading. The warning is informational. If you want abort-on-warning behavior, you can wire a confirm/cancel WebSocket round-trip — the surface is described in `agent_page_init.js` near the `set-dir-context` listener.
+
+It does not estimate the chat model's VRAM. Only the embedding model is checked, because that is the model the directory-load path forces into VRAM at this exact moment. The chat model is handled separately by `gpu_perf.pin_ollama_model`.
+
+It does not persist warnings. Each context-load runs an independent check; toggling `config.json` and reloading will surface a fresh prediction next time.
+
+It does not call `nvidia-smi` on CPU-only hosts. Both gates — the cached `_has_nvidia_gpu_cached()` and the `_gpu_total_memory_bytes()` query — short-circuit before any subprocess spawn. `top` on a CPU-only box will show zero new processes when a user clicks **Set directory as context**.
+
+### Test coverage
+
+The guard ships with **49 automated tests** in `agent/test_embedding_memory_guard.py`, organized into seven `SimpleTestCase` classes. Two of them deserve special mention.
+
+`PredictFromShowTests` (3 tests) pins the Tier-B math against the two reference models the calibration was derived from: `qwen3-embedding:8b` must predict within ±5 % of the 6.24 GB measured, and `Nomic-Embed-Text:latest` within reasonable bounds of the 600 MB measured. If a future change to the overhead constants or the bits-per-weight table breaks these, the suite fails loudly.
+
+`NoGpuCompatibilityTests` (28 tests) is the portability proof. Its coverage matrix walks every failure mode a non-NVIDIA / no-driver / no-Ollama machine can hit: `nvidia-smi` binary missing entirely; `nvidia-smi` present but driver unloaded; the binary hangs and `subprocess.run` raises `TimeoutExpired`; permission denied; generic `OSError`; empty or unparseable output; heterogeneous multi-GPU rig; `gpu_perf` module missing or its probe raising; Ollama daemon offline; closed port; malformed URLs; model not in `/api/ps`; entry on a CPU-only host; GPU detected but `--query-gpu` fails; GPU detected but Ollama offline; pathological 0 MiB GPU readings; empty `ollama_base_url`; deleted or non-existent directory paths; unreadable files inside the walked tree; partial warning dicts with missing optional keys. The capstone test, `test_real_entry_point_call_never_raises`, makes the *actual* `subprocess.run(["nvidia-smi", …])` and `urlopen("http://127.0.0.1:11434/…")` calls against whatever the runner offers, and asserts the return is **either** `None` **or** a well-formed warning dict — never an exception. The same test passes on this RTX 4070 dev box (returns `None` because qwen3-embed sits at 77.9 %, just under the 80 % gate) and on a CPU-only CI image (returns `None` because the GPU gate fails fast).
+
+To run the full guard suite:
+
+```
+cd Tlamatini
+python manage.py test agent.test_embedding_memory_guard --verbosity=2
+```
+
+Forty-nine tests in roughly 2.3 seconds, no database setup, no GPU required.
+
+## 33. Multi-Turn execution pipeline
 
 Below the toolbar checkbox, here is what really happens when you tick **Multi-Turn**:
 
@@ -1054,7 +1172,7 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
 
 The capability-aware selector scores each tool with name match (+14 exact), alias / hint phrase match (+10–12), example-request token overlap (up to +3), description token overlap (up to +10), plus a +15 history-aware boost on short follow-ups (≤4 meaningful tokens). The cap is 20 tools per request by default — lowered from 50 after observing keyword inflation pulled in everything.
 
-## 33. ACPX runtime mechanics
+## 34. ACPX runtime mechanics
 
 ACPX is a Python port of OpenClaw's ACPX plugin. The `agent_id` mapping, `permissionMode` vocabulary, and SKILL.md frontmatter contract match OpenClaw verbatim.
 
@@ -1096,7 +1214,7 @@ Plus a non-interactive policy (`deny` / `fail`) for unattended runs.
 
 The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing tools. One ACPXer node = one ACPX session lifecycle. It mirrors the runtime mechanics inline (in ~120 lines) because workflow agents in the pool run as separate Python subprocesses and cannot import `agent.acpx`. The transcript format is byte-identical, so an ACPXer transcript is interchangeable with a chat-driven one.
 
-## 34. Database models
+## 35. Database models
 
 13 models in `agent/models.py`. The ones that matter day-to-day:
 
@@ -1116,7 +1234,7 @@ The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing too
 | `AgentProcess` | Tracked PIDs for canvas agents. Cleared on shutdown. |
 | `Omission` | Secret-redaction patterns for context. |
 
-## 35. The application log (`tlamatini.log`)
+## 36. The application log (`tlamatini.log`)
 
 `Tlamatini/manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` **before Django initializes**. Every print, every Django logger (they all use `StreamHandler`), and every tool's stdout/stderr lands in both the console and a single file:
 
@@ -1134,7 +1252,7 @@ Characteristics:
 
 When debugging an issue, `tlamatini.log` is the first artifact to consult.
 
-## 36. ASCII / box-drawing diagrams in chat
+## 37. ASCII / box-drawing diagrams in chat
 
 LLM-generated ASCII art / flowcharts / column layouts render in the chat with a fixed-width font and preserved whitespace. The LLM is instructed (rule 13 in `prompt.pmt`) to wrap diagrams in `BEGIN-DIAGRAM` / `END-DIAGRAM` markers. There is also auto-detection: any run of consecutive lines containing box-drawing characters (`│┃|─━┌┐└┘├┤┬┴┼╭╮╯╰`), arrow glyphs (`▲▼►◄→←↑↓`), or ASCII-art runs (`+`, `-`, `=`, `|`) is wrapped automatically. Both pipelines emit `<pre class="ascii-diagram">…</pre>` HTML.
 
@@ -1150,7 +1268,7 @@ The main file is `Tlamatini/agent/config.json`.
 | Frozen | `<install-dir>/config.json` next to the executable |
 | Both | `CONFIG_PATH` env var, if set, wins over both |
 
-## 37. LLM settings
+## 38. LLM settings
 
 ```json
 {
@@ -1183,7 +1301,7 @@ The main file is `Tlamatini/agent/config.json`.
 
 You can still edit `config.json` by hand, but you no longer have to for the common cases. The chat navbar's `Config -> Models` dialog writes the model-name subset, and `Config -> URLs` writes the endpoint / host / port subset. The browser validates shape first, the backend validates again, and `config_loader.save_config_updates()` merges only the changed keys atomically into whichever `config.json` is active for the current mode (source or frozen).
 
-## 38. RAG settings
+## 39. RAG settings
 
 ```json
 {
@@ -1221,7 +1339,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 39. Internet search settings
+## 40. Internet search settings
 
 ```json
 {
@@ -1234,7 +1352,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 40. MCP services
+## 41. MCP services
 
 ```json
 {
@@ -1247,7 +1365,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 41. ACPX settings
+## 42. ACPX settings
 
 The whole `acpx` block is **optional**. When missing or partial, every value falls back to a safe default. On first boot of an upgrade build, `agent/acpx/service.py::boot_acpx()` calls `ensure_acpx_block_in_config_json()` and **appends the documented default block to your existing `config.json` atomically**.
 
@@ -1346,7 +1464,7 @@ Instead of editing `config.json` by hand, in chat (Multi-Turn + ACPX ticked):
 
 The skill walks itself through writing `data.keys`, patching both `config.json` layers, optionally extending `regen_secrets.py`, and verifying via `acp_doctor`.
 
-## 42. Image interpreter
+## 43. Image interpreter
 
 ```json
 {
@@ -1356,7 +1474,7 @@ The skill walks itself through writing `data.keys`, patching both `config.json` 
 }
 ```
 
-## 43. Advanced options
+## 44. Advanced options
 
 ```json
 {
@@ -1376,7 +1494,7 @@ The skill walks itself through writing `data.keys`, patching both `config.json` 
 
 # Part VIII — Deploying & Packaging
 
-## 44. The three-step build pipeline
+## 45. The three-step build pipeline
 
 ```
 build.py  ──►  build_uninstaller.py  ──►  build_installer.py
@@ -1417,7 +1535,7 @@ python build_installer.py
 
 Requires `pkg.zip` and `Uninstaller.exe` from steps 1 and 2. Builds `install.py` with `--onedir --windowed` and a splash screen, copies `pkg.zip` and `Uninstaller.exe` into `dist/Installer/`, and assembles `dist/Tlamatini_Release/` with SHA-256 verification.
 
-## 45. What the installer does
+## 46. What the installer does
 
 When an end user runs `Installer.exe`:
 
@@ -1430,14 +1548,14 @@ When an end user runs `Installer.exe`:
 7. Registers `.flw` extension to open with Tlamatini.
 8. Cleans the PyInstaller bundle path from helper subprocess environments so PowerShell helpers and Explorer restarts don't stall.
 
-## 46. What the uninstaller does
+## 47. What the uninstaller does
 
 1. Removes shortcuts (with Explorer restart for immediate effect).
 2. Unregisters the `.flw` association and clears cached shell state.
 3. Deletes all application files **except** `<install_path>/Tlamatini/agents/*` (preserves user-created agents).
 4. Removes the install directory if empty.
 
-## 47. Frozen-mode behavior
+## 48. Frozen-mode behavior
 
 The Multi-Turn implementation carries frozen-build awareness in supporting runtime code:
 
@@ -1451,7 +1569,7 @@ The Multi-Turn implementation carries frozen-build awareness in supporting runti
 
 # Part IX — The Command Deck (API + WebSocket)
 
-## 48. WebSocket protocol
+## 49. WebSocket protocol
 
 Endpoint: `ws://<host>/ws/agent/`.
 
@@ -1502,7 +1620,7 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 
 A successful Multi-Turn message also carries `tool_calls_log`, `multi_turn_used`, `answer_success` for the Create Flow gate.
 
-## 49. HTTP endpoints
+## 50. HTTP endpoints
 
 The backend currently exposes 103 routes. Highlights:
 
@@ -1599,7 +1717,7 @@ Plus the Parametrizer-specific pair:
 
 # Part X — Survival Guide (Troubleshooting)
 
-## 50. Common issues
+## 51. Common issues
 
 ### Ollama connection failed
 
@@ -1665,7 +1783,7 @@ If transcripts only show outbound prompts and no inbound responses, your build i
 - Read the Forker/Asker log for pattern-matching diagnostics.
 - Asker only: did the browser dialog appear? Check console errors.
 
-## 51. Debug mode
+## 52. Debug mode
 
 ```json
 {
@@ -1690,7 +1808,7 @@ INFO-level loggers configured in `tlamatini/settings.py`:
 
 All log lines are prefixed with timestamp and logger name (e.g. `2026-04-13 12:28:39 [agent.tools] INFO …`).
 
-## 52. Log locations
+## 53. Log locations
 
 | What | Where |
 |---|---|
@@ -1791,6 +1909,8 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Embedding-Memory Pre-Flight Guard — 2026-05-12** — A new module (`agent/embedding_memory_guard.py`) catches the "context loading hangs for hours" failure mode on GPU hosts before the embed burst starts. The guard is wired into `agent/consumers.py::setup_contextual_rag_chain` exactly once: after the consumer broadcasts `MSG_AGENT_LOADING_CONTEXT` and before it schedules the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives `FAISS.from_documents(...)`. It runs **only** when an NVIDIA GPU is detected via the cached `gpu_perf._has_nvidia_gpu()` probe — CPU-only, AMD, and Apple Silicon hosts skip the check silently and the legacy load path is unchanged. Three-tier VRAM prediction: Tier A reads `size_vram` verbatim from `GET /api/ps` when the model is already resident (exact daemon ground truth); Tier B computes `parameter_count × bits_per_weight(quant) / 8 × overhead` from `POST /api/show`, with a standard llama.cpp / GGUF bits-per-weight table (`F16`=16, `Q8_0`=8.5, `Q4_K_M`=4.83, `Q2_K`=2.96 …) and a 2-tier overhead multiplier (×1.40 for ≥1B-param models, ×2.20 for sub-1B) calibrated against measurements on the dev box's RTX 4070 Laptop (`qwen3-embedding:8b` predicts 6.36 GB vs measured 6.24 GB, +1.9 %; `Nomic-Embed-Text:latest` predicts 603 MB vs measured 600 MB, +0.5 %); Tier C returns `None` for cloud models (`:cloud` suffix), missing Ollama, or any probe failure (fail-open). When predicted VRAM is at least **80 %** of the *smallest* GPU's total VRAM (smallest because Ollama loads each model into a single device by default), the consumer broadcasts an HTML chat-bubble warning naming the model, the percent, the threshold, and a projected FAISS index size — informational and non-blocking. Test coverage: **49 tests** in `agent/test_embedding_memory_guard.py`, organized into seven `SimpleTestCase` classes; the `NoGpuCompatibilityTests` class alone is **28 tests** covering every `nvidia-smi` / Ollama / path-input / driver-crash failure mode, with `test_real_entry_point_call_never_raises` as the CI gate that exercises the live subprocess + urllib paths and asserts the return is **either** `None` **or** a well-formed warning dict on any host. Book chapter §32 documents the full user-facing surface; README chapter 9 mirrors it as the reference companion.
 
 - **Chat-page configuration dialogs + restore-flow reliability + canvas/stop polish — 2026-05-09 to 2026-05-11** — The `/agent/` navbar now includes **Config -> Models** and **Config -> URLs** (commit `ac747e3`). These dialogs load a validated subset of `config.json`, let the user edit the common model-name and endpoint fields from the browser, then save through `config_loader.save_config_updates()` so source-mode and frozen-mode builds write to the same effective config file. The views `load_config_section_view`, `save_config_models_view`, and `save_config_urls_view` enforce server-side validation for strings, URLs, hosts, and ports. Companion UI work enlarged and cleaned up the **Configure MCPs** dialog (`b286cd6`) and improved the chat/canvas vertical divider behavior on the main page (`1e62faa`). Another reliability fix (`484b8ec`) closes the old initial context-load race: when a saved session is restored, the frontend now keeps the input disabled until the contextual RAG chain is really ready, instead of briefly unlocking after the welcome-back banner. On the workflow side, dialog edits now win over stale pool wiring during compilation (`04502c3`), and the mixed-flow stop path is better at killing lingering processes before the next run (`6b0e3aa`).
 

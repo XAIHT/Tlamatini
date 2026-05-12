@@ -39,6 +39,7 @@ export default [
                 userUsername: "readonly",
                 chatLog: "readonly",
                 chatSocket: "readonly",
+                _pendingChatSocketMessages: "readonly",
                 contextButtonClicked: "writable",
                 canvasSettedAsContext: "writable",
                 confirmationByUser: "writable",
