@@ -215,7 +215,7 @@ Open `http://127.0.0.1:8000/` and log in with the superuser you just created. Th
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼]    │ ← top nav
+│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼] [Config ▼] │ ← top nav
 ├───────────────────────────────────────────────────────────────────────┤
 │  Multi-Turn ☐   Exec Report ☐   ACPX ☐   internet ☐    Clear ⌫       │ ← four toggles
 ├───────────────────────────────────────────────────────────────────────┤
@@ -229,6 +229,8 @@ Open `http://127.0.0.1:8000/` and log in with the superuser you just created. Th
 
 The **four toolbar toggles** are independent. Tick whatever combination fits the task — each one is its own tutorial section below.
 
+Newer builds also expose a **Config** dropdown in the same navbar. `Config -> Models` edits the most common model-name fields, and `Config -> URLs` edits the Ollama / unified-agent / MCP endpoint values through validated dialogs instead of hand-editing JSON. The chat/canvas divider was also tightened so resizing the right-hand canvas feels more predictable during long editing sessions.
+
 ### 3.2. Setting code as context
 
 Click **Context** in the top nav:
@@ -241,6 +243,8 @@ Click **Context** in the top nav:
 | **Clear context** | Drops the loaded context. |
 
 A green banner at the top shows the current context path. If embedding runs out of memory, Tlamatini packs the source files as a fallback context — retrieval quality drops, access to your code does not.
+
+If you refresh the browser and Tlamatini restores a saved context automatically, the input now stays disabled until the contextual RAG chain has actually finished rebuilding. That closes the old "restored banner arrived before the context was really ready" race on the first load stage.
 
 ### 3.3. Tutorial: a one-shot question (no toggles)
 
@@ -453,6 +457,8 @@ Now ACP takes a fresh **snapshot of the canvas** before validation and start. Th
 
 The backend then compiles that snapshot into real pool `config.yaml` files using the Agent Contract Registry. In beginner terms: **the picture on the screen becomes the source of truth.**
 
+Another important nuance: if you opened an agent dialog and manually edited wiring-sensitive fields such as `source_agents` or an Ender kill list, those dialog edits now survive compilation. Canvas edges still contribute their live connections, but a deliberate dialog override is no longer silently discarded by Validate or Start.
+
 What happens when you click **✓ Validate**:
 
 1. Browser captures the live canvas.
@@ -479,6 +485,8 @@ This removes a whole class of "I swear I connected it correctly, why is it runni
 | **⏹ Stop** | Hard stop. Ender runs termination logic; reanimation files are cleared. |
 
 This is why long-running workflows (Crawler scraping 10k URLs, Parametrizer iterating segments) survive pauses.
+
+Stop is also safer in mixed flows now: the ACP cleanup path is better at terminating leftover session processes before the next run begins, so partially mixed ACP sessions are less likely to leave orphaned agents behind.
 
 ### 4.6. FlowHypervisor (watchdog)
 
@@ -812,6 +820,8 @@ Key knobs: `chunk_size` (3000), `chunk_overlap` (800), `k_vector` / `k_bm25` (10
 - `image_interpreter_model`, `image_interpreter_base_url` — vision.
 - `history_summary_*`, `keep_last_turns` — chat-history compression.
 
+You no longer need to hand-edit all of those values. On `/agent/`, open `Config -> Models` or `Config -> URLs` to edit the most common runtime knobs in-place. The browser validates model strings / URLs / hosts / ports, the backend validates again, and `config_loader.save_config_updates()` atomically merges only the changed keys into the active `config.json`. The same loader path is used in source mode and frozen builds, so the chat UI and the executable stop drifting onto different config copies.
+
 ---
 
 ## 8. Architecture at a Glance
@@ -914,6 +924,7 @@ Per-agent details (config knobs, lifecycle, naming convention, log markers): see
 - Set-Context shows no green banner → check file permissions, ensure files are text not binary.
 - "Out of memory" during embedding → fallback mode kicks in; retrieval quality drops, files still accessible. Switch to a smaller embedding model.
 - Hit `max_doc_chars` → bump it.
+- Session says it was restored after a refresh, but the input stays disabled briefly → that is expected while the contextual RAG chain rebuilds. Wait for the ready state / spinner to clear before sending the next prompt.
 
 ### 9.3. Multi-Turn / planner
 
@@ -928,6 +939,7 @@ Per-agent details (config knobs, lifecycle, naming convention, log markers): see
 - **A TeleTlamatini or WhatsTlamatini flow is missing passwords or tokens after export.** That is intentional. Known secret fields are redacted when the chat exports a flow. Re-enter secrets in the agent config before running the flow.
 - **Validate shows stale connections.** Validate now asks `/agent/compile_flow/` for a dry-run compile of the live canvas instead of trusting whatever is already in the pool. If the canvas still looks wrong, save the `.flw`, reload it, and check the browser console for a compile error.
 - **Start runs an older version of the flow.** Start now compiles the visible canvas in write mode before launching. If you still see old behavior, clear the pool from the ACP close/clear controls, load the `.flw` again, and run Validate once before Start.
+- **A value I set in an agent dialog disappears after Validate or Start.** Current builds preserve explicit dialog edits and merge canvas-derived wiring on top of them. If something still looks wrong, reopen the dialog, save once more, then run Validate and inspect the compile warnings.
 - **Parametrizer mappings disappear after reload.** Save the flow after creating mappings. New `.flw` files store mappings under `artifacts.parametrizerMappings`, and the loader restores them into each Parametrizer node.
 
 ### 9.5. ACPX / external CLIs

@@ -207,7 +207,7 @@ Open `/agent/`. Here is what you are looking at:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼]  [Logout] │ ← Top navigation
+│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼] [Config ▼] [Logout] │ ← Top navigation
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Multi-Turn ☐   Exec Report ☐   ACPX ☐   Add internet context ☐   Clear ⌫  │ ← Toolbar (the four checkboxes!)
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -226,6 +226,8 @@ Open `/agent/`. Here is what you are looking at:
 ```
 
 The four checkboxes in the toolbar are **the** thing to learn. Each one is explained in its own chapter below. They are independent — tick whatever combination fits your task.
+
+The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for the main model-name fields and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
 
 ## 8. Asking your first question (no toggles)
 
@@ -263,6 +265,8 @@ After you set a context, the top of the page shows a green banner with the path.
 The bot will quote real files, reference real classes, and stay grounded. If it cannot find the answer in the loaded files, it will say so rather than hallucinate.
 
 > **What if my model runs out of memory?** If Ollama returns "model requires more system memory" while building the embedding index, Tlamatini does **not** wipe the loaded files. It packs them into a fallback context and keeps answering from the raw source until embeddings can be built again. Retrieval quality drops; access to your code does not.
+
+One subtle but important reliability fix landed here: when a browser refresh restores a saved context, the chat input is now disabled immediately and remains disabled until the contextual RAG chain has really finished rebuilding. In older builds, the user could briefly type into a half-restored session because the welcome-back banner arrived before the context-loading lifecycle had finished.
 
 ## 10. The "Add internet context" toggle
 
@@ -573,6 +577,8 @@ A few facts about the canvas you need to internalize:
 - **Connections are typed.** A green line means "start the target after this finishes" (`target_agents`). A blue line means "monitor this source's log" (`source_agents`). The direction matters.
 - **LEDs show state.** Green = running, red = down while the flow is active, yellow blinking = paused, gray = stopped/idle.
 
+Another recent change matters if you use the config dialogs heavily: dialog-edited wiring fields now survive the compile pass. In practice that means a user-edited `source_agents`, `target_agents`, or Ender kill list is preserved, while the canvas still contributes its live connections where appropriate. Validate and Start no longer flatten those deliberate edits back into stale pool defaults.
+
 ## 18. Your first flow (3-agent example)
 
 Goal: run a shell command, take a screenshot, end.
@@ -609,6 +615,8 @@ The three buttons each do something different:
 | **⏹ Stop** | Hard stop. Ender runs its termination logic; reanimation files are cleared. |
 
 This is why long-running workflows (Crawler scraping 10,000 URLs, Parametrizer iterating through segments) survive pauses without data loss.
+
+The stop path also got harder to break in mixed flows. Current builds are better at killing lingering session processes during cleanup, so a half-manual / half-compiled run is less likely to leave zombie agents behind before the next start.
 
 ## 21. FlowHypervisor (your watchdog)
 
@@ -1172,6 +1180,8 @@ The main file is `Tlamatini/agent/config.json`.
 | `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` | Top-level keys for Tlamatini's own cloud paths (image analysis, Opus client). |
 | `enable_unified_agent` | Master switch for the tool-calling chain. |
 | `chat_agent_limit_runs` | Wrapped-run listing cap. |
+
+You can still edit `config.json` by hand, but you no longer have to for the common cases. The chat navbar's `Config -> Models` dialog writes the model-name subset, and `Config -> URLs` writes the endpoint / host / port subset. The browser validates shape first, the backend validates again, and `config_loader.save_config_updates()` merges only the changed keys atomically into whichever `config.json` is active for the current mode (source or frozen).
 
 ## 38. RAG settings
 
@@ -1781,6 +1791,10 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Chat-page configuration dialogs + restore-flow reliability + canvas/stop polish — 2026-05-09 to 2026-05-11** — The `/agent/` navbar now includes **Config -> Models** and **Config -> URLs** (commit `ac747e3`). These dialogs load a validated subset of `config.json`, let the user edit the common model-name and endpoint fields from the browser, then save through `config_loader.save_config_updates()` so source-mode and frozen-mode builds write to the same effective config file. The views `load_config_section_view`, `save_config_models_view`, and `save_config_urls_view` enforce server-side validation for strings, URLs, hosts, and ports. Companion UI work enlarged and cleaned up the **Configure MCPs** dialog (`b286cd6`) and improved the chat/canvas vertical divider behavior on the main page (`1e62faa`). Another reliability fix (`484b8ec`) closes the old initial context-load race: when a saved session is restored, the frontend now keeps the input disabled until the contextual RAG chain is really ready, instead of briefly unlocking after the welcome-back banner. On the workflow side, dialog edits now win over stale pool wiring during compilation (`04502c3`), and the mixed-flow stop path is better at killing lingering processes before the next run (`6b0e3aa`).
+
+- **Emailer / RecMailer quoting, placeholder cleanup, and TeleTlamatini copy polish — 2026-05-09** — A smaller but user-visible reliability pass landed across the messaging agents. Emailer and RecMailer quoting mechanics were corrected (`c1088bb`) so generated payloads survive nested quoting more predictably, placeholder handling was cleaned up (`2d27fa0`) so parametrized values are less likely to drift into malformed marker text, and TeleTlamatini's dynamic welcome / guidance strings were polished (`8c2e5a6`) so first-contact Telegram conversations read more naturally.
 
 - **Flow Compiler + Agent Contracts + 60-agent catalog — May 2026** — A backend pipeline that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, secret-redacted, source-and-frozen-portable `config.yaml` files (commit `0bea21d`). Four new modules under `agent/services/`: `agent_contracts.py` (the `AgentContract` registry — per-agent connection-field shape per slot, parametrizer source-fields, `secret_paths`, plus `singleton` / `long_running` / `never_starts_targets` / `exclude_from_validation` flags; lru-cached, alias-normalized, disk-discovered + builtin overrides), `agent_paths.py` (frozen/source-aware pool resolution + canvas-id normalization that handles `Node Manager` → `node_manager`, `Gateway-Relayer` → `gateway_relayer`, `(2)` cardinal stripping), `flow_spec.py` (`FlowNode` / `FlowConnection` / `FlowSpec` dataclasses + `normalize_flow_payload()` / `flow_spec_to_legacy_json(redact=True)` — schema_version=2 in-memory representation that both browser surfaces compile through), and `flow_compiler.py` (`compile_flow_spec()` / `compile_flow_payload()` / `list_pool_agents_for_validation()` — wires every connection per its contract, clears stale wiring before re-writing, redacts secrets, and writes `config.yaml` + `interconnection-scheme.csv` into the session pool when called with `write=True`). Three new endpoints expose the pipeline: `POST /agent/compile_flow/` (called from the new `acp-flow-snapshot.js::compileCurrentACPFlow` with `mode='write'` from Start and `mode='dry_run'` from Validate), `POST /agent/flow_from_tool_calls/` (called from `agent_page_chat.js::_normalizeChatFlowBeforeDownload`), and `GET /agent/agent_contracts/` (registry diagnostics). **User-visible effect**: Start now compiles the live canvas before launching agents, so an edited-but-unsaved canvas behaves identically to a fresh `.flw` load; Create Flow downloads are now registry-canonical and have known secret fields stripped server-side; Validate previews the same compiled output Start would write, without touching disk. The catalog count is now **60** (was 59 — FlowCreator was always present on disk and in `agents_descriptions.md` but missing from the AI-onboarding catalog list). Coverage: `Tlamatini/agent/test_flow_contracts.py` pins source-mode resolution, alias normalization, the Ender kill-list contract, and Parametrizer-mappings-as-CSV-artifact behavior.
 
