@@ -692,6 +692,39 @@ function listOllamaModels(options = {}) {
 // Config dialog handlers (Models / URLs)
 // ----------------------------------------------------------------
 
+let _configModelsBaseline = null;
+let _configUrlsBaseline = null;
+
+function _snapshotConfigValues(values) {
+    const snapshot = {};
+    Object.keys(values || {}).forEach(key => {
+        snapshot[key] = String(values[key] == null ? '' : values[key]);
+    });
+    return snapshot;
+}
+
+function _configValuesDiffer(baseline, current) {
+    if (!baseline || !current) return false;
+    const keys = new Set([...Object.keys(baseline), ...Object.keys(current)]);
+    for (const key of keys) {
+        const a = String(baseline[key] == null ? '' : baseline[key]);
+        const b = String(current[key] == null ? '' : current[key]);
+        if (a !== b) return true;
+    }
+    return false;
+}
+
+function _showReconnectRequiredAfterDialogClose() {
+    setTimeout(() => {
+        preRenderReconnectRequiredDialog(
+            'Reconnection required...',
+            'You must execute a reconnection (Reconnect) in order to get/set the new configured values.',
+            'Click the Reconnect button in the toolbar to apply the changes to the live session.'
+        );
+        renderReconnectRequiredDialog();
+    }, 100);
+}
+
 async function _loadConfigSectionValues(section) {
     const response = await fetch(`/agent/load_config_section/${section}/`, {
         credentials: 'same-origin'
@@ -779,6 +812,7 @@ function OpenConfigModelsDialog(e) { // eslint-disable-line no-unused-vars
     _loadConfigSectionValues('models')
         .then(values => {
             _populateConfigForm(configModelsForm, values);
+            _configModelsBaseline = _snapshotConfigValues(_collectConfigFormValues(configModelsForm));
             preRenderConfigModelsDialog(
                 'Configure Models...',
                 'Set the Ollama model used for each subsystem.',
@@ -802,6 +836,7 @@ function OpenConfigUrlsDialog(e) { // eslint-disable-line no-unused-vars
     _loadConfigSectionValues('urls')
         .then(values => {
             _populateConfigForm(configUrlsForm, values);
+            _configUrlsBaseline = _snapshotConfigValues(_collectConfigFormValues(configUrlsForm));
             preRenderConfigUrlsDialog(
                 'Configure URLs...',
                 'Set the base URLs, hosts and ports used by Tlamatini.',
@@ -953,6 +988,12 @@ async function _saveConfigModels() {
 
     _markInvalidInputs(configModelsForm, new Set());
     console.log('--- Saved Models config.');
+
+    const changed = _configValuesDiffer(_configModelsBaseline, _snapshotConfigValues(values));
+    _configModelsBaseline = null;
+    if (changed) {
+        _showReconnectRequiredAfterDialogClose();
+    }
     return true;
 }
 
@@ -994,6 +1035,12 @@ async function _saveConfigUrls() {
 
     _markInvalidInputs(configUrlsForm, new Set());
     console.log('--- Saved URLs config.');
+
+    const changed = _configValuesDiffer(_configUrlsBaseline, _snapshotConfigValues(values));
+    _configUrlsBaseline = null;
+    if (changed) {
+        _showReconnectRequiredAfterDialogClose();
+    }
     return true;
 }
 

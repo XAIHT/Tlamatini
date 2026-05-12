@@ -35,7 +35,7 @@
   "internet_classifier_streaming": true,
   "internet_hint_words_mode": "extend",
   "internet_hint_words": [],
-  "web_summarizer_model": "glm-5.1:cloud",
+  "web_summarizer_model": "glm-5:cloud",
   "web_context_max_chars": 10000,
   "web_search_tool_name": "web_search",
   "web_search_tool_description": "A tool for searching the internet for current events, real-time information, or facts you do not know.",

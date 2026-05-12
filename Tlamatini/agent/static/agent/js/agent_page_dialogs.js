@@ -480,6 +480,49 @@ function renderConfigUrlsDialog() { // eslint-disable-line no-unused-vars
     _styleSaveCancelButtons();
 }
 
+function preRenderReconnectRequiredDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
+    configReconnectRequiredDialogMessage.title = message;
+    configReconnectRequiredPrimaryDialogLegend.innerText = primaryText;
+    configReconnectRequiredSecondaryDialogLegend.innerText = secondaryText;
+
+    try {
+        if ($("#config-reconnect-required-dialog-message").hasClass('ui-dialog-content')) {
+            $("#config-reconnect-required-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("config-reconnect-required dialog destroy ignored:", e);
+    }
+
+    $("#config-reconnect-required-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 520,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+        open: function () { document.body.style.overflow = 'hidden'; },
+        close: function () { document.body.style.overflow = ''; },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("OK")').css(DIALOG_BUTTON_CSS);
+        },
+        buttons: [
+            {
+                text: "OK",
+                click: function () {
+                    $(this).dialog("close");
+                }
+            }
+        ]
+    });
+}
+
+function renderReconnectRequiredDialog() { // eslint-disable-line no-unused-vars
+    $('.ui-dialog-buttonpane button:contains("OK")').css(DIALOG_BUTTON_CSS);
+    $("#config-reconnect-required-dialog-message").dialog("open");
+    $("#config-reconnect-required-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
+    $('.ui-dialog-buttonpane button:contains("OK")').css(DIALOG_BUTTON_CSS);
+}
+
 // ----------------------------------------------------------------
 // Async loaders (omissions, MCPs, tools, agents)
 // ----------------------------------------------------------------
