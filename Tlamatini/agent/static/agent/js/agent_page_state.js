@@ -46,6 +46,19 @@ function buildAgentSocketUrl() {
 
 const chatSocket = new WebSocket(buildAgentSocketUrl());
 
+// Buffer messages received between WebSocket creation (here) and the real
+// onmessage handler being installed in agent_page_chat.js (5 script tags
+// later). The server's `session-restored` frame — which carries the
+// loading=true flag that drives the context-load spinner — is sent
+// immediately on connect; without this buffer, it lands in the WebSocket
+// before chat.js binds .onmessage and is silently dropped, leaving the
+// auto-load lifecycle without its spinner. The handler in chat.js drains
+// _pendingChatSocketMessages after binding.
+const _pendingChatSocketMessages = []; // eslint-disable-line no-unused-vars
+chatSocket.onmessage = function (e) {
+    _pendingChatSocketMessages.push(e);
+};
+
 function setConnectionStatus(message, tone = 'warning') {
     if (!connectionStatusBar) {
         return;
