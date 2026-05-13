@@ -94,6 +94,7 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_telegramer":     ("telegramer",     "Telegramer"),
     "chat_agent_whatsapper":     ("whatsapper",     "Whatsapper"),
     "chat_agent_notifier":       ("notifier",       "Notifier"),
+    "chat_agent_j_decompiler":   ("jdecompiler",    "J-Decompiler"),
     "chat_agent_kyber_keygen":   ("kyberkeygen",    "Kyber Keygen"),
     "chat_agent_kyber_cipher":   ("kybercipher",    "Kyber Cipher"),
     "chat_agent_kyber_deciph":   ("kyberdecipher",  "Kyber Deciph"),
