@@ -243,16 +243,40 @@ def start_agent(agent_name: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def get_jd_cli_path() -> str:
-    """Locate the jd-cli directory based on frozen or dev mode."""
-    if getattr(sys, 'frozen', False):
-        application_path = os.path.dirname(sys.executable)
-    else:
-        # In dev: j_decompiler.py is in agent/agents/j_decompiler/
-        # jd-cli is in Tlamatini/jd-cli/ (3 levels up from agents dir)
-        application_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))))
+    """Locate the jd-cli directory in frozen, source-canvas, or wrapped-runtime mode.
 
-    jd_cli_dir = os.path.join(application_path, 'jd-cli')
-    return jd_cli_dir
+    Layouts handled:
+      - Frozen install: <install_dir>\\jd-cli\\jd-cli.bat
+      - Source canvas:  Tlamatini\\agent\\agents\\j_decompiler\\j_decompiler.py
+                        → jd-cli is at Tlamatini\\jd-cli
+      - Source pool:    Tlamatini\\agent\\agents\\pools\\<session>\\<inst>\\j_decompiler.py
+                        → still Tlamatini\\jd-cli
+      - Wrapped runtime: Tlamatini\\agent\\agents\\pools\\chat-runtime\\<runtime>\\
+                        j_decompiler.py → still Tlamatini\\jd-cli
+
+    Walking up the directory tree until ``jd-cli\\jd-cli.bat`` is found makes
+    the resolution layout-independent — any future move of the script under
+    ``agents/`` keeps working as long as ``jd-cli`` sits at the Django root.
+    """
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), 'jd-cli')
+
+    current = script_dir
+    for _ in range(8):
+        candidate = os.path.join(current, 'jd-cli')
+        if os.path.isfile(os.path.join(candidate, 'jd-cli.bat')):
+            return candidate
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+
+    # Fallback: the historical fixed offset (kept for completeness so the
+    # error message still points at a meaningful path if the walk-up fails).
+    return os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(script_dir))),
+        'jd-cli',
+    )
 
 
 def decompile_file(filepath: str, jd_cli_dir: str) -> bool:

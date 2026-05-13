@@ -481,6 +481,38 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         long_running=True,
     ),
     ChatWrappedAgentSpec(
+        key="j_decompiler",
+        template_dir="j_decompiler",
+        tool_name="chat_agent_j_decompiler",
+        tool_description="Chat-Agent-J-Decompiler",
+        display_name="J-Decompiler",
+        purpose=(
+            "Bulk-decompile every .class, .jar, .war, or .ear file under a directory using the "
+            "bundled jd-cli — the canvas-workflow counterpart of the single-file `decompile_java` "
+            "direct tool. Use this when the user wants to decompile MANY files at once, when "
+            "wildcard patterns are involved (e.g. `*.jar,*.war`), or when recursive subdirectory "
+            "scanning is required. The `directory` parameter accepts either a bare folder path "
+            "(defaults to `*.class,*.jar,*.war,*.ear`) or a path-with-embedded-wildcards form "
+            "`<base>\\\\<patterns>` where patterns are comma-separated (e.g. "
+            "`C:\\\\Temp\\\\*.jar,*.war`). When `recursive=true` the wildcards apply at every "
+            "depth under `<base>`. Decompiled output for archives lands in a sibling directory "
+            "named after the archive; .class files emit their .java beside the .class. Prefer "
+            "this wrapped agent for batch / directory work; prefer the direct `decompile_java` "
+            "tool when the user explicitly names ONE jar/war file."
+        ),
+        example_request=(
+            "Decompile java with directory='C:\\\\Temp\\\\*.class,*.jar,*.war,*.ear' "
+            "and recursive=true"
+        ),
+        aliases=("j_decompiler", "jdecompiler", "j-decompiler", "decompile-batch"),
+        security_hints=(
+            "decompile", "decompile java", "decompile jar", "decompile war",
+            "decompile class", "batch decompile", "jd-cli", "jar files",
+            "war files", "ear files", ".class files", "java decompiler",
+            "decompile directory", "decompile folder",
+        ),
+    ),
+    ChatWrappedAgentSpec(
         key="sleeper",
         template_dir="sleeper",
         tool_name="chat_agent_sleeper",

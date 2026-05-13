@@ -250,6 +250,19 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "wait for the agent to finish", "wait for agent",
         "drain the run", "settle the run",
     ),
+    # Wrapped J-Decompiler — batch / directory-pattern / recursive variant of
+    # the single-file `decompile_java` direct tool. Hints mirror the natural
+    # vocabulary the user reaches for when they want to decompile MANY java
+    # artifacts at once.
+    "chat_agent_j_decompiler": (
+        "decompile", "decompile java", "java decompiler",
+        "decompile jar", "decompile war", "decompile ear",
+        "decompile class", "decompile classes", "decompile bytecode",
+        "batch decompile", "decompile directory", "decompile folder",
+        "decompile all", "decompile multiple", "decompile recursively",
+        "jd-cli", "jar files", "war files", "ear files",
+        ".class files", "*.jar", "*.war",
+    ),
 }
 _CONTEXT_HINTS = {
     "system_context": (
