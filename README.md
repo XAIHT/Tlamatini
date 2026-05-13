@@ -4,7 +4,7 @@
 
 > A locally-deployed AI developer assistant: hybrid RAG (FAISS + BM25), Multi-Turn tool orchestration, ACPX delegation to external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …), and a visual workflow designer with **60 drag-and-drop agents**.
 >
-> Site: **<https://xaiht.org>** · One-minute teaser: **<https://youtu.be/a51miZ1JIe0>**
+> Site: **<https://xaiht.org>** · One-minute teaser of a complete Cybersec enhancement crated by Tlamatini!!!: **<https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s>**
 >
 > Looking for the long-form, narrative version of this documentation? See [`BookOfTlamatini.md`](BookOfTlamatini.md).
 
@@ -117,6 +117,8 @@ Everything runs locally. The whole app packages into a one-click Windows `.exe` 
 - [Installing OpenCV end-to-end in Multi-Turn](https://www.youtube.com/watch?v=bBlqbZVK-Wk)
 - [Uninstalling Poco — Exec Report and matching flow](https://www.youtube.com/watch?v=E5vi0q5FxXQ)
 - [Implementing a FlowCreator-aided agentic flow](https://www.youtube.com/watch?v=3Pno6s4xVsE)
+- [A complete Cybersec enhancement with Tlamatini!!!](https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s)
+
 
 ---
 
