@@ -4,7 +4,7 @@
 
 > A locally-deployed AI developer assistant: hybrid RAG (FAISS + BM25), Multi-Turn tool orchestration, ACPX delegation to external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …), and a visual workflow designer with **60 drag-and-drop agents**.
 >
-> Site: **<https://xaiht.org>** · One-minute teaser of a complete Cybersec enhancement crated by Tlamatini!!!: **<https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s>**
+> Site: **<https://xaiht.org>** · One-minute teaser of a complete Cybersec enhancement crafted by Tlamatini!!!: **<https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s>**
 >
 > Looking for the long-form, narrative version of this documentation? See [`BookOfTlamatini.md`](BookOfTlamatini.md).
 
