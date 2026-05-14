@@ -796,6 +796,62 @@ body.resizing-vertical {
     appearance: textfield;
 }
 
+/* Backup database / Set DB dialogs only — single-row forms with a Browse
+   button next to the input. Override the shared 2-col grid template so the
+   label hugs its content width and the input cell expands to fill the rest
+   of the dialog body. (The Config-Models / Config-URLs forms keep the
+   wider ``minmax(140px, 220px)`` first column because their labels are
+   long, e.g. "MCP Files Search server IP".) */
+#backup-db-form.config-form,
+#set-db-form.config-form {
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* Input + Browse button pairing. The wrapper sits in the right grid cell
+   and lays the input and the button out side-by-side; the input takes all
+   remaining width so the button floats flush-right at a fixed size. */
+.config-form-input-with-browse {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+
+.config-form-input-with-browse > .config-form-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+}
+
+.config-form-browse-btn {
+    flex: 0 0 auto;
+    padding: 0 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.92em;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: #55BBAA;
+    border: 1px solid #4aa093;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.config-form-browse-btn:hover:not(:disabled) {
+    background-color: #4aa093;
+}
+
+.config-form-browse-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(85, 187, 170, 0.35);
+}
+
+.config-form-browse-btn:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
 /* Backup database dialog — small live-validation status line below the input. */
 .backup-db-status {
     margin: 8px 0 0;
