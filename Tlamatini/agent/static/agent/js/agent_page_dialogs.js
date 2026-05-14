@@ -524,6 +524,95 @@ function renderReconnectRequiredDialog() { // eslint-disable-line no-unused-vars
 }
 
 // ----------------------------------------------------------------
+// Backup database dialog
+// ----------------------------------------------------------------
+
+/**
+ * Build a Backup/Cancel button pair. Same async-Promise convention as the
+ * Save/Cancel pair used by the Config dialogs: when ``asyncOnBackup``
+ * resolves to ``true`` the dialog closes; when ``false`` it stays open.
+ */
+function makeBackupCancelButtons(asyncOnBackup, onCancel) { // eslint-disable-line no-unused-vars
+    return [
+        {
+            text: "Backup",
+            click: function () {
+                const $dlg = $(this);
+                const backupBtn = $dlg.parent().find('.ui-dialog-buttonpane button:contains("Backup")');
+                const cancelBtn = $dlg.parent().find('.ui-dialog-buttonpane button:contains("Cancel")');
+                backupBtn.prop('disabled', true);
+                cancelBtn.prop('disabled', true);
+                Promise.resolve()
+                    .then(() => (asyncOnBackup ? asyncOnBackup() : true))
+                    .then(success => {
+                        backupBtn.prop('disabled', false);
+                        cancelBtn.prop('disabled', false);
+                        if (success === true) {
+                            $dlg.dialog("close");
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Backup handler threw:', err);
+                        backupBtn.prop('disabled', false);
+                        cancelBtn.prop('disabled', false);
+                    });
+            }
+        },
+        {
+            text: "Cancel",
+            click: function () {
+                $(this).dialog("close");
+                if (onCancel != null) {
+                    onCancel();
+                }
+            }
+        }
+    ];
+}
+
+function _styleBackupCancelButtons() {
+    $('.ui-dialog-buttonpane button:contains("Backup")').css(DIALOG_BUTTON_CSS);
+    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+}
+
+function preRenderBackupDbDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
+    backupDbDialogMessage.title = message;
+    backupDbPrimaryDialogLegend.innerText = primaryText;
+    backupDbSecondaryDialogLegend.innerText = secondaryText;
+
+    try {
+        if ($("#backup-db-dialog-message").hasClass('ui-dialog-content')) {
+            $("#backup-db-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("backup-db dialog destroy ignored:", e);
+    }
+
+    $("#backup-db-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 600,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+        open: function () { document.body.style.overflow = 'hidden'; },
+        close: function () { document.body.style.overflow = ''; },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Backup")').css(DIALOG_BUTTON_CSS);
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+        },
+        buttons: makeBackupCancelButtons(typeof _saveBackupDb === 'function' ? _saveBackupDb : null, null)
+    });
+}
+
+function renderBackupDbDialog() { // eslint-disable-line no-unused-vars
+    _styleBackupCancelButtons();
+    $("#backup-db-dialog-message").dialog("open");
+    $("#backup-db-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
+    _styleBackupCancelButtons();
+}
+
+// ----------------------------------------------------------------
 // Async loaders (omissions, MCPs, tools, agents)
 // ----------------------------------------------------------------
 

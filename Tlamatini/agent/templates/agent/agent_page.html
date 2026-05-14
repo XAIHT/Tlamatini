@@ -111,6 +111,14 @@
                   onclick="OpenConfigUrlsDialog(event);">URLs</a></li>
             </ul>
           </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="db-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">DB</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="db-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="backup-database"
+                  onclick="OpenBackupDbDialog(event);">Backup database</a></li>
+            </ul>
+          </li>
           {% if request.user.is_staff %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="admin-menu-button" role="button" data-bs-toggle="dropdown"
@@ -337,6 +345,19 @@
   <div id="config-reconnect-required-dialog-message" title="" style="display: none;">
     <h5 id="config-reconnect-required-primary-dialog-legend"></h5>
     <p id="config-reconnect-required-secondary-dialog-legend"></p>
+  </div>
+  <div id="backup-db-dialog-message" title="" style="display: none;">
+    <h5 id="backup-db-primary-dialog-legend"></h5>
+    <p id="backup-db-secondary-dialog-legend"></p>
+    <form id="backup-db-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="backup-db-target-dir">Target directory</label>
+        <input class="config-form-input" id="backup-db-target-dir" type="text" spellcheck="false"
+          placeholder="e.g. C:\Backups\Tlamatini">
+      </div>
+    </form>
+    <p id="backup-db-status" class="backup-db-status" aria-live="polite"></p>
   </div>
   <div id="modal" class="modal">
     <div class="modal-content">

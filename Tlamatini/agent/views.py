@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from .models import AgentMessage
 from django.contrib.auth import authenticate, login, logout
@@ -7654,6 +7655,124 @@ def save_config_urls_view(request):
         return JsonResponse({"success": False, "error": str(exc)}, status=500)
 
     return JsonResponse({"success": True, "path": path_written, "updated_keys": list(updates.keys())})
+
+
+def _resolve_db_sqlite_path() -> str:
+    """
+    Return the absolute path of the live SQLite database, valid in both
+    source mode (next to ``manage.py``) and frozen mode (next to the
+    executable). Django's ``settings.DATABASES['default']['NAME']`` already
+    points to the right file because ``BASE_DIR`` is recomputed from
+    ``settings.py``'s location at startup.
+    """
+    db_name = settings.DATABASES.get('default', {}).get('NAME')
+    if not db_name:
+        raise RuntimeError("Default database NAME is not configured")
+    return os.path.abspath(str(db_name))
+
+
+@login_required
+def check_backup_directory_view(request):
+    """
+    Live-validate the target directory typed by the user in the
+    DB -> Backup database dialog. Returns one of:
+
+        {"kind": "directory", "path": <abs>}   - exists and is a directory
+        {"kind": "file",      "path": <abs>}   - exists but is a regular file
+        {"kind": "missing",   "path": <abs>}   - does not exist on disk
+
+    Plus ``{"kind": "empty"}`` when the caller did not provide a path at all.
+    The endpoint never raises to the browser; any unexpected failure is
+    reported as ``{"kind": "error", "error": <msg>}`` with HTTP 200 so the
+    frontend can render a friendly message instead of a stack trace.
+    """
+    raw = (request.GET.get('path') or '').strip()
+    if not raw:
+        return JsonResponse({"kind": "empty"})
+
+    try:
+        absolute = os.path.abspath(raw)
+        if os.path.isdir(absolute):
+            return JsonResponse({"kind": "directory", "path": absolute})
+        if os.path.isfile(absolute):
+            return JsonResponse({"kind": "file", "path": absolute})
+        return JsonResponse({"kind": "missing", "path": absolute})
+    except Exception as exc:
+        print(f"[BACKUP DB] check_backup_directory failed: {exc}")
+        return JsonResponse({"kind": "error", "error": str(exc)})
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def backup_db_view(request):
+    """
+    Copy the live ``db.sqlite3`` file into the target directory specified
+    by the user. The target MUST be an existing directory; a path that
+    points at a file is rejected with ``{"success": False, "kind": "file"}``
+    so the frontend can show the "do not rename the file" guidance.
+
+    The destination filename is always ``db.sqlite3`` (the same basename
+    Django expects) so the resulting backup is drop-in compatible with a
+    future restore.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"success": False, "error": f"invalid JSON: {exc}"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"success": False, "error": "payload must be a JSON object"}, status=400)
+
+    raw = payload.get("target_dir")
+    if not isinstance(raw, str) or not raw.strip():
+        return JsonResponse({"success": False, "kind": "missing", "error": "target_dir must be a non-empty string"}, status=400)
+
+    target_dir = os.path.abspath(raw.strip())
+
+    if os.path.isfile(target_dir):
+        return JsonResponse({
+            "success": False,
+            "kind": "file",
+            "error": "The path points to a file. Please specify only the directory; the backup is always saved as db.sqlite3.",
+        }, status=400)
+
+    if not os.path.isdir(target_dir):
+        return JsonResponse({
+            "success": False,
+            "kind": "missing",
+            "error": f"Target directory does not exist: {target_dir}",
+        }, status=400)
+
+    try:
+        source_path = _resolve_db_sqlite_path()
+    except Exception as exc:
+        print(f"[BACKUP DB] Could not resolve source db path: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+    if not os.path.isfile(source_path):
+        return JsonResponse({
+            "success": False,
+            "error": f"Live database file not found at: {source_path}",
+        }, status=500)
+
+    destination_path = os.path.join(target_dir, "db.sqlite3")
+
+    try:
+        if os.path.normcase(os.path.abspath(source_path)) == os.path.normcase(os.path.abspath(destination_path)):
+            return JsonResponse({
+                "success": False,
+                "error": "Source and destination resolve to the same file — choose a different target directory.",
+            }, status=400)
+        shutil.copy2(source_path, destination_path)
+    except Exception as exc:
+        print(f"[BACKUP DB] Copy failed: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+    print(f"[BACKUP DB] Copied {source_path} -> {destination_path}")
+    return JsonResponse({"success": True, "path": destination_path, "source": source_path})
 
 
 @csrf_exempt
