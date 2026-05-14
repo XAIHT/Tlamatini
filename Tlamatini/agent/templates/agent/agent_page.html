@@ -117,6 +117,8 @@
             <ul class="dropdown-menu dropdown-entry" aria-labelledby="db-menu-button">
               <li><a class="dropdown-item menu-entry" href="#" id="backup-database"
                   onclick="OpenBackupDbDialog(event);">Backup database</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="set-database"
+                  onclick="OpenSetDbDialog(event);">Set DB</a></li>
             </ul>
           </li>
           {% if request.user.is_staff %}
@@ -358,6 +360,28 @@
       </div>
     </form>
     <p id="backup-db-status" class="backup-db-status" aria-live="polite"></p>
+  </div>
+  <div id="set-db-dialog-message" title="" style="display: none;">
+    <h5 id="set-db-primary-dialog-legend"></h5>
+    <p id="set-db-secondary-dialog-legend"></p>
+    <form id="set-db-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="set-db-source-path">db.sqlite3 file</label>
+        <input class="config-form-input" id="set-db-source-path" type="text" spellcheck="false"
+          placeholder="e.g. C:\Backups\Tlamatini\db.sqlite3">
+      </div>
+    </form>
+    <p id="set-db-status" class="set-db-status" aria-live="polite"></p>
+  </div>
+  <div id="set-db-warning-dialog-message" title="" style="display: none;">
+    <div class="set-db-warning-body">
+      <span class="set-db-warning-icon" aria-hidden="true">&#9888;</span>
+      <div class="set-db-warning-text">
+        <h5 id="set-db-warning-primary-dialog-legend"></h5>
+        <p id="set-db-warning-secondary-dialog-legend"></p>
+      </div>
+    </div>
   </div>
   <div id="modal" class="modal">
     <div class="modal-content">

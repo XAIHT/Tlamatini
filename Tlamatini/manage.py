@@ -171,6 +171,95 @@ def _setup_log_tee():
 _setup_log_tee()
 
 
+def _resolve_db_folder_root():
+    """Directory that hosts the user-facing ``DB/ToLoad`` and ``DB/Older``
+    trees.  In frozen mode this lives next to ``Tlamatini.exe`` (the
+    installation root the user can browse to); in source mode it sits next
+    to ``manage.py``.  Kept in sync with the user-spec:
+
+      Frozen:   <Drive>:\\<InstallationDir>\\Tlamatini\\DB\\ToLoad\\
+      Source:   <Drive>:\\<DevelopmentOptionalDir>\\Tlamatini\\Tlamatini\\DB\\ToLoad\\
+    """
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), 'DB')
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'DB')
+
+
+def _resolve_live_db_path():
+    """Absolute path of the live ``db.sqlite3`` file Django will open.
+
+    Mirrors ``settings.py``'s ``BASE_DIR / 'db.sqlite3'`` computation
+    without importing Django (this runs BEFORE Django is touched):
+
+      * Source: ``<manage.py dir>/db.sqlite3``
+      * Frozen: ``<_MEIPASS>/db.sqlite3`` — same place Django will resolve
+        ``BASE_DIR`` to, because ``BASE_DIR`` is derived from the bundled
+        ``tlamatini/settings.py``'s ``__file__``, which lives inside
+        ``_MEIPASS``.  Falls back to the executable directory when
+        ``_MEIPASS`` is not set.
+    """
+    if getattr(sys, 'frozen', False):
+        meipass = getattr(sys, '_MEIPASS', None)
+        if meipass:
+            return os.path.join(meipass, 'db.sqlite3')
+        return os.path.join(os.path.dirname(sys.executable), 'db.sqlite3')
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db.sqlite3')
+
+
+def _apply_pending_db_swap():
+    """Replace the live ``db.sqlite3`` with the one in ``DB/ToLoad`` (if any).
+
+    Executed BEFORE any Django import so Django opens the swapped file from
+    the very first connection.  Sequence (only if ``DB/ToLoad/db.sqlite3``
+    exists):
+
+      1. ``DB/Older/<timestamp>/`` is created.
+      2. The current live ``db.sqlite3`` (if any) is *moved* into that
+         timestamped directory so the user keeps an audit trail.
+      3. ``DB/ToLoad/db.sqlite3`` is *moved* on top of the live path.
+
+    Both moves use :func:`shutil.move` (rename-where-possible, copy+delete
+    across filesystems) so the source files are removed once the swap
+    completes — a re-launch with the same files in place is a no-op.
+
+    Failures are caught and logged: a corrupt/locked DB must not stop
+    Tlamatini from starting up at all.
+    """
+    import shutil  # local — avoid earliest-startup cost when no swap pending
+    import datetime
+
+    try:
+        db_root = _resolve_db_folder_root()
+        to_load_path = os.path.join(db_root, 'ToLoad', 'db.sqlite3')
+        older_root = os.path.join(db_root, 'Older')
+
+        if not os.path.isfile(to_load_path):
+            return  # nothing to swap; common case
+
+        live_db_path = _resolve_live_db_path()
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
+        archive_dir = os.path.join(older_root, timestamp)
+        os.makedirs(archive_dir, exist_ok=True)
+
+        if os.path.isfile(live_db_path):
+            archived_target = os.path.join(archive_dir, 'db.sqlite3')
+            shutil.move(live_db_path, archived_target)
+            print(f"--- [DB SWAP] Archived previous db.sqlite3 -> {archived_target}")
+        else:
+            print(f"--- [DB SWAP] No previous db.sqlite3 found at {live_db_path}")
+
+        live_parent = os.path.dirname(live_db_path)
+        if live_parent:
+            os.makedirs(live_parent, exist_ok=True)
+        shutil.move(to_load_path, live_db_path)
+        print(f"--- [DB SWAP] Loaded DB/ToLoad/db.sqlite3 -> {live_db_path}")
+    except Exception as exc:
+        print(f"--- [DB SWAP] Skipped due to error: {exc}")
+
+
+_apply_pending_db_swap()
+
+
 def _schedule_browser_open(url: str, delay_seconds: float = 10.0) -> None:
     """Open the default browser at *url* after *delay_seconds*.
 

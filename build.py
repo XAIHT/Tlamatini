@@ -607,9 +607,15 @@ def main():
         print(f"Verified jd-cli payload at: {jd_cli_bat.parent}")
 
         # Required empty directories (must survive in pkg.zip)
+        # ``DB/ToLoad`` and ``DB/Older`` back the "Set DB" mechanic in
+        # manage.py::_apply_pending_db_swap: at start-up Tlamatini moves any
+        # ``DB/ToLoad/db.sqlite3`` into place after archiving the current one
+        # under ``DB/Older/<timestamp>/``. Ship both directories empty so the
+        # swap-in can write to them on first run without raising an OSError.
         empty_dirs = (
             "application", "applications", "documentation",
             "context_files", "content_generated", "doc_generated",
+            "DB/ToLoad", "DB/Older",
         )
         for d in empty_dirs:
             target_dir = dist_manage / d

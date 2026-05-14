@@ -613,6 +613,139 @@ function renderBackupDbDialog() { // eslint-disable-line no-unused-vars
 }
 
 // ----------------------------------------------------------------
+// Set DB dialog
+// ----------------------------------------------------------------
+
+/**
+ * Build a Set/Cancel button pair. Same async-Promise convention as
+ * makeBackupCancelButtons: when ``asyncOnSet`` resolves to ``true`` the
+ * dialog closes; when ``false`` it stays open so the user can correct
+ * the input.
+ */
+function makeSetCancelButtons(asyncOnSet, onCancel) { // eslint-disable-line no-unused-vars
+    return [
+        {
+            text: "Set",
+            click: function () {
+                const $dlg = $(this);
+                const setBtn = $dlg.parent().find('.ui-dialog-buttonpane button:contains("Set")');
+                const cancelBtn = $dlg.parent().find('.ui-dialog-buttonpane button:contains("Cancel")');
+                setBtn.prop('disabled', true);
+                cancelBtn.prop('disabled', true);
+                Promise.resolve()
+                    .then(() => (asyncOnSet ? asyncOnSet() : true))
+                    .then(success => {
+                        setBtn.prop('disabled', false);
+                        cancelBtn.prop('disabled', false);
+                        if (success === true) {
+                            $dlg.dialog("close");
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Set handler threw:', err);
+                        setBtn.prop('disabled', false);
+                        cancelBtn.prop('disabled', false);
+                    });
+            }
+        },
+        {
+            text: "Cancel",
+            click: function () {
+                $(this).dialog("close");
+                if (onCancel != null) {
+                    onCancel();
+                }
+            }
+        }
+    ];
+}
+
+function _styleSetCancelButtons() {
+    $('.ui-dialog-buttonpane button:contains("Set")').css(DIALOG_BUTTON_CSS);
+    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+}
+
+function preRenderSetDbDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
+    setDbDialogMessage.title = message;
+    setDbPrimaryDialogLegend.innerText = primaryText;
+    setDbSecondaryDialogLegend.innerText = secondaryText;
+
+    try {
+        if ($("#set-db-dialog-message").hasClass('ui-dialog-content')) {
+            $("#set-db-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("set-db dialog destroy ignored:", e);
+    }
+
+    $("#set-db-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 600,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+        open: function () { document.body.style.overflow = 'hidden'; },
+        close: function () { document.body.style.overflow = ''; },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Set")').css(DIALOG_BUTTON_CSS);
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
+        },
+        buttons: makeSetCancelButtons(typeof _saveSetDb === 'function' ? _saveSetDb : null, null)
+    });
+}
+
+function renderSetDbDialog() { // eslint-disable-line no-unused-vars
+    _styleSetCancelButtons();
+    $("#set-db-dialog-message").dialog("open");
+    $("#set-db-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
+    _styleSetCancelButtons();
+}
+
+function preRenderSetDbWarningDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
+    setDbWarningDialogMessage.title = message;
+    setDbWarningPrimaryDialogLegend.innerText = primaryText;
+    setDbWarningSecondaryDialogLegend.innerText = secondaryText;
+
+    try {
+        if ($("#set-db-warning-dialog-message").hasClass('ui-dialog-content')) {
+            $("#set-db-warning-dialog-message").dialog("destroy");
+        }
+    } catch (e) {
+        console.log("set-db-warning dialog destroy ignored:", e);
+    }
+
+    $("#set-db-warning-dialog-message").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 560,
+        resizable: false,
+        draggable: true,
+        closeText: "",
+        open: function () { document.body.style.overflow = 'hidden'; },
+        close: function () { document.body.style.overflow = ''; },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("OK")').css(DIALOG_BUTTON_CSS);
+        },
+        buttons: [
+            {
+                text: "OK",
+                click: function () {
+                    $(this).dialog("close");
+                }
+            }
+        ]
+    });
+}
+
+function renderSetDbWarningDialog() { // eslint-disable-line no-unused-vars
+    $('.ui-dialog-buttonpane button:contains("OK")').css(DIALOG_BUTTON_CSS);
+    $("#set-db-warning-dialog-message").dialog("open");
+    $("#set-db-warning-dialog-message").dialog("option", "position", { my: "center", at: "center", of: window });
+    $('.ui-dialog-buttonpane button:contains("OK")').css(DIALOG_BUTTON_CSS);
+}
+
+// ----------------------------------------------------------------
 // Async loaders (omissions, MCPs, tools, agents)
 // ----------------------------------------------------------------
 

@@ -7775,6 +7775,143 @@ def backup_db_view(request):
     return JsonResponse({"success": True, "path": destination_path, "source": source_path})
 
 
+def _resolve_db_to_load_directory() -> str:
+    """Return the absolute path of ``<base>/DB/ToLoad/`` for the running
+    deployment.  Mirrors ``manage.py::_resolve_db_folder_root`` so the
+    upload target the Django view writes to is the same directory the
+    early-startup swap-in reads from.
+    """
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        # ``settings.BASE_DIR`` is the directory that holds ``manage.py``
+        # in source mode (it is ``Path(settings.py).resolve().parent.parent``).
+        base = str(settings.BASE_DIR)
+    return os.path.join(base, 'DB', 'ToLoad')
+
+
+def _file_looks_like_sqlite(path: str) -> bool:
+    """Best-effort SQLite-header check.  Returns ``True`` for files whose
+    first 16 bytes match the documented magic string ``SQLite format 3\\x00``.
+    Used as a sanity guard, not a strong validation (a corrupt SQLite file
+    still starts with the magic).
+    """
+    try:
+        with open(path, 'rb') as fh:
+            header = fh.read(16)
+    except OSError:
+        return False
+    return header.startswith(b'SQLite format 3\x00')
+
+
+@login_required
+def check_set_db_file_view(request):
+    """
+    Live-validate the database file path the user types in the
+    DB -> Set DB dialog.  Returns one of:
+
+        {"kind": "file",      "path": <abs>, "sqlite": True/False, "basename_ok": True/False}
+        {"kind": "directory", "path": <abs>}
+        {"kind": "missing",   "path": <abs>}
+        {"kind": "empty"}                            - no path supplied
+
+    Never raises to the browser; any unexpected failure is reported as
+    ``{"kind": "error", "error": <msg>}`` with HTTP 200.
+    """
+    raw = (request.GET.get('path') or '').strip()
+    if not raw:
+        return JsonResponse({"kind": "empty"})
+
+    try:
+        absolute = os.path.abspath(raw)
+        if os.path.isdir(absolute):
+            return JsonResponse({"kind": "directory", "path": absolute})
+        if os.path.isfile(absolute):
+            basename_ok = os.path.basename(absolute).lower() == 'db.sqlite3'
+            return JsonResponse({
+                "kind": "file",
+                "path": absolute,
+                "sqlite": _file_looks_like_sqlite(absolute),
+                "basename_ok": basename_ok,
+            })
+        return JsonResponse({"kind": "missing", "path": absolute})
+    except Exception as exc:
+        print(f"[SET DB] check_set_db_file failed: {exc}")
+        return JsonResponse({"kind": "error", "error": str(exc)})
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def set_db_view(request):
+    """
+    Stage a user-provided ``db.sqlite3`` file into ``<base>/DB/ToLoad/``
+    so the next start-up's swap-in promotes it to the live database.
+
+    Why this view *only stages* (and does not hot-swap): SQLite is open
+    while Django runs, so replacing it mid-process would corrupt the live
+    connection pool.  The swap-in is performed at start-up by
+    ``manage.py::_apply_pending_db_swap`` BEFORE Django is imported, which
+    is the only safe window to move the file.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"success": False, "error": f"invalid JSON: {exc}"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"success": False, "error": "payload must be a JSON object"}, status=400)
+
+    raw = payload.get("source_path")
+    if not isinstance(raw, str) or not raw.strip():
+        return JsonResponse({"success": False, "kind": "missing", "error": "source_path must be a non-empty string"}, status=400)
+
+    source_path = os.path.abspath(raw.strip())
+
+    if os.path.isdir(source_path):
+        return JsonResponse({
+            "success": False,
+            "kind": "directory",
+            "error": "The path points to a directory. Please specify the full path to a db.sqlite3 file.",
+        }, status=400)
+
+    if not os.path.isfile(source_path):
+        return JsonResponse({
+            "success": False,
+            "kind": "missing",
+            "error": f"Source file does not exist: {source_path}",
+        }, status=400)
+
+    if not _file_looks_like_sqlite(source_path):
+        return JsonResponse({
+            "success": False,
+            "kind": "not_sqlite",
+            "error": "The selected file does not look like a SQLite database (missing magic header).",
+        }, status=400)
+
+    try:
+        to_load_dir = _resolve_db_to_load_directory()
+        os.makedirs(to_load_dir, exist_ok=True)
+        destination_path = os.path.join(to_load_dir, "db.sqlite3")
+
+        if os.path.normcase(source_path) == os.path.normcase(destination_path):
+            return JsonResponse({
+                "success": False,
+                "error": "Source already is the staged file — choose a different db.sqlite3 file.",
+            }, status=400)
+
+        # The swap-in expects ``DB/ToLoad/db.sqlite3``; overwrite any
+        # previously-staged file so the latest user pick wins.
+        shutil.copy2(source_path, destination_path)
+    except Exception as exc:
+        print(f"[SET DB] Could not stage db.sqlite3: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+    print(f"[SET DB] Staged {source_path} -> {destination_path}")
+    return JsonResponse({"success": True, "path": destination_path, "source": source_path})
+
+
 @csrf_exempt
 @require_POST
 def compile_flow_view(request):
