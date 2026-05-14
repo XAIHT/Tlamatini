@@ -134,7 +134,7 @@ Some pulls are large and slow. Start them, walk away, come back.
 
 > **Free to substitute.** None of the model tags above are mandatory. If you prefer a different local model, edit the relevant entry in `config.json` (Part VII) or the agent's `config.yaml`. Just match the model name to something `ollama list` actually returns.
 
-> **High-detail embedding opt-in.** If your retrieval quality on dense, technical corpora is not good enough with `Nomic-Embed-Text:latest`, you can swap it for `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing the `embeding-model` key in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than the default (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (Part §33) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
+> **High-detail embedding opt-in.** If your retrieval quality on dense, technical corpora is not good enough with `Nomic-Embed-Text:latest`, you can swap it for `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing the `embeding-model` key in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than the default (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (Part §34) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
 ## 5. Cloud models require an Ollama Pro/Max plan
 
@@ -168,7 +168,7 @@ Then also walk through `Tlamatini/agent/agents/*/config.yaml` and replace any cl
 
 ### 5.3. This subscription is separate from your coding-agent API keys
 
-The Ollama plan only governs `*:cloud` Ollama models. If you plan to use **ACPX** (chapter §45) to delegate sub-tasks to external coding-agent CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, …), each of those carries its own credentials: the Anthropic API key for `claude`, OpenAI for `codex`, Google for `gemini`, and so on. Those keys are configured in `Tlamatini/agent/config.json` under the top-level fields *and* the per-agent `acpx.agents.<id>.env` blocks, and they are completely independent of your Ollama subscription. The `setup-new-acpx-key` skill (chapter §15) automates that wiring.
+The Ollama plan only governs `*:cloud` Ollama models. If you plan to use **ACPX** (chapter §46) to delegate sub-tasks to external coding-agent CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, …), each of those carries its own credentials: the Anthropic API key for `claude`, OpenAI for `codex`, Google for `gemini`, and so on. Those keys are configured in `Tlamatini/agent/config.json` under the top-level fields *and* the per-agent `acpx.agents.<id>.env` blocks, and they are completely independent of your Ollama subscription. The `setup-new-acpx-key` skill (chapter §15) automates that wiring.
 
 ### 5.4. Troubleshooting the cloud path
 
@@ -458,7 +458,7 @@ Picture it like this:
 └──────────────────────────────────────┘
 ```
 
-The full ACPX deep-dive is in **Part VI §45**. This chapter is just the toolbar walkthrough.
+The full ACPX deep-dive is in **Part VI §46**. This chapter is just the toolbar walkthrough.
 
 ### When to use it
 
@@ -578,9 +578,128 @@ You can immediately re-open it in `/agentic_control_panel/` and run it as an una
 
 ---
 
+## 17. The DB menu — backups and the next-session swap-in
+
+Tlamatini's whole world — chat history, agent definitions, Tool/MCP toggle rows, session state, deployed-pool metadata, the per-user account that gates the chat — lives inside a single SQLite file: `db.sqlite3`. The top-of-page **DB** dropdown gives you a safe, GUI-first way to handle that file without ever stopping Tlamatini, opening Explorer, or remembering where the database actually sits in frozen vs. source mode.
+
+The dropdown has two entries:
+
+| Entry | What it does | When you use it |
+|---|---|---|
+| **Backup database** | Copies the live `db.sqlite3` to a directory you pick — keeps the live database in place. | Before risky changes (mass-deploying agents, migrating, experimenting), or as a routine snapshot. |
+| **Set DB** | Stages a `db.sqlite3` file of *your* choice so Tlamatini swaps it in on the **next start-up**. The current database is moved into a timestamped archive folder. | Restoring a backup, importing a friend's database, switching between project-specific databases. |
+
+### 17.1. Backup database — the read-only copy
+
+`DB → Backup database` opens a dialog with one input — the **target directory** you want the copy written into. The input is **live-validated** (350 ms debounce): as you type, the page asks the server `GET /agent/check_backup_directory/?path=…` and colors the status line green / amber / red:
+
+| State | Status line | Meaning |
+|---|---|---|
+| Green | `Directory exists. db.sqlite3 will be saved here.` | Ready to backup. |
+| Amber | `A filename was specified — please specify the directory only.` | You typed a file path instead of a directory; Tlamatini always names the output `db.sqlite3` so it can be loaded back later. |
+| Red | `Directory does not exist.` | Path is missing on disk. |
+
+Click **Backup** and Tlamatini calls `POST /agent/backup_db/`, which resolves the live database path via `settings.DATABASES['default']['NAME']` (so source-mode and frozen-mode work identically) and `shutil.copy2`s the file into `<your-dir>/db.sqlite3`. A success alert confirms the destination path. **The live database stays open and unchanged** — Backup is purely additive.
+
+### 17.2. Set DB — staging a database for the next session
+
+`DB → Set DB` is the harder direction: it replaces the database the next time Tlamatini boots. The dialog has one input — the **full path to a `db.sqlite3` file** you want loaded — and the same live-validation behavior as Backup, but with stricter rules:
+
+| State | Status line | Meaning |
+|---|---|---|
+| Green | `File exists. It will be loaded on the next start-up.` | Real `db.sqlite3` with a valid SQLite header. |
+| Amber | `File found, but its name is not "db.sqlite3". Tlamatini will still stage it as db.sqlite3.` | Some users keep snapshot files named like `db_2026-05-14.sqlite3` — they still work because Tlamatini renames on stage. |
+| Amber | `Specify the full path to a db.sqlite3 file, not a directory.` | You typed a directory; Set DB needs a file path. |
+| Red | `The selected file does not look like a SQLite database.` | The first 16 bytes don't match the `SQLite format 3\x00` magic header. |
+| Red | `File does not exist.` | Path is missing on disk. |
+
+The SQLite header check is a cheap sanity guard — it catches the common "I picked the wrong file" mistake (a `.csv`, an `.flw`, a screenshot, an empty file) before Tlamatini commits to swapping it in.
+
+When you click **Set** and the file passes validation, the page POSTs `POST /agent/set_db/`. The view computes the deployment-specific **staging directory** — `<exe_dir>/DB/ToLoad/` in frozen mode, `<repo>/Tlamatini/DB/ToLoad/` in source mode — creates it if needed, and copies your file there as `DB/ToLoad/db.sqlite3`. **The live database is NOT touched.** SQLite is open in-process while Tlamatini runs; replacing it mid-flight would corrupt the live connection pool, so Set DB *only stages*.
+
+Immediately after staging succeeds, the dialog is replaced by a second one — a yellow ⚠ warning panel — telling you in two sentences:
+
+> **The selected database will be loaded the next time Tlamatini starts.**
+> If you want it loaded immediately, you must restart Tlamatini completely so the swap-in can run BEFORE Django opens the live database.
+
+Click **OK** and the dialog closes. There is no Cancel — by the time you see this dialog the file is already staged.
+
+### 17.3. The start-up swap-in (what "next session" actually means)
+
+The third leg of the DB mechanic — and the only one without a UI surface — is the start-up swap-in itself. It lives at the very top of `Tlamatini/manage.py` and runs in this exact order before *anything Django* is imported:
+
+```
+_apply_pending_db_swap()           ← runs BEFORE Django
+    ↓
+[ os.path detection: frozen or source? ]
+    ↓
+[ DB/ToLoad/db.sqlite3 exists? ]
+    │
+    ├─ NO  ──► return (no-op, normal start-up continues)
+    │
+    └─ YES ──► [1] mkdir DB/Older/<YYYY-MM-DD_HHMMSS>/
+               [2] shutil.move(live db.sqlite3 → Older/<timestamp>/db.sqlite3)
+               [3] shutil.move(DB/ToLoad/db.sqlite3 → live db.sqlite3 path)
+               [4] return (Django opens the freshly-swapped file)
+```
+
+The three guarantees this gives you:
+
+1. **Pre-Django timing.** Because the swap-in runs before the `from django.core.management import execute_from_command_line` line, Django's SQLite connection pool is never holding a stale file descriptor at the moment of the swap. A simple **Reconnect** from the navbar is NOT enough to trigger the swap-in — you must restart the entire process (close the console, launch Tlamatini again).
+2. **Atomic moves, no copies.** Both legs use `shutil.move` (filesystem rename when possible, copy+delete across mounts) so the source files are consumed. A second launch with `DB/ToLoad/` empty is automatically a no-op — there's no "stuck flag" to clear.
+3. **Mode-correct path resolution.** Frozen mode looks at `<exe_dir>/DB/ToLoad/db.sqlite3` (where you can browse to in Explorer); source mode looks at `<repo>/Tlamatini/DB/ToLoad/db.sqlite3` (where `manage.py` lives). The live `db.sqlite3` path is computed the same way Django does — `_MEIPASS/db.sqlite3` under PyInstaller, `<manage.py dir>/db.sqlite3` in source mode — so the swap-in writes to exactly the location Django will open.
+
+If anything fails inside the swap-in (locked file on Windows, corrupt source, permission error), the function catches the exception, prints `--- [DB SWAP] Skipped due to error: <reason>` to `tlamatini.log`, and lets Tlamatini start normally with the previous database. **A bad ToLoad file must never block start-up** — that would lock you out of your own database.
+
+### 17.4. The Older audit trail
+
+Every successful swap-in leaves a complete record under `<base>/DB/Older/<YYYY-MM-DD_HHMMSS>/db.sqlite3`. The timestamp is the local time at the moment the swap happened, filesystem-safe on Windows / Linux / macOS:
+
+```
+DB/
+├─ ToLoad/
+│   └─ (empty most of the time; momentary home of the next-session pick)
+└─ Older/
+    ├─ 2026-05-14_153022/
+    │   └─ db.sqlite3      ← database that was live before swap #1
+    ├─ 2026-05-14_164410/
+    │   └─ db.sqlite3      ← database that was live before swap #2
+    └─ 2026-05-14_172908/
+        └─ db.sqlite3      ← and so on
+```
+
+Because Set DB **moves** (not copies) the prior live database into Older, this archive is the only built-in recovery path. To roll back to a previous database, you do exactly the same thing you did to load a new one: copy the archived `db.sqlite3` back into `DB/ToLoad/` and restart. The swap-in archives the *current* live one under a fresh timestamp and promotes your roll-back pick.
+
+Tlamatini **never** deletes anything from `DB/Older/`. If swaps become routine, you may want to prune the oldest folders by hand — but read each carefully first, because each `db.sqlite3` contains chat history, agent definitions, session state, and your user account, so think twice before deleting any of them.
+
+### 17.5. The DB tree ships in both modes
+
+The `DB/ToLoad/` and `DB/Older/` directories must exist on day one — the swap-in opens them with `os.makedirs(exist_ok=True)`, but having them pre-seeded with documentation prevents user confusion. So:
+
+- **Source / dev mode**: `Tlamatini/Tlamatini/DB/ToLoad/README.md` and `Tlamatini/Tlamatini/DB/Older/README.md` are checked into the repo. Each is a short standalone guide describing the contract, how to use the directory, and the rollback recipe. They survive in git only because git ignores empty directories; the README is the trick that keeps the tree.
+- **Frozen mode**: `build.py` extends its `empty_dirs` tuple to include `"DB/ToLoad"` and `"DB/Older"`. The PyInstaller post-build step creates both under `dist/manage/` (which becomes the install root next to `Tlamatini.exe`), and the `pkg.zip` packager preserves empty directories via explicit zip entries. End-users get the same `DB/{ToLoad,Older}/` tree from the very first launch, ready to receive a drop or archive a swap.
+
+### 17.6. Mental model — three questions to ask before each operation
+
+When you reach for `DB → Backup database`, ask:
+
+> *"Do I want a copy I can come back to, while continuing to use the live database?"*
+
+When you reach for `DB → Set DB`, ask:
+
+> *"Am I prepared to restart Tlamatini? Do I want the current database moved out of the way and replaced?"*
+
+When you reach into `DB/Older/` by hand, ask:
+
+> *"Which timestamp do I trust? Am I about to overwrite the only running database with one that may be older / smaller / from a different machine?"*
+
+The DB menu is intentionally small — three primitives (backup, stage, archive), one swap window (process restart), one audit trail (timestamps). Everything else is just discipline.
+
+---
+
 # Part III — The Visual Workflow Designer
 
-## 17. Why drag-and-drop flows
+## 18. Why drag-and-drop flows
 
 The chat is amazing for one-off tasks. But some jobs you want to:
 
@@ -591,7 +710,7 @@ The chat is amazing for one-off tasks. But some jobs you want to:
 
 Those are flows. You drag agents from a sidebar onto a canvas, draw lines between them, configure their parameters, save the result as a `.flw` file, and run it.
 
-## 18. Anatomy of the canvas
+## 19. Anatomy of the canvas
 
 Open `/agentic_control_panel/`:
 
@@ -624,7 +743,7 @@ A few facts about the canvas you need to internalize:
 
 Another recent change matters if you use the config dialogs heavily: dialog-edited wiring fields now survive the compile pass. In practice that means a user-edited `source_agents`, `target_agents`, or Ender kill list is preserved, while the canvas still contributes its live connections where appropriate. Validate and Start no longer flatten those deliberate edits back into stale pool defaults.
 
-## 19. Your first flow (3-agent example)
+## 20. Your first flow (3-agent example)
 
 Goal: run a shell command, take a screenshot, end.
 
@@ -643,13 +762,13 @@ Goal: run a shell command, take a screenshot, end.
 
 You'll see LEDs go green, then sequential outputs in the log viewer, then everything turns gray. Open your `output_dir` — there is a screenshot.
 
-## 20. Saving and loading `.flw` files
+## 21. Saving and loading `.flw` files
 
 Click **💾 Save**, pick a name. You get a JSON file with all node positions, configs, and connections. Distribute it; somebody else loads it via **📂 Load**, gets the same flow.
 
 `.flw` files are also what the chat's **Create Flow** button (chapter 16) emits.
 
-## 21. Pause, Resume, and Stop
+## 22. Pause, Resume, and Stop
 
 The three buttons each do something different:
 
@@ -663,7 +782,7 @@ This is why long-running workflows (Crawler scraping 10,000 URLs, Parametrizer i
 
 The stop path also got harder to break in mixed flows. Current builds are better at killing lingering session processes during cleanup, so a half-manual / half-compiled run is less likely to leave zombie agents behind before the next start.
 
-## 22. FlowHypervisor (your watchdog)
+## 23. FlowHypervisor (your watchdog)
 
 Click **⚠ Hypervisor** and a system-managed FlowHypervisor agent starts watching every other running agent. It is an LLM that:
 
@@ -674,7 +793,7 @@ Click **⚠ Hypervisor** and a system-managed FlowHypervisor agent starts watchi
 
 If a problem fires, the browser shows an alert dialog. You can append your own rules to the watchdog through the FlowHypervisor agent's `user_instructions` config field — useful for "don't flag this known false-positive" or "wake me if X is silent for >10 min."
 
-## 23. FlowCreator — let an LLM design the flow for you
+## 24. FlowCreator — let an LLM design the flow for you
 
 Drag a **FlowCreator** node onto the canvas, double-click it, and type a natural-language objective:
 
@@ -684,7 +803,7 @@ Click **Generate**. FlowCreator reads `agentic_skill.md` (its design playbook), 
 
 This is the highest-leverage feature for non-technical users: you describe what you want, the system *draws* the flow.
 
-## 24. Parametrizer (chaining outputs into the next agent's config)
+## 25. Parametrizer (chaining outputs into the next agent's config)
 
 This is the agent that makes multi-stage pipelines work without manual `config.yaml` editing.
 
@@ -746,7 +865,7 @@ Apirer ──▶ Parametrizer ──▶ Kyber-Cipher
 
 No manual config editing. No race conditions. Pause-safe.
 
-## 25. Gatewayer (external triggers into a flow)
+## 26. Gatewayer (external triggers into a flow)
 
 Gatewayer is the **inbound gateway** — the entrypoint that lets external systems kick off your flow.
 
@@ -814,7 +933,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 60 workflow-agent types. Spotlight chapters for **Parametrizer** (§24) and **Gatewayer** (§25) above.
+A compact reference for all 60 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -890,9 +1009,9 @@ A compact reference for all 60 workflow-agent types. Spotlight chapters for **Pa
 
 | Agent | Purpose |
 |---|---|
-| **Parametrizer** | Strict single-lane queue mapping source-agent log segments into target-agent config. (See §24.) |
+| **Parametrizer** | Strict single-lane queue mapping source-agent log segments into target-agent config. (See §25.) |
 | **FlowBacker** | Post-Ender backup of session logs/configs. |
-| **Gatewayer** | Inbound HTTP webhook / folder-drop ingress. (See §25.) |
+| **Gatewayer** | Inbound HTTP webhook / folder-drop ingress. (See §26.) |
 | **Gateway-Relayer** | Bridges provider webhooks (GitHub) into Gatewayer's HMAC format. |
 | **Node-Manager** | Live infrastructure registry; probes nodes via ping/TCP/SSH/WinRM/HTTP. |
 
@@ -907,13 +1026,13 @@ A compact reference for all 60 workflow-agent types. Spotlight chapters for **Pa
 | **Notifier** | Browser notification + sound on pattern detection (LangGraph). |
 | **Whatsapper** | WhatsApp messages via TextMeBot. |
 | **TelegramRX** | Telegram message receiver. |
-| **FlowHypervisor** | LLM watchdog over running agents. (See §22.) |
+| **FlowHypervisor** | LLM watchdog over running agents. (See §23.) |
 
 ## AI / design
 
 | Agent | Purpose |
 |---|---|
-| **FlowCreator** | LLM that designs flows from natural-language objectives. (See §23.) |
+| **FlowCreator** | LLM that designs flows from natural-language objectives. (See §24.) |
 
 ---
 
@@ -921,7 +1040,7 @@ A compact reference for all 60 workflow-agent types. Spotlight chapters for **Pa
 
 Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually enabled/disabled via the **Tools Dialog** in the chat.
 
-## 26. Core tools
+## 27. Core tools
 
 | Tool | What it does |
 |---|---|
@@ -940,7 +1059,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 27. Wrapped chat-agent tools (36)
+## 28. Wrapped chat-agent tools (36)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -954,7 +1073,7 @@ Each wrapped tool launches an isolated, sequenced runtime copy of a workflow age
 | **Routing** | `chat_agent_asker` |
 | **Crawling, monitoring, APIs, prompts, crypto** | `chat_agent_crawler`, `chat_agent_monitor_log`, `chat_agent_monitor_netstat`, `chat_agent_apirer`, `chat_agent_prompter`, `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph` |
 
-## 28. Wrapped runtime lifecycle tools (6)
+## 29. Wrapped runtime lifecycle tools (6)
 
 After launching a wrapped agent, you can monitor and control it:
 
@@ -967,7 +1086,7 @@ After launching a wrapped agent, you can monitor and control it:
 | `chat_agent_run_wait` | **Block** until a run reaches a terminal status (or `max_seconds` fires). Replaces busy-poll loops. |
 | `window_present(title)` | Fast (<100 ms) yes/no helper for "is this window open?" — use this instead of `chat_agent_image_interpreter` for window-presence gates. |
 
-## 29. ACPX & Skills tools (12)
+## 30. ACPX & Skills tools (12)
 
 The ACPX/Skill surface. Every tool returns a JSON envelope. Failure envelopes are always `{ ok: false, reason: "...", code: "..." }`.
 
@@ -994,7 +1113,7 @@ The 21 seed skills (`agent/skills_pkg/<name>/SKILL.md`) cover: `hello-world`, `s
 
 This is the deep-dive section. Skip if you only want to use Tlamatini.
 
-## 30. The big picture
+## 31. The big picture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -1025,7 +1144,7 @@ This is the deep-dive section. Skip if you only want to use Tlamatini.
        └─────────────────────────┘   └──────────────────────────┘
 ```
 
-## 31. The Five Layers
+## 32. The Five Layers
 
 The system is organized in five conceptual layers. Each layer has a single responsibility.
 
@@ -1037,7 +1156,7 @@ The system is organized in five conceptual layers. Each layer has a single respo
 | **4. Main answer chains** | Basic / History-aware / Unified chains. `factory.py` monkey-patches `invoke()` to wire context from sidecars. | `agent/rag/chains/` |
 | **5. Unified-agent tools** | Synchronous LangChain `@tool` functions returned by `get_mcp_tools()`. Only active when the unified-agent chain is selected. | `agent/tools.py` |
 
-## 32. RAG pipeline
+## 33. RAG pipeline
 
 When you set a directory as context:
 
@@ -1051,7 +1170,7 @@ When you set a directory as context:
 
 If embedding fails (out-of-memory), **memory-insufficient fallback** kicks in: the loaded source files are packed into a raw context block and injected directly into the prompt-only / unified-agent path. You get reduced retrieval quality, not a wiped chat.
 
-## 33. Embedding-memory pre-flight guard (GPU hosts)
+## 34. Embedding-memory pre-flight guard (GPU hosts)
 
 When you click **Set directory as context** in the Context menu, Tlamatini is about to do something dangerously bursty: walk every text file under the path, split each into chunks, push every chunk through Ollama's embedding API to build a FAISS index, and only then return control to the chat. On a laptop or consumer GPU this is the moment of truth — if the embedding model needs more VRAM than the GPU can spare, Ollama starts evicting and re-loading on every batch, and what should be a thirty-second operation turns into a multi-hour stall while RAM and VRAM swap back and forth across the PCIe bus. The dev box this codebase is calibrated on — an RTX 4070 Laptop with 8 188 MiB of VRAM — sees exactly this with the default embedding model `qwen3-embedding:8b`, which sits at ~6.24 GB resident, 77.9 % of total. Add a chat model on top, and the GPU is over capacity.
 
@@ -1169,7 +1288,7 @@ python manage.py test agent.test_embedding_memory_guard --verbosity=2
 
 Forty-nine tests in roughly 2.3 seconds, no database setup, no GPU required.
 
-## 34. Multi-Turn execution pipeline
+## 35. Multi-Turn execution pipeline
 
 Below the toolbar checkbox, here is what really happens when you tick **Multi-Turn**:
 
@@ -1217,7 +1336,7 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
 
 The capability-aware selector scores each tool with name match (+14 exact), alias / hint phrase match (+10–12), example-request token overlap (up to +3), description token overlap (up to +10), plus a +15 history-aware boost on short follow-ups (≤4 meaningful tokens). The cap is 20 tools per request by default — lowered from 50 after observing keyword inflation pulled in everything.
 
-## 35. ACPX runtime mechanics
+## 36. ACPX runtime mechanics
 
 ACPX is a Python port of OpenClaw's ACPX plugin. The `agent_id` mapping, `permissionMode` vocabulary, and SKILL.md frontmatter contract match OpenClaw verbatim.
 
@@ -1259,7 +1378,7 @@ Plus a non-interactive policy (`deny` / `fail`) for unattended runs.
 
 The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing tools. One ACPXer node = one ACPX session lifecycle. It mirrors the runtime mechanics inline (in ~120 lines) because workflow agents in the pool run as separate Python subprocesses and cannot import `agent.acpx`. The transcript format is byte-identical, so an ACPXer transcript is interchangeable with a chat-driven one.
 
-## 36. Database models
+## 37. Database models
 
 13 models in `agent/models.py`. The ones that matter day-to-day:
 
@@ -1279,7 +1398,7 @@ The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing too
 | `AgentProcess` | Tracked PIDs for canvas agents. Cleared on shutdown. |
 | `Omission` | Secret-redaction patterns for context. |
 
-## 37. The application log (`tlamatini.log`)
+## 38. The application log (`tlamatini.log`)
 
 `Tlamatini/manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` **before Django initializes**. Every print, every Django logger (they all use `StreamHandler`), and every tool's stdout/stderr lands in both the console and a single file:
 
@@ -1297,7 +1416,7 @@ Characteristics:
 
 When debugging an issue, `tlamatini.log` is the first artifact to consult.
 
-## 38. ASCII / box-drawing diagrams in chat
+## 39. ASCII / box-drawing diagrams in chat
 
 LLM-generated ASCII art / flowcharts / column layouts render in the chat with a fixed-width font and preserved whitespace. The LLM is instructed (rule 13 in `prompt.pmt`) to wrap diagrams in `BEGIN-DIAGRAM` / `END-DIAGRAM` markers. There is also auto-detection: any run of consecutive lines containing box-drawing characters (`│┃|─━┌┐└┘├┤┬┴┼╭╮╯╰`), arrow glyphs (`▲▼►◄→←↑↓`), or ASCII-art runs (`+`, `-`, `=`, `|`) is wrapped automatically. Both pipelines emit `<pre class="ascii-diagram">…</pre>` HTML.
 
@@ -1313,7 +1432,7 @@ The main file is `Tlamatini/agent/config.json`.
 | Frozen | `<install-dir>/config.json` next to the executable |
 | Both | `CONFIG_PATH` env var, if set, wins over both |
 
-## 39. LLM settings
+## 40. LLM settings
 
 ```json
 {
@@ -1346,7 +1465,7 @@ The main file is `Tlamatini/agent/config.json`.
 
 You can still edit `config.json` by hand, but you no longer have to for the common cases. The chat navbar's `Config -> Models` dialog writes the model-name subset, and `Config -> URLs` writes the endpoint / host / port subset. The browser validates shape first, the backend validates again, and `config_loader.save_config_updates()` merges only the changed keys atomically into whichever `config.json` is active for the current mode (source or frozen).
 
-## 40. RAG settings
+## 41. RAG settings
 
 ```json
 {
@@ -1384,7 +1503,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 41. Internet search settings
+## 42. Internet search settings
 
 ```json
 {
@@ -1397,7 +1516,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 42. MCP services
+## 43. MCP services
 
 ```json
 {
@@ -1410,7 +1529,7 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
 }
 ```
 
-## 43. ACPX settings
+## 44. ACPX settings
 
 The whole `acpx` block is **optional**. When missing or partial, every value falls back to a safe default. On first boot of an upgrade build, `agent/acpx/service.py::boot_acpx()` calls `ensure_acpx_block_in_config_json()` and **appends the documented default block to your existing `config.json` atomically**.
 
@@ -1509,7 +1628,7 @@ Instead of editing `config.json` by hand, in chat (Multi-Turn + ACPX ticked):
 
 The skill walks itself through writing `data.keys`, patching both `config.json` layers, optionally extending `regen_secrets.py`, and verifying via `acp_doctor`.
 
-## 44. Image interpreter
+## 45. Image interpreter
 
 ```json
 {
@@ -1519,7 +1638,7 @@ The skill walks itself through writing `data.keys`, patching both `config.json` 
 }
 ```
 
-## 45. Advanced options
+## 46. Advanced options
 
 ```json
 {
@@ -1539,7 +1658,7 @@ The skill walks itself through writing `data.keys`, patching both `config.json` 
 
 # Part VIII — Deploying & Packaging
 
-## 46. The three-step build pipeline
+## 47. The three-step build pipeline
 
 ```
 build.py  ──►  build_uninstaller.py  ──►  build_installer.py
@@ -1580,7 +1699,7 @@ python build_installer.py
 
 Requires `pkg.zip` and `Uninstaller.exe` from steps 1 and 2. Builds `install.py` with `--onedir --windowed` and a splash screen, copies `pkg.zip` and `Uninstaller.exe` into `dist/Installer/`, and assembles `dist/Tlamatini_Release/` with SHA-256 verification.
 
-## 47. What the installer does
+## 48. What the installer does
 
 When an end user runs `Installer.exe`:
 
@@ -1593,14 +1712,14 @@ When an end user runs `Installer.exe`:
 7. Registers `.flw` extension to open with Tlamatini.
 8. Cleans the PyInstaller bundle path from helper subprocess environments so PowerShell helpers and Explorer restarts don't stall.
 
-## 48. What the uninstaller does
+## 49. What the uninstaller does
 
 1. Removes shortcuts (with Explorer restart for immediate effect).
 2. Unregisters the `.flw` association and clears cached shell state.
 3. Deletes all application files **except** `<install_path>/Tlamatini/agents/*` (preserves user-created agents).
 4. Removes the install directory if empty.
 
-## 49. Frozen-mode behavior
+## 50. Frozen-mode behavior
 
 The Multi-Turn implementation carries frozen-build awareness in supporting runtime code:
 
@@ -1614,7 +1733,7 @@ The Multi-Turn implementation carries frozen-build awareness in supporting runti
 
 # Part IX — The Command Deck (API + WebSocket)
 
-## 50. WebSocket protocol
+## 51. WebSocket protocol
 
 Endpoint: `ws://<host>/ws/agent/`.
 
@@ -1665,7 +1784,7 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 
 A successful Multi-Turn message also carries `tool_calls_log`, `multi_turn_used`, `answer_success` for the Create Flow gate.
 
-## 51. HTTP endpoints
+## 52. HTTP endpoints
 
 The backend currently exposes 103 routes. Highlights:
 
@@ -1762,7 +1881,7 @@ Plus the Parametrizer-specific pair:
 
 # Part X — Survival Guide (Troubleshooting)
 
-## 52. Common issues
+## 53. Common issues
 
 ### Ollama connection failed
 
@@ -1828,7 +1947,7 @@ If transcripts only show outbound prompts and no inbound responses, your build i
 - Read the Forker/Asker log for pattern-matching diagnostics.
 - Asker only: did the browser dialog appear? Check console errors.
 
-## 53. Debug mode
+## 54. Debug mode
 
 ```json
 {
@@ -1853,12 +1972,12 @@ INFO-level loggers configured in `tlamatini/settings.py`:
 
 All log lines are prefixed with timestamp and logger name (e.g. `2026-04-13 12:28:39 [agent.tools] INFO …`).
 
-## 54. Log locations
+## 55. Log locations
 
 | What | Where |
 |---|---|
 | Django / Multi-Turn console | stdout |
-| **Application-wide** | `Tlamatini/tlamatini.log` (truncated on every start; see §36) |
+| **Application-wide** | `Tlamatini/tlamatini.log` (truncated on every start; see §37) |
 | ACP workflow agent logs | `<pool_directory>/<agent_name>/<agent_name>.log` |
 | Chat-launched wrapped agents | `agent/agents/pools/_chat_runs_/<agent>_<seq>_<id>/<agent>_<seq>_<id>.log` (failed runs preserved) |
 
@@ -1955,7 +2074,9 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 
 ### Recent Updates
 
-- **Embedding-Memory Pre-Flight Guard — 2026-05-12** — A new module (`agent/embedding_memory_guard.py`) catches the "context loading hangs for hours" failure mode on GPU hosts before the embed burst starts. The guard is wired into `agent/consumers.py::setup_contextual_rag_chain` exactly once: after the consumer broadcasts `MSG_AGENT_LOADING_CONTEXT` and before it schedules the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives `FAISS.from_documents(...)`. It runs **only** when an NVIDIA GPU is detected via the cached `gpu_perf._has_nvidia_gpu()` probe — CPU-only, AMD, and Apple Silicon hosts skip the check silently and the legacy load path is unchanged. Three-tier VRAM prediction: Tier A reads `size_vram` verbatim from `GET /api/ps` when the model is already resident (exact daemon ground truth); Tier B computes `parameter_count × bits_per_weight(quant) / 8 × overhead` from `POST /api/show`, with a standard llama.cpp / GGUF bits-per-weight table (`F16`=16, `Q8_0`=8.5, `Q4_K_M`=4.83, `Q2_K`=2.96 …) and a 2-tier overhead multiplier (×1.40 for ≥1B-param models, ×2.20 for sub-1B) calibrated against measurements on the dev box's RTX 4070 Laptop (`qwen3-embedding:8b` predicts 6.36 GB vs measured 6.24 GB, +1.9 %; `Nomic-Embed-Text:latest` predicts 603 MB vs measured 600 MB, +0.5 %); Tier C returns `None` for cloud models (`:cloud` suffix), missing Ollama, or any probe failure (fail-open). When predicted VRAM is at least **80 %** of the *smallest* GPU's total VRAM (smallest because Ollama loads each model into a single device by default), the consumer broadcasts an HTML chat-bubble warning naming the model, the percent, the threshold, and a projected FAISS index size — informational and non-blocking. Test coverage: **49 tests** in `agent/test_embedding_memory_guard.py`, organized into seven `SimpleTestCase` classes; the `NoGpuCompatibilityTests` class alone is **28 tests** covering every `nvidia-smi` / Ollama / path-input / driver-crash failure mode, with `test_real_entry_point_call_never_raises` as the CI gate that exercises the live subprocess + urllib paths and asserts the return is **either** `None` **or** a well-formed warning dict on any host. Book chapter §33 documents the full user-facing surface; README chapter 9 mirrors it as the reference companion.
+- **DB menu — Backup database + Set DB + start-up swap-in — 2026-05-14** — A new top-of-page **DB** dropdown adds two safe, GUI-first database operations and a third invisible one. **Backup database** (`DB → Backup database`, commit `47df564`) opens a dialog with a live-validated target-directory input (`GET /agent/check_backup_directory/`) that `shutil.copy2`s the live `db.sqlite3` to a directory of your choice via `POST /agent/backup_db/`, keeping the live database untouched. **Set DB** (`DB → Set DB`, the new entry) does the harder direction: a live-validated file-path input (`GET /agent/check_set_db_file/` — checks existence, basename, and the `SQLite format 3\x00` magic header) stages your pick into `<base>/DB/ToLoad/db.sqlite3` via `POST /agent/set_db/`, and a yellow ⚠ warning dialog tells you the file will be loaded on the next session (or restart now for immediate effect). The invisible third leg is `Tlamatini/manage.py::_apply_pending_db_swap` — a function that runs BEFORE Django is imported, detects frozen vs source mode, and (only when `DB/ToLoad/db.sqlite3` is present) (1) creates `DB/Older/<YYYY-MM-DD_HHMMSS>/`, (2) `shutil.move`s the current live `db.sqlite3` into that timestamped archive, (3) `shutil.move`s `DB/ToLoad/db.sqlite3` on top of the live path, then returns and lets Django open the freshly-promoted database. Both legs use `shutil.move` (not copy), so a re-launch with empty `ToLoad/` is automatically a no-op — no "stuck flag" to clear. Pre-Django timing is the entire safety story: a simple **Reconnect** from the navbar does NOT trigger the swap-in, because the swap window is only open before the Django process opens its SQLite connection pool. The deployment-aware path resolution mirrors Django's own `BASE_DIR / 'db.sqlite3'` — `_MEIPASS/db.sqlite3` under PyInstaller (the bundle-internal location Django actually opens), `<manage.py dir>/db.sqlite3` in source mode — while the user-facing `DB/` tree always lives next to the executable (frozen) or next to `manage.py` (source), where the user can actually browse to it in Explorer. `build.py` extends its `empty_dirs` tuple with `"DB/ToLoad"` and `"DB/Older"` so frozen installs ship with both directories on day one; `Tlamatini/Tlamatini/DB/{ToLoad,Older}/README.md` are checked into the repo as the "git keepers" that prevent the empty directories from being lost in source mode. The Older archive is never auto-pruned — it's the only built-in rollback path (copy a `db.sqlite3` from `Older/<timestamp>/` back into `ToLoad/`, restart, and the swap-in promotes it while archiving the *current* live database under a fresh timestamp). Failure-mode contract: a corrupt / locked / mismatched ToLoad file logs `--- [DB SWAP] Skipped due to error: …` to `tlamatini.log` and lets Tlamatini start normally with the previous database — a bad ToLoad pick must never lock you out of your own data. Files involved: `Tlamatini/manage.py` (swap-in), `Tlamatini/agent/views.py::{_resolve_db_sqlite_path, check_backup_directory_view, backup_db_view, _resolve_db_to_load_directory, _file_looks_like_sqlite, check_set_db_file_view, set_db_view}`, `Tlamatini/agent/urls.py` (four new routes), `Tlamatini/agent/templates/agent/agent_page.html` (DB dropdown + two dialog containers + warning panel), `Tlamatini/agent/static/agent/css/agent_page.css` (`backup-db-status`, `set-db-status`, `set-db-warning-icon` rules), `Tlamatini/agent/static/agent/js/agent_page_state.js` (DOM refs), `Tlamatini/agent/static/agent/js/agent_page_dialogs.js` (`makeBackupCancelButtons` / `makeSetCancelButtons` factories, three `preRender*` / `render*` pairs), `Tlamatini/agent/static/agent/js/agent_page_init.js` (`OpenBackupDbDialog`, `OpenSetDbDialog`, `_saveBackupDb`, `_saveSetDb`, debounced validators), `eslint.config.mjs` (15 new global declarations), and `build.py` (empty-dir extension). Documented end-to-end in Book chapter §17 and README §3.10.
+
+- **Embedding-Memory Pre-Flight Guard — 2026-05-12** — A new module (`agent/embedding_memory_guard.py`) catches the "context loading hangs for hours" failure mode on GPU hosts before the embed burst starts. The guard is wired into `agent/consumers.py::setup_contextual_rag_chain` exactly once: after the consumer broadcasts `MSG_AGENT_LOADING_CONTEXT` and before it schedules the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives `FAISS.from_documents(...)`. It runs **only** when an NVIDIA GPU is detected via the cached `gpu_perf._has_nvidia_gpu()` probe — CPU-only, AMD, and Apple Silicon hosts skip the check silently and the legacy load path is unchanged. Three-tier VRAM prediction: Tier A reads `size_vram` verbatim from `GET /api/ps` when the model is already resident (exact daemon ground truth); Tier B computes `parameter_count × bits_per_weight(quant) / 8 × overhead` from `POST /api/show`, with a standard llama.cpp / GGUF bits-per-weight table (`F16`=16, `Q8_0`=8.5, `Q4_K_M`=4.83, `Q2_K`=2.96 …) and a 2-tier overhead multiplier (×1.40 for ≥1B-param models, ×2.20 for sub-1B) calibrated against measurements on the dev box's RTX 4070 Laptop (`qwen3-embedding:8b` predicts 6.36 GB vs measured 6.24 GB, +1.9 %; `Nomic-Embed-Text:latest` predicts 603 MB vs measured 600 MB, +0.5 %); Tier C returns `None` for cloud models (`:cloud` suffix), missing Ollama, or any probe failure (fail-open). When predicted VRAM is at least **80 %** of the *smallest* GPU's total VRAM (smallest because Ollama loads each model into a single device by default), the consumer broadcasts an HTML chat-bubble warning naming the model, the percent, the threshold, and a projected FAISS index size — informational and non-blocking. Test coverage: **49 tests** in `agent/test_embedding_memory_guard.py`, organized into seven `SimpleTestCase` classes; the `NoGpuCompatibilityTests` class alone is **28 tests** covering every `nvidia-smi` / Ollama / path-input / driver-crash failure mode, with `test_real_entry_point_call_never_raises` as the CI gate that exercises the live subprocess + urllib paths and asserts the return is **either** `None` **or** a well-formed warning dict on any host. Book chapter §34 documents the full user-facing surface; README chapter 9 mirrors it as the reference companion.
 
 - **Chat-page configuration dialogs + restore-flow reliability + canvas/stop polish — 2026-05-09 to 2026-05-11** — The `/agent/` navbar now includes **Config -> Models** and **Config -> URLs** (commit `ac747e3`). These dialogs load a validated subset of `config.json`, let the user edit the common model-name and endpoint fields from the browser, then save through `config_loader.save_config_updates()` so source-mode and frozen-mode builds write to the same effective config file. The views `load_config_section_view`, `save_config_models_view`, and `save_config_urls_view` enforce server-side validation for strings, URLs, hosts, and ports. Companion UI work enlarged and cleaned up the **Configure MCPs** dialog (`b286cd6`) and improved the chat/canvas vertical divider behavior on the main page (`1e62faa`). Another reliability fix (`484b8ec`) closes the old initial context-load race: when a saved session is restored, the frontend now keeps the input disabled until the contextual RAG chain is really ready, instead of briefly unlocking after the welcome-back banner. On the workflow side, dialog edits now win over stale pool wiring during compilation (`04502c3`), and the mixed-flow stop path is better at killing lingering processes before the next run (`6b0e3aa`).
 

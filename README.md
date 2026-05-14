@@ -34,6 +34,7 @@
   - [3.7. Tutorial: the **ACPX** toggle](#37-tutorial-the-acpx-toggle)
   - [3.8. From chat to flow: the **Create Flow** button](#38-from-chat-to-flow-the-create-flow-button)
   - [3.9. Why Chat-created flows are safer now](#39-why-chat-created-flows-are-safer-now)
+  - [3.10. The **DB** menu — Backup, Set DB, and the start-up swap-in](#310-the-db-menu--backup-set-db-and-the-start-up-swap-in)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -245,22 +246,24 @@ Open `http://127.0.0.1:8000/` and log in with the superuser you just created. Th
 ### 3.1. Chat layout in 30 seconds
 
 ```
-┌───────────────────────────────────────────────────────────────────────┐
-│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼] [Config ▼] │ ← top nav
-├───────────────────────────────────────────────────────────────────────┤
-│  Multi-Turn ☐   Exec Report ☐   ACPX ☐   internet ☐    Clear ⌫       │ ← four toggles
-├───────────────────────────────────────────────────────────────────────┤
-│  ┌──── chat ────────────────┐   ┌──── code canvas ────────────────┐  │
-│  │  conversation history    │   │  syntax-highlighted, with copy  │  │
-│  └──────────────────────────┘   └─────────────────────────────────┘  │
-├───────────────────────────────────────────────────────────────────────┤
-│  Type your prompt here…                                      [Send]   │
-└───────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼] [Config ▼] [DB ▼] │ ← top nav
+├───────────────────────────────────────────────────────────────────────────────┤
+│  Multi-Turn ☐   Exec Report ☐   ACPX ☐   internet ☐    Clear ⌫               │ ← four toggles
+├───────────────────────────────────────────────────────────────────────────────┤
+│  ┌──── chat ────────────────┐   ┌──── code canvas ────────────────┐          │
+│  │  conversation history    │   │  syntax-highlighted, with copy  │          │
+│  └──────────────────────────┘   └─────────────────────────────────┘          │
+├───────────────────────────────────────────────────────────────────────────────┤
+│  Type your prompt here…                                              [Send]   │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 The **four toolbar toggles** are independent. Tick whatever combination fits the task — each one is its own tutorial section below.
 
 Newer builds also expose a **Config** dropdown in the same navbar. `Config -> Models` edits the most common model-name fields, and `Config -> URLs` edits the Ollama / unified-agent / MCP endpoint values through validated dialogs instead of hand-editing JSON. The chat/canvas divider was also tightened so resizing the right-hand canvas feels more predictable during long editing sessions.
+
+The newest entry in that navbar is the **DB** dropdown: `DB -> Backup database` snapshots the live SQLite file to a directory you pick, and `DB -> Set DB` stages a `db.sqlite3` file of your choice for the **next session** — Tlamatini swaps it in before Django opens the database, archives the previous one under `DB/Older/<timestamp>/`, then continues normal start-up. Full walkthrough in [§3.10](#310-the-db-menu--backup-set-db-and-the-start-up-swap-in).
 
 ### 3.2. Setting code as context
 
@@ -400,6 +403,97 @@ What this means for you:
 4. The `.flw` file stays portable. It does not store `C:/Development/...` or the installed app path beside `Tlamatini.exe`.
 
 If backend normalization is temporarily unavailable, the old browser generator remains as a fallback so the button does not become useless.
+
+### 3.10. The **DB** menu — Backup, Set DB, and the start-up swap-in
+
+The whole of Tlamatini — chat history, agents, Tool/MCP toggles, sessions, your user — lives in a single SQLite file. The **DB** dropdown gives you a safe, GUI-first way to handle that file: a read-only **Backup** path, a destructive-but-deferred **Set DB** path, and a built-in audit trail under `DB/Older/`.
+
+#### `DB -> Backup database`
+
+Opens a dialog with one input — the **target directory**. The path is live-validated (350 ms debounce): the page asks `GET /agent/check_backup_directory/?path=…` as you type and colors the status line green / amber / red:
+
+| State | Status | Meaning |
+|---|---|---|
+| 🟢 | `Directory exists. db.sqlite3 will be saved here.` | Ready to back up. |
+| 🟠 | `A filename was specified — please specify the directory only.` | You typed a file path; the output is **always** named `db.sqlite3` so it can be loaded back later. |
+| 🔴 | `Directory does not exist.` | Missing on disk. |
+
+Click **Backup** → Tlamatini calls `POST /agent/backup_db/`, resolves the live database path via `settings.DATABASES['default']['NAME']` (so source / frozen behave identically), and `shutil.copy2`s it to `<your-dir>/db.sqlite3`. The live database stays open and unchanged.
+
+#### `DB -> Set DB`
+
+The opposite direction: replace the database on the **next start-up**. Same dialog idiom, stricter validation. The input is the **full path to a `db.sqlite3` file**; the page asks `GET /agent/check_set_db_file/?path=…` as you type:
+
+| State | Status | Meaning |
+|---|---|---|
+| 🟢 | `File exists. It will be loaded on the next start-up.` | Real `db.sqlite3` with a valid SQLite header. |
+| 🟠 | `File found, but its name is not "db.sqlite3". Tlamatini will still stage it as db.sqlite3.` | Snapshot-style names (`db_2026-05-14.sqlite3`) work — the staging step renames. |
+| 🟠 | `Specify the full path to a db.sqlite3 file, not a directory.` | You typed a directory; Set DB needs a file. |
+| 🔴 | `The selected file does not look like a SQLite database.` | First 16 bytes don't match the `SQLite format 3\x00` magic. |
+| 🔴 | `File does not exist.` | Missing on disk. |
+
+Click **Set** → `POST /agent/set_db/` copies your file into `<base>/DB/ToLoad/db.sqlite3` (where `<base>` is the executable directory in frozen mode, the inner Django project directory in source mode). The live database is **not** touched — SQLite is held open by Django, so the actual replacement must wait for a process restart.
+
+Immediately after staging succeeds, the dialog is replaced by a **yellow ⚠ warning panel** with a single **OK** button:
+
+> *The selected database will be loaded the next time Tlamatini starts. If you want it loaded immediately, you must restart Tlamatini completely so the swap-in can run BEFORE Django opens the live database.*
+
+If you click **Cancel** instead of **Set**, the staging dialog closes and nothing is written.
+
+#### The start-up swap-in (the third, invisible leg)
+
+The actual replacement lives at the very top of `Tlamatini/manage.py`, in `_apply_pending_db_swap()`. It runs **before any Django import** so Django's SQLite connection pool is never holding a stale file descriptor at the moment of the swap:
+
+```
+manage.py main()
+    │
+    ▼
+_apply_pending_db_swap()
+    │
+    ▼
+[ DB/ToLoad/db.sqlite3 exists? ]
+    │
+    ├─ NO  ──► return (no-op, normal start-up continues)
+    │
+    └─ YES ──► [1] mkdir DB/Older/<YYYY-MM-DD_HHMMSS>/
+               [2] shutil.move(live db.sqlite3 → Older/<timestamp>/db.sqlite3)
+               [3] shutil.move(DB/ToLoad/db.sqlite3 → live db.sqlite3)
+               [4] return
+    │
+    ▼
+from django.core.management import execute_from_command_line   ← only NOW Django wakes up
+```
+
+Three guarantees:
+
+1. **A Reconnect from the navbar is NOT enough.** The swap window is only open *before* the Django process opens its SQLite pool. You must **fully restart Tlamatini** (close the console / kill the exe, then launch again).
+2. **Atomic moves, no copies.** Both legs use `shutil.move` (filesystem rename when possible, copy+delete across mounts). A second launch with `DB/ToLoad/` empty is automatically a no-op — no "stuck flag" to clear.
+3. **Mode-correct path resolution.** Frozen mode reads `<exe_dir>/DB/ToLoad/db.sqlite3` (where you can browse to it in Explorer); source mode reads `<repo>/Tlamatini/DB/ToLoad/db.sqlite3` (next to `manage.py`). The live `db.sqlite3` path is computed the same way Django does — `_MEIPASS/db.sqlite3` under PyInstaller, `<manage.py dir>/db.sqlite3` in source — so the swap-in always writes to exactly the path Django will open.
+
+If anything fails inside the swap-in (locked file on Windows, corrupt source, permission error), the function catches the exception, prints `--- [DB SWAP] Skipped due to error: …` to `tlamatini.log`, and lets Tlamatini start normally with the previous database. **A bad ToLoad file must never lock you out of your own database.**
+
+#### The Older audit trail
+
+Every successful swap-in leaves a complete record under `<base>/DB/Older/<YYYY-MM-DD_HHMMSS>/db.sqlite3`. Because Set DB *moves* (not copies) the prior live database, this archive is the only built-in recovery path:
+
+```
+DB/
+├─ ToLoad/                 ← empty most of the time; momentary home of next-session pick
+│   └─ README.md
+└─ Older/
+    ├─ 2026-05-14_153022/db.sqlite3   ← was live before swap #1
+    ├─ 2026-05-14_164410/db.sqlite3   ← was live before swap #2
+    └─ README.md
+```
+
+To roll back, drop the archived `db.sqlite3` back into `ToLoad/` and restart — the swap-in will archive the **current** live database under a fresh timestamp and promote your roll-back pick. Tlamatini never auto-deletes anything from `Older/`; prune by hand when the tree gets noisy, but remember each file is a full snapshot of chat history + agents + sessions + your user.
+
+#### Where the tree comes from
+
+Both directories must exist on day one (the swap-in opens them with `os.makedirs(exist_ok=True)`, but having them pre-seeded with docs prevents user confusion):
+
+- **Source / dev mode**: `Tlamatini/Tlamatini/DB/{ToLoad,Older}/README.md` are checked into the repo. The README files are the "git keepers" — without them, git would silently drop the empty directories.
+- **Frozen mode**: `build.py` extends its `empty_dirs` tuple with `"DB/ToLoad"` and `"DB/Older"`. The PyInstaller post-build step creates both under `dist/manage/`, the `pkg.zip` packager preserves them via explicit zip entries, and end-users get the tree from the very first launch.
 
 ---
 
