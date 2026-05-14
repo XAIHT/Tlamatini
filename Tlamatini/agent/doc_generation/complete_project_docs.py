@@ -367,6 +367,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("menu db" in subject or "database" in subject or "browse buttons" in subject for subject in subjects):
+        highlights.append(
+            "Today’s operator-facing work is dominated by the new DB dropdown: backup, Set DB staging for the next start-up, startup swap-in/rollback mechanics, and native Browse buttons on both dialogs."
+        )
     if any("gpu" in subject or "autoload" in subject or "spining" in subject for subject in subjects):
         highlights.append(
             f"GPU-host behavior changed during the {RECENT_GIT_WINDOW_LABEL}: performance hooks, model-pinning startup behavior, and autoload-at-restart reliability were all touched."
@@ -477,6 +481,7 @@ SYSTEM_OVERVIEW = [
 WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
+    "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
@@ -488,9 +493,11 @@ WHAT_IT_DOES = [
 HOW_IT_WORKS = [
     "Browser UI sends chat and workflow requests through Django views and Channels WebSockets.",
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
+    "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
+    "On the next full start-up, `manage.py` can swap a staged database into place before Django imports, while archiving the previous live database under `DB/Older/<timestamp>/`.",
     "ACP flows deploy session-scoped pool instances, wire config values, validate NxN graph rules, and execute through Starter-driven flow semantics.",
     "Build scripts collect static assets, bundle Django/Python resources, add agent templates, and assemble `pkg.zip`, `Uninstaller.exe`, and `dist/Tlamatini_Release/`.",
 ]
@@ -499,6 +506,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "Use the DB dropdown when you need a safe database snapshot or want to stage a different `db.sqlite3` for the next start-up without hot-swapping the live SQLite file.",
     "Open `/agentic_control_panel/` to drag agents, connect them, configure each node, validate, start, pause/resume, stop, and save `.flw` workflows.",
     "Use `python build.py`, `python build_uninstaller.py`, and `python build_installer.py` only when producing a packaged Windows release.",
 ]
@@ -506,6 +514,7 @@ HOW_TO_USE = [
 DESIGN_PRINCIPLES = [
     "Evidence-first answers: Tlamatini grounds responses in selected project context and hybrid retrieval rather than freeform model memory.",
     "Explicit orchestration: checked Multi-Turn uses a visible tool loop, capability scoring, and staged planning instead of a single opaque call.",
+    "Operational reversibility: risky changes such as database replacement are staged, archived, and delayed to the only safe window instead of hot-swapped mid-session.",
     "Fail-open diagnostics: GPU pressure probes and session-restore safeguards warn early without breaking CPU-only or degraded environments.",
     "Runtime isolation: wrapped chat-agent copies run in session-scoped folders so template agents remain pristine while live runs stay inspectable.",
     "Operator truth over vibes: Exec Report tables, tlamatini.log, skill audits, and ACPX transcripts make the system auditable after execution.",
@@ -522,6 +531,7 @@ CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
+    "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid.",
     "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
 ]
@@ -531,7 +541,21 @@ RUNNING_GUIDE = [
     "Preferred async/dev bootstrap: `python Tlamatini/manage.py startserver`, which starts MCP services before the Django server.",
     "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
     "Current startup also re-applies GPU-performance / Ollama-pinning hooks in the background on supported NVIDIA Windows hosts, so restart-time behavior stays closer to the tuned development baseline.",
+    "That same early startup window is also where a staged `DB/ToLoad/db.sqlite3` file is promoted into the live database path, before Django opens SQLite.",
     "Startup cleans pool state, repopulates the agent registry, launches MCP metrics/file-search servers, and then serves HTTP plus WebSocket traffic.",
+]
+
+DB_MENU_GUIDE = [
+    "The new DB dropdown gives operators two GUI-first maintenance paths: `Backup database` copies the live SQLite file out, and `Set DB` stages a chosen `db.sqlite3` for the next full start-up.",
+    "Both dialogs are live-validated in the browser and now expose Browse buttons that open native host-side pickers for folders or `db.sqlite3` files.",
+    "Backup is read-only and uses the currently live database path; Set DB never hot-swaps the file mid-session because Django already holds SQLite open.",
+]
+
+DB_SWAP_GUIDE = [
+    "Set DB writes the selected file to `DB/ToLoad/db.sqlite3`; the real swap happens only at the top of `manage.py` before Django imports anything.",
+    "When that swap runs, the previous live database is moved into `DB/Older/<timestamp>/db.sqlite3`, creating a built-in rollback trail instead of overwriting history.",
+    "Reconnect is not enough for this path: the operator must fully restart Tlamatini so the pre-Django swap window opens again.",
+    "If the staged file is bad or locked, startup fails open: Tlamatini logs the error and continues with the previous live database.",
 ]
 
 EMBEDDING_GUARD_GUIDE = [
@@ -814,6 +838,11 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Configuration essentials", styles["h2"]))
     for item in CONFIGURATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("DB menu and database swap-in", styles["h2"]))
+    for item in DB_MENU_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in DB_SWAP_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("How to use it", styles["h2"]))
     for item in HOW_TO_USE:
@@ -1322,6 +1351,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Installation And Configuration", "README-backed operator path", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.85, 4.95, "Install essentials", INSTALLATION_GUIDE, THEME["jade"], "install-a", 15)
     add_panel(slide, audit, 6.92, 1.6, 5.55, 4.95, "Config essentials", CONFIGURATION_GUIDE, THEME["copper"], "install-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "DB Menu And Startup Swap", "today's new operator surface", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Backup and Set DB", DB_MENU_GUIDE, THEME["copper"], "db-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "What happens on next start-up", DB_SWAP_GUIDE, THEME["jade"], "db-b", 14)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Ollama Without Admin Rights", "local model setup on Windows", THEME["amber"])
