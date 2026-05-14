@@ -1044,3 +1044,179 @@ async function _saveConfigUrls() {
     return true;
 }
 
+// ----------------------------------------------------------------
+// DB -> Backup database dialog
+// ----------------------------------------------------------------
+
+let _backupDbValidationTimer = null;
+let _backupDbInputListenerAttached = false;
+
+function _setBackupDbStatus(text, kind) {
+    if (!backupDbStatusElement) return;
+    backupDbStatusElement.innerText = text || '';
+    backupDbStatusElement.classList.remove('backup-db-status-ok', 'backup-db-status-warn', 'backup-db-status-error');
+    if (kind === 'ok') {
+        backupDbStatusElement.classList.add('backup-db-status-ok');
+    } else if (kind === 'warn') {
+        backupDbStatusElement.classList.add('backup-db-status-warn');
+    } else if (kind === 'error') {
+        backupDbStatusElement.classList.add('backup-db-status-error');
+    }
+}
+
+async function _checkBackupDbDirectory(rawPath) {
+    const url = '/agent/check_backup_directory/?path=' + encodeURIComponent(rawPath);
+    const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin'
+    });
+    let body = null;
+    try {
+        body = await response.json();
+    } catch (_e) {
+        // Non-JSON; fall through.
+    }
+    if (!response.ok) {
+        const err = new Error(`Validation failed: HTTP ${response.status}`);
+        err.body = body;
+        throw err;
+    }
+    return body || {};
+}
+
+function _onBackupDbInputChanged() {
+    if (!backupDbTargetDirInput) return;
+    const raw = (backupDbTargetDirInput.value || '').trim();
+    if (_backupDbValidationTimer) {
+        clearTimeout(_backupDbValidationTimer);
+        _backupDbValidationTimer = null;
+    }
+    backupDbTargetDirInput.classList.remove('config-form-invalid');
+    if (!raw) {
+        _setBackupDbStatus('', '');
+        return;
+    }
+    _setBackupDbStatus('Checking path...', '');
+    _backupDbValidationTimer = setTimeout(() => {
+        _checkBackupDbDirectory(raw)
+            .then(info => {
+                const currentRaw = (backupDbTargetDirInput.value || '').trim();
+                if (currentRaw !== raw) {
+                    return; // user kept typing; a newer check will fire
+                }
+                if (info.kind === 'directory') {
+                    _setBackupDbStatus('Directory exists. db.sqlite3 will be saved here.', 'ok');
+                    backupDbTargetDirInput.classList.remove('config-form-invalid');
+                } else if (info.kind === 'file') {
+                    _setBackupDbStatus('A filename was specified — please specify the directory only.', 'warn');
+                    backupDbTargetDirInput.classList.add('config-form-invalid');
+                } else {
+                    _setBackupDbStatus('Directory does not exist.', 'error');
+                    backupDbTargetDirInput.classList.add('config-form-invalid');
+                }
+            })
+            .catch(err => {
+                console.error('Failed to validate backup directory:', err);
+                _setBackupDbStatus('Could not validate the directory.', 'error');
+            });
+    }, 350);
+}
+
+function OpenBackupDbDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (inLongOperation === true) {
+        console.log("Backup DB dialog can't be opened during a long operation...");
+        return;
+    }
+
+    if (backupDbTargetDirInput) {
+        backupDbTargetDirInput.value = '';
+        backupDbTargetDirInput.classList.remove('config-form-invalid');
+        if (!_backupDbInputListenerAttached) {
+            backupDbTargetDirInput.addEventListener('input', _onBackupDbInputChanged);
+            _backupDbInputListenerAttached = true;
+        }
+    }
+    _setBackupDbStatus('', '');
+
+    preRenderBackupDbDialog(
+        'Backup database...',
+        'Specify the target directory where db.sqlite3 will be backed up.',
+        'Provide ONLY the directory — Tlamatini will save the file as "db.sqlite3" so it can be loaded back correctly later.'
+    );
+    renderBackupDbDialog();
+}
+
+async function _saveBackupDb() { // eslint-disable-line no-unused-vars
+    const raw = (backupDbTargetDirInput ? backupDbTargetDirInput.value : '').trim();
+
+    if (!raw) {
+        backupDbTargetDirInput.classList.add('config-form-invalid');
+        _setBackupDbStatus('The target directory must not be empty.', 'error');
+        alert('The target directory must not be empty.\n\nPlease specify an existing directory before clicking "Backup".');
+        return false;
+    }
+
+    let info;
+    try {
+        info = await _checkBackupDbDirectory(raw);
+    } catch (err) {
+        console.error('Failed to validate backup directory:', err);
+        alert('Could not validate the target directory: ' + (err.message || 'unknown error'));
+        return false;
+    }
+
+    if (info.kind === 'file') {
+        backupDbTargetDirInput.classList.add('config-form-invalid');
+        _setBackupDbStatus('A filename was specified — please specify the directory only.', 'warn');
+        alert('It is NOT recommended to change the file name.\n\nIf you rename db.sqlite3 the system will not be able to load it back correctly. Please specify only the target directory — Tlamatini will save the file as "db.sqlite3".');
+        return false;
+    }
+
+    if (info.kind !== 'directory') {
+        backupDbTargetDirInput.classList.add('config-form-invalid');
+        _setBackupDbStatus('Directory does not exist.', 'error');
+        alert('The target directory does not exist:\n\n' + raw + '\n\nPlease specify an existing directory before clicking "Backup".');
+        return false;
+    }
+
+    let response;
+    try {
+        response = await fetch('/agent/backup_db/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ target_dir: raw })
+        });
+    } catch (err) {
+        console.error('Backup request failed:', err);
+        alert('Backup failed: ' + (err.message || 'network error'));
+        return false;
+    }
+
+    let body = null;
+    try {
+        body = await response.json();
+    } catch (_e) {
+        // Non-JSON body; body stays null.
+    }
+
+    if (!response.ok || !body || body.success !== true) {
+        const reason = (body && (body.error || body.reason)) || ('HTTP ' + response.status);
+        if (body && body.kind === 'file') {
+            backupDbTargetDirInput.classList.add('config-form-invalid');
+            alert('It is NOT recommended to change the file name.\n\nIf you rename db.sqlite3 the system will not be able to load it back correctly. Please specify only the target directory — Tlamatini will save the file as "db.sqlite3".');
+        } else {
+            alert('Backup failed: ' + reason);
+        }
+        return false;
+    }
+
+    console.log('--- Backup completed at:', body.path);
+    alert('Database backed up successfully to:\n\n' + body.path);
+    return true;
+}
+
