@@ -354,9 +354,13 @@
     <form id="backup-db-form" class="config-form" autocomplete="off"
       onsubmit="event.preventDefault(); return false;">
       <div class="config-form-row">
-        <label class="config-form-label" for="backup-db-target-dir">Target directory</label>
-        <input class="config-form-input" id="backup-db-target-dir" type="text" spellcheck="false"
-          placeholder="e.g. C:\Backups\Tlamatini">
+        <label class="config-form-label" for="backup-db-target-dir">Target directory:</label>
+        <div class="config-form-input-with-browse">
+          <input class="config-form-input" id="backup-db-target-dir" type="text" spellcheck="false"
+            placeholder="e.g. C:\Backups\Tlamatini">
+          <button type="button" id="backup-db-browse-btn" class="config-form-browse-btn"
+            onclick="_browseBackupDbDirectory();" title="Browse for a folder">Browse</button>
+        </div>
       </div>
     </form>
     <p id="backup-db-status" class="backup-db-status" aria-live="polite"></p>
@@ -367,9 +371,13 @@
     <form id="set-db-form" class="config-form" autocomplete="off"
       onsubmit="event.preventDefault(); return false;">
       <div class="config-form-row">
-        <label class="config-form-label" for="set-db-source-path">db.sqlite3 file</label>
-        <input class="config-form-input" id="set-db-source-path" type="text" spellcheck="false"
-          placeholder="e.g. C:\Backups\Tlamatini\db.sqlite3">
+        <label class="config-form-label" for="set-db-source-path">db.sqlite3 file:</label>
+        <div class="config-form-input-with-browse">
+          <input class="config-form-input" id="set-db-source-path" type="text" spellcheck="false"
+            placeholder="e.g. C:\Backups\Tlamatini\db.sqlite3">
+          <button type="button" id="set-db-browse-btn" class="config-form-browse-btn"
+            onclick="_browseSetDbFile();" title="Browse for a db.sqlite3 file">Browse</button>
+        </div>
       </div>
     </form>
     <p id="set-db-status" class="set-db-status" aria-live="polite"></p>

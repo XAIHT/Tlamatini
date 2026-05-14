@@ -14,9 +14,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import shutil
 import psutil
+import threading
 import traceback
 import yaml
 import subprocess
+import queue as _queue
 import time
 import re
 
@@ -7910,6 +7912,108 @@ def set_db_view(request):
 
     print(f"[SET DB] Staged {source_path} -> {destination_path}")
     return JsonResponse({"success": True, "path": destination_path, "source": source_path})
+
+
+def _run_native_picker(kind: str, title: str) -> str:
+    """
+    Open a native modal picker dialog (Tkinter) on the host running the
+    Tlamatini server and return the absolute path the user chose, or the
+    empty string if the dialog was canceled.
+
+    Tlamatini is a locally-deployed Django server, so the user driving the
+    browser is the same user sitting at the keyboard — opening a native
+    picker on the server is a legitimate way to give the Browse buttons a
+    real filesystem path (something the browser sandbox cannot provide on
+    its own). The dialog runs in a dedicated daemon thread with its own
+    ``Tk`` root because Tkinter does not tolerate being driven from the
+    Daphne worker thread that handles the HTTP request on Windows.
+
+    ``kind`` is either ``"directory"`` (Backup database dialog) or
+    ``"db_sqlite_file"`` (Set DB dialog — restricts the file filter to
+    files named ``db.sqlite3``).
+    """
+    result_q: _queue.Queue = _queue.Queue()
+
+    def _runner() -> None:
+        try:
+            import tkinter as _tk
+            from tkinter import filedialog as _filedialog
+            root = _tk.Tk()
+            root.withdraw()
+            try:
+                root.attributes('-topmost', True)
+            except Exception:
+                pass
+            try:
+                if kind == 'directory':
+                    chosen = _filedialog.askdirectory(
+                        title=title,
+                        mustexist=True,
+                        parent=root,
+                    )
+                elif kind == 'db_sqlite_file':
+                    chosen = _filedialog.askopenfilename(
+                        title=title,
+                        filetypes=[('SQLite database (db.sqlite3)', 'db.sqlite3')],
+                        parent=root,
+                    )
+                else:
+                    raise ValueError(f"Unknown picker kind: {kind!r}")
+            finally:
+                try:
+                    root.destroy()
+                except Exception:
+                    pass
+            result_q.put(('ok', chosen or ''))
+        except Exception as exc:
+            result_q.put(('err', str(exc)))
+
+    picker_thread = threading.Thread(target=_runner, name='tlamatini-native-picker', daemon=True)
+    picker_thread.start()
+    picker_thread.join()
+    status, value = result_q.get_nowait()
+    if status == 'err':
+        raise RuntimeError(value)
+    return value or ''
+
+
+@login_required
+def pick_backup_directory_view(request):
+    """
+    Open a native folder-picker on the server host for the Backup
+    database dialog's Browse button. Returns ``{"path": "<abs>"}`` or
+    ``{"path": "", "canceled": true}`` when the user closed the dialog.
+    Any backend failure is reported as ``{"path": "", "error": "..."}``
+    so the frontend can render a friendly message.
+    """
+    try:
+        chosen = _run_native_picker('directory', 'Select backup target directory')
+    except Exception as exc:
+        print(f"[BACKUP DB] folder picker failed: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"path": "", "error": str(exc)})
+    if not chosen:
+        return JsonResponse({"path": "", "canceled": True})
+    return JsonResponse({"path": os.path.abspath(chosen)})
+
+
+@login_required
+def pick_db_sqlite_file_view(request):
+    """
+    Open a native file-picker on the server host for the Set DB dialog's
+    Browse button. The dialog's file filter restricts visible files to
+    those literally named ``db.sqlite3`` (matching the basename the
+    next-start-up swap-in expects).
+    """
+    try:
+        chosen = _run_native_picker('db_sqlite_file', 'Select db.sqlite3 file to load on next start-up')
+    except Exception as exc:
+        print(f"[SET DB] file picker failed: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"path": "", "error": str(exc)})
+    if not chosen:
+        return JsonResponse({"path": "", "canceled": True})
+    return JsonResponse({"path": os.path.abspath(chosen)})
 
 
 @csrf_exempt

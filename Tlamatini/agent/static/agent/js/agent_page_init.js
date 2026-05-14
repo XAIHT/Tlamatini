@@ -1122,6 +1122,45 @@ function _onBackupDbInputChanged() {
     }, 350);
 }
 
+// Browse button — opens a native folder picker on the server host and
+// drops the chosen absolute path into the dialog's input so the existing
+// live-validation pipeline (`_onBackupDbInputChanged`) classifies it.
+async function _browseBackupDbDirectory() { // eslint-disable-line no-unused-vars
+    const browseBtn = document.getElementById('backup-db-browse-btn');
+    if (!backupDbTargetDirInput) return;
+    if (browseBtn) browseBtn.disabled = true;
+    try {
+        const response = await fetch('/agent/pick_backup_directory/', {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        let body = null;
+        try { body = await response.json(); } catch (_e) { /* non-JSON */ }
+        if (!response.ok) {
+            const reason = (body && body.error) || ('HTTP ' + response.status);
+            alert('Could not open the folder picker: ' + reason);
+            return;
+        }
+        if (body && body.error) {
+            alert('Could not open the folder picker: ' + body.error);
+            return;
+        }
+        const chosen = (body && typeof body.path === 'string') ? body.path : '';
+        if (!chosen) {
+            // User canceled the dialog — leave the input untouched.
+            return;
+        }
+        backupDbTargetDirInput.value = chosen;
+        backupDbTargetDirInput.dispatchEvent(new Event('input', { bubbles: true }));
+        backupDbTargetDirInput.focus();
+    } catch (err) {
+        console.error('Browse for backup directory failed:', err);
+        alert('Could not open the folder picker: ' + (err.message || 'network error'));
+    } finally {
+        if (browseBtn) browseBtn.disabled = false;
+    }
+}
+
 function OpenBackupDbDialog(e) { // eslint-disable-line no-unused-vars
     e.preventDefault();
     if (inLongOperation === true) {
@@ -1310,6 +1349,47 @@ function _onSetDbInputChanged() {
                 _setSetDbStatus('Could not validate the file path.', 'error');
             });
     }, 350);
+}
+
+// Browse button — opens a native file picker on the server host
+// restricted to files named ``db.sqlite3`` and drops the chosen
+// absolute path into the dialog's input so the existing live-validation
+// pipeline (`_onSetDbInputChanged`) classifies it (SQLite-header check,
+// basename match, etc.).
+async function _browseSetDbFile() { // eslint-disable-line no-unused-vars
+    const browseBtn = document.getElementById('set-db-browse-btn');
+    if (!setDbSourcePathInput) return;
+    if (browseBtn) browseBtn.disabled = true;
+    try {
+        const response = await fetch('/agent/pick_db_sqlite_file/', {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        let body = null;
+        try { body = await response.json(); } catch (_e) { /* non-JSON */ }
+        if (!response.ok) {
+            const reason = (body && body.error) || ('HTTP ' + response.status);
+            alert('Could not open the file picker: ' + reason);
+            return;
+        }
+        if (body && body.error) {
+            alert('Could not open the file picker: ' + body.error);
+            return;
+        }
+        const chosen = (body && typeof body.path === 'string') ? body.path : '';
+        if (!chosen) {
+            // User canceled the dialog — leave the input untouched.
+            return;
+        }
+        setDbSourcePathInput.value = chosen;
+        setDbSourcePathInput.dispatchEvent(new Event('input', { bubbles: true }));
+        setDbSourcePathInput.focus();
+    } catch (err) {
+        console.error('Browse for db.sqlite3 file failed:', err);
+        alert('Could not open the file picker: ' + (err.message || 'network error'));
+    } finally {
+        if (browseBtn) browseBtn.disabled = false;
+    }
 }
 
 function OpenSetDbDialog(e) { // eslint-disable-line no-unused-vars
