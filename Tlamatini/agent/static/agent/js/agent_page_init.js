@@ -1220,3 +1220,204 @@ async function _saveBackupDb() { // eslint-disable-line no-unused-vars
     return true;
 }
 
+// ----------------------------------------------------------------
+// DB -> Set DB dialog
+// ----------------------------------------------------------------
+
+let _setDbValidationTimer = null;
+let _setDbInputListenerAttached = false;
+
+function _setSetDbStatus(text, kind) {
+    if (!setDbStatusElement) return;
+    setDbStatusElement.innerText = text || '';
+    setDbStatusElement.classList.remove('set-db-status-ok', 'set-db-status-warn', 'set-db-status-error');
+    if (kind === 'ok') {
+        setDbStatusElement.classList.add('set-db-status-ok');
+    } else if (kind === 'warn') {
+        setDbStatusElement.classList.add('set-db-status-warn');
+    } else if (kind === 'error') {
+        setDbStatusElement.classList.add('set-db-status-error');
+    }
+}
+
+async function _checkSetDbFile(rawPath) {
+    const url = '/agent/check_set_db_file/?path=' + encodeURIComponent(rawPath);
+    const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin'
+    });
+    let body = null;
+    try {
+        body = await response.json();
+    } catch (_e) {
+        // Non-JSON; fall through.
+    }
+    if (!response.ok) {
+        const err = new Error(`Validation failed: HTTP ${response.status}`);
+        err.body = body;
+        throw err;
+    }
+    return body || {};
+}
+
+function _renderSetDbValidationFeedback(info) {
+    if (info.kind === 'file') {
+        if (info.sqlite === false) {
+            _setSetDbStatus('The selected file does not look like a SQLite database.', 'error');
+            setDbSourcePathInput.classList.add('config-form-invalid');
+            return;
+        }
+        if (info.basename_ok === false) {
+            _setSetDbStatus('File found, but its name is not "db.sqlite3". Tlamatini will still stage it as db.sqlite3.', 'warn');
+            setDbSourcePathInput.classList.remove('config-form-invalid');
+            return;
+        }
+        _setSetDbStatus('File exists. It will be loaded on the next start-up.', 'ok');
+        setDbSourcePathInput.classList.remove('config-form-invalid');
+    } else if (info.kind === 'directory') {
+        _setSetDbStatus('Specify the full path to a db.sqlite3 file, not a directory.', 'warn');
+        setDbSourcePathInput.classList.add('config-form-invalid');
+    } else {
+        _setSetDbStatus('File does not exist.', 'error');
+        setDbSourcePathInput.classList.add('config-form-invalid');
+    }
+}
+
+function _onSetDbInputChanged() {
+    if (!setDbSourcePathInput) return;
+    const raw = (setDbSourcePathInput.value || '').trim();
+    if (_setDbValidationTimer) {
+        clearTimeout(_setDbValidationTimer);
+        _setDbValidationTimer = null;
+    }
+    setDbSourcePathInput.classList.remove('config-form-invalid');
+    if (!raw) {
+        _setSetDbStatus('', '');
+        return;
+    }
+    _setSetDbStatus('Checking path...', '');
+    _setDbValidationTimer = setTimeout(() => {
+        _checkSetDbFile(raw)
+            .then(info => {
+                const currentRaw = (setDbSourcePathInput.value || '').trim();
+                if (currentRaw !== raw) {
+                    return; // newer keystroke will trigger its own check
+                }
+                _renderSetDbValidationFeedback(info);
+            })
+            .catch(err => {
+                console.error('Failed to validate db file path:', err);
+                _setSetDbStatus('Could not validate the file path.', 'error');
+            });
+    }, 350);
+}
+
+function OpenSetDbDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (inLongOperation === true) {
+        console.log("Set DB dialog can't be opened during a long operation...");
+        return;
+    }
+
+    if (setDbSourcePathInput) {
+        setDbSourcePathInput.value = '';
+        setDbSourcePathInput.classList.remove('config-form-invalid');
+        if (!_setDbInputListenerAttached) {
+            setDbSourcePathInput.addEventListener('input', _onSetDbInputChanged);
+            _setDbInputListenerAttached = true;
+        }
+    }
+    _setSetDbStatus('', '');
+
+    preRenderSetDbDialog(
+        'Set database...',
+        'Specify the full path to a db.sqlite3 file to load on the next start-up.',
+        'Tlamatini will stage the file under DB/ToLoad/ and swap it in BEFORE Django opens its database on the next launch. The current db.sqlite3 is moved into DB/Older/<timestamp>/ so it can be recovered later.'
+    );
+    renderSetDbDialog();
+}
+
+function _showSetDbLoadedNextSessionWarning() {
+    preRenderSetDbWarningDialog(
+        'Database staged for next session',
+        'The selected database will be loaded the next time Tlamatini starts.',
+        'If you want it loaded immediately, you must restart Tlamatini completely so the swap-in can run BEFORE Django opens the live database.'
+    );
+    renderSetDbWarningDialog();
+}
+
+async function _saveSetDb() { // eslint-disable-line no-unused-vars
+    const raw = (setDbSourcePathInput ? setDbSourcePathInput.value : '').trim();
+
+    if (!raw) {
+        setDbSourcePathInput.classList.add('config-form-invalid');
+        _setSetDbStatus('The file path must not be empty.', 'error');
+        alert('The file path must not be empty.\n\nPlease specify an existing db.sqlite3 file before clicking "Set".');
+        return false;
+    }
+
+    let info;
+    try {
+        info = await _checkSetDbFile(raw);
+    } catch (err) {
+        console.error('Failed to validate db file path:', err);
+        alert('Could not validate the file path: ' + (err.message || 'unknown error'));
+        return false;
+    }
+
+    if (info.kind === 'directory') {
+        setDbSourcePathInput.classList.add('config-form-invalid');
+        _setSetDbStatus('Specify the full path to a db.sqlite3 file, not a directory.', 'warn');
+        alert('The path points to a directory.\n\nPlease specify the full path to a db.sqlite3 file (e.g. C:\\Backups\\Tlamatini\\db.sqlite3).');
+        return false;
+    }
+
+    if (info.kind !== 'file') {
+        setDbSourcePathInput.classList.add('config-form-invalid');
+        _setSetDbStatus('File does not exist.', 'error');
+        alert('The file does not exist:\n\n' + raw + '\n\nPlease specify an existing db.sqlite3 file before clicking "Set".');
+        return false;
+    }
+
+    if (info.sqlite === false) {
+        setDbSourcePathInput.classList.add('config-form-invalid');
+        _setSetDbStatus('The selected file does not look like a SQLite database.', 'error');
+        alert('The selected file does not look like a SQLite database.\n\nPlease specify a real db.sqlite3 file.');
+        return false;
+    }
+
+    let response;
+    try {
+        response = await fetch('/agent/set_db/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ source_path: raw })
+        });
+    } catch (err) {
+        console.error('Set DB request failed:', err);
+        alert('Set DB failed: ' + (err.message || 'network error'));
+        return false;
+    }
+
+    let body = null;
+    try {
+        body = await response.json();
+    } catch (_e) {
+        // Non-JSON body; body stays null.
+    }
+
+    if (!response.ok || !body || body.success !== true) {
+        const reason = (body && (body.error || body.reason)) || ('HTTP ' + response.status);
+        alert('Set DB failed: ' + reason);
+        return false;
+    }
+
+    console.log('--- Set DB staged at:', body.path);
+    _showSetDbLoadedNextSessionWarning();
+    return true;
+}
+
