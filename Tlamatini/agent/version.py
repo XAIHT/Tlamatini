@@ -18,10 +18,8 @@ This module has **no Django dependency** so it is safe to import from
 """
 from __future__ import annotations
 
-import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 from typing import Optional, Tuple
 

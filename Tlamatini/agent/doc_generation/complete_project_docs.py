@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import io
+import importlib.util
 import json
 import re
 import subprocess
@@ -100,11 +101,11 @@ THEME = {
 
 SLIDE_W = 13.333
 SLIDE_H = 7.5
-RECENT_GIT_WINDOW_DAYS = 2
-RECENT_GIT_WINDOW_LABEL = f"last {RECENT_GIT_WINDOW_DAYS} days"
-RECENT_GIT_WINDOW_TITLE = f"Last {RECENT_GIT_WINDOW_DAYS} Days In Git"
-RECENT_GIT_HIGHLIGHT_TITLE = f"{RECENT_GIT_WINDOW_DAYS}-day highlights"
-RECENT_GIT_APPENDIX_SUBTITLE = f"all commits from the {RECENT_GIT_WINDOW_LABEL} according to git"
+RECENT_GIT_WINDOW_DAYS = 1
+RECENT_GIT_WINDOW_LABEL = "today"
+RECENT_GIT_WINDOW_TITLE = "Today In Git"
+RECENT_GIT_HIGHLIGHT_TITLE = "today's highlights"
+RECENT_GIT_APPENDIX_SUBTITLE = "all commits from today according to git"
 
 
 @dataclass
@@ -355,7 +356,11 @@ def recent_commits(limit: int = 10) -> list[CommitInfo]:
 
 
 def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
-    since = (datetime.now().astimezone() - timedelta(days=days)).isoformat()
+    now = datetime.now().astimezone()
+    if RECENT_GIT_WINDOW_LABEL == "today":
+        since = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    else:
+        since = (now - timedelta(days=days)).isoformat()
     raw = git("log", f"--since={since}", "--format=%h%x1f%cI%x1f%s")
     commits: list[CommitInfo] = []
     for line in raw.splitlines():
@@ -367,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("version" in subject or "worldwide system" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is the new versioning system: SemVer policy, git-tag sourcing, runtime version surfaces, and build-time embedding across the Windows artefacts."
+        )
     if any("menu db" in subject or "database" in subject or "browse buttons" in subject for subject in subjects):
         highlights.append(
             "Today’s operator-facing work is dominated by the new DB dropdown: backup, Set DB staging for the next start-up, startup swap-in/rollback mechanics, and native Browse buttons on both dialogs."
@@ -409,9 +418,46 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("document" in subject or "docs" in subject or "framing" in subject for subject in subjects):
         highlights.append(
-            f"Documentation itself changed during the {RECENT_GIT_WINDOW_LABEL}, so the regenerated dossier is part of the tracked operator surface rather than an external afterthought."
+            "Documentation itself changed today, so the regenerated dossier is part of the tracked operator surface rather than an external afterthought."
         )
-    return highlights or [f"Git history shows concentrated maintenance across UX, configuration, workflow reliability, documentation, and cleanup work during the {RECENT_GIT_WINDOW_LABEL}."]
+    if highlights:
+        return highlights
+    if RECENT_GIT_WINDOW_LABEL == "today":
+        return ["Git history today shows focused maintenance across the operator surface, release mechanics, and runtime behavior."]
+    return [f"Git history shows focused maintenance across the operator surface, release mechanics, and runtime behavior during {RECENT_GIT_WINDOW_LABEL}."]
+
+
+def _load_module_from_path(module_name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(module_name, str(path))
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load module spec from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def resolve_version_info() -> dict[str, str]:
+    version_module_path = PROJECT_DIR / "agent" / "version.py"
+    try:
+        module = _load_module_from_path("tlamatini_agent_version", version_module_path)
+        info = module.get_version_info()
+        if isinstance(info, dict):
+            return {
+                "version": str(info.get("version", "0.0.0+unknown")),
+                "build": str(info.get("build", "0.0.0+unknown")),
+                "commit": str(info.get("commit", "unknown")),
+                "date": str(info.get("date", "")),
+                "source": str(info.get("source", "unknown")),
+            }
+    except Exception:
+        pass
+    return {
+        "version": "0.0.0+unknown",
+        "build": "0.0.0+unknown",
+        "commit": "unknown",
+        "date": "",
+        "source": "unknown",
+    }
 
 
 def workflow_agents() -> list[str]:
@@ -441,6 +487,7 @@ def collect_context() -> dict:
     agents = workflow_agents()
     reference_media = extract_reference_media()
     weekly = recent_week_commits()
+    version_info = resolve_version_info()
 
     context = {
         "generated_at": local_stamp(),
@@ -468,6 +515,7 @@ def collect_context() -> dict:
         "weekly_commits": weekly,
         "weekly_highlights": weekly_highlights(weekly),
         "reference_media": reference_media,
+        "version_info": version_info,
     }
     return context
 
@@ -483,6 +531,7 @@ WHAT_IT_DOES = [
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
+    "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
     "Lets users design, validate, save, pause, resume, and stop visual workflows through the Agentic Control Panel.",
@@ -495,6 +544,7 @@ HOW_IT_WORKS = [
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
+    "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
     "On the next full start-up, `manage.py` can swap a staged database into place before Django imports, while archiving the previous live database under `DB/Older/<timestamp>/`.",
@@ -542,6 +592,7 @@ RUNNING_GUIDE = [
     "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
     "Current startup also re-applies GPU-performance / Ollama-pinning hooks in the background on supported NVIDIA Windows hosts, so restart-time behavior stays closer to the tuned development baseline.",
     "That same early startup window is also where a staged `DB/ToLoad/db.sqlite3` file is promoted into the live database path, before Django opens SQLite.",
+    "Startup now also prints a `--- [VERSION] Tlamatini ...` banner, making the running build visible in both the console and `tlamatini.log` without an HTTP call.",
     "Startup cleans pool state, repopulates the agent registry, launches MCP metrics/file-search servers, and then serves HTTP plus WebSocket traffic.",
 ]
 
@@ -556,6 +607,18 @@ DB_SWAP_GUIDE = [
     "When that swap runs, the previous live database is moved into `DB/Older/<timestamp>/db.sqlite3`, creating a built-in rollback trail instead of overwriting history.",
     "Reconnect is not enough for this path: the operator must fully restart Tlamatini so the pre-Django swap window opens again.",
     "If the staged file is bad or locked, startup fails open: Tlamatini logs the error and continues with the previous live database.",
+]
+
+VERSIONING_GUIDE = [
+    "Tlamatini now follows Semantic Versioning 2.0.0 with git tags as the single source of truth: you tag, then you build, instead of hand-editing version strings across files.",
+    "The build path resolves a version once and propagates it into generated runtime metadata, Win32 VERSIONINFO resources, and the release-folder naming convention.",
+    "On untagged commits the resolver falls back honestly to a git-derived development version instead of failing the build or lying about the release state.",
+]
+
+VERSION_SURFACES_GUIDE = [
+    "Operators can now see the running version in the About dialog, the startup banner, the open `GET /agent/version/` health-check endpoint, and Windows file properties on the built executables.",
+    "The runtime resolver lives in `Tlamatini/agent/version.py`, while the build-oriented coordination logic lives in the repo-root `versioning.py` and the longer policy notes live in `VERSIONING.md`.",
+    "Build overrides are supported in a predictable order: CLI `--version`, then `TLAMATINI_VERSION`, then git describe, then the sentinel `0.0.0+unknown`.",
 ]
 
 EMBEDDING_GUARD_GUIDE = [
@@ -802,6 +865,7 @@ def build_pdf(context: dict) -> None:
                 ["Measure", "Value"],
                 ["Generated", context["generated_at"]],
                 ["Current HEAD", f"{context['head_short']} - {context['head_subject']}"],
+                ["Resolved version", f"{context['version_info']['version']} ({context['version_info']['source']})"],
                 ["Tracked files", str(context["tracked_files"])],
                 ["Workflow agents", str(context["workflow_agent_count"])],
                 ["Total effective lines", f"{context['total_effective_lines']:,}"],
@@ -843,6 +907,12 @@ def build_pdf(context: dict) -> None:
     for item in DB_MENU_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in DB_SWAP_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Versioning system", styles["h2"]))
+    for item in VERSIONING_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Version surfaces", styles["h2"]))
+    for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("How to use it", styles["h2"]))
     for item in HOW_TO_USE:
@@ -914,6 +984,8 @@ def build_pdf(context: dict) -> None:
         ["HTML templates", f"{context['html_templates']}"],
         ["Python requirements", f"{context['requirements_count']}"],
         ["Binary/asset tracked files skipped from line count", f"{context['binary_count']}"],
+        ["Resolved version", f"{context['version_info']['version']}"],
+        ["Version source", f"{context['version_info']['source']}"],
     ]
     story.append(table(repo_rows, widths=[3.0 * inch, 3.7 * inch], font_size=8))
     story.append(p("Latest commits", styles["h2"]))
@@ -921,12 +993,18 @@ def build_pdf(context: dict) -> None:
     for commit in context["recent_commits"]:
         commit_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
     story.append(table(commit_rows, widths=[1.0 * inch, 0.8 * inch, 4.9 * inch], font_size=7))
-    story.append(p(f"Git changes from the {RECENT_GIT_WINDOW_LABEL}", styles["h2"]))
+    git_window_heading = "Git changes from today" if RECENT_GIT_WINDOW_LABEL == "today" else f"Git changes from the {RECENT_GIT_WINDOW_LABEL}"
+    story.append(p(git_window_heading, styles["h2"]))
     for item in context["weekly_highlights"]:
         story.append(bullet(item, styles["bullet"]))
     weekly_chunks = split_items(context["weekly_commits"], 12)
     for index, chunk in enumerate(weekly_chunks, 1):
-        story.append(p(f"{RECENT_GIT_WINDOW_DAYS}-day commit appendix {index} of {len(weekly_chunks)}", styles["h2"]))
+        appendix_heading = (
+            f"Today's commit appendix {index} of {len(weekly_chunks)}"
+            if RECENT_GIT_WINDOW_LABEL == "today"
+            else f"{RECENT_GIT_WINDOW_DAYS}-day commit appendix {index} of {len(weekly_chunks)}"
+        )
+        story.append(p(appendix_heading, styles["h2"]))
         weekly_rows = [["Date", "Commit", "Subject"]]
         for commit in chunk:
             weekly_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
@@ -1358,6 +1436,25 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "What happens on next start-up", DB_SWAP_GUIDE, THEME["jade"], "db-b", 14)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Versioning System", "today's release-identity work", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.58, "SemVer and resolver", VERSIONING_GUIDE, THEME["amber"], "ver-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.58, "Where version appears", VERSION_SURFACES_GUIDE, THEME["jade"], "ver-b", 14)
+    add_text(
+        slide,
+        audit,
+        0.92,
+        6.34,
+        11.1,
+        0.22,
+        f"Resolved current version: {context['version_info']['version']} | build: {context['version_info']['build']}",
+        9,
+        THEME["muted"],
+        False,
+        name="version-foot",
+        font="Cascadia Mono",
+    )
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Ollama Without Admin Rights", "local model setup on Windows", THEME["amber"])
     add_text(slide, audit, 0.85, 1.72, 11.55, 3.45, OLLAMA_COMMANDS, 9, THEME["white"], False, name="ollama-commands", font="Cascadia Mono")
     add_panel(slide, audit, 0.85, 5.32, 11.55, 1.0, "Checklist", OLLAMA_GUIDE[:2], THEME["amber"], "ollama-check", 14)
@@ -1434,6 +1531,7 @@ def build_ppt(context: dict) -> None:
         add_metric_card(slide, audit, 0.82 + idx * 2.05, 1.75, 1.75, label, str(value), THEME["jade"] if idx % 2 == 0 else THEME["copper"], f"repo-{idx}")
     add_panel(slide, audit, 1.05, 3.55, 10.85, 2.05, "Current HEAD", [
         f"{context['head_short']} - {context['head_subject']}",
+        f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",
         f"Generated on {context['generated_at']}",
         f"Python requirements: {context['requirements_count']}; binary or asset tracked files skipped from line count: {context['binary_count']}",
     ], THEME["amber"], "repo-head", 15)
@@ -1458,7 +1556,11 @@ def build_ppt(context: dict) -> None:
     for idx, chunk in enumerate(weekly_chunks, 1):
         slide, audit = add_slide(
             prs,
-            f"{RECENT_GIT_WINDOW_DAYS}-Day Commit Appendix {idx}/{len(weekly_chunks)}",
+            (
+                f"Today's Commit Appendix {idx}/{len(weekly_chunks)}"
+                if RECENT_GIT_WINDOW_LABEL == "today"
+                else f"{RECENT_GIT_WINDOW_DAYS}-Day Commit Appendix {idx}/{len(weekly_chunks)}"
+            ),
             RECENT_GIT_APPENDIX_SUBTITLE,
             THEME["copper"] if idx % 2 else THEME["jade"],
         )

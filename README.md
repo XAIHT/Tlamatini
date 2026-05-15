@@ -87,10 +87,16 @@
   - [10.5. ACPX / external CLIs](#105-acpx--external-clis)
   - [10.6. Frozen build / installer](#106-frozen-build--installer)
   - [10.7. Logs to consult first](#107-logs-to-consult-first)
-- [11. Contributing & License](#11-contributing--license)
-  - [11.1. Contributing](#111-contributing)
-  - [11.2. Acknowledgments](#112-acknowledgments)
-  - [11.3. License](#113-license)
+- [11. Versioning](#11-versioning)
+  - [11.1. The bump rules](#111-the-bump-rules)
+  - [11.2. Cutting a release](#112-cutting-a-release)
+  - [11.3. Where you can see the running version](#113-where-you-can-see-the-running-version)
+  - [11.4. Building without tagging (development)](#114-building-without-tagging-development)
+  - [11.5. Overriding the resolved version](#115-overriding-the-resolved-version)
+- [12. Contributing & License](#12-contributing--license)
+  - [12.1. Contributing](#121-contributing)
+  - [12.2. Acknowledgments](#122-acknowledgments)
+  - [12.3. License](#123-license)
 
 ---
 
@@ -1260,9 +1266,75 @@ INFO loggers worth knowing: `agent.chat_agent_runtime`, `agent.tools`, `agent.mc
 
 ---
 
-## 11. Contributing & License
+## 11. Versioning
 
-### 11.1. Contributing
+Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH` — with **git tags as the single source of truth**. You never hand-edit a version string anywhere in the codebase; you tag, then you build, and the three build scripts bake the resolved value into every artefact.
+
+### 11.1. The bump rules
+
+| Component | Bump when… | Example |
+|---|---|---|
+| **MAJOR** | A change breaks something users already shipped — `.flw` schema, Agent Contract, public endpoint URL, LLM tool name. | `1.x.x` → `2.0.0` |
+| **MINOR** | You add a backward-compatible feature — a new agent type, toolbar checkbox, SKILL package, endpoint, optional API field. | `1.2.0` → `1.3.0` |
+| **PATCH** | You ship a backward-compatible bug fix — regression closed, contract intact. | `1.2.0` → `1.2.1` |
+
+Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1`, `2.0.0-rc.1` — and sort **before** the final release.
+
+### 11.2. Cutting a release
+
+```powershell
+git tag -a v1.3.0 -m "Release 1.3.0: <one-line summary>"
+git push origin v1.3.0
+python build.py
+python build_uninstaller.py
+python build_installer.py
+```
+
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.3.0/`.
+
+### 11.3. Where you can see the running version
+
+| Surface | Example |
+|---|---|
+| About dialog | `Tlamatini v1.3.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.3.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.3.0","commit":"abc1234", …}` |
+| Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
+
+All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
+
+### 11.4. Building without tagging (development)
+
+The build never fails for "no version" — it labels honestly. On an untagged commit, the resolver falls back to a PEP 440 dev version derived from `git describe`:
+
+| Situation | Version baked in |
+|---|---|
+| HEAD exactly on `v1.2.0` | `1.2.0` |
+| 17 commits past `v1.2.0`, clean tree | `1.2.0.dev17+gabc1234` |
+| 17 commits past `v1.2.0`, uncommitted edits | `1.2.0.dev17+gabc1234.dirty` *(never ship this)* |
+| No tags at all | `0.0.0.dev0+gabc1234` |
+| Not a git repo | `0.0.0+unknown` |
+
+PEP 440 sorts `1.2.0.dev17 < 1.2.0`, so dev builds are unambiguous to Windows installer registries and Python tooling.
+
+### 11.5. Overriding the resolved version
+
+| # | Source | Use case |
+|---|---|---|
+| 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
+| 2 | `$env:TLAMATINI_VERSION = "1.3.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.3.0 …` (then build) | The normal release path |
+| 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
+
+`build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
+
+The full contract — release recovery, runtime resolver internals, file-by-file integration map, FAQ — lives in [`VERSIONING.md`](VERSIONING.md).
+
+---
+
+## 12. Contributing & License
+
+### 12.1. Contributing
 
 1. Fork; create a feature branch.
 2. Follow PEP 8. Run `python -m ruff check` and `npm run lint` before pushing.
@@ -1272,11 +1344,11 @@ INFO loggers worth knowing: `agent.chat_agent_runtime`, `agent.tools`, `agent.mc
 
 When adding a new agent, follow the 8-step checklist in `Tlamatini/.agents/workflows/create_new_agent.md` (backend script + view + migration + CSS gradient + 4 JS files + agentic_skill.md + README + lint).
 
-### 11.2. Acknowledgments
+### 12.2. Acknowledgments
 
 [Django](https://www.djangoproject.com/) · [LangChain](https://github.com/langchain-ai/langchain) · [LangGraph](https://github.com/langchain-ai/langgraph) · [Ollama](https://ollama.ai/) · [FAISS](https://github.com/facebookresearch/faiss) · [Anthropic](https://www.anthropic.com/) · [Bootstrap](https://getbootstrap.com/) · [TextMeBot](https://textmebot.com/) · [Ruff](https://github.com/astral-sh/ruff) · [PyAutoGUI](https://github.com/asweigart/pyautogui) · [JD-CLI](https://github.com/intoolswetrust/jd-cli)
 
-### 11.3. License
+### 12.3. License
 
 **GNU General Public License v3.0** — see [LICENSE](LICENSE).
 
