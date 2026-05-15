@@ -1699,7 +1699,70 @@ python build_installer.py
 
 Requires `pkg.zip` and `Uninstaller.exe` from steps 1 and 2. Builds `install.py` with `--onedir --windowed` and a splash screen, copies `pkg.zip` and `Uninstaller.exe` into `dist/Installer/`, and assembles `dist/Tlamatini_Release/` with SHA-256 verification.
 
-## 48. What the installer does
+## 48. Versioning
+
+Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH` — but the **single source of truth is a git tag**, not a number sitting in any source file. You never hand-edit a version anywhere. You tag, then you build, and the three build scripts in §47 each bake the resolved value into the artefact they produce.
+
+### What the three numbers mean
+
+- **MAJOR** bumps when something that already shipped breaks for the user: the `.flw` file schema changes, an Agent Contract is removed, an LLM tool is renamed, a public endpoint URL changes. The first `2.0.0` is the first release where loading an old `.flw` might not just work.
+- **MINOR** bumps when you add a backward-compatible feature: a new agent (ACPXer was a minor bump), a new toolbar checkbox, a new SKILL package, a new HTTP endpoint, a new optional field on an existing API.
+- **PATCH** bumps for backward-compatible fixes: the conjunction-parser fix, the exec-report ordering fix, the ACPX `oneshot-prompt` capture fix — anything that closes a regression without changing surface.
+
+Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1`, `2.0.0-rc.1`. They sort **before** the final release, so `2.0.0-rc.2` < `2.0.0` for the Windows installer registry and for Python tooling alike.
+
+### Cutting a release in five commands
+
+```powershell
+git status                                          # clean tree, on main
+git tag -a v1.3.0 -m "Release 1.3.0: <one-liner>"   # annotated tag
+git push origin v1.3.0
+python build.py
+python build_uninstaller.py
+python build_installer.py
+```
+
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.3.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+
+### Where the version shows up in a running install
+
+The build computes the version once and bakes it into four surfaces:
+
+- **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
+- **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
+- **Release folder name** — `dist/Tlamatini_Release_v1.3.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.3.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.3.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+
+If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
+
+### What happens if you don't tag
+
+The build never fails for "no version" — it labels honestly. On an untagged commit, `build.py` falls back to a PEP 440 dev version derived from `git describe`:
+
+| Situation | Version baked in |
+|---|---|
+| Tag exists, HEAD exactly on `v1.2.0` | `1.2.0` |
+| Tag exists, HEAD 17 commits past, clean tree | `1.2.0.dev17+gabc1234` |
+| Tag exists, HEAD 17 commits past, uncommitted edits | `1.2.0.dev17+gabc1234.dirty` *(never ship this)* |
+| No tags at all | `0.0.0.dev0+gabc1234` |
+| Not a git repo (e.g. download zip) | `0.0.0+unknown` |
+
+PEP 440 sorts `1.2.0.dev17 < 1.2.0`, which is what every consumer of these versions expects.
+
+### Overriding the resolver
+
+There are four sources of the version, in precedence order:
+
+1. `--version X.Y.Z` on the build script's command line (highest).
+2. `$env:TLAMATINI_VERSION` exported in the shell.
+3. `git describe --tags --long --dirty --match 'v[0-9]*'` against the working tree (the normal path).
+4. The sentinel `0.0.0+unknown` (lowest — only fires when there is no git at all).
+
+`build.py` exports `$env:TLAMATINI_VERSION` after it resolves, so `build_installer.py` and `build_uninstaller.py` in the same shell see exactly the same value — the three artefacts cannot disagree. Even on an untagged commit, the git-derived dev version stays consistent across all three.
+
+The full contract — including the recovery path for a mis-tagged release, the runtime resolver internals, the file-by-file integration map, and the FAQ — lives in [`VERSIONING.md`](VERSIONING.md) at the repo root.
+
+## 49. What the installer does
 
 When an end user runs `Installer.exe`:
 
@@ -1712,14 +1775,14 @@ When an end user runs `Installer.exe`:
 7. Registers `.flw` extension to open with Tlamatini.
 8. Cleans the PyInstaller bundle path from helper subprocess environments so PowerShell helpers and Explorer restarts don't stall.
 
-## 49. What the uninstaller does
+## 50. What the uninstaller does
 
 1. Removes shortcuts (with Explorer restart for immediate effect).
 2. Unregisters the `.flw` association and clears cached shell state.
 3. Deletes all application files **except** `<install_path>/Tlamatini/agents/*` (preserves user-created agents).
 4. Removes the install directory if empty.
 
-## 50. Frozen-mode behavior
+## 51. Frozen-mode behavior
 
 The Multi-Turn implementation carries frozen-build awareness in supporting runtime code:
 
@@ -1733,7 +1796,7 @@ The Multi-Turn implementation carries frozen-build awareness in supporting runti
 
 # Part IX — The Command Deck (API + WebSocket)
 
-## 51. WebSocket protocol
+## 52. WebSocket protocol
 
 Endpoint: `ws://<host>/ws/agent/`.
 
@@ -1784,7 +1847,7 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 
 A successful Multi-Turn message also carries `tool_calls_log`, `multi_turn_used`, `answer_success` for the Create Flow gate.
 
-## 52. HTTP endpoints
+## 53. HTTP endpoints
 
 The backend currently exposes 103 routes. Highlights:
 
@@ -1881,7 +1944,7 @@ Plus the Parametrizer-specific pair:
 
 # Part X — Survival Guide (Troubleshooting)
 
-## 53. Common issues
+## 54. Common issues
 
 ### Ollama connection failed
 
@@ -1947,7 +2010,7 @@ If transcripts only show outbound prompts and no inbound responses, your build i
 - Read the Forker/Asker log for pattern-matching diagnostics.
 - Asker only: did the browser dialog appear? Check console errors.
 
-## 54. Debug mode
+## 55. Debug mode
 
 ```json
 {
@@ -1972,7 +2035,7 @@ INFO-level loggers configured in `tlamatini/settings.py`:
 
 All log lines are prefixed with timestamp and logger name (e.g. `2026-04-13 12:28:39 [agent.tools] INFO …`).
 
-## 55. Log locations
+## 56. Log locations
 
 | What | Where |
 |---|---|
