@@ -12,6 +12,13 @@ import importlib.util
 import shutil
 import zipfile
 
+# Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
+from versioning import (
+    emit_build_artifacts,
+    extract_cli_version,
+    resolve_build_version,
+)
+
 
 def find_package_data_paths(pypi_name, import_name):
     """Finds paths for a package's code and metadata."""
@@ -313,6 +320,19 @@ def main():
     print("  Tlamatini Build Script")
     print("=" * 60)
 
+    # ── Resolve and emit version artefacts FIRST ─────────────────────
+    # Precedence: --version CLI flag > $TLAMATINI_VERSION > git describe.
+    # See VERSIONING.md for the full contract.
+    cli_version = extract_cli_version(sys.argv)
+    tlamatini_version = resolve_build_version(cli_version)
+    version_file_path = emit_build_artifacts(
+        tlamatini_version,
+        product_name="Tlamatini",
+        original_filename="Tlamatini.exe",
+    )
+    print(f"Tlamatini version : {tlamatini_version}")
+    print(f"VERSIONINFO file  : {version_file_path}")
+
     separator = ';'
     dist_manage = Path("dist") / "manage"
 
@@ -454,6 +474,7 @@ def main():
     command = [
         sys.executable, '-m', 'PyInstaller', '--name', 'manage', '--console', '--noconfirm',
         f'--additional-hooks-dir={hooks_dir}',
+        f'--version-file={version_file_path}',
         *icon_args,
         *dll_args,
         f'--add-data=Tlamatini/agent/templates{separator}agent/templates',
@@ -466,6 +487,7 @@ def main():
         # under this tree at runtime; without this --add-data line, frozen
         # builds would have an empty skill catalog.
         f'--add-data=Tlamatini/agent/skills_pkg{separator}agent/skills_pkg',
+        '--hidden-import=agent._version',
         '--hidden-import=daphne.server', '--hidden-import=channels',
         '--hidden-import=whitenoise.middleware', '--hidden-import=whitenoise.storage',
         '--hidden-import=django_bootstrap5',
@@ -735,9 +757,20 @@ def main():
     except Exception as e:
         print(f"WARNING: Post-build Django setup encountered an error: {e}")
 
+    # Clean up the transient VERSIONINFO .txt file once PyInstaller has
+    # finished embedding it.  Keep ``Tlamatini/agent/_version.py`` so the
+    # frozen application can import it.
+    try:
+        if version_file_path.exists():
+            version_file_path.unlink()
+            print(f"Removed transient: {version_file_path}")
+    except Exception as e:
+        print(f"WARNING: Could not remove {version_file_path}: {e}")
+
     elapsed = time.time() - build_start
     print(f"\n{'=' * 60}")
     print(f"  Build completed successfully in {elapsed:.0f}s")
+    print(f"  Version : {tlamatini_version}")
     print(f"{'=' * 60}")
 
 

@@ -171,6 +171,25 @@ def _setup_log_tee():
 _setup_log_tee()
 
 
+def _print_version_banner():
+    """Print the running Tlamatini version on every startup.
+
+    Lands in both stdout AND ``tlamatini.log`` (the tee is already
+    installed by the time we run).  Cheap, never raises, and gives oncall
+    a one-line answer to "what's actually deployed here?" without having
+    to hit ``/agent/version/``.  See VERSIONING.md.
+    """
+    try:
+        from agent.version import get_version
+        version = get_version()
+    except Exception:
+        version = "0.0.0+unknown"
+    print(f"--- [VERSION] Tlamatini {version}")
+
+
+_print_version_banner()
+
+
 def _resolve_db_folder_root():
     """Directory that hosts the user-facing ``DB/ToLoad`` and ``DB/Older``
     trees.  In frozen mode this lives next to ``Tlamatini.exe`` (the

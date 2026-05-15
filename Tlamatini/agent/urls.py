@@ -51,6 +51,7 @@ urlpatterns = [
     path('compile_flow/', secure_post(views.compile_flow_view), name='compile_flow'),
     path('flow_from_tool_calls/', secure_post(views.flow_from_tool_calls_view), name='flow_from_tool_calls'),
     path('agent_contracts/', secure_get(views.agent_contracts_view), name='agent_contracts'),
+    path('version/', views.version_view, name='version'),
     path('update_raiser_connection/<str:agent_name>/', secure_post(views.update_raiser_connection_view), name='update_raiser_connection'),
     path('update_emailer_connection/<str:agent_name>/', secure_post(views.update_emailer_connection_view), name='update_emailer_connection'),
     path('update_monitor_log_connection/<str:agent_name>/', secure_post(views.update_monitor_log_connection_view), name='update_monitor_log_connection'),

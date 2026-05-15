@@ -8070,6 +8070,40 @@ def agent_contracts_view(request):
     return JsonResponse({"success": True, "contracts": list_contract_summaries()})
 
 
+def version_view(request):
+    """Return the running Tlamatini version (SemVer 2.0.0) as JSON.
+
+    Open endpoint (no login required) so health-check / monitoring tooling
+    can hit it without credentials.  See VERSIONING.md for resolution
+    semantics.
+
+    Response shape::
+
+        {
+          "version": "1.3.0",                       # public SemVer
+          "build":   "1.3.0+gabc1234.dirty",        # full descriptor
+          "commit":  "abc1234",
+          "date":    "2026-05-15T18:42:11Z",
+          "source":  "generated" | "git" | "unknown"
+        }
+    """
+    try:
+        from .version import get_version_info
+        return JsonResponse(get_version_info())
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "version": "0.0.0+unknown",
+                "build":   "0.0.0+unknown",
+                "commit":  "unknown",
+                "date":    "",
+                "source":  "unknown",
+                "error":   str(exc),
+            },
+            status=500,
+        )
+
+
 def validate_flow_view(request):
     """
     List all agents in the session pool and return their config.yaml data.

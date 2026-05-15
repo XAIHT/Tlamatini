@@ -45,6 +45,21 @@ npm run lint
 
 ---
 
+## Versioning (SemVer 2.0.0, git-tag-derived) — see `VERSIONING.md`
+
+Tlamatini uses SemVer 2.0.0 with git tags (`vMAJOR.MINOR.PATCH`) as the single source of truth. The full contract — including bump rules, the four-tier resolution precedence, the no-tag fallback behaviour (PEP 440 `.devN+gSHA.dirty`), the step-by-step release cut, and the file-by-file integration map — lives in **`VERSIONING.md`** at the repo root. Quick map for AI assistants:
+
+- Runtime resolver: `Tlamatini/agent/version.py::get_version()` (no Django dep, safe to import from `manage.py` before Django init).
+- Build-time shim used by all three build scripts: `versioning.py` at the repo root.
+- Generated bundle file (gitignored): `Tlamatini/agent/_version.py`.
+- Template surface: `{{ version }}` via `tlamatini.context_processors.app_version`, currently consumed only by `agent_page.html` (the About dialog).
+- HTTP surface: `GET /agent/version/` (open endpoint).
+- **Never** re-introduce a hardcoded `Tlamatini v1.0.0` anywhere. The About dialog HTML now reads `{{ version }}`.
+- **Never** commit `_version.py` — it's gitignored and rewritten on every build.
+- When adding a new artefact-producing script that ships an `.exe` (or any binary with VERSIONINFO), mirror the `build_uninstaller.py` pattern: import `extract_cli_version` + `resolve_build_version` + `render_versioninfo_for` from `versioning.py`, write a `<Name>.version.txt`, pass `--version-file=…` to PyInstaller, and `.gitignore` the .txt.
+
+---
+
 ## Known Hardcoded Assumptions
 
 1. `factory.py` recognizes only `System-Metrics` and `Files-Search` by Mcp description

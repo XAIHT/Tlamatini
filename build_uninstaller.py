@@ -17,6 +17,13 @@ import time
 from pathlib import Path
 import shutil
 
+# Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
+from versioning import (
+    extract_cli_version,
+    render_versioninfo_for,
+    resolve_build_version,
+)
+
 
 def run_step(label, func, *args, **kwargs):
     """Execute a build step with consistent logging and error handling."""
@@ -159,6 +166,18 @@ def main():
 
     root = Path(__file__).parent
 
+    # ── Resolve version (honours $TLAMATINI_VERSION set by build.py) ──
+    cli_version = extract_cli_version(sys.argv)
+    tlamatini_version = resolve_build_version(cli_version)
+    version_file_path = render_versioninfo_for(
+        tlamatini_version,
+        root / "Uninstaller.version.txt",
+        product_name="Tlamatini Uninstaller",
+        original_filename="Uninstaller.exe",
+    )
+    print(f"Tlamatini version : {tlamatini_version}")
+    print(f"VERSIONINFO file  : {version_file_path}")
+
     # ── 0) Verify prerequisites ───────────────────────────────────────
     print("\n--- Verifying prerequisites ---")
     uninstall_script = root / "uninstall.py"
@@ -253,6 +272,7 @@ def main():
         "--noupx",
         "--name", "Uninstaller",
         f"--manifest={manifest_path}",
+        f"--version-file={version_file_path}",
         "--hidden-import=_tkinter",
         "--collect-all", "tkinter",
         *dll_args,
@@ -295,6 +315,7 @@ def main():
     for cleanup_file in [
         root / "Uninstaller.spec",
         manifest_path,
+        version_file_path,
     ]:
         if cleanup_file.exists():
             cleanup_file.unlink()
@@ -315,6 +336,7 @@ def main():
     print(f"\n{'=' * 60}")
     print(f"  Uninstaller build completed successfully in {elapsed:.0f}s")
     print(f"  Uninstaller.exe is at: {dest}")
+    print(f"  Version : {tlamatini_version}")
     print(f"{'=' * 60}")
 
 
