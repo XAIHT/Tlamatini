@@ -18,6 +18,13 @@ import time
 from pathlib import Path
 import shutil
 
+# Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
+from versioning import (
+    extract_cli_version,
+    render_versioninfo_for,
+    resolve_build_version,
+)
+
 
 # ── Splash image parameters (matches installer colour palette) ────────────────
 _SPLASH_FILE = "splash_installer.png"
@@ -239,6 +246,18 @@ def main():
 
     root = Path(__file__).parent
 
+    # ── Resolve version (honours $TLAMATINI_VERSION set by build.py) ──
+    cli_version = extract_cli_version(sys.argv)
+    tlamatini_version = resolve_build_version(cli_version)
+    version_file_path = render_versioninfo_for(
+        tlamatini_version,
+        root / "Installer.version.txt",
+        product_name="Tlamatini Installer",
+        original_filename="Installer.exe",
+    )
+    print(f"Tlamatini version : {tlamatini_version}")
+    print(f"VERSIONINFO file  : {version_file_path}")
+
     # ── 0) Verify prerequisites ───────────────────────────────────────
     print("\n--- Verifying prerequisites ---")
     pkg_zip = root / "pkg.zip"
@@ -350,9 +369,10 @@ def main():
         "--onedir",
         "--windowed",
         "--noconfirm",
-        "--noupx",               
+        "--noupx",
         "--name", "Installer",
         f"--manifest={manifest_path}",
+        f"--version-file={version_file_path}",
         "--hidden-import=_tkinter",
         "--collect-all", "tkinter",
         *dll_args,
@@ -385,16 +405,26 @@ def main():
     for cleanup_file in [
         root / "Installer.spec",
         manifest_path,
+        version_file_path,
     ]:
         if cleanup_file.exists():
             cleanup_file.unlink()
             print(f"Removed: {cleanup_file}")
 
-    # ── 7) Rename dist/Installer → dist/Tlamatini_Release ─────────────
+    # ── 7) Rename dist/Installer → dist/Tlamatini_Release_v<version> ──
     # Instead of copying the entire --onedir output into a second folder,
     # we simply rename it.  This avoids duplicating ~all build artifacts.
+    # The release folder name carries the version so the user knows at a
+    # glance which build this is — see VERSIONING.md.
     print("\n--- Setting up Release folder ---")
-    release_dir = root / "dist" / "Tlamatini_Release"
+    # Sanitize the version for use in a Windows directory name: replace
+    # characters that aren't filesystem-friendly with underscores.  We
+    # keep dots, hyphens, and ``+``-stripped local parts intact.
+    safe_version = "".join(
+        c if (c.isalnum() or c in "._-") else "_"
+        for c in tlamatini_version.replace("+", "_")
+    )
+    release_dir = root / "dist" / f"Tlamatini_Release_v{safe_version}"
     if release_dir.exists():
         clean_directory(release_dir)
 
@@ -440,6 +470,8 @@ def main():
     elapsed = time.time() - build_start
     print(f"\n{'=' * 60}")
     print(f"  Installer build completed successfully in {elapsed:.0f}s")
+    print(f"  Version : {tlamatini_version}")
+    print(f"  Release : {release_dir}")
     print(f"{'=' * 60}")
 
 

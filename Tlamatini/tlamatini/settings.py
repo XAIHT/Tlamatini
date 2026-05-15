@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'tlamatini.context_processors.static_version',
+                'tlamatini.context_processors.app_version',
             ],
         },
     },
