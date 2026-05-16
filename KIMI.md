@@ -1082,6 +1082,70 @@ Default credentials (installer builds): `user` / `changeme`
 | ACP parametrizer dialog | `Tlamatini/agent/static/agent/js/acp-parametrizer-dialog.js` |
 | Chat message handler | `Tlamatini/agent/static/agent/js/agent_page_chat.js` |
 | Chat state (ACPX toggle) | `Tlamatini/agent/static/agent/js/agent_page_state.js` |
+| Orphan reaper | `Tlamatini/agent/orphan_reaper.py` |
+
+---
+
+## 29. Orphan-Process Cleanup (the `conhost.exe` reaper)
+
+A three-tier reaper that cleans up Windows console-host orphans and zombie descendants every console subprocess can leave behind. Lives in `Tlamatini/agent/orphan_reaper.py`. Without this, users were seeing `conhost.exe` processes lingering in Task Manager **bearing the Tlamatini icon** (conhost inherits its icon from the parent EXE that spawned it) and reasonably assuming Tlamatini was leaking processes — or worse, hiding a backdoor.
+
+### Why this exists
+
+On Windows, every console child Tlamatini's agents launch drags a `conhost.exe` companion alongside it. When the immediate parent dies without first reaping its console child, the `conhost.exe` lingers as an orphan with our icon. The reaper closes the gap at three lifecycle points; the **spawn sites** were hardened in the same pass so most of the orphans never get created in the first place.
+
+### The three tiers
+
+| Tier | Hook point | Scope | Surfacing |
+|---|---|---|---|
+| **Tier 1** | `MultiTurnToolAgentExecutor._reap_after_tool()` (`agent/mcp_agent.py`) — after every tool call in `_PROCESS_SPAWNING_TOOL_NAMES` (`execute_command`, `execute_file`, `unzip_file`, `decompile_java`, `googler`, `agent_starter/stopper/parametrizer`) plus every `chat_agent_*` and every `acp_*`. Fires on both success AND exception paths. | Zombie / dead descendants of `os.getpid()` + orphaned `conhost.exe` / `openconsole.exe` whose parent is in our process tree or whose parent is gone. **No pool-cmdline scan** (cheap path). | Silent. Survivors accumulate on `self._orphan_survivors` and drop into `global_state['last_orphan_survivors']` for Tier 2. |
+| **Tier 2** | `AgentConsumer._tier2_orphan_sweep()` (`agent/consumers.py`) — once, in a `run_in_executor` thread, **after** `process_llm_response` broadcasts the answer so the main reply is never delayed. Merges Tier-1 leftovers with Tier-2 survivors, de-duped by PID. | Same as Tier 1 **plus** the agent-pool cmdline scan (processes whose `cmdline` references `agents/pools/...` or `agents/pools/_chat_runs_/...` but are no longer tracked). | If anything survives both tiers, broadcasts a SECOND `agent_message` to the room listing every `name + PID` so the user can end them manually. Rendered by `orphan_reaper.format_survivors_message()` (returns `None` on empty — common case). |
+| **Tier 3** | `AgentConfig.ready()` (`agent/apps.py`) — registered next to the existing pool-cleanup on the `atexit` / SIGINT / SIGBREAK path. | Full sweep (self-tree + pool cmdline + console-host orphans). | Logs `--- [Tier-3 reaper] killed=… survivors=… errors=…` to `tlamatini.log`; survivors listed by `name (PID)` for post-mortem. |
+
+### Public API
+
+```python
+from agent.orphan_reaper import reap_orphans, format_survivors_message, ReapResult
+
+result: ReapResult = reap_orphans(
+    scope="tier1:after_tool_call",          # free-form label that ends up in tlamatini.log
+    include_self_tree=True,                  # kill dead/zombie descendants of os.getpid()
+    include_pool_scan=False,                 # Tier 2 / Tier 3 enable this
+    include_console_host_sweep=True,         # the actual conhost.exe reap
+)
+# result.killed:    list[(name, pid)] of processes we reaped
+# result.survivors: list[(name, pid)] of processes we failed to kill
+# result.errors:    list[str] of swallowed exceptions
+
+message = format_survivors_message(result.survivors)  # None if no survivors
+```
+
+### Companion hardening — preventing the orphan in the first place
+
+The reaper is paired with spawn-site changes that mean most `conhost.exe` companions are never created:
+
+- `agent/views.py::execute_starter_agent_view`, `execute_ender_agent_view`, `restart_agent_view`, `execute_flowcreator_view` now spawn with `CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | DETACHED_PROCESS` and stdio piped to `subprocess.DEVNULL`.
+- `agent/acpx/runtime.py` adds `_windows_creationflags()` (same triple flag) and `_kill_process_tree()` — a `psutil`-driven recursive descendant kill (`terminate → wait 2s → kill`) so CLI wrappers like `claude` / `cursor-agent` that shell out to `node.exe` get the helper killed too, not just the top-level handle.
+- Every pool-agent script (`agents/<name>/<name>.py` — Ender, Apirer, Crawler, Forker, Counter, … all 50+) installs a top-of-module `subprocess.Popen.__init__` monkey-patch — `_chg_guarded_init` — that defaults `creationflags` to `CREATE_NO_WINDOW` unless the caller explicitly asked for a console (`CREATE_NEW_CONSOLE` / `DETACHED_PROCESS`). This is the seatbelt: a future tool that forgets the flag gets it for free.
+
+### What gets reaped (and what does NOT)
+
+A process is a Tlamatini orphan if **any** of:
+- It is a descendant of the current Tlamatini PID and its status is `psutil.STATUS_ZOMBIE` or `psutil.STATUS_DEAD`.
+- It is a `conhost.exe` / `openconsole.exe` whose parent PID is in our process tree, OR whose parent PID is `0` / `None`, OR whose parent no longer exists.
+- Its `cmdline` references the agent-pool directory (`agents/pools/...` or `agents/pools/_chat_runs_/...`) and the pool-scan tier is enabled.
+
+Each candidate is escalated `terminate → wait 1s → kill` via `psutil`. Unrelated `conhost.exe` (a different IDE's child, your shell's child) is left alone — the parentage check keeps the sweep narrow.
+
+### Safety contract
+
+**The reaper MUST NEVER raise into the caller.** Every external call is wrapped in `try/except`; every survivor is recorded rather than re-raised; a `psutil`-import failure degrades silently (`ReapResult.errors.append("psutil not available — skipping reap")`). A cleanup that crashes the chat path is worse than the orphans it tries to kill.
+
+### Adding a tool that spawns a console child
+
+Either:
+1. **Add the tool name to `_PROCESS_SPAWNING_TOOL_NAMES`** in `mcp_agent.py` so Tier 1 runs after it (preferred for tools that may spawn many short-lived children mid-loop), or
+2. **Do nothing** — Tier 2's pool-cmdline scan is wide enough to catch almost everything that Tier 1 would, just one step later. Tier 3 is the backstop for both.
 
 ---
 

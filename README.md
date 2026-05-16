@@ -79,24 +79,29 @@
   - [9.5. The 80% threshold and the chat-bubble warning](#95-the-80-threshold-and-the-chat-bubble-warning)
   - [9.6. Tuning, overrides, and what the guard does NOT do](#96-tuning-overrides-and-what-the-guard-does-not-do)
   - [9.7. Test coverage](#97-test-coverage)
-- [10. Troubleshooting](#10-troubleshooting)
-  - [10.1. Ollama / models](#101-ollama--models)
-  - [10.2. RAG / context](#102-rag--context)
-  - [10.3. Multi-Turn / planner](#103-multi-turn--planner)
-  - [10.4. Chat-created flows and ACP validation](#104-chat-created-flows-and-acp-validation)
-  - [10.5. ACPX / external CLIs](#105-acpx--external-clis)
-  - [10.6. Frozen build / installer](#106-frozen-build--installer)
-  - [10.7. Logs to consult first](#107-logs-to-consult-first)
-- [11. Versioning](#11-versioning)
-  - [11.1. The bump rules](#111-the-bump-rules)
-  - [11.2. Cutting a release](#112-cutting-a-release)
-  - [11.3. Where you can see the running version](#113-where-you-can-see-the-running-version)
-  - [11.4. Building without tagging (development)](#114-building-without-tagging-development)
-  - [11.5. Overriding the resolved version](#115-overriding-the-resolved-version)
-- [12. Contributing & License](#12-contributing--license)
-  - [12.1. Contributing](#121-contributing)
-  - [12.2. Acknowledgments](#122-acknowledgments)
-  - [12.3. License](#123-license)
+- [10. Orphan-Process Cleanup (`conhost.exe` reaper)](#10-orphan-process-cleanup-conhostexe-reaper)
+  - [10.1. The problem this solves](#101-the-problem-this-solves)
+  - [10.2. The three tiers](#102-the-three-tiers)
+  - [10.3. What gets reaped (and what does not)](#103-what-gets-reaped-and-what-does-not)
+  - [10.4. The user-visible follow-up message](#104-the-user-visible-follow-up-message)
+- [11. Troubleshooting](#11-troubleshooting)
+  - [11.1. Ollama / models](#111-ollama--models)
+  - [11.2. RAG / context](#112-rag--context)
+  - [11.3. Multi-Turn / planner](#113-multi-turn--planner)
+  - [11.4. Chat-created flows and ACP validation](#114-chat-created-flows-and-acp-validation)
+  - [11.5. ACPX / external CLIs](#115-acpx--external-clis)
+  - [11.6. Frozen build / installer](#116-frozen-build--installer)
+  - [11.7. Logs to consult first](#117-logs-to-consult-first)
+- [12. Versioning](#12-versioning)
+  - [12.1. The bump rules](#121-the-bump-rules)
+  - [12.2. Cutting a release](#122-cutting-a-release)
+  - [12.3. Where you can see the running version](#123-where-you-can-see-the-running-version)
+  - [12.4. Building without tagging (development)](#124-building-without-tagging-development)
+  - [12.5. Overriding the resolved version](#125-overriding-the-resolved-version)
+- [13. Contributing & License](#13-contributing--license)
+  - [13.1. Contributing](#131-contributing)
+  - [13.2. Acknowledgments](#132-acknowledgments)
+  - [13.3. License](#133-license)
 
 ---
 
@@ -1206,28 +1211,76 @@ python manage.py test agent.test_embedding_memory_guard --verbosity=2
 
 ---
 
-## 10. Troubleshooting
+## 10. Orphan-Process Cleanup (`conhost.exe` reaper)
 
-### 10.1. Ollama / models
+Tlamatini now ships a three-tier reaper (`Tlamatini/agent/orphan_reaper.py`) that cleans up the console-host children every console subprocess on Windows drags behind it. Without this pass, users were occasionally seeing `conhost.exe` processes lingering in Task Manager **with the Tlamatini icon** — the icon is inherited from the parent EXE that spawned the console — and reasonably concluding that Tlamatini was leaking processes.
+
+### 10.1. The problem this solves
+
+On Windows, when a tool (`execute_command`, `chat_agent_executer`, an ACPX CLI child, an agent-pool Python subprocess, …) spawns a console child, Windows allocates a `conhost.exe` companion to host that console. If the immediate parent dies before the OS reaps the console pair, that `conhost.exe` outlives Tlamatini. Two compounding causes were closed at once:
+
+- **The reaper itself** sweeps zombies and orphaned console hosts at three lifecycle points (below).
+- **Spawn sites were hardened** — `views.py::execute_starter_agent_view`, `execute_ender_agent_view`, `restart_agent_view`, `execute_flowcreator_view`, every ACPX child in `acpx/runtime.py`, and a `subprocess.Popen.__init__` guard at the top of `agents/ender/ender.py` (mirrored across every other pool agent) now spawn with `CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` and stdio piped to `DEVNULL`. No console is allocated in the first place, so no `conhost.exe` companion exists to orphan.
+
+### 10.2. The three tiers
+
+| Tier | When it runs | Scope | Visibility |
+|---|---|---|---|
+| **Tier 1** | After every Multi-Turn tool call that may have spawned a child (`execute_command`, `execute_file`, `unzip_file`, `decompile_java`, `googler`, `agent_starter/stopper/parametrizer`, every `chat_agent_*`, every `acp_*`). Driven by `MultiTurnToolAgentExecutor._reap_after_tool()` in `agent/mcp_agent.py`. Also fires on the tool-exception path so a crashed tool still gets cleaned up. | Dead/zombie descendants of the current PID, plus orphaned `conhost.exe` whose parent is gone. Pool-cmdline scan is skipped here (cheap path). | Silent. Survivors accumulate on the executor for Tier 2 to surface. |
+| **Tier 2** | Once, right after the final answer is broadcast to the user. Driven by `AgentConsumer._tier2_orphan_sweep()` in `agent/consumers.py`. Runs in a thread (so it doesn't block the WebSocket loop) and merges its survivors with Tier 1's leftovers (de-duped by PID). | Same as Tier 1 plus the **agent-pool cmdline scan** (kills processes whose `cmdline` references `agents/pools/...` but are not tracked by `AgentProcess` / `ChatAgentRun` anymore). | If anything survives BOTH tiers, the consumer sends a **second chat message** listing every surviving `name + PID` pair so the user can end them manually from Task Manager. |
+| **Tier 3** | At Tlamatini.exe shutdown — `AgentConfig.ready()` registers it on the same `atexit` / SIGINT / SIGBREAK path that already cleans up pools. | Full sweep (self-tree + pool cmdline + console-host orphans). | Logs `--- [Tier-3 reaper] killed=… survivors=… errors=…` to `tlamatini.log`. Survivors are listed by `name (PID)` so a post-mortem reader can audit what refused to die. |
+
+### 10.3. What gets reaped (and what does not)
+
+A process is considered a "Tlamatini orphan" if **any** of the following hold:
+
+- It is a descendant of the current Tlamatini PID and its status is `ZOMBIE` / `DEAD`.
+- It is a `conhost.exe` / `openconsole.exe` whose parent PID is in our process tree, OR whose parent PID no longer exists.
+- Its `cmdline` references the agent-pool directory (`agents/pools/...` or `agents/pools/_chat_runs_/...`) but it is no longer tracked.
+
+Each candidate is escalated `terminate → wait 1 s → kill` via `psutil`; an "unable-to-kill" outcome surfaces as a survivor, never as an exception. The reaper **never raises into the caller** — a cleanup that crashes the chat path would be worse than the orphans it tries to kill.
+
+Out of scope on purpose: console hosts spawned by unrelated processes (a different IDE, your shell, another app's child) — the parentage check keeps the sweep narrow.
+
+### 10.4. The user-visible follow-up message
+
+When Tier 2 detects survivors, the user sees a second chat bubble immediately after the main answer:
+
+```
+⚠ Heads-up: Tlamatini tried to clean up after this request but the following
+process(es) refused to terminate. They are most likely harmless leftovers from
+a tool you ran, but if you do not recognize them please end them manually from
+Task Manager so no Tlamatini-spawned child outlives the app:
+  • conhost.exe — PID 18244
+  • python.exe — PID 19108
+```
+
+The rendering helper is `orphan_reaper.format_survivors_message()`; it returns `None` (so no extra message is sent) when the survivor list is empty, which is the common case after the spawn-site hardening landed.
+
+---
+
+## 11. Troubleshooting
+
+### 11.1. Ollama / models
 
 - "connection refused" → `ollama serve` in a dedicated terminal. Check `ollama_base_url`.
 - Model not found → `ollama list` to see what's pulled. Pull the missing tag.
 - Remote Ollama → set `ollama_token` for bearer auth.
 
-### 10.2. RAG / context
+### 11.2. RAG / context
 
 - Set-Context shows no green banner → check file permissions, ensure files are text not binary.
 - "Out of memory" during embedding → fallback mode kicks in; retrieval quality drops, files still accessible. Switch to a smaller embedding model. **See chapter 9 — the embedding-memory pre-flight guard now warns you about this *before* the embed burst starts on GPU hosts.**
 - Hit `max_doc_chars` → bump it.
 - Session says it was restored after a refresh, but the input stays disabled briefly → that is expected while the contextual RAG chain rebuilds. Wait for the ready state / spinner to clear before sending the next prompt.
 
-### 10.3. Multi-Turn / planner
+### 11.3. Multi-Turn / planner
 
 - Did you tick **Multi-Turn**? Is `enable_unified_agent: true`?
 - "Tool X is not available" → the planner did not bind X. Check `[Planner._select]` console lines, add matching keywords to your prompt, or raise `max_selected_tools`.
 - 100 iterations exhausted → likely a busy-poll loop. Use `chat_agent_sleeper` / `chat_agent_run_wait` instead.
 
-### 10.4. Chat-created flows and ACP validation
+### 11.4. Chat-created flows and ACP validation
 
 - **Create Flow downloads a `.flw`, but it looks simpler than the chat transcript.** That is normal. The file stores the flow structure, node config, connections, and artifacts. It does not store the entire conversation.
 - **Create Flow fails from the chat.** The browser first asks `/agent/flow_from_tool_calls/` to normalize the draft. If that endpoint fails, the frontend falls back to the older browser-only export so you do not lose the flow draft.
@@ -1237,20 +1290,20 @@ python manage.py test agent.test_embedding_memory_guard --verbosity=2
 - **A value I set in an agent dialog disappears after Validate or Start.** Current builds preserve explicit dialog edits and merge canvas-derived wiring on top of them. If something still looks wrong, reopen the dialog, save once more, then run Validate and inspect the compile warnings.
 - **Parametrizer mappings disappear after reload.** Save the flow after creating mappings. New `.flw` files store mappings under `artifacts.parametrizerMappings`, and the loader restores them into each Parametrizer node.
 
-### 10.5. ACPX / external CLIs
+### 11.5. ACPX / external CLIs
 
 - `acp_doctor` says agent not resolvable → CLI not on `PATH`, or set `acpx.agents.<id>.command` to the absolute path.
 - Transcript only shows outbound prompts on Windows → your build is older than May 2026. Update — fix is `transport="oneshot-prompt"` for claude/gemini/cursor/qwen/codex.
 - API key not picked up → per-agent `acpx.agents.<id>.env` wins over exported shell vars; check both.
 - Session left running → always end with `acp_kill`. If a request times out, manually `acp_list_sessions` + `acp_kill`.
 
-### 10.6. Frozen build / installer
+### 11.6. Frozen build / installer
 
 - Wrong config used → place `config.json` next to the exe, or set `CONFIG_PATH`.
 - Missing templates → verify `agents/` exists in the install. Rebuild if `README.md`, `jd-cli/`, or template directories are missing.
 - Restrictive Group Policy blocks shortcuts → `CreateShortcut.ps1` falls back to user-scoped Desktop / Start Menu paths.
 
-### 10.7. Logs to consult first
+### 11.7. Logs to consult first
 
 | What | Where |
 |---|---|
@@ -1266,11 +1319,11 @@ INFO loggers worth knowing: `agent.chat_agent_runtime`, `agent.tools`, `agent.mc
 
 ---
 
-## 11. Versioning
+## 12. Versioning
 
 Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH` — with **git tags as the single source of truth**. You never hand-edit a version string anywhere in the codebase; you tag, then you build, and the three build scripts bake the resolved value into every artefact.
 
-### 11.1. The bump rules
+### 12.1. The bump rules
 
 | Component | Bump when… | Example |
 |---|---|---|
@@ -1280,7 +1333,7 @@ Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MI
 
 Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1`, `2.0.0-rc.1` — and sort **before** the final release.
 
-### 11.2. Cutting a release
+### 12.2. Cutting a release
 
 ```powershell
 git tag -a v1.3.0 -m "Release 1.3.0: <one-line summary>"
@@ -1292,7 +1345,7 @@ python build_installer.py
 
 All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.3.0/`.
 
-### 11.3. Where you can see the running version
+### 12.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
@@ -1303,7 +1356,7 @@ All three build scripts pick the tag up from `git describe --tags` automatically
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
 
-### 11.4. Building without tagging (development)
+### 12.4. Building without tagging (development)
 
 The build never fails for "no version" — and the version surface is always a clean SemVer like `1.1.1`. The resolver returns the **bare base tag** reachable from HEAD; distance / commit / dirty state are deliberately stripped:
 
@@ -1317,7 +1370,7 @@ The build never fails for "no version" — and the version surface is always a c
 
 No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those concerns stay in git (`git status`, `git describe --long --dirty`).
 
-### 11.5. Overriding the resolved version
+### 12.5. Overriding the resolved version
 
 | # | Source | Use case |
 |---|---|---|
@@ -1332,9 +1385,9 @@ The full contract — release recovery, runtime resolver internals, file-by-file
 
 ---
 
-## 12. Contributing & License
+## 13. Contributing & License
 
-### 12.1. Contributing
+### 13.1. Contributing
 
 1. Fork; create a feature branch.
 2. Follow PEP 8. Run `python -m ruff check` and `npm run lint` before pushing.
@@ -1344,11 +1397,11 @@ The full contract — release recovery, runtime resolver internals, file-by-file
 
 When adding a new agent, follow the 8-step checklist in `Tlamatini/.agents/workflows/create_new_agent.md` (backend script + view + migration + CSS gradient + 4 JS files + agentic_skill.md + README + lint).
 
-### 12.2. Acknowledgments
+### 13.2. Acknowledgments
 
 [Django](https://www.djangoproject.com/) · [LangChain](https://github.com/langchain-ai/langchain) · [LangGraph](https://github.com/langchain-ai/langgraph) · [Ollama](https://ollama.ai/) · [FAISS](https://github.com/facebookresearch/faiss) · [Anthropic](https://www.anthropic.com/) · [Bootstrap](https://getbootstrap.com/) · [TextMeBot](https://textmebot.com/) · [Ruff](https://github.com/astral-sh/ruff) · [PyAutoGUI](https://github.com/asweigart/pyautogui) · [JD-CLI](https://github.com/intoolswetrust/jd-cli)
 
-### 12.3. License
+### 13.3. License
 
 **GNU General Public License v3.0** — see [LICENSE](LICENSE).
 
