@@ -19,7 +19,7 @@ output: ""
 
 # When true, skip password handling entirely. When false, read the
 # password from the environment variable named DE_COMPRESSER_PWD.
-passwordless: true
+passwordless: false
 
 # Connection fields
 source_agents: []
