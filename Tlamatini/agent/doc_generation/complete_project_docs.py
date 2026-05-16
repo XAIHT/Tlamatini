@@ -372,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("orphan" in subject or "cleanup" in subject or "sec/perf" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is orphan-process cleanup on Windows: a three-tier reaper, hardened detached spawn sites, ACPX process-tree termination, and user-visible survivor reporting when anything truly refuses to die."
+        )
     if any("de-compresser" in subject or "de compresser" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is the new De-Compresser agent: deterministic archive compression/decompression, Multi-Turn exposure, ACP canvas wiring, and a requirements patch that adds the `py7zr` fallback path."
@@ -536,6 +540,7 @@ WHAT_IT_DOES = [
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
+    "Actively reaps orphaned Windows console-host and pool-child processes so long Multi-Turn or ACPX sessions do not leave misleading Tlamatini-icon ghosts in Task Manager.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
     "Lets users design, validate, save, pause, resume, and stop visual workflows through the Agentic Control Panel.",
@@ -550,6 +555,7 @@ HOW_IT_WORKS = [
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
+    "After spawn-capable tool calls and again after the final answer, the orphan reaper can sweep dead descendants, orphaned `conhost.exe` companions, and stale pool-linked processes without ever raising into the chat path.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
     "On the next full start-up, `manage.py` can swap a staged database into place before Django imports, while archiving the previous live database under `DB/Older/<timestamp>/`.",
     "ACP flows deploy session-scoped pool instances, wire config values, validate NxN graph rules, and execute through Starter-driven flow semantics.",
@@ -561,6 +567,7 @@ HOW_TO_USE = [
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Archive jobs can now be described directly in Multi-Turn or modeled visually in ACP: De-Compresser infers compress vs decompress from the `input` or `output` extension.",
+    "If a second post-answer warning bubble ever lists surviving `name + PID` entries, treat it as an honest cleanup report and end the listed processes manually from Task Manager if needed.",
     "Use the DB dropdown when you need a safe database snapshot or want to stage a different `db.sqlite3` for the next start-up without hot-swapping the live SQLite file.",
     "Open `/agentic_control_panel/` to drag agents, connect them, configure each node, validate, start, pause/resume, stop, and save `.flw` workflows.",
     "Use `python build.py`, `python build_uninstaller.py`, and `python build_installer.py` only when producing a packaged Windows release.",
@@ -638,6 +645,18 @@ DE_COMPRESSER_INTEGRATION_GUIDE = [
     "Every run emits an `INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER` block and still triggers `target_agents`, so downstream Parametrizer or Raiser logic can branch on `success=true|false` instead of guessing from prose.",
 ]
 
+ORPHAN_REAPER_GUIDE = [
+    "Tlamatini now ships a three-tier orphan reaper in `Tlamatini/agent/orphan_reaper.py` focused on Windows console-host leftovers such as `conhost.exe` and `openconsole.exe`.",
+    "Tier 1 runs after spawn-capable Multi-Turn tool calls, Tier 2 runs once after the final answer in a background thread, and Tier 3 runs again during application shutdown through the same cleanup path that already tears down pools.",
+    "The candidate set stays narrow on purpose: dead descendants of the current process tree, orphaned console hosts tied to that tree, and pool-linked processes whose `cmdline` still points into `agents/pools/...` even though tracking records are gone.",
+]
+
+ORPHAN_PREVENTION_GUIDE = [
+    "Prevention landed alongside cleanup: Windows spawn sites now use `CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` with stdio piped to `DEVNULL`, so the console host is usually never allocated in the first place.",
+    "The ACPX runtime now kills full process trees instead of only top-level wrappers, and pool-agent scripts gained a conservative `subprocess.Popen` guard so forgotten descendants still inherit `CREATE_NO_WINDOW`.",
+    "If something survives both cleanup tiers, Tlamatini sends a second chat bubble listing each surviving `name + PID`; the reaper never raises into the user path because a cleanup crash would be worse than the leftovers it tried to remove.",
+]
+
 EMBEDDING_GUARD_GUIDE = [
     "README and BookOfTlamatini now document an embedding-memory pre-flight guard for GPU hosts before a directory-context load starts its FAISS embedding burst.",
     "On supported NVIDIA hosts it estimates embedding-model VRAM pressure, and when the projected load is too high it emits a non-blocking warning chat bubble instead of silently letting RAM<->VRAM thrash surprise the operator.",
@@ -649,6 +668,7 @@ RECENT_RUNTIME_SAFEGUARDS = [
     "Config -> Models and Config -> URLs dialogs now track their pre-edit baseline and can show a reconnect-required dialog when the saved values change what the live chat session should trust.",
     "The restored-session autoload path now buffers early WebSocket frames so context-loading spinners and disabled-input state are not lost during automatic reconnect/restore flows.",
     "Startup and restart behavior now also re-apply GPU performance and Ollama keep-alive hooks in the background on supported NVIDIA Windows hosts, improving warm-model readiness without blocking Django boot.",
+    "Windows process hygiene is now part of that safety story too: detached no-window spawns and the three-tier orphan reaper reduce the chance that Task Manager shows stale Tlamatini-icon console helpers after long runs.",
 ]
 
 RELEASE_GUIDE = [
@@ -937,6 +957,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("De-Compresser integration and fallback behavior", styles["h2"]))
     for item in DE_COMPRESSER_INTEGRATION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Orphan-process cleanup", styles["h2"]))
+    for item in ORPHAN_REAPER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Orphan-process prevention and survivor reporting", styles["h2"]))
+    for item in ORPHAN_PREVENTION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("How to use it", styles["h2"]))
     for item in HOW_TO_USE:
         story.append(bullet(item, styles["bullet"]))
@@ -976,6 +1002,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("Reconnect and restart safeguards", styles["h2"]))
     for item in RECENT_RUNTIME_SAFEGUARDS:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Orphan reaper runtime behavior", styles["h2"]))
+    for item in ORPHAN_REAPER_GUIDE + ORPHAN_PREVENTION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Release pipeline", styles["h2"]))
     for item in RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -996,6 +1025,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("All workflow agents follow a common deployment pattern: template directory, YAML configuration, session-scoped pool copy, PID/status/log files, target/source wiring, and optional reanimation state.", styles["body"]))
     story.append(p("De-Compresser spotlight", styles["h2"]))
     for item in DE_COMPRESSER_GUIDE + DE_COMPRESSER_INTEGRATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Orphan-reaper spotlight", styles["h2"]))
+    for item in ORPHAN_REAPER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(PageBreak())
 
@@ -1484,6 +1516,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "De-Compresser Agent", "today's new archive worker", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", DE_COMPRESSER_GUIDE, THEME["copper"], "decomp-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Integration and fallbacks", DE_COMPRESSER_INTEGRATION_GUIDE, THEME["jade"], "decomp-b", 14)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Orphan-Process Cleanup", "today's Windows process-hygiene work", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Three-tier reaper", ORPHAN_REAPER_GUIDE, THEME["amber"], "reaper-a", 14)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prevention and survivor reporting", ORPHAN_PREVENTION_GUIDE, THEME["jade"], "reaper-b", 14)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Ollama Without Admin Rights", "local model setup on Windows", THEME["amber"])
