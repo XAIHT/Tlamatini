@@ -1305,17 +1305,17 @@ All four are computed from the same `Tlamatini/agent/_version.py` that `build.py
 
 ### 11.4. Building without tagging (development)
 
-The build never fails for "no version" — it labels honestly. On an untagged commit, the resolver falls back to a PEP 440 dev version derived from `git describe`:
+The build never fails for "no version" — and the version surface is always a clean SemVer like `1.1.1`. The resolver returns the **bare base tag** reachable from HEAD; distance / commit / dirty state are deliberately stripped:
 
 | Situation | Version baked in |
 |---|---|
 | HEAD exactly on `v1.2.0` | `1.2.0` |
-| 17 commits past `v1.2.0`, clean tree | `1.2.0.dev17+gabc1234` |
-| 17 commits past `v1.2.0`, uncommitted edits | `1.2.0.dev17+gabc1234.dirty` *(never ship this)* |
-| No tags at all | `0.0.0.dev0+gabc1234` |
+| 17 commits past `v1.2.0`, clean tree | `1.2.0` |
+| 17 commits past `v1.2.0`, uncommitted edits | `1.2.0` |
+| No tags at all | `0.0.0` |
 | Not a git repo | `0.0.0+unknown` |
 
-PEP 440 sorts `1.2.0.dev17 < 1.2.0`, so dev builds are unambiguous to Windows installer registries and Python tooling.
+No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those concerns stay in git (`git status`, `git describe --long --dirty`).
 
 ### 11.5. Overriding the resolved version
 

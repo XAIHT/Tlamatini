@@ -1738,17 +1738,17 @@ If the four surfaces ever disagree, your build was run with a stale `$env:TLAMAT
 
 ### What happens if you don't tag
 
-The build never fails for "no version" — it labels honestly. On an untagged commit, `build.py` falls back to a PEP 440 dev version derived from `git describe`:
+The build never fails for "no version" — and the version surface is always a clean SemVer like `1.1.1`. The resolver returns the **bare base tag** reachable from HEAD; distance / commit / dirty state are deliberately stripped from the displayed version:
 
 | Situation | Version baked in |
 |---|---|
 | Tag exists, HEAD exactly on `v1.2.0` | `1.2.0` |
-| Tag exists, HEAD 17 commits past, clean tree | `1.2.0.dev17+gabc1234` |
-| Tag exists, HEAD 17 commits past, uncommitted edits | `1.2.0.dev17+gabc1234.dirty` *(never ship this)* |
-| No tags at all | `0.0.0.dev0+gabc1234` |
+| Tag exists, HEAD 17 commits past, clean tree | `1.2.0` |
+| Tag exists, HEAD 17 commits past, uncommitted edits | `1.2.0` |
+| No tags at all | `0.0.0` |
 | Not a git repo (e.g. download zip) | `0.0.0+unknown` |
 
-PEP 440 sorts `1.2.0.dev17 < 1.2.0`, which is what every consumer of these versions expects.
+No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string. Distance from the tag and dirty state are git concerns and live in `git status` / `git describe --long --dirty`, not in the user-facing version.
 
 ### Overriding the resolver
 
@@ -1756,7 +1756,7 @@ There are four sources of the version, in precedence order:
 
 1. `--version X.Y.Z` on the build script's command line (highest).
 2. `$env:TLAMATINI_VERSION` exported in the shell.
-3. `git describe --tags --long --dirty --match 'v[0-9]*'` against the working tree (the normal path).
+3. `git describe --tags --abbrev=0 --match 'v[0-9]*'` against the working tree — the bare base tag, no distance/dirty suffix (the normal path).
 4. The sentinel `0.0.0+unknown` (lowest — only fires when there is no git at all).
 
 `build.py` exports `$env:TLAMATINI_VERSION` after it resolves, so `build_installer.py` and `build_uninstaller.py` in the same shell see exactly the same value — the three artefacts cannot disagree. Even on an untagged commit, the git-derived dev version stays consistent across all three.
