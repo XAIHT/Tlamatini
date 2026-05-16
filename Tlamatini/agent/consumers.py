@@ -617,11 +617,15 @@ class AgentConsumer(AsyncWebsocketConsumer):
             multi_turn_used = global_state.get_state('last_multi_turn_used')
             exec_report_used = global_state.get_state('last_exec_report_enabled')
             exec_report_entries = global_state.get_state('last_exec_report_entries') if exec_report_used else None
+            # Tier-1 survivor list carried over from the multi-turn
+            # executor — processes the per-tool reaper failed to kill.
+            tier1_orphans = global_state.get_state('last_orphan_survivors') or []
             # Clear immediately to avoid leaking into the next request.
             global_state.set_state('last_tool_calls_log', None)
             global_state.set_state('last_multi_turn_used', None)
             global_state.set_state('last_exec_report_enabled', None)
             global_state.set_state('last_exec_report_entries', None)
+            global_state.set_state('last_orphan_survivors', None)
 
             await process_llm_response(
                 llm_response,
@@ -634,6 +638,21 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 exec_report_enabled=bool(exec_report_used),
                 exec_report_entries=exec_report_entries,
             )
+
+            # ── Tier-2 orphan-process sweep ───────────────────────
+            # Now that the user has their answer, run the broader
+            # reaper (this time including the pool-cmdline scan). If
+            # anything survives — Tier-1 orphans from the executor or
+            # fresh ones the broader sweep just turned up — send a
+            # SECOND chat message listing process name + PID so the
+            # user can end them manually. We deliberately run this
+            # AFTER process_llm_response so the main answer reaches
+            # the browser without being held up by the sweep (~100ms
+            # on a busy host).
+            try:
+                await self._tier2_orphan_sweep(tier1_orphans)
+            except Exception as sweep_err:  # noqa: BLE001 — never block on cleanup
+                print(f"--- [Tier-2 reaper] sweep raised (non-fatal): {sweep_err}")
         except Exception as e:
             print(f"!!! ERROR in queue_llm_retrieval method: {e}")
             if global_state.get_state('cancel_generation'):
@@ -649,6 +668,81 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
             )
             print("--- Bot error message broadcast to room.")
+
+    async def _tier2_orphan_sweep(self, tier1_survivors):
+        """Post-answer orphan-process sweep + user notification.
+
+        Runs the orphan reaper with the wider (pool-cmdline) scan now
+        that the user has their answer. Any process that survives BOTH
+        the per-tool reaper AND this final sweep is surfaced as an
+        additional chat message so the user knows which name+PID to end
+        manually from Task Manager.
+
+        Implementation notes:
+        - We hop to a thread for the sweep itself (psutil.process_iter
+          is synchronous and can take tens of ms with hundreds of
+          processes; we don't want to block the WebSocket loop).
+        - The notification is a SECOND ``agent_message`` so it stacks
+          beneath the main answer in the chat log; this is the same
+          mechanism used for fallback/loading status messages.
+        - If the sweep itself raises (psutil access denied, etc.) we
+          swallow it: cleanup must never break the chat path.
+        """
+        from .orphan_reaper import reap_orphans, format_survivors_message
+
+        def _do_sweep():
+            try:
+                return reap_orphans(
+                    scope="tier2:post_answer",
+                    include_self_tree=True,
+                    include_pool_scan=True,
+                    include_console_host_sweep=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"--- [Tier-2 reaper] reap_orphans raised: {exc}")
+                return None
+
+        sweep_loop = asyncio.get_event_loop()
+        result = await sweep_loop.run_in_executor(None, _do_sweep)
+
+        # Merge Tier-1 leftovers with Tier-2 survivors. De-dup by PID
+        # so the same orphan is only reported once even if both tiers
+        # noticed it.
+        merged: dict = {}
+        for name, pid in (tier1_survivors or []):
+            if isinstance(pid, int) and pid > 0:
+                merged[pid] = name
+        if result is not None:
+            for name, pid in result.survivors:
+                if isinstance(pid, int) and pid > 0:
+                    merged[pid] = name
+            # Verbose log of what we did so an oncall reader can audit
+            # the cleanup pass without enabling debug logging.
+            try:
+                print(
+                    f"--- [Tier-2 reaper] killed={result.killed_count} "
+                    f"tier1_survivors={len(tier1_survivors or [])} "
+                    f"tier2_survivors={len(result.survivors)} "
+                    f"errors={len(result.errors)}"
+                )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if not merged:
+            return
+
+        survivors_list = [(name, pid) for pid, name in merged.items()]
+        message = format_survivors_message(survivors_list)
+        if not message:
+            return
+        try:
+            await self.channel_layer.group_send(   # type: ignore
+                self.room_group_name,
+                {'type': 'agent_message', 'message': message, 'username': 'Tlamatini'}
+            )
+            print(f"--- [Tier-2 reaper] notified user about {len(survivors_list)} surviving orphan(s)")
+        except Exception as send_err:  # noqa: BLE001
+            print(f"--- [Tier-2 reaper] failed to broadcast survivor list: {send_err}")
 
     async def receive(self, text_data):   # type: ignore
         print(f">>> [RECEIVE] Got message: {text_data[:100]}...", flush=True)

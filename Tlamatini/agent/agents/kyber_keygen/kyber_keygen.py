@@ -14,6 +14,30 @@ import yaml
 import logging
 import subprocess
 
+# -- conhost.exe orphan guard ------------------------------------------
+# When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
+# console attached. Any child we Popen WITHOUT CREATE_NO_WINDOW makes
+# Windows allocate a fresh console (and a companion conhost.exe) for the
+# child -- which lingers as an orphan bearing the Tlamatini icon if we
+# exit before the child detaches. Default every Popen to
+# CREATE_NO_WINDOW unless the caller explicitly asked for a console
+# (CREATE_NEW_CONSOLE) or detached the child themselves.
+if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
+    _CHG_NO_WINDOW = subprocess.CREATE_NO_WINDOW
+    _CHG_RESPECT = (
+        _CHG_NO_WINDOW
+        | getattr(subprocess, 'CREATE_NEW_CONSOLE', 0)
+        | getattr(subprocess, 'DETACHED_PROCESS', 0)
+    )
+    _chg_orig_init = subprocess.Popen.__init__
+    def _chg_guarded_init(self, *args, **kwargs):
+        cf = kwargs.get('creationflags', 0) or 0
+        if not (cf & _CHG_RESPECT):
+            kwargs['creationflags'] = cf | _CHG_NO_WINDOW
+        return _chg_orig_init(self, *args, **kwargs)
+    subprocess.Popen.__init__ = _chg_guarded_init
+    subprocess._conhost_guard_applied = True
+
 # Set working directory to script location
 try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
