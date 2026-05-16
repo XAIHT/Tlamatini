@@ -513,6 +513,44 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         ),
     ),
     ChatWrappedAgentSpec(
+        key="de_compresser",
+        template_dir="de_compresser",
+        tool_name="chat_agent_de_compresser",
+        tool_description="Chat-Agent-De-Compresser",
+        display_name="De-Compresser",
+        purpose=(
+            "Deterministic archive worker that either DECOMPRESSES an archive into a "
+            "directory or COMPRESSES a file/directory into an archive. The direction is "
+            "inferred from the extensions: if `input` ends in .gz / .7z / .zip / .tar.gz "
+            "/ .gz.tar the agent decompresses into the `output` directory; if `output` "
+            "ends in those extensions the agent compresses `input` into `output`. "
+            "Supports .gz (GNU Zip — single-file), .zip (universal), .7z (LZMA/LZMA2 "
+            "via the 7z CLI), and .tar.gz / .gz.tar (gzipped tar via a temp .tar). "
+            "Password handling: pass `passwordless=true` to skip passwords; pass "
+            "`passwordless=false` and the agent reads the password from the OS "
+            "environment variable DE_COMPRESSER_PWD (the user must export it before "
+            "starting Tlamatini — if undefined the agent fails fast and still triggers "
+            "any downstream `target_agents`). Use this whenever the user asks to "
+            "compress, decompress, unzip, extract, zip up, archive, or pack a file or "
+            "a folder. Prefer this over `chat_agent_executer` invoking tar/zip CLIs."
+        ),
+        example_request=(
+            "Decompress archive with input='E:\\\\Drops\\\\backup.zip' "
+            "and output='E:\\\\Restored' and passwordless=true"
+        ),
+        aliases=(
+            "de_compresser", "decompresser", "de-compresser",
+            "compressor", "decompressor", "archiver", "zipper",
+            "unzipper", "tarball", "archive_helper",
+        ),
+        security_hints=(
+            "decompress", "compress", "unzip", "extract archive",
+            "zip up", "pack folder", "tar gz", "gzip", "7z",
+            "create archive", "extract zip", "extract 7z", "extract tar",
+            "decompresser", "de-compresser", "decompressor",
+        ),
+    ),
+    ChatWrappedAgentSpec(
         key="sleeper",
         template_dir="sleeper",
         tool_name="chat_agent_sleeper",

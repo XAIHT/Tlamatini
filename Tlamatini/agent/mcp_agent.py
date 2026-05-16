@@ -95,6 +95,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_whatsapper":     ("whatsapper",     "Whatsapper"),
     "chat_agent_notifier":       ("notifier",       "Notifier"),
     "chat_agent_j_decompiler":   ("jdecompiler",    "J-Decompiler"),
+    # De-Compresser is state-changing: it CREATES files/directories on disk
+    # (decompression output, compression archive). The single agent_key
+    # ``decompresser`` merges both the wrapped chat-agent launch and any
+    # future direct @tool call into one "List of De-Compresser Operations"
+    # table in the Exec Report.
+    "chat_agent_de_compresser":  ("decompresser",   "De-Compresser"),
     "chat_agent_kyber_keygen":   ("kyberkeygen",    "Kyber Keygen"),
     "chat_agent_kyber_cipher":   ("kybercipher",    "Kyber Cipher"),
     "chat_agent_kyber_deciph":   ("kyberdecipher",  "Kyber Deciph"),

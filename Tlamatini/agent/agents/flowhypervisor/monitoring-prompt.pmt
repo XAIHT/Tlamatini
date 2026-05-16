@@ -69,7 +69,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
   Asker, Counter, Summarizer, Mouser, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
-  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier
+  De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -163,6 +163,7 @@ TYPICAL TIMING:
   - Kyber agents: < 30 seconds (CPU-intensive polynomial math)
   - Counter/File-Creator: < 5 seconds
   - J-Decompiler: seconds to several minutes depending on archive size and file count
+  - De-Compresser: seconds to minutes depending on archive size; pure (de)compression workload, no LLM
   - FlowBacker: seconds to minutes depending on session size (flag if > 10 min with no output)
   - Barrier: waits for all source agents to check in (duration depends on source agents; flag if > 10 min with no output)
   - Parametrizer: usually short-lived, but it may remain alive while its source agent is still generating segments or while it is draining several queued source segments sequentially
@@ -176,6 +177,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "STARTED" — agent began fresh
   "REANIMATED (resuming from pause)" — agent resumed after pause (NORMAL)
   "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
+  "📦 DE-COMPRESSER AGENT STARTED" — De-Compresser began a compression or decompression run
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -188,7 +190,8 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   ">>>END_SECTION_<AGENT_TYPE>" — end of a unified structured output section
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
-  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer).
+  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
+  De-Compresser).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -270,6 +273,9 @@ DO NOT report these as problems:
   - "WAITING FOR AGENTS TO STOP" in a looping flow → normal concurrency guard
   - "No files found for pattern" → Deleter/Mover found nothing to process
   - "No files found matching the patterns — nothing to decompile." → J-Decompiler found no matching Java artifacts
+  - De-Compresser logging "📦 DE-COMPRESSER AGENT STARTED" / "✅ Decompressed ..." / "✅ Compressed ..."
+  - De-Compresser logging "⚠️ Password supplied for .gz but ... gzip module" — informational warning when no 7z CLI is on PATH
+  - De-Compresser INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER blocks even when success=false (the agent ALWAYS emits the block so downstream Parametrizers / Raisers can branch on success/failure)
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

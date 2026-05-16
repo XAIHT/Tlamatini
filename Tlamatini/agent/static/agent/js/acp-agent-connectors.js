@@ -1172,6 +1172,25 @@ async function updateJDecompilerConnection(agentId, targetAgentId, action, type 
     }
 }
 
+async function updateDeCompresserConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_de_compresser_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- De-Compresser ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update De-Compresser ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating De-Compresser ${agentId}:`, error);
+    }
+}
+
 async function updateKeyboarderConnection(agentId, targetAgentId, action, type = 'target') {
     try {
         const response = await fetch(`/agent/update_keyboarder_connection/${agentId}/`, {

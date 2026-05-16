@@ -1112,6 +1112,15 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* De-Compresser caption — mirrors .canvas-item.decompresser-agent
+   (slate-indigo -> archival-bronze -> sealing-wax-red -> spring-mint).
+   The first three stops are dark/saturated, so the agent_key MUST also
+   appear in the dark-header thead th selector list below. */
+.exec-report-caption-decompresser {
+    background: linear-gradient(135deg, #1F2A56 0%, #B07A2B 33%, #D7263D 66%, #7CF6B5 100%);
+    color: #ffffff;
+}
+
 .exec-report-caption-dockerer {
     background: linear-gradient(135deg, #2496ED 0%, #FFFFFF 100%);
 }
@@ -1273,6 +1282,7 @@ body.resizing-vertical {
 .exec-report-kybercipher thead th,
 .exec-report-kyberdecipher thead th,
 .exec-report-jdecompiler thead th,
+.exec-report-decompresser thead th,
 .exec-report-keyboarder thead th,
 .exec-report-mouser thead th,
 .exec-report-acpx thead th,
@@ -1336,6 +1346,7 @@ body.resizing-vertical {
 .exec-report-pythonxer .exec-report-cmd      { border-left: 3px solid #306998; }
 .exec-report-unzip .exec-report-cmd          { border-left: 3px solid #F57C00; }
 .exec-report-jdecompiler .exec-report-cmd    { border-left: 3px solid #E74C3C; }
+.exec-report-decompresser .exec-report-cmd   { border-left: 3px solid #D7263D; }
 .exec-report-dockerer .exec-report-cmd       { border-left: 3px solid #2496ED; }
 .exec-report-kuberneter .exec-report-cmd     { border-left: 3px solid #00008B; }
 .exec-report-ssher .exec-report-cmd          { border-left: 3px solid #e53935; }

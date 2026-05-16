@@ -1,0 +1,26 @@
+# De-Compresser Agent Configuration
+#
+# Deterministic short-running agent that either DECOMPRESSES an archive
+# (input=archive file -> output=directory) or COMPRESSES content
+# (input=file or directory -> output=archive file). The direction is
+# inferred from the extension of `input` vs `output`:
+#   - input is .gz / .7z / .zip / .tar.gz / .gz.tar  -> decompress
+#   - output is .gz / .7z / .zip / .tar.gz           -> compress
+# If `passwordless` is true the archive is processed without a password.
+# If `passwordless` is false the password is read from the OS environment
+# variable DE_COMPRESSER_PWD; if that variable is undefined the agent
+# fails fast and proceeds to the end-stage (still triggers target_agents).
+
+# Path to a file (decompression) or to a file/directory (compression).
+input: ""
+
+# Path to a directory (decompression) or to an archive file (compression).
+output: ""
+
+# When true, skip password handling entirely. When false, read the
+# password from the environment variable named DE_COMPRESSER_PWD.
+passwordless: true
+
+# Connection fields
+source_agents: []
+target_agents: []

@@ -2138,3 +2138,30 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #1E3A8A 0%, #7C3AED 33%, #F472B6 66%, #67E8F9 100%);
     box-shadow: 0 6px 15px rgba(124, 58, 237, 0.55);
 }
+
+/* De-Compresser Agent — "Vault Unsealed" 4-color gradient:
+   slate-indigo -> archival-bronze -> sealing-wax-red -> spring-mint.
+   The four stops mirror the four phases of the agent's lifecycle:
+       slate-indigo (#1F2A56)  -> vault depth / encrypted archive at rest
+       archival-bronze (#B07A2B) -> hinge / mechanical extraction
+       sealing-wax-red (#D7263D) -> the seal being broken (password gate)
+       spring-mint (#7CF6B5)    -> contents released / next stage triggered
+   Each stop is in a distinct hue family from every other canvas-item
+   gradient in this file: not the navy/violet/magenta/cyan of acpxer,
+   not the dark-teal/cyan/lime/amber of node_manager, not the
+   pink/purple/blue/cyan of gatewayer, not the dark-teal/teal/gold/orange
+   of gateway-relayer, not the orange/coral/violet/black of acpx,
+   not the red/orange/yellow/green of keyboarder, not the
+   crimson/amber/forest/blue of mouser, not the cyan/sky/amber/crimson of
+   teletlamatini, and not the deep-emerald/green/cyan/gold of whatstlamatini.
+   Verified by inspecting agentic_control_panel.css lines 1870-2138. */
+.canvas-item.decompresser-agent {
+    background-color: #1F2A56;
+    background: linear-gradient(135deg, #1F2A56 0%, #B07A2B 33%, #D7263D 66%, #7CF6B5 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.decompresser-agent:hover {
+    background: linear-gradient(135deg, #2E3B70 0%, #C68B3D 33%, #E84A60 66%, #A6FBCE 100%);
+    box-shadow: 0 6px 15px rgba(215, 38, 61, 0.5);
+}

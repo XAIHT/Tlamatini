@@ -1,0 +1,42 @@
+Please read `create_new_agent.md` first and either analize the code of all of the agents in Tlamatini/agent/agents/* in order to you to understand how they work, how they manage their configuration, and their outcomes on their log files, the follow ALL the steps described on create_new_agent.md skill.  Then you MUST:
+
+Create a new Tlamatini workflow agent named `De-Compresser` with the next indications:
+- IMPORTANT: **use a color scheme for this agent based on a 4 color gradient different from all others present in the project.** (CHECK OTHER AGENTS COLORS IF YOU HAVE DOUBTS IN THE CSS AND JS FILES)
+- pool/base name: `de_compresser`
+- display/class name: `De-Compresser`
+- category:  Action deterministic Agent
+- behavior type: passive, short-running agent
+- source_agents: Just informative
+- starts other agents: Once it completes its core task it must be able to start up all of the agents connected to its output.
+- connection fields: 
+    `source_agents` 
+    `target_agents`
+    `input`
+    `output`
+    `paswordless`
+
+How De-Compresser must operate:
+It must be a short-running deterministic agent for Tlamatini. 
+A) This new agent immediatley after starting it must check 'input' parameter and it must check if it is a file or a directory, then  if it is a file De-Compresser must get the file's extension (ext).
+B) If (ext) is '.gz', '.7z', or '.zip', '.gz.tar' then De-Compresser must:
+    Check the parameter 'passwordless', if it is true then pass to the output-validation-stage (specified below), otherwise if it is false then grab the password from enviromental var named 'DE_COMPRESSER_PWD' (if it is not defined then fail and proceed to end-stage (specified below), then procced to the (output-validation-stage):
+        (output-validation-stage):
+            Validate the 'output' parameter contains a directory and it really exists and has the correct permission to write on it then according to (ext) proceed to the (decompression-stage):
+                (decompression-stage):
+                .gz -> It must validate and decompress (if is the paswordless is false then grab the decompression password from 'DE_COMPRESSER_PWD') the file using 'GNU Zip' decompression; and decompress the file into the directory 'output'
+                .7z -> It must validate and decompress ((if is the paswordless is false then grab the decompression password from 'DE_COMPRESSER_PWD') the file using LZMA or LZMA2 accordding to the mecchanics you additionally implement to detect its format under the .7z set of file-types; and decompress the file(s) into the directory 'output'
+                .zip -> It must validate and decompress (if is the paswordless is false then grab the decompression password from 'DE_COMPRESSER_PWD') the file using the universal support zip according to your best recommendations to decompress the file into the directory 'output'
+                .gz.tar -> It must validate and decompress (if is the paswordless is false then grab the decompression password from 'DE_COMPRESSER_PWD') the file in a temporary file with extension '.tar' and then untape the '.tar' temporary file into the directory 'output'
+
+C) The inverse for compresion must be taken, in this case input must contain a directory or a file, output must be a file of type .gz or .7z, or .zip or .tar.gz, and the decompression password must be taken from 'DE_COMPRESSER_PWD' too, but you must implement the inverse process to B) with it corresponding validations. 
+
+(end-stage):
+    De-Compresser must start up it target agents and then finish its operation. 
+
+**YOU MUST INCLUDE THIS COMPLEX FUNCTIONALITY EXPLAINED INTO THE README.md, BookOfTlamatini.md, agentic_skill.md (FlowCreator), and monitoring-prompt.pmt (FlowHypervisor) and wherever you may consider important file to update.**
+
+**And make sure you apply all of the indications of files about the modifications like views.py, JavaScript related files, etc. instructed in create_new_agent.md skill**
+
+**MAKE A WRAPPER OF THIS AGENT AND EVERYTHING NECCESARY FOR THIS AGENT TO BE ENABLED TO BE USED FOR MULTI-TURN**
+
+Finally lint the Python code  and Java script code with **"python -m ruff check" and "npm run lint"** and fix only the errors reported in their outputs.
