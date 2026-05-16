@@ -136,6 +136,7 @@ urlpatterns = [
     path('update_flowbacker_connection/<str:agent_name>/', secure_post(views.update_flowbacker_connection_view), name='update_flowbacker_connection'),
     path('update_barrier_connection/<str:agent_name>/', secure_post(views.update_barrier_connection_view), name='update_barrier_connection'),
     path('update_j_decompiler_connection/<str:agent_name>/', secure_post(views.update_j_decompiler_connection_view), name='update_j_decompiler_connection'),
+    path('update_de_compresser_connection/<str:agent_name>/', secure_post(views.update_de_compresser_connection_view), name='update_de_compresser_connection'),
     path('detect_installed_apps/', secure_get(views.detect_installed_apps_view), name='detect_installed_apps'),
     path('open_in_app/', secure_post(views.open_in_app_view), name='open_in_app'),
     path('update_keyboarder_connection/<str:agent_name>/', secure_post(views.update_keyboarder_connection_view), name='update_keyboarder_connection'),

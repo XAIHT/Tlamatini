@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -312,6 +312,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **file_extractor** | Extracts raw text from documents (PDF, DOCX, etc.) | YES | Action |
 | **image_interpreter** | Analyzes images with a vision LLM | YES | Action |
 | **j_decompiler** | Decompiles JAR/WAR files | YES | Action |
+| **de_compresser** | Compresses or decompresses .gz / .7z / .zip / .tar.gz archives | YES | Action |
 | **kyber_keygen** | Generates post-quantum cryptographic key pairs | YES | Action |
 | **kyber_cipher** | Encrypts data with Kyber (PQC) | YES | Action |
 | **kyber_decipher** | Decrypts data with Kyber (PQC) | YES | Action |
@@ -1360,6 +1361,25 @@ system_prompt: |
   - For `.jar`, `.war`, and `.ear`, creates a sibling directory named after the archive and decompiles recursively into it
   - Uses the bundled `jd-cli/` asset instead of calling the unified tool layer directly
 
+
+### 54b. De-Compresser
+- **Purpose**: Short-running deterministic action agent that COMPRESSES or DECOMPRESSES an archive. The direction is inferred from the extensions: if `input` ends in `.gz`, `.7z`, `.zip`, `.tar.gz`, or `.gz.tar` the agent decompresses into the `output` directory; if `output` ends in those extensions the agent compresses `input` (a file or a directory) into `output`. Then starts every agent listed in `target_agents`.
+- **Used for**: Packing and unpacking workflow artefacts inside a flow without dropping out to Executer + tar/zip CLIs. The supported archive families are GNU Zip (`.gz` — single file), universal ZIP (`.zip`), 7-Zip with LZMA/LZMA2 (`.7z`), and gzipped tar (`.tar.gz` / `.gz.tar`).
+- **Aimed at**: Automating the "extract, then continue" or "produce a release archive, then ship it" steps that almost every release-pipeline flow needs.
+- **Application example**: A Croner fires at 02:00, Gatewayer waits for an upload, De-Compresser decompresses `incoming.zip` into `D:\staging\extracted` (read DE_COMPRESSER_PWD from env if `passwordless=false`), then starts `file_interpreter_1` to inspect the contents. A symmetric flow uses De-Compresser to *create* `D:\releases\bundle.tar.gz` from `D:\build\artifacts` before Scper uploads it.
+- **Pool name pattern**: `de_compresser_<n>`
+- **Starts other agents**: YES (target_agents fires at end-stage regardless of success/failure — Raisers can branch on the SUCCESS=true|false field of the emitted `INI_SECTION_DE_COMPRESSER` block)
+- **Config parameters**:
+  - `input`: "" (file path for decompression; file OR directory for compression)
+  - `output`: "" (directory path for decompression; archive file path for compression)
+  - `passwordless`: true (when false the agent reads the password from the OS env var DE_COMPRESSER_PWD; a missing env var fails fast to the end-stage)
+  - `source_agents`: [] (upstream agents — informative canvas tracking only)
+  - `target_agents`: [] (downstream agents — fired in the end-stage even if the operation failed)
+- **Special behavior**:
+  - Compound `.tar.gz` / `.gz.tar` is detected BEFORE plain `.gz` so a tarball is never misclassified as a single-file gzip stream
+  - For `.7z` the agent prefers the `7z` CLI (with `-mhe=on` for AES-encrypted headers) and falls back to `py7zr` if the CLI is not on PATH
+  - For password-wrapped `.gz` / `.tar.gz` / `.zip`, the agent routes through `7z` when available (since those formats have no native stdlib encryption layer) and logs a warning when forced to fall back to an unencrypted artefact
+  - Emits a Parametrizer-compatible `INI_SECTION_DE_COMPRESSER` block with `operation`, `extension`, `input`, `output`, `passwordless`, and `success` fields so downstream Parametrizer nodes can feed the outcome into the next agent's `config.yaml`
 
 ### 55. Keyboarder
 - **Purpose**: Issues a sequence of keys to emulate human typing on the keyboard.

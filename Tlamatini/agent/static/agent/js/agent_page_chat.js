@@ -871,6 +871,18 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     } else if (lower === 'j-decompiler' || lower === 'j decompiler') {
         set('directory', pairs.path_filename || pairs.directory);
 
+    // ── De-Compresser ────────────────────────────────────────────────
+    // Template fields: input (file or directory), output (directory or
+    // archive file), passwordless (bool). Password (when passwordless is
+    // false) is read from the DE_COMPRESSER_PWD env var by the agent
+    // itself — it is never persisted in the .flw.
+    } else if (lower === 'de-compresser' || lower === 'de compresser' || lower === 'decompresser') {
+        set('input', pairs.input || pairs.source || pairs.archive);
+        set('output', pairs.output || pairs.destination || pairs.target);
+        if (pairs.passwordless !== undefined) {
+            config.passwordless = String(pairs.passwordless).toLowerCase() === 'true';
+        }
+
     // ── Parametrizer ─────────────────────────────────────────────────
     // Only connection fields — no content params.  source_agent / target_agent
     // are set by _generateAndDownloadFlow.

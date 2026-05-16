@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> A locally-deployed AI developer assistant: hybrid RAG (FAISS + BM25), Multi-Turn tool orchestration, ACPX delegation to external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …), and a visual workflow designer with **60 drag-and-drop agents**.
+> A locally-deployed AI developer assistant: hybrid RAG (FAISS + BM25), Multi-Turn tool orchestration, ACPX delegation to external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, …), and a visual workflow designer with **61 drag-and-drop agents**.
 >
 > Site: **<https://xaiht.org>** · One-minute teaser of a complete Cybersec enhancement crafted by Tlamatini!!!: **<https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s>**
 >
@@ -70,7 +70,7 @@
   - [8.2. The five layers](#82-the-five-layers)
   - [8.3. Multi-Turn execution pipeline](#83-multi-turn-execution-pipeline)
   - [8.4. Agent contracts and the Flow Compiler](#84-agent-contracts-and-the-flow-compiler)
-  - [8.5. Agent catalog (the 60 types, by family)](#85-agent-catalog-the-60-types-by-family)
+  - [8.5. Agent catalog (the 61 types, by family)](#85-agent-catalog-the-61-types-by-family)
 - [9. Embedding-Memory Pre-Flight Guard (GPU hosts)](#9-embedding-memory-pre-flight-guard-gpu-hosts)
   - [9.1. Why this exists](#91-why-this-exists)
   - [9.2. How the check fires (the hook point)](#92-how-the-check-fires-the-hook-point)
@@ -104,7 +104,7 @@
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, and a drag-and-drop workflow designer with 60 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, and a drag-and-drop workflow designer with 61 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -1025,14 +1025,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 8.5. Agent catalog (the 60 types, by family)
+### 8.5. Agent catalog (the 61 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, Telegramer, **TeleTlamatini**, **WhatsTlamatini**, **ACPXer** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, **De-Compresser**, Telegramer, **TeleTlamatini**, **WhatsTlamatini**, **ACPXer** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |

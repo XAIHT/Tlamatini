@@ -144,6 +144,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **File-Extractor** - Raw text extraction (PDF, DOCX, etc.)
 - **Image-Interpreter** - LLM vision analysis
 - **J-Decompiler** - JAR/WAR decompilation (bundled jd-cli)
+- **De-Compresser** - Deterministic short-running archive worker (compress OR decompress). Direction inferred from extensions; supports `.gz` / `.zip` / `.7z` / `.tar.gz` / `.gz.tar`; password from `DE_COMPRESSER_PWD` env var when `passwordless=false`. Always triggers `target_agents` at end-stage, even on failure.
 - **Telegramer** - Sends Telegram messages
 - **TeleTlamatini** - Long-running Telegram bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat
 - **WhatsTlamatini** - Long-running WhatsApp bot (Meta WhatsApp Cloud API) that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat. Mirror of TeleTlamatini swapping Telethon for a stdlib webhook listener (inbound) + Graph-API HTTP POSTs (outbound)

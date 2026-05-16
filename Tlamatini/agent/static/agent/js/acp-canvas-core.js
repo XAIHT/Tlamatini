@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -237,6 +237,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'flowbacker': 'flowbacker-agent',
     'barrier': 'barrier-agent',
     'j-decompiler': 'jdecompiler-agent',
+    'de-compresser': 'decompresser-agent',
     'googler': 'googler-agent',
     // ── ACPX visual node types (added 2026-04-29) ────────────────────
     // 'skill' nodes invoke a registered SKILL.md package via invoke_skill.
@@ -939,6 +940,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'barrier') updateBarrierConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'de-compresser') updateDeCompresserConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'de-compresser') updateDeCompresserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'googler') updateGooglerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'googler') updateGooglerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'counter') updateCounterConnection(targetId, 'source', sourceId, 'remove');
@@ -1048,6 +1051,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'barrier' && !sourceBeingDeleted) updateBarrierConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'j-decompiler' && !targetBeingDeleted) updateJDecompilerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'j-decompiler' && !sourceBeingDeleted) updateJDecompilerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'de-compresser' && !targetBeingDeleted) updateDeCompresserConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'de-compresser' && !sourceBeingDeleted) updateDeCompresserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'googler' && !targetBeingDeleted) updateGooglerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'googler' && !sourceBeingDeleted) updateGooglerConnection(sourceId, targetId, 'remove', 'target');
 
@@ -1514,6 +1519,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'barrier') updateBarrierConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'j-decompiler') updateJDecompilerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'de-compresser') updateDeCompresserConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'de-compresser') updateDeCompresserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'googler') updateGooglerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'googler') updateGooglerConnection(sourceId, targetId, 'add', 'target');
 
