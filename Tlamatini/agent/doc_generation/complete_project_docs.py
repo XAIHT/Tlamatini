@@ -372,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("de-compresser" in subject or "de compresser" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is the new De-Compresser agent: deterministic archive compression/decompression, Multi-Turn exposure, ACP canvas wiring, and a requirements patch that adds the `py7zr` fallback path."
+        )
     if any("version" in subject or "worldwide system" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is the new versioning system: SemVer policy, git-tag sourcing, runtime version surfaces, and build-time embedding across the Windows artefacts."
@@ -545,7 +549,7 @@ HOW_IT_WORKS = [
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
-    "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools.",
+    "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
     "On the next full start-up, `manage.py` can swap a staged database into place before Django imports, while archiving the previous live database under `DB/Older/<timestamp>/`.",
     "ACP flows deploy session-scoped pool instances, wire config values, validate NxN graph rules, and execute through Starter-driven flow semantics.",
@@ -556,6 +560,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "Archive jobs can now be described directly in Multi-Turn or modeled visually in ACP: De-Compresser infers compress vs decompress from the `input` or `output` extension.",
     "Use the DB dropdown when you need a safe database snapshot or want to stage a different `db.sqlite3` for the next start-up without hot-swapping the live SQLite file.",
     "Open `/agentic_control_panel/` to drag agents, connect them, configure each node, validate, start, pause/resume, stop, and save `.flw` workflows.",
     "Use `python build.py`, `python build_uninstaller.py`, and `python build_installer.py` only when producing a packaged Windows release.",
@@ -619,6 +624,18 @@ VERSION_SURFACES_GUIDE = [
     "Operators can now see the running version in the About dialog, the startup banner, the open `GET /agent/version/` health-check endpoint, and Windows file properties on the built executables.",
     "The runtime resolver lives in `Tlamatini/agent/version.py`, while the build-oriented coordination logic lives in the repo-root `versioning.py` and the longer policy notes live in `VERSIONING.md`.",
     "Build overrides are supported in a predictable order: CLI `--version`, then `TLAMATINI_VERSION`, then git describe, then the sentinel `0.0.0+unknown`.",
+]
+
+DE_COMPRESSER_GUIDE = [
+    "De-Compresser is the new 61st workflow agent: a deterministic archive worker that can either compress or decompress depending on which side exposes a recognized archive extension.",
+    "Supported archive families are `.gz`, `.zip`, `.7z`, `.tar.gz`, and `.gz.tar`; file-to-folder extraction and file-or-directory packing are both documented in the README and Book.",
+    "Password handling is explicit: `passwordless=true` skips it, while `passwordless=false` requires the `DE_COMPRESSER_PWD` environment variable and fails fast if the secret is missing.",
+]
+
+DE_COMPRESSER_INTEGRATION_GUIDE = [
+    "The agent is reachable from both operator surfaces: ACP canvas nodes wire through dedicated connection-update views, and checked Multi-Turn can invoke it through `chat_agent_de_compresser`.",
+    "Format engines are practical rather than magical: stdlib `gzip` and `zipfile` cover core cases, `7z` is preferred for encrypted `7z` or `zip`, and `py7zr` was added to `requirements.txt` as the Python fallback.",
+    "Every run emits an `INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER` block and still triggers `target_agents`, so downstream Parametrizer or Raiser logic can branch on `success=true|false` instead of guessing from prose.",
 ]
 
 EMBEDDING_GUARD_GUIDE = [
@@ -688,13 +705,13 @@ ARCHITECTURE_LAYERS = [
     ("Django/Channels", "Authentication, views, WebSockets, session state, message persistence, and ASGI startup."),
     ("RAG and context", "Metadata extraction, text splitting, FAISS/BM25 retrieval, context budgeting, and fallback behavior."),
     ("Multi-Turn engine", "Capability registry, global execution planner, explicit tool loop, answer parsing, and answer-success classification."),
-    ("Tools and agents", "Core tools, MCP context providers, wrapped chat-agent launchers, and the current 60 visual workflow agent templates."),
+    ("Tools and agents", "Core tools, MCP context providers, wrapped chat-agent launchers, and the current visual workflow agent templates."),
     ("Packaging", "PyInstaller build scripts, shortcut registration, `.flw` association, installer, uninstaller, and release folder assembly."),
 ]
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -914,6 +931,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("De-Compresser agent", styles["h2"]))
+    for item in DE_COMPRESSER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("De-Compresser integration and fallback behavior", styles["h2"]))
+    for item in DE_COMPRESSER_INTEGRATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("How to use it", styles["h2"]))
     for item in HOW_TO_USE:
         story.append(bullet(item, styles["bullet"]))
@@ -971,6 +994,9 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Tlamatini currently exposes {context['workflow_agent_count']} workflow-agent templates.", styles["body"]))
     story.append(table([["Category", "Representative agents"]] + AGENT_CATEGORIES, widths=[1.85 * inch, 4.9 * inch], font_size=7.8))
     story.append(p("All workflow agents follow a common deployment pattern: template directory, YAML configuration, session-scoped pool copy, PID/status/log files, target/source wiring, and optional reanimation state.", styles["body"]))
+    story.append(p("De-Compresser spotlight", styles["h2"]))
+    for item in DE_COMPRESSER_GUIDE + DE_COMPRESSER_INTEGRATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(PageBreak())
 
     story.append(p("7. Repository Facts and Git Changes", styles["h1"]))
@@ -1453,6 +1479,11 @@ def build_ppt(context: dict) -> None:
         name="version-foot",
         font="Cascadia Mono",
     )
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "De-Compresser Agent", "today's new archive worker", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", DE_COMPRESSER_GUIDE, THEME["copper"], "decomp-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Integration and fallbacks", DE_COMPRESSER_INTEGRATION_GUIDE, THEME["jade"], "decomp-b", 14)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Ollama Without Admin Rights", "local model setup on Windows", THEME["amber"])
