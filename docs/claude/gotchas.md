@@ -47,7 +47,7 @@ npm run lint
 
 ## Versioning (SemVer 2.0.0, git-tag-derived) — see `VERSIONING.md`
 
-Tlamatini uses SemVer 2.0.0 with git tags (`vMAJOR.MINOR.PATCH`) as the single source of truth. The full contract — including bump rules, the four-tier resolution precedence, the no-tag fallback behaviour (PEP 440 `.devN+gSHA.dirty`), the step-by-step release cut, and the file-by-file integration map — lives in **`VERSIONING.md`** at the repo root. Quick map for AI assistants:
+Tlamatini uses SemVer 2.0.0 with git tags (`vMAJOR.MINOR.PATCH`) as the single source of truth. The full contract — including bump rules, the four-tier resolution precedence, the no-tag fallback behaviour (always the bare base tag — no `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string), the step-by-step release cut, and the file-by-file integration map — lives in **`VERSIONING.md`** at the repo root. Quick map for AI assistants:
 
 - Runtime resolver: `Tlamatini/agent/version.py::get_version()` (no Django dep, safe to import from `manage.py` before Django init).
 - Build-time shim used by all three build scripts: `versioning.py` at the repo root.

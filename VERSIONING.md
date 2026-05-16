@@ -13,7 +13,7 @@ This document is the **authoritative reference** for how Tlamatini is versioned.
    - `Tlamatini/agent/_version.py` (read at runtime by the About dialog, the startup banner, and `/agent/version/`)
    - PyInstaller `--version-file=…` → embedded into the Win32 `VERSIONINFO` resource of `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` (visible in Explorer → Properties → Details)
    - The release folder name (`dist/Tlamatini_Release_v1.3.0/`)
-5. **Fallback**: if you don't tag, the build derives a PEP 440 dev version from `git describe` (e.g. `1.2.0.dev17+gabc1234.dirty`). The build never fails for "no version".
+5. **Fallback**: if you don't tag at HEAD, the version is the **bare base tag** that's reachable from HEAD (e.g. `1.1.1`). No `.devN`, no `+gSHA`, no `.dirty` suffix is ever emitted — the displayed version is always a clean SemVer. If no `v*` tag exists at all, the fallback is `0.0.0`.
 
 ---
 
@@ -29,7 +29,6 @@ Examples:
   1.3.0
   2.0.0-rc.1
   1.3.0+build.482
-  1.2.0.dev17+gabc1234.dirty   ← derived from git describe (PEP 440-style)
 ```
 
 **Bump rules** (when do you increment what?):
@@ -93,7 +92,7 @@ When you run `python build.py`, `build_installer.py`, or `build_uninstaller.py`,
 |---|---|---|---|
 | 1 | **`--version X.Y.Z` CLI flag** | `python build.py --version 1.3.0` | `1.3.0` |
 | 2 | **`$env:TLAMATINI_VERSION`** | `$env:TLAMATINI_VERSION = "1.3.0"; python build.py` | `1.3.0` |
-| 3 | **`git describe --tags --long --dirty --match 'v[0-9]*'`** | `git tag -a v1.3.0 -m "..."; python build.py` | exact tag → `1.3.0`; tag + commits → `1.3.0.dev3+ga1b2c3d`; tag + commits + dirty → `1.3.0.dev3+ga1b2c3d.dirty` |
+| 3 | **`git describe --tags --abbrev=0 --match 'v[0-9]*'`** | `git tag -a v1.3.0 -m "..."; python build.py` | always the bare base tag → `1.3.0` (distance / dirty state never appear in the version string) |
 | 4 | **Sentinel** | _(no git, no tags, no flag)_ | `0.0.0+unknown` |
 
 > `build.py` exports `$env:TLAMATINI_VERSION` so that if you run all three scripts in the same shell, `build_installer.py` and `build_uninstaller.py` see the same version `build.py` decided on — even if you never tagged at all (i.e. the git-derived dev version stays consistent across the three artefacts).
@@ -105,7 +104,7 @@ When `Tlamatini.exe` starts (or `python manage.py runserver` in source mode), `a
 | # | Source | When this fires |
 |---|---|---|
 | 1 | `agent._version.__version__` | Frozen builds always hit this; source-mode hits it only after you've run `build.py` at least once (since the build emits `_version.py`) |
-| 2 | `git describe --tags --long --dirty` against the working tree | Source-mode developer who hasn't run `build.py` |
+| 2 | `git describe --tags --abbrev=0 --match 'v[0-9]*'` against the working tree (always returns the bare base tag — no dev/dirty suffix) | Source-mode developer who hasn't run `build.py` |
 | 3 | `"0.0.0+unknown"` sentinel | Last resort — never raises |
 
 > The runtime resolution and build resolution intentionally **share the same `git describe` helper** so the version you see in the About dialog during development matches what would be baked in if you ran `build.py` right now.
@@ -193,25 +192,22 @@ If any of those four says something different, you missed Step 3 (the tag), or y
 
 ## 5. Step-by-step: what happens if you DON'T specify a version
 
-This is the most common path during development. The system never blocks you for "no version", it just labels your build honestly.
+This is the most common path during development. The system never blocks you for "no version" and it never decorates the version with distance / commit / dirty suffixes — the displayed version is **always** a clean SemVer.
 
 ### 5.1 You ran `build.py` with no tag, no CLI flag, no env var
 
-The build script falls through to **precedence #3** (`git describe`):
+The build script falls through to **precedence #3** (`git describe --tags --abbrev=0 --match 'v[0-9]*'`) — the most recent reachable `v*` tag, stripped to its bare body:
 
-| Situation | git describe output | Tlamatini version |
-|---|---|---|
-| Tags exist; HEAD is exactly on `v1.2.0` | `v1.2.0-0-gabc1234` | `1.2.0` |
-| Tags exist; HEAD is 17 commits past `v1.2.0` (clean tree) | `v1.2.0-17-gabc1234` | `1.2.0.dev17+gabc1234` |
-| Same as above + uncommitted edits | `v1.2.0-17-gabc1234-dirty` | `1.2.0.dev17+gabc1234.dirty` |
-| **No tags at all yet** | _(describe fails)_ | `0.0.0.dev0+gabc1234` |
-| No tags AND dirty tree | _(describe fails)_ | `0.0.0.dev0+gabc1234.dirty` |
-| Not a git repo (e.g. running on a download zip) | _(describe unavailable)_ | `0.0.0+unknown` |
+| Situation | Tlamatini version |
+|---|---|
+| Tags exist; HEAD is exactly on `v1.2.0` | `1.2.0` |
+| Tags exist; HEAD is 17 commits past `v1.2.0` (clean tree) | `1.2.0` |
+| Same as above + uncommitted edits | `1.2.0` |
+| **No tags at all yet** | `0.0.0` |
+| No tags AND dirty tree | `0.0.0` |
+| Not a git repo (e.g. running on a download zip) | `0.0.0+unknown` |
 
-Notes on the dev-version format:
-- The `.devN` prefix is PEP 440 syntax: `1.2.0.dev17` sorts **before** `1.2.0` because PEP 440 treats `.dev` as a development pre-release of the upcoming `1.2.0`.
-- The `+gabc1234` part is the SemVer "build metadata" — PEP 440 calls it the "local version". It's **not used for ordering** (per both specs), but it tells you exactly which commit produced the build.
-- `.dirty` means there were uncommitted edits at build time. **Never ship a `.dirty` build to users.** If you see it on a release build, you forgot to commit something — abort and start over from Step 1.
+There is **no `.devN`, no `+gSHA`, no `.dirty`** in any of these outputs. The version you see in the About dialog, the banner, the `.exe` properties, and `/agent/version/` is always a clean `MAJOR.MINOR.PATCH`. If you cut a release on a tree that has uncommitted edits the audit trail lives in git (commit log, `git status`), not in the version string.
 
 ### 5.2 You ran `build.py` with no tag, BUT in a shell where `$env:TLAMATINI_VERSION` is set
 
@@ -311,9 +307,9 @@ WHERE IT LANDS        dist/Tlamatini_Release_v1.3.0/
                       curl /agent/version/ : {"version":"1.3.0", …}
                       Console banner : --- [VERSION] Tlamatini 1.3.0
 
-NO TAG?               Build still works.  Version becomes
-                      <tag>.dev<N>+g<sha>[.dirty]   (PEP 440 dev version)
-                      or 0.0.0+unknown if no git at all.
+NO TAG AT HEAD?       Build still works.  Version becomes the most recent
+                      reachable v* tag, bare (no dev/sha/dirty suffix), or
+                      0.0.0 if no tags at all (0.0.0+unknown if no git).
 
 OVERRIDE              python build.py --version 2.0.0-rc.1
                       $env:TLAMATINI_VERSION = "2.0.0-rc.1"; python build.py
@@ -328,13 +324,13 @@ UNDO A TAG            git tag -d v1.3.0
 ## 10. FAQ
 
 **Q: I just want to ship a build. Do I really have to learn all this?**
-A: No. Run `python build.py` with no flags and no tags — you'll get a perfectly valid `0.0.0.dev0+g<sha>` build that runs, installs, and shows the right version everywhere. The discipline (Steps 1–6 above) only matters when you start handing builds to other people.
+A: No. Run `python build.py` with no flags — you'll get a clean version (the most recent reachable `v*` tag, e.g. `1.1.1`, or `0.0.0` if there are no tags yet) that runs, installs, and shows the right number everywhere. The discipline (Steps 1–6 above) only matters when you want the version string itself to reflect that you cut a fresh release at exactly this commit.
 
 **Q: Where does `_version.py` come from on a fresh clone?**
 A: It doesn't. The file is gitignored. On a fresh clone, `agent.version.get_version()` falls through to the git-derive path until the first time you run `build.py`. The About dialog, banner, and `/agent/version/` will all show the same git-derived value — so the runtime is **never** stuck on a stale `1.0.0`.
 
-**Q: Why a PEP 440 `.devN` format instead of pure SemVer's `-dev.N`?**
-A: SemVer pre-release identifiers (`-dev.17`) and PEP 440 (`.dev17`) disagree on sort order versus the base version. PEP 440 sorts `1.2.0.dev17 < 1.2.0`, which is what every Windows installer registry and Python tool expects. Pure SemVer pre-releases (`1.2.0-rc.1`) are still SemVer-correct here — we only use the PEP 440 form for **derived dev versions** that the user never types.
+**Q: Why is there no `.devN` / `+gSHA` / `.dirty` suffix on the version string?**
+A: Deliberate. The version surface (About dialog, banner, `.exe` properties, `/agent/version/`) is meant to read as a clean SemVer like `1.1.1`. Distance-from-tag and dirty state are git concerns and stay in git (`git status`, `git describe --long --dirty`). If you want the "this isn't a clean release" signal in the build output itself, pass `--version <something>-rc.1` explicitly.
 
 **Q: What if `python build.py` is run from a directory that isn't the repo root?**
 A: The `versioning.py` shim resolves paths from its own file location, not from `os.getcwd()`. Run it from anywhere.
