@@ -14,9 +14,29 @@ from .global_execution_planner import (
     selected_tool_names_from_plan,
     summarize_global_execution_plan,
 )
-from .global_state import scoped_request_state
+from .global_state import global_state, scoped_request_state
+from .orphan_reaper import reap_orphans
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
+
+
+# Tool names whose invocation is likely to spawn an external console
+# child (and therefore may leave a conhost.exe orphan if the child
+# misbehaves on exit). Running the Tier-1 reaper after EVERY tool call
+# would be wasteful — most tools are pure Python with no subprocess
+# fan-out. The reaper is cheap (low double-digit ms with a few hundred
+# processes on the box), but cheap-times-frequent still matters.
+_PROCESS_SPAWNING_TOOL_NAMES: frozenset = frozenset({
+    "execute_command",
+    "execute_file",
+    "execute_netstat",
+    "unzip_file",
+    "decompile_java",
+    "googler",  # Playwright spawns a Chromium subtree
+    "agent_starter",
+    "agent_stopper",
+    "agent_parametrizer",
+})
 
 
 # ── Tool-name → ACP agent display name mapping ─────────────────────────
@@ -271,6 +291,11 @@ class MultiTurnToolAgentExecutor:
         # when the user toggled the Exec report checkbox on.
         self._exec_report_enabled: bool = False
         self._exec_report_entries: list[Dict[str, Any]] = []
+        # Per-invocation accumulator of Tier-1 orphan-reaper survivors
+        # (processes the executor failed to kill after a tool call).
+        # The consumer flushes this list AFTER it broadcasts the final
+        # answer to the user, surfacing it as a follow-up chat message.
+        self._orphan_survivors: list = []
         # Per-tool invocation counter (populated during invoke()). Complements
         # the consecutive-signature repetition detector: that one catches
         # identical-arg loops, this one catches semantic loops where the LLM
@@ -351,6 +376,37 @@ class MultiTurnToolAgentExecutor:
             return str(values[0])
         return ", ".join(f"{k}={v}" for k, v in tool_input.items() if v not in (None, ""))
 
+    def _reap_after_tool(self, tool_name: str) -> None:
+        """Tier-1 cleanup: after a tool call that may have spawned an
+        external console child, reap any orphaned conhost.exe / dead
+        descendants it left behind.
+
+        Cheap and silent: errors are swallowed (they go to the reaper's
+        own log). Survivors are accumulated on the executor instance so
+        Tier 2 (the consumer's post-answer hook) can surface them to
+        the user in a single follow-up chat message.
+        """
+        if not tool_name:
+            return
+        if (tool_name not in _PROCESS_SPAWNING_TOOL_NAMES
+                and not tool_name.startswith("chat_agent_")
+                and not tool_name.startswith("acp_")):
+            return
+        try:
+            result = reap_orphans(
+                scope=f"tier1:after:{tool_name}",
+                include_self_tree=True,
+                include_pool_scan=False,   # Tier 2/3 do the wider sweep
+                include_console_host_sweep=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("[MultiTurnExecutor] Tier-1 reap raised: %s", exc)
+            return
+        if result.survivors:
+            # Accumulate so the consumer can render one summary at the
+            # end of the request instead of N per-tool pop-ups.
+            self._orphan_survivors.extend(result.survivors)
+
     def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
         tool_name = tool_call.get("name", "")
         tool = self.tool_map.get(tool_name)
@@ -407,6 +463,10 @@ class MultiTurnToolAgentExecutor:
                     "command": self._extract_exec_report_command(tool_input, tool_name),
                     "success": False,
                 })
+            # Tier-1 reap: tool just blew up, almost certainly leaving
+            # half-spawned children behind. Sweep them now so the orphan
+            # count stays bounded across long Multi-Turn loops.
+            self._reap_after_tool(tool_name)
             return json.dumps({
                 "status": "error",
                 "message": f"Tool '{tool_name}' raised an exception: {exc}",
@@ -453,6 +513,11 @@ class MultiTurnToolAgentExecutor:
                 "command": self._extract_exec_report_command(tool_input, tool_name),
                 "success": call_success,
             })
+
+        # Tier-1 reap: tool returned cleanly. Sweep any console-host
+        # orphans left behind by the child process tree (only a no-op
+        # for pure-Python tools — see _PROCESS_SPAWNING_TOOL_NAMES).
+        self._reap_after_tool(tool_name)
 
         if isinstance(result, str):
             return result
@@ -775,11 +840,24 @@ class MultiTurnToolAgentExecutor:
         the entries unconditionally prevents a whitelist-style bug from ever
         silently hiding the data again.
         """
+        # Drop into global_state so the WebSocket consumer can surface
+        # surviving orphan PIDs as a follow-up chat message after it
+        # broadcasts the main answer. The list is small (usually empty)
+        # but bypassing the result_dict/chain whitelist gauntlet keeps
+        # the contract robust against future payload-rebuild drops.
+        try:
+            global_state.set_state(
+                'last_orphan_survivors',
+                list(self._orphan_survivors),
+            )
+        except Exception:  # noqa: BLE001 — never block the answer path
+            pass
         return {
             "output": answer,
             "tool_calls_log": list(self._tool_calls_log),
             "exec_report_enabled": bool(self._exec_report_enabled),
             "exec_report_entries": list(self._exec_report_entries),
+            "orphan_survivors": list(self._orphan_survivors),
         }
 
 

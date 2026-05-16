@@ -312,6 +312,41 @@ class AgentConfig(AppConfig):
                             except Exception:
                                 pass  # Best effort cleanup
                         print(f"--- Cleaned up pools directory on shutdown: {pool_path}")
+
+                    # 4. Tier-3 final sweep: kill any conhost.exe orphans
+                    #    that the tracked / pool-cmdline passes above
+                    #    missed. This is the LAST chance to keep
+                    #    Tlamatini-iconned conhost.exe processes from
+                    #    surviving the parent — once Tlamatini.exe exits
+                    #    the user will see them in Task Manager with our
+                    #    icon and reasonably assume we leaked them.
+                    #
+                    #    Any survivor is logged with name + PID to
+                    #    tlamatini.log so the user can post-mortem the
+                    #    surviving processes if they need to.
+                    try:
+                        from .orphan_reaper import reap_orphans
+                        result = reap_orphans(
+                            scope="tier3:shutdown",
+                            include_self_tree=True,
+                            include_pool_scan=True,
+                            include_console_host_sweep=True,
+                        )
+                        print(
+                            f"--- [Tier-3 reaper] killed={result.killed_count} "
+                            f"survivors={result.survivor_count} "
+                            f"errors={len(result.errors)}"
+                        )
+                        if result.survivors:
+                            print(
+                                "--- [Tier-3 reaper] WARNING: the following "
+                                "Tlamatini-spawned process(es) refused to "
+                                "terminate. End them manually from Task Manager:"
+                            )
+                            for name, pid in result.survivors:
+                                print(f"---   {name} (PID {pid})")
+                    except Exception as reap_err:
+                        print(f"--- [Tier-3 reaper] failed (non-fatal): {reap_err}")
                 except Exception as e:
                     print(f"--- Warning: Failed to cleanup pools on shutdown: {e}")
             

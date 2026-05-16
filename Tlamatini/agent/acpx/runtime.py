@@ -53,6 +53,82 @@ from .windows_spawn import is_executable_resolvable, resolve_command
 logger = logging.getLogger(__name__)
 
 
+def _kill_process_tree(proc) -> None:
+    """Kill ``proc`` and every descendant it spawned.
+
+    Why: CLI wrappers like ``claude`` / ``cursor-agent`` / ``gemini``
+    typically shell out to node.exe or a helper.exe; killing only the
+    top-level Popen handle leaves the helper alive and its conhost.exe
+    orphaned with our icon. We escalate from terminate → kill on each
+    descendant and finally on the parent.
+    """
+    if proc is None:
+        return
+    pid = getattr(proc, "pid", None)
+    descendants = []
+    try:
+        import psutil  # local import: optional dep
+        try:
+            parent = psutil.Process(pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            parent = None
+        if parent is not None:
+            try:
+                descendants = parent.children(recursive=True)
+            except Exception:  # noqa: BLE001
+                descendants = []
+            for child in descendants:
+                try:
+                    child.terminate()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+                except Exception:  # noqa: BLE001
+                    pass
+            psutil.wait_procs(descendants, timeout=2)
+            for child in descendants:
+                if child.is_running():
+                    try:
+                        child.kill()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                    except Exception:  # noqa: BLE001
+                        pass
+    except ImportError:
+        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("[ACPX] _kill_process_tree(pid=%s) descendant sweep failed: %s",
+                     pid, exc)
+    try:
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except Exception:  # noqa: BLE001
+            pass
+    except Exception:  # noqa: BLE001
+        pass
+    if proc.poll() is None:
+        try:
+            proc.kill()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _windows_creationflags() -> int:
+    """Suppress conhost.exe orphans for every ACPX child on Windows.
+
+    Why: Tlamatini's child Python agents run with DETACHED_PROCESS / no
+    console attached. When THAT process calls Popen without
+    CREATE_NO_WINDOW, Windows allocates a brand-new console for the
+    child — which leaves a conhost.exe behind even after the child
+    exits. Stacking CREATE_NO_WINDOW + CREATE_NEW_PROCESS_GROUP gives us
+    both no-window guarantees and the ability to send Ctrl+Break-style
+    signals to the group without bleeding into our own console.
+    """
+    if os.name != "nt":
+        return 0
+    return subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
+
+
 # ── Event trimming ─────────────────────────────────────────────────────
 # Cap each event body so a chatty REPL (e.g. gemini paste-back of a long
 # document) cannot blow the LLM context on the next iteration. The trim
@@ -223,6 +299,7 @@ class AcpSession:
                 text=True,
                 bufsize=1,
                 shell=resolved.use_shell,
+                creationflags=_windows_creationflags(),
             )
             self.record.pid = self.proc.pid
             self.record.last_active_at = now_epoch()
@@ -273,14 +350,11 @@ class AcpSession:
                         self.record.session_id, self.spec.agent_id)
             return
         try:
-            try:
-                self.proc.terminate()
-                self.proc.wait(timeout=3)
-            except Exception:
-                try:
-                    self.proc.kill()
-                except Exception:
-                    pass
+            # Tree-kill: terminate the child AND every descendant it
+            # spawned (CLI wrappers like ``claude`` often launch a
+            # node.exe/cmd.exe helper that owns its own conhost). Only
+            # killing self.proc leaves the helper + conhost orphaned.
+            _kill_process_tree(self.proc)
         finally:
             self.record.closed = True
             self.record.last_active_at = now_epoch()
@@ -515,6 +589,7 @@ class AcpSession:
                     encoding="utf-8",
                     errors="replace",
                     shell=resolved.use_shell,
+                    creationflags=_windows_creationflags(),
                 )
             except FileNotFoundError as e:
                 yield {"event": "error", "text": str(e)}
@@ -547,10 +622,9 @@ class AcpSession:
                 )
             except subprocess.TimeoutExpired:
                 timed_out = True
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
+                # Tree-kill so any helper process the CLI forked dies
+                # too — otherwise its conhost is left as an orphan.
+                _kill_process_tree(proc)
                 try:
                     stdout_text, stderr_text = proc.communicate(timeout=5)
                 except Exception:

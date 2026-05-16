@@ -2528,12 +2528,21 @@ def execute_starter_agent_view(request, agent_name):
         agent_env = get_agent_env()
         
         if sys.platform.startswith('win'):
-            # Windows: create new process group
+            # Windows: detached, no console — without CREATE_NO_WINDOW the
+            # child python.exe would inherit a console and leave conhost.exe
+            # orphans bearing the Tlamatini icon when the request finishes.
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
                 env=agent_env,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=(
+                    subprocess.CREATE_NEW_PROCESS_GROUP
+                    | subprocess.CREATE_NO_WINDOW
+                    | subprocess.DETACHED_PROCESS
+                ),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         else:
             # Unix: start new session
@@ -2543,7 +2552,7 @@ def execute_starter_agent_view(request, agent_name):
                 env=agent_env,
                 start_new_session=True
             )
-        
+
         # Write PID file for fast status checking
         _write_pid_file(agent_dir, process.pid)
         print(f"[EXECUTE] Started {pool_folder_name} with PID: {process.pid}")
@@ -2787,12 +2796,21 @@ def execute_ender_agent_view(request, agent_name):
         agent_env = get_agent_env()
         
         if sys.platform.startswith('win'):
-            # Windows: create new process group
+            # Windows: detached, no console — without CREATE_NO_WINDOW the
+            # child python.exe would inherit a console and leave conhost.exe
+            # orphans bearing the Tlamatini icon when the request finishes.
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
                 env=agent_env,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=(
+                    subprocess.CREATE_NEW_PROCESS_GROUP
+                    | subprocess.CREATE_NO_WINDOW
+                    | subprocess.DETACHED_PROCESS
+                ),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         else:
             # Unix: start new session
@@ -2802,7 +2820,7 @@ def execute_ender_agent_view(request, agent_name):
                 env=agent_env,
                 start_new_session=True
             )
-        
+
         # Write PID file for fast status checking
         _write_pid_file(agent_dir, process.pid)
         print(f"[EXECUTE] Started {pool_folder_name} with PID: {process.pid}")
@@ -3507,12 +3525,20 @@ def restart_agent_view(request, agent_name):
         python_cmd = get_python_command()
         
         if sys.platform.startswith('win'):
-            # Windows: create new process group
+            # Windows: detached, no console — see views.py Starter/Ender
+            # spawn for why CREATE_NO_WINDOW is mandatory here.
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
                 env=get_agent_env(),
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=(
+                    subprocess.CREATE_NEW_PROCESS_GROUP
+                    | subprocess.CREATE_NO_WINDOW
+                    | subprocess.DETACHED_PROCESS
+                ),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         else:
             # Unix: start new session
@@ -6585,11 +6611,20 @@ def execute_flowcreator_view(request, agent_name):
         agent_env = get_agent_env()
 
         if sys.platform.startswith('win'):
+            # Detached + no-window — prevents conhost.exe orphans (see
+            # views.py Starter/Ender spawn for the contract).
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
                 env=agent_env,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=(
+                    subprocess.CREATE_NEW_PROCESS_GROUP
+                    | subprocess.CREATE_NO_WINDOW
+                    | subprocess.DETACHED_PROCESS
+                ),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         else:
             process = subprocess.Popen(
