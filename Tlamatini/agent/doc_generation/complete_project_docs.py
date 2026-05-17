@@ -372,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("unreal" in subject or "unreal-engine mcp" in subject or "unreal engine enabled" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is Unreal MCP support: the new Unrealer agent, a chat-wrapped `chat_agent_unrealer` tool, canvas wiring, a seeded end-to-end demo prompt, and a direct TCP bridge into a live Unreal Engine 5 editor."
+        )
     if any("orphan" in subject or "cleanup" in subject or "sec/perf" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is orphan-process cleanup on Windows: a three-tier reaper, hardened detached spawn sites, ACPX process-tree termination, and user-visible survivor reporting when anything truly refuses to die."
@@ -540,6 +544,7 @@ WHAT_IT_DOES = [
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
+    "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
     "Actively reaps orphaned Windows console-host and pool-child processes so long Multi-Turn or ACPX sessions do not leave misleading Tlamatini-icon ghosts in Task Manager.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
@@ -555,6 +560,7 @@ HOW_IT_WORKS = [
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
+    "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
     "After spawn-capable tool calls and again after the final answer, the orphan reaper can sweep dead descendants, orphaned `conhost.exe` companions, and stale pool-linked processes without ever raising into the chat path.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
     "On the next full start-up, `manage.py` can swap a staged database into place before Django imports, while archiving the previous live database under `DB/Older/<timestamp>/`.",
@@ -566,6 +572,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
     "Archive jobs can now be described directly in Multi-Turn or modeled visually in ACP: De-Compresser infers compress vs decompress from the `input` or `output` extension.",
     "If a second post-answer warning bubble ever lists surviving `name + PID` entries, treat it as an honest cleanup report and end the listed processes manually from Task Manager if needed.",
     "Use the DB dropdown when you need a safe database snapshot or want to stage a different `db.sqlite3` for the next start-up without hot-swapping the live SQLite file.",
@@ -643,6 +650,24 @@ DE_COMPRESSER_INTEGRATION_GUIDE = [
     "The agent is reachable from both operator surfaces: ACP canvas nodes wire through dedicated connection-update views, and checked Multi-Turn can invoke it through `chat_agent_de_compresser`.",
     "Format engines are practical rather than magical: stdlib `gzip` and `zipfile` cover core cases, `7z` is preferred for encrypted `7z` or `zip`, and `py7zr` was added to `requirements.txt` as the Python fallback.",
     "Every run emits an `INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER` block and still triggers `target_agents`, so downstream Parametrizer or Raiser logic can branch on `success=true|false` instead of guessing from prose.",
+]
+
+UNREAL_MCP_GUIDE = [
+    "Unreal MCP is a UE5 plugin that runs inside the editor and listens on `127.0.0.1:55557` for one JSON command per TCP connection; Tlamatini is the client side of that link, not the plugin host.",
+    "The new Unrealer agent is the 62nd workflow agent and exposes the upstream 28-command surface: actor manipulation, Blueprint authoring and node wiring, input mappings, and UMG widget building.",
+    "The same integration is available in both operator surfaces: checked Multi-Turn via `chat_agent_unrealer`, and ACP canvas flows via the visual Unrealer node plus Parametrizer chaining.",
+]
+
+UNREAL_INSTALL_GUIDE = [
+    "Install the upstream plugin into `<YourProject>/Plugins/UnrealMCP/`, enable it from `Edit -> Plugins`, restart UE5, and confirm the Output Log says `UnrealMCP listening on 127.0.0.1:55557`.",
+    "Tlamatini does not compile or embed the plugin; the Unreal editor must already be running with the listener bound before any Unrealer call can succeed.",
+    "A seeded smoke test ships in the Prompts table: `Unreal MCP End-to-End Editor Drive` walks through sanity-check, actor spawn, Blueprint creation/compile, and UMG widget assembly.",
+]
+
+UNREAL_RUNTIME_GUIDE = [
+    "Each Unrealer run is one command: load `config.yaml`, open a fresh TCP socket, send `{\"type\": command, \"params\": params}`, read until valid JSON arrives, and log one atomic `INI_SECTION_UNREALER<<< ... >>>END_SECTION_UNREALER` block.",
+    "The wrapped-tool path stores chat runs under `agent/agents/pools/_chat_runs_/unrealer_<seq>_<id>/`, while visual flows use normal `unrealer_<n>` pool folders and can chain response fields through Parametrizer mappings.",
+    "Exec Report treats Unrealer as its own row family, and troubleshooting stays concrete: connection-refused means the plugin is not listening, while read-timeout usually means UE5's game thread is busy.",
 ]
 
 ORPHAN_REAPER_GUIDE = [
@@ -731,7 +756,7 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, unrealer, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -957,6 +982,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("De-Compresser integration and fallback behavior", styles["h2"]))
     for item in DE_COMPRESSER_INTEGRATION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Unreal MCP and the Unrealer agent", styles["h2"]))
+    for item in UNREAL_MCP_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Installing the UE5 plugin and smoke-testing it", styles["h2"]))
+    for item in UNREAL_INSTALL_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Orphan-process cleanup", styles["h2"]))
     for item in ORPHAN_REAPER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1002,6 +1033,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("Reconnect and restart safeguards", styles["h2"]))
     for item in RECENT_RUNTIME_SAFEGUARDS:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Unreal MCP runtime behavior", styles["h2"]))
+    for item in UNREAL_RUNTIME_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Orphan reaper runtime behavior", styles["h2"]))
     for item in ORPHAN_REAPER_GUIDE + ORPHAN_PREVENTION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1023,6 +1057,9 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Tlamatini currently exposes {context['workflow_agent_count']} workflow-agent templates.", styles["body"]))
     story.append(table([["Category", "Representative agents"]] + AGENT_CATEGORIES, widths=[1.85 * inch, 4.9 * inch], font_size=7.8))
     story.append(p("All workflow agents follow a common deployment pattern: template directory, YAML configuration, session-scoped pool copy, PID/status/log files, target/source wiring, and optional reanimation state.", styles["body"]))
+    story.append(p("Unrealer spotlight", styles["h2"]))
+    for item in UNREAL_MCP_GUIDE + UNREAL_RUNTIME_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("De-Compresser spotlight", styles["h2"]))
     for item in DE_COMPRESSER_GUIDE + DE_COMPRESSER_INTEGRATION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1516,6 +1553,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "De-Compresser Agent", "today's new archive worker", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", DE_COMPRESSER_GUIDE, THEME["copper"], "decomp-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Integration and fallbacks", DE_COMPRESSER_INTEGRATION_GUIDE, THEME["jade"], "decomp-b", 14)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Unreal MCP And Unrealer", "today's UE5 bridge", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", UNREAL_MCP_GUIDE, THEME["jade"], "unreal-a", 14)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Install and runtime path", UNREAL_INSTALL_GUIDE + UNREAL_RUNTIME_GUIDE[:1], THEME["copper"], "unreal-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Orphan-Process Cleanup", "today's Windows process-hygiene work", THEME["amber"])
