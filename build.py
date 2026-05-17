@@ -504,6 +504,8 @@ def main():
         '--hidden-import=unstructured',
         '--hidden-import=filesearch_pb2',
         '--hidden-import=filesearch_pb2_grpc',
+        '--hidden-import=tkinter',
+        '--hidden-import=_tkinter',
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',
