@@ -65,6 +65,17 @@ params:
   text_block_name: ''
   button_name: ''
   text: ''
+  # UMG widget placement / styling — added so chat-driven dotted overrides
+  # (``params.path='/Game/UI'``, ``params.position=[40,40]``, etc.) resolve
+  # into existing YAML keys instead of being dropped on the floor by the
+  # Flow Compiler. The plugin C++ side accepts these names verbatim.
+  path: ''
+  position: []
+  size: []
+  font_size: 0
+  color: []
+  background_color: []
+  z_order: 0
 
 # Timeouts (seconds)
 connect_timeout: 5
