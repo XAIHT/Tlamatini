@@ -515,6 +515,23 @@ def acp_relay(session_id_src: str, session_id_dst: str,
 
 
 # ── Skills tools ──────────────────────────────────────────────────────
+def _disabled_skill_names() -> set[str]:
+    """
+    Return the set of skill names whose Skill DB row has enabled=False.
+    Best-effort: returns empty set on any failure so the tool surface
+    degrades open (a broken admin layer never silently hides skills).
+    The Skill DB table is the same toggle layer the ACPX-Skills menu
+    writes to via the WebSocket `set-skills` channel.
+    """
+    try:
+        from agent.models import Skill as SkillRow
+        return {
+            row.name for row in SkillRow.objects.filter(enabled=False).only("name")
+        }
+    except Exception:
+        return set()
+
+
 @tool
 def list_skills(filter_keywords: str = "") -> str:
     """
@@ -527,6 +544,9 @@ def list_skills(filter_keywords: str = "") -> str:
         from agent.skills.registry import skill_registry
         skill_registry.reload_if_stale()
         listing = skill_registry.list(filter_keywords)
+        disabled = _disabled_skill_names()
+        if disabled:
+            listing = [s for s in listing if s.get("name") not in disabled]
         return _ok({"skills": listing})
     except Exception as e:
         logger.exception("[list_skills] unexpected error")
@@ -558,6 +578,12 @@ def invoke_skill(skill_name: str,
         skill = skill_registry.get(skill_name)
         if skill is None:
             return _err(f"unknown skill '{skill_name}'", code="UNKNOWN_SKILL")
+        if skill_name in _disabled_skill_names():
+            return _err(
+                f"skill '{skill_name}' is disabled in the ACPX-Skills "
+                "Configure dialog; re-enable it to invoke",
+                code="SKILL_DISABLED",
+            )
         # Coerce args_json to a dict, accepting:
         #   - dict        → use directly
         #   - JSON string → parse

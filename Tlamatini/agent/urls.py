@@ -142,4 +142,11 @@ urlpatterns = [
     path('open_in_app/', secure_post(views.open_in_app_view), name='open_in_app'),
     path('update_keyboarder_connection/<str:agent_name>/', secure_post(views.update_keyboarder_connection_view), name='update_keyboarder_connection'),
     path('update_googler_connection/<str:agent_name>/', secure_post(views.update_googler_connection_view), name='update_googler_connection'),
+    # ── ACPX-Skills admin (browse + diagnostics + reload) ──
+    # Toggle (enable/disable) goes through the existing WebSocket `set-skills`
+    # channel for symmetry with Mcps/Agents/Tools; HTTP here is read-mostly.
+    path('skills/', secure_get(views.list_skills_view), name='list_skills'),
+    path('skills/<str:skill_name>/', secure_get(views.skill_detail_view), name='skill_detail'),
+    path('skills/_/reload/', secure_post(views.reload_skills_view), name='reload_skills'),
+    path('skills/_/diagnostics/', secure_get(views.skills_diagnostics_view), name='skills_diagnostics'),
 ]

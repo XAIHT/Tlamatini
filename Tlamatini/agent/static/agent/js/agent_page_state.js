@@ -176,6 +176,7 @@ let mcp1_enabled = false;
 let mcp2_enabled = false;
 let tools = [];
 let agents = [];
+let skills = []; // populated by `type: 'skill'` system messages — see agent_page_chat.js
 
 // --- Constants ---
 const loadCatalogOfPrompts = null; // eslint-disable-line no-unused-vars

@@ -4961,3 +4961,193 @@ class AgentDescriptionsViewIntegrationTests(TestCase):
             "system would be broken. Check that agents_descriptions.md exists "
             "at the project root (or next to the executable in frozen mode).",
         )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# ACPX-Skills admin menu — HTTP endpoints + tool-surface gating
+# ──────────────────────────────────────────────────────────────────────
+class SkillsAdminEndpointTests(TestCase):
+    """
+    Covers the four HTTP endpoints behind the ACPX-Skills navbar dropdown:
+      - GET /agent/skills/                  list (Browse pane)
+      - GET /agent/skills/<name>/           detail (Browse detail pane)
+      - POST /agent/skills/_/reload/        re-run boot_skills()
+      - GET /agent/skills/_/diagnostics/    cross-check report
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username="skills-admin", password="testpw"
+        )
+        from agent.acpx.service import boot_skills
+        try:
+            boot_skills()
+        except Exception:
+            pass
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username="skills-admin", password="testpw")
+
+    def test_list_endpoint_returns_skills_array(self):
+        resp = self.client.get("/agent/skills/")
+        self.assertEqual(resp.status_code, 200)
+        payload = json.loads(resp.content)
+        self.assertIn("skills", payload)
+        self.assertIn("count", payload)
+        self.assertIn("orphan_db_rows", payload)
+        if payload["count"] > 0:
+            row = payload["skills"][0]
+            for key in ("name", "description", "runtime", "enabled",
+                        "requires_tools", "max_iterations"):
+                self.assertIn(key, row)
+
+    def test_list_endpoint_requires_auth(self):
+        anon = Client()
+        resp = anon.get("/agent/skills/")
+        self.assertIn(resp.status_code, (302, 403))
+
+    def test_detail_endpoint_404_for_unknown_skill(self):
+        resp = self.client.get("/agent/skills/__definitely_not_a_skill__/")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_detail_endpoint_returns_body_for_known_skill(self):
+        from agent.skills.registry import skill_registry
+        skill_registry.reload_if_stale()
+        any_skill = next(iter(skill_registry.all()), None)
+        if any_skill is None:
+            self.skipTest("No SKILL.md packages on disk in this environment.")
+        resp = self.client.get(f"/agent/skills/{any_skill.name}/")
+        self.assertEqual(resp.status_code, 200)
+        payload = json.loads(resp.content)
+        self.assertEqual(payload["name"], any_skill.name)
+        self.assertIn("body", payload)
+        self.assertIn("inputs", payload)
+        self.assertIn("outputs", payload)
+        self.assertIn("permissions", payload)
+
+    def test_reload_endpoint_succeeds(self):
+        resp = self.client.post("/agent/skills/_/reload/")
+        self.assertEqual(resp.status_code, 200)
+        payload = json.loads(resp.content)
+        self.assertTrue(payload["ok"])
+        self.assertIn("skills_loaded", payload)
+        self.assertIn("db_rows_after", payload)
+
+    def test_reload_endpoint_rejects_get(self):
+        resp = self.client.get("/agent/skills/_/reload/")
+        self.assertIn(resp.status_code, (405, 403))
+
+    def test_diagnostics_endpoint_returns_expected_keys(self):
+        resp = self.client.get("/agent/skills/_/diagnostics/")
+        self.assertEqual(resp.status_code, 200)
+        payload = json.loads(resp.content)
+        for key in (
+            "skill_count", "db_row_count",
+            "missing_tools", "missing_mcps", "unknown_acpx_agents",
+            "orphan_db_rows", "tools_known", "mcps_known", "acpx_agents_known",
+        ):
+            self.assertIn(key, payload)
+
+
+class SkillsToolSurfaceGatingTests(TestCase):
+    """
+    Verifies the `Skill.enabled = False` toggle hides the skill from
+    list_skills and causes invoke_skill to return SKILL_DISABLED.
+    """
+
+    def test_list_skills_hides_disabled_rows(self):
+        from agent.models import Skill as SkillRow
+        from agent.acpx.tools import list_skills
+        from agent.acpx.service import boot_skills
+        try:
+            boot_skills()
+        except Exception:
+            pass
+        any_row = SkillRow.objects.first()
+        if any_row is None:
+            self.skipTest("No Skill DB rows in this environment.")
+        prev = any_row.enabled
+        try:
+            any_row.enabled = False
+            any_row.save(update_fields=["enabled"])
+            envelope = json.loads(list_skills.func(""))
+            self.assertTrue(envelope.get("ok"))
+            names = {s["name"] for s in envelope.get("skills", [])}
+            self.assertNotIn(any_row.name, names,
+                             "Disabled skill leaked through list_skills filter")
+        finally:
+            any_row.enabled = prev
+            any_row.save(update_fields=["enabled"])
+
+    def test_invoke_skill_rejects_disabled(self):
+        from agent.models import Skill as SkillRow
+        from agent.acpx.tools import invoke_skill
+        from agent.acpx.service import boot_skills
+        try:
+            boot_skills()
+        except Exception:
+            pass
+        any_row = SkillRow.objects.first()
+        if any_row is None:
+            self.skipTest("No Skill DB rows in this environment.")
+        prev = any_row.enabled
+        try:
+            any_row.enabled = False
+            any_row.save(update_fields=["enabled"])
+            envelope = json.loads(invoke_skill.func(any_row.name, "{}"))
+            self.assertFalse(envelope.get("ok"))
+            self.assertEqual(envelope.get("code"), "SKILL_DISABLED")
+        finally:
+            any_row.enabled = prev
+            any_row.save(update_fields=["enabled"])
+
+    def test_invoke_skill_unknown_returns_unknown_skill(self):
+        from agent.acpx.tools import invoke_skill
+        envelope = json.loads(invoke_skill.func("__definitely_unknown__", "{}"))
+        self.assertFalse(envelope.get("ok"))
+        self.assertEqual(envelope.get("code"), "UNKNOWN_SKILL")
+
+
+class SkillsNavbarTemplateContractTests(TestCase):
+    """
+    Pin the agent_page.html structure so a careless template edit doesn't
+    silently drop the ACPX-Skills menu.
+    """
+    TEMPLATE = (
+        Path(__file__).resolve().parent / "templates" / "agent" / "agent_page.html"
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.text = cls.TEMPLATE.read_text(encoding="utf-8")
+
+    def test_dropdown_present(self):
+        self.assertIn('id="skills-menu-button"', self.text)
+        self.assertIn(">ACPX-Skills<", self.text)
+
+    def test_all_four_menu_items_present(self):
+        for handler in (
+            "OpenSkillsBrowseDialog",
+            "OpenSkillsConfigureDialog",
+            "OpenSkillsDiagnosticsDialog",
+            "ReloadSkillRegistry",
+        ):
+            self.assertIn(handler + "(event)", self.text,
+                          f"Menu item {handler} missing from template")
+
+    def test_dialog_containers_present(self):
+        for div_id in (
+            "skills-configure-dialog-message",
+            "skills-browse-dialog-message",
+            "skills-diagnostics-dialog-message",
+        ):
+            self.assertIn(f'id="{div_id}"', self.text,
+                          f"Dialog container {div_id} missing")
+
+    def test_assets_loaded(self):
+        self.assertIn("skills_dialog.js", self.text)
+        self.assertIn("skills_dialog.css", self.text)
+

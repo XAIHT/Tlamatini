@@ -388,6 +388,41 @@ The full visual integration (right-click menu wiring, configuration dialog popul
 
 ---
 
+## 6.5 The ACPX-Skills admin menu (added 2026-05-17)
+
+The Phase-5 visual surface is still future work, but the **operator-facing** surface for the skill catalog has landed. The chat navbar has a fourth dropdown, **ACPX-Skills**, between **Agents** and **Config**, with four entries:
+
+| Entry | Backing | What it does |
+|---|---|---|
+| **Browse Skills** | `GET /agent/skills/` + `GET /agent/skills/<name>/` | Two-pane modal: search-filterable skill list + detail pane (frontmatter, requires, inputs/outputs, permissions, body). Pure read. |
+| **Configure Skills** | WebSocket `set-skills` (mirrors `set-mcps` / `set-agents` / `set-tools`) | Checkbox-grid modal toggling `Skill.enabled`. Disabled skills are filtered from `list_skills` and rejected by `invoke_skill` with `{"ok":false,"code":"SKILL_DISABLED"}`. |
+| **Diagnostics** | `GET /agent/skills/_/diagnostics/` | Cross-check report: missing tool/MCP deps (against disabled `Tool` / `Mcp` rows), unknown `acpx_agent` values, orphan `Skill` rows. |
+| **Reload Registry** | `POST /agent/skills/_/reload/` | Re-runs `agent/acpx/service.py::boot_skills()` — rescans `agent/skills_pkg/`, refreshes Skill rows, prunes orphans. No server restart needed; `enabled` toggles preserved. |
+
+### What it changes about §7 (day-one) and §10 (runbook)
+
+- §7.5 (smoke-test `hello-world`): instead of typing into the chat, you can now hit **Browse Skills** to confirm `hello-world` is loaded, then **Configure Skills** to verify it's enabled. The chat `list_skills` + `invoke_skill` flow still works exactly the same.
+- §10.2 ("a skill is failing"): **Diagnostics** is now the first place to check before opening the audit NDJSON. Most failures (disabled `requires_tools`, missing MCP, unknown `acpx_agent`) show up there before they show up in the audit log.
+
+### The constraint that matters most
+
+The `Skill` DB row already existed in this commit (the `Skill` model in `agent/models.py` and migration `0071_acpx_skills.py` are both pre-existing). The admin UI **only ever writes `Skill.enabled`** — every other column (`description`, `runtime`, `acpx_agent`, `frontmatter_json`, `body_sha256`) is owned by `boot_skills()` and refreshed from the SKILL.md on disk on every reload. The disk is the only source of truth for permissions, budgets, and body. **Do not extend the dialog to override SKILL.md fields from the browser** — the rule is "DB only for enumeration and enable/disable like MCPs/Agents". If you want to change a permission, edit the SKILL.md and click Reload.
+
+### Files touched (incremental on top of the original commit)
+
+- `agent/views.py` — `list_skills_view`, `skill_detail_view`, `reload_skills_view`, `skills_diagnostics_view`
+- `agent/urls.py` — 4 new routes
+- `agent/consumers.py` — `skill_establishment()`, `get_all_skills()`, `save_skill()`, `set-skills` handler, establishment loops in both rebuild paths
+- `agent/acpx/tools.py` — `_disabled_skill_names()` helper + gating clauses in `list_skills` / `invoke_skill` (fails OPEN on DB exception)
+- `agent/templates/agent/agent_page.html` — navbar dropdown + 3 dialog containers + asset includes
+- `agent/static/agent/js/skills_dialog.js` — 4 dialogs in ~360 lines
+- `agent/static/agent/js/{agent_page_state,agent_page_init,agent_page_chat}.js` — `skills` global + entry points + `type:'skill'` system-message handler
+- `agent/static/agent/css/skills_dialog.css` — styling
+- `eslint.config.mjs` — 11 new globals
+- Coverage: 14 tests in `agent/tests.py` (`SkillsAdminEndpointTests`, `SkillsToolSurfaceGatingTests`, `SkillsNavbarTemplateContractTests`)
+
+---
+
 ## 7. Day-one usage walkthrough (for dummies)
 
 ### 7.1 Install one external coding-agent CLI

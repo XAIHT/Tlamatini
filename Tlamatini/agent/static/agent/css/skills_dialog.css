@@ -1,0 +1,325 @@
+/* ============================================================
+ * skills_dialog.css — ACPX-Skills admin dialogs
+ *
+ * Three dialogs sharing one stylesheet:
+ *   #skills-configure-dialog-message   (checkbox grid; mirrors Mcps/Tools/Agents)
+ *   #skills-browse-dialog-message      (list + detail pane)
+ *   #skills-diagnostics-dialog-message (cross-check report)
+ *
+ * The standardized chrome (frame, titlebar, close X, buttonpane, .ui-button
+ * base) is owned by `agent_page.css` (`.ui-dialog`-scoped rules) and applies
+ * to these three dialogs automatically. JS applies `DIALOG_BUTTON_CSS` (teal
+ * #55BBAA, matches Continue / Cancel / Save / Close) via the `create:` hook.
+ *
+ * Palette used here matches the rest of the app:
+ *   #ffffff   primary text (headings, names, strong)
+ *   #e0e0e0   body text (descriptions, table cells)
+ *   #b0b0b0   muted / metadata
+ *   #55bbaa   teal accent (interactive highlights, mirroring DIALOG_BUTTON_CSS)
+ *   #4a4f5c   primary surface (inherits from .ui-dialog)
+ *   #444853   darker surface (inherits from .ui-dialog-titlebar)
+ * ============================================================ */
+
+/* ----- Configure: checkbox grid ----------------------------- */
+/*
+ * Each grid cell is a flex container so the checkbox sits at the
+ * top-left and the label fills the rest. `min-width: 0` on the cell
+ * AND the label is what lets the grid `minmax(0, 1fr)` track actually
+ * shrink the cell when description text would otherwise force it to
+ * grow past its allotment (the horizontal-overlap fix).
+ */
+#skills-configure-list > li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+    padding: 4px 0;
+}
+#skills-configure-list > li > input[type="checkbox"] {
+    margin-top: 4px;
+    flex-shrink: 0;
+    accent-color: #55BBAA;
+}
+.skill-config-label {
+    cursor: pointer;
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+    text-align: left;
+}
+.skill-config-name {
+    font-weight: 600;
+    color: #ffffff;
+    display: block;
+    font-size: 0.95em;
+}
+.skill-config-desc {
+    color: #b0b0b0;
+    font-size: 0.85em;
+    display: block;
+    margin-top: 2px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* ----- Browse: list + detail layout ------------------------- */
+#skills-browse-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    margin-bottom: 10px;
+}
+#skills-browse-search {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.20);
+    color: #ffffff;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.95em;
+    outline: none;
+}
+#skills-browse-search:focus {
+    border-color: #55BBAA;
+    box-shadow: 0 0 0 2px rgba(85, 187, 170, 0.25);
+}
+.skills-browse-count {
+    font-size: 0.85em;
+    color: #b0b0b0;
+    flex-shrink: 0;
+}
+
+/*
+ * The browse dialog uses flexbox top-to-bottom so the content area
+ * always fills exactly the remaining space inside the jQuery-UI
+ * `.ui-dialog-content` host (which has its own padding + title bar +
+ * buttonpane). The previous revision used `height: calc(80vh - 130px)`
+ * which over-shot the available area, pushing the layout into the
+ * buttonpane and making the Close button float over the right pane.
+ *
+ * `min-height: 0` on the layout AND the two panes is what lets the
+ * flex children actually shrink past their content size and scroll
+ * internally rather than overflowing the dialog frame.
+ */
+#skills-browse-dialog-message {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    text-align: left;
+}
+#skills-browse-toolbar { flex-shrink: 0; }
+#skills-browse-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 32%) 1fr;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+}
+#skills-browse-list-pane {
+    overflow-y: auto;
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    padding-right: 6px;
+    min-height: 0;
+    min-width: 0;
+}
+#skills-browse-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.skill-browse-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #e0e0e0;
+    transition: background-color 0.12s ease-out;
+}
+.skill-browse-row:hover {
+    background: rgba(85, 187, 170, 0.18);
+}
+.skill-browse-row.disabled .skill-browse-name {
+    color: #888;
+    text-decoration: line-through;
+}
+.skill-browse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.skill-browse-dot-on { background: #55BBAA; box-shadow: 0 0 6px rgba(85, 187, 170, 0.6); }
+.skill-browse-dot-off { background: #555; }
+.skill-browse-name {
+    flex: 1;
+    font-weight: 500;
+    color: #ffffff;
+}
+.skill-browse-runtime {
+    font-size: 0.78em;
+    color: #b0b0b0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.skill-browse-loading,
+.skill-browse-error {
+    padding: 8px 12px;
+    color: #b0b0b0;
+    font-style: italic;
+}
+.skill-browse-error { color: #ff7a7a; }
+
+#skills-browse-detail-pane {
+    overflow-y: auto;
+    padding-left: 6px;
+    min-height: 0;
+    min-width: 0;
+}
+#skills-browse-detail-empty {
+    color: #b0b0b0;
+    font-style: italic;
+    padding: 24px 12px;
+    text-align: center;
+}
+.skill-detail-title {
+    color: #ffffff;
+    margin-top: 0;
+    margin-bottom: 4px;
+}
+.skill-detail-desc {
+    color: #e0e0e0;
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+.skill-detail-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 6px;
+    vertical-align: middle;
+    font-weight: 700;
+}
+.skill-detail-badge.on { background: rgba(85, 187, 170, 0.30); color: #55BBAA; }
+.skill-detail-badge.off { background: rgba(200, 80, 80, 0.30); color: #ff9c9c; }
+.skill-detail-meta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 14px;
+    margin-bottom: 14px;
+}
+.skill-detail-meta dt {
+    color: #b0b0b0;
+    font-weight: 600;
+    font-size: 0.85em;
+}
+.skill-detail-meta dd {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.92em;
+    word-break: break-word;
+}
+.skill-detail-meta code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.85em;
+}
+.skill-detail-path { font-size: 0.78em !important; word-break: break-all; }
+.skill-detail-io {
+    list-style: disc;
+    padding-left: 22px;
+    margin: 4px 0 12px 0;
+    color: #e0e0e0;
+}
+.skill-detail-io code {
+    background: rgba(85, 187, 170, 0.15);
+    color: #ffffff;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+.skill-detail-req {
+    color: #ffae80;
+    font-size: 0.78em;
+    font-style: italic;
+}
+.skill-detail-body {
+    background: rgba(0, 0, 0, 0.30);
+    border-radius: 8px;
+    padding: 12px;
+    color: #e0e0e0;
+    font-size: 0.85em;
+    max-height: 280px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: left;
+}
+.skill-detail-loading {
+    color: #b0b0b0;
+    font-style: italic;
+    padding: 12px;
+}
+.skill-detail-error {
+    color: #ff7a7a;
+    padding: 12px;
+}
+
+/* ----- Diagnostics ----------------------------------------- */
+#skills-diagnostics-dialog-message { text-align: left; }
+#skills-diagnostics-summary {
+    padding: 10px 12px;
+    background: rgba(85, 187, 170, 0.12);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    color: #e0e0e0;
+}
+.skill-diag-summary-row strong { color: #ffffff; }
+.skill-diag-section {
+    border-left: 3px solid rgba(85, 187, 170, 0.4);
+    padding: 6px 12px 6px 16px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+}
+.skill-diag-section h5 {
+    color: #e0e0e0;
+    margin: 0 0 4px 0;
+    font-size: 0.95em;
+}
+.skill-diag-section.ok { border-left-color: #55BBAA; }
+.skill-diag-section.ok h5 { color: #55BBAA; }
+.skill-diag-section.warn { border-left-color: #ff9800; }
+.skill-diag-section.warn h5 { color: #ffc480; }
+.skill-diag-section ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 4px 0 0 0;
+    font-size: 0.88em;
+    color: #e0e0e0;
+}
+.skill-diag-section li { padding: 2px 0; }
+.skill-diag-section code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #ffffff;
+}
+.skill-diag-error {
+    color: #ff7a7a;
+    padding: 10px;
+}

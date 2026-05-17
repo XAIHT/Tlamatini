@@ -35,6 +35,7 @@
   - [3.8. From chat to flow: the **Create Flow** button](#38-from-chat-to-flow-the-create-flow-button)
   - [3.9. Why Chat-created flows are safer now](#39-why-chat-created-flows-are-safer-now)
   - [3.10. The **DB** menu — Backup, Set DB, and the start-up swap-in](#310-the-db-menu--backup-set-db-and-the-start-up-swap-in)
+  - [3.11. The **ACPX-Skills** menu — Browse, Configure, Diagnostics, Reload](#311-the-acpx-skills-menu--browse-configure-diagnostics-reload)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -516,6 +517,58 @@ Both directories must exist on day one (the swap-in opens them with `os.makedirs
 
 - **Source / dev mode**: `Tlamatini/Tlamatini/DB/{ToLoad,Older}/README.md` are checked into the repo. The README files are the "git keepers" — without them, git would silently drop the empty directories.
 - **Frozen mode**: `build.py` extends its `empty_dirs` tuple with `"DB/ToLoad"` and `"DB/Older"`. The PyInstaller post-build step creates both under `dist/manage/`, the `pkg.zip` packager preserves them via explicit zip entries, and end-users get the tree from the very first launch.
+
+### 3.11. The **ACPX-Skills** menu — Browse, Configure, Diagnostics, Reload
+
+Tlamatini ships with **21 skills** — markdown SKILL.md packages under `agent/skills_pkg/` that the LLM can invoke through `invoke_skill('<name>', '{...args...}')`. They cover everything from the canonical `acp-router` (pick the right external CLI for an intent) and `summarize` (compress text faithfully) to `setup-new-acpx-key`, `skill-creator`, the `tlamatini_*` audit/lint/refactor helpers, and integration stubs for GitHub / Notion / Slack / Gmail / Jira / Todoist / Trello / Weather.
+
+Before 2026-05-17 the only way to interact with them was through the LLM (`list_skills` to enumerate, `invoke_skill` to run). The **ACPX-Skills** navbar dropdown — added next to **Agents** and **Config** in the chat toolbar — gives you an operator-grade admin surface that does NOT require the LLM. Four entries:
+
+#### `ACPX-Skills -> Browse Skills`
+
+Opens a two-pane modal: a left-side list of all 21 skills (with a green/red dot for enabled / disabled and a runtime tag) and a right-side detail pane that shows the selected skill's full identity — description, runtime (in-process / acpx), `acpx_agent` if any, budgets (max_iterations · max_seconds · max_tokens), trigger keywords, `requires_tools` and `requires_mcps`, inputs and outputs (with required-field markers), and the full markdown body. A search box at the top filters by name or description as you type. Pure read — nothing is written back.
+
+Backed by `GET /agent/skills/` (list payload) and `GET /agent/skills/<name>/` (deep detail). Use it when you want to know what a skill *actually does* before you ask the LLM to call it, or when you've just authored a new SKILL.md and want to confirm it parsed correctly.
+
+#### `ACPX-Skills -> Configure Skills`
+
+A checkbox grid — one row per skill — that mirrors the existing **MCPs** and **Agents** dialogs exactly. Toggle a checkbox off, click **Continue**, and the row's `Skill.enabled` flips to `false`. Two consequences immediately:
+
+- `list_skills` (the LLM's enumeration tool) filters that skill out of its returned array.
+- `invoke_skill('<name>', ...)` returns `{"ok": false, "code": "SKILL_DISABLED"}` instead of running.
+
+Toggling back to enabled restores the skill. This is the right knob when (a) you want to hide an unfinished skill from the planner, (b) you don't have the API key for an integration skill (e.g. `notion` without `NOTION_TOKEN`) and don't want the LLM to keep trying, or (c) you're running a demo and want a minimal tool surface.
+
+The toggle goes over the same WebSocket channel as `set-mcps` / `set-tools` / `set-agents` — payload encoding `name=description=true/false,name=description=true/false,...`. Backend handler is in `consumers.py::receive` and calls `save_skill(name, enabled)` which touches only the `enabled` column.
+
+#### `ACPX-Skills -> Diagnostics`
+
+A cross-check report that catches drift between the skill catalog and the rest of the system. Sections:
+
+- **Missing tool dependencies** — for each skill whose `requires_tools` lists a tool that's currently **disabled** in the Tools dialog, lists the skill + the unmet tools. (A disabled tool means the skill *would* fail at runtime — Diagnostics surfaces it before the LLM tries.)
+- **Missing MCP dependencies** — same idea against disabled `Mcp` rows.
+- **Unknown ACPX agents** — for skills with `runtime: acpx`, flags any `acpx_agent` value that isn't in the `AcpAgent` table (typo, removed CLI, etc.).
+- **Orphan DB rows** — `Skill` rows whose SKILL.md file no longer exists on disk. Usually a sign that someone deleted a skill directory without running Reload.
+
+Each section is collapsed when clean (✓ green) and expanded with red ⚠ counts when something's wrong. Run it after editing SKILL.md files or after toggling tools/MCPs to confirm nothing is silently broken. Backed by `GET /agent/skills/_/diagnostics/` — pure read, no writes.
+
+#### `ACPX-Skills -> Reload Registry`
+
+A single-click button that re-runs the registry boot pipeline: rescan `agent/skills_pkg/`, refresh every `Skill` DB row's metadata (description, runtime, frontmatter_json, body_sha256), prune any DB row whose SKILL.md is gone. The user-toggled `enabled` field is preserved across reload.
+
+Use this after you've authored or edited a SKILL.md on disk — no server restart needed. The success toast tells you the new skill count.
+
+#### What the DB stores — and what it does NOT
+
+By design, the `Skill` DB table stays at "enumeration + enable/disable" only, exactly the way the `Tool` and `Mcp` tables work. Per-skill **permissions** (filesystem read/write globs, allowed shell commands, network deny/allow), **budgets** (max_iterations / max_seconds / max_tokens), and the skill's **body** all live in the SKILL.md frontmatter on disk and are the only source of truth. The admin UI deliberately does NOT let you override them from the browser — if you want to change a permission, edit the SKILL.md and click Reload. This keeps `git diff` honest: every behavioural change to a skill shows up in a file, not in a database row that the next backup would silently archive.
+
+#### Where to look
+
+- HTTP endpoints: `agent/views.py` (`list_skills_view`, `skill_detail_view`, `reload_skills_view`, `skills_diagnostics_view`) — wired in `agent/urls.py`.
+- WebSocket toggle: `agent/consumers.py::receive` (`set-skills` branch) → `save_skill(name, enabled)`. The connect path also calls `skill_establishment()` for every row so the frontend's `skills = []` cache hydrates on session start, mirroring how `tools[]` and `agents[]` hydrate.
+- Tool-surface gating: `agent/acpx/tools.py::_disabled_skill_names()` — fails open on DB exception so a broken admin layer never silently hides skills.
+- Frontend dialogs: `agent/static/agent/js/skills_dialog.js` (the Configure / Browse / Diagnostics / Reload dialogs) + `agent/static/agent/css/skills_dialog.css`.
+- Coverage: 14 tests in `agent/tests.py` (`SkillsAdminEndpointTests`, `SkillsToolSurfaceGatingTests`, `SkillsNavbarTemplateContractTests`).
 
 ---
 
