@@ -218,6 +218,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'pser': 'pser-agent',
     'kuberneter': 'kuberneter-agent',
     'apirer': 'apirer-agent',
+    'unrealer': 'unrealer-agent',
     'jenkinser': 'jenkinser-agent',
     'crawler': 'crawler-agent',
     'summarizer': 'summarizer-agent',
@@ -905,6 +906,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'apirer') updateApirerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(targetId, sourceId, 'remove', 'source');
@@ -1016,6 +1019,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'kuberneter' && !sourceBeingDeleted) updateKuberneterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'apirer' && !targetBeingDeleted) updateApirerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'apirer' && !sourceBeingDeleted) updateApirerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'unrealer' && !targetBeingDeleted) updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'unrealer' && !sourceBeingDeleted) updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'jenkinser' && !targetBeingDeleted) updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'jenkinser' && !sourceBeingDeleted) updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'crawler' && !targetBeingDeleted) updateCrawlerConnection(targetId, sourceId, 'remove', 'source');
@@ -1459,6 +1464,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'apirer') updateApirerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'pythonxer') updatePythonxerConnection(targetId, sourceId, 'add', 'source');

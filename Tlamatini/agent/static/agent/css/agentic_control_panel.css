@@ -1018,6 +1018,26 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #3B0764 0%, #86EFAC 100%);
 }
 
+/* Unrealer Agent — drives Unreal Engine 5 via the Unreal MCP TCP protocol.
+   "Engine Aurora" gradient: void black → UE5 cobalt → viewport emerald →
+   gizmo cyan. Distinct from Apirer (purple→green) and Jenkinser (white→blue)
+   so it reads cleanly in the sidebar / canvas / Exec Report. */
+.canvas-item.unrealer-agent {
+    background-color: #0B1220;
+    color: white;
+    background: linear-gradient(135deg, #0B1220 0%, #1F3A8A 33%, #10B981 66%, #22D3EE 100%);
+}
+
+.canvas-item.unrealer-agent:hover {
+    box-shadow: 0 6px 15px rgba(34, 211, 238, 0.55);
+    background: linear-gradient(135deg, #18233A 0%, #2D4FB8 33%, #34D399 66%, #67E8F9 100%);
+}
+
+/* Unrealer agent icon in sidebar */
+.agent-tool-item[data-content="Unrealer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #0B1220 0%, #1F3A8A 33%, #10B981 66%, #22D3EE 100%);
+}
+
 /* Jenkinser Agent Styles - CI/CD Pipeline Trigger (White-to-Blue gradient) */
 .canvas-item.jenkinser-agent {
     background-color: #FFFFFF;

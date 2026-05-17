@@ -53,55 +53,66 @@
   - [5.5. Tutorial: multi-CLI relay with `acp_relay`](#55-tutorial-multi-cli-relay-with-acp_relay)
   - [5.6. API key setup (the easy button)](#56-api-key-setup-the-easy-button)
   - [5.7. ACPXer — the visual canvas counterpart](#57-acpxer--the-visual-canvas-counterpart)
-- [6. Building a Frozen Distribution](#6-building-a-frozen-distribution)
-  - [6.1. Three-step pipeline](#61-three-step-pipeline)
-  - [6.2. Step 1 — `build.py`](#62-step-1--buildpy)
-  - [6.3. Step 2 — `build_uninstaller.py`](#63-step-2--build_uninstallerpy)
-  - [6.4. Step 3 — `build_installer.py`](#64-step-3--build_installerpy)
-  - [6.5. What the installer does on the end-user box](#65-what-the-installer-does-on-the-end-user-box)
-  - [6.6. Source mode vs Frozen mode: why flows still work](#66-source-mode-vs-frozen-mode-why-flows-still-work)
-- [7. Configuration (`Tlamatini/agent/config.json`)](#7-configuration-tlamatiniagentconfigjson)
-  - [7.1. LLM and unified-agent](#71-llm-and-unified-agent)
-  - [7.2. RAG](#72-rag)
-  - [7.3. ACPX](#73-acpx)
-  - [7.4. MCP services and other knobs](#74-mcp-services-and-other-knobs)
-- [8. Architecture at a Glance](#8-architecture-at-a-glance)
-  - [8.1. Big picture](#81-big-picture)
-  - [8.2. The five layers](#82-the-five-layers)
-  - [8.3. Multi-Turn execution pipeline](#83-multi-turn-execution-pipeline)
-  - [8.4. Agent contracts and the Flow Compiler](#84-agent-contracts-and-the-flow-compiler)
-  - [8.5. Agent catalog (the 61 types, by family)](#85-agent-catalog-the-61-types-by-family)
-- [9. Embedding-Memory Pre-Flight Guard (GPU hosts)](#9-embedding-memory-pre-flight-guard-gpu-hosts)
-  - [9.1. Why this exists](#91-why-this-exists)
-  - [9.2. How the check fires (the hook point)](#92-how-the-check-fires-the-hook-point)
-  - [9.3. GPU detection and no-GPU behavior](#93-gpu-detection-and-no-gpu-behavior)
-  - [9.4. Three-tier VRAM prediction](#94-three-tier-vram-prediction)
-  - [9.5. The 80% threshold and the chat-bubble warning](#95-the-80-threshold-and-the-chat-bubble-warning)
-  - [9.6. Tuning, overrides, and what the guard does NOT do](#96-tuning-overrides-and-what-the-guard-does-not-do)
-  - [9.7. Test coverage](#97-test-coverage)
-- [10. Orphan-Process Cleanup (`conhost.exe` reaper)](#10-orphan-process-cleanup-conhostexe-reaper)
-  - [10.1. The problem this solves](#101-the-problem-this-solves)
-  - [10.2. The three tiers](#102-the-three-tiers)
-  - [10.3. What gets reaped (and what does not)](#103-what-gets-reaped-and-what-does-not)
-  - [10.4. The user-visible follow-up message](#104-the-user-visible-follow-up-message)
-- [11. Troubleshooting](#11-troubleshooting)
-  - [11.1. Ollama / models](#111-ollama--models)
-  - [11.2. RAG / context](#112-rag--context)
-  - [11.3. Multi-Turn / planner](#113-multi-turn--planner)
-  - [11.4. Chat-created flows and ACP validation](#114-chat-created-flows-and-acp-validation)
-  - [11.5. ACPX / external CLIs](#115-acpx--external-clis)
-  - [11.6. Frozen build / installer](#116-frozen-build--installer)
-  - [11.7. Logs to consult first](#117-logs-to-consult-first)
-- [12. Versioning](#12-versioning)
-  - [12.1. The bump rules](#121-the-bump-rules)
-  - [12.2. Cutting a release](#122-cutting-a-release)
-  - [12.3. Where you can see the running version](#123-where-you-can-see-the-running-version)
-  - [12.4. Building without tagging (development)](#124-building-without-tagging-development)
-  - [12.5. Overriding the resolved version](#125-overriding-the-resolved-version)
-- [13. Contributing & License](#13-contributing--license)
-  - [13.1. Contributing](#131-contributing)
-  - [13.2. Acknowledgments](#132-acknowledgments)
-  - [13.3. License](#133-license)
+- [6. Unreal MCP — Driving Unreal Engine 5 from Tlamatini](#6-unreal-mcp--driving-unreal-engine-5-from-tlamatini)
+  - [6.1. What Unreal MCP is](#61-what-unreal-mcp-is)
+  - [6.2. Upstream plugin (the **MCP git location**)](#62-upstream-plugin-the-mcp-git-location)
+  - [6.3. Installing and enabling the plugin inside your UE5 project](#63-installing-and-enabling-the-plugin-inside-your-ue5-project)
+  - [6.4. The 28 commands across 5 categories](#64-the-28-commands-across-5-categories)
+  - [6.5. Using Unreal MCP from the chat (`chat_agent_unrealer`)](#65-using-unreal-mcp-from-the-chat-chat_agent_unrealer)
+  - [6.6. Using Unreal MCP on the canvas (the visual **Unrealer** node)](#66-using-unreal-mcp-on-the-canvas-the-visual-unrealer-node)
+  - [6.7. What the agent actually does, end-to-end](#67-what-the-agent-actually-does-end-to-end)
+  - [6.8. Exec Report integration](#68-exec-report-integration)
+  - [6.9. Bullet-proof checklist for Unreal Engine users](#69-bullet-proof-checklist-for-unreal-engine-users)
+  - [6.10. Troubleshooting Unreal MCP](#610-troubleshooting-unreal-mcp)
+- [7. Building a Frozen Distribution](#7-building-a-frozen-distribution)
+  - [7.1. Three-step pipeline](#71-three-step-pipeline)
+  - [7.2. Step 1 — `build.py`](#72-step-1--buildpy)
+  - [7.3. Step 2 — `build_uninstaller.py`](#73-step-2--build_uninstallerpy)
+  - [7.4. Step 3 — `build_installer.py`](#74-step-3--build_installerpy)
+  - [7.5. What the installer does on the end-user box](#75-what-the-installer-does-on-the-end-user-box)
+  - [7.6. Source mode vs Frozen mode: why flows still work](#76-source-mode-vs-frozen-mode-why-flows-still-work)
+- [8. Configuration (`Tlamatini/agent/config.json`)](#8-configuration-tlamatiniagentconfigjson)
+  - [8.1. LLM and unified-agent](#81-llm-and-unified-agent)
+  - [8.2. RAG](#82-rag)
+  - [8.3. ACPX](#83-acpx)
+  - [8.4. MCP services and other knobs](#84-mcp-services-and-other-knobs)
+- [9. Architecture at a Glance](#9-architecture-at-a-glance)
+  - [9.1. Big picture](#91-big-picture)
+  - [9.2. The five layers](#92-the-five-layers)
+  - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
+  - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
+  - [9.5. Agent catalog (the 62 types, by family)](#95-agent-catalog-the-62-types-by-family)
+- [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
+  - [10.1. Why this exists](#101-why-this-exists)
+  - [10.2. How the check fires (the hook point)](#102-how-the-check-fires-the-hook-point)
+  - [10.3. GPU detection and no-GPU behavior](#103-gpu-detection-and-no-gpu-behavior)
+  - [10.4. Three-tier VRAM prediction](#104-three-tier-vram-prediction)
+  - [10.5. The 80% threshold and the chat-bubble warning](#105-the-80-threshold-and-the-chat-bubble-warning)
+  - [10.6. Tuning, overrides, and what the guard does NOT do](#106-tuning-overrides-and-what-the-guard-does-not-do)
+  - [10.7. Test coverage](#107-test-coverage)
+- [11. Orphan-Process Cleanup (`conhost.exe` reaper)](#11-orphan-process-cleanup-conhostexe-reaper)
+  - [11.1. The problem this solves](#111-the-problem-this-solves)
+  - [11.2. The three tiers](#112-the-three-tiers)
+  - [11.3. What gets reaped (and what does not)](#113-what-gets-reaped-and-what-does-not)
+  - [11.4. The user-visible follow-up message](#114-the-user-visible-follow-up-message)
+- [12. Troubleshooting](#12-troubleshooting)
+  - [12.1. Ollama / models](#121-ollama--models)
+  - [12.2. RAG / context](#122-rag--context)
+  - [12.3. Multi-Turn / planner](#123-multi-turn--planner)
+  - [12.4. Chat-created flows and ACP validation](#124-chat-created-flows-and-acp-validation)
+  - [12.5. ACPX / external CLIs](#125-acpx--external-clis)
+  - [12.6. Frozen build / installer](#126-frozen-build--installer)
+  - [12.7. Logs to consult first](#127-logs-to-consult-first)
+- [13. Versioning](#13-versioning)
+  - [13.1. The bump rules](#131-the-bump-rules)
+  - [13.2. Cutting a release](#132-cutting-a-release)
+  - [13.3. Where you can see the running version](#133-where-you-can-see-the-running-version)
+  - [13.4. Building without tagging (development)](#134-building-without-tagging-development)
+  - [13.5. Overriding the resolved version](#135-overriding-the-resolved-version)
+- [14. Contributing & License](#14-contributing--license)
+  - [14.1. Contributing](#141-contributing)
+  - [14.2. Acknowledgments](#142-acknowledgments)
+  - [14.3. License](#143-license)
 
 ---
 
@@ -109,7 +120,7 @@
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, and a drag-and-drop workflow designer with 61 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 62 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -120,7 +131,7 @@ License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platfo
 3. **ACPX** — delegate sub-tasks to external CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, plus 8 more) and relay output between them.
 4. **Visual workflow designer** — design `.flw` flows once, run them unattended, schedule with Croner, watch them with FlowHypervisor.
 
-Everything runs locally. The whole app packages into a one-click Windows `.exe` distribution (Part [§6](#6-building-a-frozen-distribution)).
+Everything runs locally. The whole app packages into a one-click Windows `.exe` distribution (Part [§7](#7-building-a-frozen-distribution)).
 
 ### 1.3. Demo videos
 
@@ -189,9 +200,9 @@ ollama pull llama3.2-vision:11b
 | `qwen3.5:397b-cloud` | Default FlowCreator |
 | `llama3.2-vision:11b` | Local vision fallback |
 
-You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§7.1](#71-llm-and-unified-agent)) or the relevant agent's `config.yaml`.
+You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§8.1](#81-llm-and-unified-agent)) or the relevant agent's `config.yaml`.
 
-> **Optional: swap to a higher-detail embedding model.** If your retrieval quality on dense, technical corpora is not good enough with the default, you can switch to `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing `embeding-model` in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than `Nomic-Embed-Text:latest` (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (see [§9](#9-embedding-memory-pre-flight-guard)) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
+> **Optional: swap to a higher-detail embedding model.** If your retrieval quality on dense, technical corpora is not good enough with the default, you can switch to `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing `embeding-model` in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than `Nomic-Embed-Text:latest` (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (see [§10](#10-embedding-memory-pre-flight-guard-gpu-hosts)) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
 ### 2.4. Cloud models require an Ollama Pro/Max plan
 
@@ -209,7 +220,7 @@ The plan structure (prices are deliberately omitted from this README because the
 
 **If you do not want to subscribe**, you can run Tlamatini entirely on local open-weights models. Edit `Tlamatini/agent/config.json` (`chained-model`, `unified_agent_model`, `mcp_file_search_model`, `flow_creator_model`, `image_interpreter_model`) and every agent `config.yaml` that names a `:cloud` tag, and swap them for a model you have pulled locally (for example, `llama3.1:8b`, `qwen2.5-coder:14b`, `mistral-nemo:12b`). Performance and quality will scale with your GPU/CPU — Multi-Turn and ACPX both work fine on a sufficiently large local model.
 
-**API keys are separate.** This subscription only governs `*:cloud` Ollama models. The ACPX runtime can additionally spawn external coding-agent CLIs that bring their own credentials (Anthropic API key for `claude`, OpenAI key for `codex`, Google key for `gemini`, etc.) — those are configured in `Tlamatini/agent/config.json` under `acpx.agents.<id>.env` and are unaffected by your Ollama plan. See [§5.6](#56-api-key-setup-the-easy-button) for the easy-button setup.
+**API keys are separate.** This subscription only governs `*:cloud` Ollama models. The ACPX runtime can additionally spawn external coding-agent CLIs that bring their own credentials (Anthropic API key for `claude`, OpenAI key for `codex`, Google key for `gemini`, etc.) — those are configured in `Tlamatini/agent/config.json` under `acpx.agents.<id>.env` and are unaffected by your Ollama plan. See [§5.6](#56-api-key-setup-the-easy-button) for the easy-button setup. (Unreal MCP is *not* part of ACPX — it's its own MCP surface, documented in [§6](#6-unreal-mcp--driving-unreal-engine-5-from-tlamatini).)
 
 ### 2.5. Clone, install, migrate
 
@@ -248,7 +259,7 @@ Open `http://127.0.0.1:8000/` and log in with the superuser you just created. Th
 - `/agentic_control_panel/` — the visual designer (Part [§4](#4-visual-workflow-designer-agentic_control_panel))
 - `/admin/` — Django admin (change passwords, manage users)
 
-> If you used the **installer** (Part [§6](#6-building-a-frozen-distribution)) instead of cloning, the default credentials are `user` / `changeme`. Change them at first login via `/admin/`.
+> If you used the **installer** (Part [§7](#7-building-a-frozen-distribution)) instead of cloning, the default credentials are `user` / `changeme`. Change them at first login via `/admin/`.
 
 ---
 
@@ -811,11 +822,162 @@ Three different LLMs argue back and forth, fully visual, fully unattended.
 
 ---
 
-## 6. Building a Frozen Distribution
+## 6. Unreal MCP — Driving Unreal Engine 5 from Tlamatini
+
+The **Unrealer** agent (#62 in the catalog) lets Tlamatini drive a live Unreal Engine 5 editor through the **Unreal MCP** plugin's TCP socket protocol. You spawn a `chat_agent_unrealer` call from Multi-Turn or drop an **Unrealer** node on the visual canvas; Tlamatini opens a TCP connection to `127.0.0.1:55557`, sends one JSON command (`{"type": <verb>, "params": {...}}`), captures the engine's JSON response into an `INI_SECTION_UNREALER<<<` block, and triggers downstream agents. The full 28-command surface of the upstream Unreal MCP plugin is exposed — actor manipulation, Blueprint creation and graph wiring, input mappings, and UMG widget building — without you ever leaving the chat or the canvas.
+
+### 6.1. What Unreal MCP is
+
+**Unreal MCP** is an open-source UE5 plugin (Model Context Protocol over a TCP socket) that runs **inside the Unreal Editor process** and accepts one JSON command per TCP connection. Each command names a verb (`spawn_actor`, `create_blueprint`, `compile_blueprint`, `add_widget_to_viewport`, …) and a dictionary of parameters; the plugin schedules the work onto UE5's game thread, executes it, and writes a JSON response back over the same socket before closing it. The wire shape is small — `{"type": <command>, "params": {...}}` going in, `{"status": "ok"|"error", "result": {...}}` (or `{"success": false, "error": "..."}`) coming back — and is identical across every documented command.
+
+**Tlamatini does not embed or compile the plugin.** It is a *client* of whatever UE5 instance the user has already started. The engine must be open, the plugin must be enabled, and its in-engine listener must be bound to `127.0.0.1:55557` (the default — configurable per-call via `host` / `port`). Tlamatini contributes the calling side: one wrapped Multi-Turn tool, one visual canvas node, one Agent Contract entry, one Exec Report row family, and one Parametrizer source mapping — all built around the same `UnrealConnection` adapter at `agent/agents/unrealer/unrealer.py`.
+
+### 6.2. Upstream plugin (the **MCP git location**)
+
+The canonical reference implementation Tlamatini's `UnrealConnection` adapter mirrors verbatim is:
+
+- **Repository:** `https://github.com/chongdashu/unreal-mcp`
+- **License:** MIT
+- **Supported UE versions:** Unreal Engine 5.5+
+- **Plugin folder name:** `UnrealMCP`
+- **Default plugin TCP port:** `55557`
+
+Two equivalent community forks ship the same wire protocol on the same port; either works with Tlamatini's Unrealer with **no client changes**:
+
+- `https://github.com/CrispyW0nton/Unreal-MCP-Ghost`
+- `https://github.com/gingerol/vhcilab-unreal-engine-mcp`
+
+Pick the upstream that matches your UE5 version and your team's licensing comfort. If you fork the plugin to add a new command verb, your fork is automatically usable from Tlamatini — there is no client-side allow-list of verbs (the wrapped tool forwards any `command` + `params` pair verbatim).
+
+### 6.3. Installing and enabling the plugin inside your UE5 project
+
+The plugin is a per-project install (not engine-wide). Steps:
+
+1. **Clone or download** the upstream plugin (only the `MCPGameProject/Plugins/UnrealMCP` folder matters — different forks may name the folder slightly differently; rename to `UnrealMCP` if needed).
+2. **Drop the folder** into your project's `Plugins/` directory so the final path is `<YourProject>/Plugins/UnrealMCP/UnrealMCP.uplugin`. Create the `Plugins/` folder at the project root if it does not exist.
+3. **Open the project in UE5.** The editor will detect the new plugin and offer to rebuild it for your engine version — accept. If you opened a Blueprint-only project, you will be prompted to install Visual Studio Build Tools / Xcode command-line tools first, since the plugin is C++.
+4. **Enable the plugin** via `Edit → Plugins → search "UnrealMCP" → tick Enabled`. Restart the editor.
+5. **Confirm the listener is bound.** With the editor running, open the **Output Log** (`Window → Developer Tools → Output Log`) and look for a line such as `LogTemp: UnrealMCP listening on 127.0.0.1:55557`. That line is your green light: the plugin is now waiting for JSON commands on the loopback interface.
+
+> **You do not need to press Play (PIE).** The plugin listens at *editor* level — actor manipulation, Blueprint creation, widget construction, etc. all work against the open project even when PIE is stopped. Some UMG operations (`add_widget_to_viewport`) physically render only after the user enters PIE, but the build steps are queued correctly either way.
+
+### 6.4. The 28 commands across 5 categories
+
+The Unrealer agent forwards whatever `command` + `params` you pass it, so the exact catalog is whatever the upstream plugin exposes. As of the canonical chongdashu/unreal-mcp release, that is **28 commands across 5 categories**:
+
+| Category | Commands |
+|---|---|
+| **editor** | `get_actors_in_level`, `find_actors_by_name`, `spawn_actor`, `delete_actor`, `set_actor_transform`, `get_actor_properties`, `set_actor_property`, `spawn_blueprint_actor` |
+| **blueprint** | `create_blueprint`, `add_component_to_blueprint`, `set_static_mesh_properties`, `set_component_property`, `set_physics_properties`, `compile_blueprint`, `set_blueprint_property` |
+| **node** | `add_blueprint_event_node`, `add_blueprint_input_action_node`, `add_blueprint_function_node`, `connect_blueprint_nodes`, `add_blueprint_variable`, `add_blueprint_get_self_component_reference`, `add_blueprint_self_reference` |
+| **project** | `create_input_mapping` |
+| **umg** | `create_umg_widget_blueprint`, `add_text_block_to_widget`, `add_button_to_widget`, `bind_widget_event`, `add_widget_to_viewport`, `set_text_block_binding` |
+
+Param shapes vary per command (e.g. `spawn_actor` wants `name` + `type` + `location` + `rotation`; `create_blueprint` wants `name` + `parent_class`; `add_text_block_to_widget` wants `widget_name` + `text_block_name` + `text` + `position` + `size` + `font_size` + `color`). The Unrealer agent does not validate them — it forwards them as-is. The plugin will reply with `{"status": "error", "error": "<reason>"}` if a param is missing or malformed, and that error lands verbatim in the `INI_SECTION_UNREALER` block so Multi-Turn / Parametrizer can branch on it.
+
+### 6.5. Using Unreal MCP from the chat (`chat_agent_unrealer`)
+
+The wrapped Multi-Turn tool `chat_agent_unrealer` is the easiest way in. Tick **Multi-Turn** in the toolbar, leave **Exec Report** ticked too (the Unreal calls get their own table in the answer), and send a prompt like:
+
+> "Run Unreal command with command='spawn_actor' and params.name='MyCube' and params.type='StaticMeshActor' and params.location=[0,0,150]."
+
+The planner picks `chat_agent_unrealer`, the wrapped runtime spawns one short-lived `unrealer.py` child under `agent/agents/pools/_chat_runs_/unrealer_<seq>_<id>/`, the child opens a TCP socket to `127.0.0.1:55557`, sends the JSON command, captures the response, emits the `INI_SECTION_UNREALER` block to its log, and exits. The Multi-Turn loop reads the run's log excerpt, parses the section, and returns the full Unreal response JSON to the LLM. The LLM then sees the engine's reply and either reports it to you, branches on it, or fires the next call.
+
+The tool accepts the same overrides documented in `config.yaml`:
+
+- `host='10.0.0.5'` and `port=55557` to target a remote UE instance (rare; the plugin binds to loopback by default and you would need to change the bind address inside the plugin or tunnel it).
+- `connect_timeout=5` and `read_timeout=10` to widen the budgets for slow operations (e.g. `compile_blueprint` on a complex graph).
+
+**Built-in end-to-end demo prompt.** Migration `0087_add_unrealer_demo_prompt.py` seeds a one-click demo into the Prompts table (`idPrompt=32`). Open the chat, click the **Prompts** dropdown, pick *Unreal MCP End-to-End Editor Drive*, and Tlamatini will execute ten guided steps spanning every command category — sanity-probe (`get_actors_in_level`), spawn a `StaticMeshActor` (`spawn_actor`), verify it (`find_actors_by_name`), scaffold a Blueprint (`create_blueprint`), add a `StaticMeshComponent` (`add_component_to_blueprint`), compile (`compile_blueprint`), spawn an instance (`spawn_blueprint_actor`), build a UMG HUD widget (`create_umg_widget_blueprint` → `add_text_block_to_widget` → `add_button_to_widget` → `add_widget_to_viewport`) — and render the result as a per-step HTML report table at the bottom of the answer. Use it as your smoke test the first time you wire the plugin up.
+
+### 6.6. Using Unreal MCP on the canvas (the visual **Unrealer** node)
+
+For unattended `.flw` workflows, drop the **Unrealer** sidebar agent onto the canvas. Each node sends exactly one Unreal command when its turn arrives. The node's `config.yaml` is the same one shipped under `agent/agents/unrealer/config.yaml`:
+
+```yaml
+host: 127.0.0.1
+port: 55557
+command: get_actors_in_level
+params:
+  name: ''
+  type: ''
+  location: []
+  # ... (placeholders for the most common commands; the agent forwards
+  #     whatever you put under params: verbatim, so add or remove keys
+  #     to match the command verb you picked)
+connect_timeout: 5
+read_timeout: 10
+source_agents: []
+target_agents: []
+```
+
+The agent emits an `INI_SECTION_UNREALER<<<` block to its log, which means **Parametrizer can chain Unreal calls together**. Registered source fields (`agent/services/agent_contracts.py`): `host`, `port`, `command`, `status`, `error`, `response_body`. Canonical multi-step canvas pattern — create a Blueprint, compile it, spawn an instance:
+
+```
+Starter → Unrealer(create_blueprint) → Parametrizer → Unrealer(compile_blueprint)
+       → Parametrizer → Unrealer(spawn_blueprint_actor) → Ender
+```
+
+Each Parametrizer copies the previous Unrealer's `response_body` (or a specific JSON field within it, via the Parametrizer dialog's interconnection-mapping UI) into the next Unrealer's `params` block. Branching on `status` (`ok` vs `error`) via a Raiser between Unrealer and the next Parametrizer gives you per-step exception handling — e.g., abort to a Notifier if `compile_blueprint` returns `status: error`.
+
+### 6.7. What the agent actually does, end-to-end
+
+The `unrealer.py` script (~120 lines of business logic, plus the standard pool-agent boilerplate) is **self-contained**: it does NOT import from `agent.acpx`, `agent.services`, or any other Tlamatini-internal package. Pool subprocesses run as separate Python interpreters with no `sys.path` back into the Django app, so the inline `UnrealConnection` adapter is a verbatim mirror of the upstream Unreal MCP Python client (with the FastMCP plumbing stripped out). Per execution:
+
+1. **Load `config.yaml`**, read `host`, `port`, `command`, `params`, timeouts, and `target_agents`.
+2. **Write `agent.pid`** so the orphan-process reaper (chapter 11) can track the run.
+3. **Open a fresh TCP socket** to `host:port` with `TCP_NODELAY`, `SO_KEEPALIVE`, and 64 KB send/recv buffers. The Unreal MCP plugin closes the socket after each command, so the agent opens a new one per turn.
+4. **Send** `json.dumps({"type": command, "params": params})` (no trailing newline) and call `recv()` until a complete JSON document has been assembled (validated by attempting `json.loads()` on the accumulated bytes after each chunk).
+5. **Normalize** the response shape — `{"success": false, ...}` from older plugin builds is rewritten into `{"status": "error", "error": ...}` so downstream Parametrizer / Multi-Turn code can rely on a single shape.
+6. **Emit one atomic `logging.info()` call** with the `INI_SECTION_UNREALER<<<` block (header: `host`, `port`, `command`, `status`, `error`; body: pretty-printed Unreal JSON response, capped at 64 KiB). Single-call emission is mandatory for the parser at `agent/agents/parametrizer/parametrizer.py`.
+7. **Trigger `target_agents` even on error**, so the canvas can route on the `status` field instead of relying on agent-level fail-stops.
+8. **Remove `agent.pid`** and exit.
+
+Failure modes the adapter handles gracefully (each turns into `{"status": "error", "error": "<reason>"}` plus a non-fatal log line, never an uncaught exception):
+
+- **Connection refused** — the plugin's TCP listener is not bound (editor not running, plugin not enabled, port mismatched).
+- **Socket timeout during receive** — UE5's game thread is busy (e.g. `compile_blueprint` on a heavy graph) and exceeded `read_timeout`. Raise `read_timeout` in `config.yaml` or in the wrapped tool call.
+- **Malformed JSON** — the plugin closed mid-write; logged as an `error` status and downstream agents still fire.
+
+### 6.8. Exec Report integration
+
+`chat_agent_unrealer` is registered in `_EXEC_REPORT_TOOLS` (`agent/mcp_agent.py`) under `agent_key="unrealer"` and `agent_display="Unrealer"`. When **Exec Report** is ticked alongside **Multi-Turn**, every Unreal call shows up as one row in a dedicated **List of Unrealer Operations** table at the bottom of the answer. Columns: command (left-bordered with the Unrealer caption gradient), success (`SUCCESS` / `FAILURE` derived from the underlying tool-call verdict — the same verdict Multi-Turn already uses for dedup and `tool_calls_log`). The table styling lives in `agent/static/agent/css/agent_page.css` (caption gradient mirrors `.canvas-item.unrealer-agent` in `agentic_control_panel.css`).
+
+### 6.9. Bullet-proof checklist for Unreal Engine users
+
+A short pre-flight you can copy into a sticky note before any session:
+
+| Check | How |
+|---|---|
+| UE5 5.5+ open with a project loaded | `File → Project → <YourProject>` — and leave the editor focused, not minimized to the system tray |
+| Plugin enabled | `Edit → Plugins → UnrealMCP → Enabled = ✓`, restart of editor confirmed |
+| Listener bound | Output Log shows `UnrealMCP listening on 127.0.0.1:55557` (or your configured port) |
+| Port not blocked | `Test-NetConnection -ComputerName 127.0.0.1 -Port 55557` returns `TcpTestSucceeded: True` (PowerShell) |
+| Tlamatini server up | `python Tlamatini/manage.py runserver --noreload` shows the startup banner |
+| **Multi-Turn** ticked | The toolbar checkbox to the left of **Exec Report** |
+| Tool enabled | `Tools` dialog in chat shows `Chat-Agent-Unrealer` ticked (it ships ticked by default after migration `0086_add_chat_agent_unrealer_tool` runs) |
+
+Then run the seeded **Unreal MCP End-to-End Editor Drive** demo prompt (idPrompt 32) as your smoke test. A clean run leaves three artifacts in your project: actor `TlamatiniProbe_Cube`, Blueprint `BP_TlamatiniProbe` with one spawned instance `TlamatiniProbe_Spawned`, and widget `/Game/UI/WBP_TlamatiniProbeHUD`. Delete them via right-click in the Content Browser when you are done.
+
+### 6.10. Troubleshooting Unreal MCP
+
+- **`acp_doctor` is not relevant here.** Unreal MCP is a *workflow-agent* surface, not the *ACPX* surface — the `acp_*` tools talk to external coding-agent CLIs (claude, gemini, …), not to UE5. The corresponding "is the channel alive?" probe for Unrealer is to call `chat_agent_unrealer` with `command='get_actors_in_level'` and check that `status == 'ok'`.
+- **`status: error` / `Failed to connect to Unreal at 127.0.0.1:55557`.** The plugin is not listening. Check the UE5 Output Log for the `UnrealMCP listening on …` line. If the line is absent, the plugin is either disabled or failed to build (re-open the project; UE5 will re-prompt to rebuild). If the line is present but the connection still fails, your firewall is blocking loopback (rare on Windows, but `Restart-Service mpssvc` and re-test if you have aggressive endpoint security).
+- **`Timeout receiving Unreal response`.** UE5's game thread is busy. Either widen `read_timeout` (`config.yaml` or the wrapped-tool call), or split the work into smaller commands (e.g. spawn 10 actors with 10 separate calls instead of one `spawn_n_actors` macro the plugin does not actually expose).
+- **`status: error` from a Blueprint command, but the verb seems valid.** Capitalize the `parent_class` exactly as UE5 expects (`Actor`, `Pawn`, `Character`, `UserWidget`, …). The plugin does not auto-resolve `actor` → `Actor`.
+- **Widget appears in the Content Browser but is invisible in PIE.** `add_widget_to_viewport` queues the widget at editor level; you still need to press **Play** in the editor (or call `add_widget_to_viewport` from within a running PIE session) to make it render. This is an Unreal MCP plugin behavior, not a Tlamatini bug.
+- **The Output Log shows the plugin received the command but nothing happened in the level.** Most often: an actor spawn at a coordinate **inside** another object's collision volume. UE5 silently fails the spawn. Raise `params.location` by `[0, 0, 150]` and retry.
+- **A second instance of UE5 is bound to the same port.** Only one UnrealMCP listener can bind to `127.0.0.1:55557` per host. Close the second editor instance, or configure each instance to bind to a different port and pass `port=<n>` per Unrealer call.
+
+For the full debugging trail: pool-agent log lives at `<pool>/unrealer_<n>/unrealer_<n>.log`; chat-wrapped runs land under `agent/agents/pools/_chat_runs_/unrealer_<seq>_<id>/unrealer_<seq>_<id>.log`. Both contain the outbound JSON command and the inbound Unreal response verbatim.
+
+---
+
+## 7. Building a Frozen Distribution
 
 For shipping a one-click Windows installer to end users.
 
-### 6.1. Three-step pipeline
+### 7.1. Three-step pipeline
 
 ```
 build.py  ──►  build_uninstaller.py  ──►  build_installer.py
@@ -824,7 +986,7 @@ build.py  ──►  build_uninstaller.py  ──►  build_installer.py
 pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 ```
 
-### 6.2. Step 1 — `build.py`
+### 7.2. Step 1 — `build.py`
 
 ```bash
 python build.py
@@ -834,7 +996,7 @@ Installs deps, runs `collectstatic`, executes PyInstaller, copies required paylo
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
-### 6.3. Step 2 — `build_uninstaller.py`
+### 7.3. Step 2 — `build_uninstaller.py`
 
 ```bash
 python build_uninstaller.py
@@ -842,7 +1004,7 @@ python build_uninstaller.py
 
 Builds `uninstall.py` into a single `--onefile` Tkinter exe. Output: `Uninstaller.exe` at the project root.
 
-### 6.4. Step 3 — `build_installer.py`
+### 7.4. Step 3 — `build_installer.py`
 
 ```bash
 python build_installer.py
@@ -852,7 +1014,7 @@ Requires `pkg.zip` and `Uninstaller.exe`. Builds `install.py` with `--onedir --w
 
 The final distributable is `dist/Tlamatini_Release/` — zip the folder, share it.
 
-### 6.5. What the installer does on the end-user box
+### 7.5. What the installer does on the end-user box
 
 1. Tkinter GUI to choose installation directory (no admin needed).
 2. Extracts `pkg.zip` into `<install_path>/Tlamatini/`.
@@ -865,7 +1027,7 @@ The final distributable is `dist/Tlamatini_Release/` — zip the folder, share i
 
 Frozen mode resolves `config.json` from the executable directory (or `CONFIG_PATH` env var). Template-agent discovery uses `<install_dir>/agents` in frozen mode and `Tlamatini/agent/agents/` in source mode. `_resolve_python_executable()` tries `PYTHON_HOME` → bundled `python.exe` → PATH.
 
-### 6.6. Source mode vs Frozen mode: why flows still work
+### 7.6. Source mode vs Frozen mode: why flows still work
 
 Tlamatini has two operational modes:
 
@@ -895,7 +1057,7 @@ For users, the takeaway is simpler: **a `.flw` saved in source mode should load 
 
 ---
 
-## 7. Configuration (`Tlamatini/agent/config.json`)
+## 8. Configuration (`Tlamatini/agent/config.json`)
 
 | Mode | Resolution order |
 |---|---|
@@ -903,7 +1065,7 @@ For users, the takeaway is simpler: **a `.flw` saved in source mode should load 
 | Frozen | `<install-dir>/config.json` next to the executable |
 | Both | `CONFIG_PATH` env var wins over both |
 
-### 7.1. LLM and unified-agent
+### 8.1. LLM and unified-agent
 
 ```json
 {
@@ -924,11 +1086,11 @@ For users, the takeaway is simpler: **a `.flw` saved in source mode should load 
 
 `unified_agent_max_iterations` caps the Multi-Turn tool loop (default 100). `enable_unified_agent` is the master switch for tool-calling.
 
-### 7.2. RAG
+### 8.2. RAG
 
 Key knobs: `chunk_size` (3000), `chunk_overlap` (800), `k_vector` / `k_bm25` (100 each), `k_fused` (150), `enable_bm25`, `rrf_k` (60), `max_doc_chars` (150000), `max_context_chars` (250000), and a `context_budget_allocation` map (`high_relevance: 0.60, architecture: 0.20, related: 0.15, documentation: 0.05`). See `BookOfTlamatini.md` Part VII for the full schema.
 
-### 7.3. ACPX
+### 8.3. ACPX
 
 ```json
 {
@@ -949,7 +1111,7 @@ Key knobs: `chunk_size` (3000), `chunk_overlap` (800), `k_vector` / `k_bm25` (10
 
 `permissionMode` ∈ `approve-reads` (default) / `approve-all` (DANGEROUS) / `deny-all`. The whole `acpx` block is optional; on first boot of an upgrade build, `boot_acpx()` appends the documented default block atomically.
 
-### 7.4. MCP services and other knobs
+### 8.4. MCP services and other knobs
 
 - `mcp_system_server_port` (8765), `mcp_files_search_server_port` (50051) — MCP daemons.
 - `internet_classifier_model`, `web_summarizer_model`, `web_context_max_chars` — internet toggle.
@@ -960,9 +1122,9 @@ You no longer need to hand-edit all of those values. On `/agent/`, open `Config 
 
 ---
 
-## 8. Architecture at a Glance
+## 9. Architecture at a Glance
 
-### 8.1. Big picture
+### 9.1. Big picture
 
 ```
 Browser (Chat / ACP Designer)
@@ -978,7 +1140,7 @@ Django Channels (Daphne ASGI) → AgentConsumer
 LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → external CLIs
 ```
 
-### 8.2. The five layers
+### 9.2. The five layers
 
 | Layer | Responsibility | Where |
 |---|---|---|
@@ -988,7 +1150,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 | 4. Main answer chains | Basic / History-aware / Unified. `factory.py` monkey-patches `invoke()`. | `agent/rag/chains/` |
 | 5. Unified-agent tools | Synchronous `@tool` functions. Active only in Multi-Turn. | `agent/tools.py` |
 
-### 8.3. Multi-Turn execution pipeline
+### 9.3. Multi-Turn execution pipeline
 
 ```
 Frontend (toggles) → WebSocket → AgentConsumer → ask_rag() (skips prompt-shape validator)
@@ -999,7 +1161,7 @@ Frontend (toggles) → WebSocket → AgentConsumer → ask_rag() (skips prompt-s
           → broadcast → frontend renders, shows Create Flow if all 4 gates pass
 ```
 
-### 8.4. Agent contracts and the Flow Compiler
+### 9.4. Agent contracts and the Flow Compiler
 
 Tlamatini has two ways to create flows:
 
@@ -1030,14 +1192,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 8.5. Agent catalog (the 61 types, by family)
+### 9.5. Agent catalog (the 62 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, **De-Compresser**, Telegramer, **TeleTlamatini**, **WhatsTlamatini**, **ACPXer** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |
@@ -1047,17 +1209,17 @@ Per-agent details (config knobs, lifecycle, naming convention, log markers): see
 
 ---
 
-## 9. Embedding-Memory Pre-Flight Guard (GPU hosts)
+## 10. Embedding-Memory Pre-Flight Guard (GPU hosts)
 
 When you click **Set directory as context** in the Context menu, Tlamatini walks the directory, splits each file into chunks, and pushes every chunk through Ollama's embedding API to build a FAISS index. On a laptop / consumer GPU a heavy embedding model can occupy 75–95% of total VRAM by itself — and once a chat model is also resident the combined footprint exceeds available memory and the daemon thrashes RAM↔VRAM swap on every embed batch. A 30-second context-load turns into a multi-hour stall.
 
 The **embedding-memory pre-flight guard** (`Tlamatini/agent/embedding_memory_guard.py`) catches this before the embed burst starts. It runs only when an NVIDIA GPU is detected; on CPU-only / AMD / Apple Silicon hosts it is a silent no-op and the legacy load path is unchanged.
 
-### 9.1. Why this exists
+### 10.1. Why this exists
 
 The trigger case is the dev box this codebase is calibrated on: an **NVIDIA GeForce RTX 4070 Laptop GPU with 8 188 MiB** of VRAM. The previously-configured embedding model `qwen3-embedding:8b` (7.6 B parameters, Q4_K_M quantization) sits at **~6.24 GB resident** — 77.9% of total VRAM. Add the chat model and the daemon evicts something on every embed batch. The fix is either: switch to a smaller model (e.g. `nomic-embed-text:v1.5` at ~0.60 GB resident, 7% saturation) or accept the slow path knowingly. The guard surfaces the choice **before** the heavy work starts, so you can abort, swap the model in `config.json`, and restart Ollama — saving an hour of debugging "why is context loading frozen?".
 
-### 9.2. How the check fires (the hook point)
+### 10.2. How the check fires (the hook point)
 
 The guard is wired into `agent/consumers.py::setup_contextual_rag_chain` at exactly one point: **after** the "loading context" banner is broadcast to the chat, **before** the heavy `asyncio.to_thread(setup_llm_with_context, …)` call that drives the embedding burst. The flow is:
 
@@ -1083,13 +1245,13 @@ asyncio.to_thread(setup_llm_with_context, ...)
 
 The check runs inside `asyncio.to_thread` so a slow `nvidia-smi` or cold `/api/show` call never blocks the Channels event loop. The whole block is wrapped in `try/except Exception` so any unhandled probe error prints a one-line `[EMBED-MEM] Pre-flight check skipped (fail-open)` to `tlamatini.log` and the load continues — **a diagnostic must never block the user**.
 
-### 9.3. GPU detection and no-GPU behavior
+### 10.3. GPU detection and no-GPU behavior
 
 The guard reuses the **already-cached** `nvidia-smi -L` probe from `agent/gpu_perf.py::_has_nvidia_gpu()` (introduced for the model-pinning hook). The probe runs at most once per process; subsequent calls hit the in-module cache. On CPU-only Linux/Windows, AMD GPUs, and Apple Silicon the probe returns `False` once at server start and **every subsequent call to the guard returns `None` immediately** — no subprocesses spawned, no HTTP calls made, no overhead.
 
-This is the **portability guarantee**: a fresh `git pull` on a no-GPU box behaves *exactly* as before the guard existed. The 28 dedicated no-GPU compatibility tests (see 9.7) lock the contract in place.
+This is the **portability guarantee**: a fresh `git pull` on a no-GPU box behaves *exactly* as before the guard existed. The 28 dedicated no-GPU compatibility tests (see 10.7) lock the contract in place.
 
-### 9.4. Three-tier VRAM prediction
+### 10.4. Three-tier VRAM prediction
 
 When the GPU gate passes, the guard predicts the embedding model's resident VRAM in priority order:
 
@@ -1123,7 +1285,7 @@ Calibration against live measurements on the RTX 4070 Laptop:
 
 Tier B also pulls the **embedding dimension** from `/api/show` via any architecture-prefixed `*.embedding_length` key (e.g. `qwen3.embedding_length=4096`, `nomic-bert.embedding_length=768`). Combined with a directory pre-scan that mirrors the exclusion rules of `agent/rag/factory.py::CustomTextLoader`, it reports a **projected FAISS-index RAM size** (`num_chunks × embedding_dim × 4` bytes, float32). This is RAM, not VRAM, but useful to surface on directories with hundreds of thousands of chunks.
 
-### 9.5. The 80% threshold and the chat-bubble warning
+### 10.5. The 80% threshold and the chat-bubble warning
 
 The guard fires when **predicted_vram ≥ 0.80 × smallest-GPU total VRAM**. Why the smallest GPU (rather than the sum or the largest)? Because Ollama loads each model into a **single device** — using the max would silently under-report the constraint on heterogeneous multi-GPU rigs.
 
@@ -1144,7 +1306,7 @@ embeding-model in config.json to a smaller model
 
 The message is **informational and non-blocking** — context loading proceeds. The user picks whether to wait it out, hit Cancel, or change models. The phrasing names the exact `config.json` key (`embeding-model`, with the spelling preserved from the existing codebase) and a concrete alternative.
 
-### 9.6. Tuning, overrides, and what the guard does NOT do
+### 10.6. Tuning, overrides, and what the guard does NOT do
 
 | Knob | Where | Default | When to change |
 |---|---|---|---|
@@ -1161,7 +1323,7 @@ What the guard **does NOT** do, by deliberate choice:
 - It does **not** call `nvidia-smi` on CPU-only hosts. Both gates (`_has_nvidia_gpu_cached` and the `_gpu_total_memory_bytes` query) short-circuit before any subprocess spawn.
 - It does **not** add new dependencies. `subprocess`, `urllib.request`, and `os.walk` are the only stdlib touchpoints — the same surface `agent/gpu_perf.py` already uses.
 
-### 9.7. Test coverage
+### 10.7. Test coverage
 
 The guard ships with **49 automated tests** in `Tlamatini/agent/test_embedding_memory_guard.py`, split into seven `SimpleTestCase` classes:
 
@@ -1211,18 +1373,18 @@ python manage.py test agent.test_embedding_memory_guard --verbosity=2
 
 ---
 
-## 10. Orphan-Process Cleanup (`conhost.exe` reaper)
+## 11. Orphan-Process Cleanup (`conhost.exe` reaper)
 
 Tlamatini now ships a three-tier reaper (`Tlamatini/agent/orphan_reaper.py`) that cleans up the console-host children every console subprocess on Windows drags behind it. Without this pass, users were occasionally seeing `conhost.exe` processes lingering in Task Manager **with the Tlamatini icon** — the icon is inherited from the parent EXE that spawned the console — and reasonably concluding that Tlamatini was leaking processes.
 
-### 10.1. The problem this solves
+### 11.1. The problem this solves
 
 On Windows, when a tool (`execute_command`, `chat_agent_executer`, an ACPX CLI child, an agent-pool Python subprocess, …) spawns a console child, Windows allocates a `conhost.exe` companion to host that console. If the immediate parent dies before the OS reaps the console pair, that `conhost.exe` outlives Tlamatini. Two compounding causes were closed at once:
 
 - **The reaper itself** sweeps zombies and orphaned console hosts at three lifecycle points (below).
 - **Spawn sites were hardened** — `views.py::execute_starter_agent_view`, `execute_ender_agent_view`, `restart_agent_view`, `execute_flowcreator_view`, every ACPX child in `acpx/runtime.py`, and a `subprocess.Popen.__init__` guard at the top of `agents/ender/ender.py` (mirrored across every other pool agent) now spawn with `CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` and stdio piped to `DEVNULL`. No console is allocated in the first place, so no `conhost.exe` companion exists to orphan.
 
-### 10.2. The three tiers
+### 11.2. The three tiers
 
 | Tier | When it runs | Scope | Visibility |
 |---|---|---|---|
@@ -1230,7 +1392,7 @@ On Windows, when a tool (`execute_command`, `chat_agent_executer`, an ACPX CLI c
 | **Tier 2** | Once, right after the final answer is broadcast to the user. Driven by `AgentConsumer._tier2_orphan_sweep()` in `agent/consumers.py`. Runs in a thread (so it doesn't block the WebSocket loop) and merges its survivors with Tier 1's leftovers (de-duped by PID). | Same as Tier 1 plus the **agent-pool cmdline scan** (kills processes whose `cmdline` references `agents/pools/...` but are not tracked by `AgentProcess` / `ChatAgentRun` anymore). | If anything survives BOTH tiers, the consumer sends a **second chat message** listing every surviving `name + PID` pair so the user can end them manually from Task Manager. |
 | **Tier 3** | At Tlamatini.exe shutdown — `AgentConfig.ready()` registers it on the same `atexit` / SIGINT / SIGBREAK path that already cleans up pools. | Full sweep (self-tree + pool cmdline + console-host orphans). | Logs `--- [Tier-3 reaper] killed=… survivors=… errors=…` to `tlamatini.log`. Survivors are listed by `name (PID)` so a post-mortem reader can audit what refused to die. |
 
-### 10.3. What gets reaped (and what does not)
+### 11.3. What gets reaped (and what does not)
 
 A process is considered a "Tlamatini orphan" if **any** of the following hold:
 
@@ -1242,7 +1404,7 @@ Each candidate is escalated `terminate → wait 1 s → kill` via `psutil`; an "
 
 Out of scope on purpose: console hosts spawned by unrelated processes (a different IDE, your shell, another app's child) — the parentage check keeps the sweep narrow.
 
-### 10.4. The user-visible follow-up message
+### 11.4. The user-visible follow-up message
 
 When Tier 2 detects survivors, the user sees a second chat bubble immediately after the main answer:
 
@@ -1259,28 +1421,28 @@ The rendering helper is `orphan_reaper.format_survivors_message()`; it returns `
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
-### 11.1. Ollama / models
+### 12.1. Ollama / models
 
 - "connection refused" → `ollama serve` in a dedicated terminal. Check `ollama_base_url`.
 - Model not found → `ollama list` to see what's pulled. Pull the missing tag.
 - Remote Ollama → set `ollama_token` for bearer auth.
 
-### 11.2. RAG / context
+### 12.2. RAG / context
 
 - Set-Context shows no green banner → check file permissions, ensure files are text not binary.
-- "Out of memory" during embedding → fallback mode kicks in; retrieval quality drops, files still accessible. Switch to a smaller embedding model. **See chapter 9 — the embedding-memory pre-flight guard now warns you about this *before* the embed burst starts on GPU hosts.**
+- "Out of memory" during embedding → fallback mode kicks in; retrieval quality drops, files still accessible. Switch to a smaller embedding model. **See chapter 10 — the embedding-memory pre-flight guard now warns you about this *before* the embed burst starts on GPU hosts.**
 - Hit `max_doc_chars` → bump it.
 - Session says it was restored after a refresh, but the input stays disabled briefly → that is expected while the contextual RAG chain rebuilds. Wait for the ready state / spinner to clear before sending the next prompt.
 
-### 11.3. Multi-Turn / planner
+### 12.3. Multi-Turn / planner
 
 - Did you tick **Multi-Turn**? Is `enable_unified_agent: true`?
 - "Tool X is not available" → the planner did not bind X. Check `[Planner._select]` console lines, add matching keywords to your prompt, or raise `max_selected_tools`.
 - 100 iterations exhausted → likely a busy-poll loop. Use `chat_agent_sleeper` / `chat_agent_run_wait` instead.
 
-### 11.4. Chat-created flows and ACP validation
+### 12.4. Chat-created flows and ACP validation
 
 - **Create Flow downloads a `.flw`, but it looks simpler than the chat transcript.** That is normal. The file stores the flow structure, node config, connections, and artifacts. It does not store the entire conversation.
 - **Create Flow fails from the chat.** The browser first asks `/agent/flow_from_tool_calls/` to normalize the draft. If that endpoint fails, the frontend falls back to the older browser-only export so you do not lose the flow draft.
@@ -1290,20 +1452,20 @@ The rendering helper is `orphan_reaper.format_survivors_message()`; it returns `
 - **A value I set in an agent dialog disappears after Validate or Start.** Current builds preserve explicit dialog edits and merge canvas-derived wiring on top of them. If something still looks wrong, reopen the dialog, save once more, then run Validate and inspect the compile warnings.
 - **Parametrizer mappings disappear after reload.** Save the flow after creating mappings. New `.flw` files store mappings under `artifacts.parametrizerMappings`, and the loader restores them into each Parametrizer node.
 
-### 11.5. ACPX / external CLIs
+### 12.5. ACPX / external CLIs
 
 - `acp_doctor` says agent not resolvable → CLI not on `PATH`, or set `acpx.agents.<id>.command` to the absolute path.
 - Transcript only shows outbound prompts on Windows → your build is older than May 2026. Update — fix is `transport="oneshot-prompt"` for claude/gemini/cursor/qwen/codex.
 - API key not picked up → per-agent `acpx.agents.<id>.env` wins over exported shell vars; check both.
 - Session left running → always end with `acp_kill`. If a request times out, manually `acp_list_sessions` + `acp_kill`.
 
-### 11.6. Frozen build / installer
+### 12.6. Frozen build / installer
 
 - Wrong config used → place `config.json` next to the exe, or set `CONFIG_PATH`.
 - Missing templates → verify `agents/` exists in the install. Rebuild if `README.md`, `jd-cli/`, or template directories are missing.
 - Restrictive Group Policy blocks shortcuts → `CreateShortcut.ps1` falls back to user-scoped Desktop / Start Menu paths.
 
-### 11.7. Logs to consult first
+### 12.7. Logs to consult first
 
 | What | Where |
 |---|---|
@@ -1319,11 +1481,11 @@ INFO loggers worth knowing: `agent.chat_agent_runtime`, `agent.tools`, `agent.mc
 
 ---
 
-## 12. Versioning
+## 13. Versioning
 
 Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH` — with **git tags as the single source of truth**. You never hand-edit a version string anywhere in the codebase; you tag, then you build, and the three build scripts bake the resolved value into every artefact.
 
-### 12.1. The bump rules
+### 13.1. The bump rules
 
 | Component | Bump when… | Example |
 |---|---|---|
@@ -1333,7 +1495,7 @@ Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MI
 
 Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1`, `2.0.0-rc.1` — and sort **before** the final release.
 
-### 12.2. Cutting a release
+### 13.2. Cutting a release
 
 ```powershell
 git tag -a v1.3.0 -m "Release 1.3.0: <one-line summary>"
@@ -1345,7 +1507,7 @@ python build_installer.py
 
 All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.3.0/`.
 
-### 12.3. Where you can see the running version
+### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
@@ -1356,7 +1518,7 @@ All three build scripts pick the tag up from `git describe --tags` automatically
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
 
-### 12.4. Building without tagging (development)
+### 13.4. Building without tagging (development)
 
 The build never fails for "no version" — and the version surface is always a clean SemVer like `1.1.1`. The resolver returns the **bare base tag** reachable from HEAD; distance / commit / dirty state are deliberately stripped:
 
@@ -1370,7 +1532,7 @@ The build never fails for "no version" — and the version surface is always a c
 
 No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those concerns stay in git (`git status`, `git describe --long --dirty`).
 
-### 12.5. Overriding the resolved version
+### 13.5. Overriding the resolved version
 
 | # | Source | Use case |
 |---|---|---|
@@ -1385,9 +1547,9 @@ The full contract — release recovery, runtime resolver internals, file-by-file
 
 ---
 
-## 13. Contributing & License
+## 14. Contributing & License
 
-### 13.1. Contributing
+### 14.1. Contributing
 
 1. Fork; create a feature branch.
 2. Follow PEP 8. Run `python -m ruff check` and `npm run lint` before pushing.
@@ -1397,11 +1559,11 @@ The full contract — release recovery, runtime resolver internals, file-by-file
 
 When adding a new agent, follow the 8-step checklist in `Tlamatini/.agents/workflows/create_new_agent.md` (backend script + view + migration + CSS gradient + 4 JS files + agentic_skill.md + README + lint).
 
-### 13.2. Acknowledgments
+### 14.2. Acknowledgments
 
 [Django](https://www.djangoproject.com/) · [LangChain](https://github.com/langchain-ai/langchain) · [LangGraph](https://github.com/langchain-ai/langgraph) · [Ollama](https://ollama.ai/) · [FAISS](https://github.com/facebookresearch/faiss) · [Anthropic](https://www.anthropic.com/) · [Bootstrap](https://getbootstrap.com/) · [TextMeBot](https://textmebot.com/) · [Ruff](https://github.com/astral-sh/ruff) · [PyAutoGUI](https://github.com/asweigart/pyautogui) · [JD-CLI](https://github.com/intoolswetrust/jd-cli)
 
-### 13.3. License
+### 14.3. License
 
 **GNU General Public License v3.0** — see [LICENSE](LICENSE).
 

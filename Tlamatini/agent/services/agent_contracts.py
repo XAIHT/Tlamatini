@@ -89,6 +89,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "acpxer": ("agent_id", "session_id", "transport", "settle", "transcript_path", "response_body"),
     "shoter": ("output_path", "output_dir", "filename", "response_body"),
     "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
+    "unrealer": ("host", "port", "command", "status", "error", "response_body"),
 }
 
 

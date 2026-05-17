@@ -294,6 +294,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'apirer') {
                 await updateApirerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'unrealer') {
+                await updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'unrealer') {
+                await updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+            }
             if (targetAgentName.toLowerCase() === 'jenkinser') {
                 await updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
             }
@@ -607,6 +613,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'apirer') {
         await updateApirerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'unrealer') {
+        await updateUnrealerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'unrealer') {
+        await updateUnrealerConnection(sourceId, targetId, 'add', 'target');
     }
     if (targetAgentName === 'jenkinser') {
         await updateJenkinserConnection(targetId, sourceId, 'add', 'source');

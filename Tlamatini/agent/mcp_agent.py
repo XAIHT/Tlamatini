@@ -110,6 +110,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_move_file":      ("mover",          "Mover"),
     "chat_agent_deleter":        ("deleter",        "Deleter"),
     "chat_agent_apirer":         ("apirer",         "Apirer"),
+    # Unrealer mutates the Unreal Editor's state (spawns/deletes actors,
+    # creates and compiles Blueprints, adds UMG widgets, wires input
+    # mappings). Read-only commands like ``get_actors_in_level`` also
+    # share this agent_key on purpose so a mixed read-and-mutate flow
+    # renders as one cohesive "List of Unrealer Operations" table.
+    "chat_agent_unrealer":       ("unrealer",       "Unrealer"),
     "chat_agent_send_email":     ("emailer",        "Emailer"),
     "chat_agent_telegramer":     ("telegramer",     "Telegramer"),
     "chat_agent_whatsapper":     ("whatsapper",     "Whatsapper"),

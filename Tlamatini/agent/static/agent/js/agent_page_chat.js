@@ -676,6 +676,48 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         }
         set('body', pairs.body);
 
+    // ── Unrealer ─────────────────────────────────────────────────────
+    // Template fields: host, port, command, params (object), connect_timeout,
+    // read_timeout. The LLM emits dotted ``params.<name>`` keys for individual
+    // Unreal command arguments (e.g. params.name, params.location), which we
+    // gather via collectDotted so the resulting node's ``params`` is a nested
+    // YAML map matching the Unreal MCP {"type":<command>,"params":{...}}
+    // wire format.
+    } else if (lower === 'unrealer') {
+        set('host', pairs.host);
+        if (pairs.port !== undefined && pairs.port !== '') {
+            const portNum = parseInt(pairs.port, 10);
+            if (!Number.isNaN(portNum)) config.port = portNum;
+        }
+        set('command', pairs.command);
+        const unrealParams = collectDotted('params');
+        // Allow a bare ``params={...}`` form too (some LLMs embed full JSON).
+        if (pairs.params && Object.keys(unrealParams).length === 0) {
+            try {
+                const parsed = JSON.parse(pairs.params);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    Object.assign(unrealParams, parsed);
+                }
+            } catch (_e) { /* leave unrealParams as-is */ }
+        }
+        // Coerce list-shaped params (location/rotation/scale) from string into array
+        for (const k of Object.keys(unrealParams)) {
+            const v = unrealParams[k];
+            if (typeof v === 'string' && v.startsWith('[') && v.endsWith(']')) {
+                try { unrealParams[k] = JSON.parse(v); }
+                catch (_e) { /* keep string */ }
+            }
+        }
+        if (Object.keys(unrealParams).length > 0) config.params = unrealParams;
+        if (pairs.connect_timeout !== undefined && pairs.connect_timeout !== '') {
+            const n = parseFloat(pairs.connect_timeout);
+            if (!Number.isNaN(n)) config.connect_timeout = n;
+        }
+        if (pairs.read_timeout !== undefined && pairs.read_timeout !== '') {
+            const n = parseFloat(pairs.read_timeout);
+            if (!Number.isNaN(n)) config.read_timeout = n;
+        }
+
     // ── Crawler ──────────────────────────────────────────────────────
     // Template fields: url, system_prompt, content_mode
     } else if (lower === 'crawler') {

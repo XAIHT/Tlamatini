@@ -830,6 +830,25 @@ async function updateApirerConnection(agentId, connectedAgentId, action, connect
     }
 }
 
+async function updateUnrealerConnection(agentId, connectedAgentId, action, connectionType = 'target') {
+    try {
+        const response = await fetch(`/agent/update_unrealer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Unrealer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Unrealer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Unrealer ${agentId}:`, error);
+    }
+}
+
 async function updateJenkinserConnection(agentId, connectedAgentId, action, connectionType = 'target') {
     try {
         const response = await fetch(`/agent/update_jenkinser_connection/${agentId}/`, {

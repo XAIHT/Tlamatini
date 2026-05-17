@@ -15,19 +15,16 @@ Run:
     python manage.py test agent.test_tkinter_availability
 """
 
-import ast
 import importlib
 import importlib.util
 import os
 import platform
-import queue
 import sys
 import threading
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, Client, RequestFactory
+from django.test import TestCase, Client
 from django.contrib.auth.models import User
 
 
