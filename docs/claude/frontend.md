@@ -43,14 +43,15 @@ Consequences that MUST be respected by any new canvas code:
 
 If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.), it almost always belongs as a child of `#canvas-content`, not `#submonitor-container`, so it shares the coordinate frame with the items it visualizes.
 
-## Shared / chat-runtime auxiliary (5 modules)
+## Shared / chat-runtime auxiliary (6 modules)
 - `canvas_item_dialog.js` - Agent config dialog on canvas
 - `contextual_menus.js` - Right-click menus
 - `tools_dialog.js` - Tool enable/disable dialog
+- `skills_dialog.js` - **ACPX-Skills navbar dropdown** dialogs (Configure checkbox grid mirroring the Mcps/Tools/Agents pattern + Browse list-and-detail + Diagnostics cross-check report + Reload single-action). Backed by `GET /agent/skills/` / `GET /agent/skills/<name>/` / `GET /agent/skills/_/diagnostics/` / `POST /agent/skills/_/reload/` plus the WebSocket `set-skills` channel for the toggle persistence. Per-skill state cached in the module-level `skills = []` array populated by `type: 'skill'` system messages — see `agent_page_chat.js`. The Configure dialog only ever writes `Skill.enabled`; everything else (description, runtime, frontmatter, sha256) is owned by `agent/acpx/service.py::boot_skills()` and reloaded from SKILL.md on disk.
 - `chat_page_runtime_poller.js` - Chat-side wrapped-runtime poller (status / log / wait helpers)
 - `shared-runtime-dialogs.js` - Shared modal dialog widgets used by chat + ACP runtime views
 
-**Total: 27 JS modules** (8 chat + 13 ACP + 1 ACP entry-point + 5 shared/chat-runtime auxiliary).
+**Total: 28 JS modules** (8 chat + 13 ACP + 1 ACP entry-point + 6 shared/chat-runtime auxiliary).
 
 ## Flow Compiler Pipeline (canvas / chat → backend → pool)
 

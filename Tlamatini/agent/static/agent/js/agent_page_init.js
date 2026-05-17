@@ -47,6 +47,7 @@ function Reconnect(e) { // eslint-disable-line no-unused-vars
 
     agents = [];
     tools = [];
+    skills = [];
     openEnabled = true;
     reConnectEnabled = true;
     contextEnabled = true;
@@ -323,6 +324,70 @@ function OpenAgentsDialog(e) { // eslint-disable-line no-unused-vars
 
     preRenderAgentsDialog("Configure Agents...", "Agents will be used to provide additional information to Tlamatini.", "Specify the Rag-Agents to be used:", callbackOnCont, callbackOnCanc);
     renderAgentsDialog();
+}
+
+// ----------------------------------------------------------------
+// ACPX-Skills dropdown handlers — see skills_dialog.js for the
+// jQuery-UI dialog implementations they delegate to.
+// ----------------------------------------------------------------
+function OpenSkillsConfigureDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (inLongOperation === true) {
+        console.log("Dialog Skills can't be opened during a long operation...");
+        return;
+    }
+    const callbackOnCont = () => {
+        if (!Array.isArray(skills) || skills.length === 0) {
+            console.log("--- No skills to save.");
+            return true;
+        }
+        // Payload mirrors set-tools / set-agents: `name=description=true/false,...`
+        // The skill name is the SKILL.md frontmatter `name` directly (no
+        // `skill-N` prefix because the Skill DB row keys on `name`).
+        let completeSkills = "";
+        for (const skill of skills) {
+            if (!skill || !skill.name) continue;
+            const checked = $("#skill-checkbox-" + CSS.escape(skill.name)).is(":checked");
+            const desc = (skill.description || '').replace(/[,=]/g, ' ');
+            completeSkills += skill.name + "=" + desc + "=" + checked + ",";
+        }
+        sendChatSocketMessage(JSON.stringify({
+            'type': 'set-skills',
+            'message': completeSkills
+        }));
+        console.log("--- Sent set-skills message:", completeSkills);
+        return true;
+    };
+    const callbackOnCanc = () => false;
+    preRenderSkillsConfigureDialog(
+        "Configure ACPX-Skills...",
+        "Toggle SKILL.md packages on or off. Disabled skills are hidden from list_skills and rejected by invoke_skill.",
+        callbackOnCont, callbackOnCanc
+    );
+    renderSkillsConfigureDialog();
+}
+
+function OpenSkillsBrowseDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (inLongOperation === true) {
+        console.log("Dialog Skills-Browse can't be opened during a long operation...");
+        return;
+    }
+    openSkillsBrowseDialog();
+}
+
+function OpenSkillsDiagnosticsDialog(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (inLongOperation === true) {
+        console.log("Dialog Skills-Diagnostics can't be opened during a long operation...");
+        return;
+    }
+    openSkillsDiagnosticsDialog();
+}
+
+function ReloadSkillRegistry(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    reloadSkillRegistry();
 }
 
 // ----------------------------------------------------------------

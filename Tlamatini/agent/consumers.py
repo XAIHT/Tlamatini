@@ -9,7 +9,7 @@ import sys
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import User
 from django.db.models import Max
-from .models import AgentMessage, LLMProgram, LLMSnippet, Omission, Mcp, Tool, Agent, AgentProcess, SessionState
+from .models import AgentMessage, LLMProgram, LLMSnippet, Omission, Mcp, Tool, Agent, AgentProcess, SessionState, Skill
 from channels.db import database_sync_to_async
 from asgiref.sync import sync_to_async
 from .rag import (
@@ -161,6 +161,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
             for agent in agents:
                 await self.agent_establishment(agent['agentName'], agent['agentDescription'], agent['agentContent'])
             print("--- Agents re-established on session restore")
+
+            skills = await self.get_all_skills()
+            for skill in skills:
+                await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
+            print("--- Skills re-established on session restore")
         else:
             # No existing RAG chain - check session state for context to restore
             if user and user.is_authenticated:
@@ -283,6 +288,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
         for agent in self.agents:
             print(f"\tAgent: {agent['agentName']}, {agent['agentDescription']}, {agent['agentContent']}")
 
+        skills = await self.get_all_skills()
+        for skill in skills:
+            await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
+        print(f"--- Skills established: {len(skills)}")
+
         async with self.rag_lock:
             try:
                 # Check for cancellation before starting the heavy operation
@@ -402,6 +412,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
         print("--- Agents appended:")
         for agent in self.agents:
             print(f"\tAgent: {agent['agentName']}, {agent['agentDescription']}, {agent['agentContent']}")
+
+        skills = await self.get_all_skills()
+        for skill in skills:
+            await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
+        print(f"--- Skills established: {len(skills)}")
 
         async with self.rag_lock:
             try:
@@ -573,6 +588,23 @@ class AgentConsumer(AsyncWebsocketConsumer):
             }))
         except Exception as e:
             print(f"Error in agent_establishment: {e}")
+
+    async def skill_establishment(self, skill_name, skill_description, skill_content):
+        """
+        Sends a skill establishment message.
+
+        skill_content is 'true' / 'false' (string) — the same shape Mcps /
+        Tools / Agents use, so the existing pipe-encoded message-payload
+        decoder on the JS side can be reused verbatim.
+        """
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'skill',
+                'message': skill_name + '|' + (skill_description or '') + '|' + skill_content,
+                'username': 'system'
+            }))
+        except Exception as e:
+            print(f"Error in skill_establishment: {e}")
             
     async def disconnect(self, close_code):   # type: ignore
         print("--- WebSocket disconnected.")
@@ -1215,6 +1247,44 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("--- Bot message broadcast to room.")
                 return
 
+            if type == 'set-skills':
+                # Toggle ACPX-Skills enable/disable. The payload encoding
+                # mirrors set-tools / set-agents: comma-separated
+                # `<name>=<description>=<true|false>` triples. The skill
+                # name is the SKILL.md frontmatter `name` directly (no
+                # `skill-N` prefix) because the Skill model already keys
+                # on `name`. Only the `enabled` boolean is updated here —
+                # the disk-derived `description` / `runtime` / etc are
+                # owned by boot_skills() and intentionally left alone.
+                print(f"--- Received set-skills message from client, message: {message}")
+                if (message == '' or message.isspace()):
+                    print("--- Error skills are empty. Message rejected.")
+                    return
+                items = message.split(',')
+                touched = 0
+                for raw in items:
+                    if (raw == '' or raw.isspace()):
+                        continue
+                    descAndContent = raw.split('=', 2)
+                    if len(descAndContent) != 3:
+                        print(f"--- Skipping malformed skill toggle payload: {raw}")
+                        continue
+                    skill_name = (descAndContent[0] or '').strip()
+                    if not skill_name:
+                        print(f"--- Skipping empty skill name in payload: {raw}")
+                        continue
+                    enabled = (descAndContent[2] or '').strip().lower() == 'true'
+                    await self.save_skill(skill_name, enabled)
+                    touched += 1
+                await self.channel_layer.group_send(   # type: ignore
+                    self.room_group_name,
+                    {'type': 'agent_message',
+                     'message': f"Skills activation updated ({touched} skill(s)). The change applies to the next request.",
+                     'username': 'Tlamatini'}
+                )
+                print(f"--- Bot message broadcast to room. Touched {touched} skill rows.")
+                return
+
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):
                 print("--- User message saved to DB.")
                 await self.save_message(user, message, conversation_user=user)
@@ -1430,6 +1500,37 @@ class AgentConsumer(AsyncWebsocketConsumer):
     def get_all_agents(self):
         """Return all Agent records (name, content) as list of dicts."""
         return list(Agent.objects.order_by('idAgent').values('agentName', 'agentDescription', 'agentContent'))
+
+    @database_sync_to_async
+    def get_all_skills(self):
+        """
+        Return all Skill rows ordered by name. Skills are keyed by `name`
+        (the SKILL.md frontmatter name, e.g. `acp-router`) rather than the
+        `skill-N` prefix pattern used by Mcps / Tools / Agents, because the
+        underlying registry is keyed by name on disk.
+        """
+        return list(
+            Skill.objects.order_by('name').values('name', 'description', 'enabled')
+        )
+
+    @database_sync_to_async
+    def save_skill(self, name, enabled):
+        """
+        Toggle Skill.enabled on/off. Idempotent: missing rows are skipped
+        rather than auto-created — boot_skills() owns row lifecycle (it
+        seeds new disk skills + prunes orphans), so a toggle for an
+        unknown name is treated as a stale-frontend race, not an error.
+        """
+        try:
+            row = Skill.objects.filter(name=name).first()
+            if row is None:
+                print(f"--- save_skill: no Skill row named '{name}' (race with boot_skills?); ignoring")
+                return
+            if row.enabled != bool(enabled):
+                row.enabled = bool(enabled)
+                row.save(update_fields=['enabled', 'last_loaded_at'])
+        except Exception as e:
+            print(f"--- save_skill failed for '{name}': {e}")
 
     @database_sync_to_async
     def get_all_agent_processes(self):

@@ -1297,6 +1297,27 @@ chatSocket.onmessage = function (e) {
         }
         return;
     }
+    if (data.username === 'system' && data.type === 'skill') {
+        // Mirror of the 'agent' branch above — `skills[]` powers the
+        // ACPX-Skills > Configure dialog (checkbox grid) and is the cache
+        // the Browse dialog merges with the HTTP /agent/skills/ payload.
+        const values = data.message.split('|');
+        const skillName = values[0];
+        const skillDescription = values[1] || '';
+        const skillContent = values[2] || 'true'; // 'true' | 'false'
+        const existing = skills.findIndex(s => s.name === skillName);
+        if (existing !== -1) {
+            skills[existing].description = skillDescription;
+            skills[existing].content = skillContent;
+        } else {
+            skills.push({
+                name: skillName,
+                description: skillDescription,
+                content: skillContent
+            });
+        }
+        return;
+    }
     if (data && data.username === 'Tlamatini' && data.message.startsWith('_tree_:') === true) {
         console.log("--- Received tree_view content message from server.");
         console.log("--- The message(tree_view content) is: " + data.message);

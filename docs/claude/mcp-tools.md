@@ -33,3 +33,51 @@
 - `get_mcp_tools()` returns LangChain tools, NOT MCP services
 - Tool status keys are handwritten and can drift from seeded DB descriptions
 - Adding `Mcp` row without extending `factory.py` does NOTHING
+
+---
+
+## ACPX-Skills admin menu (navbar dropdown)
+
+The chat navbar has a dedicated **ACPX-Skills** dropdown (between **Agents** and **Config**) that admins every SKILL.md package under `agent/skills_pkg/`. Four entries:
+
+| Entry | Backing endpoint | What it does |
+|---|---|---|
+| **Browse Skills** | `GET /agent/skills/` + `GET /agent/skills/<name>/` | List + detail pane with frontmatter, requires, inputs/outputs, permissions, body. Search/filter included. |
+| **Configure Skills** | WebSocket `set-skills` (mirrors `set-mcps` / `set-agents`) | Checkbox grid toggling `Skill.enabled` per row. Payload encoding: comma-separated `name=description=true/false`. |
+| **Diagnostics** | `GET /agent/skills/_/diagnostics/` | Cross-checks every skill's `requires_tools` / `requires_mcps` against disabled `Tool` / `Mcp` rows; flags `runtime: acpx` skills whose `acpx_agent` isn't a known `AcpAgent`; surfaces orphan DB rows. |
+| **Reload Registry** | `POST /agent/skills/_/reload/` | Re-runs `agent.acpx.service.boot_skills()` — re-scans `skills_pkg/`, refreshes Skill rows, prunes deleted ones. No server restart needed. |
+
+### Persistence shape — minimal by design
+
+The DB stays at "enumeration + enable/disable" only (mirrors `Tool` / `Mcp` / `Agent`). No per-user overrides of permissions, budgets, or descriptions live in the DB — the SKILL.md frontmatter on disk is the only source of truth. The pre-existing `Skill` model (created in migration `0071_acpx_skills.py`) has vestigial cache fields (`frontmatter_json`, `body_sha256`) that `boot_skills()` keeps in sync, but the admin UI deliberately ignores them and reads fresh from `skill_registry`.
+
+### Tool-surface gating
+
+When `Skill.enabled = False`:
+- `list_skills` (`agent/acpx/tools.py`) filters the row out of its output.
+- `invoke_skill` returns `{"ok": false, "code": "SKILL_DISABLED"}`.
+
+Implemented via `_disabled_skill_names()` in `agent/acpx/tools.py` — fails open (empty set on any DB exception) so a broken admin layer never silently hides skills.
+
+### WebSocket wiring (mirrors Mcps / Agents / Tools)
+
+- `consumers.AgentConsumer.skill_establishment()` sends one `type: 'skill'` system message per skill on connect (both rebuild and session-restore paths).
+- The frontend (`agent_page_chat.js`) catches those and pushes into the module-level `skills = []` array (declared in `agent_page_state.js`).
+- The Configure dialog (`skills_dialog.js::preRenderSkillsConfigureDialog`) reads from that array; Continue dispatches `set-skills` via `sendChatSocketMessage`.
+- Backend `set-skills` handler in `consumers.receive()` parses the payload and calls `save_skill(name, enabled)` which touches only `Skill.enabled` (other fields owned by `boot_skills()`).
+
+### Files
+
+| Path | Role |
+|---|---|
+| `agent/views.py` (`list_skills_view`, `skill_detail_view`, `reload_skills_view`, `skills_diagnostics_view`) | HTTP endpoints |
+| `agent/urls.py` | Routes: `/agent/skills/`, `/agent/skills/<name>/`, `/agent/skills/_/reload/`, `/agent/skills/_/diagnostics/` |
+| `agent/consumers.py` (`skill_establishment`, `get_all_skills`, `save_skill`, `set-skills` handler) | WebSocket layer |
+| `agent/acpx/tools.py` (`_disabled_skill_names`) | Tool-surface gating |
+| `agent/templates/agent/agent_page.html` | Navbar dropdown + 3 dialog containers + asset includes |
+| `agent/static/agent/js/skills_dialog.js` | jQuery-UI dialogs (Configure / Browse / Diagnostics / Reload) |
+| `agent/static/agent/js/agent_page_init.js` | `OpenSkillsXyzDialog` + `ReloadSkillRegistry` entry points |
+| `agent/static/agent/js/agent_page_chat.js` | `type: 'skill'` system-message handler |
+| `agent/static/agent/js/agent_page_state.js` | `let skills = []` global |
+| `agent/static/agent/css/skills_dialog.css` | Styling |
+| `agent/tests.py` (`SkillsAdminEndpointTests`, `SkillsToolSurfaceGatingTests`, `SkillsNavbarTemplateContractTests`) | 14 regression tests |

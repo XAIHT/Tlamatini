@@ -253,6 +253,51 @@ The 12 tools above are the **LLM-facing** ACPX surface. **ACPXer** is the **canv
 
 ---
 
+## ACPX-Skills admin menu (chat navbar dropdown)
+
+Added 2026-05-17. The chat navbar has a fourth dropdown — **ACPX-Skills** — that admins every SKILL.md package under `agent/skills_pkg/`. Position is between **Agents** and **Config** in `agent/templates/agent/agent_page.html`.
+
+Four entries:
+
+| Entry | Backing | What it does |
+|---|---|---|
+| **Browse Skills** | `GET /agent/skills/` (list) + `GET /agent/skills/<name>/` (detail) | Search-filterable list pane + detail pane showing frontmatter, requires, inputs/outputs, permissions, body. Pure read; no DB writes. |
+| **Configure Skills** | WebSocket `set-skills` channel (mirrors `set-mcps` / `set-agents` exactly) | Checkbox grid toggling `Skill.enabled` per row. Payload encoding: comma-separated `name=description=true/false`. |
+| **Diagnostics** | `GET /agent/skills/_/diagnostics/` | Cross-checks every skill's `requires_tools` / `requires_mcps` against disabled `Tool` / `Mcp` rows; flags `runtime:acpx` skills whose `acpx_agent` isn't in the registry; surfaces orphan DB rows (Skill row exists, SKILL.md gone). |
+| **Reload Registry** | `POST /agent/skills/_/reload/` | Re-runs `agent/acpx/service.py::boot_skills()` — rescans `agent/skills_pkg/`, refreshes Skill rows, prunes deleted ones. No server restart needed. |
+
+### Persistence shape (DB stays at "enumeration + enable/disable" only)
+
+The `Skill` model was pre-existing from migration `0071_acpx_skills.py` and is auto-seeded by `boot_skills()` from `apps.AgentConfig.ready()` on a background thread. The admin UI **only ever writes `Skill.enabled`** via `consumers.AgentConsumer.save_skill(name, enabled)`. The cached fields (`description`, `runtime`, `acpx_agent`, `frontmatter_json`, `body_sha256`) are owned by `boot_skills()` and refreshed from SKILL.md on every reload — the disk is the only source of truth for permissions, budgets, body. Browse / Diagnostics read fresh from `skill_registry`, not from those cached columns.
+
+### Tool-surface gating
+
+When `Skill.enabled = False`:
+- `list_skills` (`agent/acpx/tools.py`) filters the row out of its return value.
+- `invoke_skill` returns `{"ok": false, "code": "SKILL_DISABLED"}`.
+
+Implemented via `_disabled_skill_names()` in `agent/acpx/tools.py` — **fails open** (empty set on any DB exception) so a broken admin layer never silently hides skills from the LLM. The ACPX toolbar checkbox is the orthogonal global gate; both must allow the skill for the LLM to see it.
+
+### WebSocket wiring (mirrors Mcps/Agents/Tools verbatim)
+
+- `consumers.skill_establishment(name, description, enabled)` sends one `type:'skill'` system message per Skill row on connect (both the rebuild path and the session-restore path).
+- Frontend `agent_page_chat.js` catches those and pushes into the module-level `skills = []` array (declared in `agent_page_state.js`).
+- The Configure dialog (`skills_dialog.js::preRenderSkillsConfigureDialog`) reads from that array; Continue dispatches `set-skills` via `sendChatSocketMessage`.
+- Backend `set-skills` handler in `consumers.receive()` parses the payload and calls `save_skill(name, enabled)` — touches only `Skill.enabled`.
+
+### Naming convention (no `<prefix>-N` shim for Skills)
+
+`Skill` rows are keyed on `name` (the SKILL.md frontmatter `name`, e.g. `acp-router`) directly. There is NO `skill-N` ID-prefix transformation like the `mcp-N` / `tool-N` / `agent-N` pattern uses — the SKILL.md `name` is already unique. The `_normalize_toggle_record_name('skill', ...)` helper in `consumers.py` does NOT apply.
+
+### Files
+
+- Backend: `agent/views.py` (`list_skills_view`, `skill_detail_view`, `reload_skills_view`, `skills_diagnostics_view`); `agent/urls.py` (4 routes); `agent/consumers.py` (`skill_establishment`, `get_all_skills`, `save_skill`, `set-skills` handler, establishment loops in both rebuild paths); `agent/acpx/tools.py` (`_disabled_skill_names()` + gating in `list_skills` / `invoke_skill`).
+- Frontend: `agent/templates/agent/agent_page.html` (navbar dropdown + 3 dialog containers + asset includes); `agent/static/agent/js/skills_dialog.js` (jQuery-UI dialogs for all 4 entries); `agent/static/agent/js/agent_page_init.js` (`OpenSkillsXyzDialog` + `ReloadSkillRegistry` entry points); `agent/static/agent/js/agent_page_chat.js` (`type:'skill'` system-message handler); `agent/static/agent/js/agent_page_state.js` (`let skills = []` global); `agent/static/agent/css/skills_dialog.css` (styling).
+- Lint: `eslint.config.mjs` (11 new globals: `skills`, `computeCheckboxGridLayout`, `OpenSkills*Dialog`/`preRender`/`render`/`open`/`reload` family).
+- Coverage: 14 tests in `agent/tests.py` — `SkillsAdminEndpointTests` (7), `SkillsToolSurfaceGatingTests` (3), `SkillsNavbarTemplateContractTests` (4). The template-contract class pins the dropdown HTML so a careless edit doesn't silently drop the menu.
+
+---
+
 ## When the user says "ACPX" (decision matrix)
 
 | User says... | You do... |

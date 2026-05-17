@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from typing import Optional
-from .models import LLMProgram, LLMSnippet, Prompt, Omission, Mcp, Tool, Agent, SessionState
+from .models import LLMProgram, LLMSnippet, Prompt, Omission, Mcp, Tool, Agent, SessionState, Skill
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import shutil
@@ -9772,3 +9772,201 @@ def update_googler_connection_view(request, agent_name):
     except Exception as e:
         print(f"Error updating Googler connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# ACPX-Skills admin endpoints
+# ─────────────────────────────────────────────────────────────────────
+# Backing layer for the "ACPX-Skills" navbar dropdown. Read-mostly: the
+# Configure dialog (toggle enable/disable) is wired through the existing
+# WebSocket `set-skills` channel for symmetry with Mcps/Agents/Tools. The
+# HTTP endpoints here power Browse (rich detail), Diagnostics (cross-checks
+# against Tool/Mcp/AcpAgent rows), and Reload (re-runs boot_skills()).
+#
+# Per project preference, the DB stays at "enumeration + enable/disable"
+# only. The deep frontmatter / body / triggers / inputs / outputs come
+# from agent.skills.registry (the SKILL.md on disk is the source of truth).
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _build_skill_summary_row(reg_skill, enabled: bool) -> dict:
+    """Shape one Browse row by merging the live registry record with the DB toggle."""
+    return {
+        "name": reg_skill.name,
+        "description": reg_skill.description,
+        "runtime": reg_skill.runtime,
+        "acpx_agent": reg_skill.acpx_agent or "",
+        "enabled": bool(enabled),
+        "requires_tools": list(reg_skill.requires_tools),
+        "requires_mcps": list(reg_skill.requires_mcps),
+        "max_iterations": reg_skill.max_iterations,
+        "max_seconds": reg_skill.max_seconds,
+        "max_tokens": reg_skill.max_tokens,
+        "triggers_keywords": list(reg_skill.triggers_keywords),
+        "triggers_file_globs": list(reg_skill.triggers_file_globs),
+        "body_sha256": reg_skill.body_sha256,
+        "skill_md_path": str(reg_skill.skill_md_path),
+    }
+
+
+@login_required
+def list_skills_view(request):
+    """
+    Browse-pane payload. Returns every discovered skill with merged
+    enable/disable state from the Skill DB table, plus the orphaned rows
+    (DB has them, disk doesn't) so the UI can flag drift.
+    """
+    try:
+        from .skills.registry import skill_registry
+        skill_registry.reload_if_stale()
+        disk_skills = {s.name: s for s in skill_registry.all()}
+        db_rows = {row.name: row for row in Skill.objects.all()}
+
+        out_skills = []
+        for name in sorted(disk_skills.keys()):
+            db_row = db_rows.get(name)
+            enabled = db_row.enabled if db_row else True
+            out_skills.append(_build_skill_summary_row(disk_skills[name], enabled))
+
+        orphans = sorted(set(db_rows.keys()) - set(disk_skills.keys()))
+        return JsonResponse({
+            "skills": out_skills,
+            "count": len(out_skills),
+            "orphan_db_rows": orphans,
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+def skill_detail_view(request, skill_name):
+    """
+    Detail-pane payload for one skill. Includes the rendered body so the
+    Browse modal can show the full SKILL.md content without a second
+    round-trip.
+    """
+    try:
+        from .skills.registry import skill_registry
+        skill_registry.reload_if_stale()
+        skill = skill_registry.get(skill_name)
+        if skill is None:
+            return JsonResponse({"error": f"unknown skill '{skill_name}'"}, status=404)
+        db_row = Skill.objects.filter(name=skill_name).first()
+        enabled = db_row.enabled if db_row else True
+        summary = _build_skill_summary_row(skill, enabled)
+        summary["body"] = skill.body
+        summary["inputs"] = list(skill.inputs)
+        summary["outputs"] = list(skill.outputs)
+        summary["permissions"] = dict(skill.permissions) if skill.permissions else {}
+        summary["frontmatter_json"] = skill.frontmatter_json
+        summary["last_loaded_at"] = skill.last_loaded_at
+        return JsonResponse(summary)
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def reload_skills_view(request):
+    """
+    Reload the skill registry from disk and refresh the Skill DB rows via
+    boot_skills(). Cheap and idempotent. Returns the new count.
+    """
+    try:
+        before = Skill.objects.count()
+        from .acpx.service import boot_skills
+        boot_skills()
+        after = Skill.objects.count()
+        from .skills.registry import skill_registry
+        return JsonResponse({
+            "ok": True,
+            "skills_loaded": len(skill_registry.all()),
+            "db_rows_before": before,
+            "db_rows_after": after,
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+@login_required
+def skills_diagnostics_view(request):
+    """
+    Cross-check the live registry against Tool / Mcp / AcpAgent rows. Surfaces:
+      - skills that require a Tool row that's disabled
+      - skills that require an MCP that's disabled
+      - skills with runtime=acpx whose acpx_agent isn't a known AcpAgent
+      - orphan Skill DB rows (no SKILL.md on disk)
+      - duplicate-name candidates (later-wins shadowing)
+    Pure read; no writes. Safe to call repeatedly.
+    """
+    try:
+        from .skills.registry import skill_registry
+        skill_registry.reload_if_stale()
+
+        live = list(skill_registry.all())
+        disk_names = {s.name for s in live}
+
+        tool_enabled = {
+            t.toolDescription: (t.toolContent or '').strip().lower() == 'true'
+            for t in Tool.objects.all()
+        }
+        mcp_enabled = {
+            m.mcpDescription: (m.mcpContent or '').strip().lower() == 'true'
+            for m in Mcp.objects.all()
+        }
+        try:
+            from .models import AcpAgent
+            known_acpx_ids = {a.agent_id for a in AcpAgent.objects.all()}
+        except Exception:
+            known_acpx_ids = set()
+
+        missing_tools = []
+        missing_mcps = []
+        unknown_acpx_agents = []
+        for s in live:
+            unmet_tools = [
+                t for t in s.requires_tools
+                if t in tool_enabled and tool_enabled[t] is False
+            ]
+            if unmet_tools:
+                missing_tools.append({"skill": s.name, "disabled_tools": unmet_tools})
+            unmet_mcps = [
+                m for m in s.requires_mcps
+                if m in mcp_enabled and mcp_enabled[m] is False
+            ]
+            if unmet_mcps:
+                missing_mcps.append({"skill": s.name, "disabled_mcps": unmet_mcps})
+            if (s.runtime or '').lower() == 'acpx':
+                if s.acpx_agent and known_acpx_ids and s.acpx_agent not in known_acpx_ids:
+                    unknown_acpx_agents.append({
+                        "skill": s.name,
+                        "acpx_agent": s.acpx_agent,
+                    })
+
+        orphan_db_rows = sorted(
+            row.name for row in Skill.objects.all() if row.name not in disk_names
+        )
+
+        return JsonResponse({
+            "skill_count": len(live),
+            "db_row_count": Skill.objects.count(),
+            "missing_tools": missing_tools,
+            "missing_mcps": missing_mcps,
+            "unknown_acpx_agents": unknown_acpx_agents,
+            "orphan_db_rows": orphan_db_rows,
+            "tools_known": len(tool_enabled),
+            "mcps_known": len(mcp_enabled),
+            "acpx_agents_known": len(known_acpx_ids),
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)

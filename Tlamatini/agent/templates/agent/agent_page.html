@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <link rel="stylesheet" href="{% static 'agent/css/agent_page.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/skills_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
@@ -99,6 +100,21 @@
                   Configure Agents</a></li>
               <li><a class="dropdown-item menu-entry" href="{% url 'agentic_control_panel' %}"
                   id="agentic-control-panel" target="_blank" rel="noopener">Agentic Control Panel</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="skills-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">ACPX-Skills</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="skills-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="browse-skills"
+                  onclick="OpenSkillsBrowseDialog(event);">Browse Skills</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="configure-skills"
+                  onclick="OpenSkillsConfigureDialog(event);">Configure Skills</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="skills-diagnostics"
+                  onclick="OpenSkillsDiagnosticsDialog(event);">Diagnostics</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="reload-skill-registry"
+                  onclick="ReloadSkillRegistry(event);">Reload Registry</a></li>
             </ul>
           </li>
           <li class="nav-item dropdown">
@@ -244,6 +260,32 @@
     <div>
       <ul id="agents-list"></ul>
     </div>
+  </div>
+  <div id="skills-configure-dialog-message" title="" style="display: none;">
+    <h5 id="skills-configure-primary-dialog-legend"></h5>
+    <p id="skills-configure-secondary-dialog-legend"></p>
+    <div>
+      <ul id="skills-configure-list"></ul>
+    </div>
+  </div>
+  <div id="skills-browse-dialog-message" title="" style="display: none;">
+    <div id="skills-browse-toolbar">
+      <input id="skills-browse-search" type="search" placeholder="Search by name or description..." autocomplete="off">
+      <span id="skills-browse-count" class="skills-browse-count"></span>
+    </div>
+    <div id="skills-browse-layout">
+      <div id="skills-browse-list-pane">
+        <ul id="skills-browse-list"></ul>
+      </div>
+      <div id="skills-browse-detail-pane">
+        <div id="skills-browse-detail-empty">Select a skill from the list to see its details.</div>
+        <div id="skills-browse-detail-content" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+  <div id="skills-diagnostics-dialog-message" title="" style="display: none;">
+    <div id="skills-diagnostics-summary"></div>
+    <div id="skills-diagnostics-sections"></div>
   </div>
   <div id="config-models-dialog-message" title="" style="display: none;">
     <h5 id="config-models-primary-dialog-legend"></h5>
@@ -428,6 +470,7 @@
   <script src="{% static 'agent/js/agent_page_layout.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/skills_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/shared-runtime-dialogs.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/chat_page_runtime_poller.js' %}?v={{ STATIC_VERSION }}"></script>
 </body>
