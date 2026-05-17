@@ -345,6 +345,40 @@ class UnrealConnection:
             raise Exception("Timeout receiving Unreal response")
 
     def send_command(self, command: str, params: dict | None = None) -> dict:
+        # The Unreal MCP plugin's TCP listener on Windows occasionally hands a
+        # freshly-accepted socket back to its inner Recv loop in a transient
+        # state where the very first ``recv`` returns 0 bytes (the kernel races
+        # the SYN/ACK against the first read). The plugin interprets that as
+        # "peer closed" and silently drops the connection; the agent's recv
+        # then waits the full read_timeout for a response that will never
+        # come. Retry the entire round-trip once with a brief back-off to mask
+        # that race even on plugin builds that lack the matching server-side
+        # fix. Two attempts is plenty — sustained connect failures still
+        # surface to the caller.
+        last_error = ""
+        for attempt in range(1, 3):
+            response = self._send_command_once(command, params, attempt=attempt)
+            if response.get("status") != "error":
+                return response
+            err = (response.get("error") or "").lower()
+            transient = (
+                "timeout" in err
+                or "connection closed" in err
+                or "connection reset" in err
+                or "broken pipe" in err
+            )
+            last_error = response.get("error", "")
+            if attempt < 2 and transient:
+                logging.warning(
+                    f"⚠️ Transient socket failure on attempt {attempt} "
+                    f"({last_error!r}); retrying once."
+                )
+                time.sleep(0.25)
+                continue
+            return response
+        return {"status": "error", "error": last_error or "Unreal command failed"}
+
+    def _send_command_once(self, command: str, params: dict | None, attempt: int) -> dict:
         # Always open a fresh socket per command (Unreal closes after each).
         if self.socket:
             try:
@@ -360,7 +394,8 @@ class UnrealConnection:
         try:
             command_obj = {"type": command, "params": params or {}}
             command_json = json.dumps(command_obj)
-            logging.info(f"📤 Sending command: {command_json}")
+            prefix = "📤 Sending command" if attempt == 1 else f"🔁 Resending command (attempt {attempt})"
+            logging.info(f"{prefix}: {command_json}")
             self.socket.sendall(command_json.encode('utf-8'))
             response_data = self.receive_full_response(self.socket)
             response = json.loads(response_data.decode('utf-8'))
@@ -392,6 +427,48 @@ class UnrealConnection:
                 pass
             self.socket = None
             return {"status": "error", "error": str(e)}
+
+
+# ========================================
+# PARAM NORMALIZATION
+# ========================================
+
+# UE's virtual content root is "/Game/" (mapped to <Project>/Content/ on disk).
+# Callers sometimes pass "/Content/..." — the disk-folder name — which the
+# plugin's asset registry rejects with "does not map to a root" and renders
+# the resulting asset unreachable to any subsequent UMG command. Normalize
+# /Content/X → /Game/X (and bare X → /Game/X) before sending so the demo
+# prompt works even on plugin builds that still have the legacy normalizer.
+def _normalize_content_path(value: str) -> str:
+    if not isinstance(value, str):
+        return value
+    text = value.strip().replace('\\', '/')
+    if not text:
+        return text
+    while text.endswith('/') and len(text) > 1:
+        text = text[:-1]
+    if text.startswith('/Content/'):
+        return '/Game/' + text[len('/Content/'):]
+    if text == '/Content':
+        return '/Game'
+    return text
+
+
+_PATH_PARAM_KEYS = ('path', 'package_root', 'content_path', 'asset_path')
+
+
+def _normalize_params_for_unreal(params: dict) -> dict:
+    """Apply defensive in-place fixups to a params dict before sending."""
+    if not isinstance(params, dict):
+        return params
+    for key in _PATH_PARAM_KEYS:
+        val = params.get(key)
+        if isinstance(val, str) and val:
+            normalized = _normalize_content_path(val)
+            if normalized != val:
+                logging.info(f"   ↳ Normalized params.{key}: {val!r} → {normalized!r}")
+                params[key] = normalized
+    return params
 
 
 # ========================================
@@ -451,6 +528,7 @@ def main():
                 ">>>END_SECTION_UNREALER"
             )
         else:
+            params = _normalize_params_for_unreal(params)
             conn = UnrealConnection(host=host, port=port,
                                     connect_timeout=connect_timeout,
                                     read_timeout=read_timeout)
