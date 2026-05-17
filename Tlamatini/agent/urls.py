@@ -112,6 +112,7 @@ urlpatterns = [
     path('clean_pool_except/<str:agent_name>/', secure_post(views.clean_pool_except_view), name='clean_pool_except'),
     path('update_kuberneter_connection/<str:agent_name>/', secure_post(views.update_kuberneter_connection_view), name='update_kuberneter_connection'),
     path('update_apirer_connection/<str:agent_name>/', secure_post(views.update_apirer_connection_view), name='update_apirer_connection'),
+    path('update_unrealer_connection/<str:agent_name>/', secure_post(views.update_unrealer_connection_view), name='update_unrealer_connection'),
     path('update_jenkinser_connection/<str:agent_name>/', secure_post(views.update_jenkinser_connection_view), name='update_jenkinser_connection'),
     path('update_crawler_connection/<str:agent_name>/', secure_post(views.update_crawler_connection_view), name='update_crawler_connection'),
     path('update_summarizer_connection/<str:agent_name>/', secure_post(views.update_summarizer_connection_view), name='update_summarizer_connection'),

@@ -1,0 +1,74 @@
+# Unrealer Agent Configuration
+#
+# Drives Unreal Engine via the Unreal MCP plugin's TCP socket protocol
+# (127.0.0.1:55557 by default). The plugin must already be running inside
+# a UE5 editor instance — Unrealer only speaks to it; it does not start
+# the engine.
+#
+# The agent sends a single JSON command per execution:
+#   {"type": "<command>", "params": {<params>}}
+# and captures the response into an INI_SECTION_UNREALER block so
+# Parametrizer / downstream agents (and the Multi-Turn LLM) can consume it.
+#
+# Supported commands (28 total, mirror the Unreal MCP tool surface):
+#   editor      : get_actors_in_level, find_actors_by_name, spawn_actor,
+#                 delete_actor, set_actor_transform, get_actor_properties,
+#                 set_actor_property, spawn_blueprint_actor
+#   blueprint   : create_blueprint, add_component_to_blueprint,
+#                 set_static_mesh_properties, set_component_property,
+#                 set_physics_properties, compile_blueprint,
+#                 set_blueprint_property
+#   node        : add_blueprint_event_node, add_blueprint_input_action_node,
+#                 add_blueprint_function_node, connect_blueprint_nodes,
+#                 add_blueprint_variable,
+#                 add_blueprint_get_self_component_reference,
+#                 add_blueprint_self_reference
+#   project     : create_input_mapping
+#   umg         : create_umg_widget_blueprint, add_text_block_to_widget,
+#                 add_button_to_widget, bind_widget_event,
+#                 add_widget_to_viewport, set_text_block_binding
+
+host: 127.0.0.1
+port: 55557
+command: get_actors_in_level
+# `params` is a free-form nested dict — the Unreal MCP wire shape is
+# {"type": <command>, "params": {...}}. The keys vary per command;
+# the entries below are placeholders that match the most common
+# spawn_actor / set_actor_transform / spawn_blueprint_actor commands
+# (so the Flow-Generator's dotted ``params.name`` / ``params.type`` /
+# ``params.location`` overrides resolve into existing YAML keys). Add
+# or remove entries as needed — the agent forwards whatever ``params``
+# contains verbatim.
+params:
+  name: ''
+  type: ''
+  location: []
+  rotation: []
+  scale: []
+  blueprint_name: ''
+  actor_name: ''
+  pattern: ''
+  property_name: ''
+  property_value: ''
+  parent_class: ''
+  component_type: ''
+  component_name: ''
+  static_mesh: ''
+  variable_name: ''
+  variable_type: ''
+  is_exposed: false
+  event_name: ''
+  action_name: ''
+  function_name: ''
+  target: ''
+  widget_name: ''
+  text_block_name: ''
+  button_name: ''
+  text: ''
+
+# Timeouts (seconds)
+connect_timeout: 5
+read_timeout: 10
+
+source_agents: []
+target_agents: []
