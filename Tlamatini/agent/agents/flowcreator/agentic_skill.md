@@ -47,7 +47,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Crawler, Summarizer, Mouser, File-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer, Unrealer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -331,6 +331,10 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **flowhypervisor** | LLM-powered flow health monitor (system agent) | NO | Monitoring |
 | **gatewayer** | HTTP webhook ingress + folder-drop watcher | YES | Utility |
 | **gateway_relayer** | Relays GitHub/GitLab webhooks with signature verification | YES | Utility |
+| **teletlamatini** | Long-running Telegram bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
+| **whatstlamatini** | Long-running WhatsApp Cloud API bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
+| **acpxer** | Drives ONE external coding-agent CLI session (Claude / Codex / Gemini / Cursor / Qwen / etc.) from the canvas; emits `INI_SECTION_ACPXER` for multi-CLI relay | YES | Action |
+| **unrealer** | Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (28-command surface: actors, Blueprints, UMG widgets, input mappings) | YES | Action |
 
 ## Decision Guide: Common Objectives → Recommended Patterns
 
@@ -1362,7 +1366,7 @@ system_prompt: |
   - Uses the bundled `jd-cli/` asset instead of calling the unified tool layer directly
 
 
-### 54b. De-Compresser
+### 55. De-Compresser
 - **Purpose**: Short-running deterministic action agent that COMPRESSES or DECOMPRESSES an archive. The direction is inferred from the extensions: if `input` ends in `.gz`, `.7z`, `.zip`, `.tar.gz`, or `.gz.tar` the agent decompresses into the `output` directory; if `output` ends in those extensions the agent compresses `input` (a file or a directory) into `output`. Then starts every agent listed in `target_agents`.
 - **Used for**: Packing and unpacking workflow artefacts inside a flow without dropping out to Executer + tar/zip CLIs. The supported archive families are GNU Zip (`.gz` — single file), universal ZIP (`.zip`), 7-Zip with LZMA/LZMA2 (`.7z`), and gzipped tar (`.tar.gz` / `.gz.tar`).
 - **Aimed at**: Automating the "extract, then continue" or "produce a release archive, then ship it" steps that almost every release-pipeline flow needs.
@@ -1381,7 +1385,7 @@ system_prompt: |
   - For password-wrapped `.gz` / `.tar.gz` / `.zip`, the agent routes through `7z` when available (since those formats have no native stdlib encryption layer) and logs a warning when forced to fall back to an unencrypted artefact
   - Emits a Parametrizer-compatible `INI_SECTION_DE_COMPRESSER` block with `operation`, `extension`, `input`, `output`, `passwordless`, and `success` fields so downstream Parametrizer nodes can feed the outcome into the next agent's `config.yaml`
 
-### 55. Keyboarder
+### 56. Keyboarder
 - **Purpose**: Issues a sequence of keys to emulate human typing on the keyboard.
 - **Used for**: Driving GUI applications or injecting text where standard programmatic interfaces are unavailable. Supports typing full literal strings, single keys, and simultaneous key sequences such as `CTRL+C`.
 - **Aimed at**: Enabling UI automation and emulation of user input within workflows.
@@ -1395,7 +1399,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 
-### 56. Googler
+### 57. Googler
 - **Purpose**: Searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content from each, and saves the combined results to an output file.
 - **Used for**: Automated internet research, gathering information from top search results, feeding web content into downstream analysis agents.
 - **Aimed at**: Enabling web-search-driven workflows where real-time Google results feed into further processing or analysis.
@@ -1410,7 +1414,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after search completes)
 
-### 57. TeleTlamatini
+### 58. TeleTlamatini
 - **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — Telegramer / TelegramRX exist for the user-account direction; do not give TeleTlamatini a `listen_chat` field.
 - **Used for**: Letting an authorized Telegram user drive Tlamatini end-to-end without opening the browser UI; fast OpenClaw-style fire-and-go remote operation of Multi-Turn flows; mobile triage with full Exec Report visibility.
 - **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable from anywhere — fast enough for "what's my CPU usage?" turnaround.
@@ -1430,7 +1434,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
   - `target_agents`: [] (downstream agents started after every completed user request cycle)
 
-### 58. ACPXer
+### 59. ACPXer
 - **Purpose**: Drives ONE ACPX session lifecycle from the visual canvas. ACPX (Agent Communication Protocol eXtension) is Tlamatini's runtime for spawning **external coding-agent CLIs** — Claude Code, Codex, Gemini CLI, Cursor agent, Qwen Code, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Factory Droid, GitHub Copilot CLI, or any custom CLI — as out-of-process child processes, talking to them over stdin/stdout, and harvesting their output. ACPXer brings that mechanic into the visual workflow designer: one ACPXer node = one external-CLI session (spawn → dispatch task → drain transcript with transport-aware idle/timeout/grace rule → harvest last-assistant text → graceful kill). It writes a NDJSON transcript to `<agent_dir>/transcript.ndjson` (same format as `agent_transcript_path` in the LLM `acp_*` tools, so transcripts are interchangeable). It emits an atomic `INI_SECTION_ACPXER<<<` block whose `response_body` is the last-assistant text — meaning a Parametrizer can pipe the answer of one ACPXer into the `task` field of another for **multi-CLI relay flows built visually**.
 - **Used for**: Building visual workflows that bridge Tlamatini to external coding-agent CLIs without writing prompts in the chat UI; multi-CLI relay (claude → gemini → cursor) drawn as a chain on the canvas; long-running scheduled flows that drive an external CLI on a Croner trigger; pipelines that hand a transcript to a Summarizer / File-Creator / Notifier triplet.
 - **Aimed at**: Letting non-LLM-driven flows include external coding agents as first-class participants. The LLM-driven path uses `acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` tools in Multi-Turn mode; ACPXer is the canvas-driven counterpart of that surface.
@@ -1476,7 +1480,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 59. WhatsTlamatini
+### 61. WhatsTlamatini
 - **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over **WhatsApp**, via Meta's WhatsApp Cloud API. Mirror of TeleTlamatini, only the chat platform changes. The agent runs a stdlib HTTP listener on a configurable host/port/path and waits for Meta to POST inbound messages there (you must expose the URL publicly via ngrok / cloudflared / domain / port-forward and register it as your app's webhook). It holds ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every WhatsApp message — no per-message re-login overhead), password-gates each chat (= each WhatsApp number) on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user receives a "🔄 Working on it…" message followed by a "✅ Result:" reply containing the assembled answer (WhatsApp text-message API has no edit-message primitive, so the answer arrives as a fresh message rather than an in-place edit). After every completed request cycle, starts the configured `target_agents`.
 - **Used for**: Letting an authorized WhatsApp user drive Tlamatini end-to-end without opening the browser UI; mobile-first remote operation of Multi-Turn flows on the most ubiquitous messaging app on Earth; OpenClaw-style fire-and-go remote operation; Multi-Turn triage from regions where Telegram is restricted but WhatsApp is freely available.
 - **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable over WhatsApp from anywhere — same "what's my CPU usage?" UX as TeleTlamatini.
@@ -1501,6 +1505,15 @@ system_prompt: |
   - `completeness_check.host` / `completeness_check.model` / `completeness_check.instruction`
   - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
   - `target_agents`: [] (downstream agents started after every completed user request cycle)
+
+### 62. FlowCreator
+- **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
+- **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
+- **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
+- **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
+- **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
+- **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (62). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 
