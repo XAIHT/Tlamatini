@@ -1551,22 +1551,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.3.0 -m "Release 1.3.0: <one-line summary>"
-git push origin v1.3.0
+git tag -a v1.3.1 -m "Release 1.3.1: <one-line summary>"
+git push origin v1.3.1
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.3.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.3.1/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.3.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.3.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.3.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.3.1` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.3.1` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.3.1","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1590,8 +1590,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.3.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.3.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.3.1"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.3.1 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
