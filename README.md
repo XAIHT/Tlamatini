@@ -1,10 +1,12 @@
-<p align="right">
-  <img src="Tlamatini.jpg" alt="Tlamatini Logo" width="160" height="160" align="right" />
+<p align="center">
+  <img src="Tlamatini.jpg" alt="Tlamatini Logo" width="180" height="180" />
 </p>
 
-# Tlamatini
+<h1 align="center">Tlamatini</h1>
 
-<p>
+<p align="center"><em>"one who knows" — a locally-deployed AI developer assistant</em></p>
+
+<p align="center">
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.3.1"><img src="https://img.shields.io/badge/VERSION-v1.3.1-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.3.1" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
@@ -19,15 +21,13 @@
 
 > **Local-first by default**: the full RAG pipeline, the Multi-Turn execution loop, and every workflow agent run on your machine — embeddings and chat are driven by your local [Ollama](https://ollama.com/) install. Cloud LLMs (Claude API, Ollama Pro/Max) and ACPX delegation to cloud CLIs are opt-in per-request, never the default. Sensitive code never leaves the box unless you explicitly route it out.
 
-<p>
+<p align="center">
   <a href="https://xaiht.org"><strong>🌐 Website</strong></a> &nbsp;·&nbsp;
   <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s"><strong>▶️ One-minute teaser</strong></a> &nbsp;·&nbsp;
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
   <a href="VERSIONING.md"><strong>🏷️ Versioning</strong></a> &nbsp;·&nbsp;
   <a href="#13-demo-videos"><strong>🎬 More demos</strong></a>
 </p>
-
-<br clear="right" />
 
 ---
 
