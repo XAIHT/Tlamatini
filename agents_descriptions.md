@@ -16,7 +16,7 @@ Descriptions are written for **non-expert readers** — when in doubt, prefer th
 
 ## Workflow Agents
 
-The visual workflow designer ships with **61 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
+The visual workflow designer ships with **62 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
 
 ### Control Agents
 

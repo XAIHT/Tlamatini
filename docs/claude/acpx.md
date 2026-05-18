@@ -213,7 +213,7 @@ list_skills
 
 ## ACPXer — the visual canvas counterpart
 
-The 12 tools above are the **LLM-facing** ACPX surface. **ACPXer** is the **canvas-facing** counterpart: a workflow agent (one of the 59 in the visual ACP designer) that drives ONE ACPX session lifecycle from a drag-and-drop node.
+The 12 tools above are the **LLM-facing** ACPX surface. **ACPXer** is the **canvas-facing** counterpart: a workflow agent (one of the 62 in the visual ACP designer) that drives ONE ACPX session lifecycle from a drag-and-drop node.
 
 - **Lives at**: `agent/agents/acpxer/acpxer.py` + `config.yaml`. Self-contained — does NOT import `agent.acpx.runtime`, so it works identically in source and frozen builds (the agent pool runs as separate Python subprocesses with no path back into the Django app). It mirrors the runtime's transport-aware drain rule and `agent_id` registry inline.
 - **What it does, in order**: read `config.yaml` → resolve `agent_id` → command + transport + budgets via the registry mirror → spawn the child via `subprocess.Popen` → write task envelope (`{"task":..., "mode":"session"}\n` for `json-acp`, raw `task\n` for `tui-repl`) → drain stdout via daemon reader thread + 100-ms tick + 4-rule completion (json `done:true` / child exit / hard timeout / transport-aware idle) → extract last-assistant text → kill child → emit `INI_SECTION_ACPXER<<<` block → trigger `target_agents`.
