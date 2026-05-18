@@ -372,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("number and descriptions of agents" in subject or "markdowns" in subject or "agentic_skill" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is agent-catalog consistency: the live count, the markdown bestiaries, the flow-creator skill catalog, and the sidebar-description source were brought back into alignment around the same 62-agent inventory."
+        )
     if any("unreal" in subject or "unreal-engine mcp" in subject or "unreal engine enabled" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is Unreal MCP support: the new Unrealer agent, a chat-wrapped `chat_agent_unrealer` tool, canvas wiring, a seeded end-to-end demo prompt, and a direct TCP bridge into a live Unreal Engine 5 editor."
@@ -490,6 +494,16 @@ def count_requirements() -> int:
     return count
 
 
+def count_agent_description_rows() -> int:
+    path = REPO_ROOT / "agents_descriptions.md"
+    count = 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("| **") and "| Agent |" not in stripped and "| Purpose |" not in stripped:
+            count += 1
+    return count
+
+
 def collect_context() -> dict:
     paths = tracked_paths()
     tree_text = build_tree(paths)
@@ -518,6 +532,7 @@ def collect_context() -> dict:
         "total_lines": total_lines,
         "workflow_agents": agents,
         "workflow_agent_count": len(agents),
+        "agent_description_rows": count_agent_description_rows(),
         "requirements_count": count_requirements(),
         "js_modules": len(list((PROJECT_DIR / "agent" / "static" / "agent" / "js").glob("*.js"))),
         "css_files": len(list((PROJECT_DIR / "agent" / "static" / "agent" / "css").glob("*.css"))),
@@ -578,6 +593,18 @@ HOW_TO_USE = [
     "Use the DB dropdown when you need a safe database snapshot or want to stage a different `db.sqlite3` for the next start-up without hot-swapping the live SQLite file.",
     "Open `/agentic_control_panel/` to drag agents, connect them, configure each node, validate, start, pause/resume, stop, and save `.flw` workflows.",
     "Use `python build.py`, `python build_uninstaller.py`, and `python build_installer.py` only when producing a packaged Windows release.",
+]
+
+AGENT_DESCRIPTION_GUIDE = [
+    "The authoritative human-readable source for workflow-agent descriptions is `agents_descriptions.md` at the repo root, not an embedded JavaScript map or a hard-coded Django list.",
+    "Today’s validation shows `62` agent templates on disk and `62` description rows in `agents_descriptions.md`, matching the README and Book bestiary counts.",
+    "The ACP sidebar hover tooltip and the right-click Description dialog both resolve through that markdown file first; `README.md` is only a legacy fallback when the dedicated description file is absent.",
+]
+
+AGENT_RUNTIME_GUIDE = [
+    "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
+    "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
+    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -760,9 +787,9 @@ AGENT_CATEGORIES = [
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
-    ("Communication", "notifier, emailer, recmailer, telegramer, telegramrx, whatsapper"),
+    ("Communication", "notifier, emailer, recmailer, telegramer, telegramrx, teletlamatini, whatsapper, whatstlamatini"),
     ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, shoter, j_decompiler"),
-    ("Workflow intelligence", "flowcreator, gatewayer, gateway_relayer, node_manager, parametrizer, prompter, summarizer"),
+    ("Workflow intelligence", "flowcreator, gatewayer, gateway_relayer, node_manager, parametrizer, prompter, summarizer, acpxer"),
 ]
 
 
@@ -997,6 +1024,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("How to use it", styles["h2"]))
     for item in HOW_TO_USE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Agent descriptions and catalog source of truth", styles["h2"]))
+    for item in AGENT_DESCRIPTION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Source-mode bootstrap commands", styles["h2"]))
     story.append(
         Preformatted(
@@ -1057,6 +1087,12 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Tlamatini currently exposes {context['workflow_agent_count']} workflow-agent templates.", styles["body"]))
     story.append(table([["Category", "Representative agents"]] + AGENT_CATEGORIES, widths=[1.85 * inch, 4.9 * inch], font_size=7.8))
     story.append(p("All workflow agents follow a common deployment pattern: template directory, YAML configuration, session-scoped pool copy, PID/status/log files, target/source wiring, and optional reanimation state.", styles["body"]))
+    story.append(p("Agent catalog validation", styles["h2"]))
+    for item in AGENT_DESCRIPTION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("How agent runtimes are shaped", styles["h2"]))
+    for item in AGENT_RUNTIME_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Unrealer spotlight", styles["h2"]))
     for item in UNREAL_MCP_GUIDE + UNREAL_RUNTIME_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1073,6 +1109,7 @@ def build_pdf(context: dict) -> None:
         ["Metric", "Value"],
         ["Tracked files in git", f"{context['tracked_files']}"],
         ["Workflow agents", f"{context['workflow_agent_count']}"],
+        ["agents_descriptions.md rows", f"{context['agent_description_rows']}"],
         ["Django migrations", f"{context['migrations']}"],
         ["Frontend JavaScript modules", f"{context['js_modules']}"],
         ["Frontend CSS files", f"{context['css_files']}"],
@@ -1487,6 +1524,15 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.92, 1.56, 5.65, 5.1, "More guardians", right, THEME["jade"], "agents-b", 13)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Agent Catalog Integrity", "count and description source of truth", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Count alignment", [
+        f"Templates on disk with config.yaml: {context['workflow_agent_count']}",
+        f"Description rows in `agents_descriptions.md`: {context['agent_description_rows']}",
+        "README and Book bestiary sections now align with the same 62-agent inventory.",
+    ], THEME["jade"], "agent-proof-a", 15)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Description source", AGENT_DESCRIPTION_GUIDE, THEME["copper"], "agent-proof-b", 14)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Gatewayer And External Signals", "inbound automation boundary", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Ingress role", [
         "Receives HTTP webhook events or optional folder-drop files.",
@@ -1643,7 +1689,8 @@ def build_ppt(context: dict) -> None:
         f"{context['head_short']} - {context['head_subject']}",
         f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",
         f"Generated on {context['generated_at']}",
-        f"Python requirements: {context['requirements_count']}; binary or asset tracked files skipped from line count: {context['binary_count']}",
+        f"Python requirements: {context['requirements_count']}; authoritative agent-description rows: {context['agent_description_rows']}",
+        f"Binary or asset tracked files skipped from line count: {context['binary_count']}",
     ], THEME["amber"], "repo-head", 15)
     audit_layout(audit, len(prs.slides))
 
@@ -1711,6 +1758,7 @@ def serialize_context(context: dict) -> dict:
         "total_effective_lines": context["total_effective_lines"],
         "total_lines": context["total_lines"],
         "workflow_agent_count": context["workflow_agent_count"],
+        "agent_description_rows": context["agent_description_rows"],
         "requirements_count": context["requirements_count"],
         "js_modules": context["js_modules"],
         "css_files": context["css_files"],
