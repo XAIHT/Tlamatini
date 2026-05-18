@@ -335,7 +335,7 @@ This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* t
 Multi-Turn flips Tlamatini from "answerer" to **operator**:
 
 - The chat skips its prompt-shape validator (you no longer have to phrase requests as questions).
-- A request-scoped **planner** picks the relevant tools out of all 36+ wrapped chat-agents, the 12 ACPX tools, and the core Python tools.
+- A request-scoped **planner** picks the relevant tools out of all 39 wrapped chat-agents, the 12 ACPX tools, and the core Python tools.
 - The unified-agent loop runs **up to 100 iterations**: the LLM calls a tool, sees the result, decides what to call next, and chains its way to the goal.
 - Wrapped sub-agents launch **silently** in the background (no console window pop-ups).
 
@@ -1123,7 +1123,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 28. Wrapped chat-agent tools (36)
+## 28. Wrapped chat-agent tools (39)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -1135,6 +1135,8 @@ Each wrapped tool launches an isolated, sequenced runtime copy of a workflow age
 | **Notifications & comms** | `chat_agent_send_email`, `chat_agent_notifier`, `chat_agent_telegramer`, `chat_agent_whatsapper`, `chat_agent_recmailer` |
 | **Desktop UI automation** | `chat_agent_shoter` (read-only), `chat_agent_keyboarder`, `chat_agent_mouser` |
 | **Routing** | `chat_agent_asker` |
+| **Archives & decompilation** | `chat_agent_j_decompiler`, `chat_agent_de_compresser` |
+| **Game engines** | `chat_agent_unrealer` (drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket; canvas counterpart is the Unrealer workflow agent — see §57) |
 | **Crawling, monitoring, APIs, prompts, crypto** | `chat_agent_crawler`, `chat_agent_monitor_log`, `chat_agent_monitor_netstat`, `chat_agent_apirer`, `chat_agent_prompter`, `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph` |
 
 ## 29. Wrapped runtime lifecycle tools (6)

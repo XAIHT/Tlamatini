@@ -67,9 +67,10 @@ SECTION 3 — AGENT TYPES AND EXPECTED BEHAVIOR
 SHORT-LIVED agents (should start, do work, and exit quickly):
   Starter, Ender, Cleaner, Executer, Pythonxer, Shoter, Sleeper, Ssher, Scper,
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
-  Asker, Counter, Summarizer, Mouser, Telegramer, FlowCreator,
+  Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
-  De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier
+  De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
+  ACPXer, Unrealer
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -150,6 +151,31 @@ ACPXER SPECIAL NOTES:
   - "Command not resolvable on PATH" IS a legitimate error to flag — it
     means the user configured an `agent_id` whose CLI is not installed.
 
+UNREALER SPECIAL NOTES:
+  - Unrealer drives an Unreal Engine 5 editor via the Unreal MCP plugin's
+    TCP socket (default 127.0.0.1:55557). Each run sends ONE JSON command
+    (`{"type": <verb>, "params": {...}}`) and captures the engine's JSON
+    response into an `INI_SECTION_UNREALER<<<` block for downstream
+    Parametrizer / Forker consumption.
+  - It is SHORT-LIVED and ACTIVE — it always triggers `target_agents` after
+    the command resolves, regardless of success or failure (so a downstream
+    Forker / Raiser can branch on the section's `status` / `error` fields).
+  - Typical duration: sub-second to a few seconds for simple commands
+    (`get_actors_in_level`, `set_actor_transform`); seconds to tens of
+    seconds for `compile_blueprint` on a large class graph. Flag only if
+    Unrealer runs > 60 s with no completion marker.
+  - The `INI_SECTION_UNREALER<<<` block is structured Parametrizer output;
+    its body contains the engine's verbatim JSON response. NEVER flag this
+    as an error even when the body's `status` is `"error"` — that is content
+    for the downstream Forker / Raiser to act on.
+  - Legitimate Unrealer errors to flag:
+      * "Connection refused" / "ConnectionRefusedError" — the Unreal MCP
+        plugin is not running inside UE5, or UE5 isn't running at all.
+      * "TimeoutError" on connect — the configured `host` / `port` is wrong
+        or unreachable.
+      * "Unknown command" in the engine response — the user wired a verb
+        that isn't in the 28-command Unreal MCP surface.
+
 EXTERNAL-WINDOW agents (Sqler, Mongoxer):
   These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
 
@@ -157,16 +183,20 @@ TYPICAL TIMING:
   - Starter: < 10 seconds
   - Executer/Ssher/Scper: seconds to minutes (flag if > 10 min with no output)
   - Crawler: can take minutes (web requests + LLM analysis per page)
+  - Googler: seconds to a minute (Playwright-driven Google search + text extraction; flag if > 5 min)
   - Asker: waits up to 5 minutes for user input
   - Sleeper: runs for exactly its configured duration
   - Croner: waits until scheduled time (can be hours — silence is NORMAL)
   - Kyber agents: < 30 seconds (CPU-intensive polynomial math)
   - Counter/File-Creator: < 5 seconds
+  - Keyboarder/Mouser/Shoter: < 5 seconds per invocation (desktop UI primitives)
   - J-Decompiler: seconds to several minutes depending on archive size and file count
   - De-Compresser: seconds to minutes depending on archive size; pure (de)compression workload, no LLM
   - FlowBacker: seconds to minutes depending on session size (flag if > 10 min with no output)
   - Barrier: waits for all source agents to check in (duration depends on source agents; flag if > 10 min with no output)
   - Parametrizer: usually short-lived, but it may remain alive while its source agent is still generating segments or while it is draining several queued source segments sequentially
+  - ACPXer: sub-second to 180 s on `oneshot-prompt` transport (matches the hard cap for long LLM answers); < 45 s on `json-acp`; < 8 s on `tui-repl`. See ACPXER SPECIAL NOTES above for the per-transport drain rules.
+  - Unrealer: sub-second to a few seconds for actor / transform / property commands; seconds to tens of seconds for `compile_blueprint` on large Blueprints. Flag if > 60 s with no completion.
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -178,6 +208,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "REANIMATED (resuming from pause)" — agent resumed after pause (NORMAL)
   "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
   "📦 DE-COMPRESSER AGENT STARTED" — De-Compresser began a compression or decompression run
+  "🎮 UNREALER AGENT STARTED" — Unrealer began dispatching a JSON command to the Unreal MCP plugin
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -191,7 +222,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  De-Compresser).
+  De-Compresser, Unrealer).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -276,6 +307,8 @@ DO NOT report these as problems:
   - De-Compresser logging "📦 DE-COMPRESSER AGENT STARTED" / "✅ Decompressed ..." / "✅ Compressed ..."
   - De-Compresser logging "⚠️ Password supplied for .gz but ... gzip module" — informational warning when no 7z CLI is on PATH
   - De-Compresser INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER blocks even when success=false (the agent ALWAYS emits the block so downstream Parametrizers / Raisers can branch on success/failure)
+  - Unrealer logging "🎮 UNREALER AGENT STARTED" / "🔌 Connecting to ..." / "📤 Sent command" / "📥 Received response"
+  - Unrealer INI_SECTION_UNREALER<<< ... >>>END_SECTION_UNREALER blocks even when the engine response carries `status: "error"` (Unrealer ALWAYS emits the block and ALWAYS triggers `target_agents` so downstream Forkers / Raisers can branch on success/failure)
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)
