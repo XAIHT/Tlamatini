@@ -278,24 +278,69 @@ def validate_with_ruff(script_path: str) -> bool:
     """
     Run Ruff linter on the script. Returns True if no errors, False if errors found.
     Logs warnings but does NOT block execution.
+
+    Invokes Ruff as a Python module via the same interpreter that runs this
+    agent (``<python> -m ruff check``) so the lookup never depends on PATH:
+    in source mode this is the venv where ``requirements.txt`` is installed,
+    in frozen mode it is the PYTHON_HOME (or bundled) Python the build
+    pipeline installed the same requirements into. A legacy ``ruff`` exe on
+    PATH is used as a last-resort fallback.
     """
-    try:
-        result = subprocess.run(
-            ['ruff', 'check', script_path],
+    python_cmd = get_python_command()
+    primary_cmd = python_cmd + ['-m', 'ruff', 'check', script_path]
+    fallback_cmd = ['ruff', 'check', script_path]
+
+    def _run(cmd):
+        return subprocess.run(
+            cmd,
             capture_output=True,
             text=True,
             encoding='utf-8',
             errors='replace',
-            timeout=30
+            env=get_agent_env(),
+            timeout=30,
         )
 
-        if result.stdout:
-            for line in result.stdout.strip().split('\n'):
+    try:
+        try:
+            result = _run(primary_cmd)
+        except FileNotFoundError:
+            # Could not even spawn the interpreter — try the bare CLI.
+            result = _run(fallback_cmd)
+
+        stderr_text = (result.stderr or '').strip()
+        stdout_text = (result.stdout or '').strip()
+
+        # Detect "Ruff is not installed in this Python" without confusing it
+        # with "Ruff ran and found issues" (both produce non-zero exit codes).
+        ruff_missing = (
+            result.returncode != 0
+            and (
+                'No module named ruff' in stderr_text
+                or 'No module named \'ruff\'' in stderr_text
+            )
+        )
+        if ruff_missing:
+            try:
+                result = _run(fallback_cmd)
+                stderr_text = (result.stderr or '').strip()
+                stdout_text = (result.stdout or '').strip()
+                ruff_missing = False
+            except FileNotFoundError:
+                logging.warning(
+                    "⚠️ Ruff is not installed in %s and no `ruff` CLI on PATH - skipping validation. "
+                    "Install with: %s -m pip install --user ruff",
+                    python_cmd[0], python_cmd[0],
+                )
+                return True
+
+        if stdout_text:
+            for line in stdout_text.split('\n'):
                 if line.strip():
                     logging.warning(f"   [Ruff] {line}")
 
-        if result.stderr:
-            for line in result.stderr.strip().split('\n'):
+        if stderr_text:
+            for line in stderr_text.split('\n'):
                 if line.strip():
                     logging.warning(f"   [Ruff stderr] {line}")
 
