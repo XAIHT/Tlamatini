@@ -52,7 +52,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=6,
         defaults={
             'promptName': 'prompt-6',
-            'promptContent': 'What is the current time now?, please.'
+            'promptContent': 'What is te actual CPU usage, memory usage, and disk space?, please.'
         }
     )
 
@@ -60,7 +60,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=7,
         defaults={
             'promptName': 'prompt-7',
-            'promptContent': 'What is te actual CPU usage, memory usage, and disk space?, please.'
+            'promptContent': 'List available directories, please.'
         }
     )
 
@@ -68,7 +68,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=8,
         defaults={
             'promptName': 'prompt-8',
-            'promptContent': 'List available directories, please.'
+            'promptContent': 'Search the file with name -----.--- in all allowed locations, please.'
         }
     )
 
@@ -76,7 +76,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=9,
         defaults={
             'promptName': 'prompt-9',
-            'promptContent': 'Search the file with name -----.--- in all allowed locations, please.'
+            'promptContent': 'Find all files with the extension *.py in all allowed locations, please.'
         }
     )
 
@@ -84,7 +84,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=10,
         defaults={
             'promptName': 'prompt-10',
-            'promptContent': 'Find all files with the extension *.py in all allowed locations, please.'
+            'promptContent': 'Create an implementation of ----- in ----- to --- --- ---, provide all the neccesary files, and **REMEMBER to follow the rule "4) Code generation rule"**, please.'
         }
     )
 
@@ -92,7 +92,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=11,
         defaults={
             'promptName': 'prompt-11',
-            'promptContent': 'Create an implementation of ----- in ----- to --- --- ---, provide all the neccesary files, and **REMEMBER to follow the rule "4) Code generation rule"**, please.'
+            'promptContent': 'Execute cat_art.py, located in the root of this application, please.'
         }
     )
 
@@ -100,7 +100,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=12,
         defaults={
             'promptName': 'prompt-12',
-            'promptContent': 'Execute cat_art.py, located in the root of this application, please.'
+            'promptContent': 'Run command ping x.x.x.x, and show its output as-is, please.'
         }
     )
 
@@ -108,7 +108,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=13,
         defaults={
             'promptName': 'prompt-13',
-            'promptContent': 'Run command ping x.x.x.x, and show its output as-is, please.'
+            'promptContent': 'Run command netstat -an, and tell me if port 50051 is opened and whats its state, please.'
         }
     )
 
@@ -116,7 +116,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=14,
         defaults={
             'promptName': 'prompt-14',
-            'promptContent': 'Run command netstat -an, and tell me if port 50051 is opened and whats its state, please.'
+            'promptContent': 'Describe with Qwen the image \'----.---\' located in \'----\', please.'
         }
     )
 
@@ -124,15 +124,15 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=15,
         defaults={
             'promptName': 'prompt-15',
-            'promptContent': 'Describe with Qwen the image \'----.---\' located in \'----\', please.'
+            'promptContent': 'Describe with Opus the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
         }
     )
-
+    
     Prompt.objects.get_or_create(
         idPrompt=16,
         defaults={
             'promptName': 'prompt-16',
-            'promptContent': 'Describe with Opus the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
+            'promptContent': 'Describe with Qwen the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
         }
     )
     
@@ -140,15 +140,15 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=17,
         defaults={
             'promptName': 'prompt-17',
-            'promptContent': 'Describe with Qwen the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
+            'promptContent': 'Create a web page using Bootstrap and jQuery **taking special attention to generate elements without overlapping each other**, with the exact same layout and elements that are described below:'
         }
     )
-    
+
     Prompt.objects.get_or_create(
         idPrompt=18,
         defaults={
             'promptName': 'prompt-18',
-            'promptContent': 'Create a web page using Bootstrap and jQuery **taking special attention to generate elements without overlapping each other**, with the exact same layout and elements that are described below:'
+            'promptContent': 'Create a new version of the file "----.---" in order to include all the neccesary Java-Doc-style comments, **don´t modify the code at all**, and **REMEMBER to follow the rule "4) Code generation rule"**, it\'s original complete code is as follows: '
         }
     )
 
@@ -156,7 +156,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=19,
         defaults={
             'promptName': 'prompt-19',
-            'promptContent': 'Create a new version of the file "----.---" in order to include all the neccesary Java-Doc-style comments, **don´t modify the code at all**, and **REMEMBER to follow the rule "4) Code generation rule"**, it\'s original complete code is as follows: '
+            'promptContent': 'Decompile file "------\\------", please.'
         }
     )
 
@@ -164,14 +164,6 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=20,
         defaults={
             'promptName': 'prompt-20',
-            'promptContent': 'Decompile file "------\\------", please.'
-        }
-    )
-
-    Prompt.objects.get_or_create(
-        idPrompt=21,
-        defaults={
-            'promptName': 'prompt-21',
             'promptContent': (
                 "Tlamatini, Run an end-to-end multi-turn local document demo, please: use File Creator "
                 "to create the file '----\\tlamatini_multiturn_release_notes.txt' with a short "
@@ -185,9 +177,9 @@ def populate_initial_values(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=22,
+        idPrompt=21,
         defaults={
-            'promptName': 'prompt-22',
+            'promptName': 'prompt-21',
             'promptContent': (
                 "Tlamatini, Run a multi-turn web research demo, please: use Apirer to call the URL "
                 "'https://example.com' with GET, then use Crawler on that same URL to "
@@ -202,9 +194,9 @@ def populate_initial_values(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=23,
+        idPrompt=22,
         defaults={
-            'promptName': 'prompt-23',
+            'promptName': 'prompt-22',
             'promptContent': (
                 "Tlamatini, Run a multi-turn monitoring demo, please: first use File Creator to "
                 "initialize '----\\tlamatini_monitor_demo.log' with a starting line, then "
@@ -219,9 +211,9 @@ def populate_initial_values(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=24,
+        idPrompt=23,
         defaults={
-            'promptName': 'prompt-24',
+            'promptName': 'prompt-23',
             'promptContent': (
                 "Tlamatini, please for each of the .java files in the present project "
                 "(project wich is originally located in the source directory '-----' "
