@@ -323,7 +323,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of 36+ wrapped chat-agent tools, the 12 ACPX tools, and the core Python tools (default cap: 20 tools per request).
+- The planner picks the relevant subset of 39 wrapped chat-agent tools, the 12 ACPX tools, and the core Python tools (default cap: 20 tools per request).
 - The unified-agent loop runs **up to 100 iterations** — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 

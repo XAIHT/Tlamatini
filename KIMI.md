@@ -657,10 +657,12 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **File-Extractor** — Raw text extraction (PDF, DOCX, etc.)
 - **Image-Interpreter** — LLM vision-based image analysis
 - **J-Decompiler** — JAR/WAR decompilation (bundled jd-cli)
+- **De-Compresser** — Deterministic archive worker (compress OR decompress; `.gz` / `.zip` / `.7z` / `.tar.gz` / `.gz.tar`; password from `DE_COMPRESSER_PWD` when `passwordless=false`; always triggers `target_agents` on success OR failure)
 - **Telegramer** — Telegram message sender
 - **ACPXer** — ACPX session driver for external CLIs
 - **Teletlamatini** — Telegram bot bridge to Tlamatini chat
 - **WhatsTlamatini** — WhatsApp Cloud API bridge to Tlamatini chat
+- **Unrealer** — Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (`127.0.0.1:55557`); 28-command surface (actors, Blueprints, input mappings, UMG widgets); emits `INI_SECTION_UNREALER` and always triggers `target_agents`
 
 ### Cryptography Agents
 - **Kyber-KeyGen** — CRYSTALS-Kyber key pair generation (post-quantum)
@@ -673,8 +675,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Gatewayer** — HTTP webhook / folder-drop ingress
 - **Gateway-Relayer** — Bridges provider webhooks into Gatewayer
 - **Node-Manager** — Infrastructure registry and node supervision
-- **FlowCreator** — AI-powered flow designer
-- **FlowHypervisor** — System-managed LLM anomaly detector
+- **FlowCreator** — AI-powered flow designer (system agent, singleton)
 
 ### Terminal/Monitoring Agents (do NOT start downstream)
 - **Monitor-Log** — LLM-powered log file monitor
@@ -684,6 +685,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Notifier** — Desktop notification + sound
 - **Whatsapper** — WhatsApp notifications (TextMeBot)
 - **TelegramRX** — Telegram message receiver
+- **FlowHypervisor** — System-managed LLM anomaly detector (system agent)
 
 ---
 

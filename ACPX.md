@@ -657,7 +657,7 @@ In `config.json`:
 
 ### 10.5 "I want to add a skill that needs a tool that doesn't exist yet"
 
-The Tlamatini contract is: skills can only `requires_tools` a tool that is registered in `agent/tools.py`. The current registered set is the legacy tools + the 32 wrapped chat-agents + the 7 ACPX tools listed in §9.5. If your skill needs a brand-new tool, add the `@tool` first (per the existing tool-creation guide in `Tlamatini/.mcps/create_new_mcp.md`), then write the skill that requires it. `acpx_lint` will be extended in a follow-up phase to cross-check `requires_tools` against `get_mcp_tools()` automatically.
+The Tlamatini contract is: skills can only `requires_tools` a tool that is registered in `agent/tools.py`. The current registered set is the legacy tools + the 39 wrapped chat-agents + the 12 ACPX/Skill tools listed in §9.5. If your skill needs a brand-new tool, add the `@tool` first (per the existing tool-creation guide in `Tlamatini/.mcps/create_new_mcp.md`), then write the skill that requires it. `acpx_lint` will be extended in a follow-up phase to cross-check `requires_tools` against `get_mcp_tools()` automatically.
 
 ---
 
