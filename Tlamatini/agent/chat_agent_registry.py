@@ -47,7 +47,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_executer",
         tool_description="Chat-Agent-Executer",
         display_name="Executer",
-        purpose="Execute any shell command or program in an isolated subprocess. Use for running scripts, build tools, system commands, or any CLI operation.",
+        purpose="Execute any shell command or program in an isolated subprocess. Use for running scripts, build tools, system commands, or any CLI operation. PREFERRED over chat_agent_keyboarder for running anything: invoke `python script.py`, `gcc`, `npm`, `dotnet`, `git`, etc. directly — never drive Keyboarder to type a command into a terminal window. For creating source files first, pair with chat_agent_file_creator (write the file, then execute it here).",
         example_request="Execute with script='npm run build' and non_blocking=false",
         aliases=("executer", "executor", "execute"),
         security_hints=("execute", "run command", "launch program"),
@@ -102,7 +102,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_pythonxer",
         tool_description="Chat-Agent-Pythonxer",
         display_name="Pythonxer",
-        purpose="Run inline Python code directly. Use when the user needs a quick computation, data transformation, file parsing, or any task best solved with Python code.",
+        purpose="Run inline Python code directly. Use when the user needs a quick computation, data transformation, file parsing, code generation, or any task best solved with Python code. PREFERRED over chat_agent_keyboarder for executing ad-hoc Python: pass the code in `script` and it runs in one shot — never drive Keyboarder to type Python into Notepad, IDLE, or any editor. To author a `.py` file on disk, use chat_agent_file_creator instead (atomic and exact); use Pythonxer to RUN code or to generate computed content.",
         example_request="Run python with script='import json; data = {\"name\": \"test\", \"value\": 42}; print(json.dumps(data, indent=2))'",
         aliases=("pythonxer", "python", "run python"),
         security_hints=("python", "run python", "execute python"),
@@ -157,7 +157,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_file_creator",
         tool_description="Chat-Agent-File-Creator",
         display_name="File Creator",
-        purpose="Create or overwrite a file with specified content at any path. Use when the user asks to create, write, or save a file.",
+        purpose="Create or overwrite a file with specified content at any path. Use when the user asks to create, write, generate, save, or author a file — source code, scripts, configs, JSON, YAML, fixtures, prompt templates, anything. PREFERRED over chat_agent_keyboarder for ALL code / script / text-file authorship: pass the full content in `content` and the file lands on disk atomically — never open Notepad / VS Code / an IDE and type the file through Keyboarder (slow, brittle, mangles quotes/backslashes/indentation, leaves no artefact unless a human saves the editor). For multiple files, call this tool once per file. To then EXECUTE what you wrote, chain into chat_agent_executer (`python file.py`, `node file.js`, ...) or chat_agent_pythonxer.",
         example_request="Create file with filepath='E:\\Temp\\config.yaml' and content='server:\\n  host: 0.0.0.0\\n  port: 8080'",
         aliases=("file_creator", "create file"),
         security_hints=("create file", "write file", "save file"),
@@ -265,8 +265,14 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         purpose=(
             "Move the mouse pointer and click anywhere on the desktop — the canonical "
             "primitive for focusing a window, clicking a button, dragging a selection, or "
-            "scrolling. Seven movement_type modes (pick the one that matches the task, do "
-            "NOT default to 'localized' when a smarter mode exists):\n"
+            "scrolling. **DO NOT use this tool as part of a code-authoring or script-creation "
+            "flow (e.g., clicking through an IDE menu to insert/save code) — `chat_agent_file_creator` "
+            "writes the file directly, `chat_agent_executer` runs the command, and `chat_agent_pythonxer` "
+            "runs inline Python; none of those need pointer events.** Mouser is reserved for genuine "
+            "desktop-UI automation and may be used ONLY when (a) the user EXPLICITLY asks for mouse / "
+            "pointer / click automation, (b) the user EXPLICITLY asks for a desktop-UI demo, or (c) "
+            "there is genuinely no programmatic alternative. Seven movement_type modes (pick the one "
+            "that matches the task, do NOT default to 'localized' when a smarter mode exists):\n"
             "  • 'click_at_window' (PREFERRED for focus-the-window-then-type) — set "
             "    window_title='Notepad' (or any substring of the title) and window_anchor "
             "    ∈ {center|topleft|topright|bottomleft|bottomright|titlebar} (default "
@@ -327,7 +333,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_keyboarder",
         tool_description="Chat-Agent-Keyboarder",
         display_name="Keyboarder",
-        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). Use when the user asks to type something into a desktop app, drive a UI with keystrokes, send hotkeys (Ctrl+C, Alt+Tab, Win+R, ...), or replay a key sequence as if a human were pressing keys. Pair with chat_agent_executer (to launch the target app). INPUT_SEQUENCE FORMAT (READ CAREFULLY): comma-separated tokens; literal text MUST be wrapped in single quotes ('like this'); key names go bare (enter, esc, tab); chord keys join with + (ctrl+s, alt+f4). To embed an apostrophe inside single-quoted literal text, double it SQL-style ('I''m' types I'm) OR backslash-escape it ('I\\'m' types I'm). DO NOT double the OUTER quotes (''text'' is wrong). Correct examples: 'Hi, I''m Tlamatini', enter — types `Hi, I'm Tlamatini` then presses Enter. 'Hello world', tab, ctrl+s — types `Hello world` then Tab then saves. If you forget the quotes around text, the agent falls back to typing the entire input literally — but quoting is the canonical form. WINDOW CLEANUP — every desktop-UI workflow you start MUST end by closing the window you opened: send 'alt+f4' to close the active window; if the app raises a 'Save changes?' confirmation (Notepad, Word, most editors) the standard English buttons are 'Save' (alt+s), 'Don't Save' (alt+n), 'Cancel' (alt+c or escape) — when the workflow only typed demo text and the file does NOT need to be kept, send 'alt+n' to discard. If alt-letter shortcuts are unavailable (non-English UI, custom dialog), navigate with 'tab' until the desired button is focused, then 'enter'.",
+        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). **DO NOT use this tool to author source code, scripts, configuration files, or any file content by typing into Notepad / VS Code / an IDE / a terminal — use `chat_agent_file_creator` (write the file atomically), `chat_agent_executer` (run a command), or `chat_agent_pythonxer` (run inline Python) instead.** Keyboarder is reserved for genuine desktop-UI automation and may be used ONLY when one of these is true: (a) the user EXPLICITLY names Keyboarder / asks for keyboard typing / a Notepad demo / a GUI replay; (b) the user EXPLICITLY asks for a desktop-UI demonstration (hotkey to a third-party app, screencast-style replay, focus-and-type drill); or (c) there is genuinely NO programmatic alternative on this host. Absent that explicit instruction, prefer the file-creator / executer / pythonxer path. Pair with chat_agent_executer (to launch the target app). INPUT_SEQUENCE FORMAT (READ CAREFULLY): comma-separated tokens; literal text MUST be wrapped in single quotes ('like this'); key names go bare (enter, esc, tab); chord keys join with + (ctrl+s, alt+f4). To embed an apostrophe inside single-quoted literal text, double it SQL-style ('I''m' types I'm) OR backslash-escape it ('I\\'m' types I'm). DO NOT double the OUTER quotes (''text'' is wrong). Correct examples: 'Hi, I''m Tlamatini', enter — types `Hi, I'm Tlamatini` then presses Enter. 'Hello world', tab, ctrl+s — types `Hello world` then Tab then saves. If you forget the quotes around text, the agent falls back to typing the entire input literally — but quoting is the canonical form. WINDOW CLEANUP — every desktop-UI workflow you start MUST end by closing the window you opened: send 'alt+f4' to close the active window; if the app raises a 'Save changes?' confirmation (Notepad, Word, most editors) the standard English buttons are 'Save' (alt+s), 'Don't Save' (alt+n), 'Cancel' (alt+c or escape) — when the workflow only typed demo text and the file does NOT need to be kept, send 'alt+n' to discard. If alt-letter shortcuts are unavailable (non-English UI, custom dialog), navigate with 'tab' until the desired button is focused, then 'enter'.",
         example_request="Type with input_sequence=\"'Hi!, I''m Tlamatini', enter\" and stride_delay=80",
         aliases=("keyboarder", "keyboard", "type", "press keys", "send keys", "hotkey"),
         security_hints=(

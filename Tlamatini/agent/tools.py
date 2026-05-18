@@ -1761,7 +1761,13 @@ def get_current_time() -> str:
 def execute_file(command: str) -> str:
     """
     Open a new forked terminal window to execute a Python script with optional arguments.
-    
+
+    PREFERRED over chat_agent_keyboarder for running a Python script: pass the script path here —
+    NEVER drive Keyboarder to open IDLE / VS Code / a terminal and type/run the script. For creating
+    the `.py` file first, use chat_agent_file_creator; for inline Python without a file, use
+    chat_agent_pythonxer. Keyboarder and Mouser are reserved for explicit desktop-UI automation
+    requests, not for running scripts.
+
     CRITICAL: Pass the COMPLETE command exactly as the user specified, including all arguments.
     
     Examples of what to pass:
@@ -1809,6 +1815,12 @@ def execute_command(command: str) -> str:
     """
     Execute a shell/system command. Use this for ANY command-line operation: installing packages,
     building software, running scripts, checking system state, git, pip, npm, choco, winget, cmake, etc.
+
+    PREFERRED over chat_agent_keyboarder for running anything from the command line: pass the full
+    command here directly — NEVER drive Keyboarder to open a terminal and type the command into it.
+    For creating a source file first, use file_creator / chat_agent_file_creator, then execute it
+    here. Keyboarder and Mouser are reserved for explicit desktop-UI automation requests, not for
+    running commands.
 
     CRITICAL: Pass the COMPLETE command exactly as the user specified, including all arguments.
 
