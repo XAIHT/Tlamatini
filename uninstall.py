@@ -9,6 +9,7 @@
 # or from the Windows registry (.flw association).  The user can also browse
 # to select the directory manually.
 
+import ctypes
 import json
 import os
 import re
@@ -18,7 +19,84 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+from ctypes import wintypes
 from tkinter import filedialog, messagebox, ttk
+
+
+# ─── Version resolution ───────────────────────────────────────────────────────
+# Read the version from the running .exe's Win32 ProductVersion (frozen mode)
+# so the GUI always matches the value PyInstaller's --version-file baked in.
+# In source mode, derive from git tags (same precedence as
+# Tlamatini/agent/version.py).  Empty string is valid; UI degrades gracefully.
+
+def _read_exe_product_version(exe_path: str) -> str:
+    """Read the Win32 ``ProductVersion`` string from an EXE's VERSIONINFO."""
+    if sys.platform != "win32":
+        return ""
+    try:
+        ver = ctypes.windll.version
+        get_size = ver.GetFileVersionInfoSizeW
+        get_size.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)]
+        get_size.restype = wintypes.DWORD
+
+        get_info = ver.GetFileVersionInfoW
+        get_info.argtypes = [wintypes.LPCWSTR, wintypes.DWORD,
+                             wintypes.DWORD, ctypes.c_void_p]
+        get_info.restype = wintypes.BOOL
+
+        query = ver.VerQueryValueW
+        query.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR,
+                          ctypes.POINTER(ctypes.c_void_p),
+                          ctypes.POINTER(wintypes.UINT)]
+        query.restype = wintypes.BOOL
+
+        handle = wintypes.DWORD(0)
+        size = get_size(exe_path, ctypes.byref(handle))
+        if not size:
+            return ""
+
+        buf = ctypes.create_string_buffer(size)
+        if not get_info(exe_path, 0, size, buf):
+            return ""
+
+        for codepage in ("040904B0", "040904E4", "000004B0"):
+            sub = f"\\StringFileInfo\\{codepage}\\ProductVersion"
+            value = ctypes.c_void_p(0)
+            length = wintypes.UINT(0)
+            if query(buf, sub, ctypes.byref(value), ctypes.byref(length)):
+                if value.value and length.value > 0:
+                    return ctypes.wstring_at(value.value, length.value).rstrip("\x00")
+    except Exception:
+        return ""
+    return ""
+
+
+def _derive_version_from_git() -> str:
+    """Return the most recent reachable ``v*`` tag, stripped of the ``v``."""
+    try:
+        cwd = os.path.dirname(os.path.abspath(__file__))
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"],
+            cwd=cwd, capture_output=True, text=True, timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return ""
+    if result.returncode != 0:
+        return ""
+    tag = (result.stdout or "").strip()
+    return tag[1:] if tag.startswith("v") else tag
+
+
+def resolve_version() -> str:
+    """Resolve the running uninstaller's version (frozen→EXE, source→git)."""
+    if getattr(sys, "frozen", False):
+        version = _read_exe_product_version(sys.executable)
+        if version:
+            return version
+    derived = _derive_version_from_git()
+    if derived:
+        return derived
+    return ""
 
 
 # ─── Color Palette (matches Installer) ──────────────────────────────────────
@@ -62,7 +140,9 @@ class FancyUninstaller:
 
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Tlamatini Uninstaller")
+        self.version = resolve_version()
+        title = f"Tlamatini Uninstaller v{self.version}" if self.version else "Tlamatini Uninstaller"
+        self.root.title(title)
         self.root.configure(bg=BG_DARK)
         self.root.resizable(False, False)
 
@@ -132,16 +212,18 @@ class FancyUninstaller:
         # Red accent line at top (danger theme)
         tk.Frame(hdr, bg=ERROR, height=3).pack(fill="x")
 
+        # Layout: [gear + title-block | spring | version-badge].  fill="both"
+        # + expand=True makes the spring push the badge to the right edge.
         hdr_inner = tk.Frame(hdr, bg=BG_CARD)
-        hdr_inner.pack(expand=True)
+        hdr_inner.pack(fill="both", expand=True)
 
         tk.Label(
             hdr_inner, text="⚙", font=(FONT_FAMILY, 28),
             bg=BG_CARD, fg=ERROR,
-        ).pack(side="left", padx=(20, 10))
+        ).pack(side="left", padx=(20, 10), pady=(8, 0))
 
         title_block = tk.Frame(hdr_inner, bg=BG_CARD)
-        title_block.pack(side="left")
+        title_block.pack(side="left", pady=(14, 0))
         tk.Label(
             title_block, text="Tlamatini", font=(FONT_FAMILY, 20, "bold"),
             bg=BG_CARD, fg=FG_PRIMARY,
@@ -150,6 +232,39 @@ class FancyUninstaller:
             title_block, text="Uninstallation Wizard", font=(FONT_FAMILY, 10),
             bg=BG_CARD, fg=FG_SECONDARY,
         ).pack(anchor="w")
+
+        # ── Version badge (pill, danger theme) ───────────────────────
+        # Border colour matches the top accent line (red) so the whole
+        # header still reads as a coherent danger-themed unit.
+        self._build_version_badge(hdr_inner)
+
+    def _build_version_badge(self, parent: tk.Frame):
+        """Render the version pill in the header, or nothing if unresolved."""
+        if not self.version:
+            return
+
+        # Outer 1-px frame = pill border (red, matches the danger accent).
+        badge_outer = tk.Frame(
+            parent, bg=ERROR,
+            highlightthickness=0, bd=0,
+        )
+        badge_outer.pack(side="right", padx=(0, 22), pady=(20, 0))
+
+        # Inner dark fill with 1-px reveal forms the border.
+        badge_inner = tk.Frame(badge_outer, bg=BG_INPUT)
+        badge_inner.pack(padx=1, pady=1)
+
+        tk.Label(
+            badge_inner, text="VERSION",
+            font=(FONT_FAMILY, 7, "bold"),
+            bg=BG_INPUT, fg=FG_SECONDARY,
+        ).pack(padx=14, pady=(5, 0))
+
+        tk.Label(
+            badge_inner, text=f"v{self.version}",
+            font=(FONT_FAMILY, 12, "bold"),
+            bg=BG_INPUT, fg=ERROR,
+        ).pack(padx=14, pady=(0, 5))
 
         # ── Body card ────────────────────────────────────────────────
         body = tk.Frame(self.root, bg=BG_DARK)
