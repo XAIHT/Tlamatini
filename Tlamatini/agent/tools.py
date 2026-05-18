@@ -1563,9 +1563,12 @@ def _launch_wrapped_chat_agent(spec, request):
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
 
-    # Pre-flight syntax check for Pythonxer scripts. The frozen build does
-    # not ship with Ruff, so the agent's own Ruff step is a no-op. Catching
-    # syntax errors *before* we spawn the subprocess lets the LLM see a clean,
+    # Pre-flight syntax check for Pythonxer scripts. The agent itself invokes
+    # Ruff via ``python -m ruff`` (works in both source and frozen modes
+    # because ``requirements.txt`` ships ``ruff`` and the build installs it
+    # into PYTHON_HOME), but Ruff only flags style/lint issues and a hard
+    # SyntaxError will still propagate as a non-zero exit. Catching syntax
+    # errors *before* we spawn the subprocess lets the LLM see a clean,
     # actionable error ("line 1: unterminated string literal") without
     # leaving a failed run directory behind and without burning a Multi-Turn
     # iteration on a guaranteed failure.
