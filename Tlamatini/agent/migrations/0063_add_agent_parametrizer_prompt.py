@@ -10,8 +10,10 @@ def add_agent_parametrizer_prompt(apps, schema_editor):
             'promptName': 'prompt-24',
             'promptContent': (
                 "Parametrize the template Telegrammer agent to set "
-                "api_id=123456, api_hash='adcb5adcbbad6676adc98112345678910', "
-                "chat_id='Angela-Bennet', message='Telegrammer parametrized and launched'."
+                "api_id=------, "
+                "api_hash='------', "
+                "chat_id='Me', "
+                "message='Telegrammer parametrized and launched'."
             ),
         }
     )

@@ -5,9 +5,27 @@ from django.db import migrations
 def populate_initial_values(apps, schema_editor):
     """
     Populates the Prompts table with initial, default prompts.
+
+    The catalog is sorted from least to most complex along the learner's
+    path documented in BookOfTlamatini.md (chapters 9-14):
+        - context-only Q&A (no toggles)
+        - simple system metrics / file-search
+        - simple shell commands
+        - code generation
+        - vision tools
+        - specialized single-tool actions
+        - agent control
+        - single advanced tool (Unrealer)
+        - Multi-Turn demos
+        - ACPX demos (3 sub-flavours, ramping in setup cost)
+
+    This migration owns the 1-20 / 26-28 ranges; 0062/0063 fill 21-24,
+    0087 fills 25, and 0072/0073/0074 fill 29-48.
     """
-    Prompt = apps.get_model('agent', 'Prompt') 
-    
+    Prompt = apps.get_model('agent', 'Prompt')
+
+    # ── Tier 1 — Context-only Q&A (no toggles) ────────────────────────────
+
     Prompt.objects.get_or_create(
         idPrompt=1,
         defaults={
@@ -28,10 +46,10 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=3,
         defaults={
             'promptName': 'prompt-3',
-            'promptContent': 'Explain what are the weak security issues you find on the source code in the provided context and how you may improve them focused in Cyber Security, **sort your findings from Critical severity to Low severity**, so, deeply analize the code, please.'
+            'promptContent': 'Explain what are the weak security issues you find in the source code of the provided context and how you may improve them focused in Cyber Security, **sort your findings from Critical severity to Low severity**, so, deeply analize the code, please.'
         }
     )
-    
+
     Prompt.objects.get_or_create(
         idPrompt=4,
         defaults={
@@ -39,6 +57,8 @@ def populate_initial_values(apps, schema_editor):
             'promptContent': 'Explain the purpose of \'-----.---\', from the provided context, please.'
         }
     )
+
+    # ── Tier 2 — Simple system metrics ────────────────────────────────────
 
     Prompt.objects.get_or_create(
         idPrompt=5,
@@ -55,6 +75,8 @@ def populate_initial_values(apps, schema_editor):
             'promptContent': 'What is te actual CPU usage, memory usage, and disk space?, please.'
         }
     )
+
+    # ── Tier 3 — Files-Search MCP ─────────────────────────────────────────
 
     Prompt.objects.get_or_create(
         idPrompt=7,
@@ -80,11 +102,13 @@ def populate_initial_values(apps, schema_editor):
         }
     )
 
+    # ── Tier 4 — Single shell command (Execute-Command / Execute-File) ────
+
     Prompt.objects.get_or_create(
         idPrompt=10,
         defaults={
             'promptName': 'prompt-10',
-            'promptContent': 'Create an implementation of ----- in ----- to --- --- ---, provide all the neccesary files, and **REMEMBER to follow the rule "4) Code generation rule"**, please.'
+            'promptContent': 'Execute cat_art.py, located in the root of this application, please.'
         }
     )
 
@@ -92,7 +116,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=11,
         defaults={
             'promptName': 'prompt-11',
-            'promptContent': 'Execute cat_art.py, located in the root of this application, please.'
+            'promptContent': 'Run command ping x.x.x.x, and show its output as-is, please.'
         }
     )
 
@@ -100,15 +124,17 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=12,
         defaults={
             'promptName': 'prompt-12',
-            'promptContent': 'Run command ping x.x.x.x, and show its output as-is, please.'
+            'promptContent': 'Run command netstat -an, and tell me if port 50051 is opened and whats its state, please.'
         }
     )
+
+    # ── Tier 5 — Code generation ──────────────────────────────────────────
 
     Prompt.objects.get_or_create(
         idPrompt=13,
         defaults={
             'promptName': 'prompt-13',
-            'promptContent': 'Run command netstat -an, and tell me if port 50051 is opened and whats its state, please.'
+            'promptContent': 'Create an implementation of ----- in ----- to --- --- ---, provide all the neccesary files, and **REMEMBER to follow the rule "4) Code generation rule"**, please.'
         }
     )
 
@@ -116,7 +142,7 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=14,
         defaults={
             'promptName': 'prompt-14',
-            'promptContent': 'Describe with Qwen the image \'----.---\' located in \'----\', please.'
+            'promptContent': 'Create a web page using Bootstrap and jQuery **taking special attention to generate elements without overlapping each other**, with the exact same layout and elements that are described below:'
         }
     )
 
@@ -124,23 +150,25 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=15,
         defaults={
             'promptName': 'prompt-15',
-            'promptContent': 'Describe with Opus the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
+            'promptContent': 'Create a new version of the file "----.---" in order to include all the neccesary Java-Doc-style comments, **don´t modify the code at all**, and **REMEMBER to follow the rule "4) Code generation rule"**, it\'s original complete code is as follows: '
         }
     )
-    
+
+    # ── Tier 6 — Vision tools (Qwen / Opus image analysis) ────────────────
+
     Prompt.objects.get_or_create(
         idPrompt=16,
         defaults={
             'promptName': 'prompt-16',
-            'promptContent': 'Describe with Qwen the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
+            'promptContent': 'Describe with Qwen the image \'----.---\' located in \'----\', please.'
         }
     )
-    
+
     Prompt.objects.get_or_create(
         idPrompt=17,
         defaults={
             'promptName': 'prompt-17',
-            'promptContent': 'Create a web page using Bootstrap and jQuery **taking special attention to generate elements without overlapping each other**, with the exact same layout and elements that are described below:'
+            'promptContent': 'Describe with Opus the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
         }
     )
 
@@ -148,9 +176,11 @@ def populate_initial_values(apps, schema_editor):
         idPrompt=18,
         defaults={
             'promptName': 'prompt-18',
-            'promptContent': 'Create a new version of the file "----.---" in order to include all the neccesary Java-Doc-style comments, **don´t modify the code at all**, and **REMEMBER to follow the rule "4) Code generation rule"**, it\'s original complete code is as follows: '
+            'promptContent': 'Describe with Qwen the image \'------.---\' located in \'------\' which is a mockup of a web page: **create a table listing all of the elements including menu entries, links, buttons, header, menu bar, side bars, etc. in a table with the format: element name, element type, element position (xpos%, ypos%), element size (width%, height%), element color, element text, element font-type, element font-size**, **STRICTLY NEVER ADD MORE ELEMENTS THAN THE ONES IN THE MOCKUP**, please.'
         }
     )
+
+    # ── Tier 7 — Specialized single-tool action ───────────────────────────
 
     Prompt.objects.get_or_create(
         idPrompt=19,
@@ -160,60 +190,12 @@ def populate_initial_values(apps, schema_editor):
         }
     )
 
+    # ── Tier 8 — Project-wide code-modification task ──────────────────────
+
     Prompt.objects.get_or_create(
         idPrompt=20,
         defaults={
             'promptName': 'prompt-20',
-            'promptContent': (
-                "Tlamatini, Run an end-to-end multi-turn local document demo, please: use File Creator "
-                "to create the file '----\\tlamatini_multiturn_release_notes.txt' with a short "
-                "fake release note for Tlamatini, then use File Extractor to read that same "
-                "file, then use Summarize Text to convert it into a 5-bullet executive "
-                "summary, and finally use Notifier to announce that the demo finished. If any "
-                "wrapped agent returns a running run_id, keep using chat_agent_run_status and "
-                "chat_agent_run_log until you have enough output to continue."
-            )
-        }
-    )
-
-    Prompt.objects.get_or_create(
-        idPrompt=21,
-        defaults={
-            'promptName': 'prompt-21',
-            'promptContent': (
-                "Tlamatini, Run a multi-turn web research demo, please: use Apirer to call the URL "
-                "'https://example.com' with GET, then use Crawler on that same URL to "
-                "capture the page text, then use Summarize Text to produce a short "
-                "comparison between the HTTP response and the crawled content, and finally "
-                "use File Creator to save the final comparison into "
-                "'-----\\tlamatini_example_comparison.md'. If any wrapped agent returns a "
-                "running run_id, keep using chat_agent_run_status and chat_agent_run_log "
-                "until you have enough output to continue."
-            )
-        }
-    )
-
-    Prompt.objects.get_or_create(
-        idPrompt=22,
-        defaults={
-            'promptName': 'prompt-22',
-            'promptContent': (
-                "Tlamatini, Run a multi-turn monitoring demo, please: first use File Creator to "
-                "initialize '----\\tlamatini_monitor_demo.log' with a starting line, then "
-                "start Monitor Log on that file watching for the keywords 'ERROR,FATAL', "
-                "then use Pythonxer to append several new log lines to the same file "
-                "including one line that contains the word 'ERROR', keep polling the "
-                "monitor with chat_agent_run_status and chat_agent_run_log until the alert "
-                "is visible, then stop that monitor with chat_agent_run_stop and summarize "
-                "what happened."
-            )
-        }
-    )
-
-    Prompt.objects.get_or_create(
-        idPrompt=23,
-        defaults={
-            'promptName': 'prompt-23',
             'promptContent': (
                 "Tlamatini, please for each of the .java files in the present project "
                 "(project wich is originally located in the source directory '-----' "
@@ -232,8 +214,61 @@ def populate_initial_values(apps, schema_editor):
         }
     )
 
-    Mcp = apps.get_model('agent', 'Mcp') 
-    
+    # ── Tier 11 — Multi-Turn demos (placed at the end of the catalog) ─────
+    # (Tier 9 / 10 slots 21-25 are owned by 0062/0063/0087.)
+
+    Prompt.objects.get_or_create(
+        idPrompt=26,
+        defaults={
+            'promptName': 'prompt-26',
+            'promptContent': (
+                "Tlamatini, Run an end-to-end multi-turn local document demo, please: use File Creator "
+                "to create the file '----\\tlamatini_multiturn_release_notes.txt' with a short "
+                "fake release note for Tlamatini, then use File Extractor to read that same "
+                "file, then use Summarize Text to convert it into a 5-bullet executive "
+                "summary, and finally use Notifier to announce that the demo finished. If any "
+                "wrapped agent returns a running run_id, keep using chat_agent_run_status and "
+                "chat_agent_run_log until you have enough output to continue."
+            )
+        }
+    )
+
+    Prompt.objects.get_or_create(
+        idPrompt=27,
+        defaults={
+            'promptName': 'prompt-27',
+            'promptContent': (
+                "Tlamatini, Run a multi-turn web research demo, please: use Apirer to call the URL "
+                "'https://example.com' with GET, then use Crawler on that same URL to "
+                "capture the page text, then use Summarize Text to produce a short "
+                "comparison between the HTTP response and the crawled content, and finally "
+                "use File Creator to save the final comparison into "
+                "'-----\\tlamatini_example_comparison.md'. If any wrapped agent returns a "
+                "running run_id, keep using chat_agent_run_status and chat_agent_run_log "
+                "until you have enough output to continue."
+            )
+        }
+    )
+
+    Prompt.objects.get_or_create(
+        idPrompt=28,
+        defaults={
+            'promptName': 'prompt-28',
+            'promptContent': (
+                "Tlamatini, Run a multi-turn monitoring demo, please: first use File Creator to "
+                "initialize '----\\tlamatini_monitor_demo.log' with a starting line, then "
+                "start Monitor Log on that file watching for the keywords 'ERROR,FATAL', "
+                "then use Pythonxer to append several new log lines to the same file "
+                "including one line that contains the word 'ERROR', keep polling the "
+                "monitor with chat_agent_run_status and chat_agent_run_log until the alert "
+                "is visible, then stop that monitor with chat_agent_run_stop and summarize "
+                "what happened."
+            )
+        }
+    )
+
+    Mcp = apps.get_model('agent', 'Mcp')
+
     Mcp.objects.get_or_create(
         idMcp=1,
         defaults={
@@ -252,8 +287,8 @@ def populate_initial_values(apps, schema_editor):
         }
     )
 
-    Tool = apps.get_model('agent', 'Tool') 
-    
+    Tool = apps.get_model('agent', 'Tool')
+
     Tool.objects.get_or_create(
         idTool=1,
         defaults={
@@ -335,8 +370,8 @@ def populate_initial_values(apps, schema_editor):
         }
     )
 
-    Agent = apps.get_model('agent', 'Agent') 
-    
+    Agent = apps.get_model('agent', 'Agent')
+
     Agent.objects.get_or_create(
         idAgent=1,
         defaults={
@@ -455,8 +490,8 @@ def populate_initial_values(apps, schema_editor):
         }
     )
 
-    Omission = apps.get_model('agent', 'Omission') 
-    
+    Omission = apps.get_model('agent', 'Omission')
+
     Omission.objects.get_or_create(
         idOmission=1,
         defaults={

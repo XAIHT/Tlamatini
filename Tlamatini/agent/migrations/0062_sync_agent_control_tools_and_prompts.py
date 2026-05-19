@@ -38,7 +38,13 @@ def sync_agent_control_tools_and_prompts(apps, schema_editor):
         idPrompt=21,
         defaults={
             'promptName': 'prompt-21',
-            'promptContent': 'Start-up the agent "------", please.',
+            'promptContent': (
+                "Parametrize the template agent for -------- to set: "
+                "------=------, "
+                "------=------, "
+                "------=------, "
+                "then, run the agent, please."
+            ),
         }
     )
 
@@ -46,7 +52,7 @@ def sync_agent_control_tools_and_prompts(apps, schema_editor):
         idPrompt=22,
         defaults={
             'promptName': 'prompt-22',
-            'promptContent': 'Stop the agent "------", please.',
+            'promptContent': 'Show the status of the agent "------", then summarize its log file, please.',
         }
     )
 
@@ -54,10 +60,9 @@ def sync_agent_control_tools_and_prompts(apps, schema_editor):
         idPrompt=23,
         defaults={
             'promptName': 'prompt-23',
-            'promptContent': 'Get the status of the agent "------", please.',
+            'promptContent': 'Stop the agent "------", then summarize its log file, please.',
         }
     )
-
 
 def revert_agent_control_tools_and_prompts(apps, schema_editor):
     Tool = apps.get_model('agent', 'Tool')
