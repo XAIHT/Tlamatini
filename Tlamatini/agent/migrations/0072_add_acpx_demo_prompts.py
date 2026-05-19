@@ -5,7 +5,12 @@ acp_kill, list_skills, invoke_skill) and explicitly frame the output as
 parity-with-OpenClaw so the user can see, in one Multi-Turn run, that
 Tlamatini covers the full ACPX mechanism.
 
-Slots: idPrompt 25-28 (free; the existing population stops at 24).
+Slots: idPrompt 36-41 (placed AFTER the simplified plain-text versions at
+29-35 from 0074 so the catalog ramps from "easy to read" to "visually
+loud, HTML-leaky"). Order within the group follows the same learning
+progression used by the simplified and Gemini-pinned siblings: Health
+Parade → Skill Catalog → Permission Gate → End-to-End Pipeline →
+ACPX Auditor → Multi-CLI Relay.
 """
 from django.db import migrations
 
@@ -14,9 +19,9 @@ def add_acpx_demo_prompts(apps, schema_editor):
     Prompt = apps.get_model('agent', 'Prompt')
 
     Prompt.objects.get_or_create(
-        idPrompt=25,
+        idPrompt=36,
         defaults={
-            'promptName': 'prompt-25',
+            'promptName': 'prompt-36',
             'promptContent': (
                 "Tlamatini, run the **ACPX Health & Roster Parade** demo, please. "
                 "Step 1: open the report with a flashy banner — emit one HTML block "
@@ -42,9 +47,9 @@ def add_acpx_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=26,
+        idPrompt=37,
         defaults={
-            'promptName': 'prompt-26',
+            'promptName': 'prompt-37',
             'promptContent': (
                 "Tlamatini, run the **Skill Catalog Carnival** demo, please. "
                 "Step 1: emit an opening HTML banner "
@@ -74,9 +79,9 @@ def add_acpx_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=27,
+        idPrompt=39,
         defaults={
-            'promptName': 'prompt-27',
+            'promptName': 'prompt-39',
             'promptContent': (
                 "Tlamatini, run the **End-to-End ACPX Pipeline** demo, please &mdash; "
                 "the showcase that proves Tlamatini covers OpenClaw's ACPX mechanism end to end. "
@@ -115,9 +120,9 @@ def add_acpx_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=29,
+        idPrompt=41,
         defaults={
-            'promptName': 'prompt-29',
+            'promptName': 'prompt-41',
             'promptContent': (
                 "Tlamatini, run the **Multi-CLI ACPX Relay** demo, please &mdash; the "
                 "showcase that proves Tlamatini can orchestrate two distinct ACP children "
@@ -161,9 +166,9 @@ def add_acpx_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=30,
+        idPrompt=40,
         defaults={
-            'promptName': 'prompt-30',
+            'promptName': 'prompt-40',
             'promptContent': (
                 "Tlamatini, run the **ACPX Auditor's Replay** demo, please &mdash; the "
                 "showcase that proves the on-disk transcript and skill-audit trails are real, "
@@ -206,9 +211,9 @@ def add_acpx_demo_prompts(apps, schema_editor):
     )
 
     Prompt.objects.get_or_create(
-        idPrompt=28,
+        idPrompt=38,
         defaults={
-            'promptName': 'prompt-28',
+            'promptName': 'prompt-38',
             'promptContent': (
                 "Tlamatini, run the **ACPX Permission Gate &amp; Audit Tour** demo, please. "
                 "Step 1: emit an opening HTML banner "
@@ -244,7 +249,7 @@ def add_acpx_demo_prompts(apps, schema_editor):
 
 def remove_acpx_demo_prompts(apps, schema_editor):
     Prompt = apps.get_model('agent', 'Prompt')
-    Prompt.objects.filter(idPrompt__in=(25, 26, 27, 28, 29, 30)).delete()
+    Prompt.objects.filter(idPrompt__in=(36, 37, 38, 39, 40, 41)).delete()
 
 
 class Migration(migrations.Migration):

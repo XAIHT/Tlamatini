@@ -1,14 +1,19 @@
 """
 ACPX demo prompts uplift — Gemini-led, more visually rimbombante.
 
-Refreshes idPrompt 25-30 (originally seeded by 0072) with louder banners,
-pin them on `agent_id='gemini'` as the primary ACP child (which is the CLI
-we have a real GEMINI_API_KEY for), and adds idPrompt 31: a brand-new
-"Gemini Live Reasoning Showcase" that exclusively flexes Gemini's actual
-reasoning capacity through ACPX with three real follow-up turns.
+Seeds seven NEW prompts in idPrompt slots 42-48 — the louder, Gemini-pinned
+companions to the rich-HTML ACPX demos that 0072 placed at 36-41 and the
+simplified plain-text demos that 0074 placed at 29-35. These do NOT
+overwrite any earlier slot; each prior migration keeps the prompts it
+originally populated. Order inside the group follows the same Health
+Parade → Skill Catalog → Permission Gate → End-to-End Pipeline → ACPX
+Auditor → Multi-CLI Relay → Gemini Live Reasoning learning progression
+used by the simplified and rich-HTML siblings. The brand-new "Gemini Live
+Reasoning Showcase" lands last (idPrompt 48) because it requires a real
+GEMINI_API_KEY and three live multi-turn reasoning rounds — the most
+configuration-heavy demo in the entire catalog.
 
-Uses update_or_create so reruns are idempotent and so users who already
-ran 0072 get the better content without manual cleanup.
+Uses update_or_create so reruns are idempotent.
 """
 from django.db import migrations
 
@@ -396,13 +401,13 @@ P31_GEMINI_LIVE = (
 # ── Migration ops ──────────────────────────────────────────────────────
 
 DEMO_PROMPTS = [
-    (25, P25_HEALTH_PARADE),
-    (26, P26_SKILL_CARNIVAL),
-    (27, P27_PIPELINE),
-    (28, P28_PERMISSION_TOUR),
-    (29, P29_RELAY),
-    (30, P30_AUDITOR),
-    (31, P31_GEMINI_LIVE),
+    (42, P25_HEALTH_PARADE),
+    (43, P26_SKILL_CARNIVAL),
+    (44, P28_PERMISSION_TOUR),
+    (45, P27_PIPELINE),
+    (46, P30_AUDITOR),
+    (47, P29_RELAY),
+    (48, P31_GEMINI_LIVE),
 ]
 
 
@@ -419,9 +424,11 @@ def upgrade_acpx_demo_prompts(apps, schema_editor):
 
 
 def downgrade_acpx_demo_prompts(apps, schema_editor):
-    # On reverse, drop only prompt 31 (added here) and let 0072 own 25-30.
+    # On reverse, drop all seven slots this migration introduced (42-48);
+    # 0072's 36-41, 0074's 29-35, and the earlier migrations' 1-28 remain
+    # untouched.
     Prompt = apps.get_model('agent', 'Prompt')
-    Prompt.objects.filter(idPrompt=31).delete()
+    Prompt.objects.filter(idPrompt__in=(42, 43, 44, 45, 46, 47, 48)).delete()
 
 
 class Migration(migrations.Migration):

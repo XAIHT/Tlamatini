@@ -1,16 +1,21 @@
 """
-Rewrite the ACPX/Gemini demo prompts (25-31) as plain-text-only natural
-language. The earlier revisions embedded literal HTML banner blocks
-(<div style='...'>...) into the prompt text so the LLM would mimic them;
-in practice that HTML leaks into the chat-message input box and the
-user-message bubble in the chat history as raw, unreadable noise.
+Plain-text-only versions of the seven ACPX demos. The rich-HTML siblings
+in 0072 (idPrompt 36-41) and 0073 (idPrompt 42-48) embed literal banner
+blocks (<div style='...'>...) into the prompt text so the LLM would
+mimic them; in practice that HTML leaks into the chat-message input box
+and the user-message bubble in the chat history as raw, unreadable noise.
 
-This migration replaces every demo prompt body with a short, readable
-paragraph (10-20 seconds to scan), no HTML, no entities, no inline
-<div>/<table>/<ul>/<blockquote>/<pre> markup, no &mdash;/&rarr;/&middot;
-character entities. The LLM is still told to render its OUTPUT with
-banners and tables (the chat output supports HTML); only the *prompt
-text the user sends* is now plain-text-only.
+This migration adds short, readable paragraph versions (10-20 seconds
+to scan) at slots idPrompt 29-35 — the FIRST ACPX block in the catalog,
+ahead of the rich-HTML (36-41) and Gemini-pinned (42-48) blocks, because
+"plain-text only, works against ANY resolvable agent_id, no API key
+pin" is the lowest-complexity ACPX entry point. The LLM is still told
+to render its OUTPUT with banners and tables (the chat output supports
+HTML); only the *prompt text the user sends* is now plain-text-only.
+
+Order within the group follows the same Health Parade → Skill Catalog →
+Permission Gate → End-to-End Pipeline → ACPX Auditor → Multi-CLI Relay →
+Gemini Live Reasoning learning progression used by the two sibling groups.
 
 idempotent via update_or_create.
 """
@@ -221,13 +226,13 @@ P31_GEMINI_LIVE = (
 
 
 DEMO_PROMPTS = [
-    (25, P25_HEALTH_PARADE),
-    (26, P26_SKILL_CARNIVAL),
-    (27, P27_PIPELINE),
-    (28, P28_PERMISSION_TOUR),
-    (29, P29_RELAY),
-    (30, P30_AUDITOR),
-    (31, P31_GEMINI_LIVE),
+    (29, P25_HEALTH_PARADE),
+    (30, P26_SKILL_CARNIVAL),
+    (31, P28_PERMISSION_TOUR),
+    (32, P27_PIPELINE),
+    (33, P30_AUDITOR),
+    (34, P29_RELAY),
+    (35, P31_GEMINI_LIVE),
 ]
 
 
@@ -243,10 +248,13 @@ def simplify_demo_prompts(apps, schema_editor):
         )
 
 
-def noop_reverse(apps, schema_editor):
-    # Reverse leaves the simplified text in place (0073's rich-HTML
-    # versions are intentionally not restored on rollback).
-    pass
+def downgrade_simplified_demo_prompts(apps, schema_editor):
+    # Drop the plain-text slots this migration introduced (29-35).
+    # The rich-HTML versions at 36-41 (from 0072) and Gemini-pinned
+    # versions at 42-48 (from 0073) are untouched, so a partial rollback
+    # leaves a coherent catalog (1-28 + 36-48).
+    Prompt = apps.get_model('agent', 'Prompt')
+    Prompt.objects.filter(idPrompt__in=(29, 30, 31, 32, 33, 34, 35)).delete()
 
 
 class Migration(migrations.Migration):
@@ -257,6 +265,6 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(
             simplify_demo_prompts,
-            noop_reverse,
+            downgrade_simplified_demo_prompts,
         ),
     ]

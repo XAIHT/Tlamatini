@@ -10,7 +10,10 @@ Preconditions documented in the prompt body:
 - The Unreal MCP plugin is installed and the in-engine TCP listener
   is bound to 127.0.0.1:55557.
 
-Slot: idPrompt 32 (next free after 0072..0074's ACPX demos which seeded 25-31).
+Slot: idPrompt 25 — placed BEFORE the Multi-Turn demos (26-28) and the ACPX
+demos (29-48) because driving Unreal's editor with a single chat_agent_unrealer
+verb per step is less complex than orchestrating multi-tool Multi-Turn flows
+or external coding-agent CLIs through ACPX.
 """
 from django.db import migrations
 
@@ -138,9 +141,9 @@ PROMPT_CONTENT = (
 def add_unrealer_demo_prompt(apps, schema_editor):
     Prompt = apps.get_model('agent', 'Prompt')
     Prompt.objects.get_or_create(
-        idPrompt=32,
+        idPrompt=25,
         defaults={
-            'promptName': 'prompt-32',
+            'promptName': 'prompt-25',
             'promptContent': PROMPT_CONTENT,
         }
     )
@@ -148,7 +151,7 @@ def add_unrealer_demo_prompt(apps, schema_editor):
 
 def remove_unrealer_demo_prompt(apps, schema_editor):
     Prompt = apps.get_model('agent', 'Prompt')
-    Prompt.objects.filter(promptName='prompt-32').delete()
+    Prompt.objects.filter(promptName='prompt-25').delete()
 
 
 class Migration(migrations.Migration):
