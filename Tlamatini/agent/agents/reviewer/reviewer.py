@@ -347,17 +347,64 @@ def resolve_diff(repo_path: str, diff_ref: str) -> tuple:
     return diff_text, stat_text, ""
 
 
-def build_review_prompt(diff_text: str, stat_text: str, focus: str) -> str:
+def build_review_prompt(diff_text: str, stat_text: str, focus: str, diff_ref: str = "") -> str:
     focus_line = (
         f"The author specifically asked you to focus on: {focus}\n"
         if focus.strip() else ""
     )
+
+    # Tell the model EXACTLY what commit-state it is looking at. A git diff of
+    # the working tree shows UNCOMMITTED changes — describing them as
+    # "committed" is factually wrong and the #1 false-positive this agent used
+    # to produce.
+    if diff_ref.strip():
+        commit_state = (
+            f"COMMIT-STATE: the diff below is `git diff {diff_ref}` — changes that "
+            f"are already part of committed history (relative to {diff_ref}). It is "
+            "valid to call these 'committed'.\n"
+        )
+    else:
+        commit_state = (
+            "COMMIT-STATE: the diff below is the UNCOMMITTED working tree and "
+            "staged area (`git diff HEAD` + `git diff --staged`). NOTHING here is in "
+            "any commit yet. You MUST NOT describe anything in this diff as "
+            "'committed', 'committed to source', or 'pushed' — at most it is "
+            "'staged' or 'present in the working tree'.\n"
+        )
+
+    # This project (Tlamatini) keeps local credentials in its config files in
+    # the working copy and scrubs them to placeholders before any commit. Teach
+    # the reviewer that convention so it stops mis-reporting the developer's
+    # local keys as leaked/committed secrets.
+    secrets_note = (
+        "SECRET-HANDLING CONVENTION FOR THIS REPO: the files `agent/config.json` "
+        "and `agent/agents/*/config.yaml` legitimately hold local credentials in "
+        "the developer's working copy (the 'keyed' mode). Before any commit/push "
+        "they are scrubbed back to `<NAME goes here>` placeholders by "
+        "`regen_secrets.py --mode push-able`; the real values live only in "
+        "`data.keys`, which is gitignored. The committed and pushed versions of "
+        "those files therefore contain ONLY placeholders. So:\n"
+        "  - A `<...goes here>` placeholder or an empty string is NOT a secret — "
+        "never flag it.\n"
+        "  - Real-looking credentials in those specific managed files inside an "
+        "UNCOMMITTED diff are the expected local 'keyed' state — they are NOT a "
+        "leak and are NOT committed. Do NOT report them as 'API keys/passwords "
+        "committed to source'. At most emit ONE low-severity informational note "
+        "reminding the author to run `regen_secrets.py --mode push-able` before "
+        "committing.\n"
+        "  - You MUST still hard-flag genuine secrets hard-coded into SOURCE CODE "
+        "(.py/.js/.ts/...), secrets in any file outside that managed config set, "
+        "and any secret that truly appears in committed history.\n"
+    )
+
     return (
         "You are a rigorous, fair senior software engineer performing a code "
         "review. Review the unified diff below for correctness/logic bugs, "
-        "security vulnerabilities (injection, secrets, missing authz, unsafe "
-        "deserialization), performance problems, and readability/maintainability "
-        "issues.\n\n"
+        "security vulnerabilities (injection, hard-coded secrets, missing authz, "
+        "unsafe deserialization), performance problems, and "
+        "readability/maintainability issues.\n\n"
+        f"{commit_state}\n"
+        f"{secrets_note}\n"
         f"{focus_line}"
         "RESPONSE FORMAT — follow exactly:\n"
         "1. The FIRST line MUST be one of:\n"
@@ -446,7 +493,7 @@ def main():
                     f"{max_diff_chars} for the LLM."
                 )
                 diff_text = diff_text[:max_diff_chars] + "\n...[diff truncated]"
-            prompt = build_review_prompt(diff_text, stat_text, focus)
+            prompt = build_review_prompt(diff_text, stat_text, focus, diff_ref)
             logging.info(f"📝 Sending review prompt ({len(prompt)} chars) to {model}...")
             try:
                 review_text = query_ollama(host, model, prompt)
