@@ -19,7 +19,7 @@
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **62** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **64** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -111,7 +111,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 62-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 64-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -197,7 +197,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 62 workflow agent templates
+│   │   ├── agents/                 # 64 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -560,7 +560,7 @@ Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 - `acp-globals.js` — Shared global state, `updateCanvasContentSize()`
 - `acp-canvas-core.js` — Canvas rendering, drag-and-drop, classMap, connection handlers (6 touch points per agent)
 - `acp-canvas-undo.js` — Undo/redo state (1024 actions)
-- `acp-agent-connectors.js` — 62 agent connection handlers
+- `acp-agent-connectors.js` — 64 agent connection handlers
 - `acp-control-buttons.js` — Start/stop/pause/hypervisor; now calls `compileCurrentACPFlow({ mode: 'write' })` before start
 - `acp-file-io.js` — .flw save/load; uses `buildACPFlowSnapshot()` for schema-v2 JSON
 - `acp-running-state.js` — LED indicators, process monitoring
@@ -609,7 +609,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 62 Workflow Agent Types
+## 12. All 64 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -663,6 +663,8 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Teletlamatini** — Telegram bot bridge to Tlamatini chat
 - **WhatsTlamatini** — WhatsApp Cloud API bridge to Tlamatini chat
 - **Unrealer** — Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (`127.0.0.1:55557`); 28-command surface (actors, Blueprints, input mappings, UMG widgets); emits `INI_SECTION_UNREALER` and always triggers `target_agents`
+- **Reviewer** — LLM-powered code reviewer; resolves a `git diff` for `repo_path` (`diff_ref` like `HEAD~1`/`origin/main`, or empty = working-tree + staged), reviews it with an Ollama model, emits `INI_SECTION_REVIEWER` with a `verdict` (`APPROVE`/`REQUEST_CHANGES`/`COMMENT`); always triggers `target_agents` so a Forker can branch on `{verdict}`. Canvas counterpart of the `code-review` skill
+- **Analyzer** — Deterministic static/security scanner (no LLM); runs whichever of `bandit`/`semgrep`/`ruff`/`eslint`/`gitleaks`/`pip-audit` are on PATH over `target_path`, emits `INI_SECTION_ANALYZER` with `status` (`clean`/`findings`/`error`) + `total_findings`; always triggers `target_agents` so a Forker can gate on `{status}`. Canvas counterpart of the `security-audit` skill
 
 ### Cryptography Agents
 - **Kyber-KeyGen** — CRYSTALS-Kyber key pair generation (post-quantum)
@@ -977,8 +979,8 @@ From `NEW_AGENT_RECOMMENDATIONS.md`:
 | Priority | Agent | Purpose |
 |----------|-------|---------|
 | 1 | **Tester** | Test runner (pytest, jest, junit) with pass/fail routing |
-| 2 | **Reviewer** | AI code review (LLM-powered diff analysis) |
-| 3 | **Analyzer** | Static analysis (Ruff, ESLint, Bandit) |
+| 2 | **Reviewer** | ✅ **Implemented v1.4.0** — AI code review (LLM-powered git-diff analysis); canvas agent (#63) + `code-review` skill |
+| 3 | **Analyzer** | ✅ **Implemented v1.4.0** — Static analysis / SAST (bandit, semgrep, ruff, eslint, gitleaks, pip-audit); canvas agent (#64) + `security-audit` skill |
 | 4 | **Jiraer** | Issue tracker integration (Jira/GitHub Issues) |
 | 5 | **Logger** | Structured log writer / report aggregator |
 | 6 | **Vaulter** | Secrets / environment injection |
