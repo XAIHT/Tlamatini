@@ -590,6 +590,7 @@ HOW_TO_USE = [
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
     "Archive jobs can now be described directly in Multi-Turn or modeled visually in ACP: De-Compresser infers compress vs decompress from the `input` or `output` extension.",
     "If a second post-answer warning bubble ever lists surviving `name + PID` entries, treat it as an honest cleanup report and end the listed processes manually from Task Manager if needed.",
+    "Use the `ACPX-Skills` navbar menu when you need to browse, enable/disable, diagnose, or reload the shipped SKILL.md catalog without asking the LLM to be your admin surface.",
     "Use the DB dropdown when you need a safe database snapshot or want to stage a different `db.sqlite3` for the next start-up without hot-swapping the live SQLite file.",
     "Open `/agentic_control_panel/` to drag agents, connect them, configure each node, validate, start, pause/resume, stop, and save `.flw` workflows.",
     "Use `python build.py`, `python build_uninstaller.py`, and `python build_installer.py` only when producing a packaged Windows release.",
@@ -605,6 +606,18 @@ AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
     "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+]
+
+ACPX_SKILLS_GUIDE = [
+    "The new `ACPX-Skills` navbar menu gives operators four direct actions over the skill catalog: Browse Skills, Configure Skills, Diagnostics, and Reload Registry.",
+    "`Configure Skills` flips `Skill.enabled` exactly the way MCPs and Tools are toggled, so disabled skills disappear from `list_skills` and reject `invoke_skill` with `SKILL_DISABLED` instead of silently half-working.",
+    "The diagnostics view cross-checks skill dependencies against disabled tools, disabled MCPs, missing ACPX agents, and orphan database rows whose SKILL.md disappeared from disk.",
+]
+
+PROMPT_CATALOG_GUIDE = [
+    "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
+    "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
+    "The same version now propagates consistently through the release folder naming, About dialog, startup banner, and `GET /agent/version/` endpoint, so docs and runtime identity stay aligned.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -1027,6 +1040,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("Agent descriptions and catalog source of truth", styles["h2"]))
     for item in AGENT_DESCRIPTION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("ACPX-Skills menu", styles["h2"]))
+    for item in ACPX_SKILLS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Source-mode bootstrap commands", styles["h2"]))
     story.append(
         Preformatted(
@@ -1062,6 +1078,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Reconnect and restart safeguards", styles["h2"]))
     for item in RECENT_RUNTIME_SAFEGUARDS:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Prompt catalog and answer readability discipline", styles["h2"]))
+    for item in PROMPT_CATALOG_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unreal MCP runtime behavior", styles["h2"]))
     for item in UNREAL_RUNTIME_GUIDE:
@@ -1570,6 +1589,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Installation And Configuration", "README-backed operator path", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.85, 4.95, "Install essentials", INSTALLATION_GUIDE, THEME["jade"], "install-a", 15)
     add_panel(slide, audit, 6.92, 1.6, 5.55, 4.95, "Config essentials", CONFIGURATION_GUIDE, THEME["copper"], "install-b", 15)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "ACPX-Skills And Prompts", "recent operator-surface documentation updates", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "ACPX-Skills menu", ACPX_SKILLS_GUIDE, THEME["amber"], "skills-a", 14)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prompt catalog and readability", PROMPT_CATALOG_GUIDE, THEME["jade"], "skills-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "DB Menu And Startup Swap", "today's new operator surface", THEME["copper"])
