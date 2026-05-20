@@ -70,7 +70,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer
+  ACPXer, Unrealer, Reviewer, Analyzer
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -176,6 +176,43 @@ UNREALER SPECIAL NOTES:
       * "Unknown command" in the engine response — the user wired a verb
         that isn't in the 28-command Unreal MCP surface.
 
+REVIEWER SPECIAL NOTES:
+  - Reviewer is SHORT-LIVED and ACTIVE: it resolves a `git diff` for its
+    configured repo, sends the diff to an Ollama model for a senior-engineer
+    review, emits an `INI_SECTION_REVIEWER<<<` block, and ALWAYS triggers
+    `target_agents` regardless of the verdict.
+  - The review is one LLM call, so duration tracks the model: sub-second for
+    a tiny diff on a fast local model, up to a couple of minutes for a large
+    diff on a slow / cloud model. Do NOT flag a silent Reviewer as stuck
+    before ~5 minutes (same rule as Prompter / Crawler).
+  - The `verdict` field inside the section is `APPROVE`, `REQUEST_CHANGES`,
+    or `COMMENT`. **`REQUEST_CHANGES` is NOT a flow error** — it is the
+    reviewer doing its job and is routable content for a downstream Forker.
+    NEVER flag a `verdict: REQUEST_CHANGES`, nor the critical/high findings
+    listed in the section body, as a problem.
+  - Legitimate Reviewer errors to flag: "git executable not found",
+    "is not a git repository", or "Cannot reach Ollama at ..." — these mean
+    the diff could not be produced or the model was unreachable.
+
+ANALYZER SPECIAL NOTES:
+  - Analyzer is SHORT-LIVED and ACTIVE: it runs whichever of bandit /
+    semgrep / ruff / eslint / gitleaks / pip-audit are installed on PATH over
+    its `target_path`, aggregates findings into an `INI_SECTION_ANALYZER<<<`
+    block, and ALWAYS triggers `target_agents`. It uses NO LLM.
+  - Duration depends on the scanners and codebase size: seconds for
+    ruff/bandit on a small tree, up to a few minutes for `semgrep --config
+    auto` on a large repo. Do NOT flag a silent Analyzer as stuck before
+    ~5 minutes.
+  - The `status` field is `clean`, `findings`, or `error`. **`status:
+    findings` is NOT a flow error** — it means the scanners found issues,
+    which is the agent working as intended and routable content for a
+    downstream Forker. NEVER flag `status: findings` or a non-zero
+    `total_findings` as a problem. A scanner exiting non-zero BECAUSE it
+    found issues is EXPECTED, not a crash.
+  - Scanners listed under `tools_skipped` are simply not installed on PATH —
+    informational, not an error. `status: error` with every scanner skipped
+    means none were installed; flag that only if the user expected a scan.
+
 EXTERNAL-WINDOW agents (Sqler, Mongoxer):
   These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
 
@@ -197,6 +234,8 @@ TYPICAL TIMING:
   - Parametrizer: usually short-lived, but it may remain alive while its source agent is still generating segments or while it is draining several queued source segments sequentially
   - ACPXer: sub-second to 180 s on `oneshot-prompt` transport (matches the hard cap for long LLM answers); < 45 s on `json-acp`; < 8 s on `tui-repl`. See ACPXER SPECIAL NOTES above for the per-transport drain rules.
   - Unrealer: sub-second to a few seconds for actor / transform / property commands; seconds to tens of seconds for `compile_blueprint` on large Blueprints. Flag if > 60 s with no completion.
+  - Reviewer: one LLM call over a git diff — sub-second to ~2 min depending on diff size and model (local vs cloud). Flag only if > 5 min with no completion.
+  - Analyzer: runs installed scanners (bandit/semgrep/ruff/eslint/gitleaks/pip-audit); seconds for small trees to a few minutes for `semgrep --config auto` on a large repo. Flag only if > 5 min with no completion.
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -209,6 +248,8 @@ STARTUP markers (each agent logs one of these when it starts):
   "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
   "📦 DE-COMPRESSER AGENT STARTED" — De-Compresser began a compression or decompression run
   "🎮 UNREALER AGENT STARTED" — Unrealer began dispatching a JSON command to the Unreal MCP plugin
+  "🔍 REVIEWER AGENT STARTED" — Reviewer began resolving a git diff for LLM review
+  "🛡️ ANALYZER AGENT STARTED" — Analyzer began running static-analysis / security scanners
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -222,7 +263,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  De-Compresser, Unrealer).
+  De-Compresser, Unrealer, Reviewer, Analyzer).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -309,6 +350,8 @@ DO NOT report these as problems:
   - De-Compresser INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER blocks even when success=false (the agent ALWAYS emits the block so downstream Parametrizers / Raisers can branch on success/failure)
   - Unrealer logging "🎮 UNREALER AGENT STARTED" / "🔌 Connecting to ..." / "📤 Sent command" / "📥 Received response"
   - Unrealer INI_SECTION_UNREALER<<< ... >>>END_SECTION_UNREALER blocks even when the engine response carries `status: "error"` (Unrealer ALWAYS emits the block and ALWAYS triggers `target_agents` so downstream Forkers / Raisers can branch on success/failure)
+  - Reviewer INI_SECTION_REVIEWER<<< ... >>>END_SECTION_REVIEWER blocks with any `verdict` — including `verdict: REQUEST_CHANGES` and critical/high findings in the body (the verdict is routable content for a downstream Forker, NOT a flow error)
+  - Analyzer INI_SECTION_ANALYZER<<< ... >>>END_SECTION_ANALYZER blocks with any `status` — including `status: findings` and a non-zero `total_findings` (scanners finding issues is the agent working as intended; a scanner exiting non-zero because it found issues is also normal — the count is routable content for a downstream Forker, NOT a flow error)
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

@@ -372,9 +372,13 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("reviewer" in subject or "analyzer" in subject or "security audit" in subject or "code review" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is the new Reviewer and Analyzer surfaces: the workflow-agent catalog now reaches 64 templates, the seed-skill catalog reaches 23 packages, and code review plus deterministic security scanning are now available from both the canvas and the skill layer."
+        )
     if any("number and descriptions of agents" in subject or "markdowns" in subject or "agentic_skill" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is agent-catalog consistency: the live count, the markdown bestiaries, the flow-creator skill catalog, and the sidebar-description source were brought back into alignment around the same 62-agent inventory."
+            "Today’s headline change is agent-catalog consistency: the live count, the markdown bestiaries, the flow-creator skill catalog, and the sidebar-description source were brought back into alignment around one shared workflow-agent inventory."
         )
     if any("unreal" in subject or "unreal-engine mcp" in subject or "unreal engine enabled" in subject for subject in subjects):
         highlights.append(
@@ -598,7 +602,7 @@ HOW_TO_USE = [
 
 AGENT_DESCRIPTION_GUIDE = [
     "The authoritative human-readable source for workflow-agent descriptions is `agents_descriptions.md` at the repo root, not an embedded JavaScript map or a hard-coded Django list.",
-    "Today’s validation shows `62` agent templates on disk and `62` description rows in `agents_descriptions.md`, matching the README and Book bestiary counts.",
+    "Current validation compares live template directories, `agents_descriptions.md` rows, and the README / Book bestiary counts so the generated dossier stays aligned with the running product.",
     "The ACP sidebar hover tooltip and the right-click Description dialog both resolve through that markdown file first; `README.md` is only a legacy fallback when the dedicated description file is absent.",
 ]
 
@@ -617,7 +621,19 @@ ACPX_SKILLS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "The same version now propagates consistently through the release folder naming, About dialog, startup banner, and `GET /agent/version/` endpoint, so docs and runtime identity stay aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.4.0` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+]
+
+REVIEWER_ANALYZER_GUIDE = [
+    "The workflow catalog now includes two new high-value specialists: Reviewer and Analyzer, lifting the canvas inventory to 64 agents and the seed-skill catalog to 23 SKILL.md packages.",
+    "Reviewer is LLM-powered: it resolves a git diff for `repo_path`, reviews it with a senior-engineer prompt, and emits an `INI_SECTION_REVIEWER` block whose first routable field is `verdict = APPROVE | REQUEST_CHANGES | COMMENT`.",
+    "Analyzer is deterministic and scanner-driven: it runs whichever of `bandit`, `semgrep`, `ruff`, `eslint`, `gitleaks`, and `pip-audit` are installed on PATH over `target_path`, then emits an `INI_SECTION_ANALYZER` block with `status` and `total_findings` for downstream routing.",
+]
+
+REVIEWER_ANALYZER_SURFACES = [
+    "Both agents always trigger `target_agents`, so a downstream Forker can branch on `{verdict}`, `{status}`, or `{total_findings}` instead of scraping prose.",
+    "They are intentionally canvas-only workflow agents: there is no wrapped `chat_agent_reviewer` or `chat_agent_analyzer`, and therefore no duplicate Exec Report row family for those names.",
+    "The chat-side counterparts live in the ACPX skill catalog instead: `code-review` exposes senior-engineer git-diff review, while `security-audit` exposes the deterministic multi-scanner sweep.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -681,7 +697,7 @@ VERSION_SURFACES_GUIDE = [
 ]
 
 DE_COMPRESSER_GUIDE = [
-    "De-Compresser is the new 61st workflow agent: a deterministic archive worker that can either compress or decompress depending on which side exposes a recognized archive extension.",
+    "De-Compresser is the deterministic archive worker for compression and decompression tasks, deciding direction from whichever side exposes a recognized archive extension.",
     "Supported archive families are `.gz`, `.zip`, `.7z`, `.tar.gz`, and `.gz.tar`; file-to-folder extraction and file-or-directory packing are both documented in the README and Book.",
     "Password handling is explicit: `passwordless=true` skips it, while `passwordless=false` requires the `DE_COMPRESSER_PWD` environment variable and fails fast if the secret is missing.",
 ]
@@ -694,7 +710,7 @@ DE_COMPRESSER_INTEGRATION_GUIDE = [
 
 UNREAL_MCP_GUIDE = [
     "Unreal MCP is a UE5 plugin that runs inside the editor and listens on `127.0.0.1:55557` for one JSON command per TCP connection; Tlamatini is the client side of that link, not the plugin host.",
-    "The new Unrealer agent is the 62nd workflow agent and exposes the upstream 28-command surface: actor manipulation, Blueprint authoring and node wiring, input mappings, and UMG widget building.",
+    "The Unrealer workflow agent exposes the upstream 28-command surface: actor manipulation, Blueprint authoring and node wiring, input mappings, and UMG widget building.",
     "The same integration is available in both operator surfaces: checked Multi-Turn via `chat_agent_unrealer`, and ACP canvas flows via the visual Unrealer node plus Parametrizer chaining.",
 ]
 
@@ -1040,6 +1056,11 @@ def build_pdf(context: dict) -> None:
     story.append(p("Agent descriptions and catalog source of truth", styles["h2"]))
     for item in AGENT_DESCRIPTION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Reviewer and Analyzer", styles["h2"]))
+    for item in REVIEWER_ANALYZER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in REVIEWER_ANALYZER_SURFACES:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("ACPX-Skills menu", styles["h2"]))
     for item in ACPX_SKILLS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1111,6 +1132,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("How agent runtimes are shaped", styles["h2"]))
     for item in AGENT_RUNTIME_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Reviewer and Analyzer spotlight", styles["h2"]))
+    for item in REVIEWER_ANALYZER_GUIDE + REVIEWER_ANALYZER_SURFACES:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unrealer spotlight", styles["h2"]))
     for item in UNREAL_MCP_GUIDE + UNREAL_RUNTIME_GUIDE:
@@ -1547,9 +1571,14 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Count alignment", [
         f"Templates on disk with config.yaml: {context['workflow_agent_count']}",
         f"Description rows in `agents_descriptions.md`: {context['agent_description_rows']}",
-        "README and Book bestiary sections now align with the same 62-agent inventory.",
+        f"README and Book bestiary sections align with the same {context['workflow_agent_count']}-agent inventory.",
     ], THEME["jade"], "agent-proof-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Description source", AGENT_DESCRIPTION_GUIDE, THEME["copper"], "agent-proof-b", 14)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Reviewer And Analyzer", "new review and security surfaces", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What they do", REVIEWER_ANALYZER_GUIDE, THEME["amber"], "reviewer-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach them", REVIEWER_ANALYZER_SURFACES, THEME["jade"], "reviewer-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Gatewayer And External Signals", "inbound automation boundary", THEME["amber"])
