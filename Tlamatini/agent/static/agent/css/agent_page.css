@@ -99,6 +99,18 @@ body.resizing {
 
 .message-content {
     width: max-content;
+    /* Cap the bubble at the chat panel width. Without this, `max-content`
+       grows the bubble to the longest UNWRAPPED line of any descendant —
+       and the Exec-report `<pre class="exec-report-cmd">` cells contain long
+       single-line JSON args / absolute paths with no soft-wrap opportunities.
+       That blew the bubble (and every width:100% child: the LLM banner AND
+       the exec-report tables) far past the panel. The cap lets the
+       fixed-layout tables wrap their cells and the ascii-diagram scroll
+       internally (overflow-x:auto) as they were designed to. `min-width: 0`
+       defeats the flex-item `min-width:auto` floor so the item can actually
+       shrink to this cap regardless of any unbreakable inner content. */
+    max-width: 100%;
+    min-width: 0;
     padding: 15px;
     border-radius: 12px;
     line-height: 1.5;
