@@ -300,6 +300,18 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'unrealer') {
                 await updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'reviewer') {
+                await updateReviewerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'reviewer') {
+                await updateReviewerConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'analyzer') {
+                await updateAnalyzerConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'analyzer') {
+                await updateAnalyzerConnection(sourceId, targetId, 'remove', 'target');
+            }
             if (targetAgentName.toLowerCase() === 'jenkinser') {
                 await updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
             }
@@ -619,6 +631,18 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'unrealer') {
         await updateUnrealerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'reviewer') {
+        await updateReviewerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'reviewer') {
+        await updateReviewerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'analyzer') {
+        await updateAnalyzerConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'analyzer') {
+        await updateAnalyzerConnection(sourceId, targetId, 'add', 'target');
     }
     if (targetAgentName === 'jenkinser') {
         await updateJenkinserConnection(targetId, sourceId, 'add', 'source');
