@@ -21,6 +21,12 @@ def populate_initial_values(apps, schema_editor):
 
     This migration owns the 1-20 / 26-28 ranges; 0062/0063 fill 21-24,
     0087 fills 25, and 0072/0073/0074 fill 29-48.
+
+    NOTE (since 0090): the Multi-Turn demos seeded here at 26-28 are later
+    renumbered to 28-30 by 0090_add_reviewer_analyzer_demo_prompts, which
+    inserts the Reviewer/code-review and Analyzer/security-audit showcases at
+    26-27 and slides every idPrompt >= 26 up by +2. See that migration's
+    docstring for the post-shift catalog map.
     """
     Prompt = apps.get_model('agent', 'Prompt')
 
