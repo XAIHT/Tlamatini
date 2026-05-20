@@ -111,6 +111,8 @@ SECTION_AGENT_TYPES = [
     'shoter',
     'mouser',
     'unrealer',
+    'reviewer',
+    'analyzer',
 ]
 
 

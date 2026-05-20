@@ -849,6 +849,44 @@ async function updateUnrealerConnection(agentId, connectedAgentId, action, conne
     }
 }
 
+async function updateReviewerConnection(agentId, connectedAgentId, action, connectionType = 'target') {
+    try {
+        const response = await fetch(`/agent/update_reviewer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Reviewer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Reviewer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Reviewer ${agentId}:`, error);
+    }
+}
+
+async function updateAnalyzerConnection(agentId, connectedAgentId, action, connectionType = 'target') {
+    try {
+        const response = await fetch(`/agent/update_analyzer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Analyzer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Analyzer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Analyzer ${agentId}:`, error);
+    }
+}
+
 async function updateJenkinserConnection(agentId, connectedAgentId, action, connectionType = 'target') {
     try {
         const response = await fetch(`/agent/update_jenkinser_connection/${agentId}/`, {

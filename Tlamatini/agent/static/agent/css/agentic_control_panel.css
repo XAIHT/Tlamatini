@@ -1038,6 +1038,40 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #0B1220 0%, #1F3A8A 33%, #10B981 66%, #22D3EE 100%);
 }
 
+/* Reviewer Agent Styles - LLM code review (cool teal -> blue -> indigo -> violet) */
+.canvas-item.reviewer-agent {
+    background-color: #0E7490;
+    color: white;
+    background: linear-gradient(135deg, #0E7490 0%, #2563EB 33%, #4F46E5 66%, #7C3AED 100%);
+}
+
+.canvas-item.reviewer-agent:hover {
+    box-shadow: 0 6px 15px rgba(79, 70, 229, 0.55);
+    background: linear-gradient(135deg, #1597B5 0%, #3B82F6 33%, #6366F1 66%, #9333EA 100%);
+}
+
+/* Reviewer agent icon in sidebar */
+.agent-tool-item[data-content="Reviewer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #0E7490 0%, #2563EB 33%, #4F46E5 66%, #7C3AED 100%);
+}
+
+/* Analyzer Agent Styles - static/security scan (severity heatmap: dark-red -> red -> amber -> yellow) */
+.canvas-item.analyzer-agent {
+    background-color: #7F1D1D;
+    color: white;
+    background: linear-gradient(135deg, #7F1D1D 0%, #DC2626 33%, #F59E0B 66%, #FACC15 100%);
+}
+
+.canvas-item.analyzer-agent:hover {
+    box-shadow: 0 6px 15px rgba(220, 38, 38, 0.55);
+    background: linear-gradient(135deg, #991B1B 0%, #EF4444 33%, #FBBF24 66%, #FDE047 100%);
+}
+
+/* Analyzer agent icon in sidebar */
+.agent-tool-item[data-content="Analyzer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #7F1D1D 0%, #DC2626 33%, #F59E0B 66%, #FACC15 100%);
+}
+
 /* Jenkinser Agent Styles - CI/CD Pipeline Trigger (White-to-Blue gradient) */
 .canvas-item.jenkinser-agent {
     background-color: #FFFFFF;

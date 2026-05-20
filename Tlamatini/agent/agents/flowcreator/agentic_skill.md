@@ -1506,14 +1506,45 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
   - `target_agents`: [] (downstream agents started after every completed user request cycle)
 
-### 62. FlowCreator
+### 62. Reviewer
+- **Purpose**: LLM-powered code reviewer. On trigger it resolves a git diff for the configured `repo_path` (a ref like `HEAD~1` / `origin/main`, or — with an empty `diff_ref` — uncommitted working-tree + staged changes), sends the diff to an Ollama model with a rigorous senior-engineer review prompt, parses a **verdict** (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`), and emits an `INI_SECTION_REVIEWER` block. Always triggers `target_agents` so the flow can branch on `verdict`.
+- **Used for**: Automated commit / PR review inside a flow; gating a merge or deploy on the review verdict; nightly "review yesterday's commits and email the summary" pipelines.
+- **Aimed at**: Treating code review as an unattended, routable flow step. Pair with a Forker that branches on `{verdict}` to auto-merge on APPROVE and notify/stop on REQUEST_CHANGES. The visual-canvas counterpart of the `code-review` skill.
+- **Application example**: Starter → Gitter (`pull`) → Reviewer (`diff_ref: origin/main`) → Parametrizer (copies `verdict` into a Forker) → Forker (`APPROVE` → Gitter `merge`; `REQUEST_CHANGES` → Emailer) → Ender.
+- **Pool name pattern**: `reviewer_<n>`
+- **Starts other agents**: YES (always, regardless of verdict)
+- **Config parameters**:
+  - `repo_path`: "." (git repository to review)
+  - `diff_ref`: "HEAD~1" (ref to diff against; empty string = uncommitted working-tree + staged changes)
+  - `focus`: "" (optional reviewer guidance, e.g. "focus on the auth path")
+  - `max_diff_chars`: 60000 (diff is truncated past this before being sent to the LLM)
+  - `llm`: { host: "http://localhost:11434", model: "gpt-oss:120b-cloud" }
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the review)
+
+### 63. Analyzer
+- **Purpose**: Deterministic static-analysis / security scanner (no LLM — reproducible output). Runs whichever of `bandit`, `semgrep`, `ruff`, `eslint`, `gitleaks`, `pip-audit` are installed on PATH over `target_path`, aggregates findings, and emits an `INI_SECTION_ANALYZER` block whose `status` is `clean` / `findings` / `error` and whose `total_findings` count is a routable header field. Always triggers `target_agents` so the flow can branch on `status` / `total_findings`.
+- **Used for**: SAST + secret + dependency auditing as a flow step; blocking a deploy when findings exist; scheduled security sweeps with an emailed report.
+- **Aimed at**: Unattended, routable security gating. Pair with a Forker/Counter that branches on `{status}` or `{total_findings}` to stop the flow when issues are found. The visual-canvas counterpart of the `security-audit` skill.
+- **Application example**: Croner (02:00) → Gitter (`pull`) → Analyzer (`target_path` = repo) → Parametrizer (copies `status` into a Forker) → Forker (`clean` → Dockerer deploy; `findings` → Emailer alert) → Ender.
+- **Pool name pattern**: `analyzer_<n>`
+- **Starts other agents**: YES (always, regardless of findings)
+- **Config parameters**:
+  - `target_path`: "." (file or directory to scan)
+  - `tools`: [] (subset of scanners to run; empty = every supported scanner found on PATH)
+  - `min_severity`: "low" (headline-count floor: low / medium / high / critical)
+  - `max_report_chars`: 60000 (combined scanner output is truncated past this)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the scan)
+
+### 64. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (62). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (64). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

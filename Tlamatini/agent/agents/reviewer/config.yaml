@@ -1,0 +1,37 @@
+# Reviewer Agent Configuration
+#
+# LLM-powered code reviewer. On trigger it resolves a git diff for the
+# configured repository, sends the diff (plus optional reviewer guidance)
+# to an Ollama LLM, and logs a verdict + review in a structured
+# INI_SECTION_REVIEWER block that Parametrizer / downstream agents (and a
+# Forker branching on `verdict`) can consume.
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents and source_agents are automatically populated when you
+# make connections on the canvas.
+
+# Repository to review (absolute path recommended).
+repo_path: "."
+
+# Git ref to diff against (e.g. HEAD~1, origin/main, a tag). Leave empty
+# ("") to review uncommitted working-tree + staged changes instead.
+diff_ref: "HEAD~1"
+
+# Optional reviewer guidance, e.g. "focus on the auth path" or
+# "we care most about SQL injection".
+focus: ""
+
+# Maximum diff size (chars) sent to the LLM. Larger diffs are truncated
+# with a marker so the request stays within the model's context window.
+max_diff_chars: 60000
+
+# LLM connection settings (Ollama)
+llm:
+  host: "http://localhost:11434"
+  model: "gpt-oss:120b-cloud"
+
+# Agents to start after the review (auto-populated via canvas connections)
+target_agents: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

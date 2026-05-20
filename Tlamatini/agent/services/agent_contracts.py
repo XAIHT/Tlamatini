@@ -90,6 +90,8 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "shoter": ("output_path", "output_dir", "filename", "response_body"),
     "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
     "unrealer": ("host", "port", "command", "status", "error", "response_body"),
+    "reviewer": ("repo_path", "diff_ref", "verdict", "model", "status", "response_body"),
+    "analyzer": ("target_path", "tools_run", "tools_skipped", "total_findings", "status", "response_body"),
 }
 
 

@@ -1171,7 +1171,7 @@ The ACPX/Skill surface. Every tool returns a JSON envelope. Failure envelopes ar
 | `invoke_skill(skill_name, args_json)` | Run a registered SKILL.md package inside the `SkillHarness`. |
 | `list_skills(filter_keywords)` | List every registered skill. |
 
-The 21 seed skills (`agent/skills_pkg/<name>/SKILL.md`) cover: `hello-world`, `skill-creator`, `acp-router`, `setup-new-acpx-key`, `summarize`, `weather`, `tlamatini-*` (8 maintenance skills: csrf-exempt-audit, exec-report-row-adder, allowed-hosts-tighten, planner-trace-replay, flow-from-objective, flw-doctor, new-acp-agent, static-version-bumper), and OpenClaw-format ports for `github`, `notion`, `jira`, `slack`, `gmail`, `todoist`, `trello`.
+The 23 seed skills (`agent/skills_pkg/<name>/SKILL.md`) cover: `hello-world`, `skill-creator`, `acp-router`, `setup-new-acpx-key`, `summarize`, `weather`, `code-review` (senior-engineer git-diff review with a verdict), `security-audit` (multi-scanner SAST/secret/dependency sweep), `tlamatini-*` (8 maintenance skills: csrf-exempt-audit, exec-report-row-adder, allowed-hosts-tighten, planner-trace-replay, flow-from-objective, flw-doctor, new-acp-agent, static-version-bumper), and OpenClaw-format ports for `github`, `notion`, `jira`, `slack`, `gmail`, `todoist`, `trello`.
 
 ---
 
@@ -2379,7 +2379,7 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 | **Recmailer** | LangGraph IMAP receiver with LLM keyword analysis. |
 | **RRF** | Reciprocal Rank Fusion — method for combining ranked lists. |
 | **Ruff** | Fast Python linter used by Pythonxer. |
-| **Skill** | Markdown-driven extension package — a directory under `agent/skills_pkg/<name>/` with a `SKILL.md` (YAML frontmatter + body). 21 seed skills ship. |
+| **Skill** | Markdown-driven extension package — a directory under `agent/skills_pkg/<name>/` with a `SKILL.md` (YAML frontmatter + body). 23 seed skills ship. |
 | **Stopper** | Single-threaded pattern-based agent terminator. |
 | **Summarizer** | LLM polls source logs for events. |
 | **Tlamatini** | Nahuatl for "one who knows" — and the name of this assistant. The LLM responds to it as a self-reference. |

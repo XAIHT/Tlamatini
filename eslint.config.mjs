@@ -373,6 +373,8 @@ export default [
                 updateKuberneterConnection: "readonly",
                 updateApirerConnection: "readonly",
                 updateUnrealerConnection: "readonly",
+                updateReviewerConnection: "readonly",
+                updateAnalyzerConnection: "readonly",
                 updateJenkinserConnection: "readonly",
                 updateCrawlerConnection: "readonly",
                 updateSummarizerConnection: "readonly",

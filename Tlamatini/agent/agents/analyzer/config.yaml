@@ -1,0 +1,33 @@
+# Analyzer Agent Configuration
+#
+# Deterministic static-analysis / security scanner. On trigger it runs
+# whichever of the configured scanners are installed on PATH over
+# `target_path`, aggregates their findings, and logs an
+# INI_SECTION_ANALYZER block (with a `status` of clean | findings | error)
+# that Parametrizer / downstream agents (and a Forker branching on
+# `status`) can consume. No LLM is used — output is reproducible.
+#
+# CANVAS AUTO-CONFIGURATION:
+# target_agents and source_agents are automatically populated when you
+# make connections on the canvas.
+
+# File or directory to scan (absolute path recommended).
+target_path: "."
+
+# Which scanners to run. Leave empty ([]) to auto-run every supported
+# scanner found on PATH. Supported: ruff, bandit, semgrep, eslint,
+# gitleaks, pip-audit.
+tools: []
+
+# Drop findings below this severity in the headline count:
+# low | medium | high | critical.
+min_severity: "low"
+
+# Maximum chars of combined scanner output captured into the section body.
+max_report_chars: 60000
+
+# Agents to start after the scan (auto-populated via canvas connections)
+target_agents: []
+
+# Source agents (auto-populated via canvas connections)
+source_agents: []

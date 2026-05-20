@@ -219,6 +219,8 @@ const AGENT_TYPE_CLASS_MAP = {
     'kuberneter': 'kuberneter-agent',
     'apirer': 'apirer-agent',
     'unrealer': 'unrealer-agent',
+    'reviewer': 'reviewer-agent',
+    'analyzer': 'analyzer-agent',
     'jenkinser': 'jenkinser-agent',
     'crawler': 'crawler-agent',
     'summarizer': 'summarizer-agent',
@@ -908,6 +910,10 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'analyzer') updateAnalyzerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'analyzer') updateAnalyzerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(targetId, sourceId, 'remove', 'source');
@@ -1021,6 +1027,10 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'apirer' && !sourceBeingDeleted) updateApirerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'unrealer' && !targetBeingDeleted) updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'unrealer' && !sourceBeingDeleted) updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'reviewer' && !targetBeingDeleted) updateReviewerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'reviewer' && !sourceBeingDeleted) updateReviewerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'analyzer' && !targetBeingDeleted) updateAnalyzerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'analyzer' && !sourceBeingDeleted) updateAnalyzerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'jenkinser' && !targetBeingDeleted) updateJenkinserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'jenkinser' && !sourceBeingDeleted) updateJenkinserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'crawler' && !targetBeingDeleted) updateCrawlerConnection(targetId, sourceId, 'remove', 'source');
@@ -1466,6 +1476,10 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'analyzer') updateAnalyzerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'analyzer') updateAnalyzerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'jenkinser') updateJenkinserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'pythonxer') updatePythonxerConnection(targetId, sourceId, 'add', 'source');
