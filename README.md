@@ -12,7 +12,9 @@
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
   <a href="#95-agent-catalog-the-64-types-by-family"><img src="https://img.shields.io/badge/AGENTS-64-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="64 Agents" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-71-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="71 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
+  <a href="#311-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-23-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="23 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
@@ -344,7 +346,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of 39 wrapped chat-agent tools, the 12 ACPX tools, and the core Python tools (default cap: 20 tools per request).
+- The planner picks the relevant subset of Tlamatini's **71 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 39 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
 - The unified-agent loop runs **up to 100 iterations** — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
@@ -1222,7 +1224,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 | 2. Runtime MCP services | System-Metrics (WebSocket) + Files-Search (gRPC) daemons. | `agent/mcp_*` |
 | 3. Context fetcher chains | LCEL sidecars that inject system / files context. | `agent/chain_*_lcel.py` |
 | 4. Main answer chains | Basic / History-aware / Unified. `factory.py` monkey-patches `invoke()`. | `agent/rag/chains/` |
-| 5. Unified-agent tools | Synchronous `@tool` functions. Active only in Multi-Turn. | `agent/tools.py` |
+| 5. Unified-agent tools | **71** synchronous `@tool` functions (20 core Python + 39 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
 
 ### 9.3. Multi-Turn execution pipeline
 
