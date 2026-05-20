@@ -372,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any(("reviewer" in subject and "state" in subject) or ("reviewer" in subject and "handling" in subject) for subject in subjects):
+        highlights.append(
+            "Today’s reviewer follow-up is a behavioral-accuracy patch: the review prompt now distinguishes uncommitted working-tree diffs from committed history and teaches the model Tlamatini’s managed-secret scrub convention, reducing false positives around local credentials in config files."
+        )
     if any("reviewer" in subject or "analyzer" in subject or "security audit" in subject or "code review" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is the new Reviewer and Analyzer surfaces: the workflow-agent catalog now reaches 64 templates, the seed-skill catalog reaches 23 packages, and code review plus deterministic security scanning are now available from both the canvas and the skill layer."
@@ -621,7 +625,7 @@ ACPX_SKILLS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.4.0` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.4.1` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
 ]
 
 REVIEWER_ANALYZER_GUIDE = [
@@ -634,6 +638,12 @@ REVIEWER_ANALYZER_SURFACES = [
     "Both agents always trigger `target_agents`, so a downstream Forker can branch on `{verdict}`, `{status}`, or `{total_findings}` instead of scraping prose.",
     "They are intentionally canvas-only workflow agents: there is no wrapped `chat_agent_reviewer` or `chat_agent_analyzer`, and therefore no duplicate Exec Report row family for those names.",
     "The chat-side counterparts live in the ACPX skill catalog instead: `code-review` exposes senior-engineer git-diff review, while `security-audit` exposes the deterministic multi-scanner sweep.",
+]
+
+REVIEWER_PRECISION_GUIDE = [
+    "The current `v1.4.1` refinement tightens Reviewer accuracy rather than adding a new surface: when `diff_ref` is empty, the review prompt now labels the diff as the uncommitted working tree plus staged area, so the model must not describe those findings as already committed or pushed.",
+    "The same patch teaches the model Tlamatini’s managed-secret convention: `agent/config.json` and selected `agent/agents/*/config.yaml` files can hold live local credentials in a keyed working copy, while `regen_secrets.py --mode push-able` scrubs them back to placeholders before commit.",
+    "That guidance is mirrored into the `code-review` SKILL.md package too, keeping the chat-surface review behavior and the canvas Reviewer agent aligned on commit-state wording and secret-severity expectations.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -1061,6 +1071,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     for item in REVIEWER_ANALYZER_SURFACES:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Reviewer precision patch in v1.4.1", styles["h2"]))
+    for item in REVIEWER_PRECISION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("ACPX-Skills menu", styles["h2"]))
     for item in ACPX_SKILLS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1135,6 +1148,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Reviewer and Analyzer spotlight", styles["h2"]))
     for item in REVIEWER_ANALYZER_GUIDE + REVIEWER_ANALYZER_SURFACES:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Reviewer precision spotlight", styles["h2"]))
+    for item in REVIEWER_PRECISION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unrealer spotlight", styles["h2"]))
     for item in UNREAL_MCP_GUIDE + UNREAL_RUNTIME_GUIDE:
@@ -1581,6 +1597,15 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach them", REVIEWER_ANALYZER_SURFACES, THEME["jade"], "reviewer-b", 13)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Reviewer Precision In v1.4.1", "commit-state and secret-handling refinement", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Behavioral accuracy patch", REVIEWER_PRECISION_GUIDE, THEME["jade"], "reviewer-c", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
+        "Local working-copy credentials in managed config files are no longer described as already committed when the diff is still uncommitted or only staged.",
+        "Review findings stay stricter on true secrets in source code or outside the managed scrub-path set, so the patch reduces noise without weakening real security findings.",
+        "The same rules apply in both the canvas Reviewer agent and the `code-review` skill, keeping the two review surfaces behaviorally aligned.",
+    ], THEME["amber"], "reviewer-d", 13)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Gatewayer And External Signals", "inbound automation boundary", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Ingress role", [
         "Receives HTTP webhook events or optional folder-drop files.",
@@ -1819,6 +1844,9 @@ def serialize_context(context: dict) -> dict:
         "migrations": context["migrations"],
         "binary_count": context["binary_count"],
         "skipped_count": context["skipped_count"],
+        "version": context["version_info"]["version"],
+        "version_source": context["version_info"]["source"],
+        "version_info": context["version_info"],
         "language_rows": [row.__dict__ for row in context["language_rows"]],
         "largest_files": [row.__dict__ for row in context["file_rows"][:50]],
         "recent_commits": [row.__dict__ for row in context["recent_commits"]],
