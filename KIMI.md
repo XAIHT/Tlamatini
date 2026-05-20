@@ -959,6 +959,7 @@ Guide for creating new skills: YAML frontmatter contract, input/output validatio
 
 ## 23. Recent Fixes to Remember
 
+- **Reviewer commit-state + secret precision (v1.4.1)** — `build_review_prompt` now takes `diff_ref` and tells the LLM that uncommitted working-tree/staged diffs are NOT "committed/pushed", plus teaches the `regen_secrets.py` scrub convention so local "keyed" creds in `config.json` / `agents/*/config.yaml` aren't mis-flagged as leaked. Mirror any change in BOTH `reviewer.py` and `code_review/SKILL.md`.
 - **Planner statelessness on short follow-ups** — Solved by passing `chat_history_text` into planner. Preserve this argument.
 - **Wrapped chat-agent dedup** — `_wrapped_agent_signatures` set in `MultiTurnToolAgentExecutor`. Do not remove.
 - **Googler Playwright + async loop** — Must wrap in `ThreadPoolExecutor(max_workers=1)`. Any new sync-Playwright tool must do the same.
