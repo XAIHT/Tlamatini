@@ -8185,54 +8185,47 @@ def set_db_view(request):
 
 def _run_native_picker(kind: str, title: str) -> str:
     """
-    Open a native modal picker dialog (Tkinter) on the host running the
-    Tlamatini server and return the absolute path the user chose, or the
-    empty string if the dialog was canceled.
+    Open a native modal picker dialog on the host running the Tlamatini
+    server and return the absolute path the user chose, or the empty string
+    if the dialog was canceled.
 
     Tlamatini is a locally-deployed Django server, so the user driving the
     browser is the same user sitting at the keyboard — opening a native
     picker on the server is a legitimate way to give the Browse buttons a
     real filesystem path (something the browser sandbox cannot provide on
-    its own). The dialog runs in a dedicated daemon thread with its own
-    ``Tk`` root because Tkinter does not tolerate being driven from the
-    Daphne worker thread that handles the HTTP request on Windows.
+    its own).
+
+    Implementation: the Win32 common dialogs (``comdlg32.GetOpenFileNameW`` /
+    ``shell32.SHBrowseForFolderW``) via :mod:`agent.native_dialogs`. This
+    deliberately does NOT use tkinter — the server no longer depends on
+    Tcl/Tk, so there is nothing to bundle into the frozen build and the
+    "Can't find a usable init.tcl" failure can no longer happen. The dialog
+    runs in a dedicated daemon thread (it CoInitializes its own STA and
+    blocks until the user responds) so it never disturbs the Daphne worker
+    thread that handles the HTTP request.
 
     ``kind`` is either ``"directory"`` (Backup database dialog) or
     ``"db_sqlite_file"`` (Set DB dialog — restricts the file filter to
     files named ``db.sqlite3``).
     """
+    from . import native_dialogs
+
     result_q: _queue.Queue = _queue.Queue()
 
     def _runner() -> None:
         try:
-            import tkinter as _tk
-            from tkinter import filedialog as _filedialog
-            root = _tk.Tk()
-            root.withdraw()
-            try:
-                root.attributes('-topmost', True)
-            except Exception:
-                pass
-            try:
-                if kind == 'directory':
-                    chosen = _filedialog.askdirectory(
-                        title=title,
-                        mustexist=True,
-                        parent=root,
-                    )
-                elif kind == 'db_sqlite_file':
-                    chosen = _filedialog.askopenfilename(
-                        title=title,
-                        filetypes=[('SQLite database (db.sqlite3)', 'db.sqlite3')],
-                        parent=root,
-                    )
-                else:
-                    raise ValueError(f"Unknown picker kind: {kind!r}")
-            finally:
-                try:
-                    root.destroy()
-                except Exception:
-                    pass
+            if kind == 'directory':
+                chosen = native_dialogs.pick_folder(title)
+            elif kind == 'db_sqlite_file':
+                chosen = native_dialogs.pick_open_file(
+                    title,
+                    filter_pairs=[
+                        ('SQLite database (db.sqlite3)', 'db.sqlite3'),
+                        ('All files (*.*)', '*.*'),
+                    ],
+                )
+            else:
+                raise ValueError(f"Unknown picker kind: {kind!r}")
             result_q.put(('ok', chosen or ''))
         except Exception as exc:
             result_q.put(('err', str(exc)))
@@ -8244,6 +8237,55 @@ def _run_native_picker(kind: str, title: str) -> str:
     if status == 'err':
         raise RuntimeError(value)
     return value or ''
+
+
+# Substrings that mean "the native picker simply cannot run on this host"
+# (as opposed to a transient/unexpected failure). The common case now is a
+# non-Windows host (the picker uses Win32 comdlg32/shell32). In every one
+# of these cases the right UX is to steer the user to type the path
+# manually, NOT to dump a raw error into a browser alert(). The legacy
+# tkinter/Tcl markers are kept so older deployments still degrade cleanly.
+_PICKER_UNAVAILABLE_MARKERS = (
+    "requires windows",
+    "native file dialog",
+    "native folder dialog",
+    "init.tcl",
+    "can't find a usable",
+    "no module named 'tkinter'",
+    "no module named tkinter",
+    "no module named '_tkinter'",
+    "tclerror",
+    "no display name",
+    "couldn't connect to display",
+    "tk wasn't installed",
+)
+
+
+def _picker_failure_payload(exc) -> dict:
+    """Build a JSON-safe payload describing a native-picker failure.
+
+    Distinguishes "picker unavailable on this host" (missing Tcl/Tk data,
+    no GUI / no display) from an unexpected error, so the frontend can
+    fall back to manual path entry with a friendly one-line message
+    instead of surfacing the raw Tcl stack.
+    """
+    detail = str(exc).strip() or exc.__class__.__name__
+    low = detail.lower()
+    unavailable = any(marker in low for marker in _PICKER_UNAVAILABLE_MARKERS)
+    if unavailable:
+        message = (
+            "The native file browser isn't available on this machine, so "
+            "please type or paste the full path into the field below "
+            "instead."
+        )
+    else:
+        message = "Could not open the native file browser: " + detail
+    return {
+        "path": "",
+        "error": detail,
+        "message": message,
+        "picker_unavailable": unavailable,
+    }
 
 
 @login_required
@@ -8260,7 +8302,7 @@ def pick_backup_directory_view(request):
     except Exception as exc:
         print(f"[BACKUP DB] folder picker failed: {exc}")
         traceback.print_exc()
-        return JsonResponse({"path": "", "error": str(exc)})
+        return JsonResponse(_picker_failure_payload(exc))
     if not chosen:
         return JsonResponse({"path": "", "canceled": True})
     return JsonResponse({"path": os.path.abspath(chosen)})
@@ -8279,7 +8321,7 @@ def pick_db_sqlite_file_view(request):
     except Exception as exc:
         print(f"[SET DB] file picker failed: {exc}")
         traceback.print_exc()
-        return JsonResponse({"path": "", "error": str(exc)})
+        return JsonResponse(_picker_failure_payload(exc))
     if not chosen:
         return JsonResponse({"path": "", "canceled": True})
     return JsonResponse({"path": os.path.abspath(chosen)})

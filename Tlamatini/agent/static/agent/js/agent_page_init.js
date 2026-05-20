@@ -1187,6 +1187,31 @@ function _onBackupDbInputChanged() {
     }, 350);
 }
 
+// Friendly handler for a failed native picker. When the server reports the
+// picker is unavailable (no GUI, or a frozen build whose Tcl/Tk data tree
+// wasn't bundled — "Can't find a usable init.tcl"), we steer the user to
+// the manual path field instead of dumping a raw multi-line Tcl error in
+// an alert. The dialog stays usable either way: the path can always be
+// typed. `inputEl` is the dialog's manual-path field; `kindLabel` is
+// 'folder' or 'file' for the generic fallback wording.
+function _notifyPickerUnavailable(body, fallbackReason, inputEl, kindLabel) {
+    const unavailable = !!(body && body.picker_unavailable);
+    const friendly = (body && body.message)
+        || ('Could not open the ' + kindLabel + ' picker: '
+            + (fallbackReason || 'unknown error'));
+    if (unavailable && inputEl) {
+        // Make the manual path field the obvious next step.
+        try { inputEl.focus(); } catch (_e) { /* ignore */ }
+        try {
+            inputEl.setAttribute(
+                'placeholder',
+                'Native browser unavailable — type the full path here'
+            );
+        } catch (_e) { /* ignore */ }
+    }
+    alert(friendly);
+}
+
 // Browse button — opens a native folder picker on the server host and
 // drops the chosen absolute path into the dialog's input so the existing
 // live-validation pipeline (`_onBackupDbInputChanged`) classifies it.
@@ -1202,12 +1227,11 @@ async function _browseBackupDbDirectory() { // eslint-disable-line no-unused-var
         let body = null;
         try { body = await response.json(); } catch (_e) { /* non-JSON */ }
         if (!response.ok) {
-            const reason = (body && body.error) || ('HTTP ' + response.status);
-            alert('Could not open the folder picker: ' + reason);
+            _notifyPickerUnavailable(body, 'HTTP ' + response.status, backupDbTargetDirInput, 'folder');
             return;
         }
-        if (body && body.error) {
-            alert('Could not open the folder picker: ' + body.error);
+        if (body && (body.error || body.picker_unavailable)) {
+            _notifyPickerUnavailable(body, body.error, backupDbTargetDirInput, 'folder');
             return;
         }
         const chosen = (body && typeof body.path === 'string') ? body.path : '';
@@ -1433,12 +1457,11 @@ async function _browseSetDbFile() { // eslint-disable-line no-unused-vars
         let body = null;
         try { body = await response.json(); } catch (_e) { /* non-JSON */ }
         if (!response.ok) {
-            const reason = (body && body.error) || ('HTTP ' + response.status);
-            alert('Could not open the file picker: ' + reason);
+            _notifyPickerUnavailable(body, 'HTTP ' + response.status, setDbSourcePathInput, 'file');
             return;
         }
-        if (body && body.error) {
-            alert('Could not open the file picker: ' + body.error);
+        if (body && (body.error || body.picker_unavailable)) {
+            _notifyPickerUnavailable(body, body.error, setDbSourcePathInput, 'file');
             return;
         }
         const chosen = (body && typeof body.path === 'string') ? body.path : '';

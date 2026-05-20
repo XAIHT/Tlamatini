@@ -33,7 +33,7 @@ torch
 pillow==12.0.0
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
-psutil
+psutil==7.2.2
 pydantic==2.11.0
 pyinstaller==6.18.0
 pymongo==4.16.0
@@ -61,3 +61,35 @@ wheel==0.45.0
 whitenoise==6.8.2
 xhtml2pdf==0.2.17
 PyAutoGUI==0.9.54
+
+# ── File-Extractor optional format backends ──────────────────────────────
+# agent/agents/file_extractor/file_extractor.py imports these inside
+# try/except ImportError. Without them the matching formats silently fail
+# in BOTH source AND frozen modes (PyInstaller only bundles what's installed
+# in the build env). pymupdf (above) is the PRIMARY PDF backend; pypdf is
+# the fallback. xlrd is the legacy-.xls fallback after openpyxl (xlsx).
+pypdf==6.10.0
+striprtf==0.0.32
+odfpy==1.4.1
+ebooklib==0.20
+xlrd==2.0.2
+
+# ── Doc-generation pipeline ──────────────────────────────────────────────
+# agent/doc_generation/complete_project_docs.py imports reportlab at module
+# top level (run via refresh_project_docs.py during documentation passes).
+reportlab==4.4.10
+
+# ── tkinter / Tcl-Tk : NOT used by the Tlamatini SERVER ──────────────────
+# The server's Set-DB / Backup-DB "Browse" buttons use the Win32 common
+# dialogs directly via ctypes (agent/native_dialogs.py -> comdlg32/shell32,
+# which ship with every Windows install). The server therefore has NO
+# tkinter / Tcl-Tk dependency — build.py excludes it (--exclude-module),
+# so there is nothing to bundle and the old "Can't find a usable init.tcl"
+# failure can no longer occur.
+#
+# tkinter IS still used by the standalone Installer/Uninstaller GUIs
+# (install.py / uninstall.py), which are SEPARATE executables built by
+# build_installer.py / build_uninstaller.py — those scripts locate and
+# bundle their own Tcl/Tk (they set TCL_LIBRARY/TK_LIBRARY at build time).
+# tkinter is CPython stdlib (the "tcl/tk and IDLE" optional component) and
+# is not pip-installable, so it is intentionally absent from this file.

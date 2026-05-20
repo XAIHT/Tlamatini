@@ -457,6 +457,16 @@ def main():
     dll_args = run_step("Collecting Python DLL binaries",
                         collect_python_dll_binaries)
 
+    # NOTE: the server has NO tkinter/Tcl-Tk dependency. The Set-DB /
+    # Backup-DB "Browse" buttons use the Win32 common dialogs directly via
+    # ctypes (agent/native_dialogs.py -> comdlg32/shell32), so there is no
+    # Tcl/Tk data tree to bundle and the old "Can't find a usable init.tcl"
+    # failure cannot occur. tkinter is explicitly excluded below so a
+    # transitive importer can never drag the fragile Tcl/Tk runtime back in.
+    # (The Installer/Uninstaller GUIs are SEPARATE executables built by
+    # build_installer.py / build_uninstaller.py — those still use tkinter
+    # and bundle their own Tcl/Tk; this build script does not.)
+
     # Point PyInstaller at our local hooks directory so our custom
     # hook-numpy.py (priority 2) shadows PyInstaller's stock one (priority 1).
     # See pyinstaller_hooks/hook-numpy.py for the numpy/core/ duplicate-pyd
@@ -504,8 +514,10 @@ def main():
         '--hidden-import=unstructured',
         '--hidden-import=filesearch_pb2',
         '--hidden-import=filesearch_pb2_grpc',
-        '--hidden-import=tkinter',
-        '--hidden-import=_tkinter',
+        # Server uses Win32 ctypes dialogs, NOT tkinter — exclude Tcl/Tk so it
+        # can never be dragged in transitively (no init.tcl bundling headaches).
+        '--exclude-module=tkinter',
+        '--exclude-module=_tkinter',
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',
