@@ -26,11 +26,29 @@ A process is considered a "Tlamatini orphan" if any of the following holds:
 
   * It is a descendant of the current Tlamatini process (recursive children
     of ``os.getpid()`` whose status is not RUNNING — i.e. zombie / dead).
-  * It is a ``conhost.exe`` whose parent PID either no longer exists OR is
-    not ``Tlamatini.exe`` / ``python.exe``-from-our-tree.
+  * It is a ``conhost.exe`` / ``openconsole.exe`` that is a *genuine orphan*
+    — its owning parent process no longer exists (or is a dead/zombie
+    remnant of something we spawned).
   * It is a process whose ``cmdline`` references the agent pool directory
     (``agents/pools/`` or ``agents/pools/_chat_runs_/``) yet is not tracked
     by ``AgentProcess`` or ``ChatAgentRun`` anymore.
+
+What is NEVER reaped (the console-window safety contract)
+---------------------------------------------------------
+The console host that owns *our own* Tlamatini window is sacrosanct. Killing
+it closes the visible console and strands the daphne server running headless
+— users perceive this as "the window closed unexpectedly and the process
+hung". So the reaper hard-protects:
+
+  * the PID returned by ``GetConsoleWindow`` → ``GetWindowThreadProcessId``
+    (the host of our own window),
+  * ``os.getpid()`` and every ancestor PID (the terminal / PowerShell / cmd
+    wrapper / PyInstaller bootloader / Explorer that launched us), and
+  * any console host whose parent is still alive — i.e. one in active use.
+
+Crucially, a ``conhost.exe`` whose parent PID is *ours* is our OWN window's
+host and must be left alone — the previous revision reaped exactly this and
+closed the window on every post-answer sweep in frozen (onedir) builds.
 
 Public API
 ----------
@@ -73,13 +91,14 @@ _REAPABLE_CONSOLE_HOSTS = frozenset({
     "openconsole.exe",  # Windows Terminal's console host
 })
 
-# Process names that, if seen as descendants of a known-dead Tlamatini
-# process, are reaped on sight. Keep this conservative.
-_REAPABLE_HELPERS = frozenset({
-    "cmd.exe",
-    "powershell.exe",
-    "pwsh.exe",
-})
+# NOTE: there is deliberately NO "reapable shell helpers" list here. An
+# earlier revision defined one naming ``cmd.exe`` / ``powershell.exe`` /
+# ``pwsh.exe`` as reap-on-sight; it was never wired into ``reap_orphans``
+# but it is a footgun — when Tlamatini is launched through a PowerShell or
+# cmd wrapper (e.g. the legacy ``Tlamatini.ps1``), that shell OWNS the
+# console window, so reaping it would close the window. Shell hosts must
+# only ever be cleaned via the pool-cmdline scan (which matches the agent
+# pool path), never by name.
 
 
 @dataclass
@@ -206,30 +225,161 @@ def _iter_known_descendants(root_pid: int):
         return
 
 
-def _is_our_console_host(proc, our_pid_tree: Set[int]) -> bool:
-    """Return True if *proc* is a conhost.exe parented to (or descended
-    from) our process tree, OR a conhost whose parent is gone."""
+def _console_owner_pid() -> Optional[int]:
+    """PID of the process that owns Tlamatini's OWN console window.
+
+    On a classic conhost console this is the ``conhost.exe`` hosting our
+    window; under Windows Terminal it is the terminal process. Either way,
+    killing it closes (or detaches) the window the user is looking at and
+    leaves the server running headless — which users perceive as "the
+    window closed and Tlamatini hung". We resolve it via
+    ``GetConsoleWindow`` → ``GetWindowThreadProcessId`` and treat it as
+    sacrosanct. Returns ``None`` off-Windows, when there is no console, or
+    on any failure (the policy guards in ``_console_host_reap_decision``
+    still protect ``os.getpid()`` and ancestors in that case).
+    """
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        user32 = ctypes.windll.user32
+        kernel32.GetConsoleWindow.restype = wintypes.HWND
+        hwnd = kernel32.GetConsoleWindow()
+        if not hwnd:
+            return None
+        pid = wintypes.DWORD(0)
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        return int(pid.value) or None
+    except Exception:  # noqa: BLE001 — fail-open; never block cleanup
+        return None
+
+
+def _ancestor_pids(pid: int) -> Set[int]:
+    """Return the ancestor PIDs of *pid* (parent, grandparent, ...).
+
+    Used so we never reap a console host that belongs to a process that
+    LAUNCHED us — a terminal, a PowerShell/cmd wrapper, the PyInstaller
+    bootloader, or Explorer. The walk is bounded and cycle-guarded so a
+    pathological parent table cannot loop forever.
+    """
+    ancestors: Set[int] = set()
+    if not _PSUTIL_AVAILABLE:
+        return ancestors
     import psutil
-    name = _safe_name(proc).lower()
-    if name not in {n.lower() for n in _REAPABLE_CONSOLE_HOSTS}:
+    try:
+        proc = psutil.Process(pid)
+    except Exception:  # noqa: BLE001
+        return ancestors
+    for _ in range(64):  # hard cap — guards against cycles / bad tables
+        try:
+            parent = proc.parent()
+        except Exception:  # noqa: BLE001
+            break
+        if parent is None:
+            break
+        ppid = _safe_pid(parent)
+        if ppid in (-1, 0) or ppid in ancestors:
+            break
+        ancestors.add(ppid)
+        proc = parent
+    return ancestors
+
+
+def _console_host_reap_decision(
+    *,
+    name: str,
+    pid: int,
+    ppid: Optional[int],
+    parent_exists: bool,
+    parent_is_zombie: bool,
+    protected_pids: Set[int],
+    our_pid: int,
+    our_ancestors: Set[int],
+) -> bool:
+    """Pure, side-effect-free policy: should this console host be reaped?
+
+    Returns True ONLY for a console host that is a *genuine orphan* — its
+    owning parent process no longer exists, or is a dead/zombie remnant —
+    AND that is provably neither our own window's host nor an ancestor's.
+
+    The cardinal rule encoded here, and the reason this lives as an
+    isolated, unit-testable unit, is: **never reap a console host whose
+    parent is still alive, and never reap our own window's host.** Killing
+    such a host closes the visible Tlamatini console and strands the
+    server process — the exact failure this module previously caused on
+    every post-answer sweep in frozen (onedir) builds, where the main
+    window's ``conhost.exe`` is a direct child of ``os.getpid()``.
+    """
+    if name.lower() not in {n.lower() for n in _REAPABLE_CONSOLE_HOSTS}:
         return False
+    # Our own window's host (or anything pre-marked protected) is sacred.
+    if pid in protected_pids or pid == our_pid:
+        return False
+    # A console host owned by us, or by a process that launched us, is in
+    # active use — never touch it, even though its parent is "in our tree".
+    if ppid == our_pid or ppid in our_ancestors or ppid in protected_pids:
+        return False
+    # Empty parent slot => the owning process is gone => true orphan.
+    if ppid in (0, None):
+        return True
+    if not parent_exists:
+        return True
+    # Parent PID still resolves but the process is a dead/zombie remnant of
+    # something we spawned => its console host is an orphan too.
+    if parent_is_zombie:
+        return True
+    # Parent is a live, unrelated process — leave its console alone.
+    return False
+
+
+def _is_reapable_console_orphan(
+    proc,
+    *,
+    protected_pids: Set[int],
+    our_pid: int,
+    our_ancestors: Set[int],
+) -> bool:
+    """Collect psutil facts about *proc* and apply ``_console_host_reap_decision``."""
+    import psutil
+    name = _safe_name(proc)
+    if name.lower() not in {n.lower() for n in _REAPABLE_CONSOLE_HOSTS}:
+        return False
+    pid = _safe_pid(proc)
     try:
         ppid = proc.ppid()
     except Exception:  # noqa: BLE001
         return False
-    if ppid in our_pid_tree:
-        return True
-    # Parent is gone (PID 0/None or doesn't exist anymore) — likely an
-    # orphan from one of OUR earlier children. Reap on sight.
-    if ppid in (0, None):
-        return True
-    try:
-        psutil.Process(ppid)
-    except psutil.NoSuchProcess:
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-    return False
+
+    parent_exists = True
+    parent_is_zombie = False
+    if ppid not in (0, None):
+        try:
+            parent = psutil.Process(ppid)
+            try:
+                parent_is_zombie = parent.status() in (
+                    psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD,
+                )
+            except Exception:  # noqa: BLE001
+                parent_is_zombie = False
+        except psutil.NoSuchProcess:
+            parent_exists = False
+        except Exception:  # noqa: BLE001
+            # Cannot introspect the parent — be conservative, do not reap.
+            return False
+
+    return _console_host_reap_decision(
+        name=name,
+        pid=pid,
+        ppid=ppid,
+        parent_exists=parent_exists,
+        parent_is_zombie=parent_is_zombie,
+        protected_pids=protected_pids,
+        our_pid=our_pid,
+        our_ancestors=our_ancestors,
+    )
 
 
 def _cmdline_str(proc) -> str:
@@ -259,8 +409,9 @@ def reap_orphans(
         include_self_tree: kill dead/zombie descendants of the current PID.
         include_pool_scan: kill processes whose cmdline references the
             agent pool directory but are not tracked anymore.
-        include_console_host_sweep: kill conhost.exe processes that belong
-            to (or were orphaned by) our process tree.
+        include_console_host_sweep: kill conhost.exe processes that were
+            *orphaned* by our process tree (parent gone / zombie). Our own
+            window's console host and any live-parent host are protected.
 
     Returns:
         ReapResult listing killed (name, pid) and surviving (name, pid).
@@ -272,22 +423,28 @@ def reap_orphans(
 
     import psutil
 
-    # Build the set of "our" PIDs first: current process + all live
-    # descendants. We use this to decide whether a conhost.exe is one we
-    # are responsible for.
     our_pid = os.getpid()
-    our_pid_tree: Set[int] = {our_pid}
-    try:
-        for child in _iter_known_descendants(our_pid):
-            our_pid_tree.add(_safe_pid(child))
-    except Exception:  # noqa: BLE001
-        pass
+
+    # Processes that must NEVER be reaped under any circumstance: our own
+    # PID, every ancestor that launched us (terminal / shell wrapper /
+    # bootloader / Explorer), and the host of our own console WINDOW
+    # (resolved from GetConsoleWindow). Killing any of these closes the
+    # visible Tlamatini console and hangs the server — the exact bug this
+    # guard prevents. Computed once, applied to every sweep below.
+    our_ancestors = _ancestor_pids(our_pid)
+    protected_pids: Set[int] = {our_pid} | our_ancestors
+    owner_pid = _console_owner_pid()
+    if owner_pid:
+        protected_pids.add(owner_pid)
 
     pool_fragments = _pool_path_fragments() if include_pool_scan else []
 
     # Tier-A: dead/zombie descendants of our own process tree.
     if include_self_tree:
         for child in _iter_known_descendants(our_pid):
+            cpid = _safe_pid(child)
+            if cpid in protected_pids:
+                continue
             try:
                 status = child.status()
             except Exception:  # noqa: BLE001
@@ -295,11 +452,10 @@ def reap_orphans(
             if status not in (psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD):
                 continue
             name = _safe_name(child)
-            pid = _safe_pid(child)
             if _terminate_then_kill(child, result.errors):
-                result.killed.append((name, pid))
+                result.killed.append((name, cpid))
             else:
-                result.survivors.append((name, pid))
+                result.survivors.append((name, cpid))
 
     # Tier-B / Tier-C: wider sweep — pool-cmdline matches and orphaned
     # console hosts. One snapshot so the iteration is cheap.
@@ -312,12 +468,19 @@ def reap_orphans(
     for proc in snapshot:
         try:
             pid = _safe_pid(proc)
-            if pid in (-1, our_pid):
+            if pid in (-1, our_pid) or pid in protected_pids:
                 continue
             name = _safe_name(proc)
 
-            # Console-host sweep first (cheap — name + ppid checks).
-            if include_console_host_sweep and _is_our_console_host(proc, our_pid_tree):
+            # Console-host sweep first (cheap — name + ppid checks). Only
+            # reaps GENUINE orphans; our own / ancestor / live-parent hosts
+            # are protected by ``_console_host_reap_decision``.
+            if include_console_host_sweep and _is_reapable_console_orphan(
+                proc,
+                protected_pids=protected_pids,
+                our_pid=our_pid,
+                our_ancestors=our_ancestors,
+            ):
                 if _terminate_then_kill(proc, result.errors):
                     result.killed.append((name, pid))
                 else:

@@ -119,14 +119,25 @@ _brand_console_window()
 
 
 class _TeeStream:
-    """Duplicates writes to the original console stream and a log file."""
+    """Duplicates writes to the original console stream and a log file.
+
+    Both sinks are written defensively: if the console window is closed
+    (or its handle otherwise becomes invalid), writing to ``self._original``
+    can raise OSError. We MUST swallow that — an exception escaping a
+    logging call on a background thread can wedge that thread and make the
+    server appear hung even though the console is merely gone. The log
+    file is the durable record either way.
+    """
 
     def __init__(self, original, log_file):
         self._original = original
         self._log_file = log_file
 
     def write(self, data):
-        self._original.write(data)
+        try:
+            self._original.write(data)
+        except Exception:
+            pass
         try:
             self._log_file.write(data)
             self._log_file.flush()
@@ -135,7 +146,10 @@ class _TeeStream:
         return len(data) if isinstance(data, str) else None
 
     def flush(self):
-        self._original.flush()
+        try:
+            self._original.flush()
+        except Exception:
+            pass
         try:
             self._log_file.flush()
         except Exception:
