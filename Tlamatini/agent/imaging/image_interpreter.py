@@ -108,6 +108,13 @@ def opus_analyze_image(image_path: str = None, prompt: str = "Describe this imag
     """
     Analyzes and describes with Opus model the details of an image and returns a description based on the prompt using this tool.
 
+    This is an image INTERPRETATION tool: it reads the pixels server-side and
+    returns a TEXT description/OCR. It does NOT open any viewer window. Use it (or
+    chat_agent_image_interpreter / qwen_analyze_image) for interpret / describe /
+    analyze / read / "what's in this image" requests. NEVER pair it with
+    launch_view_image — opening a window is only for explicit "view/show/open the
+    image" requests, never for interpretation.
+
     Examples of what to pass:
     - User says "Describe with Opus the image whatever.jpg located at desktop" → Check the 'Files Context' (if available) to see if 'whatever.jpg' was found. If yes, pass the full path found (e.g. C:\\Users\\User\\Desktop\\whatever.jpg), and pass the prompt adapted by you, depending on the user prompt.
     - User says "Describe with Opus the image whatever.jpg located at u:\\path\\filename.png" → Pass the provided path "u:\\path\\filename.png", and pass the prompt adapted by you, depending on the user prompt.
@@ -205,6 +212,13 @@ def opus_analyze_image(image_path: str = None, prompt: str = "Describe this imag
 def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this image in detail.") -> str:
     """
     Analyzes and describes with Qwen model the details of an image and returns a description based on the prompt using this tool.
+
+    This is an image INTERPRETATION tool: it reads the pixels server-side and
+    returns a TEXT description/OCR. It does NOT open any viewer window. Use it (or
+    chat_agent_image_interpreter / opus_analyze_image) for interpret / describe /
+    analyze / read / "what's in this image" requests. NEVER pair it with
+    launch_view_image — opening a window is only for explicit "view/show/open the
+    image" requests, never for interpretation.
 
     Examples of what to pass:
     - User says "Describe the image whatever.jpg located at desktop" → Check the 'Files Context' (if available) to see if 'whatever.jpg' was found. If yes, pass the full path found (e.g. C:\\Users\\User\\Desktop\\whatever.jpg), and pass the prompt adapted by you, depending on the user prompt.

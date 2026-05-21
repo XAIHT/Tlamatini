@@ -1920,6 +1920,18 @@ def launch_view_image(path_filename: str) -> str:
 
     **CRITICAL: If the user prompt begins with "View image" or "Show image" or "View the image" or "Show the image", you MUST use THIS TOOL.**
 
+    **THIS TOOL ONLY OPENS A VIEWER WINDOW — IT PRODUCES NO ANALYSIS.** It cannot
+    interpret, describe, read, OCR, or analyze what is in the image. It exists
+    SOLELY to pop the image up on the user's screen.
+
+    **NEVER call this tool to satisfy an interpret / describe / analyze / read /
+    "what's in this image" request.** For image *interpretation* use a vision
+    tool that returns TEXT without opening any window — `chat_agent_image_interpreter`
+    (preferred), `opus_analyze_image` (Claude), or `qwen_analyze_image` (Qwen).
+    Only use launch_view_image when the user EXPLICITLY asks to view / show / open /
+    display the image (e.g. "View image cat.png", "Show me agent.jpg"). A request to
+    describe or analyze an image is NOT a request to open a window showing it.
+
     Examples of what to pass:
     - User says "View image whatever.jpg located at desktop" → Check the 'Files Context' (if available) to see if 'whatever.jpg' was found. If yes, pass the full path found.
     - User says "View image agent.jpg" → pass only the image name (agent.jpg).

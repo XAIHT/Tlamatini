@@ -190,10 +190,16 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_image_interpreter",
         tool_description="Chat-Agent-Image-Interpreter",
         display_name="Image Interpreter",
-        purpose="Analyze images using vision AI — describe scenes, OCR text, identify objects, read diagrams, interpret screenshots. Use when the user asks about an image.",
+        purpose="Analyze images using vision AI — describe scenes, OCR text, identify objects, read diagrams, interpret screenshots. This is the CANONICAL tool for ANY interpret / describe / analyze / read / OCR / 'what's in this image' request. It reads the pixels server-side and returns a TEXT answer — it does NOT open any viewer window. Use it (or its siblings opus_analyze_image / qwen_analyze_image) whenever the user asks about the CONTENT of an image, photo, picture, screenshot, diagram, or chart. NEVER use launch_view_image for interpretation — that tool only pops a viewer window and produces no analysis; reserve it strictly for explicit 'view / show / open / display the image' requests.",
         example_request="Analyze image with images_pathfilenames='E:\\Screenshots\\error.png' and llm.prompt='Describe what you see and transcribe any visible text or error messages'",
         aliases=("image_interpreter", "interpret image", "analyze image"),
-        security_hints=("image", "vision", "screenshot", "photo", "picture"),
+        security_hints=(
+            "image", "vision", "screenshot", "photo", "picture",
+            "interpret image", "describe image", "analyze image", "analyse image",
+            "read image", "ocr", "caption", "transcribe image",
+            "what is in the image", "what's in the image",
+            "interpret the image", "describe the image", "analyze the image",
+        ),
     ),
     ChatWrappedAgentSpec(
         key="summarize_text",

@@ -87,7 +87,37 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "run command", "run script",
     ),
     "execute_netstat": ("netstat", "port", "socket", "listen", "connection"),
-    "launch_view_image": ("image", "show image", "view image", "open image", "picture"),
+    # launch_view_image ONLY pops a viewer window — it produces NO analysis.
+    # Hints are deliberately limited to explicit VIEW-verb phrases (show / view /
+    # open / display / see) and never the bare nouns ("image" / "picture"), which
+    # also appear in interpret/describe prompts. This keeps the viewer from
+    # out-competing the vision interpreters on interpretation requests, where the
+    # user wants a TEXT description, not a popup window.
+    "launch_view_image": (
+        "show image", "view image", "open image", "display image",
+        "show the image", "view the image", "open the image", "display the image",
+        "show me the image", "see the image",
+        "show picture", "view picture", "open picture", "display picture",
+    ),
+    # Vision INTERPRETATION tools — return TEXT (description / OCR), open no
+    # window. These must out-score launch_view_image on interpret/describe/
+    # analyze/read prompts so the planner binds them (not the viewer).
+    "opus_analyze_image": (
+        "image", "picture", "photo", "screenshot", "diagram", "chart", "vision",
+        "interpret image", "describe image", "analyze image", "analyse image",
+        "read image", "ocr", "caption", "transcribe image",
+        "what is in the image", "what's in the image",
+        "interpret the image", "describe the image", "analyze the image",
+        "describe with opus", "interpret", "describe", "analyze image content",
+    ),
+    "qwen_analyze_image": (
+        "image", "picture", "photo", "screenshot", "diagram", "chart", "vision",
+        "interpret image", "describe image", "analyze image", "analyse image",
+        "read image", "ocr", "caption", "transcribe image",
+        "what is in the image", "what's in the image",
+        "interpret the image", "describe the image", "analyze the image",
+        "describe with qwen", "interpret", "describe", "analyze image content",
+    ),
     "unzip_file": ("zip", "unzip", "extract archive", "decompress"),
     "decompile_java": ("decompile", "jar", "war", "class", "java"),
     "agent_parametrizer": ("parametrize", "parametrise", "configure template agent"),
