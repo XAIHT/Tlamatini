@@ -293,6 +293,23 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "jd-cli", "jar files", "war files", "ear files",
         ".class files", "*.jar", "*.war",
     ),
+    # Wrapped Playwrighter — scripted, interactive browser automation. These
+    # tokens lift it above the cap on prompts that need clicks / typing /
+    # logins / multi-step web flows, WITHOUT colliding with the `googler`
+    # (web SEARCH) or `chat_agent_crawler` (static one-shot fetch) tools,
+    # which the user reaches for with "search the web" / "scrape this page".
+    "chat_agent_playwrighter": (
+        "playwright", "playwrighter", "browser automation", "automate the browser",
+        "control the browser", "drive the browser", "headless browser",
+        "web automation", "fill the form", "fill in the form", "submit the form",
+        "log into", "log in to", "login to the site", "sign into the site",
+        "navigate the site", "click through", "click the button on the page",
+        "wait for the element", "extract from the page", "scrape after login",
+        "authenticated scrape", "logged-in", "behind a login",
+        "single page app", "spa dashboard", "web wizard", "multi-step form",
+        "e2e", "e2e test", "end-to-end test", "end to end test",
+        "ui test", "browser test", "playwright script", "browser script",
+    ),
 }
 _CONTEXT_HINTS = {
     "system_context": (

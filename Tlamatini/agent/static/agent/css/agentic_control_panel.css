@@ -1072,6 +1072,26 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #7F1D1D 0%, #DC2626 33%, #F59E0B 66%, #FACC15 100%);
 }
 
+/* Playwrighter Agent Styles - scripted browser automation. "Theatre Spotlight"
+   palette (curtain-violet -> spotlight-magenta -> peacock-teal -> aqua-mint):
+   the crimson-magenta + teal pairing nods to Playwright's two-theatre-masks
+   logo, and the scheme is distinct from every other agent gradient. */
+.canvas-item.playwrighter-agent {
+    background-color: #3D1766;
+    color: white;
+    background: linear-gradient(135deg, #3D1766 0%, #D90368 33%, #0FA3B1 66%, #6EE7B7 100%);
+}
+
+.canvas-item.playwrighter-agent:hover {
+    box-shadow: 0 6px 15px rgba(217, 3, 104, 0.55);
+    background: linear-gradient(135deg, #532196 0%, #F0418A 33%, #19C7D6 66%, #A7F3D0 100%);
+}
+
+/* Playwrighter agent icon in sidebar */
+.agent-tool-item[data-content="Playwrighter"] .agent-tool-icon {
+    background: linear-gradient(135deg, #3D1766 0%, #D90368 33%, #0FA3B1 66%, #6EE7B7 100%);
+}
+
 /* Jenkinser Agent Styles - CI/CD Pipeline Trigger (White-to-Blue gradient) */
 .canvas-item.jenkinser-agent {
     background-color: #FFFFFF;

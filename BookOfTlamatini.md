@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 64 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 65 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 
@@ -15,7 +15,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the four toolbar checkboxes (Multi-Turn, Exec Report, ACPX, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
-- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 64 workflow agents.
+- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 65 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -53,7 +53,7 @@ The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 1. **A real RAG pipeline** that reads your project files, classifies their architectural roles, and grounds answers in your real source code.
 2. **Multi-Turn mode** that turns the chat into a tool operator: the LLM can run shell commands, hit APIs, send emails, take screenshots, type into windows, query SQL — and chain those steps to finish the job.
 3. **ACPX** that lets the LLM delegate sub-tasks to external coding-agent CLIs you already have installed (Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, and more).
-4. **A visual workflow designer** where you drag 64 different agent types onto a canvas (including the new **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
+4. **A visual workflow designer** where you drag 65 different agent types onto a canvas (including the new **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
 
 Everything is local. No cloud lock-in (though cloud LLMs are an option). The whole app packages into a standalone Windows `.exe` if you want to ship it.
 
@@ -335,7 +335,7 @@ This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* t
 Multi-Turn flips Tlamatini from "answerer" to **operator**:
 
 - The chat skips its prompt-shape validator (you no longer have to phrase requests as questions).
-- A request-scoped **planner** picks the relevant tools out of all 39 wrapped chat-agents, the 12 ACPX tools, and the core Python tools.
+- A request-scoped **planner** picks the relevant tools out of all 40 wrapped chat-agents, the 12 ACPX tools, and the core Python tools.
 - The unified-agent loop runs **up to 100 iterations**: the LLM calls a tool, sees the result, decides what to call next, and chains its way to the goal.
 - Wrapped sub-agents launch **silently** in the background (no console window pop-ups).
 
@@ -421,7 +421,7 @@ This is the "show your work" view. It is the ground-truth counterpart to the pro
 State-changing tools only. The full list is in `_EXEC_REPORT_TOOLS` in `agent/mcp_agent.py` and includes:
 
 - **Direct tools**: `execute_command`, `execute_file`, `unzip_file`, `decompile_java`.
-- **Wrapped chat-agents**: every `chat_agent_*` that touches the system (executer, pythonxer, dockerer, kuberneter, ssher, scper, sqler, mongoxer, gitter, file_creator, mover, deleter, apirer, send_email, telegramer, whatsapper, notifier, kyber_keygen/cipher/decipher, **keyboarder**, **mouser**, jenkinser).
+- **Wrapped chat-agents**: every `chat_agent_*` that touches the system (executer, pythonxer, dockerer, kuberneter, ssher, scper, sqler, mongoxer, gitter, file_creator, mover, deleter, apirer, send_email, telegramer, whatsapper, notifier, kyber_keygen/cipher/decipher, **keyboarder**, **mouser**, **playwrighter**, jenkinser, unrealer).
 - **ACPX**: `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_relay` — all merge into one "List of ACPx Operations" table.
 - **Skills**: `invoke_skill` gets its own table.
 
@@ -995,7 +995,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 64 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57.
+A compact reference for all 65 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -1039,6 +1039,7 @@ A compact reference for all 64 workflow-agent types. Spotlight chapters for **Pa
 | **Summarizer** | LLM polls source logs for events; one-shot mode also accepts `input_text`. |
 | **Crawler** | Web crawl with raw-content capture and LLM analysis. |
 | **Googler** | Google search via Playwright + readable-text extraction. |
+| **Playwrighter** | Scripted interactive browser automation via Playwright (Chromium/Firefox/WebKit). Drives a REAL browser through an ordered list of declarative steps — `goto` / `click` / `fill` / `press` / `wait_for` / `extract_text` / `extract_attr` / `screenshot` / `assert_visible` / `assert_text` / `download` — for authenticated, JS-rendered, multi-step flows (logins, forms, wizards, SPA scraping, end-to-end UI checks) that Crawler (static fetch) and Googler (search) cannot do. Deterministic (no LLM). Emits an `INI_SECTION_PLAYWRIGHTER<<<` block (`start_url`, `final_url`, `status`, `steps_run`, `assert_result`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_playwrighter` Multi-Turn tool. |
 | **Apirer** | HTTP REST request with structured logging. |
 | **Gitter** | Git operations on a local repo. |
 | **Ssher / Scper** | SSH command execution / SCP file transfer. |
@@ -1125,7 +1126,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 28. Wrapped chat-agent tools (39)
+## 28. Wrapped chat-agent tools (40)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -1139,6 +1140,7 @@ Each wrapped tool launches an isolated, sequenced runtime copy of a workflow age
 | **Routing** | `chat_agent_asker` |
 | **Archives & decompilation** | `chat_agent_j_decompiler`, `chat_agent_de_compresser` |
 | **Game engines** | `chat_agent_unrealer` (drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket; canvas counterpart is the Unrealer workflow agent — see §57) |
+| **Web & browser** | `chat_agent_playwrighter` (drives a real browser through a scripted step list — login, forms, clicks, waits, extraction, screenshots, asserts, downloads; canvas counterpart is the Playwrighter workflow agent) |
 | **Crawling, monitoring, APIs, prompts, crypto** | `chat_agent_crawler`, `chat_agent_monitor_log`, `chat_agent_monitor_netstat`, `chat_agent_apirer`, `chat_agent_prompter`, `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph` |
 
 ## 29. Wrapped runtime lifecycle tools (6)
@@ -2393,6 +2395,8 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Added Playwrighter Agent — Scripted Interactive Browser Automation — 2026-05-20** — The agent catalog grows to **65** with **Playwrighter**, the first agent that drives a *real* browser through a scripted, interactive flow. Where **Crawler** does a one-shot static `urllib` fetch and **Googler** only runs a web search, Playwrighter (built on **Playwright** — Chromium / Firefox / WebKit) walks an ordered list of declarative steps — `goto`, `click`, `dblclick`, `fill`, `type`, `press`, `select`, `check`/`uncheck`, `wait_for`, `wait`, `extract_text`, `extract_attr`, `screenshot`, `assert_visible`, `assert_text`, `download` — so it can log into a site, submit a multi-step form, click through a wizard, scrape a JavaScript-rendered single-page-app behind a login, run an end-to-end UI check, or capture a screenshot of a specific post-interaction state. It is **deterministic** (no LLM), supports a `headless` toggle (set `false` to watch it drive) and `storage_state_in`/`storage_state_out` for carrying a logged-in session across runs, emits one atomic `INI_SECTION_PLAYWRIGHTER<<<` block (`start_url`, `final_url`, `status`, `steps_run`, `assert_result`, plus a `response_body` of extracted values + step trace), and ALWAYS triggers `target_agents` (success OR failure) so a downstream Forker can branch on `{status}` / `{assert_result}` and Parametrizer can pipe scraped data onward. Two surfaces ship in lock-step, the same dual pattern as Unrealer: the wrapped Multi-Turn tool **`chat_agent_playwrighter`** (the LLM passes the whole script as a single JSON string in `steps_json`, because the flat key=value request grammar cannot express a list-of-dicts; the agent `json.loads` it and it wins over the YAML `steps`) and the visual **Playwrighter** canvas node (the YAML `steps` list is the canvas authoring form). Wiring follows the established 8-step agent pattern: migrations `0091_add_playwrighter` (Agent row) + `0092_add_chat_agent_playwrighter_tool` (Tool row); `views.update_playwrighter_connection_view` + URL route; Parametrizer source fields registered in `agent/services/agent_contracts.py` (`_PARAMETRIZER_OUTPUT_FIELDS`, auto-discovered contract) and `parametrizer.py` (`SECTION_AGENT_TYPES`); `_EXEC_REPORT_TOOLS` under `agent_key="playwrighter"` (state-changing — it submits forms, logs in, downloads files); planner capability hints tuned so it out-scores Googler/Crawler only on interactive/authenticated/multi-step prompts; the "Theatre Spotlight" canvas gradient (curtain-violet → spotlight-magenta → peacock-teal → aqua-mint, a nod to Playwright's two-theatre-masks logo, distinct from every other 4-color gradient); the four ACP JS files plus the `eslint.config.mjs` cross-file global. Self-contained pool subprocess: it calls `playwright.sync_api` directly (no `ThreadPoolExecutor` — that is only needed by the in-process `googler` tool, which runs inside Django Channels' asyncio loop). Tool counts move to **72** Multi-Turn tools (20 core + **40** wrapped chat-agent + 12 ACPX/Skill). Verified end-to-end: ruff clean, ESLint 0 errors, both migrations applied, 19 targeted tests (Exec-Report capture + flow contracts) green, and `get_mcp_tools()` binds `chat_agent_playwrighter` for a total of 72. The reference companions live in README §9.5, `agents_descriptions.md`, `docs/claude/agents.md`, and `agent/agents/flowcreator/agentic_skill.md` entry #64.
 
 - **Reviewer Commit-State & Secret-Handling Precision — v1.4.2, 2026-05-20** — A focused patch (commit `2e1c2d0`, tag `v1.4.2`) that fixes the Reviewer agent's most common false positive: reporting the developer's *local* working-copy credentials as "API keys committed to source". `agent/agents/reviewer/reviewer.py::build_review_prompt` now takes the `diff_ref` and prepends two grounding blocks to the LLM prompt. The first is a **COMMIT-STATE** block: when `diff_ref` is empty the diff is the UNCOMMITTED working tree + staged area (`git diff HEAD` + `git diff --staged`), so the model is told it MUST NOT call anything in it "committed" or "pushed" — at most "staged" or "in the working tree"; only a non-empty `diff_ref` that names committed history may be described as "committed". The second is a **SECRET-HANDLING CONVENTION** block teaching the model Tlamatini's own scrub convention: `agent/config.json` and `agent/agents/*/config.yaml` legitimately hold local credentials in the "keyed" working copy and are scrubbed back to `<NAME goes here>` placeholders by `regen_secrets.py --mode push-able` before any commit (the real values live only in gitignored `data.keys`), so the committed/pushed copies contain only placeholders — therefore a placeholder or empty string is never a secret, and real-looking credentials in those managed files inside an uncommitted diff are the expected local state (at most one low-severity reminder to scrub before committing), while genuine secrets hard-coded into source code or in any file outside that managed set are still hard-flagged. The same two rules are mirrored into the chat-surface twin `agent/skills_pkg/code_review/SKILL.md` (a new "Secret findings — read before flagging credentials" section plus commit-state wording in the diff-resolution and Security steps), so the `code-review` skill and the canvas Reviewer agent stay in lock-step. Bundled alongside: migration `0090_add_reviewer_analyzer_demo_prompts.py` seeds two demo prompts (idPrompt 26 code-review, 27 security-audit) ahead of the Multi-Turn samples. No agent/skill count change (still **64** / **23**) — this is a behavioural-accuracy patch, not a new capability.
 

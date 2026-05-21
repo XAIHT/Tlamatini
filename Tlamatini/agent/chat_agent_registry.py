@@ -626,6 +626,66 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=600,
         long_running=False,
     ),
+    ChatWrappedAgentSpec(
+        key="playwrighter",
+        template_dir="playwrighter",
+        tool_name="chat_agent_playwrighter",
+        tool_description="Chat-Agent-Playwrighter",
+        display_name="Playwrighter",
+        purpose=(
+            "Drive a REAL browser (Playwright / Chromium) through a scripted, "
+            "interactive, stateful flow: navigate, fill forms, click, wait for "
+            "elements, extract text/attributes, screenshot, assert, download. "
+            "Use this for INTERACTIVE / AUTHENTICATED / JS-rendered web work — "
+            "log into a site, submit a multi-step form, click through a wizard, "
+            "scrape a single-page-app dashboard behind a login, run an end-to-end "
+            "UI check, or capture a screenshot of a specific post-interaction "
+            "state. This is DIFFERENT from chat_agent_crawler (static one-shot "
+            "HTTP fetch, no interaction) and from the `googler` tool (web SEARCH "
+            "only): reach for Playwrighter whenever the task needs clicks, typing, "
+            "waits, logins, or a multi-step sequence. Pass the whole script as a "
+            "JSON array in `steps_json` (the flat request grammar cannot express a "
+            "list-of-dicts). Each step is {\"action\": <verb>, ...}. Supported "
+            "verbs: goto{url,wait_until?}, click{selector}, dblclick{selector}, "
+            "fill{selector,value}, type{selector,text,delay?}, press{key,selector?}, "
+            "select{selector,value}, check/uncheck{selector}, "
+            "wait_for{selector,state?}, wait{ms}, "
+            "extract_text{selector?,name?}, extract_attr{selector,attr,name?}, "
+            "screenshot{path?,full_page?}, assert_visible{selector}, "
+            "assert_text{contains,selector?}, download{selector,save_path?}. "
+            "Set headless=false to WATCH the browser; set storage_state_out to "
+            "persist the logged-in session for a later run. Extracted values and "
+            "the final status/assert verdict come back in the run log "
+            "(INI_SECTION_PLAYWRIGHTER) for Parametrizer/Exec-Report."
+        ),
+        example_request=(
+            "Run Playwrighter with start_url='https://example.com/login' and headless=true and "
+            "steps_json='[{\"action\":\"fill\",\"selector\":\"#email\",\"value\":\"me@example.com\"},"
+            "{\"action\":\"fill\",\"selector\":\"#password\",\"value\":\"hunter2\"},"
+            "{\"action\":\"click\",\"selector\":\"button[type=submit]\"},"
+            "{\"action\":\"wait_for\",\"selector\":\"#dashboard\"},"
+            "{\"action\":\"extract_text\",\"selector\":\".welcome\",\"name\":\"greeting\"},"
+            "{\"action\":\"assert_visible\",\"selector\":\"#logout\"}]'"
+        ),
+        aliases=(
+            "playwrighter", "playwright", "browser", "browser automation",
+            "headless browser", "web automation", "e2e", "end to end",
+        ),
+        security_hints=(
+            "playwright", "playwrighter", "browser automation", "control the browser",
+            "drive the browser", "headless browser", "automate the browser",
+            "fill the form", "fill in the form", "submit the form", "log into",
+            "log in to", "login to the site", "click the button on the page",
+            "navigate the site", "scrape after login", "authenticated scrape",
+            "e2e test", "end-to-end test", "ui test", "browser test",
+            "click through", "wait for the element", "extract from the page",
+            "single page app", "spa", "web form", "web wizard",
+        ),
+        # A real browser flow (login + several steps + screenshots) can take a
+        # while; drain inside the wrapped runtime rather than poll round-trips.
+        poll_window_seconds=180,
+        long_running=True,
+    ),
 )
 
 

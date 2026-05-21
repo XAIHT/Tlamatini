@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -299,6 +299,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             }
             if (sourceAgentName.toLowerCase() === 'unrealer') {
                 await updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'playwrighter') {
+                await updatePlaywrighterConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'playwrighter') {
+                await updatePlaywrighterConnection(sourceId, targetId, 'remove', 'target');
             }
             if (targetAgentName.toLowerCase() === 'reviewer') {
                 await updateReviewerConnection(targetId, sourceId, 'remove', 'source');
@@ -631,6 +637,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'unrealer') {
         await updateUnrealerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'playwrighter') {
+        await updatePlaywrighterConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'playwrighter') {
+        await updatePlaywrighterConnection(sourceId, targetId, 'add', 'target');
     }
     if (targetAgentName === 'reviewer') {
         await updateReviewerConnection(targetId, sourceId, 'add', 'source');

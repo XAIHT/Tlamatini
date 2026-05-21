@@ -19,7 +19,7 @@
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **64** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **65** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -111,7 +111,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 64-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 65-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -197,7 +197,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 64 workflow agent templates
+│   │   ├── agents/                 # 65 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -430,7 +430,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-36 specs in `WRAPPED_CHAT_AGENT_SPECS`. Key ones:
+40 specs in `WRAPPED_CHAT_AGENT_SPECS`. Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -439,6 +439,7 @@ Chain types in `agent/rag/chains/`:
 - `chat_agent_file_creator`, `chat_agent_move_file`, `chat_agent_deleter`
 - `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`
 - `chat_agent_summarize_text`, `chat_agent_prompter`, `chat_agent_crawler`
+- `chat_agent_playwrighter` (scripted browser automation — login/forms/clicks/extract/screenshot/assert)
 - `chat_agent_pser` (process finder), `chat_agent_jenkinser`
 - `chat_agent_monitor_log`, `chat_agent_monitor_netstat` (long-running)
 - `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph`
@@ -560,7 +561,7 @@ Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 - `acp-globals.js` — Shared global state, `updateCanvasContentSize()`
 - `acp-canvas-core.js` — Canvas rendering, drag-and-drop, classMap, connection handlers (6 touch points per agent)
 - `acp-canvas-undo.js` — Undo/redo state (1024 actions)
-- `acp-agent-connectors.js` — 64 agent connection handlers
+- `acp-agent-connectors.js` — 65 agent connection handlers
 - `acp-control-buttons.js` — Start/stop/pause/hypervisor; now calls `compileCurrentACPFlow({ mode: 'write' })` before start
 - `acp-file-io.js` — .flw save/load; uses `buildACPFlowSnapshot()` for schema-v2 JSON
 - `acp-running-state.js` — LED indicators, process monitoring
@@ -609,7 +610,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 64 Workflow Agent Types
+## 12. All 65 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -637,6 +638,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Summarizer** — Log monitoring + one-shot text summarization
 - **Crawler** — Developer-oriented web crawler with LLM analysis
 - **Googler** — Google search + text extraction (Playwright, MUST run in ThreadPoolExecutor)
+- **Playwrighter** — Scripted interactive browser automation (Playwright; Chromium/Firefox/WebKit). Drives a real browser through an ordered list of declarative steps (goto/click/fill/press/wait_for/extract_text/extract_attr/screenshot/assert_visible/assert_text/download) for authenticated/JS-rendered/multi-step flows that Crawler (static fetch) and Googler (search) cannot do. Deterministic (no LLM); emits `INI_SECTION_PLAYWRIGHTER` (`start_url`/`final_url`/`status`/`steps_run`/`assert_result`/`response_body`); always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_playwrighter` Multi-Turn tool
 - **Apirer** — HTTP REST API calls
 - **Gitter** — Git operations
 - **Ssher** — SSH remote commands

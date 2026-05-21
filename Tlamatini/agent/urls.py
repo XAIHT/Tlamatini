@@ -113,6 +113,7 @@ urlpatterns = [
     path('update_kuberneter_connection/<str:agent_name>/', secure_post(views.update_kuberneter_connection_view), name='update_kuberneter_connection'),
     path('update_apirer_connection/<str:agent_name>/', secure_post(views.update_apirer_connection_view), name='update_apirer_connection'),
     path('update_unrealer_connection/<str:agent_name>/', secure_post(views.update_unrealer_connection_view), name='update_unrealer_connection'),
+    path('update_playwrighter_connection/<str:agent_name>/', secure_post(views.update_playwrighter_connection_view), name='update_playwrighter_connection'),
     path('update_reviewer_connection/<str:agent_name>/', secure_post(views.update_reviewer_connection_view), name='update_reviewer_connection'),
     path('update_analyzer_connection/<str:agent_name>/', secure_post(views.update_analyzer_connection_view), name='update_analyzer_connection'),
     path('update_jenkinser_connection/<str:agent_name>/', secure_post(views.update_jenkinser_connection_view), name='update_jenkinser_connection'),

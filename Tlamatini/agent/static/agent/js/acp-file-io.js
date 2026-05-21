@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
 
 // ========================================
 // SAVE BUTTON
@@ -464,6 +464,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kuberneter': await updateKuberneterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'apirer': await updateApirerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'unrealer': await updateUnrealerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'playwrighter': await updatePlaywrighterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'reviewer': await updateReviewerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'analyzer': await updateAnalyzerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'jenkinser': await updateJenkinserConnection(sourceId, targetId, 'add', 'target'); break;
@@ -538,6 +539,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kuberneter': await updateKuberneterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'apirer': await updateApirerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'unrealer': await updateUnrealerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'playwrighter': await updatePlaywrighterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'reviewer': await updateReviewerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'analyzer': await updateAnalyzerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'jenkinser': await updateJenkinserConnection(targetId, sourceId, 'add', 'source'); break;

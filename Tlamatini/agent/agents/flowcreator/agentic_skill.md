@@ -1537,14 +1537,37 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the scan)
 
-### 64. FlowCreator
+### 64. Playwrighter
+- **Purpose**: Scripted, interactive browser automation via Playwright (Chromium/Firefox/WebKit). Drives a REAL browser through an ordered list of declarative steps (goto / click / fill / press / wait_for / extract_text / extract_attr / screenshot / assert_visible / assert_text / download) and emits an `INI_SECTION_PLAYWRIGHTER` block with `status`, `final_url`, `steps_run`, `assert_result`, plus a `response_body` carrying the extracted values + step trace. Always triggers `target_agents` (success OR failure) so the flow can branch on `status` / `assert_result`.
+- **Used for**: INTERACTIVE / AUTHENTICATED / JS-rendered web work that Crawler (static one-shot HTTP fetch) and Googler (web search) cannot do — logging into a site, submitting a multi-step form, clicking through a wizard, scraping a single-page-app dashboard behind a login, running an end-to-end UI check, or capturing a screenshot of a specific post-interaction state.
+- **Aimed at**: Treating browser interaction as an unattended, routable flow step. Pair with a Forker that branches on `{assert_result}` (pass/fail) or `{status}` (ok / assert_failed / error); pipe `response_body` through Parametrizer into a File-Creator or Apirer. Set `headless: false` to watch it drive; set `storage_state_out` on one node and `storage_state_in` on a later node to carry a logged-in session across runs. The visual-canvas counterpart of the `chat_agent_playwrighter` Multi-Turn tool.
+- **Application example**: Starter → Playwrighter (login + scrape: `start_url` = the login page; `steps` fill credentials → click submit → wait_for `#dashboard` → extract_text `.balance` → assert_visible `#logout`) → Parametrizer (copies `response_body` into an Apirer body) → Apirer (POST the scraped value to a webhook) → Ender. For a visual E2E check: Starter → Playwrighter (drive the UI + `screenshot`) → Image-Interpreter (verify the shot) → Forker → Ender.
+- **Pool name pattern**: `playwrighter_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `start_url`: "https://example.com" (first page to open; a leading `goto` is prepended automatically if the first step isn't already one)
+  - `browser`: "chromium" (chromium / firefox / webkit)
+  - `headless`: true (set false to watch the browser drive)
+  - `timeout_ms`: 30000 (default per-step timeout in ms)
+  - `nav_wait_until`: "domcontentloaded" (load / domcontentloaded / networkidle / commit)
+  - `user_agent`: "" (optional UA override)
+  - `viewport_width`: 1920
+  - `viewport_height`: 1080
+  - `storage_state_in`: "" (optional path to a saved session to reuse)
+  - `storage_state_out`: "" (optional path to persist the session after this run)
+  - `steps`: [] (ordered list of action dicts — the canvas authoring form; see the action verbs above)
+  - `output_file`: "playwrighter_results.txt"
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
+### 65. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (64). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (65). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

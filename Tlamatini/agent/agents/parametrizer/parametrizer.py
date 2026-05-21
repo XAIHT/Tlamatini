@@ -113,6 +113,7 @@ SECTION_AGENT_TYPES = [
     'unrealer',
     'reviewer',
     'analyzer',
+    'playwrighter',
 ]
 
 

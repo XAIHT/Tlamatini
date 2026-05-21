@@ -1,0 +1,59 @@
+# Playwrighter Agent Configuration
+#
+# Scripted, interactive browser automation via Playwright (Chromium/Firefox/
+# WebKit). Drives a REAL browser through a declarative list of steps:
+# navigate, fill forms, click, wait for elements, extract text, screenshot,
+# assert. Use this for authenticated / JS-rendered / multi-step interactive
+# flows that Googler (search-only) and Crawler (static HTTP fetch) cannot do.
+
+start_url: "https://example.com"
+browser: chromium                  # chromium | firefox | webkit
+headless: true                     # set false to WATCH the browser drive
+timeout_ms: 30000                  # default per-step timeout (ms)
+nav_wait_until: domcontentloaded   # load | domcontentloaded | networkidle | commit
+user_agent: ""                     # optional UA override; empty = library default
+viewport_width: 1920
+viewport_height: 1080
+
+# Session reuse (optional). storage_state_in loads cookies/localStorage saved by
+# a previous run so a later flow stays logged in; storage_state_out persists the
+# session after this run for a downstream Playwrighter node to reuse.
+storage_state_in: ""
+storage_state_out: ""
+
+# Ordered list of browser actions. Each item is a dict with an "action" key.
+# Supported actions:
+#   goto           {url, wait_until?}
+#   click          {selector, timeout?}
+#   dblclick       {selector, timeout?}
+#   fill           {selector, value}
+#   type           {selector, text, delay?}
+#   press          {key, selector?}
+#   select         {selector, value}
+#   check          {selector}
+#   uncheck        {selector}
+#   wait_for       {selector, state?, timeout?}   state: visible|hidden|attached|detached
+#   wait           {ms}
+#   extract_text   {selector?, name?}             selector omitted = whole <body>
+#   extract_attr   {selector, attr, name?}
+#   screenshot     {path?, full_page?}
+#   assert_visible {selector}
+#   assert_text    {contains, selector?}
+#   download       {selector, save_path?}
+steps:
+  - { action: goto, url: "https://example.com" }
+  - { action: extract_text, selector: "h1", name: "headline" }
+  - { action: screenshot, path: "playwrighter_shot.png", full_page: true }
+
+# Optional chat / Multi-Turn entry point. When non-empty, this JSON array of
+# step objects WINS over the YAML `steps` above. It exists because the wrapped
+# chat-agent request grammar (flat key=value) cannot express a list-of-dicts;
+# the LLM passes the whole script as one JSON string here. Leave empty for
+# canvas use (the YAML `steps` list is the canvas authoring form).
+steps_json: ""
+
+output_file: "playwrighter_results.txt"
+
+# Connection fields
+source_agents: []        # upstream agents (canvas connection tracking)
+target_agents: []        # downstream agents to start after this run (success OR failure)

@@ -92,6 +92,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "unrealer": ("host", "port", "command", "status", "error", "response_body"),
     "reviewer": ("repo_path", "diff_ref", "verdict", "model", "status", "response_body"),
     "analyzer": ("target_path", "tools_run", "tools_skipped", "total_findings", "status", "response_body"),
+    "playwrighter": ("start_url", "final_url", "status", "steps_run", "assert_result", "response_body"),
 }
 
 
