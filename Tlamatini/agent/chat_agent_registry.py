@@ -718,9 +718,14 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "screenshot{path?,full_page?}, assert_visible{selector}, "
             "assert_text{contains,selector?}, download{selector,save_path?}. "
             "Set headless=false to WATCH the browser; set storage_state_out to "
-            "persist the logged-in session for a later run. Extracted values and "
-            "the final status/assert verdict come back in the run log "
-            "(INI_SECTION_PLAYWRIGHTER) for Parametrizer/Exec-Report."
+            "persist the logged-in session for a later run. When the user wants "
+            "to SEE the browser or asks to keep it open / wait before closing "
+            "(e.g. 'wait 10 seconds before closing so I can watch it'), pass "
+            "hold_open_seconds=<N> (e.g. hold_open_seconds=10) — the browser then "
+            "lingers N seconds after the last step before it closes. Do NOT rely "
+            "on a trailing wait step for this; hold_open_seconds is the dedicated "
+            "knob. Extracted values and the final status/assert verdict come back "
+            "in the run log (INI_SECTION_PLAYWRIGHTER) for Parametrizer/Exec-Report."
         ),
         example_request=(
             "Run Playwrighter with start_url='https://example.com/login' and headless=true and "

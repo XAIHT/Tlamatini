@@ -1554,6 +1554,7 @@ system_prompt: |
   - `user_agent`: "" (optional UA override)
   - `viewport_width`: 1920
   - `viewport_height`: 1080
+  - `hold_open_seconds`: 0 (keep the browser visible this many seconds AFTER the last step, BEFORE it closes — set it with `headless: false` for "watch the browser, then close" demos; `hold_open_ms` is the finer-grained alias and wins when both are > 0)
   - `storage_state_in`: "" (optional path to a saved session to reuse)
   - `storage_state_out`: "" (optional path to persist the session after this run)
   - `steps`: [] (ordered list of action dicts — the canvas authoring form; see the action verbs above)
