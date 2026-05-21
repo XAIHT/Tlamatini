@@ -372,9 +372,13 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("playwrighter" in subject or "playwright" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is the new Playwrighter agent in `v1.5.0`: Tlamatini now adds its 65th workflow agent and a real-browser automation surface for scripted Playwright flows from both Multi-Turn chat and the visual canvas."
+        )
     if any("tkinter" in subject or "unstable" in subject or "native dialog" in subject for subject in subjects):
         highlights.append(
-            "Today’s current tagged release is v1.4.2: Tkinter was removed from the unstable runtime-facing dialog path in favor of native Windows dialog helpers, reducing UI instability around file and folder picking while keeping the browser/operator flow intact."
+            "The immediately previous stability pass is still visible in Git too: Tkinter was removed from the unstable runtime-facing dialog path in favor of native Windows dialog helpers, reducing UI instability around file and folder picking while keeping the browser/operator flow intact."
         )
     if any("reporting tables" in subject or "widths" in subject for subject in subjects):
         highlights.append(
@@ -575,6 +579,7 @@ WHAT_IT_DOES = [
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
+    "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
     "Actively reaps orphaned Windows console-host and pool-child processes so long Multi-Turn or ACPX sessions do not leave misleading Tlamatini-icon ghosts in Task Manager.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
@@ -591,6 +596,7 @@ HOW_IT_WORKS = [
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
+    "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
     "After spawn-capable tool calls and again after the final answer, the orphan reaper can sweep dead descendants, orphaned `conhost.exe` companions, and stale pool-linked processes without ever raising into the chat path.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
@@ -603,6 +609,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
     "Archive jobs can now be described directly in Multi-Turn or modeled visually in ACP: De-Compresser infers compress vs decompress from the `input` or `output` extension.",
     "If a second post-answer warning bubble ever lists surviving `name + PID` entries, treat it as an honest cleanup report and end the listed processes manually from Task Manager if needed.",
@@ -631,15 +638,15 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The current README header now advertises the operator surface more explicitly: 64 workflow agents, 71 Multi-Turn tools, 12 ACPX tools, and 23 skills.",
-    "The 71-tool figure is documented as 20 core Python tools, 39 wrapped chat-agent tools, and 12 ACPX/Skill tools bound selectively by the planner per request.",
+    "The current README header now advertises the operator surface more explicitly: 65 workflow agents, 72 Multi-Turn tools, 12 ACPX tools, and 23 skills.",
+    "The 72-tool figure is documented as 20 core Python tools, 40 wrapped chat-agent tools, and 12 ACPX/Skill tools bound selectively by the planner per request.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
 
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.4.2` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.5.0` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
 ]
 
 REVIEWER_ANALYZER_GUIDE = [
@@ -664,6 +671,18 @@ NATIVE_DIALOGS_GUIDE = [
     "The current tagged release `v1.4.2` removes Tkinter from the unstable runtime-facing dialog path and replaces it with `Tlamatini/agent/native_dialogs.py`, a native Windows dialog bridge used by browser-triggered pickers.",
     "This change pairs with the existing DB and operator dialogs: file and folder selection still feels local and GUI-first, but the fragile Tkinter dependency is no longer part of the interactive runtime path that users trigger from chat or ACP surfaces.",
     "The patch arrived with dedicated tests (`test_native_dialogs.py`) and with follow-up orphan-reaper/runtime adjustments, so the release reads as a stability pass rather than a cosmetic refactor.",
+]
+
+PLAYWRIGHTER_GUIDE = [
+    "Playwrighter is the new 65th workflow agent in `v1.5.0`: a deterministic Playwright-powered browser automator for Chromium, Firefox, or WebKit that executes ordered interactive steps instead of static fetches.",
+    "It covers the gap between Crawler and Googler: logins, multi-step forms, wizard clicks, JS-rendered SPA scraping, screenshots after interaction, assertions, downloads, and authenticated end-to-end UI checks.",
+    "The agent emits `INI_SECTION_PLAYWRIGHTER` with `start_url`, `final_url`, `status`, `steps_run`, `assert_result`, and extracted values so downstream Forker or Parametrizer logic can branch on pass/fail or reuse scraped data.",
+]
+
+PLAYWRIGHTER_SURFACES_GUIDE = [
+    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_playwrighter` takes the whole script as `steps_json`, while the visual Playwrighter canvas node stores the same declarative step list in YAML.",
+    "Session continuity is built in: `headless: false` lets operators watch it drive, and `storage_state_in` / `storage_state_out` carry login state across runs without forcing a manual browser setup each time.",
+    "Because Playwrighter is state-changing, its executions appear in Exec Report and it always triggers `target_agents` whether the run succeeds or fails.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -842,7 +861,7 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, unrealer, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, unrealer, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -1094,6 +1113,11 @@ def build_pdf(context: dict) -> None:
     story.append(p("Operator surface counts", styles["h2"]))
     for item in OPERATOR_SURFACE_COUNTS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Playwrighter in v1.5.0", styles["h2"]))
+    for item in PLAYWRIGHTER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in PLAYWRIGHTER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Reviewer precision patch in v1.4.1", styles["h2"]))
     for item in REVIEWER_PRECISION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1177,6 +1201,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Operator surface counts", styles["h2"]))
     for item in OPERATOR_SURFACE_COUNTS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Playwrighter spotlight", styles["h2"]))
+    for item in PLAYWRIGHTER_GUIDE + PLAYWRIGHTER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Reviewer precision spotlight", styles["h2"]))
     for item in REVIEWER_PRECISION_GUIDE:
@@ -1633,9 +1660,14 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Current counts", OPERATOR_SURFACE_COUNTS_GUIDE, THEME["copper"], "surface-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why the counts matter", [
         "The README now surfaces the same operator picture the app exposes in practice: broad capability, selective planner binding, and a capped tool budget per request.",
-        "Those counts complement the 64-agent bestiary instead of replacing it: skills, wrapped tools, and ACPX tools are different layers of the same operating surface.",
+        f"Those counts complement the {context['workflow_agent_count']}-agent bestiary instead of replacing it: skills, wrapped tools, and ACPX tools are different layers of the same operating surface.",
         "For dossier readers, this closes a gap between the capability narrative and the quick-glance repo badges at the top of the handbook.",
     ], THEME["jade"], "surface-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Playwrighter In v1.5.0", "real-browser automation for chat and canvas", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", PLAYWRIGHTER_GUIDE, THEME["jade"], "play-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", PLAYWRIGHTER_SURFACES_GUIDE, THEME["amber"], "play-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Reviewer Precision In v1.4.1", "commit-state and secret-handling refinement", THEME["jade"])
@@ -1650,7 +1682,7 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Native Dialogs In v1.4.2", "Tkinter removed from the unstable runtime path", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", NATIVE_DIALOGS_GUIDE, THEME["amber"], "native-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Release meaning", [
-        "The repo is now tagged `v1.4.2`, and this stability-focused patch is the main Git-side change beyond the earlier `v1.4.1` documentation and Reviewer improvements.",
+        "This stability-focused patch sits immediately before the current `v1.5.0` Playwrighter release and remains part of the current operator/runtime story.",
         "It preserves the operator experience of Browse-driven file and folder picking while removing a UI technology that was destabilizing the application.",
         "Because the fix landed with tests and runtime cleanup updates, it belongs in the technical dossier even though the markdown handbook has not yet been fully rewritten around it.",
     ], THEME["jade"], "native-b", 13)
