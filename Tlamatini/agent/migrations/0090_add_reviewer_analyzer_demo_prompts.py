@@ -1,5 +1,5 @@
 """
-Seed two fancy, single-skill demo prompts that showcase the v1.4.0
+Seed two fancy, single-skill demo prompts that showcase the v1.4.2
 **Reviewer** (code-review) and **Analyzer** (security-audit) agents from the
 chat, then place them BEFORE the Multi-Turn sample prompts.
 
