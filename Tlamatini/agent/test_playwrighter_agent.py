@@ -118,6 +118,14 @@ class HelperFunctionTests(SimpleTestCase):
         self.assertTrue(out.startswith('x' * 10))
         self.assertIn('[truncated]', out)
 
+    def test_coerce_int_handles_ints_strings_floats_and_garbage(self):
+        self.assertEqual(self.pw._coerce_int(10), 10)
+        self.assertEqual(self.pw._coerce_int('10'), 10)
+        self.assertEqual(self.pw._coerce_int('10.7'), 10)
+        self.assertEqual(self.pw._coerce_int(None), 0)
+        self.assertEqual(self.pw._coerce_int('oops'), 0)
+        self.assertEqual(self.pw._coerce_int('oops', default=5), 5)
+
 
 # ---------------------------------------------------------------------------
 # _run_one_step — the declarative step interpreter (MagicMock page)
@@ -365,6 +373,63 @@ class RunBrowserFlowTests(SimpleTestCase):
             self.pw.run_browser_flow(cfg)
         p.chromium.launch.assert_called_once()
 
+    def test_hold_open_seconds_waits_before_close(self):
+        # The user asked the browser to stay open before closing. With a single
+        # non-wait step, the ONLY wait_for_timeout call must be the linger, and
+        # it must be 10s -> 10000 ms.
+        mods, _p, page = _make_fake_playwright()
+        cfg = {
+            'steps_json': json.dumps([{'action': 'click', 'selector': '#x'}]),
+            'hold_open_seconds': 10,
+        }
+        with patch.dict(sys.modules, mods):
+            self.pw.run_browser_flow(cfg)
+        page.wait_for_timeout.assert_called_once_with(10000)
+
+    def test_hold_open_ms_wins_over_seconds(self):
+        mods, _p, page = _make_fake_playwright()
+        cfg = {
+            'steps_json': json.dumps([{'action': 'click', 'selector': '#x'}]),
+            'hold_open_seconds': 9,
+            'hold_open_ms': 1500,
+        }
+        with patch.dict(sys.modules, mods):
+            self.pw.run_browser_flow(cfg)
+        called_ms = [c.args[0] for c in page.wait_for_timeout.call_args_list if c.args]
+        self.assertIn(1500, called_ms)
+        self.assertNotIn(9000, called_ms)
+
+    def test_no_hold_open_by_default(self):
+        mods, _p, page = _make_fake_playwright()
+        cfg = {'steps_json': json.dumps([{'action': 'click', 'selector': '#x'}])}
+        with patch.dict(sys.modules, mods):
+            self.pw.run_browser_flow(cfg)
+        page.wait_for_timeout.assert_not_called()
+
+    def test_hold_open_still_fires_on_mid_flow_error(self):
+        # A failed step aborts the loop but the browser is still alive, so the
+        # linger must still run — a failed run is exactly when watching helps.
+        mods, _p, page = _make_fake_playwright()
+        cfg = {
+            'steps_json': json.dumps([{'action': 'goto'}]),  # missing url -> error
+            'hold_open_seconds': 3,
+        }
+        with patch.dict(sys.modules, mods):
+            out = self.pw.run_browser_flow(cfg)
+        self.assertEqual(out['status'], 'error')
+        page.wait_for_timeout.assert_called_once_with(3000)
+
+    def test_bad_hold_open_value_does_not_abort_run(self):
+        mods, _p, page = _make_fake_playwright()
+        cfg = {
+            'steps_json': json.dumps([{'action': 'click', 'selector': '#x'}]),
+            'hold_open_seconds': 'oops',
+        }
+        with patch.dict(sys.modules, mods):
+            out = self.pw.run_browser_flow(cfg)
+        self.assertEqual(out['status'], 'ok')
+        page.wait_for_timeout.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # Section body + report file
@@ -562,6 +627,10 @@ class RegistryIntegrationTests(SimpleTestCase):
         self.assertTrue(cfg.get('headless'))
         self.assertIn('steps', cfg)
         self.assertEqual(cfg.get('target_agents'), [])
+        # The hold-open linger knobs must exist as assignable config paths
+        # (default 0) so the wrapped tool can set hold_open_seconds=N.
+        self.assertEqual(cfg.get('hold_open_seconds'), 0)
+        self.assertEqual(cfg.get('hold_open_ms'), 0)
 
 
 class MigrationPresenceTests(TestCase):

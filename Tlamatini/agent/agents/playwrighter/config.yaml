@@ -15,6 +15,14 @@ user_agent: ""                     # optional UA override; empty = library defau
 viewport_width: 1920
 viewport_height: 1080
 
+# Hold the browser open for a human to watch AFTER all steps finish, BEFORE it
+# closes. This is the "wait N seconds before closing the browser so I can see
+# it" knob — most useful with headless=false. hold_open_seconds is the natural
+# unit; hold_open_ms is the finer-grained alias and wins when both are > 0.
+# 0 = close immediately when the last step returns (default).
+hold_open_seconds: 0
+hold_open_ms: 0
+
 # Session reuse (optional). storage_state_in loads cookies/localStorage saved by
 # a previous run so a later flow stays logged in; storage_state_out persists the
 # session after this run for a downstream Playwrighter node to reuse.

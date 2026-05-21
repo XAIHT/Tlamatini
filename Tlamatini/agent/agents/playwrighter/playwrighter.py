@@ -296,6 +296,19 @@ def _truncate(text: str, limit: int = 200000) -> str:
     return text
 
 
+def _coerce_int(value: Any, default: int = 0) -> int:
+    """Best-effort int coercion (handles ints, numeric strings, floats).
+
+    The wrapped-tool config path can hand us an int (``hold_open_seconds=10``)
+    or, on odd LLM phrasing, a string ("10" / "10.0"); never raise on a bad
+    value — fall back to ``default`` so a malformed linger value cannot abort
+    an otherwise-good browser run."""
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
 def _run_one_step(page, step: Dict[str, Any], idx: int, default_timeout: int,
                   extracted: Dict[str, str], asserts: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Execute a single declarative step. Returns a per-step result dict.
@@ -478,6 +491,17 @@ def run_browser_flow(config: Dict) -> Dict[str, Any]:
     storage_state_out = _abs_under_script(str(config.get("storage_state_out", "") or ""))
     start_url = str(config.get("start_url", "") or "")
 
+    # "Hold open" linger: keep the browser visible AFTER the last step finishes
+    # and BEFORE we tear it down, so a human can actually watch the result. This
+    # is what makes an explicit "wait N seconds before closing the browser"
+    # request real — without it the finally block closes the browser the instant
+    # the final step returns. hold_open_seconds is the natural unit; hold_open_ms
+    # is the finer-grained alias and wins when both are > 0. Honored regardless
+    # of headless (harmless when headless=true).
+    hold_open_ms = _coerce_int(config.get("hold_open_ms", 0))
+    hold_open_seconds = _coerce_int(config.get("hold_open_seconds", 0))
+    hold_open_total_ms = hold_open_ms if hold_open_ms > 0 else hold_open_seconds * 1000
+
     steps = config.get("steps") or []
     if not isinstance(steps, list):
         steps = []
@@ -556,6 +580,21 @@ def run_browser_flow(config: Dict) -> Dict[str, Any]:
                         logging.info(f"Saved storage_state to {storage_state_out}")
                     except Exception as ss_err:
                         logging.warning(f"Could not save storage_state: {ss_err}")
+
+                # Hold the browser open for the configured linger so a human can
+                # watch the final state before it closes. Runs on success OR a
+                # mid-flow error (a failed run is still worth seeing), while the
+                # page/browser are still alive — the very next thing the finally
+                # block does is tear them down.
+                if hold_open_total_ms > 0:
+                    try:
+                        logging.info(
+                            f"Holding browser open for {hold_open_total_ms} ms "
+                            f"before close (headless={headless})"
+                        )
+                        page.wait_for_timeout(hold_open_total_ms)
+                    except Exception as hold_err:
+                        logging.warning(f"hold-open wait interrupted: {hold_err}")
             finally:
                 try:
                     context.close()

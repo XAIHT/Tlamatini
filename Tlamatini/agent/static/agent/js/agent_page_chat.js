@@ -735,6 +735,14 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             const n = parseInt(pairs.timeout_ms, 10);
             if (!Number.isNaN(n)) config.timeout_ms = n;
         }
+        if (pairs.hold_open_seconds !== undefined && pairs.hold_open_seconds !== '') {
+            const n = parseInt(pairs.hold_open_seconds, 10);
+            if (!Number.isNaN(n)) config.hold_open_seconds = n;
+        }
+        if (pairs.hold_open_ms !== undefined && pairs.hold_open_ms !== '') {
+            const n = parseInt(pairs.hold_open_ms, 10);
+            if (!Number.isNaN(n)) config.hold_open_ms = n;
+        }
         set('nav_wait_until', pairs.nav_wait_until);
         set('user_agent', pairs.user_agent);
         set('storage_state_in', pairs.storage_state_in);

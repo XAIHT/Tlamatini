@@ -124,7 +124,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **Summarizer** - LLM text/log summarization
 - **Crawler** - Web crawling with LLM analysis
 - **Googler** - Google search + text extraction (Playwright)
-- **Playwrighter** - Scripted interactive browser automation (Playwright). Drives a real browser through declarative steps (goto/click/fill/wait_for/extract/screenshot/assert/download) for authenticated/JS/multi-step flows that Crawler (static fetch) and Googler (search) cannot do. Deterministic; emits INI_SECTION_PLAYWRIGHTER; always triggers target_agents. Canvas counterpart of the chat_agent_playwrighter Multi-Turn tool.
+- **Playwrighter** - Scripted interactive browser automation (Playwright). Drives a real browser through declarative steps (goto/click/fill/wait_for/extract/screenshot/assert/download) for authenticated/JS/multi-step flows that Crawler (static fetch) and Googler (search) cannot do. Deterministic; emits INI_SECTION_PLAYWRIGHTER; always triggers target_agents. Set `headless: false` to watch it drive and `hold_open_seconds: N` (alias `hold_open_ms`) to keep the browser visible N seconds AFTER the last step BEFORE it closes — this is the "wait before closing so I can see it" knob the LLM should pass on such requests. Canvas counterpart of the chat_agent_playwrighter Multi-Turn tool.
 - **Apirer** - HTTP REST API calls
 - **Gitter** - Git operations
 - **Ssher** - SSH remote commands
