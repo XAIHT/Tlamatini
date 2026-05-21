@@ -872,6 +872,32 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     } else if (lower === 'shoter') {
         set('output_dir', pairs.output_path || pairs.output_dir);
 
+    // ── Windower ─────────────────────────────────────────────────────
+    // Template fields: action, window_title, match_mode, match_index,
+    //                  pos_x, pos_y, width, height, arrange_mode,
+    //                  activate_after, fail_if_absent
+    } else if (lower === 'windower') {
+        set('action', pairs.action);
+        set('window_title', pairs.window_title);
+        set('match_mode', pairs.match_mode);
+        if (pairs.match_index !== undefined && pairs.match_index !== '') {
+            const mi = parseInt(pairs.match_index, 10);
+            if (!Number.isNaN(mi)) config.match_index = mi;
+        }
+        for (const k of ['pos_x', 'pos_y', 'width', 'height']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        set('arrange_mode', pairs.arrange_mode);
+        if (pairs.activate_after !== undefined && pairs.activate_after !== '') {
+            config.activate_after = String(pairs.activate_after) === 'true';
+        }
+        if (pairs.fail_if_absent !== undefined && pairs.fail_if_absent !== '') {
+            config.fail_if_absent = String(pairs.fail_if_absent) === 'true';
+        }
+
     // ── Telegramer ───────────────────────────────────────────────────
     // Template field: telegram (nested)
     } else if (lower === 'telegramer') {

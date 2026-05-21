@@ -1173,6 +1173,22 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(101, 31, 255, 0.5);
 }
 
+/* Windower Agent - window manager (4-color "frosted glass-pane" gradient:
+   deep-navy -> window-blue -> sky -> frost-white). Distinct from Mouser
+   (red/purple/green), Shoter (cyan/magenta) and ACPXer (navy/violet/magenta/
+   cyan): Windower is the cool monochrome-blue "pane of glass" so the user can
+   tell the window-manager apart from the pointer/key/screenshot agents. */
+.canvas-item.windower-agent {
+    background-color: #0F2C4D;
+    background: linear-gradient(135deg, #0F2C4D 0%, #1E6FB8 33%, #4FC3F7 66%, #E1F5FE 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.windower-agent:hover {
+    background: linear-gradient(135deg, #16406E 0%, #2E86C9 33%, #81D4FA 66%, #F0FAFF 100%);
+    box-shadow: 0 6px 15px rgba(30, 111, 184, 0.5);
+}
+
 /* FlowBacker Agent Styles - Infrastructure backup (3-color: Deep-Teal / Burnt-Orange / Amber gradient) */
 .canvas-item.flowbacker-agent {
     background-color: #0F4C5C;

@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 65 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 66 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 
@@ -15,7 +15,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the four toolbar checkboxes (Multi-Turn, Exec Report, ACPX, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
-- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 65 workflow agents.
+- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 66 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -53,7 +53,7 @@ The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 1. **A real RAG pipeline** that reads your project files, classifies their architectural roles, and grounds answers in your real source code.
 2. **Multi-Turn mode** that turns the chat into a tool operator: the LLM can run shell commands, hit APIs, send emails, take screenshots, type into windows, query SQL — and chain those steps to finish the job.
 3. **ACPX** that lets the LLM delegate sub-tasks to external coding-agent CLIs you already have installed (Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, and more).
-4. **A visual workflow designer** where you drag 65 different agent types onto a canvas (including the new **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
+4. **A visual workflow designer** where you drag 66 different agent types onto a canvas (including the new **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
 
 Everything is local. No cloud lock-in (though cloud LLMs are an option). The whole app packages into a standalone Windows `.exe` if you want to ship it.
 
@@ -897,9 +897,9 @@ Rules:
 
 ### Supported source agents
 
-17 agents emit Parametrizer-compatible sections:
+24 agents emit Parametrizer-compatible sections:
 
-Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, **ACPXer**.
+Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**.
 
 ### How the visual mapping works
 
@@ -995,7 +995,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 65 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57.
+A compact reference for all 66 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -1051,6 +1051,7 @@ A compact reference for all 65 workflow-agent types. Spotlight chapters for **Pa
 | **Shoter** | Screenshot capture (read-only). |
 | **Mouser** | Pointer movement, click, drag, scroll, click-at-window, locate-image. |
 | **Keyboarder** | Keyboard typing / hotkey chords (PyAutoGUI). |
+| **Windower** | Deterministic Win32 window manager (pywin32 + ctypes). Locates an application window by title (`match_mode` ∈ substring/exact/regex, plus `match_index` to disambiguate same-titled windows) and runs ONE window-lifecycle operation: `focus`, `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close`, `topmost` / `untopmost` (always-on-top), or `arrange` (snap/tile to left/right/top/bottom halves, four quadrants, center, or full) — or `list` every open window with its position, size, and state. The window member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). Ports the window-management subset of Microsoft's Windows-MCP (incl. the AttachThreadInput cross-process focus-transfer dance). Emits an `INI_SECTION_WINDOWER<<<` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_windower` Multi-Turn tool. |
 | **File-Creator** | Write a file. |
 | **File-Interpreter / File-Extractor** | Document parsing (DOCX, PPTX, XLSX, PDF, …); raw text extraction with strings-fallback for unknowns. |
 | **Image-Interpreter** | LLM vision analysis of images. |
@@ -1126,7 +1127,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 28. Wrapped chat-agent tools (40)
+## 28. Wrapped chat-agent tools (41)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -1136,7 +1137,7 @@ Each wrapped tool launches an isolated, sequenced runtime copy of a workflow age
 | **DevOps & infra** | `chat_agent_gitter`, `chat_agent_dockerer`, `chat_agent_kuberneter`, `chat_agent_jenkinser`, `chat_agent_ssher`, `chat_agent_scper` |
 | **Data & interpretation** | `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_file_creator`, `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`, `chat_agent_summarize_text` |
 | **Notifications & comms** | `chat_agent_send_email`, `chat_agent_notifier`, `chat_agent_telegramer`, `chat_agent_whatsapper`, `chat_agent_recmailer` |
-| **Desktop UI automation** | `chat_agent_shoter` (read-only), `chat_agent_keyboarder`, `chat_agent_mouser` |
+| **Desktop UI automation** | `chat_agent_shoter` (read-only), `chat_agent_keyboarder`, `chat_agent_mouser`, `chat_agent_windower` |
 | **Routing** | `chat_agent_asker` |
 | **Archives & decompilation** | `chat_agent_j_decompiler`, `chat_agent_de_compresser` |
 | **Game engines** | `chat_agent_unrealer` (drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket; canvas counterpart is the Unrealer workflow agent — see §57) |
@@ -1975,7 +1976,7 @@ The backend currently exposes 103 routes. Highlights:
 
 ### Connection updates (canvas auto-configuration)
 
-`/update_<agent>_connection/<agent_name>/` for every agent type that has connections — Starter, Ender, Stopper, Raiser, Emailer, Monitor-Log, Notifier, Executer, Pythonxer, Sqler, Whatsapper, Recmailer, OR, AND, Croner, Mover, Mouser, Keyboarder, Sleeper, Cleaner, Deleter, Asker, Forker, Dockerer, Pser, Kuberneter, Apirer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Counter, File-Interpreter, Image-Interpreter, Gatewayer, Gateway-Relayer, Node-Manager, File-Creator, File-Extractor, J-Decompiler, Kyber-KeyGen/Cipher/DeCipher, Parametrizer, FlowBacker, Barrier, Googler, TeleTlamatini, WhatsTlamatini, ACPXer.
+`/update_<agent>_connection/<agent_name>/` for every agent type that has connections — Starter, Ender, Stopper, Raiser, Emailer, Monitor-Log, Notifier, Executer, Pythonxer, Sqler, Whatsapper, Recmailer, OR, AND, Croner, Mover, Mouser, Keyboarder, Windower, Sleeper, Cleaner, Deleter, Asker, Forker, Dockerer, Pser, Kuberneter, Apirer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Counter, File-Interpreter, Image-Interpreter, Gatewayer, Gateway-Relayer, Node-Manager, File-Creator, File-Extractor, J-Decompiler, Kyber-KeyGen/Cipher/DeCipher, Parametrizer, FlowBacker, Barrier, Googler, TeleTlamatini, WhatsTlamatini, ACPXer.
 
 Plus the Parametrizer-specific pair:
 
@@ -2374,6 +2375,7 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 | **Notifier** | LangGraph-based browser-notification agent. |
 | **output_agents** | Config field used by Ender, Stopper, Cleaner for downstream canvas wiring (vs `target_agents` for "agents to start"). |
 | **Parametrizer** | Strict single-lane queue that maps source-agent log segments into target-agent config.yaml. |
+| **Playwrighter** | Tlamatini agent that drives a REAL browser (Playwright — Chromium/Firefox/WebKit) through a scripted, interactive step list (goto/click/fill/wait_for/extract/assert/screenshot/download). Available both as the wrapped Multi-Turn tool `chat_agent_playwrighter` and as a visual canvas node. The 65th entry in the agent catalog. |
 | **Pool** | Directory where deployed agent instances are stored. |
 | **Pser** | LLM-powered fuzzy process finder. |
 | **Pythonxer** | Inline-Python agent with Ruff lint + exit-code gating. |
@@ -2389,12 +2391,17 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 | **Tlamatini** | Nahuatl for "one who knows" — and the name of this assistant. The LLM responds to it as a self-reference. |
 | **TextMeBot** | Third-party WhatsApp messaging API. |
 | **WebSocket** | Full-duplex protocol over TCP. |
+| **Windower** | Deterministic Win32 window manager — locates an application window by title and runs one window-lifecycle operation (focus / minimize / maximize / restore / move / resize / close / topmost / arrange / list). The third member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). |
 
 ---
 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Catalog-of-Prompts Demos & Full Test Suites for Windower + Playwrighter — 2026-05-21** — Two follow-ups that make the desktop/browser pair *demonstrable* and *regression-proof*. First, migration `0095_add_windower_playwrighter_demo_prompts.py` seeds **four new fancy demo prompts** into the Catalog of Prompts (the chat **Prompts** dropdown), two per agent — one basic, one medium — each designed so the agent *physically performs on screen* while the user watches: **51 WINDOW SPOTLIGHT** (Windower basic — launch Notepad, maximize it to the foreground, `list`, close) and **52 WINDOW CHOREOGRAPHY** (Windower medium — restore → arrange left half → right half → top-left quadrant → explicit `move_resize` → enumerate every window → close, one move per call so the window visibly dances around the screen); **53 BROWSER SPOTLIGHT** (Playwrighter basic — open `example.com` with `headless=false` so the real browser is visible, extract the heading, assert the link, full-page screenshot) and **54 BROWSER WIZARD** (Playwrighter medium — a multi-step Wikipedia search with `headless=false`: fill the search box → click → wait for the article → extract the title + first paragraph → assert → screenshot). Each prompt renders the agent's house-style HTML report (banner in the agent's own canvas gradient + an `exec-report-table` + a closing banner, all WCAG-contrast-safe per the Prime Directive) and reminds the user to tick **only the Multi-Turn checkbox** — NOT ACPX, because `chat_agent_windower` / `chat_agent_playwrighter` are standard wrapped Multi-Turn tools, not behind the ACPX/Skill surface (unlike the 0090 Reviewer/Analyzer *skill* demos). The four prompts **append** at slots 51-54 with no renumber, preserving the catalog's gap-free `prompt-1..54` contiguity contract (the dropdown breaks at the first missing slot); forward+reverse migration round-trips were verified clean. Second, two comprehensive automated test suites land: `agent/test_windower_agent.py` (**54 tests**) and `agent/test_playwrighter_agent.py` (**54 tests**), both following the established `test_de_compresser.py` pattern — the pool-agent module is loaded via `importlib.util.spec_from_file_location` with a cwd save/restore, and the Win32 API / a real browser are NEVER touched (Windower's `enum_windows` + `win32gui` are mocked; Playwrighter runs against a fake `playwright.sync_api` injected into `sys.modules`). They cover title-matching modes, arrange/tile geometry, the `AttachThreadInput` focus dance, every Windower action verb and every Playwrighter step verb, the `main()` end-stage contract (downstream always triggered + exactly one INI_SECTION block), and full registry/contract/migration integration. Verified: ruff clean, ESLint 0 errors, all 108 new tests green (162 with the related suites), no migration drift. Agent/skill counts unchanged (**66** / **23**) — this is demonstration + test hardening, not new capability.
+
+- **Added Windower Agent — The Win32 Window Manager — 2026-05-21** — The agent catalog grows to **66** with **Windower**, the third member of the desktop-UI trio: where **Mouser** clicks inside a window and **Keyboarder** types into one, **Windower** manages the *window itself*. On trigger it locates an application window by title — `match_mode` ∈ `substring` (default) / `exact` / `regex`, with `match_index` to pick among same-titled windows — and runs exactly ONE window-lifecycle operation: `focus` (raise / bring to front), `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close` (by title), `topmost` / `untopmost` (always-on-top), or `arrange` (snap / tile to a screen region: left / right / top / bottom halves, the four quadrants, center, or full). It can also `list` every open window with its position, size, and state. It is **deterministic** (no LLM), implemented **self-contained on the Win32 API** (pywin32 — `win32gui` / `win32con` / `win32process` — plus `ctypes`), porting the window-management subset of Microsoft's **Windows-MCP** (`https://github.com/CursorTouch/Windows-MCP`) — including the reliable cross-process focus-transfer **`AttachThreadInput`** dance that lets a background process raise a foreground window without the OS rejecting the request. It emits one atomic `INI_SECTION_WINDOWER<<<` block (header `action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`; body = a result description or the formatted window list), so Parametrizer can chain its output (e.g. read `state` / geometry) into a downstream agent, and it ALWAYS triggers `target_agents` (success OR failure) so a Forker can branch on `{matched}` / `{state}`. Two surfaces ship in lock-step, the same dual pattern as Playwrighter and Unrealer: the visual **Windower** canvas node (`config.yaml` fields `action`, `window_title`, `match_mode`, `match_index`, `pos_x`, `pos_y`, `width`, `height`, `arrange_mode`, `activate_after`, `fail_if_absent`, `target_agents`) and the wrapped Multi-Turn tool **`chat_agent_windower`** (the LLM passes the operation as a free-form key=value request). It is **state-changing** (it moves, resizes, focuses, and closes real windows), so its row appears in the Exec Report. Wiring follows the established 8-step agent pattern: migrations `0093` (Agent row) + `0094` (Tool row); `views.update_windower_connection_view` + the `POST /update_windower_connection/<agent_name>/` route; Parametrizer source fields registered in `agent/services/agent_contracts.py` and `parametrizer.py`; the desktop-UI canvas gradient; the four ACP JS files plus the `eslint.config.mjs` cross-file global. As an Action agent it starts downstream agents. Wrapped chat-agent tools move to **41** and total Multi-Turn tools to **73** (20 core + 41 wrapped + 12 ACPX/Skill). The reference companions live in README §9.5, `agents_descriptions.md`, `docs/claude/agents.md`, and `agent/agents/flowcreator/agentic_skill.md`.
 
 - **Added Playwrighter Agent — Scripted Interactive Browser Automation — 2026-05-20** — The agent catalog grows to **65** with **Playwrighter**, the first agent that drives a *real* browser through a scripted, interactive flow. Where **Crawler** does a one-shot static `urllib` fetch and **Googler** only runs a web search, Playwrighter (built on **Playwright** — Chromium / Firefox / WebKit) walks an ordered list of declarative steps — `goto`, `click`, `dblclick`, `fill`, `type`, `press`, `select`, `check`/`uncheck`, `wait_for`, `wait`, `extract_text`, `extract_attr`, `screenshot`, `assert_visible`, `assert_text`, `download` — so it can log into a site, submit a multi-step form, click through a wizard, scrape a JavaScript-rendered single-page-app behind a login, run an end-to-end UI check, or capture a screenshot of a specific post-interaction state. It is **deterministic** (no LLM), supports a `headless` toggle (set `false` to watch it drive) and `storage_state_in`/`storage_state_out` for carrying a logged-in session across runs, emits one atomic `INI_SECTION_PLAYWRIGHTER<<<` block (`start_url`, `final_url`, `status`, `steps_run`, `assert_result`, plus a `response_body` of extracted values + step trace), and ALWAYS triggers `target_agents` (success OR failure) so a downstream Forker can branch on `{status}` / `{assert_result}` and Parametrizer can pipe scraped data onward. Two surfaces ship in lock-step, the same dual pattern as Unrealer: the wrapped Multi-Turn tool **`chat_agent_playwrighter`** (the LLM passes the whole script as a single JSON string in `steps_json`, because the flat key=value request grammar cannot express a list-of-dicts; the agent `json.loads` it and it wins over the YAML `steps`) and the visual **Playwrighter** canvas node (the YAML `steps` list is the canvas authoring form). Wiring follows the established 8-step agent pattern: migrations `0091_add_playwrighter` (Agent row) + `0092_add_chat_agent_playwrighter_tool` (Tool row); `views.update_playwrighter_connection_view` + URL route; Parametrizer source fields registered in `agent/services/agent_contracts.py` (`_PARAMETRIZER_OUTPUT_FIELDS`, auto-discovered contract) and `parametrizer.py` (`SECTION_AGENT_TYPES`); `_EXEC_REPORT_TOOLS` under `agent_key="playwrighter"` (state-changing — it submits forms, logs in, downloads files); planner capability hints tuned so it out-scores Googler/Crawler only on interactive/authenticated/multi-step prompts; the "Theatre Spotlight" canvas gradient (curtain-violet → spotlight-magenta → peacock-teal → aqua-mint, a nod to Playwright's two-theatre-masks logo, distinct from every other 4-color gradient); the four ACP JS files plus the `eslint.config.mjs` cross-file global. Self-contained pool subprocess: it calls `playwright.sync_api` directly (no `ThreadPoolExecutor` — that is only needed by the in-process `googler` tool, which runs inside Django Channels' asyncio loop). Tool counts move to **72** Multi-Turn tools (20 core + **40** wrapped chat-agent + 12 ACPX/Skill). Verified end-to-end: ruff clean, ESLint 0 errors, both migrations applied, 19 targeted tests (Exec-Report capture + flow contracts) green, and `get_mcp_tools()` binds `chat_agent_playwrighter` for a total of 72. The reference companions live in README §9.5, `agents_descriptions.md`, `docs/claude/agents.md`, and `agent/agents/flowcreator/agentic_skill.md` entry #64.
 

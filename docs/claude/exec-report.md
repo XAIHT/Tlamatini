@@ -47,6 +47,11 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # button events at whatever window is at the target coordinates and
     # may switch the foreground window. Captured under its own agent_key.
     "chat_agent_mouser":       ("mouser",         "Mouser"),
+    # Windower is state-changing — it moves / resizes / minimizes / maximizes
+    # / restores / closes / pins application windows (focus-only and the
+    # read-only ``list`` action share the same agent_key so a mixed flow
+    # renders as one "List of Windower Operations" table).
+    "chat_agent_windower":     ("windower",       "Windower"),
     # ACPX child-process launchers and the Skill harness invoker —
     # spawn / send / send_and_wait / kill / relay all share the ``acpx``
     # agent_key so they merge into one "List of ACPx Operations" table;

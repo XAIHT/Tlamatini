@@ -75,4 +75,4 @@ Registration (3 places):
 
 The generic parser (`_parse_section_content` + `_section_regex`) in `parametrizer.py` handles all agents with ~90 lines. No per-agent parser code needed.
 
-Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, googler, acpxer, shoter, mouser, unrealer, reviewer, analyzer, playwrighter.
+Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, googler, acpxer, shoter, mouser, windower, unrealer, reviewer, analyzer, playwrighter.

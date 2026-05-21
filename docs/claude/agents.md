@@ -94,7 +94,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 ---
 
-## All 65 Workflow Agent Types
+## All 66 Workflow Agent Types
 
 > **Single source of truth for descriptions**: `agents_descriptions.md` at the repo root. The Django view `agent.views.agentic_control_panel` parses the `## Workflow Agents` tables in that file (with `README.md` as a legacy fallback for older deployments) and injects the `Description` column into the page as `agent_purpose_map` JSON. The frontend uses each entry as the **hover tooltip** over the sidebar agent and as the **canvas Description dialog body** on right-click. Editing a row's `Description` cell there changes both human docs AND the live UI text. `build.py` ships `agents_descriptions.md` next to the executable in frozen mode so the resolution works in both modes. The lookup is case- and punctuation-insensitive (`re.sub(r'[^a-z0-9]+', '', name.lower())`), so `Kyber-KeyGen`, `Kyber KeyGen`, and `kyberkeygen` all map to the same entry.
 
@@ -140,6 +140,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **Shoter** - Screenshot capture
 - **Mouser** - Mouse/keyboard simulation (PyAutoGUI)
 - **Keyboarder** - Keyboard typing / hotkey automation
+- **Windower** - Window manager (Win32/pywin32, self-contained, ports the window-management subset of Microsoft's Windows-MCP incl. the AttachThreadInput focus dance). Acts on the WINDOW itself (peer of Mouser=clicks-inside, Keyboarder=types-into): `action` ∈ `list` / `focus` / `minimize` / `maximize` / `restore` / `move` / `resize` / `move_resize` / `close` / `topmost` / `untopmost` / `arrange` (snap/tile). Matches `window_title` by `substring`/`exact`/`regex` (+ `match_index`); emits `INI_SECTION_WINDOWER` (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`); always triggers `target_agents`. State-changing → in the Exec Report. Canvas counterpart of the wrapped `chat_agent_windower` Multi-Turn tool.
 - **File-Creator** - Creates files with specified content
 - **File-Interpreter** - LLM reads and interprets file contents
 - **File-Extractor** - Raw text extraction (PDF, DOCX, etc.)

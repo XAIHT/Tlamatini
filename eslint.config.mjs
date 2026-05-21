@@ -380,6 +380,7 @@ export default [
                 updateCrawlerConnection: "readonly",
                 updateSummarizerConnection: "readonly",
                 updateMouserConnection: "readonly",
+                updateWindowerConnection: "readonly",
                 updateCounterConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
