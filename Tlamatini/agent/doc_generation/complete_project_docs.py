@@ -372,6 +372,14 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("tkinter" in subject or "unstable" in subject or "native dialog" in subject for subject in subjects):
+        highlights.append(
+            "Today’s current tagged release is v1.4.2: Tkinter was removed from the unstable runtime-facing dialog path in favor of native Windows dialog helpers, reducing UI instability around file and folder picking while keeping the browser/operator flow intact."
+        )
+    if any("reporting tables" in subject or "widths" in subject for subject in subjects):
+        highlights.append(
+            "Reporting-table layout was also tightened during the same window, improving readability of generated execution/reporting surfaces without changing the underlying operational data."
+        )
     if any(("reviewer" in subject and "state" in subject) or ("reviewer" in subject and "handling" in subject) for subject in subjects):
         highlights.append(
             "Today’s reviewer follow-up is a behavioral-accuracy patch: the review prompt now distinguishes uncommitted working-tree diffs from committed history and teaches the model Tlamatini’s managed-secret scrub convention, reducing false positives around local credentials in config files."
@@ -622,10 +630,16 @@ ACPX_SKILLS_GUIDE = [
     "The diagnostics view cross-checks skill dependencies against disabled tools, disabled MCPs, missing ACPX agents, and orphan database rows whose SKILL.md disappeared from disk.",
 ]
 
+OPERATOR_SURFACE_COUNTS_GUIDE = [
+    "The current README header now advertises the operator surface more explicitly: 64 workflow agents, 71 Multi-Turn tools, 12 ACPX tools, and 23 skills.",
+    "The 71-tool figure is documented as 20 core Python tools, 39 wrapped chat-agent tools, and 12 ACPX/Skill tools bound selectively by the planner per request.",
+    "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
+]
+
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.4.1` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.4.2` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
 ]
 
 REVIEWER_ANALYZER_GUIDE = [
@@ -641,9 +655,15 @@ REVIEWER_ANALYZER_SURFACES = [
 ]
 
 REVIEWER_PRECISION_GUIDE = [
-    "The current `v1.4.1` refinement tightens Reviewer accuracy rather than adding a new surface: when `diff_ref` is empty, the review prompt now labels the diff as the uncommitted working tree plus staged area, so the model must not describe those findings as already committed or pushed.",
+    "The `v1.4.1` Reviewer refinement tightened accuracy rather than adding a new surface: when `diff_ref` is empty, the review prompt labels the diff as the uncommitted working tree plus staged area, so the model must not describe those findings as already committed or pushed.",
     "The same patch teaches the model Tlamatini’s managed-secret convention: `agent/config.json` and selected `agent/agents/*/config.yaml` files can hold live local credentials in a keyed working copy, while `regen_secrets.py --mode push-able` scrubs them back to placeholders before commit.",
     "That guidance is mirrored into the `code-review` SKILL.md package too, keeping the chat-surface review behavior and the canvas Reviewer agent aligned on commit-state wording and secret-severity expectations.",
+]
+
+NATIVE_DIALOGS_GUIDE = [
+    "The current tagged release `v1.4.2` removes Tkinter from the unstable runtime-facing dialog path and replaces it with `Tlamatini/agent/native_dialogs.py`, a native Windows dialog bridge used by browser-triggered pickers.",
+    "This change pairs with the existing DB and operator dialogs: file and folder selection still feels local and GUI-first, but the fragile Tkinter dependency is no longer part of the interactive runtime path that users trigger from chat or ACP surfaces.",
+    "The patch arrived with dedicated tests (`test_native_dialogs.py`) and with follow-up orphan-reaper/runtime adjustments, so the release reads as a stability pass rather than a cosmetic refactor.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -1071,8 +1091,14 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     for item in REVIEWER_ANALYZER_SURFACES:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Operator surface counts", styles["h2"]))
+    for item in OPERATOR_SURFACE_COUNTS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Reviewer precision patch in v1.4.1", styles["h2"]))
     for item in REVIEWER_PRECISION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Native dialogs and Tkinter removal in v1.4.2", styles["h2"]))
+    for item in NATIVE_DIALOGS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("ACPX-Skills menu", styles["h2"]))
     for item in ACPX_SKILLS_GUIDE:
@@ -1149,8 +1175,14 @@ def build_pdf(context: dict) -> None:
     story.append(p("Reviewer and Analyzer spotlight", styles["h2"]))
     for item in REVIEWER_ANALYZER_GUIDE + REVIEWER_ANALYZER_SURFACES:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Operator surface counts", styles["h2"]))
+    for item in OPERATOR_SURFACE_COUNTS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Reviewer precision spotlight", styles["h2"]))
     for item in REVIEWER_PRECISION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Native-dialog spotlight", styles["h2"]))
+    for item in NATIVE_DIALOGS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unrealer spotlight", styles["h2"]))
     for item in UNREAL_MCP_GUIDE + UNREAL_RUNTIME_GUIDE:
@@ -1597,7 +1629,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach them", REVIEWER_ANALYZER_SURFACES, THEME["jade"], "reviewer-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Reviewer Precision In v1.4.1", "commit-state and secret-handling refinement", THEME["jade"])
+    slide, audit = add_slide(prs, "Reviewer Precision In v1.4.2", "commit-state and secret-handling refinement", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Behavioral accuracy patch", REVIEWER_PRECISION_GUIDE, THEME["jade"], "reviewer-c", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
         "Local working-copy credentials in managed config files are no longer described as already committed when the diff is still uncommitted or only staged.",
