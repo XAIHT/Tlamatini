@@ -1629,13 +1629,31 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach them", REVIEWER_ANALYZER_SURFACES, THEME["jade"], "reviewer-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Reviewer Precision In v1.4.2", "commit-state and secret-handling refinement", THEME["jade"])
+    slide, audit = add_slide(prs, "Operator Surface Counts", "README header and planner-facing inventory", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Current counts", OPERATOR_SURFACE_COUNTS_GUIDE, THEME["copper"], "surface-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why the counts matter", [
+        "The README now surfaces the same operator picture the app exposes in practice: broad capability, selective planner binding, and a capped tool budget per request.",
+        "Those counts complement the 64-agent bestiary instead of replacing it: skills, wrapped tools, and ACPX tools are different layers of the same operating surface.",
+        "For dossier readers, this closes a gap between the capability narrative and the quick-glance repo badges at the top of the handbook.",
+    ], THEME["jade"], "surface-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Reviewer Precision In v1.4.1", "commit-state and secret-handling refinement", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Behavioral accuracy patch", REVIEWER_PRECISION_GUIDE, THEME["jade"], "reviewer-c", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
         "Local working-copy credentials in managed config files are no longer described as already committed when the diff is still uncommitted or only staged.",
         "Review findings stay stricter on true secrets in source code or outside the managed scrub-path set, so the patch reduces noise without weakening real security findings.",
         "The same rules apply in both the canvas Reviewer agent and the `code-review` skill, keeping the two review surfaces behaviorally aligned.",
     ], THEME["amber"], "reviewer-d", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Native Dialogs In v1.4.2", "Tkinter removed from the unstable runtime path", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", NATIVE_DIALOGS_GUIDE, THEME["amber"], "native-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Release meaning", [
+        "The repo is now tagged `v1.4.2`, and this stability-focused patch is the main Git-side change beyond the earlier `v1.4.1` documentation and Reviewer improvements.",
+        "It preserves the operator experience of Browse-driven file and folder picking while removing a UI technology that was destabilizing the application.",
+        "Because the fix landed with tests and runtime cleanup updates, it belongs in the technical dossier even though the markdown handbook has not yet been fully rewritten around it.",
+    ], THEME["jade"], "native-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Gatewayer And External Signals", "inbound automation boundary", THEME["amber"])
