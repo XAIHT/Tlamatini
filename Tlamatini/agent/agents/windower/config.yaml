@@ -1,0 +1,77 @@
+# Windower Agent Configuration
+#
+# Windower is the WINDOW MANAGER of the agent fleet — the peer of Mouser
+# (pointer) and Keyboarder (keys). It locates an application window by its
+# title and performs a lifecycle operation on the window ITSELF (focus, move,
+# resize, minimize, maximize, restore, close, set always-on-top, tile/snap), or
+# enumerates every open window with geometry + state. It does NOT click controls
+# inside a window (that is Mouser) and it does NOT type (that is Keyboarder).
+#
+# Implemented self-contained with the Win32 API (pywin32: win32gui / win32con /
+# win32process + ctypes), mirroring the window-management subset of Microsoft's
+# Windows-MCP — including the AttachThreadInput focus-transfer dance that makes
+# bringing a window to the foreground reliable across process boundaries.
+
+# action — which window operation to run:
+#   - "list"        : enumerate EVERY visible top-level window (title, state,
+#                     position, size, pid). window_title is optional here — when
+#                     set it filters the list; when empty it returns them all.
+#   - "focus"       : restore-if-minimized then bring the matched window to the
+#                     foreground (reliable cross-process focus dance).
+#   - "minimize"    : minimize the matched window to the taskbar.
+#   - "maximize"    : maximize the matched window.
+#   - "restore"     : restore the matched window to its normal (un-min/un-max) size.
+#   - "move"        : move the matched window to (pos_x, pos_y), keeping its size.
+#   - "resize"      : resize the matched window to (width, height), keeping its position.
+#   - "move_resize" : move AND resize to (pos_x, pos_y, width, height) in one op.
+#   - "close"       : politely close the matched window (WM_CLOSE — same as the X
+#                     button; an app may show its own "Save changes?" dialog).
+#   - "topmost"     : pin the matched window always-on-top.
+#   - "untopmost"   : clear the always-on-top flag.
+#   - "arrange"     : snap/tile the matched window into a region of its monitor's
+#                     work area (see arrange_mode).
+action: "focus"
+
+# Title (or substring/regex) of the window to act on. Matched against the live
+# window list. Leave empty ONLY for action="list" (enumerate everything).
+window_title: ""
+
+# How window_title is matched against each window's title:
+#   - "substring" : case-insensitive substring match (default; most forgiving)
+#   - "exact"     : case-insensitive full-title equality
+#   - "regex"     : Python regular expression (re.search, case-insensitive)
+match_mode: "substring"
+
+# When several windows match window_title, which one to act on (0-based,
+# ordered by Z-order as returned by EnumWindows). 0 = the first match.
+match_index: 0
+
+# Target position — used by action ∈ {move, move_resize}. Screen pixels.
+pos_x: 100
+pos_y: 100
+
+# Target size — used by action ∈ {resize, move_resize}. Pixels.
+width: 1280
+height: 800
+
+# arrange_mode — used only by action="arrange". Snaps the window into a region
+# of its monitor's work area (the desktop minus the taskbar):
+#   left | right | top | bottom            (halves)
+#   top-left | top-right | bottom-left | bottom-right   (quadrants)
+#   center                                  (centred at `width` x `height`)
+#   full                                    (fill the entire work area)
+arrange_mode: "left"
+
+# After a geometry op (move/resize/move_resize/arrange/topmost), also bring the
+# window to the foreground. Ignored by list/minimize/close.
+activate_after: true
+
+# When no window matches window_title:
+#   - false (default) : log a warning, emit a matched=false section, and STILL
+#                       trigger target_agents (soft no-op — keeps the chain alive).
+#   - true            : exit with a non-zero code (hard failure) so an upstream
+#                       gate / Forker can branch on the failure.
+fail_if_absent: false
+
+# Downstream agents to start after the window operation completes.
+target_agents: []

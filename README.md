@@ -11,15 +11,15 @@
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
-  <a href="#95-agent-catalog-the-65-types-by-family"><img src="https://img.shields.io/badge/AGENTS-65-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="65 Agents" /></a>
-  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-72-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="72 Multi-Turn Tools" /></a>
+  <a href="#95-agent-catalog-the-66-types-by-family"><img src="https://img.shields.io/badge/AGENTS-66-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="66 Agents" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-73-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="73 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
   <a href="#311-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-23-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="23 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **65 drag-and-drop agents**.
+**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **66 drag-and-drop agents**.
 
 > **Local-first by default**: the full RAG pipeline, the Multi-Turn execution loop, and every workflow agent run on your machine — embeddings and chat are driven by your local [Ollama](https://ollama.com/) install. Cloud LLMs (Claude API, Ollama Pro/Max) and ACPX delegation to cloud CLIs are opt-in per-request, never the default. Sensitive code never leaves the box unless you explicitly route it out.
 
@@ -59,6 +59,8 @@
   - [3.9. Why Chat-created flows are safer now](#39-why-chat-created-flows-are-safer-now)
   - [3.10. The **DB** menu — Backup, Set DB, and the start-up swap-in](#310-the-db-menu--backup-set-db-and-the-start-up-swap-in)
   - [3.11. The **ACPX-Skills** menu — Browse, Configure, Diagnostics, Reload](#311-the-acpx-skills-menu--browse-configure-diagnostics-reload)
+  - [3.12. Tutorial: command a window from chat (`chat_agent_windower`)](#312-tutorial-command-a-window-from-chat-chat_agent_windower)
+  - [3.13. Tutorial: drive a browser from chat (`chat_agent_playwrighter`)](#313-tutorial-drive-a-browser-from-chat-chat_agent_playwrighter)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -105,7 +107,7 @@
   - [9.2. The five layers](#92-the-five-layers)
   - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
   - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
-  - [9.5. Agent catalog (the 65 types, by family)](#95-agent-catalog-the-65-types-by-family)
+  - [9.5. Agent catalog (the 66 types, by family)](#95-agent-catalog-the-66-types-by-family)
 - [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
   - [10.1. Why this exists](#101-why-this-exists)
   - [10.2. How the check fires (the hook point)](#102-how-the-check-fires-the-hook-point)
@@ -144,7 +146,7 @@
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 65 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 66 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -346,7 +348,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of Tlamatini's **72 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 40 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
+- The planner picks the relevant subset of Tlamatini's **73 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 41 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
 - The unified-agent loop runs **up to 100 iterations** — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
@@ -593,6 +595,32 @@ By design, the `Skill` DB table stays at "enumeration + enable/disable" only, ex
 - Frontend dialogs: `agent/static/agent/js/skills_dialog.js` (the Configure / Browse / Diagnostics / Reload dialogs) + `agent/static/agent/css/skills_dialog.css`.
 - Coverage: 14 tests in `agent/tests.py` (`SkillsAdminEndpointTests`, `SkillsToolSurfaceGatingTests`, `SkillsNavbarTemplateContractTests`).
 
+### 3.12. Tutorial: command a window from chat (`chat_agent_windower`)
+
+**Windower** is the desktop **window manager** of the chat surface — the third member of the desktop-UI trio: where **Mouser** clicks *inside* a window and **Keyboarder** types *into* one, Windower commands the **window itself**. It is implemented self-contained on the Win32 API (pywin32 `win32gui`/`win32con`/`win32process` + `ctypes`), porting the window-management subset of Microsoft's [Windows-MCP](https://github.com/CursorTouch/Windows-MCP) — including the cross-process `AttachThreadInput` focus-transfer dance that lets a background process reliably raise a foreground window. It is **Windows-only** and **state-changing**, so it appears in the Exec Report.
+
+Tick **only the Multi-Turn** checkbox (Windower is a normal Multi-Turn tool — it is **not** behind the ACPX/Skill surface, so the ACPX checkbox is *not* required). Then ask, for example:
+
+> *"Open Notepad, bring it to the front and maximize it, then tell me its size."*
+
+Tlamatini will launch the app (`chat_agent_executer`), confirm it is up (`chat_agent_window_present`), then call **`chat_agent_windower`** with `action='maximize'` and `window_title='Notepad'` — and you will **watch the window come to the foreground and fill the screen**. The tool promotes its result fields (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`) to the top level of its JSON return, so the answer can report the live geometry without parsing logs.
+
+`action` can be any of: `list` (enumerate every open window with its geometry + state), `focus`, `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close` (by title), `topmost` / `untopmost` (always-on-top), or `arrange` (snap/tile to left/right/top/bottom halves, the four quadrants, center, or full). Matching is by `match_mode` ∈ `substring` (default) / `exact` / `regex`, with `match_index` to pick among same-titled windows. **Use Windower — not Mouser — whenever the goal is the window as a whole** (bring to front, tile, resize, close by title).
+
+Two ready-made showcases live in the chat **Prompts** dropdown (the Catalog of Prompts): **WINDOW SPOTLIGHT** (basic — maximize + list + close) and **WINDOW CHOREOGRAPHY** (medium — restore → tile left → tile right → top-left quadrant → move/resize → list → close, so a single window visibly dances around the screen). Pick one, send, and watch.
+
+### 3.13. Tutorial: drive a browser from chat (`chat_agent_playwrighter`)
+
+**Playwrighter** drives a **real browser** (Playwright — Chromium / Firefox / WebKit) through a scripted, interactive, stateful flow. Where **Crawler** does a one-shot static fetch and the `googler` tool only searches, Playwrighter clicks, fills forms, waits for elements, extracts text/attributes, screenshots, asserts, and downloads — so it can log into a site, submit a multi-step form, click through a wizard, or scrape a JavaScript-rendered single-page-app behind a login. It needs Playwright installed (`pip install playwright && playwright install`); set **`headless=false`** to *watch* it drive.
+
+Tick **only the Multi-Turn** checkbox (Playwrighter, like Windower, is a normal Multi-Turn tool — ACPX is not required). Then ask, for example:
+
+> *"Open Wikipedia in a visible browser, search for ‘Nahuatl’, and tell me the first paragraph of the article."*
+
+Tlamatini calls **`chat_agent_playwrighter`** with `start_url`, `headless='false'`, and the whole script as a single JSON string in **`steps_json`** (the flat `key=value` request grammar cannot express a list-of-dicts, so the script is passed as JSON and the agent `json.loads` it). Each step is `{"action": <verb>, ...}`; supported verbs are `goto`, `click`, `dblclick`, `fill`, `type`, `press`, `select`, `check`/`uncheck`, `wait_for`, `wait`, `extract_text`, `extract_attr`, `screenshot`, `assert_visible`, `assert_text`, and `download`. The run reports `status`, `final_url`, `steps_run`, `assert_result`, and the extracted values, so a downstream step (or a Forker, on the canvas) can branch on the verdict.
+
+Two ready-made showcases live in the **Prompts** dropdown: **BROWSER SPOTLIGHT** (basic — open `example.com` with a visible browser, extract the heading, assert the link, screenshot) and **BROWSER WIZARD** (medium — a visible multi-step Wikipedia search: fill → click → wait → extract → assert → screenshot). The canvas counterpart is the visual **Playwrighter** node (see §4 and §9.5); the YAML `steps` list is its authoring form.
+
 ---
 
 ## 4. Visual Workflow Designer (`/agentic_control_panel/`)
@@ -738,7 +766,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-23 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, Mouser, **Unrealer**, **Reviewer**, **Analyzer**.
+24 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**.
 
 Canonical example:
 
@@ -1068,7 +1096,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 65 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 66 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
@@ -1224,7 +1252,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 | 2. Runtime MCP services | System-Metrics (WebSocket) + Files-Search (gRPC) daemons. | `agent/mcp_*` |
 | 3. Context fetcher chains | LCEL sidecars that inject system / files context. | `agent/chain_*_lcel.py` |
 | 4. Main answer chains | Basic / History-aware / Unified. `factory.py` monkey-patches `invoke()`. | `agent/rag/chains/` |
-| 5. Unified-agent tools | **72** synchronous `@tool` functions (20 core Python + 40 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
+| 5. Unified-agent tools | **73** synchronous `@tool` functions (20 core Python + 41 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
 
 ### 9.3. Multi-Turn execution pipeline
 
@@ -1268,14 +1296,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 9.5. Agent catalog (the 65 types, by family)
+### 9.5. Agent catalog (the 66 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |

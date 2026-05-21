@@ -982,6 +982,25 @@ async function updateMouserConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateWindowerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_windower_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Windower ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Windower ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Windower ${agentId}:`, error);
+    }
+}
+
 async function updateFileInterpreterConnection(agentId, targetAgentId, action, type = 'target') {
     try {
         const response = await fetch(`/agent/update_file_interpreter_connection/${agentId}/`, {

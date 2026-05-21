@@ -102,6 +102,7 @@ When multiple agents COULD accomplish a task, you MUST follow these priority rul
 | Docker operations | **Dockerer** | Executer with `docker` commands | Dockerer has fallback mechanisms, compose support, and structured logging. |
 | Create a file | **File-Creator** | Pythonxer writing to disk | File-Creator is purpose-built for single-file creation with configurable path and content. |
 | Take a screenshot | **Shoter** | Pythonxer with pyautogui | Shoter is a one-config agent with directory output and canvas integration. |
+| Focus/move/resize/min/max/close/tile a WINDOW, or list open windows | **Windower** | Mouser, or Pythonxer with pygetwindow | Windower acts on the window itself via the Win32 API (reliable cross-process focus, geometry, tiling). Mouser only CLICKS controls inside a window; it cannot move/resize/close/enumerate windows. |
 | Google search | **Googler** | Crawler or Pythonxer | Googler uses Playwright to automate Google search and extract top N results. |
 
 **When IS Pythonxer the right choice?**
@@ -1560,14 +1561,36 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 65. FlowCreator
+### 65. Windower
+- **Purpose**: The WINDOW MANAGER of the desktop-UI trio (Windower=the window itself, Mouser=clicks inside it, Keyboarder=typing into it). Locates an application window by title and runs ONE window lifecycle operation on it — focus/raise, minimize, maximize, restore, move, resize, move+resize, close, pin always-on-top / clear it, or tile/snap to a screen region — OR enumerates every open window with its geometry and state. Emits an `INI_SECTION_WINDOWER` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, plus a `response_body` describing the result / window list). Implemented self-contained with the Win32 API (pywin32). Always triggers `target_agents` (success or soft no-op).
+- **Used for**: Managing the window as a whole — NOT clicking controls inside it (that is Mouser) and NOT typing (that is Keyboarder). Use it to bring a freshly launched app to the foreground before typing, to tile two windows side-by-side, to maximize a dashboard before screenshotting, to close a window by title at the end of a flow, or to enumerate which windows are open so a downstream agent can branch on them.
+- **Aimed at**: Treating window management as an unattended, routable flow step. Pair it after Executer (launch the app) and a `window_present`-style gate, then before Keyboarder/Mouser (focus the right window first), and at the end of a desktop-UI flow (close the window). A downstream Forker can branch on `{matched}` / `{state}`; a Parametrizer can copy `{width}`/`{height}` into another node. The visual-canvas counterpart of the `chat_agent_windower` Multi-Turn tool.
+- **Application example**: In a UI automation flow, a Starter launches Notepad via an Executer, a Windower (`action: focus`, `window_title: Notepad`) brings it reliably to the foreground, a Keyboarder types into it, a Shoter captures the result, and a final Windower (`action: close`, `window_title: Notepad`) cleans up before the Ender. For tiling: a Windower with `action: arrange`, `arrange_mode: left` snaps a log viewer to the left half so a second window can take the right.
+- **Pool name pattern**: `windower_<n>`
+- **Starts other agents**: YES (always, success or soft no-op)
+- **Config parameters**:
+  - `action`: "focus" (one of: list, focus, minimize, maximize, restore, move, resize, move_resize, close, topmost, untopmost, arrange)
+  - `window_title`: "" (title or substring of the window to act on; optional ONLY for `action: list`, which enumerates every window)
+  - `match_mode`: "substring" (substring / exact / regex matching of `window_title`)
+  - `match_index`: 0 (0-based; which match to act on when several windows share a title)
+  - `pos_x`: 100 (target X — used by move / move_resize)
+  - `pos_y`: 100 (target Y — used by move / move_resize)
+  - `width`: 1280 (target width — used by resize / move_resize / arrange:center)
+  - `height`: 800 (target height — used by resize / move_resize / arrange:center)
+  - `arrange_mode`: "left" (used by `action: arrange` — left / right / top / bottom / top-left / top-right / bottom-left / bottom-right / center / full)
+  - `activate_after`: true (raise the window to the foreground after a geometry op)
+  - `fail_if_absent`: false (when true, hard-fail with a non-zero exit if no window matches, so an upstream gate / Forker can branch on it)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the window operation)
+
+### 66. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (65). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (66). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

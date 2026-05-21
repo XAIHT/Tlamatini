@@ -27,6 +27,15 @@ def populate_initial_values(apps, schema_editor):
     inserts the Reviewer/code-review and Analyzer/security-audit showcases at
     26-27 and slides every idPrompt >= 26 up by +2. See that migration's
     docstring for the post-shift catalog map.
+
+    NOTE (since 0095): four desktop/browser demos are APPENDED at the tail
+    (no renumber) by 0095_add_windower_playwrighter_demo_prompts:
+        51  Windower    basic   (WINDOW SPOTLIGHT)
+        52  Windower    medium  (WINDOW CHOREOGRAPHY)
+        53  Playwrighter basic  (BROWSER SPOTLIGHT)
+        54  Playwrighter medium (BROWSER WIZARD)
+    They drive the wrapped chat_agent_windower / chat_agent_playwrighter tools
+    (Multi-Turn only — NOT behind the ACPX/Skill surface).
     """
     Prompt = apps.get_model('agent', 'Prompt')
 

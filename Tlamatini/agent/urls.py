@@ -121,6 +121,7 @@ urlpatterns = [
     path('update_summarizer_connection/<str:agent_name>/', secure_post(views.update_summarizer_connection_view), name='update_summarizer_connection'),
     path('update_flowhypervisor_connection/<str:agent_name>/', secure_post(views.update_flowhypervisor_connection_view), name='update_flowhypervisor_connection'),
     path('update_mouser_connection/<str:agent_name>/', secure_post(views.update_mouser_connection_view), name='update_mouser_connection'),
+    path('update_windower_connection/<str:agent_name>/', secure_post(views.update_windower_connection_view), name='update_windower_connection'),
     path('execute_flowhypervisor/<str:agent_name>/', secure_post(views.execute_flowhypervisor_view), name='execute_flowhypervisor'),
     path('check_flowhypervisor_alert/<str:agent_name>/', secure_get(views.check_flowhypervisor_alert_view), name='check_flowhypervisor_alert'),
     path('validate_flow/', secure_get(views.validate_flow_view), name='validate_flow'),

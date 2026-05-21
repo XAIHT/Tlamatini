@@ -316,7 +316,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "(alt+n/alt+s/alt+c) are unavailable."
         ),
         example_request="Click Notepad's editing area with movement_type='click_at_window' and window_title='Notepad' and window_anchor='center' and button_click='left'",
-        aliases=("mouser", "mouse", "move mouse", "click", "pointer", "drag", "scroll"),
+        aliases=("mouser", "mouse", "move mouse", "click", "pointer", "drag", "scroll", "click into window", "click the control"),
         security_hints=(
             "mouse", "move mouse", "move the mouse", "mouse pointer",
             "click", "click on", "left click", "right click", "double click",
@@ -331,6 +331,70 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "scroll", "scroll up", "scroll down", "scroll wheel",
             "locate the button", "locate image", "find the button on screen",
             "click where", "click at", "click center", "click top-right",
+        ),
+    ),
+    ChatWrappedAgentSpec(
+        key="windower",
+        template_dir="windower",
+        tool_name="chat_agent_windower",
+        tool_description="Chat-Agent-Windower",
+        display_name="Windower",
+        purpose=(
+            "Manage an application WINDOW by its title — the window manager of the "
+            "desktop-UI trio (Windower=the window itself, Mouser=clicks inside it, "
+            "Keyboarder=typing into it). Use this — NOT chat_agent_mouser — whenever "
+            "the goal is the window as a whole: bring it to the front / focus it, "
+            "minimize, maximize, restore, move, resize, close it by title, pin it "
+            "always-on-top, tile/snap it to a screen edge, OR list every open window "
+            "with its position and size. Mouser is only for clicking a control INSIDE "
+            "a window; reach for Windower when no clicking is involved.\n\n"
+            "Set action ∈ {list | focus | minimize | maximize | restore | move | "
+            "resize | move_resize | close | topmost | untopmost | arrange} and "
+            "window_title='<title or substring>' (window_title is optional ONLY for "
+            "action='list', which enumerates every window). Tune matching with "
+            "match_mode ∈ {substring|exact|regex} and match_index (0-based, when "
+            "several windows share a title). Geometry: move uses pos_x/pos_y; resize "
+            "uses width/height; move_resize uses all four; arrange uses arrange_mode "
+            "∈ {left|right|top|bottom|top-left|top-right|bottom-left|bottom-right|"
+            "center|full}. activate_after=true (default) raises the window after a "
+            "geometry op. Set fail_if_absent=true to hard-fail when no window matches "
+            "(so an upstream gate / Forker can branch on it).\n\n"
+            "RESULT FIELDS (promoted to top-level keys on the wrapped tool's JSON "
+            "return): action, window_title, matched (true/false), match_count, state "
+            "∈ {normal|minimized|maximized|hidden|no_match|no_window_title|"
+            "win32_unavailable}, left, top, width, height. When matched='false' the "
+            "window was not found — adjust window_title/match_mode and retry once.\n\n"
+            "Pair with chat_agent_executer (launch the app first), chat_agent_window_present "
+            "(confirm it is up), chat_agent_keyboarder (type after focusing), and "
+            "chat_agent_mouser (click a specific control). Canonical desktop flow: "
+            "launch app → window_present → Windower(action='focus' or 'maximize') → "
+            "Keyboarder → ... → Windower(action='close') or Keyboarder('alt+f4')."
+        ),
+        example_request="Manage window with action='maximize' and window_title='Notepad' and activate_after=true",
+        aliases=(
+            "windower", "window", "windows", "manage window", "window manager",
+            "focus window", "resize window", "maximize window", "minimize window",
+            "move window", "close window", "arrange windows", "tile window",
+        ),
+        security_hints=(
+            "window", "the window", "manage window", "window manager",
+            "bring to front", "bring the window to front", "bring window to the front",
+            "focus the window", "focus window", "raise the window", "raise window",
+            "switch to the window", "activate the window", "foreground window",
+            "maximize", "maximize the window", "maximise the window", "maximize window",
+            "minimize", "minimize the window", "minimise the window", "minimize window",
+            "restore the window", "restore window", "unminimize",
+            "resize the window", "resize window", "make the window bigger",
+            "make the window smaller", "set the window size", "set window size",
+            "move the window", "move window", "reposition the window",
+            "close the window", "close window", "close by title", "close it by title",
+            "always on top", "always-on-top", "pin the window", "keep on top",
+            "tile the window", "tile windows", "snap the window", "snap to the left",
+            "snap to the right", "arrange windows", "arrange the windows",
+            "left half", "right half", "split screen the window",
+            "list windows", "list the windows", "list open windows",
+            "which windows are open", "what windows are open", "enumerate windows",
+            "show me the open windows", "open windows",
         ),
     ),
     ChatWrappedAgentSpec(

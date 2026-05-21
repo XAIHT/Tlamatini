@@ -146,6 +146,11 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # (focus changes, foreground-window switch, button events fired at
     # whatever window happens to be at the target coordinates).
     "chat_agent_mouser":         ("mouser",         "Mouser"),
+    # Windower is state-changing: it moves / resizes / minimizes / maximizes /
+    # restores / closes / pins application windows (focus-only and the read-only
+    # ``list`` action share the same ``windower`` agent_key on purpose so a mixed
+    # query-and-manage flow renders as one "List of Windower Operations" table).
+    "chat_agent_windower":       ("windower",       "Windower"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every
