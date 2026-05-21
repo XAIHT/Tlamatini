@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -219,6 +219,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'kuberneter': 'kuberneter-agent',
     'apirer': 'apirer-agent',
     'unrealer': 'unrealer-agent',
+    'playwrighter': 'playwrighter-agent',
     'reviewer': 'reviewer-agent',
     'analyzer': 'analyzer-agent',
     'jenkinser': 'jenkinser-agent',
@@ -910,6 +911,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'analyzer') updateAnalyzerConnection(targetId, sourceId, 'remove', 'source');
@@ -1027,6 +1030,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'apirer' && !sourceBeingDeleted) updateApirerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'unrealer' && !targetBeingDeleted) updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'unrealer' && !sourceBeingDeleted) updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'playwrighter' && !targetBeingDeleted) updatePlaywrighterConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'playwrighter' && !sourceBeingDeleted) updatePlaywrighterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'reviewer' && !targetBeingDeleted) updateReviewerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'reviewer' && !sourceBeingDeleted) updateReviewerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'analyzer' && !targetBeingDeleted) updateAnalyzerConnection(targetId, sourceId, 'remove', 'source');
@@ -1476,6 +1481,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'analyzer') updateAnalyzerConnection(targetId, sourceId, 'add', 'source');

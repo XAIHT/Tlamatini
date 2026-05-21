@@ -116,6 +116,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # share this agent_key on purpose so a mixed read-and-mutate flow
     # renders as one cohesive "List of Unrealer Operations" table.
     "chat_agent_unrealer":       ("unrealer",       "Unrealer"),
+    # Playwrighter drives a real browser through a scripted flow: it submits
+    # forms, clicks, logs into sites, downloads files, and otherwise changes
+    # remote/web state. Read-only steps (extract_text / screenshot) share the
+    # same ``playwrighter`` agent_key on purpose so a mixed read-and-act flow
+    # renders as one "List of Playwrighter Operations" table.
+    "chat_agent_playwrighter":   ("playwrighter",   "Playwrighter"),
     "chat_agent_send_email":     ("emailer",        "Emailer"),
     "chat_agent_telegramer":     ("telegramer",     "Telegramer"),
     "chat_agent_whatsapper":     ("whatsapper",     "Whatsapper"),

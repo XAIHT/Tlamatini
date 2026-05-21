@@ -28,6 +28,11 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_move_file":    ("mover",          "Mover"),
     "chat_agent_deleter":      ("deleter",        "Deleter"),
     "chat_agent_apirer":       ("apirer",         "Apirer"),
+    # Playwrighter is state-changing — it drives a real browser, submits
+    # forms, logs into sites and downloads files. Read-only steps
+    # (extract_text/screenshot) share the same agent_key so a mixed flow
+    # renders as one "List of Playwrighter Operations" table.
+    "chat_agent_playwrighter": ("playwrighter",   "Playwrighter"),
     "chat_agent_send_email":   ("emailer",        "Emailer"),
     "chat_agent_telegramer":   ("telegramer",     "Telegramer"),
     "chat_agent_whatsapper":   ("whatsapper",     "Whatsapper"),

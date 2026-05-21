@@ -718,6 +718,39 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             if (!Number.isNaN(n)) config.read_timeout = n;
         }
 
+    // ── Playwrighter ─────────────────────────────────────────────────
+    // Template fields: start_url, browser, headless (bool), timeout_ms (int),
+    // nav_wait_until, user_agent, storage_state_in/out, output_file, and the
+    // chat-only steps_json (a JSON array string). We parse steps_json into a
+    // real ``steps`` list so the generated .flw node carries the canvas
+    // authoring form (the runtime accepts either; the canvas dialog +
+    // Parametrizer expect a parsed list).
+    } else if (lower === 'playwrighter') {
+        set('start_url', pairs.start_url || pairs.url);
+        set('browser', pairs.browser);
+        if (pairs.headless !== undefined && pairs.headless !== '') {
+            config.headless = String(pairs.headless) === 'true';
+        }
+        if (pairs.timeout_ms !== undefined && pairs.timeout_ms !== '') {
+            const n = parseInt(pairs.timeout_ms, 10);
+            if (!Number.isNaN(n)) config.timeout_ms = n;
+        }
+        set('nav_wait_until', pairs.nav_wait_until);
+        set('user_agent', pairs.user_agent);
+        set('storage_state_in', pairs.storage_state_in);
+        set('storage_state_out', pairs.storage_state_out);
+        set('output_file', pairs.output_file);
+        if (pairs.steps_json) {
+            try {
+                const parsed = JSON.parse(pairs.steps_json);
+                if (Array.isArray(parsed) && parsed.length > 0) config.steps = parsed;
+            } catch (_e) {
+                // Parse failed — pass the raw string through; the runtime
+                // json.loads it at execution time as a fallback.
+                set('steps_json', pairs.steps_json);
+            }
+        }
+
     // ── Crawler ──────────────────────────────────────────────────────
     // Template fields: url, system_prompt, content_mode
     } else if (lower === 'crawler') {

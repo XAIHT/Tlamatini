@@ -94,7 +94,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 ---
 
-## All 64 Workflow Agent Types
+## All 65 Workflow Agent Types
 
 > **Single source of truth for descriptions**: `agents_descriptions.md` at the repo root. The Django view `agent.views.agentic_control_panel` parses the `## Workflow Agents` tables in that file (with `README.md` as a legacy fallback for older deployments) and injects the `Description` column into the page as `agent_purpose_map` JSON. The frontend uses each entry as the **hover tooltip** over the sidebar agent and as the **canvas Description dialog body** on right-click. Editing a row's `Description` cell there changes both human docs AND the live UI text. `build.py` ships `agents_descriptions.md` next to the executable in frozen mode so the resolution works in both modes. The lookup is case- and punctuation-insensitive (`re.sub(r'[^a-z0-9]+', '', name.lower())`), so `Kyber-KeyGen`, `Kyber KeyGen`, and `kyberkeygen` all map to the same entry.
 
@@ -124,6 +124,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **Summarizer** - LLM text/log summarization
 - **Crawler** - Web crawling with LLM analysis
 - **Googler** - Google search + text extraction (Playwright)
+- **Playwrighter** - Scripted interactive browser automation (Playwright). Drives a real browser through declarative steps (goto/click/fill/wait_for/extract/screenshot/assert/download) for authenticated/JS/multi-step flows that Crawler (static fetch) and Googler (search) cannot do. Deterministic; emits INI_SECTION_PLAYWRIGHTER; always triggers target_agents. Canvas counterpart of the chat_agent_playwrighter Multi-Turn tool.
 - **Apirer** - HTTP REST API calls
 - **Gitter** - Git operations
 - **Ssher** - SSH remote commands
