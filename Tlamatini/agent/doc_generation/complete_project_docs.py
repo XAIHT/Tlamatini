@@ -653,7 +653,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.5.0` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.6.0` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
 ]
 
 REVIEWER_ANALYZER_GUIDE = [
