@@ -115,7 +115,8 @@ Tlamatini/                          # Git root
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
-│   └── gotchas.md                  # Claude API client, build/lint, hardcoded assumptions, recent fixes
+│   ├── gotchas.md                  # Claude API client, build/lint, versioning, hardcoded assumptions, roadmap, work-style
+│   └── recent-fixes.md             # ** NOT auto-imported ** — dated "do NOT revert" fix log; consult before touching the named subsystems
 ├── README.md                       # Full user-facing documentation (very large, 4000+ lines)
 ├── NEW_AGENT_RECOMMENDATIONS.md    # Roadmap for new agents (Tester, Reviewer, etc.)
 ├── ACPX.md                         # High-level ACPX concept and vision document
