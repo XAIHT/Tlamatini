@@ -1,0 +1,84 @@
+# Kalier Agent Configuration
+#
+# Kalier is Tlamatini's bridge to the **MCP-Kali-Server** (https://www.kali.org/tools/mcp-kali-server/).
+# That project ships TWO halves:
+#   1. server.py  — a Flask HTTP API that runs ON the Kali Linux box and exposes
+#                   /api/command + /api/tools/<tool> + /health endpoints.
+#   2. client.py  — an MCP (FastMCP) stdio bridge that simply forwards to that API.
+# Kalier talks DIRECTLY to half #1 (the Flask API) over HTTP using only the
+# Python stdlib (urllib) — exactly like the Apirer agent — so it runs identically
+# in source and frozen builds and never needs the `requests`/`mcp` packages inside
+# the agent-pool subprocess. Point `server_url` at the running API server (use an
+# SSH tunnel `ssh -L 5000:localhost:5000 user@KALI_IP` for a remote Kali box, as
+# the upstream README recommends).
+#
+# ⚠️  Authorized use only. Run Kalier ONLY against systems you own or are
+#     explicitly authorized to test (pentest engagement, CTF, lab). The agent is
+#     a thin transport — the operator is responsible for scope and legality.
+
+# action — which Kali capability to invoke. One of:
+#   command      : run an ARBITRARY shell command on the Kali box (POST /api/command)
+#   nmap         : Nmap port/service scan          (target, scan_type, ports, additional_args)
+#   gobuster     : Gobuster dir/dns/fuzz/vhost      (url, mode, wordlist, additional_args)
+#   dirb         : Dirb web content scan            (url, wordlist, additional_args)
+#   nikto        : Nikto web-server scan            (target, additional_args)
+#   sqlmap       : SQLmap SQL-injection scan        (url, data, additional_args)
+#   metasploit   : Run a Metasploit module          (module, options)
+#   hydra        : Hydra credential attack          (target, service, username[_file], password[_file], additional_args)
+#   john         : John the Ripper hash crack       (hash_file, wordlist, format, additional_args)
+#   wpscan       : WPScan WordPress scan            (url, additional_args)
+#   enum4linux   : enum4linux SMB/Samba enumeration (target, additional_args)
+#   health       : probe the API server health      (no params; GET /health)
+action: "nmap"
+
+# server_url — base URL of the running MCP-Kali-Server Flask API (server.py).
+# Default is the localhost binding the server uses; for a remote Kali box tunnel
+# the port and keep this as 127.0.0.1.
+server_url: "http://127.0.0.1:5000"
+
+# timeout — seconds to wait for the API HTTP response. The server itself caps each
+# individual tool run at ~180s and returns partial results on timeout, so this is
+# the outer envelope around that.
+timeout: 300
+
+# ── Shared params (used by several actions) ──────────────────────────────
+# target          — IP / hostname  (nmap, nikto, hydra, enum4linux)
+# url             — target URL      (gobuster, dirb, sqlmap, wpscan)
+# additional_args — extra raw CLI flags appended to the tool invocation
+target: ""
+url: ""
+additional_args: ""
+
+# ── command (action=command) — arbitrary shell command on the Kali box ──
+command: ""
+
+# ── nmap (action=nmap) ───────────────────────────────────────────────────
+scan_type: "-sCV"      # nmap scan flags (e.g. -sV, -sS, -sCV, -A)
+ports: ""              # comma list / range, e.g. "22,80,443" or "1-1000" (empty = nmap default)
+
+# ── gobuster (action=gobuster) ───────────────────────────────────────────
+mode: "dir"            # dir | dns | fuzz | vhost
+wordlist: "/usr/share/wordlists/dirb/common.txt"   # also used by dirb; for john prefer rockyou.txt
+
+# ── sqlmap (action=sqlmap) ───────────────────────────────────────────────
+data: ""               # POST data string (url-encoded), e.g. "id=1&submit=Go"
+
+# ── metasploit (action=metasploit) ───────────────────────────────────────
+module: ""             # e.g. "exploit/unix/ftp/vsftpd_234_backdoor"
+options: {}            # MSF options as a mapping, e.g. {RHOSTS: 10.0.0.5, RPORT: 21}
+                       # (the wrapped Multi-Turn tool may also pass this as a JSON string)
+
+# ── hydra (action=hydra) ─────────────────────────────────────────────────
+service: ""            # ssh | ftp | http-post-form | smb | rdp | ...
+username: ""           # single username  (OR set username_file)
+username_file: ""      # path to a username wordlist
+password: ""           # single password  (OR set password_file)
+password_file: ""      # path to a password wordlist, e.g. /usr/share/wordlists/rockyou.txt
+
+# ── john (action=john) ───────────────────────────────────────────────────
+hash_file: ""          # path to the file containing the hash(es) to crack
+format: ""             # optional hash format hint, e.g. "raw-md5", "nt", "sha512crypt"
+
+# Connection fields
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the run (always triggered)

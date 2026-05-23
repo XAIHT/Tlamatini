@@ -906,6 +906,40 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             config.fail_if_absent = String(pairs.fail_if_absent) === 'true';
         }
 
+    // ── Kalier ───────────────────────────────────────────────────────
+    // Template fields: action, server_url, timeout, target, url, additional_args,
+    //                  command, scan_type, ports, mode, wordlist, data, module,
+    //                  options, service, username, username_file, password,
+    //                  password_file, hash_file, format
+    } else if (lower === 'kalier') {
+        set('action', pairs.action);
+        set('server_url', pairs.server_url);
+        if (pairs.timeout !== undefined && pairs.timeout !== '') {
+            const t = parseInt(pairs.timeout, 10);
+            if (!Number.isNaN(t)) config.timeout = t;
+        }
+        set('target', pairs.target);
+        set('url', pairs.url);
+        set('additional_args', pairs.additional_args);
+        set('command', pairs.command);
+        set('scan_type', pairs.scan_type);
+        set('ports', pairs.ports);
+        set('mode', pairs.mode);
+        set('wordlist', pairs.wordlist);
+        set('data', pairs.data);
+        set('module', pairs.module);
+        // metasploit options may arrive as a JSON string in the flat request grammar.
+        if (pairs.options !== undefined && pairs.options !== '') {
+            config.options = pairs.options;
+        }
+        set('service', pairs.service);
+        set('username', pairs.username);
+        set('username_file', pairs.username_file);
+        set('password', pairs.password);
+        set('password_file', pairs.password_file);
+        set('hash_file', pairs.hash_file);
+        set('format', pairs.format);
+
     // ── Telegramer ───────────────────────────────────────────────────
     // Template field: telegram (nested)
     } else if (lower === 'telegramer') {

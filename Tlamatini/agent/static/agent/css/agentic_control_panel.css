@@ -1189,6 +1189,28 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(30, 111, 184, 0.5);
 }
 
+/* Kalier Agent — MCP-Kali-Server bridge (AI-assisted penetration testing).
+   The ONLY MONOCHROMATIC gradient in the entire agent palette: a single-hue
+   green "matrix terminal" ramp from pure black up to neon hacker-green
+   (#39FF14). Every other one of the 67 agents uses a multi-hue gradient, so
+   this single-hue black→neon ramp is structurally unmistakable at a glance,
+   and the black-terminal / neon-green aesthetic is the canonical visual cliché
+   for a Kali Linux offensive-security agent. The deep-black base also
+   separates it from the mid-green agents (Starter emerald, Whatsapper forest,
+   Mongoxer olive, NodeManager lime) — none of which use black or a neon
+   top-stop — and from the red+green agents (Mouser / J-Decompiler /
+   FlowCreator) the previous Kalier palette resembled. */
+.canvas-item.kalier-agent {
+    background-color: #000000;
+    background: linear-gradient(135deg, #000000 0%, #00471B 33%, #00892A 66%, #39FF14 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.kalier-agent:hover {
+    background: linear-gradient(135deg, #0A0A0A 0%, #006626 33%, #00B032 66%, #6BFF52 100%);
+    box-shadow: 0 6px 15px rgba(57, 255, 20, 0.5);
+}
+
 /* FlowBacker Agent Styles - Infrastructure backup (3-color: Deep-Teal / Burnt-Orange / Amber gradient) */
 .canvas-item.flowbacker-agent {
     background-color: #0F4C5C;

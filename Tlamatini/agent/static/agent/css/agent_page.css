@@ -1266,6 +1266,17 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* Kalier — monochromatic black→neon-green "matrix terminal" ramp, mirrors
+   .canvas-item.kalier-agent in agentic_control_panel.css (the only single-hue
+   gradient in the whole palette). State-changing because it drives Kali
+   offensive-security tooling (nmap / gobuster / nikto / sqlmap / metasploit /
+   hydra / john / wpscan / enum4linux) and arbitrary shell commands on a Kali
+   box via the MCP-Kali-Server API. */
+.exec-report-caption-kalier {
+    background: linear-gradient(135deg, #001F0C 0%, #00892A 100%);
+    color: #ffffff;
+}
+
 /* ACPx — fire-orange/coral/violet/black, mirrors .canvas-item.acpx-agent
    in agentic_control_panel.css. State-changing because acp_spawn /
    acp_send / acp_kill all touch a real external CLI subprocess. */
@@ -1318,6 +1329,7 @@ body.resizing-vertical {
 .exec-report-keyboarder thead th,
 .exec-report-mouser thead th,
 .exec-report-windower thead th,
+.exec-report-kalier thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {
     color: #f5f5f5;
@@ -1405,5 +1417,6 @@ body.resizing-vertical {
 .exec-report-keyboarder .exec-report-cmd     { border-left: 3px solid #F44336; }
 .exec-report-mouser .exec-report-cmd         { border-left: 3px solid #FF1744; }
 .exec-report-windower .exec-report-cmd       { border-left: 3px solid #1E6FB8; }
+.exec-report-kalier .exec-report-cmd         { border-left: 3px solid #00C838; }
 .exec-report-acpx .exec-report-cmd           { border-left: 3px solid #BF360C; }
 .exec-report-skill .exec-report-cmd          { border-left: 3px solid #4527A0; }
