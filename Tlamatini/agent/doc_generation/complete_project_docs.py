@@ -372,6 +372,10 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("kalier" in subject or "kali" in subject or "pentest" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is the new Kalier agent in `v1.7.0`: Tlamatini now reaches 67 workflow agents and adds a direct bridge into Kali Linux offensive-security tooling through MCP-Kali-Server, available from both Multi-Turn chat and the visual canvas."
+        )
     if any("windower" in subject or "window manager" in subject or "window" in subject and "multi-turn" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is the new Windower agent: Tlamatini now reaches 66 workflow agents and adds a deterministic Win32 window-manager surface for focusing, tiling, resizing, listing, and closing windows from both Multi-Turn chat and the visual canvas."
@@ -528,6 +532,17 @@ def count_agent_description_rows() -> int:
     return count
 
 
+def count_wrapped_chat_agent_tools() -> int:
+    path = PROJECT_DIR / "agent" / "chat_agent_registry.py"
+    text = path.read_text(encoding="utf-8")
+    return len(re.findall(r'tool_name\s*=\s*"([^"]+)"', text))
+
+
+def count_skills() -> int:
+    skills_root = PROJECT_DIR / "agent" / "skills_pkg"
+    return sum(1 for entry in skills_root.iterdir() if entry.is_dir() and (entry / "SKILL.md").exists())
+
+
 def collect_context() -> dict:
     paths = tracked_paths()
     tree_text = build_tree(paths)
@@ -535,6 +550,8 @@ def collect_context() -> dict:
     total_effective = sum(row.effective_lines for row in language_rows)
     total_lines = sum(row.total_lines for row in language_rows)
     agents = workflow_agents()
+    wrapped_chat_tools = count_wrapped_chat_agent_tools()
+    skills_count = count_skills()
     reference_media = extract_reference_media()
     weekly = recent_week_commits()
     version_info = resolve_version_info()
@@ -557,6 +574,11 @@ def collect_context() -> dict:
         "workflow_agents": agents,
         "workflow_agent_count": len(agents),
         "agent_description_rows": count_agent_description_rows(),
+        "wrapped_chat_agent_count": wrapped_chat_tools,
+        "core_python_tool_count": 20,
+        "acpx_tool_count": 12,
+        "total_multi_turn_tools": 20 + wrapped_chat_tools + 12,
+        "skills_count": skills_count,
         "requirements_count": count_requirements(),
         "js_modules": len(list((PROJECT_DIR / "agent" / "static" / "agent" / "js").glob("*.js"))),
         "css_files": len(list((PROJECT_DIR / "agent" / "static" / "agent" / "css").glob("*.css"))),
@@ -583,6 +605,7 @@ WHAT_IT_DOES = [
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
+    "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
@@ -601,6 +624,7 @@ HOW_IT_WORKS = [
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
+    "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, choosing one offensive-security capability per call and capturing the result in one atomic `INI_SECTION_KALIER` block.",
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
@@ -615,6 +639,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, expose it locally or through an SSH tunnel, and call `chat_agent_kalier` from Multi-Turn with the desired `action`, `target`, and `server_url`.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
@@ -635,7 +660,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Kalier drives a remote or tunneled Kali Linux tool server, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -645,8 +670,9 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The current README header now advertises the operator surface more explicitly: 66 workflow agents, 73 Multi-Turn tools, 12 ACPX tools, and 23 skills.",
-    "The 73-tool figure is documented as 20 core Python tools, 41 wrapped chat-agent tools, and 12 ACPX/Skill tools bound selectively by the planner per request.",
+    "The live operator surface now stands at 67 workflow agents, 74 Multi-Turn tools, 12 ACPX tools, and 24 skills.",
+    "Source inspection confirms the newer total: 42 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 74 Multi-Turn tools overall.",
+    "Some README lines still show the pre-Kalier 73-tool figure, so this dossier prefers the newer Book/git/live-registry state while preserving the rest of the README operator guidance.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
 
@@ -702,6 +728,18 @@ WINDOWER_SURFACES_GUIDE = [
     "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_windower` accepts free-form key=value requests, while the visual Windower canvas node stores the same operation fields in YAML.",
     "Windower is the desktop-window sibling of Mouser and Keyboarder: use Windower when the goal is the window as a whole, Mouser for controls inside it, and Keyboarder for text entry into it.",
     "Because Windower changes real window state, its executions appear in Exec Report and it always triggers `target_agents` whether the action succeeds or fails.",
+]
+
+KALIER_GUIDE = [
+    "Kalier is the new 67th workflow agent in `v1.7.0`: a deterministic bridge from Tlamatini into Kali Linux offensive-security tooling through MCP-Kali-Server.",
+    "It can issue one capability per run, including `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, arbitrary `command`, or a safe `health` probe of the remote server.",
+    "The agent emits `INI_SECTION_KALIER` with `action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, and `server_url`, so downstream Forker or Parametrizer logic can branch on results without scraping prose.",
+]
+
+KALIER_SURFACES_GUIDE = [
+    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_kalier` accepts free-form key=value requests, while the visual Kalier canvas node stores the same operation fields in YAML.",
+    "Kalier talks straight to the Kali-side Flask API over HTTP using Python-stdlib `urllib`, so it stays self-contained in the pool subprocess and works the same in source or frozen builds.",
+    "Authorized use only: the intended operator flow is an in-scope lab, CTF, or permitted engagement, often with `ssh -L 5000:localhost:5000 user@KALI_IP` tunneling a remote Kali box back to `http://127.0.0.1:5000`.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -880,7 +918,7 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -1054,6 +1092,8 @@ def build_pdf(context: dict) -> None:
                 ["Resolved version", f"{context['version_info']['version']} ({context['version_info']['source']})"],
                 ["Tracked files", str(context["tracked_files"])],
                 ["Workflow agents", str(context["workflow_agent_count"])],
+                ["Multi-Turn tools", str(context["total_multi_turn_tools"])],
+                ["Skills", str(context["skills_count"])],
                 ["Total effective lines", f"{context['total_effective_lines']:,}"],
                 ["Total physical text lines", f"{context['total_lines']:,}"],
             ],
@@ -1131,6 +1171,11 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Operator surface counts", styles["h2"]))
     for item in OPERATOR_SURFACE_COUNTS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Kalier in v1.7.0", styles["h2"]))
+    for item in KALIER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in KALIER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Windower on Multi-Turn and canvas", styles["h2"]))
     for item in WINDOWER_GUIDE:
@@ -1226,6 +1271,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("Operator surface counts", styles["h2"]))
     for item in OPERATOR_SURFACE_COUNTS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Kalier spotlight", styles["h2"]))
+    for item in KALIER_GUIDE + KALIER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Windower spotlight", styles["h2"]))
     for item in WINDOWER_GUIDE + WINDOWER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1254,6 +1302,9 @@ def build_pdf(context: dict) -> None:
         ["Metric", "Value"],
         ["Tracked files in git", f"{context['tracked_files']}"],
         ["Workflow agents", f"{context['workflow_agent_count']}"],
+        ["Multi-Turn tools", f"{context['total_multi_turn_tools']}"],
+        ["Wrapped chat-agent tools", f"{context['wrapped_chat_agent_count']}"],
+        ["Skills", f"{context['skills_count']}"],
         ["agents_descriptions.md rows", f"{context['agent_description_rows']}"],
         ["Django migrations", f"{context['migrations']}"],
         ["Frontend JavaScript modules", f"{context['js_modules']}"],
@@ -1692,6 +1743,11 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "surface-b", 13)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Kalier In v1.7.0", "Kali Linux control for chat and canvas", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", KALIER_GUIDE, THEME["jade"], "kalier-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", KALIER_SURFACES_GUIDE, THEME["amber"], "kalier-b", 13)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Windower In Multi-Turn", "desktop window management for chat and canvas", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", WINDOWER_GUIDE, THEME["amber"], "window-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", WINDOWER_SURFACES_GUIDE, THEME["jade"], "window-b", 13)
@@ -1881,6 +1937,7 @@ def build_ppt(context: dict) -> None:
         f"{context['head_short']} - {context['head_subject']}",
         f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",
         f"Generated on {context['generated_at']}",
+        f"Multi-Turn tools: {context['total_multi_turn_tools']}; wrapped chat-agent tools: {context['wrapped_chat_agent_count']}; skills: {context['skills_count']}",
         f"Python requirements: {context['requirements_count']}; authoritative agent-description rows: {context['agent_description_rows']}",
         f"Binary or asset tracked files skipped from line count: {context['binary_count']}",
     ], THEME["amber"], "repo-head", 15)
@@ -1951,6 +2008,11 @@ def serialize_context(context: dict) -> dict:
         "total_lines": context["total_lines"],
         "workflow_agent_count": context["workflow_agent_count"],
         "agent_description_rows": context["agent_description_rows"],
+        "wrapped_chat_agent_count": context["wrapped_chat_agent_count"],
+        "core_python_tool_count": context["core_python_tool_count"],
+        "acpx_tool_count": context["acpx_tool_count"],
+        "total_multi_turn_tools": context["total_multi_turn_tools"],
+        "skills_count": context["skills_count"],
         "requirements_count": context["requirements_count"],
         "js_modules": context["js_modules"],
         "css_files": context["css_files"],
