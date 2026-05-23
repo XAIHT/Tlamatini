@@ -151,6 +151,13 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # ``list`` action share the same ``windower`` agent_key on purpose so a mixed
     # query-and-manage flow renders as one "List of Windower Operations" table).
     "chat_agent_windower":       ("windower",       "Windower"),
+    # Kalier is state-changing: it drives Kali offensive-security tooling
+    # (nmap / gobuster / nikto / sqlmap / metasploit / hydra / john / wpscan /
+    # enum4linux) and arbitrary shell commands on a Kali box via the
+    # MCP-Kali-Server API. The read-only ``health`` probe shares the same
+    # ``kalier`` agent_key so a mixed flow renders as one "List of Kalier
+    # Operations" table.
+    "chat_agent_kalier":         ("kalier",         "Kalier"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every

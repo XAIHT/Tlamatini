@@ -94,6 +94,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "reviewer": ("repo_path", "diff_ref", "verdict", "model", "status", "response_body"),
     "analyzer": ("target_path", "tools_run", "tools_skipped", "total_findings", "status", "response_body"),
     "playwrighter": ("start_url", "final_url", "status", "steps_run", "assert_result", "response_body"),
+    "kalier": ("action", "endpoint", "method", "subject", "return_code", "success", "timed_out", "server_url", "response_body"),
 }
 
 
@@ -137,6 +138,9 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
     "gatewayer": _contract("gatewayer", long_running=True),
     "gateway_relayer": _contract("gateway_relayer", long_running=True, aliases=("gateway-relayer", "gateway relayer")),
     "node_manager": _contract("node_manager", long_running=True, aliases=("node-manager", "node manager")),
+    # Kalier bridges to the MCP-Kali-Server HTTP API. Its hydra single-password
+    # field is credential-shaped, so redact it from .flw exports.
+    "kalier": _contract("kalier", secret_paths=("password",)),
 }
 
 

@@ -70,7 +70,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter
+  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -213,6 +213,29 @@ ANALYZER SPECIAL NOTES:
     informational, not an error. `status: error` with every scanner skipped
     means none were installed; flag that only if the user expected a scan.
 
+KALIER SPECIAL NOTES:
+  - Kalier is SHORT-LIVED and ACTIVE: it POSTs ONE request to the
+    MCP-Kali-Server Flask API (nmap / gobuster / dirb / nikto / sqlmap /
+    metasploit / hydra / john / wpscan / enum4linux / an arbitrary command, or
+    a `health` probe), captures the tool output into an `INI_SECTION_KALIER<<<`
+    block, and ALWAYS triggers `target_agents` regardless of success or failure.
+  - Duration tracks the Kali tool: a `health` probe or a small `nmap` is
+    sub-second to seconds, but `gobuster` / `nikto` / `hydra` / `sqlmap` /
+    `john` can run for MINUTES. The MCP-Kali-Server itself caps each individual
+    tool run near 180s and returns partial results, so a Kalier that is silent
+    for up to ~3 minutes on those actions is NORMAL — do NOT flag it as stuck
+    before ~5 minutes.
+  - `success: false` or a non-zero `return_code` inside the section is NOT a
+    flow error — a scan that finds nothing, a brute-force that fails, or a tool
+    that exits non-zero is routable content for a downstream Forker / Raiser.
+    NEVER flag a Kalier `INI_SECTION_KALIER<<<` block as an error even when its
+    body looks like a tool error (that body is data for the next agent to act on).
+  - `timed_out: true` means the server's hard cap fired before the tool finished
+    and returned partial results — informational, NOT a crash.
+  - Legitimate Kalier error to flag: "Cannot reach MCP-Kali-Server at ..." — the
+    Flask API server is not running on the Kali box, the SSH tunnel is down, or
+    `server_url` is wrong. Treat a connection error like a broken chain hop.
+
 EXTERNAL-WINDOW agents (Sqler, Mongoxer):
   These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
 
@@ -239,6 +262,7 @@ TYPICAL TIMING:
   - Unrealer: sub-second to a few seconds for actor / transform / property commands; seconds to tens of seconds for `compile_blueprint` on large Blueprints. Flag if > 60 s with no completion.
   - Reviewer: one LLM call over a git diff — sub-second to ~2 min depending on diff size and model (local vs cloud). Flag only if > 5 min with no completion.
   - Analyzer: runs installed scanners (bandit/semgrep/ruff/eslint/gitleaks/pip-audit); seconds for small trees to a few minutes for `semgrep --config auto` on a large repo. Flag only if > 5 min with no completion.
+  - Kalier: tracks the Kali tool it dispatches — sub-second for `health` / a tiny `nmap`, up to the MCP-Kali-Server's ~180 s per-run cap for `gobuster` / `nikto` / `hydra` / `sqlmap` / `john`. Flag only if > 5 min with no completion (or on a "Cannot reach MCP-Kali-Server" error).
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -253,6 +277,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "🎮 UNREALER AGENT STARTED" — Unrealer began dispatching a JSON command to the Unreal MCP plugin
   "🔍 REVIEWER AGENT STARTED" — Reviewer began resolving a git diff for LLM review
   "🛡️ ANALYZER AGENT STARTED" — Analyzer began running static-analysis / security scanners
+  "🐉 KALIER AGENT STARTED (MCP-Kali-Server bridge)" — Kalier began dispatching a request to the MCP-Kali-Server API
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -266,7 +291,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  De-Compresser, Unrealer, Reviewer, Analyzer).
+  De-Compresser, Unrealer, Reviewer, Analyzer, Kalier).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -355,6 +380,7 @@ DO NOT report these as problems:
   - Unrealer INI_SECTION_UNREALER<<< ... >>>END_SECTION_UNREALER blocks even when the engine response carries `status: "error"` (Unrealer ALWAYS emits the block and ALWAYS triggers `target_agents` so downstream Forkers / Raisers can branch on success/failure)
   - Reviewer INI_SECTION_REVIEWER<<< ... >>>END_SECTION_REVIEWER blocks with any `verdict` — including `verdict: REQUEST_CHANGES` and critical/high findings in the body (the verdict is routable content for a downstream Forker, NOT a flow error)
   - Analyzer INI_SECTION_ANALYZER<<< ... >>>END_SECTION_ANALYZER blocks with any `status` — including `status: findings` and a non-zero `total_findings` (scanners finding issues is the agent working as intended; a scanner exiting non-zero because it found issues is also normal — the count is routable content for a downstream Forker, NOT a flow error)
+  - Kalier INI_SECTION_KALIER<<< ... >>>END_SECTION_KALIER blocks with any `success` / `return_code` / `timed_out` — including `success: false`, a non-zero `return_code`, or `timed_out: true` (a scan finding nothing, a failed brute-force, or a tool hitting the server's run cap is the agent working as intended; the result is routable content for a downstream Forker, NOT a flow error)
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

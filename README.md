@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **66 drag-and-drop agents**.
+**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **67 drag-and-drop agents**.
 
 > **Local-first by default**: the full RAG pipeline, the Multi-Turn execution loop, and every workflow agent run on your machine — embeddings and chat are driven by your local [Ollama](https://ollama.com/) install. Cloud LLMs (Claude API, Ollama Pro/Max) and ACPX delegation to cloud CLIs are opt-in per-request, never the default. Sensitive code never leaves the box unless you explicitly route it out.
 
@@ -61,6 +61,7 @@
   - [3.11. The **ACPX-Skills** menu — Browse, Configure, Diagnostics, Reload](#311-the-acpx-skills-menu--browse-configure-diagnostics-reload)
   - [3.12. Tutorial: command a window from chat (`chat_agent_windower`)](#312-tutorial-command-a-window-from-chat-chat_agent_windower)
   - [3.13. Tutorial: drive a browser from chat (`chat_agent_playwrighter`)](#313-tutorial-drive-a-browser-from-chat-chat_agent_playwrighter)
+  - [3.14. Tutorial: run Kali Linux tools from chat (`chat_agent_kalier`)](#314-tutorial-run-kali-linux-tools-from-chat-chat_agent_kalier)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -107,7 +108,7 @@
   - [9.2. The five layers](#92-the-five-layers)
   - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
   - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
-  - [9.5. Agent catalog (the 66 types, by family)](#95-agent-catalog-the-66-types-by-family)
+  - [9.5. Agent catalog (the 67 types, by family)](#95-agent-catalog-the-67-types-by-family)
 - [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
   - [10.1. Why this exists](#101-why-this-exists)
   - [10.2. How the check fires (the hook point)](#102-how-the-check-fires-the-hook-point)
@@ -146,7 +147,7 @@
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 66 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 67 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -545,13 +546,13 @@ Both directories must exist on day one (the swap-in opens them with `os.makedirs
 
 ### 3.11. The **ACPX-Skills** menu — Browse, Configure, Diagnostics, Reload
 
-Tlamatini ships with **23 skills** — markdown SKILL.md packages under `agent/skills_pkg/` that the LLM can invoke through `invoke_skill('<name>', '{...args...}')`. They cover everything from the canonical `acp-router` (pick the right external CLI for an intent) and `summarize` (compress text faithfully) to `setup-new-acpx-key`, `skill-creator`, `code-review` (senior-engineer git-diff review with an APPROVE/REQUEST_CHANGES verdict) and `security-audit` (multi-scanner SAST/secret/dependency sweep), the `tlamatini_*` audit/lint/refactor helpers, and integration stubs for GitHub / Notion / Slack / Gmail / Jira / Todoist / Trello / Weather.
+Tlamatini ships with **24 skills** — markdown SKILL.md packages under `agent/skills_pkg/` that the LLM can invoke through `invoke_skill('<name>', '{...args...}')`. They cover everything from the canonical `acp-router` (pick the right external CLI for an intent) and `summarize` (compress text faithfully) to `setup-new-acpx-key`, `skill-creator`, `code-review` (senior-engineer git-diff review with an APPROVE/REQUEST_CHANGES verdict), `security-audit` (multi-scanner SAST/secret/dependency sweep) and `kali-pentest` (an authorized Kali Linux assessment runbook that drives the Kalier agent / MCP-Kali-Server), the `tlamatini_*` audit/lint/refactor helpers, and integration stubs for GitHub / Notion / Slack / Gmail / Jira / Todoist / Trello / Weather.
 
 Before 2026-05-17 the only way to interact with them was through the LLM (`list_skills` to enumerate, `invoke_skill` to run). The **ACPX-Skills** navbar dropdown — added next to **Agents** and **Config** in the chat toolbar — gives you an operator-grade admin surface that does NOT require the LLM. Four entries:
 
 #### `ACPX-Skills -> Browse Skills`
 
-Opens a two-pane modal: a left-side list of all 23 skills (with a green/red dot for enabled / disabled and a runtime tag) and a right-side detail pane that shows the selected skill's full identity — description, runtime (in-process / acpx), `acpx_agent` if any, budgets (max_iterations · max_seconds · max_tokens), trigger keywords, `requires_tools` and `requires_mcps`, inputs and outputs (with required-field markers), and the full markdown body. A search box at the top filters by name or description as you type. Pure read — nothing is written back.
+Opens a two-pane modal: a left-side list of all 24 skills (with a green/red dot for enabled / disabled and a runtime tag) and a right-side detail pane that shows the selected skill's full identity — description, runtime (in-process / acpx), `acpx_agent` if any, budgets (max_iterations · max_seconds · max_tokens), trigger keywords, `requires_tools` and `requires_mcps`, inputs and outputs (with required-field markers), and the full markdown body. A search box at the top filters by name or description as you type. Pure read — nothing is written back.
 
 Backed by `GET /agent/skills/` (list payload) and `GET /agent/skills/<name>/` (deep detail). Use it when you want to know what a skill *actually does* before you ask the LLM to call it, or when you've just authored a new SKILL.md and want to confirm it parsed correctly.
 
@@ -620,6 +621,20 @@ Tick **only the Multi-Turn** checkbox (Playwrighter, like Windower, is a normal 
 Tlamatini calls **`chat_agent_playwrighter`** with `start_url`, `headless='false'` (and `hold_open_seconds` if you asked it to keep the browser open), and the whole script as a single JSON string in **`steps_json`** (the flat `key=value` request grammar cannot express a list-of-dicts, so the script is passed as JSON and the agent `json.loads` it). Each step is `{"action": <verb>, ...}`; supported verbs are `goto`, `click`, `dblclick`, `fill`, `type`, `press`, `select`, `check`/`uncheck`, `wait_for`, `wait`, `extract_text`, `extract_attr`, `screenshot`, `assert_visible`, `assert_text`, and `download`. The run reports `status`, `final_url`, `steps_run`, `assert_result`, and the extracted values, so a downstream step (or a Forker, on the canvas) can branch on the verdict.
 
 Two ready-made showcases live in the **Prompts** dropdown: **BROWSER SPOTLIGHT** (basic — open `example.com` with a visible browser, extract the heading, assert the link, screenshot) and **BROWSER WIZARD** (medium — a visible multi-step Wikipedia search: fill → click → wait → extract → assert → screenshot). The canvas counterpart is the visual **Playwrighter** node (see §4 and §9.5); the YAML `steps` list is its authoring form.
+
+### 3.14. Tutorial: run Kali Linux tools from chat (`chat_agent_kalier`)
+
+**Kalier** bridges Tlamatini to **Kali Linux** offensive-security tooling through the [MCP-Kali-Server](https://www.kali.org/tools/mcp-kali-server/). That project runs a small Flask **API server** (`server.py`) on the Kali box exposing `/api/command`, `/api/tools/<tool>` and `/health`; Kalier talks to it directly over HTTP (Python-stdlib `urllib`, no extra packages in the agent pool), so it is the canonical tool for **AI-assisted penetration testing, recon, and CTF solving**. It is **state-changing**, so it appears in the Exec Report.
+
+First, get the MCP-Kali-Server running on your Kali machine and reachable from Tlamatini — the upstream README recommends an SSH tunnel (`ssh -L 5000:localhost:5000 user@KALI_IP`), which makes the server reachable at `http://127.0.0.1:5000`. ⚠️ **Authorized targets only** — run Kalier solely against systems you own or are explicitly authorized to test (engagement, lab, CTF).
+
+Tick **only the Multi-Turn** checkbox (Kalier is a normal Multi-Turn tool — not behind the ACPX/Skill surface). Then ask, for example:
+
+> *"Using Kali at http://127.0.0.1:5000, run an nmap -sCV scan of 10.0.0.5 ports 1-1000 and summarize the open services."*
+
+Tlamatini calls **`chat_agent_kalier`** with `action='nmap'`, `target='10.0.0.5'`, `scan_type='-sCV'`, `ports='1-1000'` and `server_url='http://127.0.0.1:5000'`. The `action` field selects the capability: `command` (any shell command on the Kali box), `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, or `health` (probe the server and which tools are installed — a good first call when you are unsure the API is reachable). The tool returns the Kali tool's stdout/stderr verbatim and captures an `INI_SECTION_KALIER` block (`action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, `server_url`) for the Exec Report and Parametrizer.
+
+On the canvas the same capability is the visual **Kalier** node (see §4 and §9.5): chain `Starter → Kalier (nmap) → Parametrizer → Kalier (gobuster) → Forker → Ender` to build a fully unattended, branch-on-result assessment pipeline. The visual node and the chat tool share the same MCP-Kali-Server contract.
 
 ---
 
@@ -766,7 +781,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-24 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**.
+25 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**.
 
 Canonical example:
 
@@ -848,7 +863,7 @@ All return JSON envelopes. Failures: `{"ok": false, "reason": "...", "code": "..
 | `invoke_skill(skill_name, args_json)` | Run a `SKILL.md` package inside `SkillHarness`. |
 | `list_skills(filter_keywords)` | List registered skills. |
 
-23 seed skills live under `agent/skills_pkg/` (acp-router, summarize, setup-new-acpx-key, skill-creator, code-review, security-audit, 8× tlamatini-* maintenance helpers, plus OpenClaw-format ports for github / gmail / slack / jira / notion / todoist / trello / weather).
+24 seed skills live under `agent/skills_pkg/` (acp-router, summarize, setup-new-acpx-key, skill-creator, code-review, security-audit, kali-pentest, 8× tlamatini-* maintenance helpers, plus OpenClaw-format ports for github / gmail / slack / jira / notion / todoist / trello / weather).
 
 ### 5.4. Tutorial: spawn-and-go (single agent)
 
@@ -1096,7 +1111,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 66 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 67 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
@@ -1296,14 +1311,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 9.5. Agent catalog (the 66 types, by family)
+### 9.5. Agent catalog (the 67 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |

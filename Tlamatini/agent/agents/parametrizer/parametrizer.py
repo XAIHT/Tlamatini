@@ -115,6 +115,7 @@ SECTION_AGENT_TYPES = [
     'reviewer',
     'analyzer',
     'playwrighter',
+    'kalier',
 ]
 
 

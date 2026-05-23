@@ -171,6 +171,15 @@ Shoter captures the screen. Image-Interpreter can accept a Shoter pool name as i
 Starter → Googler (query='latest security advisories') → Parametrizer → Telegramer (message mapped from search results) → Ender
 ```
 
+**14. "Run an authorized Kali Linux assessment and branch on the result" (offensive-security pipeline)**
+```
+Starter → Kalier (action='health', server_url='http://127.0.0.1:5000')
+        → Kalier (action='nmap', target='10.0.0.5', scan_type='-sCV', ports='1-1000')
+        → Parametrizer → Kalier (action='gobuster', url mapped from the recon)
+        → Forker (branch on {success}) → Ender
+```
+Kalier bridges to the MCP-Kali-Server (always set `server_url`; for a remote Kali box the user runs an SSH tunnel). Use **one `action` per Kalier node** and chain the natural pentest order: `health` (confirm the API + installed tools) → `nmap` recon → service enumeration (`gobuster` / `dirb` / `nikto` / `wpscan` / `enum4linux`) → optional exploitation (`metasploit` / `hydra`) → `john` for captured hashes. A **Parametrizer** copies one Kalier's `response_body` / `subject` into the next Kalier's `target` / `url` / `command`; a **Forker** branches the flow on `{success}` / `{return_code}` (e.g. exploit-on-success vs report-and-stop). Kalier ALWAYS triggers its `target_agents`, so the chain never strands. **AUTHORIZED TARGETS ONLY** — never wire Kalier against a host the user has not confirmed is in scope.
+
 ### Parametrizer Thinking Rule
 
 When you design a flow with **Parametrizer**, think of it as a **strict single-lane queue between one source and one target**.
@@ -1584,14 +1593,44 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the window operation)
 
-### 66. FlowCreator
+### 66. Kalier
+- **Purpose**: Tlamatini's bridge to **Kali Linux** offensive-security tooling via the MCP-Kali-Server (https://www.kali.org/tools/mcp-kali-server/). On trigger it POSTs to the MCP-Kali-Server Flask API (`server.py`, default `http://127.0.0.1:5000`) and runs ONE capability selected by its `action` field, capturing the tool's stdout/stderr into an `INI_SECTION_KALIER` block (`action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, `server_url`, plus a `response_body` carrying the raw tool output). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{return_code}`.
+- **Used for**: AI-assisted PENETRATION TESTING, RECON and CTF solving as an unattended flow step — port/service scanning (`nmap`), web content / directory busting (`gobuster`, `dirb`), web-server scanning (`nikto`), SQL-injection testing (`sqlmap`), WordPress scanning (`wpscan`), SMB/Samba enumeration (`enum4linux`), credential brute-forcing (`hydra`), hash cracking (`john`), exploitation (`metasploit`), arbitrary shell commands on the Kali box (`command`), or an API-server health probe (`health`).
+- **Aimed at**: Building visual, repeatable offensive-security pipelines. Chain a recon `nmap` Kalier → Parametrizer (copy `{subject}`/open ports into the next node) → an enumeration Kalier → a Forker that branches on `{success}` → an exploitation Kalier → File-Creator (write the loot) → Ender. Point `server_url` at the running API server (tunnel a remote Kali box with `ssh -L 5000:localhost:5000 user@KALI_IP`). **Authorized targets only.** The visual-canvas counterpart of the `chat_agent_kalier` Multi-Turn tool.
+- **Application example**: Starter → Kalier (`action: nmap`, `target: 10.0.0.5`, `scan_type: -sCV`) → Parametrizer (pipe `response_body` into a Summarizer or a follow-up Kalier) → Kalier (`action: gobuster`, `url: http://10.0.0.5`) → Forker (branch on `{success}`) → Ender. For credential work: Starter → Kalier (`action: hydra`, `target: 10.0.0.5`, `service: ssh`, `username: root`, `password_file: /usr/share/wordlists/rockyou.txt`) → Notifier → Ender.
+- **Pool name pattern**: `kalier_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `action`: "nmap" (one of: command, nmap, gobuster, dirb, nikto, sqlmap, metasploit, hydra, john, wpscan, enum4linux, health)
+  - `server_url`: "http://127.0.0.1:5000" (base URL of the MCP-Kali-Server Flask API)
+  - `timeout`: 300 (seconds to wait for the API HTTP response)
+  - `target`: "" (IP/hostname — used by nmap, nikto, hydra, enum4linux)
+  - `url`: "" (target URL — used by gobuster, dirb, sqlmap, wpscan)
+  - `additional_args`: "" (extra raw CLI flags appended to the tool invocation)
+  - `command`: "" (the shell command — used by action=command)
+  - `scan_type`: "-sCV" (nmap scan flags)
+  - `ports`: "" (nmap port list/range, e.g. "22,80,443" or "1-1000")
+  - `mode`: "dir" (gobuster mode: dir / dns / fuzz / vhost)
+  - `wordlist`: "/usr/share/wordlists/dirb/common.txt" (gobuster / dirb / john)
+  - `data`: "" (sqlmap POST data string)
+  - `module`: "" (metasploit module path)
+  - `options`: {} (metasploit module options as a mapping)
+  - `service`: "" (hydra service: ssh / ftp / http-post-form / ...)
+  - `username`: "" / `username_file`: "" (hydra — single username OR a list)
+  - `password`: "" / `password_file`: "" (hydra — single password OR a list)
+  - `hash_file`: "" (john — file containing hashes to crack)
+  - `format`: "" (john — optional hash format hint, e.g. raw-md5)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
+### 67. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (66). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (67). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

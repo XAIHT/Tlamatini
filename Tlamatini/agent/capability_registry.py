@@ -310,6 +310,23 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "e2e", "e2e test", "end-to-end test", "end to end test",
         "ui test", "browser test", "playwright script", "browser script",
     ),
+    # Wrapped Kalier — MCP-Kali-Server bridge for AI-assisted penetration
+    # testing / recon / CTF. These tokens lift it above the planner cap on
+    # offensive-security prompts ("scan 10.0.0.5 with nmap", "run a pentest",
+    # "use kali to enumerate", "crack this hash") without colliding with the
+    # generic execute_command / apirer tools.
+    "chat_agent_kalier": (
+        "kali", "kalier", "kali linux", "kali tools", "mcp kali", "mcp-kali-server",
+        "pentest", "pen test", "pentesting", "penetration test", "penetration testing",
+        "offensive security", "red team", "ctf", "capture the flag",
+        "recon", "reconnaissance", "enumerate", "enumeration",
+        "vulnerability scan", "scan the target", "scan the host", "scan the network",
+        "port scan", "nmap", "nmap scan", "gobuster", "dirb", "nikto",
+        "sqlmap", "sql injection", "metasploit", "msfconsole", "exploit",
+        "hydra", "brute force", "bruteforce", "john", "john the ripper",
+        "crack the hash", "crack hashes", "password cracking", "wpscan",
+        "wordpress scan", "enum4linux", "smb enumeration",
+    ),
 }
 _CONTEXT_HINTS = {
     "system_context": (
