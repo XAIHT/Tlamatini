@@ -36,6 +36,12 @@ def populate_initial_values(apps, schema_editor):
         54  Playwrighter medium (BROWSER WIZARD)
     They drive the wrapped chat_agent_windower / chat_agent_playwrighter tools
     (Multi-Turn only — NOT behind the ACPX/Skill surface).
+
+    NOTE (since 0096): two ADVANCED multi-agent demos are APPENDED at the tail
+    (no renumber) by 0096_add_director_virtuoso_demo_prompts:
+        55  Windower+Mouser+Keyboarder  advanced (DESKTOP DIRECTOR)
+        56  Playwrighter                advanced (BROWSER VIRTUOSO)
+    Same wrapped-tool / Multi-Turn-only contract as 0095.
     """
     Prompt = apps.get_model('agent', 'Prompt')
 
