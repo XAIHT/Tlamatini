@@ -34,6 +34,12 @@ action: "nmap"
 # server_url — base URL of the running MCP-Kali-Server Flask API (server.py).
 # Default is the localhost binding the server uses; for a remote Kali box tunnel
 # the port and keep this as 127.0.0.1.
+#
+# NOTE (chat / Multi-Turn path): when the LLM launches Kalier via the wrapped
+# `chat_agent_kalier` tool, Tlamatini auto-injects the global `kali_server_url`
+# from config.json (Config -> URLs in the navbar) over this value — so the user
+# configures the Kali box ONCE and never repeats it in prompts. This canvas
+# default still applies to .flw / canvas runs; set it in the node's dialog there.
 server_url: "http://127.0.0.1:5000"
 
 # timeout — seconds to wait for the API HTTP response. The server itself caps each

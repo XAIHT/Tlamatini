@@ -7988,6 +7988,7 @@ CONFIG_URL_KEYS: tuple[str, ...] = (
     "mcp_files_search_server_host",
     "mcp_files_search_server_port",
     "mcp_files_search_client_uri",
+    "kali_server_url",
 )
 
 CONFIG_URL_URL_FIELDS: frozenset[str] = frozenset({
@@ -7996,6 +7997,10 @@ CONFIG_URL_URL_FIELDS: frozenset[str] = frozenset({
     "image_interpreter_base_url",
     "mcp_system_client_uri",
     "mcp_files_search_client_uri",
+    # Kalier / MCP-Kali-Server bridge. The wrapped chat_agent_kalier tool reads
+    # this as the default server_url so natural-language pentest prompts work
+    # without repeating the Kali box URL (the "embedded client").
+    "kali_server_url",
 })
 CONFIG_URL_HOST_FIELDS: frozenset[str] = frozenset({
     "mcp_system_server_host",

@@ -788,8 +788,10 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "  • wpscan     → url='http://10.0.0.5/wp'\n"
             "  • enum4linux → target='10.0.0.5'\n"
             "  • health     → (no params; confirms the API server is up and which tools are installed)\n"
-            "ALWAYS pass server_url if it isn't the default (`http://127.0.0.1:5000`); for a "
-            "remote Kali box the user tunnels it with `ssh -L 5000:localhost:5000 user@KALI_IP`. "
+            "DO NOT pass server_url normally — Tlamatini is the embedded client and already "
+            "injects the configured Kali box URL (set once in Config -> URLs / config.json "
+            "`kali_server_url`) on every run, so the user never repeats it. Only pass server_url "
+            "to override that for a one-off different box (e.g. server_url='http://10.0.0.9:5000'). "
             "CALL action='health' FIRST when you are unsure the API server is reachable or "
             "which tools are installed. The `command` action is the ESCAPE HATCH — use it to "
             "run ANY Kali tool the dedicated actions don't wrap (ffuf, whatweb, curl, "
@@ -813,7 +815,8 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         ),
         example_request=(
             "Run Kali with action='nmap' and target='10.0.0.5' and scan_type='-sCV' "
-            "and ports='1-1000' and server_url='http://127.0.0.1:5000'"
+            "and ports='1-1000'  (server_url is injected automatically from the "
+            "Tlamatini-configured Kali box — omit it unless overriding)"
         ),
         aliases=(
             "kalier", "kali", "kali linux", "kali tools", "mcp kali", "mcp-kali-server",
