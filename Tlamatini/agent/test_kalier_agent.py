@@ -40,6 +40,7 @@ Covers:
 """
 
 import importlib.util
+import inspect
 import io
 import json
 import logging
@@ -51,7 +52,8 @@ from functools import lru_cache
 from unittest.mock import patch
 
 import yaml
-from django.test import SimpleTestCase, TestCase
+from django.contrib.auth.models import User
+from django.test import Client, SimpleTestCase, TestCase
 
 
 @lru_cache(maxsize=1)
@@ -577,6 +579,285 @@ class RegistryIntegrationTests(SimpleTestCase):
     def test_agentic_skill_has_kalier_entry(self):
         skill = self._read('agents', 'flowcreator', 'agentic_skill.md')
         self.assertIn('### 66. Kalier', skill)
+
+
+# ---------------------------------------------------------------------------
+# Embedded client — Tlamatini auto-injects the configured Kali server URL into
+# the wrapped chat_agent_kalier run, replacing Claude Desktop's client.py. The
+# user configures the box ONCE (config.json kali_server_url / Config -> URLs)
+# and never repeats it in prompts.
+# ---------------------------------------------------------------------------
+
+
+class EmbeddedClientConfigTests(SimpleTestCase):
+    """The configuration + wiring surface of the embedded client."""
+
+    def _read(self, *parts):
+        path = os.path.join(os.path.dirname(__file__), *parts)
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+
+    # -- config.json -------------------------------------------------------
+
+    def test_config_json_has_kali_server_url(self):
+        cfg = json.loads(self._read('config.json'))
+        self.assertIn('kali_server_url', cfg)
+        # Safe, non-secret default that works for WSL2 localhost-forwarding /
+        # SSH-tunnel setups out of the box.
+        self.assertEqual(cfg['kali_server_url'], 'http://127.0.0.1:5000')
+
+    def test_config_json_documents_kali_section(self):
+        cfg = json.loads(self._read('config.json'))
+        self.assertIn('_section_kali', cfg)
+        self.assertIn('kali_server_url', cfg['_section_kali'])
+
+    def test_config_json_default_is_not_a_secret(self):
+        # The seeded default must never carry a credential / API key shape.
+        cfg = json.loads(self._read('config.json'))
+        self.assertNotIn('sk-', cfg['kali_server_url'])
+        self.assertTrue(cfg['kali_server_url'].startswith('http://'))
+
+    # -- views (Config -> URLs dialog backing) -----------------------------
+
+    def test_config_urls_dialog_exposes_kali_server_url(self):
+        from agent.views import CONFIG_URL_KEYS, CONFIG_URL_URL_FIELDS
+        self.assertIn('kali_server_url', CONFIG_URL_KEYS)
+        self.assertIn('kali_server_url', CONFIG_URL_URL_FIELDS)
+        # It is a URL field, NOT a host or port field.
+        from agent.views import CONFIG_URL_HOST_FIELDS, CONFIG_URL_PORT_FIELDS
+        self.assertNotIn('kali_server_url', CONFIG_URL_HOST_FIELDS)
+        self.assertNotIn('kali_server_url', CONFIG_URL_PORT_FIELDS)
+
+    # -- frontend (Config -> URLs form) ------------------------------------
+
+    def test_urls_form_has_kali_input(self):
+        html = self._read('templates', 'agent', 'agent_page.html')
+        self.assertIn('data-config-key="kali_server_url"', html)
+        self.assertIn('id="config-urls-kali-server-url"', html)
+        # The input is attribute-driven (auto-discovered by the dialog JS) and
+        # validated as a URL.
+        self.assertIn('data-config-type="url"', html)
+
+    # -- _seed_global_agent_defaults: the injection itself -----------------
+
+    def test_seed_injects_configured_kali_server_url(self):
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'target': '', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value='http://172.17.48.44:5000'):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        self.assertEqual(out['server_url'], 'http://172.17.48.44:5000')
+
+    def test_seed_strips_whitespace_on_configured_value(self):
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value='  http://10.1.1.1:5000  '):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        self.assertEqual(out['server_url'], 'http://10.1.1.1:5000')
+
+    def test_seed_leaves_other_templates_untouched(self):
+        from agent import tools
+        runtime_config = {'url': 'http://example.com', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value='http://172.17.48.44:5000'):
+            out = tools._seed_global_agent_defaults('apirer', runtime_config)
+        # Non-kalier agents must not be rewritten by the Kali injection.
+        self.assertEqual(out['server_url'], 'http://127.0.0.1:5000')
+
+    def test_seed_does_not_query_config_for_other_templates(self):
+        # Efficiency + isolation: the config read only happens for kalier.
+        from agent import tools
+        with patch.object(tools, 'get_config_value') as mocked:
+            tools._seed_global_agent_defaults('pythonxer', {'script': 'print(1)'})
+        mocked.assert_not_called()
+
+    def test_seed_noop_when_config_value_blank(self):
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value='   '):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        # Blank config => keep whatever the template carried (the LLM/canvas default).
+        self.assertEqual(out['server_url'], 'http://127.0.0.1:5000')
+
+    def test_seed_noop_when_config_value_none(self):
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value=None):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        self.assertEqual(out['server_url'], 'http://127.0.0.1:5000')
+
+    def test_seed_noop_when_config_value_not_a_string(self):
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value=12345):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        self.assertEqual(out['server_url'], 'http://127.0.0.1:5000')
+
+    def test_seed_fails_open_when_config_read_raises(self):
+        # A broken config read must NEVER crash the wrapped-tool launch — the
+        # template default stands and the run proceeds.
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', side_effect=RuntimeError('boom')):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        self.assertEqual(out['server_url'], 'http://127.0.0.1:5000')
+
+    def test_seed_returns_non_dict_unchanged(self):
+        from agent import tools
+        self.assertIsNone(tools._seed_global_agent_defaults('kalier', None))
+        self.assertEqual(tools._seed_global_agent_defaults('kalier', []), [])
+
+    def test_seed_adds_server_url_when_absent_from_template(self):
+        # Even if a future template omits server_url, the seed adds it for kalier.
+        from agent import tools
+        runtime_config = {'action': 'health'}
+        with patch.object(tools, 'get_config_value', return_value='http://10.2.2.2:5000'):
+            out = tools._seed_global_agent_defaults('kalier', runtime_config)
+        self.assertEqual(out['server_url'], 'http://10.2.2.2:5000')
+
+    # -- ordering contract: seed BEFORE the LLM assignments ----------------
+
+    def test_seed_runs_before_assignments_so_llm_override_wins(self):
+        # The seeder runs BEFORE _apply_requested_assignments_to_config, so an
+        # explicit server_url in the request still wins. Verify the ordering
+        # contract holds end-to-end on the parsed-assignment helper.
+        from agent import tools
+        runtime_config = {'action': 'nmap', 'target': '', 'server_url': 'http://127.0.0.1:5000'}
+        with patch.object(tools, 'get_config_value', return_value='http://172.17.48.44:5000'):
+            seeded = tools._seed_global_agent_defaults('kalier', dict(runtime_config))
+        self.assertEqual(seeded['server_url'], 'http://172.17.48.44:5000')
+        final, err, _notes = tools._apply_requested_assignments_to_config(
+            seeded, "Run Kali with action='nmap' and server_url='http://10.0.0.9:5000'",
+        )
+        self.assertIsNone(err)
+        self.assertEqual(final['server_url'], 'http://10.0.0.9:5000')
+
+    def test_launch_wires_seed_before_assignments(self):
+        # Source-level contract: the launcher must call the seeder, and it must
+        # do so BEFORE applying the LLM's per-call assignments (otherwise an
+        # explicit server_url would be clobbered by the injected default).
+        from agent import tools
+        src = inspect.getsource(tools._launch_wrapped_chat_agent)
+        self.assertIn('_seed_global_agent_defaults(spec.template_dir', src)
+        seed_at = src.index('_seed_global_agent_defaults(spec.template_dir')
+        assign_at = src.index('_apply_requested_assignments_to_config(')
+        self.assertLess(seed_at, assign_at,
+                        'seeding must happen before the LLM assignment pass')
+
+    # -- registry description reflects the embedded-client behavior --------
+
+    def test_registry_description_documents_auto_injection(self):
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_kalier']
+        purpose = spec.purpose.lower()
+        # The old "ALWAYS pass server_url" instruction is gone...
+        self.assertNotIn('always pass server_url', purpose)
+        # ...replaced by guidance that Tlamatini injects it.
+        self.assertIn('embedded client', purpose)
+        self.assertIn('config -> urls', purpose)
+        self.assertIn('do not pass server_url', purpose)
+
+    def test_kalier_config_yaml_comment_mentions_injection(self):
+        raw = self._read('agents', 'kalier', 'config.yaml')
+        self.assertIn('kali_server_url', raw)
+        self.assertIn('Config -> URLs', raw)
+
+
+class EmbeddedClientEndpointTests(TestCase):
+    """The Config -> URLs HTTP round-trip for ``kali_server_url``.
+
+    GET is read-only against the live config.json (safe). The save endpoint is
+    exercised with ``save_config_updates`` PATCHED so the test never clobbers the
+    real config.json on disk — we only assert the validated payload that WOULD be
+    written.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='kali-cfg-admin', password='pw12345')
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='kali-cfg-admin', password='pw12345')
+
+    def _valid_urls_payload(self, **overrides):
+        payload = {
+            'ollama_base_url': 'http://127.0.0.1:11434',
+            'unified_agent_base_url': 'http://127.0.0.1:11434',
+            'image_interpreter_base_url': 'http://127.0.0.1:11434',
+            'mcp_system_server_host': '127.0.0.1',
+            'mcp_system_server_port': 8765,
+            'mcp_system_client_uri': 'ws://127.0.0.1:8765',
+            'mcp_files_search_server_host': 'localhost',
+            'mcp_files_search_server_port': 50051,
+            'mcp_files_search_client_uri': 'ws://127.0.0.1:50051',
+            'kali_server_url': 'http://172.17.48.44:5000',
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_load_urls_section_returns_kali_server_url(self):
+        resp = self.client.get('/agent/load_config_section/urls/')
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.content)
+        self.assertTrue(body['success'])
+        self.assertIn('kali_server_url', body['values'])
+
+    def test_load_requires_auth(self):
+        anon = Client()
+        resp = anon.get('/agent/load_config_section/urls/')
+        self.assertIn(resp.status_code, (302, 403))
+
+    def test_save_urls_persists_kali_server_url(self):
+        with patch('agent.views.save_config_updates', return_value='/fake/config.json') as mocked:
+            resp = self.client.post(
+                '/agent/save_config_urls/',
+                data=json.dumps(self._valid_urls_payload()),
+                content_type='application/json',
+            )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        body = json.loads(resp.content)
+        self.assertTrue(body['success'])
+        self.assertIn('kali_server_url', body['updated_keys'])
+        # The validated dict that WOULD be written carries our value.
+        written = mocked.call_args.args[0]
+        self.assertEqual(written['kali_server_url'], 'http://172.17.48.44:5000')
+
+    def test_save_urls_rejects_invalid_kali_url(self):
+        with patch('agent.views.save_config_updates') as mocked:
+            resp = self.client.post(
+                '/agent/save_config_urls/',
+                data=json.dumps(self._valid_urls_payload(kali_server_url='not-a-url')),
+                content_type='application/json',
+            )
+        self.assertEqual(resp.status_code, 400)
+        body = json.loads(resp.content)
+        self.assertIn('kali_server_url', body['errors'])
+        mocked.assert_not_called()
+
+    def test_save_urls_rejects_missing_kali_url(self):
+        payload = self._valid_urls_payload()
+        payload.pop('kali_server_url')
+        with patch('agent.views.save_config_updates') as mocked:
+            resp = self.client.post(
+                '/agent/save_config_urls/',
+                data=json.dumps(payload),
+                content_type='application/json',
+            )
+        self.assertEqual(resp.status_code, 400)
+        body = json.loads(resp.content)
+        self.assertEqual(body['errors'].get('kali_server_url'), 'missing')
+        mocked.assert_not_called()
+
+    def test_save_urls_rejects_non_http_scheme_kali_url(self):
+        with patch('agent.views.save_config_updates') as mocked:
+            resp = self.client.post(
+                '/agent/save_config_urls/',
+                data=json.dumps(self._valid_urls_payload(kali_server_url='ftp://10.0.0.5:5000')),
+                content_type='application/json',
+            )
+        self.assertEqual(resp.status_code, 400)
+        body = json.loads(resp.content)
+        self.assertIn('kali_server_url', body['errors'])
+        mocked.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@ from django.utils import timezone
 from .chat_agent_registry import (
     WRAPPED_CHAT_AGENT_SPECS,
 )
+from .config_loader import get_config_value
 from .chat_agent_runtime import (
     create_isolated_runtime_copy,
     get_chat_agent_run,
@@ -1474,6 +1475,38 @@ def _non_flow_missing_required_paths(config, config_path, script_path):
     return filtered
 
 
+def _seed_global_agent_defaults(template_dir, runtime_config):
+    """Inject Tlamatini-global defaults into a wrapped agent's runtime config
+    BEFORE the LLM's per-call assignments are applied, so the LLM can still
+    override any of them by naming the parameter explicitly.
+
+    Kalier is the "embedded client" for the MCP-Kali-Server: instead of the
+    user wiring Claude Desktop's ``client.py --server http://KALI_IP:5000``,
+    Tlamatini itself is the client and the Kali box URL lives once in
+    ``config.json`` (``kali_server_url`` — editable via Config -> URLs). We
+    seed it as the default ``server_url`` here so plain prompts like
+    "scan 10.0.0.5 and give me a report" target the configured Kali box
+    without the LLM (or the user) ever repeating the URL.
+    """
+    if not isinstance(runtime_config, dict):
+        return runtime_config
+
+    if template_dir == "kalier":
+        try:
+            configured = get_config_value("kali_server_url", "")
+        except Exception as exc:  # pragma: no cover - config read is best-effort
+            logger.warning("[tools._seed_global_agent_defaults] could not read kali_server_url: %s", exc)
+            configured = ""
+        if isinstance(configured, str) and configured.strip():
+            runtime_config["server_url"] = configured.strip()
+            logger.info(
+                "[tools._seed_global_agent_defaults] Kalier server_url seeded from config: %s",
+                configured.strip(),
+            )
+
+    return runtime_config
+
+
 def _launch_wrapped_chat_agent(spec, request):
     logger.info("=" * 80)
     logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH START =====")
@@ -1548,6 +1581,10 @@ def _launch_wrapped_chat_agent(spec, request):
             "message": "The runtime config.yaml is not a YAML mapping.",
             "runtime_dir": runtime_dir,
         })
+
+    # Seed Tlamatini-global defaults (e.g. Kalier's configured Kali server URL)
+    # BEFORE applying the LLM's assignments, so an explicit per-call value wins.
+    runtime_config = _seed_global_agent_defaults(spec.template_dir, runtime_config)
 
     runtime_config, assignment_error, assignment_notes = _apply_requested_assignments_to_config(
         runtime_config,

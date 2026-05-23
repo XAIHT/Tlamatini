@@ -126,6 +126,8 @@
     "log_query_rewrites": true,
     "verbose_metadata": true
   },
+  "_section_kali": "Kalier / MCP-Kali-Server bridge. 'kali_server_url' is the base URL of the Flask API (server.py) running on your Kali box — Tlamatini IS the client (the embedded replacement for Claude Desktop's client.py). The wrapped chat_agent_kalier tool auto-injects this as the default server_url on every run, so plain prompts ('scan 10.0.0.5 and give me a report') work without ever repeating the URL. Default http://127.0.0.1:5000 works when Kali runs in WSL2 with localhost forwarding (or you SSH-tunnel the port); otherwise set it to http://<KALI_LAN_IP>:5000 via Config -> URLs in the navbar. The LLM may still override it per-call by passing server_url=...",
+  "kali_server_url": "http://127.0.0.1:5000",
   "allowed_paths": [
     "application",
     "docs",
