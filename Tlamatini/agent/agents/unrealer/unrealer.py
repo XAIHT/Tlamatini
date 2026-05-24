@@ -259,6 +259,49 @@ def remove_pid_file():
 
 
 # ========================================
+# TIMEOUT DIAGNOSTICS
+# ========================================
+#
+# Commands that drive the editor through a synchronous operation which can
+# pop a *modal* window. UE's ``UEditorLoadingAndSavingUtils::SaveCurrentLevel``
+# (and a ``SaveDirtyPackages`` of a never-saved "Untitled" map) raise a blocking
+# Save-As dialog that the TCP bridge cannot dismiss: the editor's game thread
+# parks on the modal window, so the plugin never writes a response and our recv
+# hits the read timeout. A timeout on one of these is far more likely to mean
+# "blocked on a dialog" than "still working", so the diagnostic names that cause.
+_MODAL_PRONE_COMMANDS = frozenset({
+    'save_current_level', 'save_all', 'save_asset', 'open_level', 'new_level',
+})
+
+
+def _diagnose_no_response(command: str, base_error: str, read_timeout: float) -> str:
+    """Turn a bare recv-timeout into an actionable, single-line diagnostic.
+
+    A timeout here means the bridge connected and sent ``command`` but the
+    editor never replied within ``read_timeout`` — almost always because the
+    editor's game thread is busy with a long operation or is parked on a MODAL
+    dialog waiting for a human. The generic "Timeout receiving Unreal response"
+    gives the operator nothing to act on, so we name the likely cause and, for
+    the save/level commands that are the usual culprit, the remedy.
+    """
+    msg = (
+        f"{base_error} after {read_timeout:g}s — the editor accepted the "
+        f"'{command}' command but sent no reply. Either it is still running a "
+        "long operation (raise read_timeout in config.yaml) or its game thread "
+        "is parked on a modal dialog waiting for input."
+    )
+    if command in _MODAL_PRONE_COMMANDS:
+        msg += (
+            " Saving or opening an unsaved/'Untitled' level pops a modal Save "
+            "dialog the bridge cannot dismiss. Give the level a real package "
+            "path first — save it once in the editor, or run 'new_level' with "
+            "params.path set to an explicit /Game/... map — then retry "
+            "('save_all' also prompts for a never-saved map)."
+        )
+    return msg
+
+
+# ========================================
 # UNREAL CONNECTION (inline mirror of upstream UnrealConnection)
 # ========================================
 #
@@ -355,19 +398,30 @@ class UnrealConnection:
         # that race even on plugin builds that lack the matching server-side
         # fix. Two attempts is plenty — sustained connect failures still
         # surface to the caller.
+        #
+        # A full *read*-timeout is deliberately NOT retried (handled below): it
+        # is not this connect race (which fails instantly with "connection
+        # closed before receiving data"), and re-sending is both wasteful and
+        # unsafe — the first invocation of a state-changing command may still be
+        # running, so a retry could execute it twice.
         last_error = ""
         for attempt in range(1, 3):
             response = self._send_command_once(command, params, attempt=attempt)
             if response.get("status") != "error":
                 return response
             err = (response.get("error") or "").lower()
+            last_error = response.get("error", "")
+            if "timeout" in err:
+                return {
+                    "status": "error",
+                    "error": _diagnose_no_response(
+                        command, last_error, self.read_timeout),
+                }
             transient = (
-                "timeout" in err
-                or "connection closed" in err
+                "connection closed" in err
                 or "connection reset" in err
                 or "broken pipe" in err
             )
-            last_error = response.get("error", "")
             if attempt < 2 and transient:
                 logging.warning(
                     f"⚠️ Transient socket failure on attempt {attempt} "

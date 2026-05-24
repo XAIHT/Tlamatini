@@ -244,6 +244,101 @@ class PrepareParamsPipelineTests(SimpleTestCase):
 
 
 # ---------------------------------------------------------------------------
+# _diagnose_no_response — actionable recv-timeout message
+# ---------------------------------------------------------------------------
+
+
+class DiagnoseNoResponseTests(SimpleTestCase):
+    def setUp(self):
+        self.u = _load_unrealer_module()
+
+    def test_generic_timeout_names_command_and_timeout(self):
+        msg = self.u._diagnose_no_response(
+            'spawn_actor', 'Timeout receiving Unreal response', 10)
+        self.assertIn('spawn_actor', msg)
+        self.assertIn('10s', msg)
+        self.assertIn('read_timeout', msg)  # tells the operator the knob to turn
+        self.assertNotIn('\n', msg)         # stays a single INI-header line
+
+    def test_generic_timeout_has_no_save_remedy(self):
+        msg = self.u._diagnose_no_response(
+            'spawn_actor', 'Timeout receiving Unreal response', 10)
+        self.assertNotIn('Save dialog', msg)
+
+    def test_save_command_appends_modal_dialog_remedy(self):
+        msg = self.u._diagnose_no_response(
+            'save_current_level', 'Timeout receiving Unreal response', 10)
+        self.assertIn('modal Save dialog', msg)
+        self.assertIn('new_level', msg)   # names the silent-save escape hatch
+        self.assertNotIn('\n', msg)
+
+    def test_modal_prone_membership(self):
+        self.assertIn('save_current_level', self.u._MODAL_PRONE_COMMANDS)
+        self.assertIn('save_all', self.u._MODAL_PRONE_COMMANDS)
+        self.assertIn('open_level', self.u._MODAL_PRONE_COMMANDS)
+        self.assertNotIn('spawn_actor', self.u._MODAL_PRONE_COMMANDS)
+
+
+# ---------------------------------------------------------------------------
+# send_command — read-timeout is diagnosed (no retry); connect-race retried
+# ---------------------------------------------------------------------------
+
+
+class SendCommandRetryTests(SimpleTestCase):
+    def setUp(self):
+        self.u = _load_unrealer_module()
+
+    def _conn(self, read_timeout=10):
+        return self.u.UnrealConnection(read_timeout=read_timeout)
+
+    def _stub(self, conn, responder):
+        """Replace the socket round-trip with a pure responder; record attempts."""
+        calls = []
+
+        def fake_once(command, params, attempt):
+            calls.append(attempt)
+            return responder(attempt)
+
+        conn._send_command_once = fake_once
+        return calls
+
+    def test_read_timeout_is_not_retried_and_is_diagnosed(self):
+        conn = self._conn(read_timeout=7)
+        calls = self._stub(
+            conn, lambda a: {'status': 'error', 'error': 'Timeout receiving Unreal response'})
+        out = conn.send_command('save_current_level', {})
+        self.assertEqual(calls, [1], 'a read-timeout must NOT trigger the connect-race retry')
+        self.assertEqual(out['status'], 'error')
+        self.assertIn('7s', out['error'])
+        self.assertIn('modal Save dialog', out['error'])
+
+    def test_connection_closed_is_retried_once(self):
+        conn = self._conn()
+        calls = self._stub(
+            conn, lambda a: {'status': 'error', 'error': 'Connection closed before receiving data'})
+        out = conn.send_command('spawn_actor', {})
+        self.assertEqual(calls, [1, 2], 'the fast connect-race signature must still be retried')
+        self.assertEqual(out['status'], 'error')
+
+    def test_retry_recovers_on_second_attempt(self):
+        conn = self._conn()
+        calls = self._stub(
+            conn,
+            lambda a: {'status': 'error', 'error': 'Connection reset by peer'} if a == 1
+            else {'status': 'success', 'result': {'ok': True}})
+        out = conn.send_command('spawn_actor', {})
+        self.assertEqual(calls, [1, 2])
+        self.assertEqual(out['status'], 'success')
+
+    def test_success_returns_on_first_attempt(self):
+        conn = self._conn()
+        calls = self._stub(conn, lambda a: {'status': 'success', 'result': {}})
+        out = conn.send_command('get_current_level', {})
+        self.assertEqual(calls, [1])
+        self.assertEqual(out['status'], 'success')
+
+
+# ---------------------------------------------------------------------------
 # config.yaml — the placeholder catalog the Flow Compiler resolves against
 # ---------------------------------------------------------------------------
 

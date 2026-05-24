@@ -146,7 +146,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── js/                 # 27 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 5 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
-│   │   └── migrations/             # Django migrations (latest: 0098_add_chat_agent_kalier_tool)
+│   │   └── migrations/             # Django migrations (latest: 0100_add_unrealer_extended_demo_prompts)
 │   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)
