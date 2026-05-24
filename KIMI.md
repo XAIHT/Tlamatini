@@ -19,7 +19,7 @@
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **66** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **67** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -111,7 +111,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 66-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 67-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -611,7 +611,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 66 Workflow Agent Types
+## 12. All 67 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -656,7 +656,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Mouser** — Mouse pointer movement (7 movement types)
 - **Keyboarder** — Keyboard typing / hotkey automation (robust parser)
 - **Windower** — Win32 window manager (pywin32 + ctypes, self-contained; ports the window-management subset of Microsoft's Windows-MCP incl. the `AttachThreadInput` cross-process focus dance). The third member of the desktop-UI trio — acts on the WINDOW itself (Windower = the window, Mouser = clicks inside it, Keyboarder = types into it). `action` ∈ list / focus / minimize / maximize / restore / move / resize / move_resize / close / topmost / untopmost / arrange (snap/tile to halves, quadrants, center, full); matches `window_title` by substring/exact/regex (+ `match_index`); emits `INI_SECTION_WINDOWER` (`action`/`window_title`/`matched`/`match_count`/`state`/`left`/`top`/`width`/`height`/`response_body`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_windower` Multi-Turn tool
-- **Kalier** — Kali Linux offensive-security bridge. Talks to the MCP-Kali-Server (`https://www.kali.org/tools/mcp-kali-server/`) Flask API (`server.py`; default `http://127.0.0.1:5000`) over stdlib `urllib` (self-contained, no `requests`/`mcp` deps in the pool). `action` ∈ command / nmap / gobuster / dirb / nikto / sqlmap / metasploit / hydra / john / wpscan / enum4linux / health; emits `INI_SECTION_KALIER` (`action`/`endpoint`/`method`/`subject`/`return_code`/`success`/`timed_out`/`server_url`/`response_body`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_kalier` Multi-Turn tool. Authorized targets only
+- **Kalier** — Kali Linux offensive-security bridge. Talks to the MCP-Kali-Server (`https://www.kali.org/tools/mcp-kali-server/`) Flask API (`server.py`; default `http://127.0.0.1:5000`) over stdlib `urllib` (self-contained, no `requests`/`mcp` deps in the pool). `action` ∈ command / nmap / gobuster / dirb / nikto / sqlmap / metasploit / hydra / john / wpscan / enum4linux / health; emits `INI_SECTION_KALIER` (`action`/`endpoint`/`method`/`subject`/`return_code`/`success`/`timed_out`/`server_url`/`response_body`) and always triggers `target_agents`. In **chat/Multi-Turn** Tlamatini is the embedded MCP-Kali-Server client: `chat_agent_kalier` auto-injects the configured **`kali_server_url`** (set once in Config ▸ URLs / `config.json`) as the default `server_url`, so prompts never repeat the Kali box address (override per-call with `server_url=`); canvas runs set it in the node dialog. Both a canvas agent and the LLM-callable `chat_agent_kalier` Multi-Turn tool. Authorized targets only
 - **File-Creator** — Creates files with specified content
 - **File-Interpreter** — Document parsing and text/image extraction
 - **File-Extractor** — Raw text extraction (PDF, DOCX, etc.)
