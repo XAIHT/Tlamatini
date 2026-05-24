@@ -65,7 +65,7 @@ Key rules:
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 40 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`)
+- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 42 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`)
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---

@@ -7,12 +7,12 @@
 <p align="center"><em>"one who knows" — a locally-deployed AI developer assistant</em></p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.7.0"><img src="https://img.shields.io/badge/VERSION-v1.7.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.7.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.7.1"><img src="https://img.shields.io/badge/VERSION-v1.7.1-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.7.1" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
-  <a href="#95-agent-catalog-the-66-types-by-family"><img src="https://img.shields.io/badge/AGENTS-66-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="66 Agents" /></a>
-  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-73-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="73 Multi-Turn Tools" /></a>
+  <a href="#95-agent-catalog-the-67-types-by-family"><img src="https://img.shields.io/badge/AGENTS-67-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="67 Agents" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-74-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="74 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
   <a href="#311-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-23-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="23 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
@@ -349,7 +349,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of Tlamatini's **73 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 41 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
+- The planner picks the relevant subset of Tlamatini's **74 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 42 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
 - The unified-agent loop runs **up to 100 iterations** — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
@@ -626,13 +626,13 @@ Two ready-made showcases live in the **Prompts** dropdown: **BROWSER SPOTLIGHT**
 
 **Kalier** bridges Tlamatini to **Kali Linux** offensive-security tooling through the [MCP-Kali-Server](https://www.kali.org/tools/mcp-kali-server/). That project runs a small Flask **API server** (`server.py`) on the Kali box exposing `/api/command`, `/api/tools/<tool>` and `/health`; Kalier talks to it directly over HTTP (Python-stdlib `urllib`, no extra packages in the agent pool), so it is the canonical tool for **AI-assisted penetration testing, recon, and CTF solving**. It is **state-changing**, so it appears in the Exec Report.
 
-First, get the MCP-Kali-Server running on your Kali machine and reachable from Tlamatini — the upstream README recommends an SSH tunnel (`ssh -L 5000:localhost:5000 user@KALI_IP`), which makes the server reachable at `http://127.0.0.1:5000`. ⚠️ **Authorized targets only** — run Kalier solely against systems you own or are explicitly authorized to test (engagement, lab, CTF).
+First, get the MCP-Kali-Server (`server.py`) running on your Kali machine and reachable from Tlamatini. **Tlamatini is the embedded client** — you no longer need Claude Desktop's `client.py`; instead you set the Kali box URL **once** in **`Config ▸ URLs → Kali server (Kalier)`** (the `kali_server_url` key in `config.json`, default `http://127.0.0.1:5000`). That default already works when Kali runs in WSL2 with localhost forwarding or when you SSH-tunnel the port (`ssh -L 5000:localhost:5000 user@KALI_IP`); for a LAN Kali box set it to `http://<KALI_LAN_IP>:5000`. (See [`Tlamatini-Kali-Setup.md`](Tlamatini-Kali-Setup.md) for the full zero-client walkthrough.) ⚠️ **Authorized targets only** — run Kalier solely against systems you own or are explicitly authorized to test (engagement, lab, CTF).
 
 Tick **only the Multi-Turn** checkbox (Kalier is a normal Multi-Turn tool — not behind the ACPX/Skill surface). Then ask, for example:
 
-> *"Using Kali at http://127.0.0.1:5000, run an nmap -sCV scan of 10.0.0.5 ports 1-1000 and summarize the open services."*
+> *"Scan 10.0.0.5 with an nmap -sCV on ports 1-1000 and summarize the open services."*
 
-Tlamatini calls **`chat_agent_kalier`** with `action='nmap'`, `target='10.0.0.5'`, `scan_type='-sCV'`, `ports='1-1000'` and `server_url='http://127.0.0.1:5000'`. The `action` field selects the capability: `command` (any shell command on the Kali box), `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, or `health` (probe the server and which tools are installed — a good first call when you are unsure the API is reachable). The tool returns the Kali tool's stdout/stderr verbatim and captures an `INI_SECTION_KALIER` block (`action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, `server_url`) for the Exec Report and Parametrizer.
+Tlamatini calls **`chat_agent_kalier`** with `action='nmap'`, `target='10.0.0.5'`, `scan_type='-sCV'`, `ports='1-1000'` — and **auto-injects your configured `server_url`** from `kali_server_url`, so you never repeat the Kali box address in a prompt (the LLM only passes `server_url=` explicitly to hit a different one-off box). The `action` field selects the capability: `command` (any shell command on the Kali box), `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, or `health` (probe the server and which tools are installed — a good first call when you are unsure the API is reachable). The tool returns the Kali tool's stdout/stderr verbatim and captures an `INI_SECTION_KALIER` block (`action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, `server_url`) for the Exec Report and Parametrizer.
 
 On the canvas the same capability is the visual **Kalier** node (see §4 and §9.5): chain `Starter → Kalier (nmap) → Parametrizer → Kalier (gobuster) → Forker → Ender` to build a fully unattended, branch-on-result assessment pipeline. The visual node and the chat tool share the same MCP-Kali-Server contract.
 
@@ -1267,7 +1267,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 | 2. Runtime MCP services | System-Metrics (WebSocket) + Files-Search (gRPC) daemons. | `agent/mcp_*` |
 | 3. Context fetcher chains | LCEL sidecars that inject system / files context. | `agent/chain_*_lcel.py` |
 | 4. Main answer chains | Basic / History-aware / Unified. `factory.py` monkey-patches `invoke()`. | `agent/rag/chains/` |
-| 5. Unified-agent tools | **73** synchronous `@tool` functions (20 core Python + 41 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
+| 5. Unified-agent tools | **74** synchronous `@tool` functions (20 core Python + 42 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
 
 ### 9.3. Multi-Turn execution pipeline
 
@@ -1617,22 +1617,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.7.0 -m "Release 1.7.0: <one-line summary>"
-git push origin v1.7.0
+git tag -a v1.7.1 -m "Release 1.7.1: <one-line summary>"
+git push origin v1.7.1
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.7.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.7.1/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.7.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.7.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.7.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.7.1` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.7.1` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.7.1","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1656,8 +1656,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.7.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.7.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.7.1"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.7.1 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
