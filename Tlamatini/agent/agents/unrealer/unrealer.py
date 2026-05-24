@@ -259,7 +259,7 @@ def remove_pid_file():
 
 
 # ========================================
-# TIMEOUT DIAGNOSTICS
+# TIMEOUT DIAGNOSTICS & PER-COMMAND TIMEOUT FLOORS
 # ========================================
 #
 # Commands that drive the editor through a synchronous operation which can
@@ -273,6 +273,64 @@ _MODAL_PRONE_COMMANDS = frozenset({
     'save_current_level', 'save_all', 'save_asset', 'open_level', 'new_level',
 })
 
+# Commands whose duration is dominated by a *synchronous compile/serialize* on
+# the editor's game thread, NOT by a modal dialog. The plugin's C++ handlers run
+# these inline before they write the TCP reply:
+#   * create_material / create_material_instance — ``IAssetTools::CreateAsset``
+#     compiles the new material's shaders before it returns. The FIRST material
+#     in a fresh editor session is the slow one (cold shader DDC + compiler-worker
+#     spin-up) and routinely needs 15-40 s; later ones finish in well under a
+#     second once the workers are warm.
+#   * set_material_parameter — ``UpdateMaterialInstance`` recompiles the instance.
+#   * compile_blueprint — Kismet compile + reinstancing of existing instances.
+#   * import_asset — FBX/texture/audio deserialize + (meshes) material/shader setup.
+#   * execute_python — arbitrary editor script; unbounded by nature.
+#   * open_level / new_level — map (de)serialize + actor registration; a large map
+#     takes many seconds (these are ALSO modal-prone — see the diagnostic).
+# A flat ``read_timeout`` tuned for the sub-second read/query commands kills these
+# mid-flight, which is exactly what produced the cascading failure this fix targets:
+# ``create_material`` was aborted at 10 s, so every step that depended on the
+# material (create_material_instance / set_material_parameter / assign_material)
+# then failed with "not found". The floors below give each compute-bound command
+# the headroom its handler actually needs.
+_COMPILE_SLOW_COMMANDS = frozenset({
+    'create_material', 'create_material_instance', 'set_material_parameter',
+    'compile_blueprint', 'import_asset', 'execute_python',
+})
+
+# Minimum effective read-timeout (seconds) per command. The agent uses
+# ``max(config.read_timeout, floor)`` so an operator who deliberately set a
+# *higher* read_timeout in config.yaml is always honored, while the common case
+# (the default 10 s) is transparently raised for the handful of commands that
+# legitimately need longer. Commands absent from this map keep the configured
+# read_timeout unchanged. save_* are deliberately NOT floored: a save that hangs
+# is parked on a modal Save dialog that will never clear, so waiting longer only
+# delays the actionable diagnostic — a real, already-pathed level saves instantly.
+_SLOW_COMMAND_TIMEOUT_FLOORS = {
+    'create_material':          60.0,
+    'create_material_instance': 45.0,
+    'set_material_parameter':   45.0,
+    'compile_blueprint':        60.0,
+    'import_asset':             90.0,
+    'execute_python':           60.0,
+    'open_level':               60.0,
+    'new_level':                45.0,
+}
+
+
+def _effective_read_timeout(command: str, configured_timeout: float) -> float:
+    """Raise the recv timeout to a per-command floor for known compute-bound ops.
+
+    Returns ``max(configured_timeout, floor)`` so the operator's config.yaml value
+    is never lowered — only raised when a command (material/blueprint/import/python/
+    level) is known to run a synchronous compile/serialize longer than the default.
+    """
+    try:
+        configured = float(configured_timeout)
+    except (TypeError, ValueError):
+        configured = 10.0
+    return max(configured, _SLOW_COMMAND_TIMEOUT_FLOORS.get(command, 0.0))
+
 
 def _diagnose_no_response(command: str, base_error: str, read_timeout: float) -> str:
     """Turn a bare recv-timeout into an actionable, single-line diagnostic.
@@ -282,7 +340,9 @@ def _diagnose_no_response(command: str, base_error: str, read_timeout: float) ->
     editor's game thread is busy with a long operation or is parked on a MODAL
     dialog waiting for a human. The generic "Timeout receiving Unreal response"
     gives the operator nothing to act on, so we name the likely cause and, for
-    the save/level commands that are the usual culprit, the remedy.
+    the save/level and compile-heavy commands that are the usual culprits, the
+    remedy. ``read_timeout`` here is the EFFECTIVE timeout actually waited (the
+    per-command floor is already applied), so the message reflects the real wait.
     """
     msg = (
         f"{base_error} after {read_timeout:g}s — the editor accepted the "
@@ -290,6 +350,17 @@ def _diagnose_no_response(command: str, base_error: str, read_timeout: float) ->
         "long operation (raise read_timeout in config.yaml) or its game thread "
         "is parked on a modal dialog waiting for input."
     )
+    if command in _COMPILE_SLOW_COMMANDS:
+        msg += (
+            " This command runs a synchronous compile/serialize on the editor's "
+            "game thread (material/asset shader compilation, Blueprint compile, "
+            "asset import, or an editor Python script). The agent already extended "
+            "the wait to the slow-command floor for it; a timeout even so usually "
+            "means a cold shader DDC is still warming up (retry — the next run is "
+            "fast once workers are warm), a Python script is blocked on input, or "
+            "the operation genuinely failed engine-side. Verify the asset exists "
+            "before chaining steps that depend on it."
+        )
     if command in _MODAL_PRONE_COMMANDS:
         msg += (
             " Saving or opening an unsaved/'Untitled' level pops a modal Save "
@@ -657,9 +728,19 @@ def main():
         else:
             params = _prepare_params_for_unreal(command, params)
             logging.info(f"📦 Prepared params for '{command}': {params}")
+            # Compute-bound commands (material/shader compile, blueprint compile,
+            # asset import, editor Python, level load) run a synchronous operation
+            # the flat read_timeout cannot bound; raise the recv timeout to the
+            # per-command floor so a slow-but-valid op is not aborted mid-compile.
+            effective_read_timeout = _effective_read_timeout(command, read_timeout)
+            if effective_read_timeout > read_timeout:
+                logging.info(
+                    f"   ↳ '{command}' is a known slow operation; raising read_timeout "
+                    f"{read_timeout:g}s → {effective_read_timeout:g}s for this run."
+                )
             conn = UnrealConnection(host=host, port=port,
                                     connect_timeout=connect_timeout,
-                                    read_timeout=read_timeout)
+                                    read_timeout=effective_read_timeout)
             response = conn.send_command(command, params)
             status = "error" if response.get("status") == "error" else "ok"
             error_msg = response.get("error", "") if status == "error" else ""

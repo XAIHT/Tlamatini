@@ -278,6 +278,78 @@ class DiagnoseNoResponseTests(SimpleTestCase):
         self.assertIn('open_level', self.u._MODAL_PRONE_COMMANDS)
         self.assertNotIn('spawn_actor', self.u._MODAL_PRONE_COMMANDS)
 
+    def test_compile_slow_command_appends_compile_remedy(self):
+        # The root cause this fix targets: create_material timed out at the flat
+        # 10 s while UE compiled the new material's shaders, cascading into
+        # "parent material not found" downstream. Its diagnostic must name the
+        # synchronous shader compile (NOT the modal Save dialog) as the cause.
+        msg = self.u._diagnose_no_response(
+            'create_material', 'Timeout receiving Unreal response', 60)
+        self.assertIn('60s', msg)
+        self.assertIn('shader', msg.lower())
+        self.assertNotIn('modal Save dialog', msg)  # this is not the save case
+        self.assertNotIn('\n', msg)
+
+    def test_spawn_actor_gets_neither_remedy(self):
+        msg = self.u._diagnose_no_response(
+            'spawn_actor', 'Timeout receiving Unreal response', 10)
+        self.assertNotIn('shader', msg.lower())
+        self.assertNotIn('modal Save dialog', msg)
+
+    def test_open_level_is_both_compile_slow_and_modal_prone(self):
+        # open_level can be legitimately slow (map deserialize) AND modal-prone
+        # (prompt to save the dirty current level), so its diagnostic carries the
+        # modal remedy. It is floored (slow) but not in the compile-shader set.
+        self.assertIn('open_level', self.u._MODAL_PRONE_COMMANDS)
+        self.assertIn('open_level', self.u._SLOW_COMMAND_TIMEOUT_FLOORS)
+        self.assertNotIn('open_level', self.u._COMPILE_SLOW_COMMANDS)
+        msg = self.u._diagnose_no_response(
+            'open_level', 'Timeout receiving Unreal response', 60)
+        self.assertIn('modal Save dialog', msg)
+
+
+# ---------------------------------------------------------------------------
+# _effective_read_timeout — per-command recv-timeout floors
+# ---------------------------------------------------------------------------
+
+
+class EffectiveReadTimeoutTests(SimpleTestCase):
+    def setUp(self):
+        self.u = _load_unrealer_module()
+
+    def test_create_material_floor_raises_default(self):
+        # The exact regression: the default 10 s is raised to the 60 s floor so
+        # the first (shader-compiling) material in a session is not aborted.
+        self.assertEqual(self.u._effective_read_timeout('create_material', 10), 60.0)
+
+    def test_material_family_floors(self):
+        self.assertEqual(self.u._effective_read_timeout('create_material_instance', 10), 45.0)
+        self.assertEqual(self.u._effective_read_timeout('set_material_parameter', 10), 45.0)
+        self.assertEqual(self.u._effective_read_timeout('import_asset', 10), 90.0)
+
+    def test_unknown_command_keeps_configured_timeout(self):
+        # A read/query command (no floor) must keep the operator's value verbatim.
+        self.assertEqual(self.u._effective_read_timeout('get_actors_in_level', 10), 10.0)
+        self.assertEqual(self.u._effective_read_timeout('spawn_actor', 12), 12.0)
+
+    def test_configured_value_above_floor_is_honored(self):
+        # An operator who set read_timeout: 120 must NOT have it lowered to 60.
+        self.assertEqual(self.u._effective_read_timeout('create_material', 120), 120.0)
+
+    def test_non_numeric_configured_falls_back(self):
+        self.assertEqual(self.u._effective_read_timeout('create_material', None), 60.0)
+        self.assertEqual(self.u._effective_read_timeout('spawn_actor', 'oops'), 10.0)
+
+    def test_every_floor_command_is_categorized(self):
+        # Every floored command must be modal-prone and/or compile-slow so the
+        # timeout diagnostic always has a tailored remedy (no silent floor).
+        for command in self.u._SLOW_COMMAND_TIMEOUT_FLOORS:
+            self.assertTrue(
+                command in self.u._MODAL_PRONE_COMMANDS
+                or command in self.u._COMPILE_SLOW_COMMANDS,
+                f'{command} is floored but has no diagnostic category',
+            )
+
 
 # ---------------------------------------------------------------------------
 # send_command — read-timeout is diagnosed (no retry); connect-race retried
