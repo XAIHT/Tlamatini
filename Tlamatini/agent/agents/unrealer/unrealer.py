@@ -454,14 +454,38 @@ def _normalize_content_path(value: str) -> str:
     return text
 
 
-_PATH_PARAM_KEYS = ('path', 'package_root', 'content_path', 'asset_path')
+# Params that carry a UE *content* path ("/Game/..." virtual root) and should be
+# normalized /Content/ → /Game/. The original four cover the editor/blueprint/UMG
+# surface; the trailing five cover the P2 Asset + Material commands (import_asset's
+# destination_path, duplicate/rename_asset's source/destination, and the material
+# create-instance/set-parameter/assign content paths).
+_CONTENT_PATH_PARAM_KEYS = (
+    'path', 'package_root', 'content_path', 'asset_path',
+    'destination_path', 'source', 'destination', 'parent_material', 'material',
+)
+
+# Params that carry a real OS *disk* path, NOT a UE content path. These must NEVER
+# be content-normalized: ``import_asset.source_file`` points at the file on disk to
+# import, and ``take_screenshot.filepath`` is where UE writes the .png. Listed here
+# only for documentation — they are simply absent from the normalization loop.
+_DISK_PATH_PARAM_KEYS = ('source_file', 'filepath')
+
+# Values that mean "this placeholder was never set". The agent forwards whatever
+# ``params`` contains, but config.yaml deliberately ships a large catalog of empty
+# placeholder keys so the Flow Compiler's dotted ``params.X`` overrides resolve into
+# existing YAML leaves (see config.yaml). Sending those empty placeholders on every
+# command would flood each handler with blank arguments it might misread as an
+# explicit empty value, so they are pruned just before the wire write. Booleans and
+# the integer 0 are intentionally NOT pruned (``recursive: false``, ``slot: 0`` are
+# meaningful), so the tuple holds only the genuinely-"unset" sentinels.
+_UNSET_PARAM_VALUES = ('', [], {}, None)
 
 
 def _normalize_params_for_unreal(params: dict) -> dict:
-    """Apply defensive in-place fixups to a params dict before sending."""
+    """Normalize UE content paths (/Content/ → /Game/) on the known content keys."""
     if not isinstance(params, dict):
         return params
-    for key in _PATH_PARAM_KEYS:
+    for key in _CONTENT_PATH_PARAM_KEYS:
         val = params.get(key)
         if isinstance(val, str) and val:
             normalized = _normalize_content_path(val)
@@ -469,6 +493,55 @@ def _normalize_params_for_unreal(params: dict) -> dict:
                 logging.info(f"   ↳ Normalized params.{key}: {val!r} → {normalized!r}")
                 params[key] = normalized
     return params
+
+
+def _remap_console_command(command: str, params: dict) -> dict:
+    """Map ``params.console_command`` → ``params.command`` for execute_console_command.
+
+    The plugin's ``execute_console_command`` reads its console line from
+    ``params.command``, which would collide with the agent's top-level ``command:``
+    selector (and make a bare ``command=`` override ambiguous). config.yaml therefore
+    exposes the console line under the distinct key ``console_command``; translate it
+    back to the wire name here, then drop the placeholder either way.
+    """
+    if command == 'execute_console_command':
+        console = params.get('console_command')
+        if isinstance(console, str) and console.strip() and not params.get('command'):
+            params['command'] = console
+            logging.info(f"   ↳ Mapped params.console_command → params.command: {console!r}")
+    params.pop('console_command', None)
+    return params
+
+
+def _prune_unset_params(params: dict) -> dict:
+    """Drop keys whose value is an unset placeholder ('', [], {}, None)."""
+    pruned = {}
+    dropped = []
+    for key, value in params.items():
+        if not isinstance(value, bool) and value in _UNSET_PARAM_VALUES:
+            dropped.append(key)
+            continue
+        pruned[key] = value
+    if dropped:
+        logging.info(f"   ↳ Pruned {len(dropped)} unset placeholder param(s): {dropped}")
+    return pruned
+
+
+def _prepare_params_for_unreal(command: str, params: dict) -> dict:
+    """Full pre-send param pipeline: console remap → prune placeholders → path fixups.
+
+    Returns a fresh dict; the caller's ``params`` is not mutated. Order matters:
+    the console remap may add ``command`` (must survive pruning), pruning then strips
+    the empty placeholder catalog, and only the surviving non-empty content paths are
+    normalized.
+    """
+    if not isinstance(params, dict):
+        return params
+    prepared = dict(params)
+    prepared = _remap_console_command(command, prepared)
+    prepared = _prune_unset_params(prepared)
+    prepared = _normalize_params_for_unreal(prepared)
+    return prepared
 
 
 # ========================================
@@ -528,7 +601,8 @@ def main():
                 ">>>END_SECTION_UNREALER"
             )
         else:
-            params = _normalize_params_for_unreal(params)
+            params = _prepare_params_for_unreal(command, params)
+            logging.info(f"📦 Prepared params for '{command}': {params}")
             conn = UnrealConnection(host=host, port=port,
                                     connect_timeout=connect_timeout,
                                     read_timeout=read_timeout)

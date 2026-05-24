@@ -10,23 +10,40 @@
 # and captures the response into an INI_SECTION_UNREALER block so
 # Parametrizer / downstream agents (and the Multi-Turn LLM) can consume it.
 #
-# Supported commands (28 total, mirror the Unreal MCP tool surface):
+# Supported commands (53 across 9 categories — the agent forwards ANY command
+# the connected plugin build exposes; this catalog tracks the extended Unreal MCP
+# fork at C:\Development\unreal-mcp, base chongdashu surface marked [base]):
 #   editor      : get_actors_in_level, find_actors_by_name, spawn_actor,
-#                 delete_actor, set_actor_transform, get_actor_properties,
-#                 set_actor_property, spawn_blueprint_actor
+#                 create_actor, delete_actor, set_actor_transform,
+#                 get_actor_properties, set_actor_property,
+#                 spawn_blueprint_actor, focus_viewport, take_screenshot
 #   blueprint   : create_blueprint, add_component_to_blueprint,
 #                 set_static_mesh_properties, set_component_property,
 #                 set_physics_properties, compile_blueprint,
-#                 set_blueprint_property
+#                 set_blueprint_property, set_pawn_properties
 #   node        : add_blueprint_event_node, add_blueprint_input_action_node,
 #                 add_blueprint_function_node, connect_blueprint_nodes,
-#                 add_blueprint_variable,
+#                 add_blueprint_variable, find_blueprint_nodes,
 #                 add_blueprint_get_self_component_reference,
 #                 add_blueprint_self_reference
 #   project     : create_input_mapping
 #   umg         : create_umg_widget_blueprint, add_text_block_to_widget,
 #                 add_button_to_widget, bind_widget_event,
 #                 add_widget_to_viewport, set_text_block_binding
+#   system      : execute_python (run a Python script inside the editor),
+#                 execute_console_command (use params.console_command),
+#                 get_class_info, list_assets
+#   level       : open_level, save_current_level, save_all, new_level,
+#                 get_current_level
+#   asset       : import_asset, duplicate_asset, rename_asset, delete_asset,
+#                 save_asset, create_folder
+#   material    : create_material, create_material_instance,
+#                 set_material_parameter, assign_material
+#   (health)    : ping
+# NOTE: the P3 headless tools (build_project / run_automation_tests / run_macro)
+# are NOT editor-bridge commands — they shell out to UnrealEditor-Cmd and are not
+# reachable over this TCP socket. Chain Unrealer nodes via Parametrizer for the
+# equivalent of run_macro.
 
 host: 127.0.0.1
 port: 55557
@@ -76,6 +93,50 @@ params:
   color: []
   background_color: []
   z_order: 0
+  # editor extras — focus_viewport (distance/orientation) and take_screenshot.
+  # Empty-string / empty-list placeholders are pruned by the agent when unset, so
+  # focus_viewport falls back to the plugin's own default distance instead of 0.
+  # ``filepath`` is a DISK path (where UE writes the .png), NOT a content path,
+  # so the agent does not /Content/ → /Game/ normalize it.
+  distance: ''
+  orientation: []
+  filepath: ''
+  # blueprint extras — set_pawn_properties. These stay '' (pruned when unset) so a
+  # call that names only auto_possess_player does NOT also force every rotation
+  # flag to false; an explicit override resolves to a real bool.
+  auto_possess_player: ''
+  use_controller_rotation_yaw: ''
+  use_controller_rotation_pitch: ''
+  use_controller_rotation_roll: ''
+  can_be_damaged: ''
+  # node extras — find_blueprint_nodes.
+  node_type: ''
+  event_type: ''
+  # system category — execute_python (code), execute_console_command
+  # (console_command is remapped to the wire's params.command by the agent so
+  # it doesn't collide with the top-level command: selector), get_class_info
+  # (class_name), list_assets (path + recursive — recursive defaults true to match
+  # the upstream tool and is always sent).
+  code: ''
+  console_command: ''
+  class_name: ''
+  recursive: true
+  # asset category — import_asset (source_file is a DISK path, NOT normalized;
+  # destination_path is a content path), duplicate/rename_asset (source +
+  # destination, both content paths).
+  source_file: ''
+  destination_path: ''
+  source: ''
+  destination: ''
+  # material category — create_material_instance (parent_material),
+  # set_material_parameter (material + parameter + value), assign_material
+  # (actor + material + slot). value accepts a scalar or [r,g,b(,a)].
+  parent_material: ''
+  material: ''
+  parameter: ''
+  value: ''
+  actor: ''
+  slot: 0
 
 # Timeouts (seconds)
 connect_timeout: 5
