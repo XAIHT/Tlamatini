@@ -84,7 +84,7 @@
   - [6.1. What Unreal MCP is](#61-what-unreal-mcp-is)
   - [6.2. Upstream plugin (the **MCP git location**)](#62-upstream-plugin-the-mcp-git-location)
   - [6.3. Installing and enabling the plugin inside your UE5 project](#63-installing-and-enabling-the-plugin-inside-your-ue5-project)
-  - [6.4. The 28 commands across 5 categories](#64-the-28-commands-across-5-categories)
+  - [6.4. The command catalog (up to 53 commands across 9 categories)](#64-the-command-catalog-up-to-53-commands-across-9-categories)
   - [6.5. Using Unreal MCP from the chat (`chat_agent_unrealer`)](#65-using-unreal-mcp-from-the-chat-chat_agent_unrealer)
   - [6.6. Using Unreal MCP on the canvas (the visual **Unrealer** node)](#66-using-unreal-mcp-on-the-canvas-the-visual-unrealer-node)
   - [6.7. What the agent actually does, end-to-end](#67-what-the-agent-actually-does-end-to-end)
@@ -943,7 +943,7 @@ Three different LLMs argue back and forth, fully visual, fully unattended.
 
 ## 6. Unreal MCP — Driving Unreal Engine 5 from Tlamatini
 
-The **Unrealer** agent (#62 in the catalog) lets Tlamatini drive a live Unreal Engine 5 editor through the **Unreal MCP** plugin's TCP socket protocol. You spawn a `chat_agent_unrealer` call from Multi-Turn or drop an **Unrealer** node on the visual canvas; Tlamatini opens a TCP connection to `127.0.0.1:55557`, sends one JSON command (`{"type": <verb>, "params": {...}}`), captures the engine's JSON response into an `INI_SECTION_UNREALER<<<` block, and triggers downstream agents. The full 28-command surface of the upstream Unreal MCP plugin is exposed — actor manipulation, Blueprint creation and graph wiring, input mappings, and UMG widget building — without you ever leaving the chat or the canvas.
+The **Unrealer** agent (#62 in the catalog) lets Tlamatini drive a live Unreal Engine 5 editor through the **Unreal MCP** plugin's TCP socket protocol. You spawn a `chat_agent_unrealer` call from Multi-Turn or drop an **Unrealer** node on the visual canvas; Tlamatini opens a TCP connection to `127.0.0.1:55557`, sends one JSON command (`{"type": <verb>, "params": {...}}`), captures the engine's JSON response into an `INI_SECTION_UNREALER<<<` block, and triggers downstream agents. Because the agent forwards whatever `command` + `params` you give it, the catalog is exactly whatever your connected plugin build exposes — from the base 28-command upstream release up to the **53-command, nine-category extended surface** (actor manipulation incl. viewport screenshots, Blueprint creation and graph wiring, input mappings, UMG widget building, in-editor Python/console execution, level I/O, asset import, and material authoring) — without you ever leaving the chat or the canvas.
 
 ### 6.1. What Unreal MCP is
 
@@ -980,19 +980,25 @@ The plugin is a per-project install (not engine-wide). Steps:
 
 > **You do not need to press Play (PIE).** The plugin listens at *editor* level — actor manipulation, Blueprint creation, widget construction, etc. all work against the open project even when PIE is stopped. Some UMG operations (`add_widget_to_viewport`) physically render only after the user enters PIE, but the build steps are queued correctly either way.
 
-### 6.4. The 28 commands across 5 categories
+### 6.4. The command catalog (up to 53 commands across 9 categories)
 
-The Unrealer agent forwards whatever `command` + `params` you pass it, so the exact catalog is whatever the upstream plugin exposes. As of the canonical chongdashu/unreal-mcp release, that is **28 commands across 5 categories**:
+The Unrealer agent forwards whatever `command` + `params` you pass it, so the exact catalog is whatever your connected plugin build exposes — there is **no client-side allow-list of verbs**. The canonical chongdashu/unreal-mcp release ships **28 commands across 5 categories** (rows marked `base` below); plugin builds that add the System / Level / Asset / Material command handlers — such as the extended fork this project targets — bring the total to **53 commands across 9 categories**:
 
-| Category | Commands |
-|---|---|
-| **editor** | `get_actors_in_level`, `find_actors_by_name`, `spawn_actor`, `delete_actor`, `set_actor_transform`, `get_actor_properties`, `set_actor_property`, `spawn_blueprint_actor` |
-| **blueprint** | `create_blueprint`, `add_component_to_blueprint`, `set_static_mesh_properties`, `set_component_property`, `set_physics_properties`, `compile_blueprint`, `set_blueprint_property` |
-| **node** | `add_blueprint_event_node`, `add_blueprint_input_action_node`, `add_blueprint_function_node`, `connect_blueprint_nodes`, `add_blueprint_variable`, `add_blueprint_get_self_component_reference`, `add_blueprint_self_reference` |
-| **project** | `create_input_mapping` |
-| **umg** | `create_umg_widget_blueprint`, `add_text_block_to_widget`, `add_button_to_widget`, `bind_widget_event`, `add_widget_to_viewport`, `set_text_block_binding` |
+| Category | Commands | Tier |
+|---|---|---|
+| **editor** | `get_actors_in_level`, `find_actors_by_name`, `spawn_actor`, `create_actor`, `delete_actor`, `set_actor_transform`, `get_actor_properties`, `set_actor_property`, `spawn_blueprint_actor`, `focus_viewport`, `take_screenshot` | base + `focus_viewport`/`take_screenshot` |
+| **blueprint** | `create_blueprint`, `add_component_to_blueprint`, `set_static_mesh_properties`, `set_component_property`, `set_physics_properties`, `compile_blueprint`, `set_blueprint_property`, `set_pawn_properties` | base + `set_pawn_properties` |
+| **node** | `add_blueprint_event_node`, `add_blueprint_input_action_node`, `add_blueprint_function_node`, `connect_blueprint_nodes`, `add_blueprint_variable`, `find_blueprint_nodes`, `add_blueprint_get_self_component_reference`, `add_blueprint_self_reference` | base + `find_blueprint_nodes` |
+| **project** | `create_input_mapping` | base |
+| **umg** | `create_umg_widget_blueprint`, `add_text_block_to_widget`, `add_button_to_widget`, `bind_widget_event`, `add_widget_to_viewport`, `set_text_block_binding` | base |
+| **system** | `execute_python`, `execute_console_command`, `get_class_info`, `list_assets` | extended |
+| **level** | `open_level`, `save_current_level`, `save_all`, `new_level`, `get_current_level` | extended |
+| **asset** | `import_asset`, `duplicate_asset`, `rename_asset`, `delete_asset`, `save_asset`, `create_folder` | extended |
+| **material** | `create_material`, `create_material_instance`, `set_material_parameter`, `assign_material` | extended |
 
-Param shapes vary per command (e.g. `spawn_actor` wants `name` + `type` + `location` + `rotation`; `create_blueprint` wants `name` + `parent_class`; `add_text_block_to_widget` wants `widget_name` + `text_block_name` + `text` + `position` + `size` + `font_size` + `color`). The Unrealer agent does not validate them — it forwards them as-is. The plugin will reply with `{"status": "error", "error": "<reason>"}` if a param is missing or malformed, and that error lands verbatim in the `INI_SECTION_UNREALER` block so Multi-Turn / Parametrizer can branch on it.
+`execute_python` is the **universal escape hatch** — it runs an arbitrary Python script inside the editor, so anything in UE5's `unreal` Python API (Niagara, Sequencer, landscape, audio, …) is reachable even when no dedicated verb exists. `take_screenshot` closes the observe→act loop: spawn or change something, then capture the viewport to verify it. Note that the plugin's **headless build/cook/test** tools (`build_project`, `run_automation_tests`, `run_macro`) are *not* part of this catalog — they shell out to `UnrealEditor-Cmd` as separate processes and are unreachable over the editor's TCP socket. Chain Unrealer nodes through a Parametrizer for the `run_macro` equivalent.
+
+Param shapes vary per command (e.g. `spawn_actor` wants `name` + `type` + `location` + `rotation`; `create_blueprint` wants `name` + `parent_class`; `set_material_parameter` wants `material` + `parameter` + `value`; `import_asset` wants `source_file` (a disk path) + `destination_path` (a `/Game` content path)). The Unrealer agent does not validate them — it forwards them as-is, after two defensive fixups: it normalizes `/Content/...` content paths to `/Game/...`, prunes unset placeholder params, and remaps `params.console_command` → the wire's `params.command` for `execute_console_command` (so the console line doesn't collide with the top-level `command:` selector). The plugin will reply with `{"status": "error", "error": "<reason>"}` if a param is missing or malformed, and that error lands verbatim in the `INI_SECTION_UNREALER` block so Multi-Turn / Parametrizer can branch on it.
 
 ### 6.5. Using Unreal MCP from the chat (`chat_agent_unrealer`)
 
@@ -1007,7 +1013,15 @@ The tool accepts the same overrides documented in `config.yaml`:
 - `host='10.0.0.5'` and `port=55557` to target a remote UE instance (rare; the plugin binds to loopback by default and you would need to change the bind address inside the plugin or tunnel it).
 - `connect_timeout=5` and `read_timeout=10` to widen the budgets for slow operations (e.g. `compile_blueprint` on a complex graph).
 
-**Built-in end-to-end demo prompt.** Migration `0087_add_unrealer_demo_prompt.py` seeds a one-click demo into the Prompts table (`idPrompt=32`). Open the chat, click the **Prompts** dropdown, pick *Unreal MCP End-to-End Editor Drive*, and Tlamatini will execute ten guided steps spanning every command category — sanity-probe (`get_actors_in_level`), spawn a `StaticMeshActor` (`spawn_actor`), verify it (`find_actors_by_name`), scaffold a Blueprint (`create_blueprint`), add a `StaticMeshComponent` (`add_component_to_blueprint`), compile (`compile_blueprint`), spawn an instance (`spawn_blueprint_actor`), build a UMG HUD widget (`create_umg_widget_blueprint` → `add_text_block_to_widget` → `add_button_to_widget` → `add_widget_to_viewport`) — and render the result as a per-step HTML report table at the bottom of the answer. Use it as your smoke test the first time you wire the plugin up.
+**Built-in demo prompts.** Migration `0087_add_unrealer_demo_prompt.py` seeds a one-click demo into the Prompts table (`idPrompt=25`). Open the chat, click the **Prompts** dropdown, pick *Unreal MCP End-to-End Editor Drive*, and Tlamatini will execute ten guided steps spanning the **base** command categories — sanity-probe (`get_actors_in_level`), spawn a `StaticMeshActor` (`spawn_actor`), verify it (`find_actors_by_name`), scaffold a Blueprint (`create_blueprint`), add a `StaticMeshComponent` (`add_component_to_blueprint`), compile (`compile_blueprint`), spawn an instance (`spawn_blueprint_actor`), build a UMG HUD widget (`create_umg_widget_blueprint` → `add_text_block_to_widget` → `add_button_to_widget` → `add_widget_to_viewport`) — and render the result as a per-step HTML report table at the bottom of the answer. Use it as your smoke test the first time you wire the plugin up.
+
+Migration `0100_add_unrealer_extended_demo_prompts.py` adds **three more demos that exercise the extended (System / Level / Asset / Material) surface** the base demo never touches, at basic → hard complexity:
+
+- **`idPrompt=60` — *Unreal Snapshot*** (basic): the observe→act loop — `get_current_level` → `spawn_actor` → `take_screenshot` (to `C:/Temp/unreal_snapshot.png`) → `save_current_level`.
+- **`idPrompt=61` — *Unreal Scene Forge*** (medium): content authoring — `list_assets` → `create_folder` → `create_material` → `create_material_instance` → `set_material_parameter` → `spawn_actor` → `assign_material` → `take_screenshot` → `save_all`. (It is honest that `set_material_parameter` on a freshly-created blank material may return `status: error` — that is expected and recorded, not aborted.)
+- **`idPrompt=62` — *Unreal Python & Introspection*** (hard): the System escape hatch — `execute_console_command` (via the agent's `params.console_command` remap) → `get_class_info` → `list_assets` → `execute_python` (a multi-line script passed as a triple-quoted `params.code`) → `take_screenshot`.
+
+All three drive `chat_agent_unrealer` exactly like the base demo (tick only **Multi-Turn**; ACPX not required) and require the same running editor + bound plugin listener.
 
 ### 6.6. Using Unreal MCP on the canvas (the visual **Unrealer** node)
 
@@ -1021,9 +1035,11 @@ params:
   name: ''
   type: ''
   location: []
-  # ... (placeholders for the most common commands; the agent forwards
-  #     whatever you put under params: verbatim, so add or remove keys
-  #     to match the command verb you picked)
+  # ... (the shipped config carries empty placeholders for every param across
+  #     all 9 categories — editor/blueprint/node/umg/system/level/asset/material
+  #     — so the Flow Compiler's dotted `params.X` overrides always resolve into
+  #     an existing YAML leaf. Unset placeholders are pruned before the command
+  #     is sent, so add/remove keys freely to match the verb you picked.)
 connect_timeout: 5
 read_timeout: 10
 source_agents: []
@@ -1076,7 +1092,7 @@ A short pre-flight you can copy into a sticky note before any session:
 | **Multi-Turn** ticked | The toolbar checkbox to the left of **Exec Report** |
 | Tool enabled | `Tools` dialog in chat shows `Chat-Agent-Unrealer` ticked (it ships ticked by default after migration `0086_add_chat_agent_unrealer_tool` runs) |
 
-Then run the seeded **Unreal MCP End-to-End Editor Drive** demo prompt (idPrompt 32) as your smoke test. A clean run leaves three artifacts in your project: actor `TlamatiniProbe_Cube`, Blueprint `BP_TlamatiniProbe` with one spawned instance `TlamatiniProbe_Spawned`, and widget `/Game/UI/WBP_TlamatiniProbeHUD`. Delete them via right-click in the Content Browser when you are done.
+Then run the seeded **Unreal MCP End-to-End Editor Drive** demo prompt (idPrompt 25) as your smoke test. A clean run leaves three artifacts in your project: actor `TlamatiniProbe_Cube`, Blueprint `BP_TlamatiniProbe` with one spawned instance `TlamatiniProbe_Spawned`, and widget `/Game/UI/WBP_TlamatiniProbeHUD`. Delete them via right-click in the Content Browser when you are done.
 
 ### 6.10. Troubleshooting Unreal MCP
 

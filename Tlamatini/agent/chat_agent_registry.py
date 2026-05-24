@@ -636,37 +636,59 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "Drive Unreal Engine (UE5) via the Unreal MCP plugin's TCP socket protocol "
             "(127.0.0.1:55557 by default — the plugin must already be running inside a UE5 "
             "editor instance; this agent does NOT start the engine). Sends one JSON command "
-            "per call: {\"type\": <command>, \"params\": {...}}. Supports the full 28-command "
-            "Unreal MCP surface across five categories: "
-            "(1) editor — get_actors_in_level, find_actors_by_name, spawn_actor, delete_actor, "
-            "set_actor_transform, get_actor_properties, set_actor_property, spawn_blueprint_actor; "
+            "per call: {\"type\": <command>, \"params\": {...}}. Forwards ANY command the "
+            "connected plugin build exposes; the extended surface is 53 commands across nine "
+            "categories: "
+            "(1) editor — get_actors_in_level, find_actors_by_name, spawn_actor, create_actor, "
+            "delete_actor, set_actor_transform, get_actor_properties, set_actor_property, "
+            "spawn_blueprint_actor, focus_viewport, take_screenshot; "
             "(2) blueprint — create_blueprint, add_component_to_blueprint, set_static_mesh_properties, "
-            "set_component_property, set_physics_properties, compile_blueprint, set_blueprint_property; "
+            "set_component_property, set_physics_properties, compile_blueprint, set_blueprint_property, "
+            "set_pawn_properties; "
             "(3) node — add_blueprint_event_node, add_blueprint_input_action_node, "
             "add_blueprint_function_node, connect_blueprint_nodes, add_blueprint_variable, "
-            "add_blueprint_get_self_component_reference, add_blueprint_self_reference; "
+            "find_blueprint_nodes, add_blueprint_get_self_component_reference, add_blueprint_self_reference; "
             "(4) project — create_input_mapping; "
             "(5) umg — create_umg_widget_blueprint, add_text_block_to_widget, add_button_to_widget, "
-            "bind_widget_event, add_widget_to_viewport, set_text_block_binding. "
-            "Use when the user asks to manipulate the Unreal Editor — spawn or move actors, create "
-            "or edit Blueprints, wire Blueprint event/function nodes, add UMG widgets to the "
-            "viewport, configure input mappings, or read level state. For multi-step UE5 workflows "
-            "(create Blueprint → add components → compile → spawn instance) call this tool once "
-            "per step. The wrapped agent emits an INI_SECTION_UNREALER block so the full Unreal "
+            "bind_widget_event, add_widget_to_viewport, set_text_block_binding; "
+            "(6) system — execute_python (run any Python in the editor — the universal escape hatch "
+            "for anything without a dedicated command), execute_console_command (pass the console line "
+            "as params.console_command), get_class_info (reflect a UClass), list_assets; "
+            "(7) level — open_level, save_current_level, save_all, new_level, get_current_level; "
+            "(8) asset — import_asset (FBX/texture/audio; params.source_file is a DISK path, "
+            "params.destination_path a /Game content path), duplicate_asset, rename_asset, delete_asset, "
+            "save_asset, create_folder; "
+            "(9) material — create_material, create_material_instance, set_material_parameter "
+            "(params.value is a scalar or [r,g,b]), assign_material. "
+            "Use when the user asks to manipulate the Unreal Editor — spawn/move actors, build or edit "
+            "Blueprints, wire Blueprint nodes, add UMG widgets, author materials, import assets, "
+            "load/save levels, run a Python snippet or console command in-engine, or screenshot the "
+            "viewport to observe a change. For multi-step UE5 workflows (create Blueprint → add "
+            "components → compile → spawn instance; or spawn → screenshot to verify) call this tool "
+            "once per step. The wrapped agent emits an INI_SECTION_UNREALER block so the full Unreal "
             "response JSON is captured in the run log and is consumable by Parametrizer downstream. "
-            "Override host/port with host='10.0.0.5' and port=55557 to target a remote UE instance."
+            "Override host/port with host='10.0.0.5' and port=55557 to target a remote UE instance. "
+            "Headless build/cook/test is NOT available here — that needs UnrealEditor-Cmd, not this "
+            "editor socket."
         ),
         example_request=(
             "Run Unreal command with command='spawn_actor' and params.name='MyCube' "
             "and params.type='StaticMeshActor' and params.location=[0,0,100]"
         ),
-        aliases=("unrealer", "unreal", "unreal engine", "ue5", "ue", "unreal_mcp"),
+        aliases=(
+            "unrealer", "unreal", "unreal engine", "ue5", "ue", "unreal_mcp",
+            "unreal editor", "unreal mcp",
+        ),
         security_hints=(
             "unreal", "unreal engine", "ue5", "ue", "unreal mcp",
             "spawn actor", "delete actor", "blueprint", "create blueprint",
             "compile blueprint", "umg", "widget blueprint", "viewport",
             "actors in level", "level editor", "static mesh", "pawn",
             "input mapping", "blueprint variable", "blueprint event",
+            "material", "material instance", "create material", "assign material",
+            "import asset", "open level", "save level", "new level",
+            "execute python", "python in unreal", "console command", "cvar",
+            "take screenshot", "list assets", "blueprint node",
         ),
     ),
     ChatWrappedAgentSpec(
