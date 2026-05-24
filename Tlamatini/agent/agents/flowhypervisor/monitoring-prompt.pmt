@@ -174,7 +174,7 @@ UNREALER SPECIAL NOTES:
       * "TimeoutError" on connect — the configured `host` / `port` is wrong
         or unreachable.
       * "Unknown command" in the engine response — the user wired a verb
-        that isn't in the 28-command Unreal MCP surface.
+        that the connected Unreal MCP plugin build does not expose.
 
 REVIEWER SPECIAL NOTES:
   - Reviewer is SHORT-LIVED and ACTIVE: it resolves a `git diff` for its
