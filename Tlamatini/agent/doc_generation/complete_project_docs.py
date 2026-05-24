@@ -374,7 +374,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("kalier" in subject or "kali" in subject or "pentest" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the new Kalier agent in `v1.7.0`: Tlamatini now reaches 67 workflow agents and adds a direct bridge into Kali Linux offensive-security tooling through MCP-Kali-Server, available from both Multi-Turn chat and the visual canvas."
+            "Today’s headline change is the `v1.7.1` Kalier refinement: Tlamatini keeps its 67-agent catalog but now behaves as the embedded MCP-Kali-Server client, so the Kali box URL is configured once in `Config -> URLs` and auto-injected into `chat_agent_kalier` runs."
         )
     if any("windower" in subject or "window manager" in subject or "window" in subject and "multi-turn" in subject for subject in subjects):
         highlights.append(
@@ -624,7 +624,7 @@ HOW_IT_WORKS = [
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
-    "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, choosing one offensive-security capability per call and capturing the result in one atomic `INI_SECTION_KALIER` block.",
+    "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, auto-seeding the default box from `kali_server_url` in Config -> URLs before any one-off per-call override is applied, and captures one atomic `INI_SECTION_KALIER` block per run.",
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
@@ -639,7 +639,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
-    "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, expose it locally or through an SSH tunnel, and call `chat_agent_kalier` from Multi-Turn with the desired `action`, `target`, and `server_url`.",
+    "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
@@ -672,14 +672,14 @@ ACPX_SKILLS_GUIDE = [
 OPERATOR_SURFACE_COUNTS_GUIDE = [
     "The live operator surface now stands at 67 workflow agents, 74 Multi-Turn tools, 12 ACPX tools, and 24 skills.",
     "Source inspection confirms the newer total: 42 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 74 Multi-Turn tools overall.",
-    "Some README lines still show the pre-Kalier 73-tool figure, so this dossier prefers the newer Book/git/live-registry state while preserving the rest of the README operator guidance.",
+    "README.md and BookOfTlamatini.md now agree on those counts, so the dossier can mirror the docs and the live registry without reconciliation footnotes.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
 
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.7.0` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.7.1` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
 ]
 
 REVIEWER_ANALYZER_GUIDE = [
@@ -731,15 +731,16 @@ WINDOWER_SURFACES_GUIDE = [
 ]
 
 KALIER_GUIDE = [
-    "Kalier is the new 67th workflow agent in `v1.7.0`: a deterministic bridge from Tlamatini into Kali Linux offensive-security tooling through MCP-Kali-Server.",
+    "Kalier remains the 67th workflow agent in `v1.7.1`, but its newest upgrade is usability: Tlamatini now acts as the embedded MCP-Kali-Server client for chat-side runs.",
     "It can issue one capability per run, including `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, arbitrary `command`, or a safe `health` probe of the remote server.",
     "The agent emits `INI_SECTION_KALIER` with `action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, and `server_url`, so downstream Forker or Parametrizer logic can branch on results without scraping prose.",
+    "The practical operator result is simpler prompts: after the Kali box URL is configured once, normal Multi-Turn requests no longer repeat `server_url` unless you intentionally override it for a one-off target.",
 ]
 
 KALIER_SURFACES_GUIDE = [
-    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_kalier` accepts free-form key=value requests, while the visual Kalier canvas node stores the same operation fields in YAML.",
-    "Kalier talks straight to the Kali-side Flask API over HTTP using Python-stdlib `urllib`, so it stays self-contained in the pool subprocess and works the same in source or frozen builds.",
-    "Authorized use only: the intended operator flow is an in-scope lab, CTF, or permitted engagement, often with `ssh -L 5000:localhost:5000 user@KALI_IP` tunneling a remote Kali box back to `http://127.0.0.1:5000`.",
+    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_kalier` now auto-injects the configured `kali_server_url`, while the visual Kalier canvas node still stores `server_url` explicitly in YAML per node.",
+    "Kalier talks straight to the Kali-side Flask API over HTTP using Python-stdlib `urllib`, so it stays self-contained in the pool subprocess and works the same in source or frozen builds; the embedded-client injection fails open if the config value is blank or unreadable.",
+    "Authorized use only: the intended operator flow is an in-scope lab, CTF, or permitted engagement, often with `ssh -L 5000:localhost:5000 user@KALI_IP` tunneling a remote Kali box back to `http://127.0.0.1:5000`, and the repo now includes `Tlamatini-Kali-Setup.md` for the zero-client walkthrough.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -761,6 +762,7 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
+    "URL configuration now also includes `kali_server_url`, edited from `Config -> URLs -> Kali server (Kalier)`, which is the default box that chat-side Kalier runs inherit automatically.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid.",
@@ -1172,7 +1174,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Operator surface counts", styles["h2"]))
     for item in OPERATOR_SURFACE_COUNTS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Kalier in v1.7.0", styles["h2"]))
+    story.append(p("Kalier in v1.7.1", styles["h2"]))
     for item in KALIER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in KALIER_SURFACES_GUIDE:
@@ -1743,7 +1745,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "surface-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Kalier In v1.7.0", "Kali Linux control for chat and canvas", THEME["jade"])
+    slide, audit = add_slide(prs, "Kalier In v1.7.1", "embedded-client Kali Linux control for chat and canvas", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", KALIER_GUIDE, THEME["jade"], "kalier-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", KALIER_SURFACES_GUIDE, THEME["amber"], "kalier-b", 13)
     audit_layout(audit, len(prs.slides))
