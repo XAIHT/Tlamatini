@@ -139,6 +139,19 @@ params:
   slot: 0
 
 # Timeouts (seconds)
+#   read_timeout is tuned for the common case — a read/query command the editor
+#   answers in well under a second. A handful of compute-bound commands
+#   (create_material / create_material_instance / set_material_parameter compile
+#   shaders; compile_blueprint; import_asset; execute_python; open_level /
+#   new_level) run a SYNCHRONOUS compile/serialize on the game thread that this
+#   value cannot bound — the FIRST material in a fresh editor session alone can
+#   need 30-40 s while the cold shader DDC warms up. For those the agent raises
+#   the effective recv timeout to a per-command floor (max(read_timeout, floor),
+#   see _SLOW_COMMAND_TIMEOUT_FLOORS in unrealer.py) so a slow-but-valid op is not
+#   killed mid-compile. Raising read_timeout here only ever raises the floor; it
+#   is never lowered for those commands. save_* are intentionally NOT floored — a
+#   save that hangs is parked on an unclearable modal dialog, so a short timeout
+#   surfaces the actionable diagnostic faster.
 connect_timeout: 5
 read_timeout: 10
 
