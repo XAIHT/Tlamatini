@@ -492,6 +492,7 @@ def main():
         f'--add-data=Tlamatini/staticfiles{separator}staticfiles',
         f'--add-data=Tlamatini/agent/config.json{separator}agent',
         f'--add-data=Tlamatini/agent/prompt.pmt{separator}agent',
+        f'--add-data=Tlamatini/agent/Tlamatini.md{separator}agent',
         # ACPX skill catalog — every SKILL.md package + its scripts/ + _meta/.
         # The skill registry (agent/skills/registry.py) discovers SKILL.md
         # under this tree at runtime; without this --add-data line, frozen
@@ -579,6 +580,11 @@ def main():
         optional_file_copies = {
             Path("Tlamatini") / "agent" / "config.json": dist_manage / "config.json",
             Path("Tlamatini") / "agent" / "prompt.pmt": dist_manage / "prompt.pmt",
+            # Tlamatini.md is the LLM's self-knowledge file, referenced by
+            # prompt.pmt. It is read from the application directory (next to the
+            # executable in frozen mode) exactly like prompt.pmt / config.json,
+            # so it must land at the install root — not only inside the bundle.
+            Path("Tlamatini") / "agent" / "Tlamatini.md": dist_manage / "Tlamatini.md",
         }
         for src, dst in optional_file_copies.items():
             if src.exists():
