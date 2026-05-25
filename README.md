@@ -14,7 +14,7 @@
   <a href="#95-agent-catalog-the-67-types-by-family"><img src="https://img.shields.io/badge/AGENTS-67-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="67 Agents" /></a>
   <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-74-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="74 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
-  <a href="#311-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-23-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="23 Skills" /></a>
+  <a href="#311-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-24-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="24 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
@@ -109,6 +109,7 @@
   - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
   - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
   - [9.5. Agent catalog (the 67 types, by family)](#95-agent-catalog-the-67-types-by-family)
+  - [9.6. Self-Knowledge & Self-Modification](#96-self-knowledge--self-modification)
 - [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
   - [10.1. Why this exists](#101-why-this-exists)
   - [10.2. How the check fires (the hook point)](#102-how-the-check-fires-the-hook-point)
@@ -157,6 +158,7 @@ License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platfo
 2. **Multi-Turn mode** — the LLM becomes an *operator*: shell, Python, APIs, SQL, file ops, screenshots, keyboard/mouse automation, email, Telegram, WhatsApp — chained in one conversation.
 3. **ACPX** — delegate sub-tasks to external CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, plus 8 more) and relay output between them.
 4. **Visual workflow designer** — design `.flw` flows once, run them unattended, schedule with Croner, watch them with FlowHypervisor.
+5. **Self-aware** — a first-person self-knowledge map (`Tlamatini.md`) is injected into the LLM's prompt on every chain, so Tlamatini can answer accurately about her own architecture, runtime modes, ports, and pages. Builds packaged with `--self-modify` ship her own source tree (`TlamatiniSourceCode/`) so she can read, inspect, and modify herself.
 
 Everything runs locally. The whole app packages into a one-click Windows `.exe` distribution (Part [§7](#7-building-a-frozen-distribution)).
 
@@ -325,6 +327,8 @@ Click **Context** in the top nav:
 | **Set canvas as context** | Use the code currently shown in the canvas (handy for iterative editing). |
 | **Clear context** | Drops the loaded context. |
 
+**Set directory as context** now loads a project at **any depth** under the app root. The old browser `showDirectoryPicker()` only exposed the leaf folder name, so deeply-nested projects could not be reached; it was replaced by a backend native Win32 folder picker (`views.pick_context_directory_view`, route `pick_context_directory/`) that returns the real absolute path. `path_guard.is_within_application_root()` then accepts the application root or any descendant of it, and `agent_page_init.js` falls back to manual path entry on non-Windows hosts.
+
 A green banner at the top shows the current context path. If embedding runs out of memory, Tlamatini packs the source files as a fallback context — retrieval quality drops, access to your code does not.
 
 If you refresh the browser and Tlamatini restores a saved context automatically, the input now stays disabled until the contextual RAG chain has actually finished rebuilding. That closes the old "restored banner arrived before the context was really ready" race on the first load stage.
@@ -350,7 +354,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
 - The planner picks the relevant subset of Tlamatini's **74 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 42 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
-- The unified-agent loop runs **up to 100 iterations** — call tool, see result, decide next, chain.
+- The unified-agent loop runs **up to 4096 iterations** (the `unified_agent_max_iterations` default) — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
 **Try this:** tick **Multi-Turn**, send
@@ -363,7 +367,7 @@ Watch the chat. The LLM picks `chat_agent_shoter`, calls it with the right args,
 |---|---|
 | LLM says "Tool X is not available" | The planner did not bind it. Check `[Planner._select]` console lines; add matching keywords to your prompt or raise `max_selected_tools`. |
 | Same tool fired twice with identical args | Suppressed by the dedup guard — the second call returns "skipped — duplicate". |
-| 100 iterations exhausted | You probably hit a polling loop. Use `chat_agent_sleeper` instead of busy-polling. |
+| 4096 iterations exhausted | You probably hit a polling loop. Use `chat_agent_sleeper` instead of busy-polling. |
 
 Multi-Turn stacks with Set-Context: the LLM reasons over your code *and* runs tools on the result.
 
@@ -1137,9 +1141,17 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md` and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 67 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 67 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
+
+**Self-modify builds.** Add the `--self-modify` flag to ship Tlamatini's own source tree inside the distribution:
+
+```bash
+python build.py --self-modify
+```
+
+When the flag is present (`self_modify = "--self-modify" in sys.argv`), the build copies `Tlamatini/agent/TlamatiniSourceCode/` recursively to the install root next to the exe, so it resolves like `prompt.pmt` / `config.json` / `Tlamatini.md`, and Tlamatini can read, inspect, and modify her own code at runtime. Without the flag the directory is omitted entirely. The build prints `Self-modify build : YES` (or `no`) so you can confirm which kind of build you produced. See [§9.6](#96-self-knowledge--self-modification) for how the LLM uses it.
 
 ### 7.3. Step 2 — `build_uninstaller.py`
 
@@ -1351,6 +1363,16 @@ This is the Pareto improvement: a small shared backend layer makes both major fe
 | **AI / design** | FlowCreator |
 
 Per-agent details (config knobs, lifecycle, naming convention, log markers): see `BookOfTlamatini.md` Part IV — *The Tlamatini Bestiary*. To add a new agent, follow `Tlamatini/.agents/workflows/create_new_agent.md` (8-step checklist).
+
+### 9.6. Self-Knowledge & Self-Modification
+
+Tlamatini ships with a first-person **self-knowledge map** — `Tlamatini/agent/Tlamatini.md` — that the LLM reads as her own description of who and what she is: her two runtime modes (frozen vs source, and how to tell them apart), the ports she opens (`8000` for the web app, `8765` for the System-Metrics MCP, `50051` for the Files-Search MCP), her main pages, her tech stack, her full capability surface, and how she can improve herself. The audience is the LLM alone, so the file deliberately does **not** follow `prompt.pmt`'s HTML/contrast styling rules — it is a private self-reference, never rendered to users.
+
+The map is injected into the system prompt at prompt-build time. `prompt.pmt` carries a `<self_knowledge>{self_knowledge}</self_knowledge>` block, and `agent/rag/config.py` fills it in: `_load_self_knowledge_block()` reads `Tlamatini.md`, brace-escapes it (`{` → `{{`, `}` → `}}`) so its code snippets cannot collide with the f-string template variables, and **fails open** — a missing, empty, or unreadable file degrades to a short literal notice instead of raising. The substitution happens at the single prompt-load site in `load_config_and_prompt()`, so it covers **all four chains** (basic, history-aware, unified, prompt-only) without adding a new input variable. `Tlamatini.md` is resolved from the application directory exactly like `prompt.pmt` and `config.json` (the install root next to the `.exe` in frozen mode, `Tlamatini/agent/` in source mode), and `build.py` ships it both via `--add-data=…/Tlamatini.md;agent` and by copying it to the install root so frozen resolution next to the exe works. The identity rules in `prompt.pmt` point the LLM at `Tlamatini.md` whenever a prompt concerns who or what she is, her architecture / modes / ports / pages / internals, or improving herself.
+
+Self-modification is a **second, independent capability axis**. The optional directory `Tlamatini/agent/TlamatiniSourceCode/`, when present, contains Tlamatini's own source code so she can read, inspect, and modify herself — present means a *self-able-modify* build; absent means a *not-self-able-modify* build (orthogonal to frozen vs source). The tree is bundled **only** when `build.py` is invoked with the new `--self-modify` flag (see [§7.2](#72-step-1--buildpy)); without the flag it is omitted entirely. Because the directory is optional, `prompt.pmt` instructs the LLM to **always verify the directory's presence** (for example, a Multi-Turn directory listing) before claiming she can read or edit her own code; if it is absent she says so and falls back to the injected self-knowledge plus the docs.
+
+> When you load your own project as context (Context ▸ Set directory / Set file as context) and then ask a generic "summarize the project / the source code / the provided context" question, the **loaded context takes priority** over the always-injected self-knowledge — so Tlamatini summarizes *your* code, not herself. This is enforced by a `prompt.pmt` loaded-context-priority rule plus a deterministic scope header (`agent/rag/utils.py::prepend_loaded_context_scope()`) applied across all four chains.
 
 ---
 
@@ -1585,7 +1607,7 @@ The rendering helper is `orphan_reaper.format_survivors_message()`; it returns `
 
 - Did you tick **Multi-Turn**? Is `enable_unified_agent: true`?
 - "Tool X is not available" → the planner did not bind X. Check `[Planner._select]` console lines, add matching keywords to your prompt, or raise `max_selected_tools`.
-- 100 iterations exhausted → likely a busy-poll loop. Use `chat_agent_sleeper` / `chat_agent_run_wait` instead.
+- 4096 iterations exhausted → likely a busy-poll loop. Use `chat_agent_sleeper` / `chat_agent_run_wait` instead.
 
 ### 12.4. Chat-created flows and ACP validation
 

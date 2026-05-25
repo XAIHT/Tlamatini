@@ -14,8 +14,9 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 - A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **Skills system** — markdown-defined `SKILL.md` packages run by `SkillHarness`. The LLM invokes them through `list_skills` / `invoke_skill`. Built-in skills include `acp-router`, `summarize`, `setup-new-acpx-key`, `skill-creator`, `code-review`, `security-audit`, `kali-pentest` (authorized Kali Linux / MCP-Kali-Server assessment runbook driving the Kalier agent), `tlamatini_*` (audit / lint / refactor helpers), and integration stubs (gmail, slack, github, jira, notion, todoist, trello, weather). Administered through the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — 2026-05-17): Browse and Diagnostics are HTTP-backed read-only inspection; Configure mirrors the existing Mcps/Agents/Tools WebSocket toggle pattern (`set-skills` → `Skill.enabled`); Reload re-runs `boot_skills()` so disk edits show up without a server restart. The DB stays at "enumeration + enable/disable" only — permissions/budgets/body live in SKILL.md on disk
+- **Self-Knowledge & Self-Modification** (2026-05-25) — the LLM carries a first-person self-reference file, `agent/Tlamatini.md`, injected into `prompt.pmt`'s `<self_knowledge>` block at prompt-build time by `agent/rag/config.py` (covers every chain; brace-escaped; fails open). An OPTIONAL `agent/TlamatiniSourceCode/` directory — bundled only by `build.py --self-modify` — holds her own source so she can read/modify herself: present = a "self-able-modify" build, absent = "not-self-able-modify". See `docs/claude/architecture.md`
 - **Multi-model LLM support** (Ollama local, Anthropic Claude cloud, Qwen vision)
-- A full **PyInstaller packaging pipeline** (build.py -> installer -> standalone .exe)
+- A full **PyInstaller packaging pipeline** (build.py -> installer -> standalone .exe; `--self-modify` ships the self-source tree)
 
 **Repository**: `https://github.com/XAIHT/Tlamatini.git`
 **License**: GPL-3.0
@@ -70,7 +71,9 @@ Tlamatini/                          # Git root
 │   ├── tlamatini/                  # Django project config (settings, urls, asgi, middleware)
 │   │
 │   ├── agent/                      # Core Django app (ALL business logic lives here)
-│   │   ├── prompt.pmt              # System prompt template for the chat LLM
+│   │   ├── prompt.pmt              # System prompt template for the chat LLM (has the {self_knowledge} placeholder)
+│   │   ├── Tlamatini.md            # ** LLM SELF-KNOWLEDGE ** — injected into prompt.pmt's <self_knowledge> block at prompt-build time (rag/config.py); resolved beside prompt.pmt in both modes
+│   │   ├── TlamatiniSourceCode/    # ** OPTIONAL self-modify source tree ** — bundled only by `build.py --self-modify`; present = self-able-modify build, absent = not-self-able-modify
 │   │   ├── config.json             # LLM and RAG configuration (acpx.agents.<id>.env injects child env)
 │   │   ├── config_loader.py        # Frozen/source-aware config reader
 │   │   ├── views.py                # 100+ HTTP endpoints

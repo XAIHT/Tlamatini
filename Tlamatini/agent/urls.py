@@ -48,6 +48,7 @@ urlpatterns = [
     path('check_set_db_file/', secure_get(views.check_set_db_file_view), name='check_set_db_file'),
     path('set_db/', secure_post(views.set_db_view), name='set_db'),
     path('pick_db_sqlite_file/', secure_get(views.pick_db_sqlite_file_view), name='pick_db_sqlite_file'),
+    path('pick_context_directory/', secure_get(views.pick_context_directory_view), name='pick_context_directory'),
     path('compile_flow/', secure_post(views.compile_flow_view), name='compile_flow'),
     path('flow_from_tool_calls/', secure_post(views.flow_from_tool_calls_view), name='flow_from_tool_calls'),
     path('agent_contracts/', secure_get(views.agent_contracts_view), name='agent_contracts'),

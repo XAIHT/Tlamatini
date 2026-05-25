@@ -431,7 +431,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-40 specs in `WRAPPED_CHAT_AGENT_SPECS`. Key ones:
+42 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower` and `chat_agent_kalier`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -1005,13 +1005,16 @@ The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. The LLM identi
 2. System context (MCP metrics) is real-time
 3. Files context (MCP file search) is real-time
 4. Code blocks use `BEGIN-CODE<<<FILENAME>>>` / `END-CODE` format (NOT markdown fences)
-5. If tools available, use them for ANY request
+5. If tools available, use them for ANY request. **Loaded-context priority clause (2026-05-25)**: when the user asks a generic "summarize the project / the source code / the provided context" question, the user-loaded `<context>` block takes priority over the always-injected `<self_knowledge>` block, so Tlamatini summarizes the loaded project and no longer summarizes herself
 6. Tables must use HTML, not markdown pipe syntax
 7. Responses must end with `END-RESPONSE`
 8. In Multi-Turn, the LLM is an OPERATOR, not just an advisor
 9. Up to 4096 multi-turn iterations available
 10. Identity: the LLM IS Tlamatini
 11. In ACPX mode, the LLM may spawn external child agents; it must respect permission gates and budget limits
+
+### `<self_knowledge>` block (2026-05-25)
+`prompt.pmt` now carries a `<self_knowledge>{self_knowledge}</self_knowledge>` block, populated at prompt-build time from `Tlamatini/agent/Tlamatini.md` (see Section 30). It also gains a **"CRITICAL SCOPE"** clause on that block telling the LLM that the self-knowledge map describes Tlamatini herself and must NOT override a user-loaded `<context>` for generic-summary requests — the deterministic scope header from `agent/rag/utils.py::prepend_loaded_context_scope()` reinforces this in all four chains. The block is always present (independent of whether the user loaded a project), so identity / capability questions always have grounding even with no `<context>`.
 
 ---
 
@@ -1156,6 +1159,57 @@ Each candidate is escalated `terminate → wait 1s → kill` via `psutil`. Unrel
 Either:
 1. **Add the tool name to `_PROCESS_SPAWNING_TOOL_NAMES`** in `mcp_agent.py` so Tier 1 runs after it (preferred for tools that may spawn many short-lived children mid-loop), or
 2. **Do nothing** — Tier 2's pool-cmdline scan is wide enough to catch almost everything that Tier 1 would, just one step later. Tier 3 is the backstop for both.
+
+---
+
+## 30. Self-Knowledge Injection & Runtime/Build Self-Modification (2026-05-25)
+
+Two complementary capabilities let Tlamatini understand — and, optionally, edit — herself. They are **independent axes**: every build either ships the self-knowledge map or not (always, by default, it does), and *separately* either bundles her own source tree or not.
+
+### 30.1 Self-Knowledge Injection (`Tlamatini.md` → `<self_knowledge>`)
+
+A new file, `Tlamatini/agent/Tlamatini.md`, is the LLM's first-person **self-knowledge map** — who/what she is, the two runtime modes (frozen vs source) and how to detect which one she is in, the ports she uses (8000 web, 8765 System-Metrics WebSocket, 50051 Files-Search gRPC), her main pages, her tech stack, her capability surface, and how she can improve herself. Its audience is the LLM alone, so it **deliberately does NOT follow `prompt.pmt`'s HTML / contrast styling rules** — it is plain reference prose for the model, not user-facing output.
+
+It is injected into `prompt.pmt`'s `<self_knowledge>{self_knowledge}</self_knowledge>` block at prompt-build time by `agent/rag/config.py`:
+
+- `SELF_KNOWLEDGE_FILENAME = 'Tlamatini.md'`
+- `SELF_KNOWLEDGE_PLACEHOLDER = '{self_knowledge}'`
+- `_load_self_knowledge_block(application_path)` — reads the file, **brace-escapes** its contents (`{` → `{{`, `}` → `}}`) so the file's own code snippets don't collide with the f-string template variables, and **FAILS OPEN**: a missing / empty / unreadable file degrades to a short literal notice and **never raises**.
+- `load_config_and_prompt()` performs the placeholder replace at the **single** prompt-load site, so the self-knowledge block reaches **all** chains (basic, history-aware, unified, prompt-only) with **no new input variable** threaded through the chain layer.
+
+Resolution mirrors `prompt.pmt` / `config.json`: it is read from the **application directory** — the install root next to the `.exe` in frozen mode, `Tlamatini/agent/` in source mode. `build.py` ships it via `--add-data` **and** copies it to the install root.
+
+### 30.2 Runtime / Build Self-Modification (`TlamatiniSourceCode/`)
+
+A new **OPTIONAL** directory, `Tlamatini/agent/TlamatiniSourceCode/`, holds a copy of Tlamatini's own source so she can read and modify herself. This is the **second capability axis**, fully independent of the frozen/source distinction:
+
+- Directory **present** = a **"self-able-modify"** build.
+- Directory **absent** = a **"not-self-able-modify"** build.
+
+It is bundled **only** when you build with `build.py --self-modify`, which copies the source tree to the install root next to the exe. The default build **omits** it. The build script prints `Self-modify build : YES/no` so you can confirm which kind of artifact you produced.
+
+`prompt.pmt` instructs the LLM to **verify the directory exists before claiming she can read or edit her own code**; if it is absent she falls back to the injected `<self_knowledge>` map (Section 30.1) for self-description rather than asserting a capability she lacks.
+
+### 30.3 Files involved
+
+| Path | Role |
+|---|---|
+| `Tlamatini/agent/Tlamatini.md` | First-person self-knowledge map (LLM-only audience; no HTML styling) |
+| `Tlamatini/agent/rag/config.py` | `SELF_KNOWLEDGE_FILENAME` / `SELF_KNOWLEDGE_PLACEHOLDER` / `_load_self_knowledge_block()` (brace-escape + fail-open); `load_config_and_prompt()` does the single-site replace |
+| `Tlamatini/agent/prompt.pmt` | `<self_knowledge>{self_knowledge}</self_knowledge>` block + CRITICAL SCOPE clause; the verify-directory-exists instruction for self-modification |
+| `Tlamatini/agent/rag/utils.py` | `prepend_loaded_context_scope()` — deterministic scope header applied in all four chains so loaded `<context>` wins over `<self_knowledge>` for generic-summary requests |
+| `Tlamatini/agent/TlamatiniSourceCode/` | OPTIONAL bundled source tree; present only with `build.py --self-modify` |
+| `build.py` | Ships `Tlamatini.md` (`--add-data` + install-root copy); `--self-modify` flag copies `TlamatiniSourceCode/`; prints `Self-modify build : YES/no` |
+
+---
+
+## 31. Nested-Directory Context via Native Picker (2026-05-25)
+
+The chat **Context ▸ Set directory as context** action can now load a project at **ANY depth under the app root**, not just a single leaf folder. The old browser `showDirectoryPicker()` only exposed the chosen folder's leaf name, which broke deep paths; it has been replaced by a **backend native Win32 picker**:
+
+- `views.pick_context_directory_view` + route `pick_context_directory/` open the native Windows folder picker server-side and return the **real absolute path**.
+- `path_guard.is_within_application_root()` + `resolve_runtime_agent_path` now accept the application root **OR ANY descendant** of it (previously only the root or its immediate children were valid).
+- `agent_page_init.js` fetches the picked path from that endpoint, with a **manual-entry fallback on non-Windows** hosts (where the native Win32 picker is unavailable).
 
 ---
 

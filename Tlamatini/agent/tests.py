@@ -27,10 +27,12 @@ from agent.consumers import AgentConsumer, _sanitize_context_filename
 from agent.global_state import get_request_state, global_state
 from agent.mcp_agent import CapabilityAwareToolAgentExecutor
 from agent.models import AgentMessage
+from agent import path_guard
 from agent.path_guard import (
     REJECTION_MESSAGE,
     get_runtime_agent_root,
     is_path_allowed,
+    is_within_application_root,
     resolve_runtime_agent_path,
     safe_join_under,
 )
@@ -250,6 +252,129 @@ class P1HardeningTests(TestCase):
 
             self.assertIn('example.txt', result)
             self.assertIn('Total files: 1', result)
+
+
+class SetDirectoryAsContextPathTests(TestCase):
+    """Validates the fix that lets "Set directory as context" load a project
+    living at ANY depth under the application root (not just a direct child).
+
+    The bug was that the browser only sent the leaf folder name; the real fix
+    sends the full absolute path (via the native picker) which path_guard must
+    accept for arbitrarily deep sub-directories — in BOTH frozen and source
+    (non-frozen) runtime modes.
+    """
+
+    def test_is_within_application_root_accepts_any_depth(self):
+        with tempfile.TemporaryDirectory() as app_root:
+            direct = os.path.join(app_root, 'applications')
+            deep = os.path.join(app_root, 'applications', 'projA', 'src', 'deep')
+            os.makedirs(deep)
+            with patch.object(path_guard, '_get_application_root', return_value=app_root):
+                # The root itself, a direct child, and a deep descendant all pass.
+                self.assertTrue(is_within_application_root(app_root))
+                self.assertTrue(is_within_application_root(direct))
+                self.assertTrue(is_within_application_root(deep))
+
+    def test_is_within_application_root_rejects_sibling_tree(self):
+        with tempfile.TemporaryDirectory() as app_root, tempfile.TemporaryDirectory() as outside:
+            with patch.object(path_guard, '_get_application_root', return_value=app_root):
+                self.assertFalse(is_within_application_root(outside))
+
+    def test_resolve_runtime_agent_path_accepts_deep_app_root_subdir(self):
+        """A full absolute path several levels under the app root resolves."""
+        with tempfile.TemporaryDirectory() as app_root:
+            nested = os.path.join(app_root, 'applications', 'projA', 'service', 'src')
+            os.makedirs(nested)
+            with patch.object(path_guard, '_get_application_root', return_value=app_root):
+                resolved = resolve_runtime_agent_path(nested)
+            self.assertIsNotNone(resolved)
+            self.assertEqual(os.path.realpath(resolved), os.path.realpath(nested))
+
+    def test_resolve_runtime_agent_path_rejects_outside_everything(self):
+        """A path under no allowed root (not runtime, not app root, not
+        allowed_paths) is still rejected — the relaxation is scoped, not open."""
+        with tempfile.TemporaryDirectory() as app_root, tempfile.TemporaryDirectory() as outside:
+            with patch.object(path_guard, '_get_application_root', return_value=app_root), \
+                    patch.object(path_guard, 'is_path_allowed', return_value=False):
+                self.assertIsNone(resolve_runtime_agent_path(outside))
+
+    def test_frozen_mode_application_root_is_executable_dir_and_nested_resolves(self):
+        """In frozen mode both the application root and the runtime root are the
+        install (executable) directory, and a deeply nested project under it
+        resolves."""
+        with tempfile.TemporaryDirectory() as install_dir:
+            fake_executable = os.path.join(install_dir, 'Tlamatini.exe')
+            with open(fake_executable, 'w', encoding='utf-8') as handle:
+                handle.write('stub exe')
+            nested = os.path.join(install_dir, 'applications', 'projB', 'module', 'src')
+            os.makedirs(nested)
+
+            with patch.object(path_guard.sys, 'frozen', True, create=True), \
+                    patch.object(path_guard.sys, 'executable', fake_executable):
+                self.assertEqual(
+                    os.path.realpath(path_guard._get_application_root()),
+                    os.path.realpath(install_dir),
+                )
+                self.assertEqual(
+                    os.path.realpath(get_runtime_agent_root()),
+                    os.path.realpath(install_dir),
+                )
+                self.assertTrue(is_within_application_root(nested))
+                resolved = resolve_runtime_agent_path(nested)
+
+            self.assertIsNotNone(resolved)
+            self.assertEqual(os.path.realpath(resolved), os.path.realpath(nested))
+
+    def test_non_frozen_application_root_is_ancestor_of_agent_package(self):
+        """In source mode the application root must be an ancestor of the
+        agent package directory (so agent-dir descendants stay loadable)."""
+        app_root = path_guard._get_application_root()
+        agent_dir = os.path.dirname(os.path.abspath(path_guard.__file__))
+        self.assertTrue(path_guard.is_path_within_base(app_root, agent_dir))
+
+
+class ContextDirectoryPickerViewTests(TestCase):
+    """Covers the new /agent/pick_context_directory/ endpoint that returns the
+    full absolute path chosen in the native server-side folder picker."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='ctx_picker', password='pw123456')
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_returns_full_absolute_path(self):
+        chosen = 'C:\\apps\\proj\\service\\src' if os.name == 'nt' else '/apps/proj/service/src'
+        with patch.object(views, '_run_native_picker', return_value=chosen):
+            response = self.client.get(reverse('pick_context_directory'))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('path'), os.path.abspath(chosen))
+
+    def test_reports_cancel_when_dialog_closed(self):
+        with patch.object(views, '_run_native_picker', return_value=''):
+            response = self.client.get(reverse('pick_context_directory'))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('path'), '')
+        self.assertTrue(data.get('canceled'))
+
+    def test_reports_picker_unavailable(self):
+        from agent.native_dialogs import NativeDialogUnavailable
+
+        def _boom(*_args, **_kwargs):
+            raise NativeDialogUnavailable('native folder dialog requires Windows')
+
+        with patch.object(views, '_run_native_picker', side_effect=_boom):
+            response = self.client.get(reverse('pick_context_directory'))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('path'), '')
+        self.assertTrue(data.get('picker_unavailable'))
+
+    def test_requires_authentication(self):
+        anon = Client()
+        response = anon.get(reverse('pick_context_directory'))
+        self.assertEqual(response.status_code, 302)
 
 
 class PromptPathHardeningTests(TestCase):
@@ -5150,4 +5275,101 @@ class SkillsNavbarTemplateContractTests(TestCase):
     def test_assets_loaded(self):
         self.assertIn("skills_dialog.js", self.text)
         self.assertIn("skills_dialog.css", self.text)
+
+
+class LoadedContextPriorityTests(TestCase):
+    """The user-loaded `<context>` (a directory/file attached via the chat
+    Context menu) MUST take priority over Tlamatini's own `<self_knowledge>`
+    block for generic "summarize/explain the project / the source code / the
+    provided context" requests. Before this fix, the large authoritative
+    self-knowledge block (Tlamatini.md) hijacked such requests and Tlamatini
+    summarized herself instead of the loaded project. The fix lives in two
+    places that these tests pin: (a) the shared prompt contract in prompt.pmt,
+    and (b) the deterministic, model-agnostic scope header applied to the
+    loaded context by every RAG/agent chain via
+    ``agent.rag.utils.prepend_loaded_context_scope``."""
+
+    def _read_prompt_pmt(self):
+        prompt_path = os.path.join(os.path.dirname(views.__file__), 'prompt.pmt')
+        with open(prompt_path, 'r', encoding='utf-8') as handle:
+            return handle.read()
+
+    def test_prompt_self_knowledge_block_is_scoped_to_tlamatini_not_loaded_project(self):
+        text = self._read_prompt_pmt()
+        self.assertIn('CRITICAL SCOPE', text)
+        # The self-knowledge block must declare it is never the user's project.
+        self.assertIn("NEVER the user's loaded project", text)
+
+    def test_prompt_rule5_declares_loaded_context_priority(self):
+        text = self._read_prompt_pmt()
+        self.assertIn('Loaded-context priority', text)
+        # The priority must be explicit: loaded context wins over self-knowledge.
+        self.assertRegex(
+            text,
+            r"loaded `?<context>`? ALWAYS wins over self-knowledge",
+        )
+
+    def test_prepend_loaded_context_scope_prefixes_nonempty_context(self):
+        from agent.rag.utils import prepend_loaded_context_scope
+        raw = 'FILE MANIFEST (loaded files):\n- example.py\n\ndef example(): return 42'
+        scoped = prepend_loaded_context_scope(raw)
+        # Original content is preserved verbatim, after the scope header.
+        self.assertTrue(scoped.endswith(raw))
+        self.assertNotEqual(scoped, raw)
+        # The header names the loaded content as the user's project, not Tlamatini.
+        self.assertIn('LOADED USER CONTEXT', scoped)
+        self.assertIn("NOT Tlamatini's own source code", scoped)
+        self.assertIn('never with', scoped)
+
+    def test_prepend_loaded_context_scope_leaves_empty_untouched(self):
+        from agent.rag.utils import prepend_loaded_context_scope
+        self.assertEqual(prepend_loaded_context_scope(''), '')
+        self.assertEqual(prepend_loaded_context_scope(None), '')
+
+    def test_all_loaded_context_chains_apply_the_scope_header(self):
+        """Regression guard: every chain that binds the loaded context to the
+        prompt/agent input must route it through prepend_loaded_context_scope,
+        so removing the call in any single chain is caught here."""
+        import agent.rag.chains.history_aware as history_aware
+        import agent.rag.chains.unified as unified
+        import agent.rag.chains.basic as basic
+        for module in (history_aware, unified, basic):
+            with open(module.__file__, 'r', encoding='utf-8') as handle:
+                source = handle.read()
+            self.assertIn(
+                'prepend_loaded_context_scope', source,
+                f"{module.__name__} no longer scopes the loaded context — "
+                "loaded-context priority would silently regress in that chain",
+            )
+
+    def test_unified_agent_chain_marks_loaded_context_as_user_project(self):
+        captured = {}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {'output': 'ok'}
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = (
+            'FILE MANIFEST (loaded files):\n- example.py\n\n'
+            '[1] example.py -- def example(): return 42'
+        )
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        result = chain.invoke({
+            'input': "Summarize in very detail the project's source code in the provided context",
+            'chat_history': [SimpleNamespace(content='prior turn')],
+        })
+
+        self.assertEqual(result['answer'], 'ok')
+        agent_input = captured['payload']['input']
+        # The pre-existing fallback label is preserved...
+        self.assertIn('Loaded Context from Knowledge Base Fallback:', agent_input)
+        # ...and now it is explicitly scoped to the user's project, not Tlamatini.
+        self.assertIn("NOT Tlamatini's own", agent_input)
+        self.assertIn('example.py', agent_input)
 

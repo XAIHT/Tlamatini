@@ -23,6 +23,7 @@ response = client.chat("Hello")
 ```bash
 # Step 1: Build the app
 python build.py
+#   add --self-modify to ship the self-modify source tree (see below)
 
 # Step 2: Build the uninstaller
 python build_uninstaller.py
@@ -32,6 +33,8 @@ python build_installer.py
 ```
 
 The frozen build resolves paths via `os.path.dirname(sys.executable)` vs source mode `os.path.dirname(os.path.abspath(__file__))`. Both modes must be supported in any new tool.
+
+**`build.py --self-modify` (2026-05-25)** — when this flag is passed, the build bundles Tlamatini's own source tree `Tlamatini/agent/TlamatiniSourceCode/` next to the executable (`shutil.copytree` to the install root, replacing any prior copy; it then flows into `pkg.zip`), producing a **self-able-modify** build the running app can read and rewrite. Without the flag the directory is omitted entirely — a **not-self-able-modify** build. The build prints `Self-modify build : YES — bundling TlamatiniSourceCode` / `… no — source tree omitted`. Independently, `build.py` always ships `agent/Tlamatini.md` (the LLM self-knowledge file) both via `--add-data` and as an `optional_file_copies` copy to the install root, so the frozen "next to the exe" resolution of `{self_knowledge}` works. See `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification*.
 
 ---
 

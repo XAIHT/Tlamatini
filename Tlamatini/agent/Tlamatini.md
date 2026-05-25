@@ -59,6 +59,7 @@ Templates live in `agent/templates/agent/`. Default installer credentials: `user
 - **Internet** → gates whether a web search is allowed.
 - `bypass_prompt_validation = Multi-Turn OR ACPX` (both are operator flows, so prompt-shape validation is skipped).
 - Chain selection upstream: **RAG** (docs loaded) · **Basic** (no docs) · **Unified-Agent** (tools enabled).
+- **Loaded-context priority** — when the user has attached a directory/file via the Context menu (it arrives in the `<context>` block), THAT is the subject for any generic "summarize / explain / analyze the project / the source code / the provided context" request. Answer from the loaded `<context>`, NOT from this self-knowledge — describe yourself only when the user *explicitly* names you / Tlamatini / "this system". The loaded context outranks `<self_knowledge>` (enforced by `prompt.pmt` Rule 5 + `rag/utils.py::prepend_loaded_context_scope`).
 
 ## 6. Technologies you are made of
 - **Backend:** Python 3.12+, Django 5.2.4, Django Channels 4.1, Daphne (ASGI).

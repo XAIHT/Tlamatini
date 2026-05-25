@@ -4,7 +4,7 @@ This directory holds the specialized onboarding documents that back the root `CL
 
 One-line descriptions:
 
-- **architecture.md** — Configuration, system prompt & identity, the Five Layers of the system, application log (`tlamatini.log`), doc generation pipeline, **`agent/services/` layer** (response post-processing + agent contracts + flow compiler), database models.
+- **architecture.md** — Configuration, system prompt & identity, **Self-Knowledge & Self-Modification** (`Tlamatini.md` → `{self_knowledge}` injection, optional `TlamatiniSourceCode/` self-modify tree, loaded-context priority), the Five Layers of the system, application log (`tlamatini.log`), doc generation pipeline, **`agent/services/` layer** (response post-processing + agent contracts + flow compiler), database models.
 - **multi-turn.md** — Multi-Turn mode, short follow-up message scoring, "Create Flow" pipeline (now backend-normalized via `/agent/flow_from_tool_calls/`), unified section format used by Parametrizer.
 - **exec-report.md** — The Exec Report feature end-to-end: scope map, capture/render pipeline, strict ordering contract, styling, how to add a new state-changing agent to the report.
 - **agents.md** — Backend Agent Contract registry (`agent/services/agent_contracts.py`), 8-step guide for creating a new workflow agent, naming convention transforms, agent lifecycle, connection fields, catalog of all 67 agent types (including FlowCreator, TeleTlamatini, WhatsTlamatini, ACPXer, Reviewer, Analyzer, Playwrighter, Windower, Kalier), FlowCreator AI skill, FlowHypervisor monitoring.

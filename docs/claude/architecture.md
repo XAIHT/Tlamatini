@@ -32,8 +32,40 @@ Key rules:
 6. Tables must use HTML, not markdown pipe syntax
 7. Responses must end with `END-RESPONSE`
 8. Tool-usage rule: in Multi-Turn, the LLM is an OPERATOR, not just an advisor
-9. Up to 4096 multi-turn iterations available
+9. Up to 4096 multi-turn iterations available (`unified_agent_max_iterations`; bumped 256 → 4096 in commit `1f36217`. Not to be confused with the tool-call quota hard-stop of 256, which is a separate cap.)
 10. Identity rule: the LLM IS Tlamatini — it responds to its name and can describe its own capabilities
+
+---
+
+## Self-Knowledge & Self-Modification (2026-05-25)
+
+Two related capabilities let Tlamatini describe — and potentially rewrite — herself.
+
+### Self-knowledge injection (`Tlamatini.md` → `{self_knowledge}`)
+
+`Tlamatini/agent/Tlamatini.md` is the LLM's **first-person self-reference file** — an authoritative map of *what she is*: who/what she is, the two runtime modes (frozen vs source) and how to detect which one she is in, the ports she opens (8000 / 8765 / 50051), her main pages, her tech stack, her capability surface, and how to improve herself. Its audience is the LLM alone, so it **deliberately does NOT follow `prompt.pmt`'s HTML/contrast styling rules** — it is private self-reference, not text rendered to a user.
+
+It is injected into `prompt.pmt`'s `<self_knowledge>{self_knowledge}</self_knowledge>` block **at prompt-build time** by `agent/rag/config.py`:
+
+- Constants `SELF_KNOWLEDGE_FILENAME = 'Tlamatini.md'` and `SELF_KNOWLEDGE_PLACEHOLDER = '{self_knowledge}'`.
+- `_load_self_knowledge_block(application_path)` reads the file, **brace-escapes** it (`{` → `{{`, `}` → `}}`) so code snippets inside it don't collide with the f-string template variables (`{system_context}`, `{files_context}`, `{context}`), and **fails open** — a missing / empty / unreadable file yields a short literal notice instead of raising, so it can never break the system prompt.
+- `load_config_and_prompt()` performs the `.replace()` at the **single prompt-load site**, so the injection covers **every chain** (basic, history-aware, unified, prompt-only) without adding a new input variable.
+- Resolved from the **application directory** exactly like `prompt.pmt` / `config.json` (install root next to the `.exe` in frozen mode, `Tlamatini/agent/` in source mode — the same `application_path` `rag/factory.py` uses). `build.py` ships it via `--add-data=…/Tlamatini.md;agent` **and** copies it to the install root (`optional_file_copies`) so the frozen "next to the exe" resolution works.
+- `prompt.pmt`'s identity rules point the LLM at `Tlamatini.md` and tell her to read it whenever a prompt concerns who/what she is, her architecture / modes / ports / pages / internals, or improving herself.
+
+### Self-modification (`TlamatiniSourceCode/`)
+
+`Tlamatini/agent/TlamatiniSourceCode/` is an **OPTIONAL** directory that, when present, holds Tlamatini's own source code so she can read/inspect/modify herself. It is a **second capability axis, independent of frozen vs source**:
+
+- **Present** → a **self-able-modify** build; **absent** → a **not-self-able-modify** build.
+- Bundled **only** when `build.py` is invoked with the new **`--self-modify`** flag (`self_modify = "--self-modify" in sys.argv`): the build copies the tree recursively to the install root (next to the `.exe`, resolved like `prompt.pmt`), and prints `Self-modify build : YES/no`. Without the flag the directory is omitted entirely.
+- `prompt.pmt` instructs the LLM to **always verify the directory's presence** (e.g. a Multi-Turn directory listing) before claiming she can read or edit her own code; if absent, she must say so and fall back to the injected self-knowledge + the docs.
+
+Commits: `a927f5c` (self-knowledge file + injection + `prompt.pmt` identity rules), `2aab751` (`build.py --self-modify`), `1f36217` (4096 iterations). Authored by "Tlamatini's-AutoBot".
+
+### Loaded-context priority (the user's project beats self-knowledge)
+
+Because `{self_knowledge}` is **always** present and authoritative, a generic prompt like *"summarize the project's source code in the provided context"* used to make her summarize **herself**. The fix gives the **user-loaded `<context>` priority** over `<self_knowledge>` for generic "the project / the source code / the provided context / this codebase / the loaded files" requests (she only describes herself when the user *explicitly* names Tlamatini / you / this-system / yourself). It is enforced two ways: a `prompt.pmt` Rule 5 **"Loaded-context priority"** clause + a **"CRITICAL SCOPE"** clause on the `<self_knowledge>` block, and a deterministic, model-agnostic scope header — `agent/rag/utils.py::prepend_loaded_context_scope()` — prefixed onto the loaded context blob in all four chains (`history_aware.py`, both chains in `unified.py`, `basic.py`). See `docs/claude/recent-fixes.md` (2026-05-25) for the full contract.
 
 ---
 

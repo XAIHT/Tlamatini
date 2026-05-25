@@ -60,7 +60,12 @@ def _normalize_path(path: str) -> str:
 
 
 def is_path_within_base(base_path: str, candidate_path: str) -> bool:
-    """Return ``True`` when *candidate_path* resolves inside *base_path*."""
+    """Return ``True`` when *candidate_path* resolves inside *base_path*.
+
+    Depth-agnostic: ``base_path`` itself, a direct child, and a
+    grand-grand-…-child all return ``True``. Only paths that escape the
+    base (different drive, ``..`` traversal, sibling tree) return ``False``.
+    """
     if not base_path or not candidate_path:
         return False
     try:
@@ -70,6 +75,24 @@ def is_path_within_base(base_path: str, candidate_path: str) -> bool:
         return common == normalized_base
     except Exception:
         return False
+
+
+def is_within_application_root(path: str) -> bool:
+    """Return ``True`` when *path* is the application root **or any descendant
+    of it at any depth**.
+
+    This is the single source of truth for the "Set directory as context"
+    rule: a project directory is acceptable as long as one of its ancestors
+    is the application root — whether it sits directly under it
+    (``<app>/project``) or several levels deep (``<app>/applications/foo/src``).
+
+    The application root is resolved live (not from the module-level allowed
+    cache) so the check is correct in **both** runtime modes:
+
+    * **frozen** — ``os.path.dirname(sys.executable)`` (the install folder).
+    * **source** — two levels above ``agent/`` (the repository root).
+    """
+    return is_path_within_base(_get_application_root(), path)
 
 
 def get_runtime_agent_root() -> str:
@@ -97,8 +120,12 @@ def resolve_runtime_agent_path(path: str, *, must_exist: bool = False, expect_di
     Resolve a user-supplied path for chat/context operations.
 
     Relative paths are resolved under the runtime agent root.
-    Absolute paths are only allowed when they stay under the runtime root
-    or are explicitly allowed by ``allowed_paths``.
+    Absolute paths are allowed when they stay under the runtime root, are a
+    descendant (at any depth) of the application root, or are explicitly
+    allowed by ``allowed_paths``. The application-root rule is what lets the
+    chat "Set directory as context" menu load a project that lives several
+    sub-directories deep under the install/repo folder
+    (e.g. ``<app>/applications/foo/src``) — not just a direct child.
     """
     if not path or not path.strip():
         return None
@@ -108,7 +135,11 @@ def resolve_runtime_agent_path(path: str, *, must_exist: bool = False, expect_di
 
     if os.path.isabs(raw_path):
         candidate = os.path.realpath(os.path.abspath(raw_path))
-        if not is_path_within_base(runtime_root, candidate) and not is_path_allowed(candidate):
+        if (
+            not is_path_within_base(runtime_root, candidate)
+            and not is_within_application_root(candidate)
+            and not is_path_allowed(candidate)
+        ):
             return None
     else:
         candidate = safe_join_under(runtime_root, raw_path)
