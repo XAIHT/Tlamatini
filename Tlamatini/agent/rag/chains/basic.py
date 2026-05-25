@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import SystemMessage
 from ...chat_history_loader import DBChatHistoryLoader
 from ...global_state import global_state
-from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text
+from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, prepend_loaded_context_scope
 from ..interaction import show_rephrased_question
 from .base import Callbacks
 
@@ -167,7 +167,14 @@ class BasicPromptOnlyChain:
         # Ensure all placeholders exist
         answer_payload["system_context"] = payload.get("system_context", "")
         answer_payload["files_context"] = payload.get("files_context", "") # <NEW>
-        answer_payload["context"] = payload.get("context", "") or self.loaded_context
+        # Scope the loaded context as the USER'S project (not Tlamatini's own
+        # self-knowledge) — mirrors prompt.pmt's loaded-context-priority rule
+        # and the RAG/unified chains, so the prompt-only fallback also answers
+        # "summarize the project's source code in the provided context" from the
+        # loaded files rather than from Tlamatini.md.
+        answer_payload["context"] = prepend_loaded_context_scope(
+            payload.get("context", "") or self.loaded_context
+        )
 
         answered = self.answer_chain.invoke(answer_payload)
         invokes_counter = global_state.get_state('chat_hist_summarizer_counter', 0)

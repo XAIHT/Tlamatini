@@ -1,7 +1,7 @@
 # Tlamatini — Frontend Architecture
 
 ## Chat Interface (8 modules)
-- `agent_page_init.js` - WebSocket setup, app initialization
+- `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling
 - `agent_page_canvas.js` - Code canvas rendering
 - `agent_page_context.js` - RAG context management
@@ -9,6 +9,10 @@
 - `agent_page_layout.js` - UI layout
 - `agent_page_state.js` - Client state
 - `agent_page_ui.js` - General UI utilities
+
+### Context directory picker — native, nested-dir-capable (2026-05-25)
+
+The chat **Context ▸ Set directory as context** menu loads a project at **any depth** under the app root. The browser `window.showDirectoryPicker()` was dropped because its `FileSystemDirectoryHandle.name` exposes only the **leaf folder name** (a browser-security limitation), which broke every directory that wasn't a direct child of the runtime root. `agent_page_init.js`'s `setDirContextMenu` handler now `fetch`es the backend native folder picker — `views.pick_context_directory_view` (route `pick_context_directory/`), which drives the Win32 dialog and returns the **real absolute path** — then sends that full path in `set-directory-as-context`. A `_promptForContextDirectory()` manual-entry fallback covers non-Windows hosts. The backend accepts the path because `path_guard.is_within_application_root()` + `resolve_runtime_agent_path` now allow the application root or **any descendant** at any depth. **Do NOT revert to `showDirectoryPicker()`** — it structurally cannot send the full path (see `docs/claude/recent-fixes.md`, 2026-05-25).
 
 ## ACP Workflow Designer (13 modules + 1 entry point)
 - `agentic_control_panel.js` - Entry point

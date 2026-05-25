@@ -5,6 +5,36 @@ from typing import List
 from langchain_core.documents import Document
 from agent.rag_enhancements import create_hierarchical_context
 
+# Scope header prepended to the user-loaded context blob before it is bound to
+# the prompt's {context} placeholder (history-aware RAG chain) or folded into
+# the unified agent's input. It is the deterministic, model-agnostic
+# counterpart to the loaded-context-priority rule in prompt.pmt: it forces the
+# model to treat the loaded directory/file as the USER'S project rather than as
+# Tlamatini's own self-knowledge (which lives in a separate <self_knowledge>
+# block), so "summarize the project's source code in the provided context"
+# answers from the loaded files, not from Tlamatini.md. Shared by
+# rag/chains/history_aware.py and rag/chains/unified.py so both surfaces stay
+# aligned.
+_LOADED_CONTEXT_SCOPE_HEADER = (
+    "LOADED USER CONTEXT — the directory/file the user attached via the Context "
+    "menu (this is the USER'S own project, NOT Tlamatini's own source code). "
+    "Any request to summarize, explain, analyze, describe, or review \"the "
+    "project\", \"the source code\", \"the provided context\", \"this codebase\", "
+    "or \"the loaded files\" MUST be answered from the content below — never with "
+    "a description of Tlamatini herself.\n\n"
+)
+
+
+def prepend_loaded_context_scope(context_blob: str) -> str:
+    """Return ``context_blob`` prefixed with the loaded-context scope header.
+
+    Returns an empty string unchanged so the no-context path is untouched.
+    """
+    if not context_blob:
+        return context_blob or ""
+    return _LOADED_CONTEXT_SCOPE_HEADER + context_blob
+
+
 def _approx_tokens(s: str) -> int:
     """Conservative rough estimate: 1 token ~= 4 chars"""
     return max(1, len(s) // 4)

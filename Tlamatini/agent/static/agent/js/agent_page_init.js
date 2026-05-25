@@ -512,27 +512,34 @@ window.onload = () => {
             if (contextEnabled === false) {
                 return;
             }
-            if (window && 'showDirectoryPicker' in window) {
-                try {
-                    const dirHandle = await window.showDirectoryPicker();
-                    const dirName = (dirHandle && dirHandle.name) ? dirHandle.name : 'selected_directory';
-                    const sent = sendChatSocketMessage(JSON.stringify({
-                        'type': 'set-directory-as-context',
-                        'message': dirName
-                    }));
-                    if (!sent) {
-                        return;
-                    }
-                    actualContextDir = null;
-                    updateViewContextDirMenuState();
-                    clearContextEnabled = false;
-                    clearContextButton.setAttribute("style", "display: none !important;");
-                    setContextText("<<< pending directory context: " + dirName + " >>>");
-                    contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
-                    console.log("--- Waiting for server confirmation of directory context: " + dirName);
-                } catch (err) {
-                    console.error("Catched error in listener of setDirContextMenu: " + err);
+            try {
+                // Native server-side picker returns the FULL absolute path,
+                // so a project nested any number of levels deep under the
+                // application root loads correctly (the old
+                // window.showDirectoryPicker() only sent the leaf folder name
+                // and broke every non-direct-child directory).
+                const chosenPath = await _pickContextDirectory();
+                if (!chosenPath) {
+                    // User canceled, or picker unavailable and no path typed.
+                    return;
                 }
+                const sent = sendChatSocketMessage(JSON.stringify({
+                    'type': 'set-directory-as-context',
+                    'message': chosenPath
+                }));
+                if (!sent) {
+                    return;
+                }
+                const dirLabel = chosenPath.split(/[\\/]/).filter(Boolean).pop() || chosenPath;
+                actualContextDir = null;
+                updateViewContextDirMenuState();
+                clearContextEnabled = false;
+                clearContextButton.setAttribute("style", "display: none !important;");
+                setContextText("<<< pending directory context: " + dirLabel + " >>>");
+                contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+                console.log("--- Waiting for server confirmation of directory context: " + chosenPath);
+            } catch (err) {
+                console.error("Catched error in listener of setDirContextMenu: " + err);
             }
         });
     }
@@ -1210,6 +1217,63 @@ function _notifyPickerUnavailable(body, fallbackReason, inputEl, kindLabel) {
         } catch (_e) { /* ignore */ }
     }
     alert(friendly);
+}
+
+// Native server-side folder picker for the chat "Set directory as context"
+// menu. Returns the chosen ABSOLUTE path, or '' when the user canceled or no
+// path was provided.
+//
+// Why not window.showDirectoryPicker(): that browser API only exposes the
+// LEAF folder name (FileSystemDirectoryHandle.name), never the full path, so
+// the server could only locate a directory that was a direct child of the
+// runtime root. A project nested several levels deep
+// (<app>/applications/proj/src) was impossible to load. The native Win32
+// picker returns the real full path, which path_guard accepts for any depth
+// under the application root. On hosts without a native dialog (e.g.
+// non-Windows) we fall back to a manual path prompt.
+async function _pickContextDirectory() {
+    try {
+        const response = await fetch('/agent/pick_context_directory/', {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        let body = null;
+        try { body = await response.json(); } catch (_e) { /* non-JSON */ }
+        if (response.ok && body) {
+            if (typeof body.path === 'string' && body.path) {
+                return body.path;
+            }
+            if (body.canceled) {
+                return '';  // user closed the dialog — respect it, no fallback
+            }
+            if (body.error || body.picker_unavailable) {
+                return _promptForContextDirectory(body);
+            }
+        }
+        if (!response.ok) {
+            return _promptForContextDirectory(body);
+        }
+    } catch (err) {
+        console.error('Native context-directory picker failed:', err);
+        return _promptForContextDirectory(null);
+    }
+    return '';
+}
+
+// Manual-entry fallback used when the native folder picker is unavailable
+// (no GUI / non-Windows). Mirrors the Set-DB / Backup-DB "type the path"
+// guidance. Returns the trimmed path the user typed, or '' if canceled.
+function _promptForContextDirectory(body) {
+    const friendly = (body && body.message)
+        || ('The native folder browser is unavailable on this machine. '
+            + 'Please type or paste the FULL absolute path to the project '
+            + 'directory (it must live under the application root).');
+    try {
+        const typed = window.prompt(friendly, '');
+        return (typed && typed.trim()) ? typed.trim() : '';
+    } catch (_e) {
+        return '';
+    }
 }
 
 // Browse button — opens a native folder picker on the server host and

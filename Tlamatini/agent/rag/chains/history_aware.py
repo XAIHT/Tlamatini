@@ -8,7 +8,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from ...chat_history_loader import DBChatHistoryLoader
 from ...global_state import global_state
-from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, _unique_filenames_from_split, _pack_context
+from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, _unique_filenames_from_split, _pack_context, prepend_loaded_context_scope
 from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
 from agent.rag_enhancements import expand_query_with_context, allocate_context_budget, add_cross_references
@@ -549,7 +549,17 @@ class OptimizedHistoryAwareRAGChain:
 
         format_kwargs["system_context"] = sys_ctx or ""
         format_kwargs["files_context"] = files_ctx or "" # <NEW>
-        format_kwargs["context"] = context_blob or ""
+
+        # Deterministic counterpart to the loaded-context-priority rule in
+        # prompt.pmt: when the user has loaded a directory/file as context,
+        # prefix the packed blob with an unambiguous scope header so the model
+        # treats it as the USER'S project — never as Tlamatini's own
+        # self-knowledge (which lives in a separate <self_knowledge> block).
+        # This keeps even a weak local model from answering "summarize the
+        # project's source code in the provided context" with a description of
+        # Tlamatini herself. Applied only to the prompt-bound value, so the
+        # blob saved by save_context_blob() below stays the raw retrieved text.
+        format_kwargs["context"] = prepend_loaded_context_scope(context_blob or "")
 
         msgs = self.qa_prompt.format_messages(**format_kwargs)
         #Get hash of original_input...

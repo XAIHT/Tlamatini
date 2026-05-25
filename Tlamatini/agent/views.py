@@ -8588,6 +8588,40 @@ def pick_db_sqlite_file_view(request):
     return JsonResponse({"path": os.path.abspath(chosen)})
 
 
+@login_required
+def pick_context_directory_view(request):
+    """
+    Open a native folder-picker on the server host for the chat
+    "Set directory as context" menu and return the **full absolute path**
+    the user chose.
+
+    Why this exists: the browser's ``window.showDirectoryPicker()`` only
+    exposes the LEAF folder name (``FileSystemDirectoryHandle.name``), never
+    the full path. The server could therefore only locate a directory that
+    happened to be a direct child of the runtime root — so a project nested
+    several levels deep (``<app>/applications/proj/src``) was impossible to
+    load and failed with the generic "context outside of the root directory"
+    error. The native Win32 picker returns the real absolute path, which
+    ``path_guard.resolve_runtime_agent_path`` then accepts for any depth
+    under the application root (see ``is_within_application_root``). Works
+    identically in frozen and source builds.
+
+    Returns ``{"path": "<abs>"}`` on success, ``{"path": "", "canceled":
+    true}`` when the user closed the dialog, or a friendly
+    ``picker_unavailable`` payload on hosts without the native dialog (so the
+    frontend can fall back to manual path entry).
+    """
+    try:
+        chosen = _run_native_picker('directory', 'Select project directory to load as context')
+    except Exception as exc:
+        print(f"[SET-DIR-CONTEXT] folder picker failed: {exc}")
+        traceback.print_exc()
+        return JsonResponse(_picker_failure_payload(exc))
+    if not chosen:
+        return JsonResponse({"path": "", "canceled": True})
+    return JsonResponse({"path": os.path.abspath(chosen)})
+
+
 @csrf_exempt
 @require_POST
 def compile_flow_view(request):

@@ -10,7 +10,7 @@ from langchain_core.documents import Document
 from ...chat_history_loader import DBChatHistoryLoader
 from ...global_state import global_state
 from ...mcp_agent import create_unified_agent
-from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, _unique_filenames_from_split, _pack_context
+from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, _unique_filenames_from_split, _pack_context, prepend_loaded_context_scope
 from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
 from agent.rag_enhancements import expand_query_with_context, allocate_context_budget, add_cross_references
@@ -248,8 +248,11 @@ User Question: {enhanced_input}"""
             enhanced_input = (
                 "Loaded Context from Knowledge Base Fallback:\n"
                 f"{loaded_context}\n\n"
-                "IMPORTANT: The loaded project/file context is already provided above even though vector retrieval is unavailable. "
-                "Use it directly to answer the user's question.\n\n"
+                "IMPORTANT: The loaded context above is the USER'S OWN project/files (NOT Tlamatini's own "
+                "source code or self-knowledge), already provided even though vector retrieval is unavailable. "
+                "Use it directly to answer the user's question; for any request to summarize, explain, or analyze "
+                "\"the project\", \"the source code\", or \"the provided context\", answer from THIS content — never "
+                "with a description of Tlamatini herself.\n\n"
                 f"User Question: {enhanced_input}"
             )
         
@@ -708,21 +711,28 @@ class UnifiedAgentRAGChain:
         # 6) Build enhanced input with all context for unified agent
         sys_ctx = payload.get("system_context", "")
         files_ctx = payload.get("files_context", "")
-        
+
+        # Deterministic loaded-context scope header (mirrors prompt.pmt's
+        # loaded-context-priority rule and the history-aware RAG chain): the
+        # loaded directory/file is the USER'S project, never Tlamatini's own
+        # self-knowledge. Bound to the agent input / fallback prompt only; the
+        # blob saved by save_context_blob() below stays the raw retrieved text.
+        scoped_context_blob = prepend_loaded_context_scope(context_blob)
+
         # Construct enhanced input with all context
         #enhanced_input = original_input
         enhanced_input = q_rewritten
-        
+
         # Add files context first (highest priority - from FileSearchRAGChain)
         if files_ctx:
             enhanced_input = f"""Files Context (file system search results):
 {files_ctx}
 
 User Question: {enhanced_input}"""
-        
+
         # Add retrieved context (contains file information from knowledge base)
         if context_blob:
-            enhanced_input = f"Retrieved Context from Knowledge Base:\n{context_blob}\n\nUser Question: {enhanced_input}"
+            enhanced_input = f"Retrieved Context from Knowledge Base:\n{scoped_context_blob}\n\nUser Question: {enhanced_input}"
         
         # Add system context
         if sys_ctx:
@@ -785,7 +795,7 @@ User Question: {enhanced_input}"""
                     "chat_history": hist,
                     "system_context": sys_ctx or "",
                     "files_context": files_ctx or "",
-                    "context": context_blob or "",
+                    "context": scoped_context_blob,
                 }
                 answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks()]})
                 answered = answer_chain.invoke(answer_payload)
@@ -803,7 +813,7 @@ User Question: {enhanced_input}"""
                 "chat_history": hist,
                 "system_context": sys_ctx or "",
                 "files_context": files_ctx or "",
-                "context": context_blob or "",
+                "context": scoped_context_blob,
             }
             answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks()]})
             answered = answer_chain.invoke(answer_payload)
