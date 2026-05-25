@@ -82,7 +82,7 @@
   - [5.7. ACPXer — the visual canvas counterpart](#57-acpxer--the-visual-canvas-counterpart)
 - [6. Unreal MCP — Driving Unreal Engine 5 from Tlamatini](#6-unreal-mcp--driving-unreal-engine-5-from-tlamatini)
   - [6.1. What Unreal MCP is](#61-what-unreal-mcp-is)
-  - [6.2. Upstream plugin (the **MCP git location**)](#62-upstream-plugin-the-mcp-git-location)
+  - [6.2. The MCP plugin source (the **MCP git location**)](#62-the-mcp-plugin-source-the-mcp-git-location)
   - [6.3. Installing and enabling the plugin inside your UE5 project](#63-installing-and-enabling-the-plugin-inside-your-ue5-project)
   - [6.4. The command catalog (up to 53 commands across 9 categories)](#64-the-command-catalog-up-to-53-commands-across-9-categories)
   - [6.5. Using Unreal MCP from the chat (`chat_agent_unrealer`)](#65-using-unreal-mcp-from-the-chat-chat_agent_unrealer)
@@ -943,7 +943,7 @@ Three different LLMs argue back and forth, fully visual, fully unattended.
 
 ## 6. Unreal MCP — Driving Unreal Engine 5 from Tlamatini
 
-The **Unrealer** agent (#62 in the catalog) lets Tlamatini drive a live Unreal Engine 5 editor through the **Unreal MCP** plugin's TCP socket protocol. You spawn a `chat_agent_unrealer` call from Multi-Turn or drop an **Unrealer** node on the visual canvas; Tlamatini opens a TCP connection to `127.0.0.1:55557`, sends one JSON command (`{"type": <verb>, "params": {...}}`), captures the engine's JSON response into an `INI_SECTION_UNREALER<<<` block, and triggers downstream agents. Because the agent forwards whatever `command` + `params` you give it, the catalog is exactly whatever your connected plugin build exposes — from the base 28-command upstream release up to the **53-command, nine-category extended surface** (actor manipulation incl. viewport screenshots, Blueprint creation and graph wiring, input mappings, UMG widget building, in-editor Python/console execution, level I/O, asset import, and material authoring) — without you ever leaving the chat or the canvas.
+The **Unrealer** agent (#62 in the catalog) lets Tlamatini drive a live Unreal Engine 5 editor through the **Unreal MCP** plugin's TCP socket protocol. You spawn a `chat_agent_unrealer` call from Multi-Turn or drop an **Unrealer** node on the visual canvas; Tlamatini opens a TCP connection to `127.0.0.1:55557`, sends one JSON command (`{"type": <verb>, "params": {...}}`), captures the engine's JSON response into an `INI_SECTION_UNREALER<<<` block, and triggers downstream agents. Because the agent forwards whatever `command` + `params` you give it, the catalog is exactly whatever your connected plugin build exposes — from the base 28-command upstream release up to the **53-command, nine-category extended surface** (actor manipulation incl. viewport screenshots, Blueprint creation and graph wiring, input mappings, UMG widget building, in-editor Python/console execution, level I/O, asset import, and material authoring) shipped by Tlamatini's own plugin fork, **[`XAIHT/XaihtUnrealEngineMCP`](https://github.com/XAIHT/XaihtUnrealEngineMCP.git)** (the Unreal Engine MCP modified specifically for this system — see §6.2) — without you ever leaving the chat or the canvas.
 
 ### 6.1. What Unreal MCP is
 
@@ -951,28 +951,38 @@ The **Unrealer** agent (#62 in the catalog) lets Tlamatini drive a live Unreal E
 
 **Tlamatini does not embed or compile the plugin.** It is a *client* of whatever UE5 instance the user has already started. The engine must be open, the plugin must be enabled, and its in-engine listener must be bound to `127.0.0.1:55557` (the default — configurable per-call via `host` / `port`). Tlamatini contributes the calling side: one wrapped Multi-Turn tool, one visual canvas node, one Agent Contract entry, one Exec Report row family, and one Parametrizer source mapping — all built around the same `UnrealConnection` adapter at `agent/agents/unrealer/unrealer.py`.
 
-### 6.2. Upstream plugin (the **MCP git location**)
+### 6.2. The MCP plugin source (the **MCP git location**)
 
-The canonical reference implementation Tlamatini's `UnrealConnection` adapter mirrors verbatim is:
+**Recommended — Tlamatini's own extended fork.** The plugin Tlamatini is built and tested against is the **Unreal Engine MCP modified specifically for this system**:
+
+- **Repository:** `https://github.com/XAIHT/XaihtUnrealEngineMCP.git`
+- **What it is:** the canonical `chongdashu/unreal-mcp` plugin forked and extended for Tlamatini. It ships the full **53-command, nine-category** surface this chapter documents — the base editor / blueprint / node / project / umg verbs **plus** the System / Level / Asset / Material families and the newer `take_screenshot` / `focus_viewport` / `set_pawn_properties` / `find_blueprint_nodes` verbs.
+- **Plugin folder name:** `UnrealMCP`
+- **Default plugin TCP port:** `55557` on `127.0.0.1`
+- **Supported UE versions:** Unreal Engine 5.5+
+
+It speaks the **identical wire protocol on the identical port** as every other build below, so it is a drop-in: Tlamatini's `UnrealConnection` adapter needs no client-side changes to use it. Install this one if you want the System / Level / Asset / Material families that the seeded demos `idPrompt 60/61/62` (§6.5) exercise.
+
+**Upstream base.** The XAIHT fork is built on the canonical reference implementation Tlamatini's `UnrealConnection` adapter mirrors verbatim:
 
 - **Repository:** `https://github.com/chongdashu/unreal-mcp`
 - **License:** MIT
 - **Supported UE versions:** Unreal Engine 5.5+
-- **Plugin folder name:** `UnrealMCP`
-- **Default plugin TCP port:** `55557`
 
-Two equivalent community forks ship the same wire protocol on the same port; either works with Tlamatini's Unrealer with **no client changes**:
+If you only ever need the base 28-command surface (editor / blueprint / node / project / umg), the upstream is enough on its own.
+
+**Equivalent community forks.** Two other forks ship the same wire protocol on the same port; either works with Tlamatini's Unrealer with **no client changes**:
 
 - `https://github.com/CrispyW0nton/Unreal-MCP-Ghost`
 - `https://github.com/gingerol/vhcilab-unreal-engine-mcp`
 
-Pick the upstream that matches your UE5 version and your team's licensing comfort. If you fork the plugin to add a new command verb, your fork is automatically usable from Tlamatini — there is no client-side allow-list of verbs (the wrapped tool forwards any `command` + `params` pair verbatim).
+Pick the build that matches your UE5 version and your team's licensing comfort. If you fork the plugin to add a new command verb, your fork is automatically usable from Tlamatini — there is no client-side allow-list of verbs (the wrapped tool forwards any `command` + `params` pair verbatim).
 
 ### 6.3. Installing and enabling the plugin inside your UE5 project
 
 The plugin is a per-project install (not engine-wide). Steps:
 
-1. **Clone or download** the upstream plugin (only the `MCPGameProject/Plugins/UnrealMCP` folder matters — different forks may name the folder slightly differently; rename to `UnrealMCP` if needed).
+1. **Clone or download** the plugin — the recommended [`XAIHT/XaihtUnrealEngineMCP`](https://github.com/XAIHT/XaihtUnrealEngineMCP.git) fork from §6.2, or any compatible build (only the `MCPGameProject/Plugins/UnrealMCP` folder matters — different forks may name the folder slightly differently; rename to `UnrealMCP` if needed).
 2. **Drop the folder** into your project's `Plugins/` directory so the final path is `<YourProject>/Plugins/UnrealMCP/UnrealMCP.uplugin`. Create the `Plugins/` folder at the project root if it does not exist.
 3. **Open the project in UE5.** The editor will detect the new plugin and offer to rebuild it for your engine version — accept. If you opened a Blueprint-only project, you will be prompted to install Visual Studio Build Tools / Xcode command-line tools first, since the plugin is C++.
 4. **Enable the plugin** via `Edit → Plugins → search "UnrealMCP" → tick Enabled`. Restart the editor.
@@ -982,7 +992,7 @@ The plugin is a per-project install (not engine-wide). Steps:
 
 ### 6.4. The command catalog (up to 53 commands across 9 categories)
 
-The Unrealer agent forwards whatever `command` + `params` you pass it, so the exact catalog is whatever your connected plugin build exposes — there is **no client-side allow-list of verbs**. The canonical chongdashu/unreal-mcp release ships **28 commands across 5 categories** (rows marked `base` below); plugin builds that add the System / Level / Asset / Material command handlers — such as the extended fork this project targets — bring the total to **53 commands across 9 categories**:
+The Unrealer agent forwards whatever `command` + `params` you pass it, so the exact catalog is whatever your connected plugin build exposes — there is **no client-side allow-list of verbs**. The canonical chongdashu/unreal-mcp release ships **28 commands across 5 categories** (rows marked `base` below); plugin builds that add the System / Level / Asset / Material command handlers — such as Tlamatini's own extended fork [`XAIHT/XaihtUnrealEngineMCP`](https://github.com/XAIHT/XaihtUnrealEngineMCP.git) (§6.2) — bring the total to **53 commands across 9 categories**:
 
 | Category | Commands | Tier |
 |---|---|---|
