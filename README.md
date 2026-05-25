@@ -1224,12 +1224,12 @@ For users, the takeaway is simpler: **a `.flw` saved in source mode should load 
   "unified_agent_model": "glm-5:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
-  "unified_agent_max_iterations": 100,
+  "unified_agent_max_iterations": 4096,
   "chat_agent_limit_runs": 100
 }
 ```
 
-`unified_agent_max_iterations` caps the Multi-Turn tool loop (default 100). `enable_unified_agent` is the master switch for tool-calling.
+`unified_agent_max_iterations` caps the Multi-Turn tool loop (default 4096). `enable_unified_agent` is the master switch for tool-calling.
 
 ### 8.2. RAG
 
@@ -1301,7 +1301,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 Frontend (toggles) → WebSocket → AgentConsumer → ask_rag() (skips prompt-shape validator)
   → UnifiedAgentChain.invoke() → filter_acpx_tools(tools, acpx_enabled)
     → planner picks ≤20 tools (capability scoring + history-aware boost)
-      → MultiTurnToolAgentExecutor: 1..100 iterations of (LLM call → tool calls → ToolMessage)
+      → MultiTurnToolAgentExecutor: 1..4096 iterations of (LLM call → tool calls → ToolMessage)
         → Exec Report HTML appended (if exec_report_enabled, BEFORE save_message)
           → broadcast → frontend renders, shows Create Flow if all 4 gates pass
 ```

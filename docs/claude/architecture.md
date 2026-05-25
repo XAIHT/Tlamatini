@@ -11,7 +11,7 @@ Key settings:
 - `ollama_base_url`: Ollama server URL
 - `ANTHROPIC_API_KEY`: Claude API key
 - `enable_unified_agent`: Enable tool-calling agent
-- `unified_agent_max_iterations`: Max tool-call turns (default 100)
+- `unified_agent_max_iterations`: Max tool-call turns (default 4096)
 - `chat_agent_limit_runs`: Wrapped-run listing limit
 
 Frozen builds resolve config from the install directory next to the executable. Source mode resolves from `Tlamatini/agent/config.json`. `CONFIG_PATH` env var overrides both.
@@ -32,7 +32,7 @@ Key rules:
 6. Tables must use HTML, not markdown pipe syntax
 7. Responses must end with `END-RESPONSE`
 8. Tool-usage rule: in Multi-Turn, the LLM is an OPERATOR, not just an advisor
-9. Up to 256 multi-turn iterations available
+9. Up to 4096 multi-turn iterations available
 10. Identity rule: the LLM IS Tlamatini — it responds to its name and can describe its own capabilities
 
 ---
