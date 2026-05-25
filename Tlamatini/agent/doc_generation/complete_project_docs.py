@@ -132,6 +132,14 @@ class CommitInfo:
     subject: str
 
 
+@dataclass
+class CommitBaseline:
+    full_hash: str
+    short_hash: str
+    committed_at: str
+    subject: str
+
+
 def git(*args: str) -> str:
     result = subprocess.run(
         ["git", *args],
@@ -369,9 +377,47 @@ def recent_week_commits(days: int = RECENT_GIT_WINDOW_DAYS) -> list[CommitInfo]:
     return commits
 
 
+def last_visual_doc_commit() -> CommitBaseline | None:
+    raw = git(
+        "log",
+        "-n1",
+        "--format=%H%x1f%h%x1f%cI%x1f%s",
+        "--",
+        PDF_OUTPUT.name,
+        PPT_OUTPUT.name,
+    )
+    if not raw:
+        return None
+    full_hash, short_hash, committed_at, subject = raw.split("\x1f", 3)
+    return CommitBaseline(full_hash, short_hash, committed_at, subject)
+
+
+def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInfo]:
+    if baseline is None:
+        return recent_commits()
+    raw = git("log", f"{baseline.full_hash}..HEAD", "--format=%h%x1f%cI%x1f%s")
+    commits: list[CommitInfo] = []
+    for line in raw.splitlines():
+        short_hash, committed_at, subject = line.split("\x1f", 2)
+        commits.append(CommitInfo(short_hash, committed_at, subject))
+    return commits
+
+
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("herself" in subject or "self" in subject and "modify" in subject or "self knowledge" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is `v1.8.0` self-awareness: Tlamatini now carries a first-person self-knowledge map, can explain her own architecture and runtime surfaces more accurately, and can optionally inspect or modify her own shipped source tree in self-modify builds."
+        )
+    if any("4096" in subject or "degrees of liberty" in subject or "turn" in subject and "freedom" in subject for subject in subjects):
+        highlights.append(
+            "Multi-Turn autonomy expanded too: the default iteration ceiling now reaches 4096 turns, giving long operator chains far more room before they hit the loop cap."
+        )
+    if any("unrealer" in subject or "unreal mcp" in subject or "xaiht" in subject for subject in subjects):
+        highlights.append(
+            "Unrealer kept growing across the same window: the docs now point at the public `XAIHT/XaihtUnrealEngineMCP` fork and the full 53-command, nine-category Unreal MCP surface it exposes to chat and canvas."
+        )
     if any("kalier" in subject or "kali" in subject or "pentest" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is the `v1.7.1` Kalier refinement: Tlamatini keeps its 67-agent catalog but now behaves as the embedded MCP-Kali-Server client, so the Kali box URL is configured once in `Config -> URLs` and auto-injected into `chat_agent_kalier` runs."
@@ -471,6 +517,34 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     return [f"Git history shows focused maintenance across the operator surface, release mechanics, and runtime behavior during {RECENT_GIT_WINDOW_LABEL}."]
 
 
+def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
+    subjects = [commit.subject.lower() for commit in commits]
+    highlights: list[str] = []
+    if any("self" in subject and ("herself" in subject or "modify" in subject or "source code" in subject) for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.8.0` introduced Tlamatini’s self-knowledge and optional self-modification surface: she can now describe her own runtime more accurately and, in self-modify builds, inspect or change her own bundled source tree."
+        )
+    if any("4096" in subject or "degrees of liberty" in subject or "turn" in subject and "freedom" in subject for subject in subjects):
+        highlights.append(
+            "The same window raised the default Multi-Turn iteration ceiling from 256 to 4096, making long autonomous operator chains practical without an early loop-cap failure."
+        )
+    if any("unrealer" in subject or "unreal mcp" in subject or "xaiht" in subject for subject in subjects):
+        highlights.append(
+            "Unrealer advanced substantially too: the docs now point at the public `XAIHT/XaihtUnrealEngineMCP` fork and the full 53-command Unreal MCP surface, with new demos and better parameter-path guidance."
+        )
+    if any("kalier" in subject or "kali" in subject for subject in subjects):
+        highlights.append(
+            "Kalier also matured during the same span: `v1.7.1` made Tlamatini the embedded MCP-Kali-Server client for chat-side runs, so operators configure the Kali box once in `Config -> URLs` instead of repeating it in every prompt."
+        )
+    if any("doc" in subject or "markdown" in subject or "graphical" in subject for subject in subjects):
+        highlights.append(
+            "The markdown handbooks themselves were revised during that span, so this dossier refresh is carrying forward not only code/runtime changes but also the corrected operator-language and release-story wording."
+        )
+    if highlights:
+        return highlights
+    return ["Since the last committed PDF/PPTX refresh, Git shows focused platform evolution across autonomy, operator ergonomics, runtime self-knowledge, and documentation fidelity."]
+
+
 def _load_module_from_path(module_name: str, path: Path):
     spec = importlib.util.spec_from_file_location(module_name, str(path))
     if spec is None or spec.loader is None:
@@ -554,6 +628,8 @@ def collect_context() -> dict:
     skills_count = count_skills()
     reference_media = extract_reference_media()
     weekly = recent_week_commits()
+    visual_baseline = last_visual_doc_commit()
+    visual_commits = commits_since_visual_docs(visual_baseline)
     version_info = resolve_version_info()
 
     context = {
@@ -587,6 +663,9 @@ def collect_context() -> dict:
         "recent_commits": recent_commits(),
         "weekly_commits": weekly,
         "weekly_highlights": weekly_highlights(weekly),
+        "visual_doc_baseline": visual_baseline,
+        "visual_doc_commits": visual_commits,
+        "visual_doc_highlights": visual_doc_highlights(visual_commits),
         "reference_media": reference_media,
         "version_info": version_info,
     }
@@ -596,7 +675,7 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a local-first AI developer assistant built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "It combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "The platform is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, and Windows packaging.",
+    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, Windows packaging, and now first-person self-knowledge about her own runtime.",
 ]
 
 WHAT_IT_DOES = [
@@ -605,12 +684,14 @@ WHAT_IT_DOES = [
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
+    "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
     "Actively reaps orphaned Windows console-host and pool-child processes so long Multi-Turn or ACPX sessions do not leave misleading Tlamatini-icon ghosts in Task Manager.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
+    "Can optionally inspect and modify her own bundled source tree in self-modify builds after verifying that `TlamatiniSourceCode/` is actually present.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
     "Lets users design, validate, save, pause, resume, and stop visual workflows through the Agentic Control Panel.",
     "Turns successful Multi-Turn tool executions into starter `.flw` workflows that can be inspected and validated in ACP.",
@@ -623,7 +704,9 @@ HOW_IT_WORKS = [
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
+    "A first-person self-knowledge file (`Tlamatini.md`) is injected into prompt construction for all chains, but loaded user context still outranks that self-reference when the request is a generic summary of the provided project.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
+    "Optional self-modify builds bundle `TlamatiniSourceCode/`; prompt rules require her to verify that directory exists before claiming she can inspect or change her own code.",
     "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, auto-seeding the default box from `kali_server_url` in Config -> URLs before any one-off per-call override is applied, and captures one atomic `INI_SECTION_KALIER` block per run.",
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
@@ -639,6 +722,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
@@ -679,7 +763,31 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.7.1` release state keeps the version badge, runtime surfaces, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.8.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, and operator handbook aligned.",
+]
+
+SELF_KNOWLEDGE_GUIDE = [
+    "Version `1.8.0` gives Tlamatini a first-person self-knowledge map in `Tlamatini/agent/Tlamatini.md`, so she can answer more accurately about her own architecture, runtime modes, open ports, pages, and internal capability surface.",
+    "That self-reference is injected into all prompt chains through `prompt.pmt` and `agent/rag/config.py`, but it fails open if the file is missing or unreadable and it never overrides a user-loaded project when the request is a generic summary of the provided context.",
+    "The language contract matters too: when a pronoun is used for Tlamatini in the documentation or prompt guidance, she is referred to as `she` / `her`, matching the updated handbook identity rules.",
+]
+
+SELF_MODIFY_GUIDE = [
+    "Self-modification is a separate capability axis from frozen-vs-source runtime: only builds created with `python build.py --self-modify` bundle `TlamatiniSourceCode/` next to the application.",
+    "When that directory is present, she can inspect and modify her own shipped source tree; when it is absent, she must say so plainly and fall back to her injected self-knowledge plus the surrounding docs.",
+    "The build pipeline now announces that choice explicitly, so operators can tell whether a release is self-modify-capable before asking her to work on herself.",
+]
+
+MULTITURN_4096_GUIDE = [
+    "The unified-agent loop now defaults to 4096 iterations instead of 256, giving long autonomous operator runs much more room before they exhaust the turn budget.",
+    "That expansion is about conversational/tool-loop depth, not about blindly firing more tools at once: the planner’s selected-tool cap still keeps the tool surface bounded per request.",
+    "Operationally, the bigger ceiling helps long workflows, while duplicate-call guards and the dedicated `chat_agent_sleeper` tool remain the antidote to accidental busy-polling loops.",
+]
+
+UNREAL_EXTENDED_GUIDE = [
+    "Unrealer’s documentation now points at the public `XAIHT/XaihtUnrealEngineMCP` fork, the Unreal Engine MCP variant developed specifically for Tlamatini.",
+    "That fork exposes the extended 53-command, nine-category surface documented in README and Book: not only the base editor/Blueprint/UMG verbs, but also system, level, asset, material, screenshot, viewport, and in-editor Python paths.",
+    "The practical message for operators is simple: Unrealer forwards the connected plugin’s verb surface directly, so Tlamatini’s client does not need a new release every time the plugin adds another supported command.",
 ]
 
 REVIEWER_ANALYZER_GUIDE = [
@@ -749,6 +857,7 @@ DESIGN_PRINCIPLES = [
     "Operational reversibility: risky changes such as database replacement are staged, archived, and delayed to the only safe window instead of hot-swapped mid-session.",
     "Fail-open diagnostics: GPU pressure probes and session-restore safeguards warn early without breaking CPU-only or degraded environments.",
     "Runtime isolation: wrapped chat-agent copies run in session-scoped folders so template agents remain pristine while live runs stay inspectable.",
+    "Self-knowledge with scope discipline: she can talk accurately about herself without letting self-reference override a user-loaded project context.",
     "Operator truth over vibes: Exec Report tables, tlamatini.log, skill audits, and ACPX transcripts make the system auditable after execution.",
 ]
 
@@ -765,7 +874,7 @@ CONFIGURATION_GUIDE = [
     "URL configuration now also includes `kali_server_url`, edited from `Config -> URLs -> Kali server (Kalier)`, which is the default box that chat-side Kalier runs inherit automatically.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
-    "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid.",
+    "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096.",
     "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
 ]
 
@@ -863,6 +972,7 @@ RECENT_RUNTIME_SAFEGUARDS = [
 RELEASE_GUIDE = [
     "Release production is a three-step pipeline: `build.py` -> `build_uninstaller.py` -> `build_installer.py`.",
     "The final distributable is the full `dist/Tlamatini_Release/` folder, not a stray executable copied outside its payload.",
+    "Use `build.py --self-modify` when you intentionally want a release that ships `TlamatiniSourceCode/` so she can inspect or modify herself at runtime.",
     "Current `build.py` treats `README.md` and `jd-cli/` as required post-build assets and fails hard if those payloads are missing.",
     "Bundled support scripts cover shortcut creation/removal, `.flw` association, the PowerShell launcher, and Windows-specific installer ergonomics.",
 ]
@@ -1075,7 +1185,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("TLAMATINI", styles["title"]))
     story.append(
         p(
-            "Complete Project Dossier: what the system does, how it works, how to use it, complete tracked file tree, and effective line inventory",
+            "Complete Project Dossier: what the system does, how it works, how to use Tlamatini, complete tracked file tree, and effective line inventory",
             styles["subtitle"],
         )
     )
@@ -1142,6 +1252,15 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Self-knowledge in v1.8.0", styles["h2"]))
+    for item in SELF_KNOWLEDGE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Self-modify builds", styles["h2"]))
+    for item in SELF_MODIFY_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Multi-Turn 4096-turn autonomy", styles["h2"]))
+    for item in MULTITURN_4096_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("De-Compresser agent", styles["h2"]))
     for item in DE_COMPRESSER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1150,6 +1269,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unreal MCP and the Unrealer agent", styles["h2"]))
     for item in UNREAL_MCP_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Extended Unreal MCP surface", styles["h2"]))
+    for item in UNREAL_EXTENDED_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Installing the UE5 plugin and smoke-testing it", styles["h2"]))
     for item in UNREAL_INSTALL_GUIDE:
@@ -1323,6 +1445,26 @@ def build_pdf(context: dict) -> None:
     for commit in context["recent_commits"]:
         commit_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
     story.append(table(commit_rows, widths=[1.0 * inch, 0.8 * inch, 4.9 * inch], font_size=7))
+    baseline = context["visual_doc_baseline"]
+    if baseline is not None:
+        story.append(p("Changes since the last committed PDF/PPTX refresh", styles["h2"]))
+        story.append(
+            p(
+                f"Last committed visual-dossier refresh: {baseline.short_hash} on {iso_date(baseline.committed_at)} — {baseline.subject}",
+                styles["body"],
+            )
+        )
+        for item in context["visual_doc_highlights"]:
+            story.append(bullet(item, styles["bullet"]))
+        visual_chunks = split_items(context["visual_doc_commits"], 12)
+        for index, chunk in enumerate(visual_chunks, 1):
+            story.append(p(f"Visual-dossier change appendix {index} of {len(visual_chunks)}", styles["h2"]))
+            visual_rows = [["Date", "Commit", "Subject"]]
+            for commit in chunk:
+                visual_rows.append([iso_date(commit.committed_at), commit.short_hash, commit.subject])
+            story.append(table(visual_rows, widths=[1.0 * inch, 0.8 * inch, 4.9 * inch], font_size=7))
+            if index != len(visual_chunks):
+                story.append(PageBreak())
     git_window_heading = "Git changes from today" if RECENT_GIT_WINDOW_LABEL == "today" else f"Git changes from the {RECENT_GIT_WINDOW_LABEL}"
     story.append(p(git_window_heading, styles["h2"]))
     for item in context["weekly_highlights"]:
@@ -1624,7 +1766,7 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(
         prs,
         "TLAMATINI",
-        "Complete project dossier: what it does, how it works, how to use it",
+        "Complete project dossier: what she does, how she works, how to use Tlamatini",
         THEME["copper"],
         cover,
     )
@@ -1636,7 +1778,7 @@ def build_ppt(context: dict) -> None:
         2.76,
         6.3,
         1.0,
-        f"Local AI developer assistant with RAG, Multi-Turn orchestration, {context['workflow_agent_count']} agents, ACPX delegation, visual workflows, and Windows packaging.",
+        f"Local AI developer assistant with RAG, Multi-Turn orchestration, {context['workflow_agent_count']} agents, ACPX delegation, visual workflows, self-knowledge, and Windows packaging.",
         17,
         THEME["muted"],
         False,
@@ -1691,7 +1833,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Checked mode", [
         "Capability registry scores context providers, tools, and wrapped agents for the current request.",
         "Global planner builds prefetch, execute, monitor, and answer stages.",
-        "Explicit tool loop runs tool calls, appends observations, and asks again until final answer or limit.",
+        "Explicit tool loop runs tool calls, appends observations, and asks again until final answer or the 4096-turn limit.",
         "Answer Analizer classifies success so the UI can expose Create Flow only when useful.",
     ], THEME["copper"], "mt-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Unchecked mode", [
@@ -1750,6 +1892,11 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", KALIER_SURFACES_GUIDE, THEME["amber"], "kalier-b", 13)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Self-Knowledge In v1.8.0", "who she is and how she can improve herself", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", SELF_KNOWLEDGE_GUIDE, THEME["amber"], "self-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Self-modify and autonomy", SELF_MODIFY_GUIDE + MULTITURN_4096_GUIDE[:2], THEME["jade"], "self-b", 13)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Windower In Multi-Turn", "desktop window management for chat and canvas", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", WINDOWER_GUIDE, THEME["amber"], "window-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", WINDOWER_SURFACES_GUIDE, THEME["jade"], "window-b", 13)
@@ -1791,7 +1938,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "gate-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "How To Use It", "operator path", THEME["jade"])
+    slide, audit = add_slide(prs, "How To Use Tlamatini", "operator path", THEME["jade"])
     add_panel(slide, audit, 0.72, 1.56, 5.9, 5.0, "Daily use", HOW_TO_USE[:3], THEME["jade"], "use-a", 15)
     add_panel(slide, audit, 6.92, 1.56, 5.65, 5.0, "Workflows and releases", HOW_TO_USE[3:], THEME["copper"], "use-b", 15)
     audit_layout(audit, len(prs.slides))
@@ -1854,6 +2001,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Unreal MCP And Unrealer", "today's UE5 bridge", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", UNREAL_MCP_GUIDE, THEME["jade"], "unreal-a", 14)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Install and runtime path", UNREAL_INSTALL_GUIDE + UNREAL_RUNTIME_GUIDE[:1], THEME["copper"], "unreal-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Extended Unrealer Surface", "the 53-command fork and why it matters", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Extended fork", UNREAL_EXTENDED_GUIDE, THEME["amber"], "unreal-c", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime consequences", UNREAL_RUNTIME_GUIDE[1:] + ["The seeded Unreal demo prompts now cover screenshots, scene-building, and in-editor Python/introspection paths on top of the original blueprint flow."], THEME["jade"], "unreal-d", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Orphan-Process Cleanup", "today's Windows process-hygiene work", THEME["amber"])
@@ -1945,6 +2097,17 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "repo-head", 15)
     audit_layout(audit, len(prs.slides))
 
+    baseline = context["visual_doc_baseline"]
+    if baseline is not None:
+        slide, audit = add_slide(prs, "Since Last Dossier Refresh", "all important changes since the last committed PDF/PPTX update", THEME["copper"])
+        add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Baseline", [
+            f"{baseline.short_hash} on {iso_date(baseline.committed_at)}",
+            baseline.subject,
+            f"Commits since then: {len(context['visual_doc_commits'])}",
+        ], THEME["copper"], "since-a", 13)
+        add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
+        audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Effective Lines By Language", "no comments, no blanks", THEME["copper"])
     add_metric_card(slide, audit, 0.9, 1.64, 2.35, "Total effective", f"{context['total_effective_lines']:,}", THEME["copper"], "lines-m1")
     add_metric_card(slide, audit, 3.55, 1.64, 2.35, "Total physical", f"{context['total_lines']:,}", THEME["jade"], "lines-m2")
@@ -1959,6 +2122,18 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, RECENT_GIT_WINDOW_TITLE, "recent changes according to git history", THEME["amber"])
     add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, RECENT_GIT_HIGHLIGHT_TITLE, context["weekly_highlights"], THEME["amber"], "latest", 15)
     audit_layout(audit, len(prs.slides))
+
+    visual_chunks = split_items(context["visual_doc_commits"], 6)
+    for idx, chunk in enumerate(visual_chunks, 1):
+        slide, audit = add_slide(
+            prs,
+            f"Visual Dossier Change Appendix {idx}/{len(visual_chunks)}",
+            "commits since the last committed PDF/PPTX refresh",
+            THEME["jade"] if idx % 2 else THEME["copper"],
+        )
+        visual_lines = [f"{iso_date(c.committed_at)} | {c.short_hash} | {c.subject}" for c in chunk]
+        add_panel(slide, audit, 0.82, 1.68, 11.55, 4.86, "Commit timeline", visual_lines, THEME["jade"] if idx % 2 else THEME["copper"], f"visual-{idx}", 12)
+        audit_layout(audit, len(prs.slides))
 
     weekly_chunks = split_items(context["weekly_commits"], 6)
     for idx, chunk in enumerate(weekly_chunks, 1):
@@ -2030,6 +2205,13 @@ def serialize_context(context: dict) -> dict:
         "recent_commits": [row.__dict__ for row in context["recent_commits"]],
         "weekly_commits": [row.__dict__ for row in context["weekly_commits"]],
         "weekly_highlights": context["weekly_highlights"],
+        "visual_doc_baseline": (
+            None
+            if context["visual_doc_baseline"] is None
+            else context["visual_doc_baseline"].__dict__
+        ),
+        "visual_doc_commits": [row.__dict__ for row in context["visual_doc_commits"]],
+        "visual_doc_highlights": context["visual_doc_highlights"],
         "workflow_agents": context["workflow_agents"],
     }
 
