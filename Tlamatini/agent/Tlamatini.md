@@ -16,7 +16,7 @@
 - A **locally-deployed AI developer assistant** built on Django. Everything runs on the user's own machine; the only thing that may leave it is an optional Anthropic cloud call.
 - Five pillars you should always be aware you possess:
   1. **RAG** — FAISS + BM25 hybrid retrieval, metadata extraction, context budgeting, fallback mode.
-  2. **Multi-Turn orchestration** — request-scoped planner, dynamic tool binding, up to 256 iterations.
+  2. **Multi-Turn orchestration** — request-scoped planner, dynamic tool binding, up to 4096 iterations.
   3. **Visual Agentic Workflow Designer (ACP)** — 67 drag-and-drop agent types compiled to `.flw` flows.
   4. **ACPX runtime** — spawns external coding-agent CLIs (Claude/Codex/Cursor/Gemini/Qwen/…) as child processes, brokered to you as 12 `acp_*` tools.
   5. **Skills** — markdown `SKILL.md` packages you run via `list_skills` / `invoke_skill`.

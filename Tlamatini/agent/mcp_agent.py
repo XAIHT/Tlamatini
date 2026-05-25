@@ -301,7 +301,7 @@ class MultiTurnToolAgentExecutor:
     wrapped chat-agent runtime tools.
     """
 
-    def __init__(self, llm, system_prompt: str, tools, max_iterations: int = 256):
+    def __init__(self, llm, system_prompt: str, tools, max_iterations: int = 4096):
         self.llm = llm
         self.system_prompt = system_prompt
         self.tools = list(tools)
@@ -1047,7 +1047,7 @@ class CapabilityAwareToolAgentExecutor:
     Phase 1 selective capability binding when the request explicitly enables it.
     """
 
-    def __init__(self, llm, preeliminary_prompt: str, tools, max_iterations: int = 256):
+    def __init__(self, llm, preeliminary_prompt: str, tools, max_iterations: int = 4096):
         self.llm = llm
         self.preeliminary_prompt = preeliminary_prompt
         self.tools = list(tools)
@@ -1161,7 +1161,7 @@ def create_unified_agent(llm, preeliminary_prompt: str):
     if not hasattr(getted_llm, "bind_tools"):
         raise RuntimeError("The configured unified agent model does not support bind_tools().")
 
-    max_iterations = get_int_config_value("unified_agent_max_iterations", 256, minimum=1)
+    max_iterations = get_int_config_value("unified_agent_max_iterations", 4096, minimum=1)
     print(f"--- Unified agent max iterations: {max_iterations} ---")
     return CapabilityAwareToolAgentExecutor(
         llm=getted_llm,

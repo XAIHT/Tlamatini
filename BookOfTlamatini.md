@@ -1388,7 +1388,7 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
    Builds a request-scoped MultiTurnToolAgentExecutor
                                 ↓
 6. MULTI-TURN TOOL LOOP
-   for i in 1..unified_agent_max_iterations (default 100):
+   for i in 1..unified_agent_max_iterations (default 4096):
      LLM call with bind_tools(selected_tools)
      if tool_calls: execute each, append ToolMessage, continue
      if pure text: that's the final answer, exit loop
@@ -1518,7 +1518,7 @@ The main file is `Tlamatini/agent/config.json`.
   "unified_agent_model": "glm-5:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
-  "unified_agent_max_iterations": 100,
+  "unified_agent_max_iterations": 4096,
   "chat_agent_limit_runs": 100
 }
 ```
@@ -1528,7 +1528,7 @@ The main file is `Tlamatini/agent/config.json`.
 | `embeding-model` | RAG embedding model. |
 | `chained-model` | Primary chat model. |
 | `unified_agent_model` | Multi-Turn tool-loop model. Can differ from `chained-model`. |
-| `unified_agent_max_iterations` | Hard cap on the tool loop. Default 100. |
+| `unified_agent_max_iterations` | Hard cap on the tool loop. Default 4096. |
 | `unified_agent_temperature` | 0.0 for deterministic. |
 | `ollama_token` | Bearer token for authenticated remote Ollama. |
 | `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` | Top-level keys for Tlamatini's own cloud paths (image analysis, Opus client). |
@@ -2479,7 +2479,7 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
     4. **Capability-registry boost** for the desktop-UI siblings so the planner reliably co-selects Keyboarder + Mouser + Sleeper on Notepad-style requests.
     5. **Shoter `output_path`** exposed so the LLM can pass the screenshot path directly into the next tool call.
     6. **`chat_agent_sleeper`** registered (migration `0080_add_chat_agent_sleeper_tool`) — canonical millisecond waiter; do NOT spin Pythonxer for `time.sleep`, do NOT use `execute_command` with `timeout /t`.
-    7. **`window_present(title)`** — fast (<100 ms) yes/no helper backed by `pyautogui.getWindowsWithTitle`. Reserve `chat_agent_image_interpreter` for genuine vision tasks (reading content, OCR), never for "is X visible?" gates that exhaust the 256-iteration budget waiting on 20-30 s vision calls.
+    7. **`window_present(title)`** — fast (<100 ms) yes/no helper backed by `pyautogui.getWindowsWithTitle`. Reserve `chat_agent_image_interpreter` for genuine vision tasks (reading content, OCR), never for "is X visible?" gates that exhaust the 4096-iteration budget waiting on 20-30 s vision calls.
     8. **`chat_agent_run_wait`** — blocks until a wrapped run reaches a terminal status (or `max_seconds` fires); replaces busy-poll loops over `chat_agent_run_status`. Migration `0081_add_window_present_and_run_wait_tools` seeds both `Tool` rows. Keyboarder and Mouser quote-decoding got a precise lookahead fix in the same pass (`''Hi!, I''m Tlamatini''` now types `Hi!, I'm Tlamatini` correctly across all 5 input variants the LLM produces).
 
     **Test coverage:** 266-test suite green, zero regressions, ruff clean.

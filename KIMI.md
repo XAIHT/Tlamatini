@@ -296,7 +296,7 @@ Key config keys:
 - `ollama_token`: Bearer token for authenticated Ollama
 - `ANTHROPIC_API_KEY`: Claude API key
 - `enable_unified_agent`: Enable tool-calling agent
-- `unified_agent_max_iterations`: Max tool-call turns (default 100-256)
+- `unified_agent_max_iterations`: Max tool-call turns (default 4096)
 - `chat_agent_limit_runs`: Wrapped-run listing limit
 - `image_interpreter_model`, `image_interpreter_base_url`: Vision model settings
 - Chunking: `chunk_size`, `chunk_overlap`, `max_chunks_per_file`
@@ -387,7 +387,7 @@ Chain types in `agent/rag/chains/`:
 
 ### MultiTurnToolAgentExecutor (`mcp_agent.py`)
 - Explicit multi-turn tool loop (not opaque AgentExecutor)
-- Max iterations: 256 (configurable)
+- Max iterations: 4096 (configurable)
 - **Tool quota caps**: `_TOOL_QUOTA_SOFT_WARN` = 64, `_TOOL_QUOTA_HARD_STOP` = 256. Polling/management tools exempt. Soft cap injects planner hint nudging LLM toward specialized alternative. Hard cap short-circuits with forced final answer.
 - **Repetition detection fixes**: Exempted polling/management tools from call-signature fingerprint so legitimate `run_status` loops do not trip the repetition breaker. Empty signatures reset the repeat counter.
 - **Exec report enrichment**: Specialized formatters for ACPX tools and skill invocations
@@ -1009,7 +1009,7 @@ The chat LLM system prompt lives in `Tlamatini/agent/prompt.pmt`. The LLM identi
 6. Tables must use HTML, not markdown pipe syntax
 7. Responses must end with `END-RESPONSE`
 8. In Multi-Turn, the LLM is an OPERATOR, not just an advisor
-9. Up to 256 multi-turn iterations available
+9. Up to 4096 multi-turn iterations available
 10. Identity: the LLM IS Tlamatini
 11. In ACPX mode, the LLM may spawn external child agents; it must respect permission gates and budget limits
 
