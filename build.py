@@ -333,6 +333,19 @@ def main():
     print(f"Tlamatini version : {tlamatini_version}")
     print(f"VERSIONINFO file  : {version_file_path}")
 
+    # ── Self-modify packaging flag ───────────────────────────────────
+    # When --self-modify is passed, the build ships Tlamatini's own source tree
+    # (Tlamatini/agent/TlamatiniSourceCode) next to the executable, making the
+    # running app a "self-able-modify" version that can read and modify its own
+    # code. WITHOUT the flag the directory is omitted from the package entirely
+    # (a "not-self-able-modify" build). See Tlamatini.md §9 / prompt.pmt.
+    self_modify = "--self-modify" in sys.argv
+    print(
+        "Self-modify build : "
+        + ("YES — bundling TlamatiniSourceCode" if self_modify
+           else "no — source tree omitted")
+    )
+
     separator = ';'
     dist_manage = Path("dist") / "manage"
 
@@ -628,6 +641,26 @@ def main():
                 print(f"Copied directory: {src_dir} -> {dst_dir}")
             else:
                 print(f"WARNING: Source directory not found: {src_dir}")
+
+        # Optional: Tlamatini's own source tree — included recursively ONLY when
+        # the build was invoked with --self-modify. It lands at the install root
+        # (the frozen-mode application_path, next to the executable), so the
+        # running app resolves it exactly like prompt.pmt / config.json /
+        # Tlamatini.md, and it flows into pkg.zip via the os.walk(dist_manage)
+        # archive step. Omitting it produces a "not-self-able-modify" build.
+        if self_modify:
+            self_src = Path("Tlamatini") / "agent" / "TlamatiniSourceCode"
+            self_dst = dist_manage / "TlamatiniSourceCode"
+            if self_src.exists():
+                if self_dst.exists():
+                    shutil.rmtree(self_dst)
+                shutil.copytree(self_src, self_dst)
+                file_total = sum(1 for p in self_dst.rglob("*") if p.is_file())
+                print(f"Copied self-modify source tree: {self_src} -> {self_dst} ({file_total} files)")
+            else:
+                print(f"WARNING: --self-modify set but source tree not found: {self_src}; skipping.")
+        else:
+            print("Self-modify source tree omitted (not-self-able-modify build).")
 
         # Required directory trees
         required_dir_copies = {
