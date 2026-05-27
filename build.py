@@ -431,6 +431,43 @@ def main():
         else:
             print("WARNING: requirements.txt not found next to build.py. Skipping pip install.")
 
+        # 1b-post) VERIFY the agent / MCP-server third-party libs actually IMPORT in
+        # this target Python — fail the build loudly if any is missing.
+        # Frozen-mode pool agents (shoter/playwrighter/windower/sqler/...) AND the
+        # STM32 Template Project MCP server that STM32er spawns run UNDER this
+        # interpreter (via get_python_command / PYTHON_HOME), NOT inside the
+        # PyInstaller bundle — so every library they import must be present HERE or
+        # the frozen assets are incomplete and the agents crash at runtime. Pinning
+        # them in requirements.txt is not enough on its own; this asserts the install
+        # truly took (catches a broken wheel / missing native dep too).
+        _agent_libs = [
+            "mcp", "serial",                       # STM32 MCP server (STM32er)
+            "PyPDF2", "pypdf", "fitz", "odf",       # PDF / ODF file backends
+            "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
+            "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
+            "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
+            "pymongo", "pyodbc", "win32gui",        # db / windows agents
+        ]
+        verify_src = "\n".join([
+            "import importlib",
+            "mods = " + repr(_agent_libs),
+            "miss = []",
+            "for _m in mods:",
+            "    try:",
+            "        importlib.import_module(_m)",
+            "    except Exception as _e:",
+            "        miss.append(_m + ' (' + type(_e).__name__ + ')')",
+            "print('MISSING:' + '; '.join(miss) if miss else 'ALL_AGENT_LIBS_OK')",
+            "raise SystemExit(3 if miss else 0)",
+        ])
+        print(f"  -> Verifying agent/MCP libs import in {target_python} ...")
+        verify = subprocess.run([target_python, "-c", verify_src], capture_output=True, text=True)
+        print("     " + ((verify.stdout or "") + (verify.stderr or "")).strip())
+        if verify.returncode != 0:
+            print(f"ERROR: required agent/MCP libraries are missing/broken in {target_python}. "
+                  f"Add them to requirements.txt so the frozen assets are complete. Aborting build.")
+            sys.exit(1)
+
         # 1c) Install Playwright browsers
         print(f"  -> Installing Playwright browsers for {target_python} ...")
         pw_result = subprocess.run([target_python, "-m", "playwright", "install"])

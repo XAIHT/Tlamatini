@@ -1020,6 +1020,25 @@ async function updateKalierConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateStm32erConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_stm32er_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- STM32er ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update STM32er ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating STM32er ${agentId}:`, error);
+    }
+}
+
 async function updateFileInterpreterConnection(agentId, targetAgentId, action, type = 'target') {
     try {
         const response = await fetch(`/agent/update_file_interpreter_connection/${agentId}/`, {

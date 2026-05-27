@@ -327,6 +327,20 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "crack the hash", "crack hashes", "password cracking", "wpscan",
         "wordpress scan", "enum4linux", "smb enumeration",
     ),
+    # Wrapped STM32er — STM32 Template Project MCP bridge for firmware
+    # scaffold/build/flash/observe. These tokens lift it above the planner cap on
+    # embedded / microcontroller prompts ("build the STM32 firmware", "flash the
+    # blinky", "read g_blink_count over SWD") without colliding with the generic
+    # execute_command / file_creator tools.
+    "chat_agent_stm32er": (
+        "stm32", "stm32er", "stm32f4", "stm32f407", "stm32cubeide", "firmware",
+        "microcontroller", "micro controller", "mcu", "cortex-m", "cortex m4",
+        "embedded", "embedded firmware", "blinky", "led chase", "hal", "cmsis",
+        "st-link", "stlink", "swd", "cubeprogrammer", "arm-none-eabi",
+        "flash the mcu", "flash firmware", "build firmware", "scaffold a firmware project",
+        "create firmware", "create a firmware project", "live memory", "read memory over swd",
+        "serial vcp", "uart", "openocd", "disco board", "discovery board", "f407g-disc1",
+    ),
 }
 _CONTEXT_HINTS = {
     "system_context": (

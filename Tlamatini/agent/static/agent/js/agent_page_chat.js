@@ -940,6 +940,59 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         set('hash_file', pairs.hash_file);
         set('format', pairs.format);
 
+    // ── STM32er ──────────────────────────────────────────────────────
+    // Template fields: action, server_script, mcp_python, template_dir, ide_root,
+    //   startup_timeout, call_timeout, project_dir, name, dest_parent, overwrite,
+    //   rel_path, content, system, jobs, clean_first, binary, discover_ide_root,
+    //   port, baud, data, read_response, read_timeout, line_ending, serial_timeout,
+    //   max_bytes, address, symbol, elf, count, width, value, variables,
+    //   interval_ms, output_path, session_id, last_n, monitor_seconds
+    } else if (lower === 'stm32er') {
+        set('action', pairs.action);
+        set('server_script', pairs.server_script);
+        set('mcp_python', pairs.mcp_python);
+        set('template_dir', pairs.template_dir);
+        set('ide_root', pairs.ide_root);
+        set('project_dir', pairs.project_dir);
+        set('name', pairs.name);
+        set('dest_parent', pairs.dest_parent);
+        set('rel_path', pairs.rel_path);
+        set('content', pairs.content);
+        set('system', pairs.system);
+        set('binary', pairs.binary);
+        set('discover_ide_root', pairs.discover_ide_root);
+        set('port', pairs.port);
+        set('data', pairs.data);
+        set('line_ending', pairs.line_ending);
+        set('address', pairs.address);
+        set('symbol', pairs.symbol);
+        set('elf', pairs.elf);
+        set('value', pairs.value);
+        set('variables', pairs.variables);
+        set('output_path', pairs.output_path);
+        set('session_id', pairs.session_id);
+        // integer fields
+        ['startup_timeout', 'call_timeout', 'jobs', 'baud', 'count', 'width',
+         'max_bytes', 'interval_ms', 'last_n', 'monitor_seconds'].forEach((k) => {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
+        // float fields
+        ['read_timeout', 'serial_timeout'].forEach((k) => {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const f = parseFloat(pairs[k]);
+                if (!Number.isNaN(f)) config[k] = f;
+            }
+        });
+        // boolean fields
+        ['overwrite', 'clean_first', 'read_response'].forEach((k) => {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = String(pairs[k]) === 'true';
+            }
+        });
+
     // ── Telegramer ───────────────────────────────────────────────────
     // Template field: telegram (nested)
     } else if (lower === 'telegramer') {

@@ -10,7 +10,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 - An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode)
 - A request-scoped **Multi-Turn orchestration layer** with dynamic tool binding and global execution planning
-- A **Visual Agentic Workflow Designer** (ACP) with 67 drag-and-drop agent types
+- A **Visual Agentic Workflow Designer** (ACP) with 68 drag-and-drop agent types
 - A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **Skills system** — markdown-defined `SKILL.md` packages run by `SkillHarness`. The LLM invokes them through `list_skills` / `invoke_skill`. Built-in skills include `acp-router`, `summarize`, `setup-new-acpx-key`, `skill-creator`, `code-review`, `security-audit`, `kali-pentest` (authorized Kali Linux / MCP-Kali-Server assessment runbook driving the Kalier agent), `tlamatini_*` (audit / lint / refactor helpers), and integration stubs (gmail, slack, github, jira, notion, todoist, trello, weather). Administered through the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — 2026-05-17): Browse and Diagnostics are HTTP-backed read-only inspection; Configure mirrors the existing Mcps/Agents/Tools WebSocket toggle pattern (`set-skills` → `Skill.enabled`); Reload re-runs `boot_skills()` so disk edits show up without a server restart. The DB stays at "enumeration + enable/disable" only — permissions/budgets/body live in SKILL.md on disk
@@ -30,6 +30,28 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 ---
 
+## ⚠️ Agent Naming Convention (CRITICAL — never mis-case a display name)
+
+The single source of truth for an agent's name is its **`agentDescription`** DB field (seeded by the agent's migration). `agentic_control_panel.html` renders it **verbatim** as the sidebar/canvas label (via `consumers.agent_establishment(...)`), so the **display name must keep its exact intended casing**. Derive every other surface by lowercasing.
+
+| Context | Casing | `STM32er` example |
+|---|---|---|
+| **Display** — DB `agentDescription`, canvas/sidebar label, tooltips, `agents_descriptions.md` `\| **Name** \|`, `chat_agent_registry.display_name`, docs prose, the agent's `"<Name> AGENT STARTED"` log | **exact, as designed** | `STM32er` |
+| Pool/agent dir, `<name>.py`, pool name `<name>_N` | lowercase | `agents/stm32er/`, `stm32er_1` |
+| CSS `.canvas-item.<x>-agent`, JS classMap key, `name.toLowerCase()` connection checks | lowercase / dash | `stm32er-agent`, `'stm32er'` |
+| JS connector symbol `update<Name>Connection` (code identifier, not a label) | PascalCase-ish | `updateStm32erConnection` |
+| `INI_SECTION_<TYPE>` / `END_SECTION_<TYPE>` tokens + FlowHypervisor `<TYPE> SPECIAL NOTES:` headers | **ALL-CAPS** (separate convention — do NOT "fix") | `INI_SECTION_STM32ER` |
+
+**STM32er** is mission-critical (robot firmware) and the user is emphatic: its display name is exactly `S T M 3 2 e r` → **`STM32er`**, NEVER `STM32Er` / `STM32ER` / `Stm32Er` / `Stm32er`. Full reference: the project skill **`tlamatini-agent-naming`** (`.claude/skills/tlamatini-agent-naming/SKILL.md`) and `Tlamatini/.agents/workflows/create_new_agent.md`. Tlamatini's own `SKILL.md` packages auto-load at app start via `agent/acpx/service.py::boot_skills()` (called from `apps.AgentConfig.ready()`); the `tlamatini-agent-naming` Claude Code skill is discovered at session start from `.claude/skills/`.
+
+---
+
+## ⚠️ Use ONLY Tlamatini's Agents When Asked (MANDATORY)
+
+When the user asks to **"use Tlamatini's agents"** — or names any pool agent (**Executer, Pythonxer, Playwrighter, Shoter, Mouser, Keyboarder, Kalier, STM32er**, … any of the 68) — you **MUST** perform the work with **only Tlamatini's pool agents**, never Claude Code's own built-in tools. Your shell is **only the launcher**: copy the agent to an isolated runtime dir, write a tailored `config.yaml`, run `python <agent>.py`; the agent does the work and writes its result to `<agent_dir_basename>.log`. For **visible / desktop** agents (a headed Playwrighter browser, an Executer/Pythonxer `execute_forked_window` console, Shoter/Mouser/Keyboarder) launch in the **foreground with `dangerouslyDisableSandbox: true`** so the window renders on the user's real desktop — the Bash sandbox otherwise hides the GUI in an isolated window station (it reports `WinSta0` but isn't visible), and `run_in_background` detaches it entirely. Do **NOT** substitute your own Bash / Read / Write / Playwright for the agents' job. This rule is re-injected at **every session start** by `.claude/hooks/announce_skills.py` (the SessionStart hook wired in `.claude/settings.json`). Full mechanics: memory `feedback_run_tlamatini_agents_visible`.
+
+---
+
 ## Quick Orientation
 
 ```
@@ -40,7 +62,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 67-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 68-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── gotchas.md                  # Claude API client, build/lint, versioning, hardcoded assumptions, roadmap, work-style
@@ -116,7 +138,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 67 workflow agent templates
+│   │   ├── agents/                 # 68 workflow agent templates
 │   │   │   ├── flowcreator/
 │   │   │   │   └── agentic_skill.md  # ** SKILL: FlowCreator AI reference **
 │   │   │   ├── flowhypervisor/
@@ -131,7 +153,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── playwrighter/       # Scripted interactive browser automation (Playwright; canvas + chat_agent_playwrighter)
 │   │   │   ├── windower/           # Window manager (Win32 focus/move/resize/min/max/close/tile/list; canvas + chat_agent_windower)
 │   │   │   ├── kalier/             # Kali Linux offensive-security bridge (MCP-Kali-Server HTTP API; canvas + chat_agent_kalier)
-│   │   │   └── ... (67 total agent directories)
+│   │   │   ├── stm32er/            # STM32 firmware bridge — zero-config auto-bootstrap of the STM32 Template Project MCP + fail-safe hardware preflight (canvas + chat_agent_stm32er)
+│   │   │   └── ... (68 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py
@@ -149,7 +172,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── js/                 # 27 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 5 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
-│   │   └── migrations/             # Django migrations (latest: 0100_add_unrealer_extended_demo_prompts)
+│   │   └── migrations/             # Django migrations (latest: 0103_add_stm32er_demo_prompts; 0101/0102 add the STM32er agent + chat_agent_stm32er tool)
 │   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)
@@ -249,7 +272,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Architecture & core systems** — config, system prompt & identity, the Five Layers, application log, doc generation, database models: @docs/claude/architecture.md
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
-- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 67 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 68 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
 - **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, ACPX toolbar toggle, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, Skills system (SKILL.md packages), key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md
@@ -257,4 +280,4 @@ The rest of the onboarding material is split into topic files under `docs/claude
 
 **Consult-on-demand (deliberately NOT `@`-imported, to keep the auto-loaded context lean):**
 
-- **Recent Fixes / fix log** — `docs/claude/recent-fixes.md`. The dated chronological log of surgical fixes and "do NOT revert this / keep these surfaces aligned" contracts (ACPX, Flow Compiler, planner, Exec Report, ACP canvas, wrapped chat-agent parsing, desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, logging filters). **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there rather than to `gotchas.md`.
+- **Recent Fixes / fix log** — `docs/claude/recent-fixes.md`. The dated chronological log of surgical fixes and "do NOT revert this / keep these surfaces aligned" contracts (ACPX, Flow Compiler, planner, Exec Report, ACP canvas, wrapped chat-agent parsing, desktop-UI agents, the STM32er zero-config bootstrap + fail-safe hardware preflight, `prompt.pmt`, `regen_secrets.py`, logging filters). **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there rather than to `gotchas.md`.

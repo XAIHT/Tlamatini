@@ -122,7 +122,15 @@ class AgentConfig(AppConfig):
                             display_name = 'Monitor Netstat'
                         elif display_name.lower() == 'recmailer':
                              display_name = 'RecMailer'
-                            
+                        elif display_name.lower() == 'stm32er':
+                            # str.title() mangles 'stm32er' -> 'Stm32Er' (it
+                            # capitalises the letter after the digit). The agent's
+                            # canonical display name is EXACTLY 'STM32er'
+                            # (chat_agent_registry.display_name). This is the single
+                            # source the canvas sidebar renders verbatim, so it MUST
+                            # be exact — never STM32Er / Stm32Er / STM32ER.
+                            display_name = 'STM32er'
+
                         agent_name = f"agent-{index}"
                         
                         Agent.objects.create(

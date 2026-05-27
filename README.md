@@ -7,21 +7,23 @@
 <p align="center"><em>"one who knows" — a locally-deployed AI developer assistant</em></p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.8.0"><img src="https://img.shields.io/badge/VERSION-v1.8.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.8.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.9.0"><img src="https://img.shields.io/badge/VERSION-v1.9.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.9.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
-  <a href="#95-agent-catalog-the-67-types-by-family"><img src="https://img.shields.io/badge/AGENTS-67-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="67 Agents" /></a>
-  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-74-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="74 Multi-Turn Tools" /></a>
+  <a href="#95-agent-catalog-the-68-types-by-family"><img src="https://img.shields.io/badge/AGENTS-68-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="68 Agents" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-75-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="75 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
   <a href="#311-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-24-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="24 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **67 drag-and-drop agents**.
+**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **68 drag-and-drop agents**.
 
 > **Local-first by default**: the full RAG pipeline, the Multi-Turn execution loop, and every workflow agent run on your machine — embeddings and chat are driven by your local [Ollama](https://ollama.com/) install. Cloud LLMs (Claude API, Ollama Pro/Max) and ACPX delegation to cloud CLIs are opt-in per-request, never the default. Sensitive code never leaves the box unless you explicitly route it out.
+
+> **Latest — v1.9.0 (2026-05-26): STM32er, zero-config firmware bridge.** A new **STM32er** agent (canvas node + Multi-Turn tool `chat_agent_stm32er`) brings the catalog to **68 agents**. It bridges the [STM32 Template Project MCP](https://github.com/XAIHT/STM32TemplateProjectMCP) to scaffold, build, flash, observe (serial / SWD), and reset STM32 firmware. **Zero-config auto-bootstrap** means the user only installs STM32CubeIDE + Tlamatini — STM32er downloads, installs, and validates the MCP server on first use. A **critical-mission safety preflight** validates the toolchain and a positively-confirmed connected ST-LINK probe before flashing, and **refuses** rather than producing or flashing mis-targeted firmware. Three new catalog demos ship in migration `0103` (STM32 GENESIS / BLINKY / HIL OBSERVATORY). See [§3.15](#315-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er).
 
 <p align="center">
   <a href="https://xaiht.org"><strong>🌐 Website</strong></a> &nbsp;·&nbsp;
@@ -62,6 +64,7 @@
   - [3.12. Tutorial: command a window from chat (`chat_agent_windower`)](#312-tutorial-command-a-window-from-chat-chat_agent_windower)
   - [3.13. Tutorial: drive a browser from chat (`chat_agent_playwrighter`)](#313-tutorial-drive-a-browser-from-chat-chat_agent_playwrighter)
   - [3.14. Tutorial: run Kali Linux tools from chat (`chat_agent_kalier`)](#314-tutorial-run-kali-linux-tools-from-chat-chat_agent_kalier)
+  - [3.15. Tutorial: build and flash STM32 firmware from chat (`chat_agent_stm32er`)](#315-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -108,7 +111,7 @@
   - [9.2. The five layers](#92-the-five-layers)
   - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
   - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
-  - [9.5. Agent catalog (the 67 types, by family)](#95-agent-catalog-the-67-types-by-family)
+  - [9.5. Agent catalog (the 68 types, by family)](#95-agent-catalog-the-68-types-by-family)
   - [9.6. Self-Knowledge & Self-Modification](#96-self-knowledge--self-modification)
 - [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
   - [10.1. Why this exists](#101-why-this-exists)
@@ -148,14 +151,14 @@
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 67 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 68 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
 ### 1.2. What it gives you that a plain chatbox does not
 
 1. **Real RAG over your code** — FAISS + BM25 hybrid retrieval, code-aware metadata extraction, Reciprocal Rank Fusion, context budgeting, OOM fallback.
-2. **Multi-Turn mode** — the LLM becomes an *operator*: shell, Python, APIs, SQL, file ops, screenshots, keyboard/mouse automation, email, Telegram, WhatsApp — chained in one conversation.
+2. **Multi-Turn mode** — the LLM becomes an *operator*: shell, Python, APIs, SQL, file ops, screenshots, keyboard/mouse automation, email, Telegram, WhatsApp, STM32 firmware build/flash — chained in one conversation.
 3. **ACPX** — delegate sub-tasks to external CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, plus 8 more) and relay output between them.
 4. **Visual workflow designer** — design `.flw` flows once, run them unattended, schedule with Croner, watch them with FlowHypervisor.
 5. **Self-aware** — a first-person self-knowledge map (`Tlamatini.md`) is injected into the LLM's prompt on every chain, so Tlamatini can answer accurately about her own architecture, runtime modes, ports, and pages. Builds packaged with `--self-modify` ship her own source tree (`TlamatiniSourceCode/`) so she can read, inspect, and modify herself.
@@ -353,7 +356,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of Tlamatini's **74 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 42 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
+- The planner picks the relevant subset of Tlamatini's **75 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 43 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
 - The unified-agent loop runs **up to 4096 iterations** (the `unified_agent_max_iterations` default) — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
@@ -639,6 +642,22 @@ Tick **only the Multi-Turn** checkbox (Kalier is a normal Multi-Turn tool — no
 Tlamatini calls **`chat_agent_kalier`** with `action='nmap'`, `target='10.0.0.5'`, `scan_type='-sCV'`, `ports='1-1000'` — and **auto-injects your configured `server_url`** from `kali_server_url`, so you never repeat the Kali box address in a prompt (the LLM only passes `server_url=` explicitly to hit a different one-off box). The `action` field selects the capability: `command` (any shell command on the Kali box), `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, or `health` (probe the server and which tools are installed — a good first call when you are unsure the API is reachable). The tool returns the Kali tool's stdout/stderr verbatim and captures an `INI_SECTION_KALIER` block (`action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, `server_url`) for the Exec Report and Parametrizer.
 
 On the canvas the same capability is the visual **Kalier** node (see §4 and §9.5): chain `Starter → Kalier (nmap) → Parametrizer → Kalier (gobuster) → Forker → Ender` to build a fully unattended, branch-on-result assessment pipeline. The visual node and the chat tool share the same MCP-Kali-Server contract.
+
+### 3.15. Tutorial: build and flash STM32 firmware from chat (`chat_agent_stm32er`)
+
+**STM32er** bridges Tlamatini to STM32 microcontroller firmware development through the [STM32 Template Project MCP](https://github.com/XAIHT/STM32TemplateProjectMCP) — a FastMCP server that exposes project scaffolding, build, flash, serial / SWD observation, and reset. It is **state-changing** (it compiles firmware and writes to hardware), so it appears in the Exec Report. The visual canvas counterpart is the **STM32er** node (see §4 and §9.5); both surfaces share the same MCP contract.
+
+> **Zero-config auto-bootstrap — you only install STM32CubeIDE + Tlamatini.** With no on-disk `server_script` configured (the new default), STM32er **downloads the MCP** from its git repo (a shallow `git clone`, or a GitHub-zip fallback when `git` is absent) into a per-user cache (`%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`), **pip-installs its deps** (`mcp` + `pyserial`) if they are missing, and **validates** the server — all on first use. Nothing to clone by hand, no path to set. A `bootstrap` action triggers this explicitly; `auto_bootstrap` (default `true`) does it lazily before the first real action.
+
+> ⚠️ **Critical-mission safety preflight.** Before it compiles or flashes anything, STM32er runs a `validate` preflight that checks the environment: `arm-none-eabi-gcc`, STM32CubeIDE, `make`/`cmake`, `STM32_Programmer_CLI`, the ST-LINK USB driver, **a positively-confirmed connected ST-LINK probe**, and the target device family. If the environment is wrong — or the request would target the wrong STM32 family — STM32er **refuses** rather than producing or flashing mis-targeted firmware. Hardware is **conditional**: compile-only actions (`build`, `list_artifacts`, `clean`, `create_project`, `write_source`) need **no board**; hardware actions (`flash`, `erase`, `reset`, `serial_*`, SWD reads, `live_*`) **require** a connected ST-LINK. The bundled MCP template is **STM32F407VG-specific**, so a cross-`STM32F`-family device mismatch is refused (a multi-family MCP fork is future work).
+
+Tick **only the Multi-Turn** checkbox (STM32er is a normal Multi-Turn tool — not behind the ACPX/Skill surface). Then ask, for example:
+
+> *"Scaffold a blinky project for the STM32F407, build it, and flash it to the connected board."*
+
+Tlamatini calls **`chat_agent_stm32er`** — bootstrapping the MCP if needed, running the safety preflight, then driving the build and flash. The `action` field selects one of **23 MCP tools** (project scaffold / build / flash / erase / reset / serial / SWD / observe / …), **2 composites** (`serial_session`, `live_monitor`), or **2 meta-actions** (`bootstrap`, `validate`). The tool captures an `INI_SECTION_STM32ER` block for the Exec Report and Parametrizer.
+
+On the canvas the same capability is the visual **STM32er** node: chain `Starter → STM32er (validate) → Forker → STM32er (build) → STM32er (flash) → STM32er (serial_session) → Ender` to build a fully unattended, validate-gated firmware pipeline. Three ready-made [catalog demos](#35-tutorial-the-multi-turn-toggle) ship in migration `0103`: **STM32 GENESIS** (bootstrap + validate + compile, no board needed), **STM32 BLINKY** (validate + build + flash), and **STM32 HIL OBSERVATORY** (a validate-gated real-hardware flash + serial + SWD + reset). The zero-config end-to-end path (download → build → flash → reset) is verified on a real **STM32F407G-DISC1**, with 122 automated tests in `agent/test_stm32er_agent.py`.
 
 ---
 
@@ -1141,7 +1160,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 67 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 68 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
@@ -1274,6 +1293,8 @@ Key knobs: `chunk_size` (3000), `chunk_overlap` (800), `k_vector` / `k_bm25` (10
 - `internet_classifier_model`, `web_summarizer_model`, `web_context_max_chars` — internet toggle.
 - `image_interpreter_model`, `image_interpreter_base_url` — vision.
 - `history_summary_*`, `keep_last_turns` — chat-history compression.
+- `kali_server_url` (`http://127.0.0.1:5000`) — the MCP-Kali-Server address auto-injected into `chat_agent_kalier` (see §3.14).
+- `stm32_mcp_server_script` (now `""` — empty triggers zero-config auto-bootstrap), `stm32_mcp_repo_url`, `stm32_mcp_install_dir` — the STM32 Template Project MCP for STM32er (see §3.15). Leave `stm32_mcp_server_script` empty and STM32er downloads, installs, and validates the server itself on first use.
 
 You no longer need to hand-edit all of those values. On `/agent/`, open `Config -> Models` or `Config -> URLs` to edit the most common runtime knobs in-place. The browser validates model strings / URLs / hosts / ports, the backend validates again, and `config_loader.save_config_updates()` atomically merges only the changed keys into the active `config.json`. The same loader path is used in source mode and frozen builds, so the chat UI and the executable stop drifting onto different config copies.
 
@@ -1349,14 +1370,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 9.5. Agent catalog (the 67 types, by family)
+### 9.5. Agent catalog (the 68 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |
@@ -1665,22 +1686,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.8.0 -m "Release 1.8.0: <one-line summary>"
-git push origin v1.8.0
+git tag -a v1.9.0 -m "Release 1.9.0: <one-line summary>"
+git push origin v1.9.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.8.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.9.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.8.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.8.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.8.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.9.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.9.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.9.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1704,8 +1725,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.8.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.8.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.9.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.9.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.

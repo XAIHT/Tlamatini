@@ -39,6 +39,7 @@ pyinstaller==6.18.0
 pymongo==4.16.0
 pymupdf==1.26.5
 pyodbc==5.3.0
+pyserial==3.5  # STM32er: STM32 MCP server serial_* tools (ST-LINK VCP / UART)
 python-docx==1.2.0
 python-dotenv==1.0.1
 python-pptx==1.0.2
@@ -67,8 +68,11 @@ PyAutoGUI==0.9.54
 # try/except ImportError. Without them the matching formats silently fail
 # in BOTH source AND frozen modes (PyInstaller only bundles what's installed
 # in the build env). pymupdf (above) is the PRIMARY PDF backend; pypdf is
-# the fallback. xlrd is the legacy-.xls fallback after openpyxl (xlsx).
+# the 2nd fallback and PyPDF2 the 3rd/legacy fallback (file_extractor.py /
+# file_interpreter.py try them in that order). xlrd is the legacy-.xls fallback
+# after openpyxl (xlsx).
 pypdf==6.10.0
+PyPDF2==3.0.1
 striprtf==0.0.32
 odfpy==1.4.1
 ebooklib==0.20
