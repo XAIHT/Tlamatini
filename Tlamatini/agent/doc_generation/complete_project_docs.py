@@ -406,6 +406,10 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is `v1.9.0` STM32er: Tlamatini now reaches 68 workflow agents and adds a zero-config bridge into the `STM32 Template Project MCP`, so she can scaffold, build, flash, observe, and reset STM32F4 firmware from chat or canvas while a critical-mission safety preflight refuses the wrong toolchain, probe, or device family."
+        )
     if any("herself" in subject or "self" in subject and "modify" in subject or "self knowledge" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is `v1.8.0` self-awareness: Tlamatini now carries a first-person self-knowledge map, can explain her own architecture and runtime surfaces more accurately, and can optionally inspect or modify her own shipped source tree in self-modify builds."
@@ -520,6 +524,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.9.0` added STM32er as the 68th workflow agent and `chat_agent_stm32er` as the new firmware-control surface: she now bridges the `STM32 Template Project MCP` to scaffold, build, flash, observe, and reset STM32F4 projects with a fail-safe hardware preflight."
+        )
     if any("self" in subject and ("herself" in subject or "modify" in subject or "source code" in subject) for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, `v1.8.0` introduced Tlamatini’s self-knowledge and optional self-modification surface: she can now describe her own runtime more accurately and, in self-modify builds, inspect or change her own bundled source tree."
@@ -674,8 +682,8 @@ def collect_context() -> dict:
 
 SYSTEM_OVERVIEW = [
     "Tlamatini is a local-first AI developer assistant built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
-    "It combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, Windows packaging, and now first-person self-knowledge about her own runtime.",
+    "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
+    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, Windows packaging, first-person self-knowledge about her own runtime, and now critical-mission STM32F4 firmware control.",
 ]
 
 WHAT_IT_DOES = [
@@ -686,6 +694,7 @@ WHAT_IT_DOES = [
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
+    "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
@@ -708,6 +717,8 @@ HOW_IT_WORKS = [
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
     "Optional self-modify builds bundle `TlamatiniSourceCode/`; prompt rules require her to verify that directory exists before claiming she can inspect or change her own code.",
     "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, auto-seeding the default box from `kali_server_url` in Config -> URLs before any one-off per-call override is applied, and captures one atomic `INI_SECTION_KALIER` block per run.",
+    "The STM32er path spawns the STM32 Template Project MCP stdio server, performs the MCP initialize handshake, runs exactly one requested tool or composite action, and emits one atomic `INI_SECTION_STM32ER` block with the result, project directory, and stage metadata.",
+    "Before any flash-capable STM32er action, a critical-mission preflight validates the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK presence, and STM32F-family match; compile-only steps can run boardless, but unsafe hardware mutations are refused fail-safe.",
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
@@ -724,6 +735,7 @@ HOW_TO_USE = [
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
+    "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
@@ -744,7 +756,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Kalier drives a remote or tunneled Kali Linux tool server, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Kalier drives a remote or tunneled Kali Linux tool server, STM32er drives a zero-config STM32 firmware MCP bridge, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -754,8 +766,8 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The live operator surface now stands at 67 workflow agents, 74 Multi-Turn tools, 12 ACPX tools, and 24 skills.",
-    "Source inspection confirms the newer total: 42 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 74 Multi-Turn tools overall.",
+    "The live operator surface now stands at 68 workflow agents, 75 Multi-Turn tools, 12 ACPX tools, and 24 skills.",
+    "Source inspection confirms the newer total: 43 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 75 Multi-Turn tools overall.",
     "README.md and BookOfTlamatini.md now agree on those counts, so the dossier can mirror the docs and the live registry without reconciliation footnotes.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
@@ -763,7 +775,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.8.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.9.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -851,6 +863,18 @@ KALIER_SURFACES_GUIDE = [
     "Authorized use only: the intended operator flow is an in-scope lab, CTF, or permitted engagement, often with `ssh -L 5000:localhost:5000 user@KALI_IP` tunneling a remote Kali box back to `http://127.0.0.1:5000`, and the repo now includes `Tlamatini-Kali-Setup.md` for the zero-client walkthrough.",
 ]
 
+STM32ER_GUIDE = [
+    "STM32er is the new 68th workflow agent in `v1.9.0`: Tlamatini’s bridge to the `STM32 Template Project MCP`, built so she can scaffold, author, build, flash, reset, and observe STM32F4 firmware without driving the STM32CubeIDE GUI.",
+    "The operator promise is zero-config bootstrap: leave `server_script` blank and STM32er downloads or zip-falls-back to the MCP server on first use, installs `mcp` and `pyserial` if needed, validates, and caches the result so the user only installs STM32CubeIDE plus Tlamatini.",
+    "Before any compile-or-hardware action, STM32er runs a critical-mission fail-safe preflight over the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK probe, and target family; compile-only steps can run boardless, but flash, erase, reset, serial, and SWD/live-memory operations are refused when the environment or device is wrong.",
+]
+
+STM32ER_SURFACES_GUIDE = [
+    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_stm32er` takes one `action` per call, while the visual STM32er canvas node stores the same fields in YAML and triggers downstream agents on both success and failure.",
+    "The tool surface includes the full project lifecycle plus hardware-in-the-loop composites: `validate`, `bootstrap`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, `live_monitor`, and the rest of the 23 MCP verbs, with every run emitting an `INI_SECTION_STM32ER` block for Forker or Parametrizer routing.",
+    "Config -> URLs now seeds the chat path with `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, so firmware prompts normally describe only the task and target board instead of the plumbing.",
+]
+
 DESIGN_PRINCIPLES = [
     "Evidence-first answers: Tlamatini grounds responses in selected project context and hybrid retrieval rather than freeform model memory.",
     "Explicit orchestration: checked Multi-Turn uses a visible tool loop, capability scoring, and staged planning instead of a single opaque call.",
@@ -871,7 +895,7 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
-    "URL configuration now also includes `kali_server_url`, edited from `Config -> URLs -> Kali server (Kalier)`, which is the default box that chat-side Kalier runs inherit automatically.",
+    "URL configuration now also includes `kali_server_url` plus the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096.",
@@ -1030,7 +1054,7 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -1301,6 +1325,11 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     for item in KALIER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("STM32er in v1.9.0", styles["h2"]))
+    for item in STM32ER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in STM32ER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Windower on Multi-Turn and canvas", styles["h2"]))
     for item in WINDOWER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1397,6 +1426,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Kalier spotlight", styles["h2"]))
     for item in KALIER_GUIDE + KALIER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("STM32er spotlight", styles["h2"]))
+    for item in STM32ER_GUIDE + STM32ER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Windower spotlight", styles["h2"]))
     for item in WINDOWER_GUIDE + WINDOWER_SURFACES_GUIDE:
@@ -1890,6 +1922,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Kalier In v1.7.1", "embedded-client Kali Linux control for chat and canvas", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", KALIER_GUIDE, THEME["jade"], "kalier-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", KALIER_SURFACES_GUIDE, THEME["amber"], "kalier-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "STM32er In v1.9.0", "critical-mission STM32F4 firmware control", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", STM32ER_GUIDE, THEME["copper"], "stm32-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", STM32ER_SURFACES_GUIDE, THEME["jade"], "stm32-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Self-Knowledge In v1.8.0", "who she is and how she can improve herself", THEME["amber"])
