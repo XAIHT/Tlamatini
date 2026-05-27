@@ -1,10 +1,21 @@
 <p align="center">
-  <img src="Tlamatini.jpg" alt="Tlamatini Logo" width="180" height="180" />
+  <img src="Tlamatini.jpg" alt="Tlamatini" width="180" height="180" />
 </p>
 
 <h1 align="center">Tlamatini</h1>
 
-<p align="center"><em>"one who knows" — a locally-deployed AI developer assistant</em></p>
+<h3 align="center">A local-first AI developer assistant that goes beyond chat.</h3>
+
+<p align="center">
+Run it on your machine with <a href="https://ollama.com/">Ollama</a>. Your code never leaves your box.<br/>
+Hybrid RAG over your codebase · 75-tool multi-turn orchestration · 68 visual workflow agents · multi-agent delegation to Claude Code, Cursor, Codex, Gemini CLI
+</p>
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s"><strong>▶️ Watch the one-minute demo</strong></a> &nbsp;·&nbsp;
+  <a href="https://xaiht.org"><strong>🌐 Website</strong></a> &nbsp;·&nbsp;
+  <a href="#13-demo-videos"><strong>🎬 More demos</strong></a>
+</p>
 
 <p align="center">
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.9.0"><img src="https://img.shields.io/badge/VERSION-v1.9.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.9.0" /></a>
@@ -19,18 +30,20 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a locally-deployed AI developer assistant that pairs a hybrid [RAG pipeline](#82-rag) (FAISS + BM25, metadata extraction, context budgeting) with a [Multi-Turn](#35-tutorial-the-multi-turn-toggle) tool-orchestration layer, [ACPX](#5-acpx--external-coding-agent-clis-as-tools) delegation to external coding-agent CLIs ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Cursor](https://cursor.com), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli), [Qwen](https://github.com/QwenLM/qwen-code), …), and a [visual workflow designer](#4-visual-workflow-designer-agentic_control_panel) with **68 drag-and-drop agents**.
+### What it gives you that a plain chatbox doesn't
 
-> **Local-first by default**: the full RAG pipeline, the Multi-Turn execution loop, and every workflow agent run on your machine — embeddings and chat are driven by your local [Ollama](https://ollama.com/) install. Cloud LLMs (Claude API, Ollama Pro/Max) and ACPX delegation to cloud CLIs are opt-in per-request, never the default. Sensitive code never leaves the box unless you explicitly route it out.
+- **Real RAG over your code** — FAISS + BM25 hybrid retrieval with context budgeting. The model sees the *right* code, not random chunks.
+- **Multi-Turn mode** — the LLM becomes an operator: shell, Python, APIs, browser automation, screenshots, keyboard/mouse — all chained in one conversation.
+- **ACPX** — delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen, and relay output between them.
+- **Visual workflow designer** — drag and drop 68 agent types, wire them together, run flows unattended.
+- **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
+- **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
 
-> **Latest — v1.9.0 (2026-05-26): STM32er, zero-config firmware bridge.** A new **STM32er** agent (canvas node + Multi-Turn tool `chat_agent_stm32er`) brings the catalog to **68 agents**. It bridges the [STM32 Template Project MCP](https://github.com/XAIHT/STM32TemplateProjectMCP) to scaffold, build, flash, observe (serial / SWD), and reset STM32 firmware. **Zero-config auto-bootstrap** means the user only installs STM32CubeIDE + Tlamatini — STM32er downloads, installs, and validates the MCP server on first use. A **critical-mission safety preflight** validates the toolchain and a positively-confirmed connected ST-LINK probe before flashing, and **refuses** rather than producing or flashing mis-targeted firmware. Three new catalog demos ship in migration `0103` (STM32 GENESIS / BLINKY / HIL OBSERVATORY). See [§3.15](#315-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er).
+> **Latest — v1.9.0 (2026-05-26): STM32er, zero-config firmware bridge.** A new **STM32er** agent brings the catalog to **68 agents**. It bridges the [STM32 Template Project MCP](https://github.com/XAIHT/STM32TemplateProjectMCP) to scaffold, build, flash, observe, and reset STM32 firmware — with zero-config auto-bootstrap and a critical-mission safety preflight that **refuses** to flash mis-targeted firmware. See [§3.15](#315-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er).
 
 <p align="center">
-  <a href="https://xaiht.org"><strong>🌐 Website</strong></a> &nbsp;·&nbsp;
-  <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s"><strong>▶️ One-minute teaser</strong></a> &nbsp;·&nbsp;
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
-  <a href="VERSIONING.md"><strong>🏷️ Versioning</strong></a> &nbsp;·&nbsp;
-  <a href="#13-demo-videos"><strong>🎬 More demos</strong></a>
+  <a href="VERSIONING.md"><strong>🏷️ Versioning</strong></a>
 </p>
 
 ---
