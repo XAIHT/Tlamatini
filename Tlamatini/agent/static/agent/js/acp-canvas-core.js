@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -229,6 +229,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'mouser': 'mouser-agent',
     'windower': 'windower-agent',
     'kalier': 'kalier-agent',
+    'stm32er': 'stm32er-agent',
     'file-interpreter': 'file-interpreter-agent',
     'image-interpreter': 'image-interpreter-agent',
     'gatewayer': 'gatewayer-agent',
@@ -928,6 +929,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'mouser') updateMouserConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
@@ -1049,6 +1051,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'mouser' && !sourceBeingDeleted) updateMouserConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'windower' && !sourceBeingDeleted) updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier' && !sourceBeingDeleted) updateKalierConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'stm32er' && !sourceBeingDeleted) updateStm32erConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'file-interpreter' && !targetBeingDeleted) updateFileInterpreterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'file-interpreter' && !sourceBeingDeleted) updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'image-interpreter' && !targetBeingDeleted) updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
@@ -1527,6 +1530,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'mouser') updateMouserConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'add');
                     if (targetAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(targetId, sourceId, 'add', 'source');

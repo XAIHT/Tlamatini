@@ -345,6 +345,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **whatstlamatini** | Long-running WhatsApp Cloud API bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
 | **acpxer** | Drives ONE external coding-agent CLI session (Claude / Codex / Gemini / Cursor / Qwen / etc.) from the canvas; emits `INI_SECTION_ACPXER` for multi-CLI relay | YES | Action |
 | **unrealer** | Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (53-command surface: actors+screenshot, Blueprints, node graph, UMG widgets, input mappings, in-editor Python/console, level I/O, asset import, materials) | YES | Action |
+| **stm32er** | Bridges the STM32 Template Project MCP server (stdio) to scaffold / author / build / flash / observe STM32F4 firmware — no STM32CubeIDE GUI. ZERO-CONFIG (auto-downloads + installs the MCP itself; user installs only STM32CubeIDE) with a fail-safe PREFLIGHT (validates compiler / CubeIDE / programmer / ST-LINK / device family and refuses rather than mis-build/flash — compile needs no board, flash needs a connected ST-LINK). ONE of 23 MCP tools per run via `action`, plus `serial_session` / `live_monitor` composites and the `bootstrap` / `validate` meta-actions; emits `INI_SECTION_STM32ER` | YES | Action |
 
 ## Decision Guide: Common Objectives → Recommended Patterns
 
@@ -1623,14 +1624,41 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 67. FlowCreator
+### 67. STM32er
+- **Purpose**: Tlamatini's bridge to the **STM32 Template Project MCP server** (https://github.com/XAIHT/STM32TemplateProjectMCP). On trigger it spawns that FastMCP **stdio** server (`mcp/stm32_mcp_server.py`), performs the MCP initialize handshake, calls ONE capability selected by its `action` field via JSON-RPC `tools/call`, captures the result into an `INI_SECTION_STM32ER` block (`action`, `tool`, `ok`, `returncode`, `success`, `project_dir`, `session_id`, `stage`, plus a `response_body` carrying the tool stdout/stderr or JSON), then shuts the server down. Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
+- **Used for**: Scaffolding, authoring, building, flashing and OBSERVING STM32F4 firmware as unattended flow steps — **no STM32CubeIDE GUI**. The `action` field selects ONE of the 23 MCP tools: environment (`get_config`, `discover_toolchain_tool`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`, `clean`); build & flash (`build`, `list_artifacts`, `flash`, `build_and_flash`, `erase`, `reset`); serial VCP HIL (`serial_list_ports`, `serial_connect`, `serial_send`, `serial_read`, `serial_disconnect`); live SWD memory HIL (`read_memory`, `write_memory`, `live_memory_start`, `live_memory_read`, `live_memory_stop`). PLUS two composite actions that chain the stateful tools within one server run: `serial_session` (connect → send|read → disconnect) and `live_monitor` (start → stream `monitor_seconds` → read → stop). PLUS two meta-actions handled by STM32er itself: `bootstrap` (download + install + validate the MCP) and `validate` (full environment preflight report — no build/flash).
+- **Aimed at**: Building visual, repeatable firmware pipelines — e.g. an autonomous agent that regenerates and re-flashes a robot's firmware. Chain `create_project` → Parametrizer (carry `{project_dir}` forward) → `write_source` → `build` → `flash` → a `live_monitor` / `serial_session` that proves it runs on real silicon, with a Forker branching on `{success}`. **Zero-config**: leave `server_script` blank and STM32er DOWNLOADS + installs the MCP itself on first use (shallow `git clone`, or a GitHub-zip fallback when git is absent; pip-installs `mcp`/`pyserial`; validates) into a per-user cache — `action='bootstrap'` does this explicitly, so the user installs only STM32CubeIDE. Before every compile/flash STM32er runs a **safety preflight** (validates the arm-none-eabi-gcc toolchain / STM32CubeIDE / build tool / programmer / ST-LINK driver + connected probe / target device family) and REFUSES rather than mis-build or mis-flash: compile-only actions need NO board, but flash/erase/reset/serial/SWD/live_* require a connected ST-LINK, and a cross-STM32F-family `device` is refused; `action='validate'` reports the whole environment without building. Set `mcp_python` only if the server's Python lacks `mcp`/`pyserial`. The visual-canvas counterpart of the `chat_agent_stm32er` Multi-Turn tool.
+- **Application example**: Starter → STM32er (`action: create_project`, `name: leg_ctrl`, `dest_parent: C:/robot/fw`) → Parametrizer (map `{project_dir}` into the next node) → STM32er (`action: write_source`, `rel_path: Core/Src/main.c`, `content: <generated firmware>`) → Parametrizer → STM32er (`action: build_and_flash`) → Forker (branch on `{success}`) → STM32er (`action: live_monitor`, `variables: ["g_blink_count","g_led_index"]`, `monitor_seconds: 5`) → File-Creator (write the samples) → Ender.
+- **Pool name pattern**: `stm32er_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `action`: "get_config" (one of the 23 MCP tools listed above, or `serial_session` / `live_monitor`, or the `bootstrap` / `validate` meta-actions)
+  - `server_script`: "" (path to the MCP stdio server; **blank = zero-config auto-download** into a per-user cache; set ONLY to point at an existing local checkout)
+  - `auto_bootstrap`: true / `mcp_repo_url`: "https://github.com/XAIHT/STM32TemplateProjectMCP.git" / `mcp_ref`: "" / `mcp_install_dir`: "" / `auto_update`: false / `pip_install`: true (zero-config bootstrap — download/update the MCP + install its `mcp`/`pyserial` deps)
+  - `preflight`: true / `device`: "" (safety preflight — validate compiler/CubeIDE/programmer/ST-LINK/device family and REFUSE hardware actions with no board or a cross-family `device`; "" = the template's part)
+  - `mcp_python`: "" (Python that has the `mcp`/`pyserial` packages; "" = reuse the agent's Python)
+  - `template_dir`: "" (STM32_TEMPLATE_DIR env; "" = server default = parent of server_script)
+  - `ide_root`: "" (STM32_IDE_ROOT env for toolchain discovery; "" = server auto-discovers)
+  - `startup_timeout`: 30 / `call_timeout`: 600 (handshake + per-tool timeouts in seconds)
+  - `project_dir`: "" (project root from create_project — used by most build/flash/source tools)
+  - `name`: "" / `dest_parent`: "" / `overwrite`: false (create_project)
+  - `rel_path`: "" / `content`: "" (write_source / read_source)
+  - `system`: "make" ("make" | "cmake") / `jobs`: 8 / `clean_first`: false (build) / `binary`: "bin" (flash: bin|elf|hex)
+  - `discover_ide_root`: "" (discover_toolchain_tool)
+  - `port`: "" / `baud`: 0 / `data`: "" / `read_response`: true / `read_timeout`: 2.0 / `line_ending`: "" / `serial_timeout`: 2.0 / `max_bytes`: 4096 (serial_* / serial_session)
+  - `address`: "" / `symbol`: "" / `elf`: "" / `count`: 1 / `width`: 32 / `value`: "" (read_memory / write_memory)
+  - `variables`: "" (JSON array) / `interval_ms`: 500 / `output_path`: "" / `session_id`: "" / `last_n`: 10 / `monitor_seconds`: 5 (live_memory_* / live_monitor)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
+### 68. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (67). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (68). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

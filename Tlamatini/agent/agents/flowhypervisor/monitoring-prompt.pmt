@@ -70,7 +70,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier
+  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -236,6 +236,39 @@ KALIER SPECIAL NOTES:
     Flask API server is not running on the Kali box, the SSH tunnel is down, or
     `server_url` is wrong. Treat a connection error like a broken chain hop.
 
+STM32ER SPECIAL NOTES:
+  - STM32er is SHORT-LIVED and ACTIVE: it spawns the STM32 Template Project MCP
+    stdio server, calls ONE tool (selected by `action` — scaffold / write / build /
+    flash / erase / reset / read / serial / live-memory, or a serial_session /
+    live_monitor composite, or the `bootstrap` / `validate` meta-actions), captures
+    the result into an `INI_SECTION_STM32ER<<<` block, then shuts the server down
+    and ALWAYS triggers `target_agents` regardless of success or failure.
+  - ZERO-CONFIG + PREFLIGHT: on first use STM32er DOWNLOADS and installs the MCP
+    itself (a `stage: bootstrap` section is normal, NOT an error — `action=cloned`/
+    `present` is success), and before every build/flash it runs a safety preflight.
+    A `stage: preflight` section that says "PREFLIGHT REFUSED" (e.g. "No ST-LINK
+    probe detected" for a flash, or a cross-family device) is the agent working as
+    DESIGNED (fail-safe) — it is routable content, NOT a flow error; do NOT flag it.
+  - Duration tracks the underlying tool: get_config / list_sources / read_source /
+    read_memory are sub-second; a `build` (compiling the full HAL — ~95 objects)
+    or `build_and_flash` can take tens of seconds to a couple of minutes; a
+    `live_monitor` run is silent for its `monitor_seconds` (default ~5s) while it
+    streams. A silent STM32er for up to ~3 minutes on a build is NORMAL — do NOT
+    flag it as stuck before ~5 minutes.
+  - `success: false` or a non-zero `returncode` inside the section is NOT a flow
+    error — a build that fails to compile, a flash that reports "No STLink
+    detected", or a read that finds nothing is routable content for a downstream
+    Forker / Raiser. NEVER flag an `INI_SECTION_STM32ER<<<` block as an error even
+    when its body looks like a compiler/programmer error (that body is data for
+    the next agent to act on).
+  - Legitimate STM32er error to flag: a bootstrap that COULD NOT auto-install the
+    MCP ("STM32 MCP server could not be auto-installed" — usually no internet / no
+    git on the host), "STM32 MCP environment is not ready" (deps missing), or
+    "MCP server exited ... before responding" (often "ModuleNotFoundError: No
+    module named 'mcp'"). Treat a bootstrap / server-launch / handshake failure
+    like a broken chain hop. (A PREFLIGHT REFUSED for a missing board is NOT this —
+    that is the fail-safe gate behaving correctly.)
+
 EXTERNAL-WINDOW agents (Sqler, Mongoxer):
   These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
 
@@ -263,6 +296,7 @@ TYPICAL TIMING:
   - Reviewer: one LLM call over a git diff — sub-second to ~2 min depending on diff size and model (local vs cloud). Flag only if > 5 min with no completion.
   - Analyzer: runs installed scanners (bandit/semgrep/ruff/eslint/gitleaks/pip-audit); seconds for small trees to a few minutes for `semgrep --config auto` on a large repo. Flag only if > 5 min with no completion.
   - Kalier: tracks the Kali tool it dispatches — sub-second for `health` / a tiny `nmap`, up to the MCP-Kali-Server's ~180 s per-run cap for `gobuster` / `nikto` / `hydra` / `sqlmap` / `john`. Flag only if > 5 min with no completion (or on a "Cannot reach MCP-Kali-Server" error).
+  - STM32er: tracks the STM32 MCP tool it calls — sub-second for get_config / read / list / read_memory; tens of seconds to ~2 min for `build` / `build_and_flash` (compiles the full HAL); `live_monitor` is intentionally silent for its `monitor_seconds`. Flag only if > 5 min with no completion (or on an "MCP server script not found" / "MCP server exited before responding" error).
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -278,6 +312,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "🔍 REVIEWER AGENT STARTED" — Reviewer began resolving a git diff for LLM review
   "🛡️ ANALYZER AGENT STARTED" — Analyzer began running static-analysis / security scanners
   "🐉 KALIER AGENT STARTED (MCP-Kali-Server bridge)" — Kalier began dispatching a request to the MCP-Kali-Server API
+  "⚡ STM32er AGENT STARTED (STM32 Template Project MCP bridge)" — STM32er began driving the STM32 MCP server (scaffold/build/flash/observe firmware)
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -291,7 +326,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  De-Compresser, Unrealer, Reviewer, Analyzer, Kalier).
+  De-Compresser, Unrealer, Reviewer, Analyzer, Kalier, STM32er).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -381,6 +416,7 @@ DO NOT report these as problems:
   - Reviewer INI_SECTION_REVIEWER<<< ... >>>END_SECTION_REVIEWER blocks with any `verdict` — including `verdict: REQUEST_CHANGES` and critical/high findings in the body (the verdict is routable content for a downstream Forker, NOT a flow error)
   - Analyzer INI_SECTION_ANALYZER<<< ... >>>END_SECTION_ANALYZER blocks with any `status` — including `status: findings` and a non-zero `total_findings` (scanners finding issues is the agent working as intended; a scanner exiting non-zero because it found issues is also normal — the count is routable content for a downstream Forker, NOT a flow error)
   - Kalier INI_SECTION_KALIER<<< ... >>>END_SECTION_KALIER blocks with any `success` / `return_code` / `timed_out` — including `success: false`, a non-zero `return_code`, or `timed_out: true` (a scan finding nothing, a failed brute-force, or a tool hitting the server's run cap is the agent working as intended; the result is routable content for a downstream Forker, NOT a flow error)
+  - STM32er INI_SECTION_STM32ER<<< ... >>>END_SECTION_STM32ER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a firmware build that fails to compile, a flash that reports "No STLink detected", or a read that found nothing is routable content for a downstream Forker, NOT a flow error)
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

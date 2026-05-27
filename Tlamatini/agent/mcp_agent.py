@@ -158,6 +158,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # ``kalier`` agent_key so a mixed flow renders as one "List of Kalier
     # Operations" table.
     "chat_agent_kalier":         ("kalier",         "Kalier"),
+    # STM32er is state-changing: it drives the STM32 Template Project MCP server
+    # to scaffold / write / build / flash / erase / reset firmware and to
+    # write_memory on a running MCU. Read-only actions (get_config / read_source /
+    # list_sources / read_memory / serial reads) share the ``stm32er`` agent_key
+    # so a mixed firmware flow renders as one "List of STM32er Operations" table.
+    "chat_agent_stm32er":        ("stm32er",        "STM32er"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every

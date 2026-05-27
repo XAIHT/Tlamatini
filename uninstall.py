@@ -375,6 +375,13 @@ class FancyUninstaller:
                                                danger=True)
         self.uninstall_btn.pack(side="right")
 
+        # Pressing Enter/Return after typing the installation directory triggers
+        # the SAME directory verification + uninstallation as clicking Uninstall.
+        # Bound on the path entry (focus is in the field after typing) AND on the
+        # window (so Enter works even if focus is elsewhere).
+        self.path_entry.bind("<Return>", self._on_enter_key)
+        self.root.bind("<Return>", self._on_enter_key)
+
     # ─── Button factory with hover effects ───────────────────────────
     def _make_button(self, parent, text, command, width=14, small=False,
                      cancel=False, danger=False):
@@ -450,6 +457,13 @@ class FancyUninstaller:
         return raw
 
     # ─── Uninstallation thread ───────────────────────────────────────
+    def _on_enter_key(self, _event=None):
+        """Enter/Return = verify the directory + start the uninstallation (same as
+        clicking Uninstall). Returns 'break' so the keypress doesn't bubble to the
+        window-level binding and fire twice; _start_uninstall is re-entry-guarded."""
+        self._start_uninstall()
+        return "break"
+
     def _start_uninstall(self):
         if self._uninstalling:
             return

@@ -128,6 +128,13 @@
   },
   "_section_kali": "Kalier / MCP-Kali-Server bridge. 'kali_server_url' is the base URL of the Flask API (server.py) running on your Kali box — Tlamatini IS the client (the embedded replacement for Claude Desktop's client.py). The wrapped chat_agent_kalier tool auto-injects this as the default server_url on every run, so plain prompts ('scan 10.0.0.5 and give me a report') work without ever repeating the URL. Default http://127.0.0.1:5000 works when Kali runs in WSL2 with localhost forwarding (or you SSH-tunnel the port); otherwise set it to http://<KALI_LAN_IP>:5000 via Config -> URLs in the navbar. The LLM may still override it per-call by passing server_url=...",
   "kali_server_url": "http://127.0.0.1:5000",
+  "_section_stm32": "STM32er / STM32 Template Project MCP bridge (https://github.com/XAIHT/STM32TemplateProjectMCP). ZERO-CONFIG by default: leave 'stm32_mcp_server_script' EMPTY and STM32er auto-bootstraps — it downloads the MCP from 'stm32_mcp_repo_url' into 'stm32_mcp_install_dir' (empty = a per-user LOCALAPPDATA/Tlamatini cache), pip-installs its deps (mcp, pyserial) and validates, then spawns and drives the stdio server. The user only installs STM32CubeIDE + Tlamatini. Set 'stm32_mcp_server_script' to an absolute mcp/stm32_mcp_server.py ONLY to point at an existing local checkout (an on-disk path wins and skips bootstrap). 'stm32_mcp_python' is the Python used to RUN the server + install its deps (empty = reuse Tlamatini's Python). 'stm32_template_dir' / 'stm32_ide_root' map to the server's STM32_TEMPLATE_DIR / STM32_IDE_ROOT env. The wrapped chat_agent_stm32er tool auto-injects all of these on every run so firmware prompts never repeat them; the LLM may override any per-call by naming it.",
+  "stm32_mcp_server_script": "",
+  "stm32_mcp_python": "",
+  "stm32_template_dir": "",
+  "stm32_ide_root": "",
+  "stm32_mcp_repo_url": "https://github.com/XAIHT/STM32TemplateProjectMCP.git",
+  "stm32_mcp_install_dir": "",
   "allowed_paths": [
     "application",
     "docs",

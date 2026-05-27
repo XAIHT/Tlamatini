@@ -116,6 +116,7 @@ SECTION_AGENT_TYPES = [
     'analyzer',
     'playwrighter',
     'kalier',
+    'stm32er',
 ]
 
 

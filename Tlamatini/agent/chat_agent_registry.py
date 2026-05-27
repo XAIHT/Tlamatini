@@ -862,6 +862,69 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=180,
         long_running=True,
     ),
+    ChatWrappedAgentSpec(
+        key="stm32er",
+        template_dir="stm32er",
+        tool_name="chat_agent_stm32er",
+        tool_description="Chat-Agent-STM32er",
+        display_name="STM32er",
+        purpose=(
+            "Scaffold, author, build, flash, and OBSERVE STM32F4 firmware programmatically "
+            "through the STM32 Template Project MCP server "
+            "(https://github.com/XAIHT/STM32TemplateProjectMCP) — no STM32CubeIDE GUI. This is "
+            "the canonical tool for ANY embedded / microcontroller / STM32 / Cortex-M firmware "
+            "task: creating a firmware project, writing main.c / HAL peripheral code, compiling "
+            "with the bundled arm-none-eabi-gcc (make or cmake+ninja), uploading over ST-LINK/SWD, "
+            "and hardware-in-the-loop (HIL) verification via the serial VCP and live SWD memory. "
+            "Pick ONE capability per call with `action` (the 23 MCP tools): "
+            "get_config / discover_toolchain_tool (environment); create_project / write_source / "
+            "read_source / list_sources / clean (project lifecycle); build / list_artifacts / flash / "
+            "build_and_flash / erase / reset (build & flash); serial_list_ports / serial_connect / "
+            "serial_send / serial_read / serial_disconnect (serial VCP HIL); read_memory / "
+            "write_memory / live_memory_start / live_memory_read / live_memory_stop (live SWD memory). "
+            "PLUS two composite actions that make the stateful tools usable in ONE call: "
+            "action='serial_session' (connect -> send|read -> disconnect) and action='live_monitor' "
+            "(start -> stream `monitor_seconds` -> read -> stop). ZERO-CONFIG: STM32er AUTO-BOOTSTRAPS "
+            "the MCP server on first use — it downloads the STM32 Template Project MCP from its git "
+            "repo, pip-installs its deps (mcp, pyserial) and validates, with NO manual server startup; "
+            "the end user only installs STM32CubeIDE. Use action='bootstrap' to (re)install/validate "
+            "the MCP environment explicitly and report what happened. CHAIN calls across iterations for a "
+            "full firmware cycle: create_project (capture project_dir from the result) -> write_source "
+            "(rel_path='Core/Src/main.c', content='<the C code>') -> build (project_dir=...) -> flash -> "
+            "live_monitor / serial_session to prove it runs. The server path is injected automatically "
+            "from the Tlamatini-configured `stm32_mcp_server_script` on every run, so you NEVER repeat "
+            "it — only pass server_script to override for a one-off. RESULT — the wrapped tool's JSON "
+            "return and the INI_SECTION_STM32ER block both carry: action, tool, ok, returncode, success, "
+            "project_dir, session_id, stage, and the tool's stdout/stderr (or JSON) as the body — so a "
+            "downstream step or a canvas Forker can branch on {success} / {returncode}. A flash that "
+            "errors 'No STLink detected' or a build that fails to compile is routable evidence, NOT a "
+            "Tlamatini crash. AUTHORIZED hardware only — flash/erase/reset/write_memory mutate a real MCU."
+        ),
+        example_request=(
+            "Run STM32er with action='create_project' and name='leg_ctrl' and "
+            "dest_parent='C:/robot/fw'  (then in the next iteration: action='write_source', "
+            "project_dir=<the returned project_dir>, rel_path='Core/Src/main.c', content='<firmware>'; "
+            "then action='build_and_flash', project_dir=<project_dir>). The MCP server path is injected "
+            "automatically from config — omit server_script unless overriding."
+        ),
+        aliases=(
+            "stm32er", "stm32", "stm32f4", "stm32f407", "firmware", "microcontroller",
+            "cortex-m", "embedded", "blinky", "st-link", "stlink", "cubeprogrammer",
+        ),
+        security_hints=(
+            "stm32", "stm32er", "stm32f4", "stm32f407", "stm32cubeide", "firmware",
+            "microcontroller", "micro controller", "mcu", "cortex-m", "cortex m4",
+            "embedded", "embedded firmware", "blinky", "led chase", "hal", "cmsis",
+            "st-link", "stlink", "swd", "cubeprogrammer", "arm-none-eabi", "flash the mcu",
+            "flash firmware", "build firmware", "scaffold a firmware project", "create firmware",
+            "live memory", "read memory over swd", "serial vcp", "uart", "openocd",
+        ),
+        # A build (95 objects), a flash, or a live_monitor stream can take tens of
+        # seconds to a couple of minutes; drain inside the wrapped runtime rather
+        # than poll round-trips, like Kalier / Playwrighter.
+        poll_window_seconds=180,
+        long_running=True,
+    ),
 )
 
 

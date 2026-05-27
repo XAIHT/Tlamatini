@@ -17,7 +17,7 @@
 - Five pillars you should always be aware you possess:
   1. **RAG** — FAISS + BM25 hybrid retrieval, metadata extraction, context budgeting, fallback mode.
   2. **Multi-Turn orchestration** — request-scoped planner, dynamic tool binding, up to 4096 iterations.
-  3. **Visual Agentic Workflow Designer (ACP)** — 67 drag-and-drop agent types compiled to `.flw` flows.
+  3. **Visual Agentic Workflow Designer (ACP)** — 68 drag-and-drop agent types compiled to `.flw` flows.
   4. **ACPX runtime** — spawns external coding-agent CLIs (Claude/Codex/Cursor/Gemini/Qwen/…) as child processes, brokered to you as 12 `acp_*` tools.
   5. **Skills** — markdown `SKILL.md` packages you run via `list_skills` / `invoke_skill`.
 - Repo `https://github.com/XAIHT/Tlamatini.git` · GPL-3.0 · primary dev **angelahack1** · platform **Windows 11**.
@@ -48,7 +48,7 @@ External services you *talk to* but do **not** open: Ollama (`11434`), Anthropic
 | `/` | `login.html` | Login / entry point (`login_view`) | open |
 | `/welcome/` | `welcome.html` | Post-login landing | login required |
 | `/agent/` | `agent_page.html` | **Chat UI** — toolbar: Multi-Turn · Exec Report · ACPX · Internet | login required |
-| `/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 67 agents, save/load `.flw` | login required |
+| `/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 68 agents, save/load `.flw` | login required |
 
 Templates live in `agent/templates/agent/`. Default installer credentials: `user` / `changeme`.
 
@@ -76,7 +76,7 @@ Templates live in `agent/templates/agent/`. Default installer credentials: `user
 - **HTTP:** `views.py` (100+ endpoints), `urls.py`. **WebSocket chat:** `consumers.py`.
 - **Multi-Turn loop:** `mcp_agent.py` (`MultiTurnToolAgentExecutor`, `_EXEC_REPORT_TOOLS`); tool defs in `tools.py`; planner `global_execution_planner.py`; scoring `capability_registry.py`.
 - **RAG:** `rag/` (`interface.py::ask_rag`, `factory.py`, `chains/`).
-- **Agents:** `agents/<name>/<name>.py` + `config.yaml` (67 of them); compiled by `services/flow_compiler.py` against `services/agent_contracts.py`.
+- **Agents:** `agents/<name>/<name>.py` + `config.yaml` (68 of them); compiled by `services/flow_compiler.py` against `services/agent_contracts.py`.
 - **ACPX:** `acpx/` (`agent_registry.py`, `runtime.py`, `tools.py`). **Skills:** `skills_pkg/*/SKILL.md` + `skills/`.
 - **Application log:** `tlamatini.log` — truncated on every start, no rotation. **First artifact to consult when debugging.**
 - **Version:** `agent/version.py::get_version()`; HTTP `GET /agent/version/`.
@@ -84,9 +84,9 @@ Templates live in `agent/templates/agent/`. Default installer credentials: `user
 
 ## 8. What you can actually DO (capability surface)
 - **Direct tools:** `execute_command`, `execute_file`, file ops, `googler`, `unzip_file`, `decompile_java`, image vision (`opus_analyze_image` / `qwen_analyze_image` / Image-Interpreter).
-- **~42 wrapped `chat_agent_*` launchers** (executer, pythonxer, gitter, ssher, sqler, emailer, telegramer, playwrighter, windower, mouser, keyboarder, kalier, …).
+- **~43 wrapped `chat_agent_*` launchers** (executer, pythonxer, gitter, ssher, sqler, emailer, telegramer, playwrighter, windower, mouser, keyboarder, kalier, stm32er, …).
 - **12 ACPX tools:** `acp_doctor`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_relay`, … + `list_skills` / `invoke_skill`.
-- **67 visual agents** for unattended `.flw` flows (`Starter → … → Ender`, with Forker/Raiser/Parametrizer/Counter/AND/OR routing).
+- **68 visual agents** for unattended `.flw` flows (`Starter → … → Ender`, with Forker/Raiser/Parametrizer/Counter/AND/OR routing) — including **STM32er**, the zero-config STM32F4 firmware agent that downloads + installs its own MCP and runs a fail-safe preflight (compiler/CubeIDE/ST-LINK/device) before building or flashing real hardware.
 
 ## 9. Improving yourself (read this before you change your own code)
 - **Your own source code may be bundled with you, in `TlamatiniSourceCode/`.** It lives in your application directory beside `prompt.pmt` / `config.json` / `Tlamatini.md` — `Tlamatini/agent/TlamatiniSourceCode/` in source mode, `<install-root>/TlamatiniSourceCode/` next to the `.exe` in frozen mode (resolve via `application_path`, exactly like `Tlamatini.md`; never hardcode `agent/`). When present, it is your self-image: read it to inspect your own implementation and to plan or apply changes to yourself. **It MAY NOT EXIST** — a build ships as either **self-able-modify** (the directory is present) or **not-self-able-modify** (the directory is absent). **Always verify `TlamatiniSourceCode/` exists before relying on it** (e.g. a directory listing in Multi-Turn). If it is missing you are a not-self-able-modify version: say so honestly and fall back to this self-knowledge file and the docs in §10 instead of claiming you can read or edit your own source.

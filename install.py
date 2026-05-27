@@ -387,6 +387,13 @@ class FancyInstaller:
         self.install_btn = self._make_button(btn_row, "⬡  Install", self._start_install)
         self.install_btn.pack(side="right")
 
+        # Pressing Enter/Return after typing the installation directory triggers
+        # the SAME directory verification + installation as clicking Install.
+        # Bound on the path entry (the common case — focus is in the field after
+        # typing) AND on the window (so Enter works even if focus is elsewhere).
+        self.path_entry.bind("<Return>", self._on_enter_key)
+        self.root.bind("<Return>", self._on_enter_key)
+
     # ─── Button factory with hover effects ────────────────────────────
     def _make_button(self, parent, text, command, width=14, small=False, cancel=False):
         bg  = BTN_CANCEL_BG if cancel else BTN_BG
@@ -453,6 +460,15 @@ class FancyInstaller:
                 return None  # abort this attempt (user can click Install again)
 
         return target
+
+    # ─── Enter/Return key ─────────────────────────────────────────────
+    def _on_enter_key(self, _event=None):
+        """Enter/Return = verify the directory + start the installation (same as
+        clicking Install). Returns 'break' so the keypress doesn't also bubble to
+        the window-level binding and fire twice; _start_install is re-entry-guarded
+        anyway, so a double-fire would be harmless."""
+        self._start_install()
+        return "break"
 
     # ─── Installation thread ──────────────────────────────────────────
     def _start_install(self):

@@ -1504,6 +1504,32 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                 configured.strip(),
             )
 
+    if template_dir == "stm32er":
+        # STM32er is the "embedded client" for the STM32 Template Project MCP:
+        # the server path / interpreter / scaffold root / IDE root live once in
+        # config.json (Config -> URLs) so firmware prompts never repeat them.
+        # Each global maps to the matching config.yaml field; only non-empty
+        # configured values are seeded, so an explicit per-call value still wins.
+        for cfg_key, field in (
+            ("stm32_mcp_server_script", "server_script"),
+            ("stm32_mcp_python", "mcp_python"),
+            ("stm32_template_dir", "template_dir"),
+            ("stm32_ide_root", "ide_root"),
+            ("stm32_mcp_repo_url", "mcp_repo_url"),
+            ("stm32_mcp_install_dir", "mcp_install_dir"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                continue
+            if isinstance(configured, str) and configured.strip():
+                runtime_config[field] = configured.strip()
+                logger.info(
+                    "[tools._seed_global_agent_defaults] STM32er %s seeded from config %s: %s",
+                    field, cfg_key, configured.strip(),
+                )
+
     return runtime_config
 
 

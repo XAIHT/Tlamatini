@@ -1211,6 +1211,25 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(57, 255, 20, 0.5);
 }
 
+/* STM32er Agent — STM32 Template Project MCP bridge (firmware scaffold/build/
+   flash/observe). A 4-stop "silicon" ramp in the requested blue / black / white /
+   gray palette: near-black -> vivid STM32 blue -> steel gray -> near-white. This
+   is the only black->blue->gray->white gradient in the palette (Windower is the
+   only other blue agent but it runs navy->cyan->sky->ice-white with NO black
+   base and NO neutral gray, so the two read distinctly). A text-shadow keeps the
+   white label legible across the light right-hand end of the ramp. */
+.canvas-item.stm32er-agent {
+    background-color: #0A0E17;
+    background: linear-gradient(135deg, #0A0E17 0%, #1E63FF 33%, #8A97A8 66%, #EEF3FB 100%);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    font-size: smaller;
+}
+.canvas-item.stm32er-agent:hover {
+    background: linear-gradient(135deg, #141C2B 0%, #4D86FF 33%, #AEBAC9 66%, #FFFFFF 100%);
+    box-shadow: 0 6px 15px rgba(30, 99, 255, 0.5);
+}
+
 /* FlowBacker Agent Styles - Infrastructure backup (3-color: Deep-Teal / Burnt-Orange / Amber gradient) */
 .canvas-item.flowbacker-agent {
     background-color: #0F4C5C;

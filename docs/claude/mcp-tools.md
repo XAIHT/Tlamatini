@@ -33,6 +33,7 @@
 - `get_mcp_tools()` returns LangChain tools, NOT MCP services
 - Tool status keys are handwritten and can drift from seeded DB descriptions
 - Adding `Mcp` row without extending `factory.py` does NOTHING
+- "MCP" in the two `Mcp`-model checkboxes is unrelated to the **external MCP servers** that some pool agents drive (e.g. STM32er → STM32 Template Project MCP, Kalier → MCP-Kali-Server). Those agents bundle a **self-contained inline MCP/JSON-RPC client** in `agents/<name>/<name>.py` (stdlib-only, no `mcp` dep in the pool) so they work identically in source and frozen builds — they do NOT go through `factory.py` or the `Mcp` toggle rows. STM32er additionally **self-provisions** its server: with an empty `stm32_mcp_server_script` it auto-bootstraps the MCP (git clone → GitHub-zip fallback → pip-install `mcp`+`pyserial`) on first use.
 
 ---
 
