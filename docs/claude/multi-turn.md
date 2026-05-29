@@ -41,6 +41,17 @@ The detail dict shown in the dialog: `tool_name`, `agent_display`, `kind` (Tool 
 - Emit failure / mid-flight Cancel / broker `close()` (browser disconnected) all resolve to **`deny`** — never run an unconfirmed state-changing tool. The wait loop polls `cancel_generation` on a short tick so a Cancel never deadlocks the thread.
 - The **only** fail-OPEN case is "no broker registered" (unit tests / detached browser) — the consumer always registers one when `ask_execs_enabled`, so production never hits it.
 
+### Runtime relax — unchecking Ask Execs mid-run (2026-05-29)
+
+The flag captured at submit decides whether a broker is **registered** for the run; it cannot be un-captured. But the user CAN relax (or re-arm) an already-registered broker mid-flight by toggling the **Ask Execs** checkbox while a Multi-Turn run is executing:
+
+1. The checkbox `change` handler (`agent_page_init.js`) sends a `set-ask-execs-runtime` frame (`{message, type, ask_execs_runtime_enabled}`) **only when `inLongOperation === true`**. The toolbar toggle checkboxes are deliberately NOT disabled by `disableControlsDuringOperation()`, so the box stays clickable during a run.
+2. `consumers.receive` routes it to `exec_permission.set_broker_auto_proceed(user_id, auto_proceed=not enabled)`. Unchecked → `auto_proceed=True`; re-checked → `auto_proceed=False`. Returns `applied=False` (harmless no-op) if no broker is registered (run started with Ask Execs off — nothing to relax).
+3. `ExecPermissionBroker.set_auto_proceed(True)` (a) makes every **future** `request_permission` return `"proceed"` immediately without emitting a prompt, and (b) resolves any **currently-blocking** prompt to `"proceed"` (mirrors `close()`, which resolves pending to `"deny"`). `set_auto_proceed(False)` re-arms prompting. It is a **no-op after `close()`** — a torn-down request never springs back to life.
+4. When relaxing mid-run, the frontend also calls `dismissExecPermissionDialogForRuntimeProceed()` (`agent_page_dialogs.js`) to silently close any open prompt — it sets `_execPermDecisionSent = true` first so the dialog's close handler does NOT fire a stale `deny`.
+
+Direction asymmetry by design: relaxing a run that **started** with Ask Execs **on** works (broker exists). Turning Ask Execs **on** mid-run for a run that started with it **off** does nothing that run (no broker was registered) — it takes effect on the next submit. Coverage: `ExecPermissionBrokerTests` (5 auto-proceed tests).
+
 ### Denial propagation + banner
 
 `exec_report_denied` flows executor `_build_result_dict` → both chains' `result_dict` (independent of `exec_report_enabled`) → `interface.ask_rag` stores `last_exec_report_denied` in `global_state` → consumer reads+clears it → `services/response_parser.process_llm_response(..., exec_report_denied=...)` appends `_render_exec_denied_banner(...)` **after** the Exec report tables but **before** `save_message` (so a chat reload restores it). The banner (big red ⛔ "Execution interrupted") is NOT gated on the Exec report toggle.

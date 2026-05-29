@@ -194,6 +194,7 @@ export default [
                 preRenderConfirmationDialog: "readonly",
                 renderConfirmationDialog: "readonly",
                 showExecPermissionDialog: "readonly",
+                dismissExecPermissionDialogForRuntimeProceed: "readonly",
                 preRenderOmissionsDialog: "readonly",
                 renderOmissionsDialog: "readonly",
                 preRenderMcpsDialog: "readonly",
