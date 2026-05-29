@@ -230,7 +230,7 @@ Tlamatini expects Ollama at `http://127.0.0.1:11434`.
 
 ```powershell
 ollama pull Nomic-Embed-Text:latest
-ollama pull glm-5:cloud
+ollama pull kimi-k2.6:cloud
 ollama pull qwen3.5:cloud
 ollama pull gpt-oss:120b-cloud
 ollama pull qwen3.5:397b-cloud
@@ -240,7 +240,7 @@ ollama pull llama3.2-vision:11b
 | Tag | Used for |
 |---|---|
 | `Nomic-Embed-Text:latest` | RAG embeddings (default — small VRAM footprint, ~600 MB resident) |
-| `glm-5:cloud` | Default chat + Multi-Turn unified-agent + MCP file-search |
+| `kimi-k2.6:cloud` | Default chat + Multi-Turn unified-agent + MCP file-search |
 | `qwen3.5:cloud` | Default vision (Image-Interpreter) |
 | `gpt-oss:120b-cloud` | Several workflow-agent templates (Monitor-Log, Notifier, Prompter, Summarizer, …) |
 | `qwen3.5:397b-cloud` | Default FlowCreator |
@@ -252,7 +252,7 @@ You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§8
 
 ### 2.4. Cloud models require an Ollama Pro/Max plan
 
-Four of the six default model tags in [§2.3](#23-pull-the-default-models) carry the `:cloud` suffix — `glm-5:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those are **Ollama Cloud** models: they live on Ollama's servers, not on your machine, and `ollama pull` only registers a stub that proxies inference to the cloud. Reaching that cloud requires a logged-in Ollama account and a subscription tier that allows the workload you intend to run.
+Four of the six default model tags in [§2.3](#23-pull-the-default-models) carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those are **Ollama Cloud** models: they live on Ollama's servers, not on your machine, and `ollama pull` only registers a stub that proxies inference to the cloud. Reaching that cloud requires a logged-in Ollama account and a subscription tier that allows the workload you intend to run.
 
 The plan structure (prices are deliberately omitted from this README because they change — check **<https://ollama.com/pricing>** for the current numbers):
 
@@ -260,7 +260,7 @@ The plan structure (prices are deliberately omitted from this README because the
 
 | Plan | Cloud-model access | Why it matters for Tlamatini |
 |---|---|---|
-| **Free** | 1 cloud model concurrently, light usage. Local open-weights models are unlimited. | Enough to *try* a single cloud model for a one-shot chat. **Not enough** for Tlamatini's default config, which pins different cloud models for chat (`glm-5:cloud`), FlowCreator (`qwen3.5:397b-cloud`), several workflow agents (`gpt-oss:120b-cloud`), and vision (`qwen3.5:cloud`) — so a real Multi-Turn run typically needs 2–3 cloud models loaded at once. |
+| **Free** | 1 cloud model concurrently, light usage. Local open-weights models are unlimited. | Enough to *try* a single cloud model for a one-shot chat. **Not enough** for Tlamatini's default config, which pins different cloud models for chat (`kimi-k2.6:cloud`), FlowCreator (`qwen3.5:397b-cloud`), several workflow agents (`gpt-oss:120b-cloud`), and vision (`qwen3.5:cloud`) — so a real Multi-Turn run typically needs 2–3 cloud models loaded at once. |
 | **Pro** | 3 concurrent cloud models, ~50× the Free monthly quota, access to the larger cloud-only models, ability to upload / share private models. | The realistic minimum for running Tlamatini out-of-the-box with its shipped cloud-model defaults — Multi-Turn + Exec Report + occasional Image-Interpreter calls. |
 | **Max** | 10 concurrent cloud models, ~5× the Pro quota, designed for sustained heavy agentic workloads. | Recommended for long-running ACPX relays, FlowHypervisor-supervised flows, and Croner-driven unattended runs that chain many cloud calls per hour. |
 
@@ -1292,13 +1292,13 @@ For users, the takeaway is simpler: **a `.flw` saved in source mode should load 
 ```json
 {
   "embeding-model": "Nomic-Embed-Text:latest",
-  "chained-model": "glm-5:cloud",
+  "chained-model": "kimi-k2.6:cloud",
   "ollama_base_url": "http://127.0.0.1:11434",
   "ollama_token": "",
   "ANTHROPIC_API_KEY": "<ANTHROPIC_API_KEY goes here>",
   "GEMINI_API_KEY": "<GEMINI_API_KEY goes here>",
   "enable_unified_agent": true,
-  "unified_agent_model": "glm-5:cloud",
+  "unified_agent_model": "kimi-k2.6:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
   "unified_agent_max_iterations": 4096,

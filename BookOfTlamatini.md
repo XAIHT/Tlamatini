@@ -115,7 +115,7 @@ Tlamatini ships with default model names in `Tlamatini/agent/config.json` and se
 
 ```powershell
 ollama pull Nomic-Embed-Text:latest
-ollama pull glm-5:cloud
+ollama pull kimi-k2.6:cloud
 ollama pull qwen3.5:cloud
 ollama pull gpt-oss:120b-cloud
 ollama pull qwen3.5:397b-cloud
@@ -125,7 +125,7 @@ ollama pull llama3.2-vision:11b
 | Model tag | Used by |
 |---|---|
 | `Nomic-Embed-Text:latest` | RAG embedding model (default — light VRAM footprint, ~600 MB resident) |
-| `glm-5:cloud` | Default chat model + Multi-Turn unified-agent model + MCP file-search model |
+| `kimi-k2.6:cloud` | Default chat model + Multi-Turn unified-agent model + MCP file-search model |
 | `qwen3.5:cloud` | Default Image-Interpreter vision model |
 | `gpt-oss:120b-cloud` | Several workflow-agent templates (Monitor Log, Notifier, Prompter, Summarizer, Pser, Recmailer, Whatsapper, File-Interpreter, FlowHypervisor) |
 | `qwen3.5:397b-cloud` | Default FlowCreator model |
@@ -139,7 +139,7 @@ Some pulls are large and slow. Start them, walk away, come back.
 
 ## 5. Cloud models require an Ollama Pro/Max plan
 
-Four of the six default model tags in chapter §4 carry the `:cloud` suffix — `glm-5:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command only registers a thin stub on the local daemon that proxies inference requests to Ollama's servers. To make those proxied requests actually return something, three things have to be true: you have an Ollama account, you are signed in on the host that runs Tlamatini, and the account is on a subscription tier that allows the workload you are about to run.
+Four of the six default model tags in chapter §4 carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command only registers a thin stub on the local daemon that proxies inference requests to Ollama's servers. To make those proxied requests actually return something, three things have to be true: you have an Ollama account, you are signed in on the host that runs Tlamatini, and the account is on a subscription tier that allows the workload you are about to run.
 
 ### 5.1. The three tiers, in plain English
 
@@ -159,9 +159,9 @@ Tlamatini does not *require* Ollama Cloud. The cloud tags are convenience defaul
 
 | Config key | Default (cloud) | A reasonable local substitute |
 |---|---|---|
-| `chained-model` | `glm-5:cloud` | `qwen2.5-coder:14b` or `llama3.1:8b` |
-| `unified_agent_model` | `glm-5:cloud` | same as above |
-| `mcp_file_search_model` | `glm-5:cloud` | same as above |
+| `chained-model` | `kimi-k2.6:cloud` | `qwen2.5-coder:14b` or `llama3.1:8b` |
+| `unified_agent_model` | `kimi-k2.6:cloud` | same as above |
+| `mcp_file_search_model` | `kimi-k2.6:cloud` | same as above |
 | `flow_creator_model` | `qwen3.5:397b-cloud` | `qwen2.5:32b` or any large local model you can fit in VRAM |
 | `image_interpreter_model` | `qwen3.5:cloud` | `llama3.2-vision:11b` (already in chapter §4's pull list as the local fallback) |
 
@@ -175,7 +175,7 @@ The Ollama plan only governs `*:cloud` Ollama models. If you plan to use **ACPX*
 
 | Symptom | Likely cause | What to try |
 |---|---|---|
-| `ollama pull glm-5:cloud` succeeds but inference returns "unauthorized" / "401" | Not signed in to Ollama on this host. | Run `ollama signin` (or use the Ollama desktop app) and confirm `ollama whoami` prints your account. |
+| `ollama pull kimi-k2.6:cloud` succeeds but inference returns "unauthorized" / "401" | Not signed in to Ollama on this host. | Run `ollama signin` (or use the Ollama desktop app) and confirm `ollama whoami` prints your account. |
 | Inference returns "rate limit exceeded" / "429" right after a Multi-Turn step | Your plan's concurrent-model or monthly-usage cap is full. | Either upgrade the plan, drop concurrency by running fewer wrapped agents in parallel, or swap one of the cloud tags for a local model in `config.json`. |
 | Inference returns "model not available on this plan" | The tag you pulled is gated to a higher tier (Pro/Max only). | Check `ollama.com/pricing` for which models each tier covers, and pick a tag your plan includes — or upgrade. |
 | Tlamatini chat says "Ollama backend unreachable" | Local daemon is down, **not** a cloud problem. | `ollama serve` and `Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing` per chapter §3.3. Cloud requests still go through the local daemon. |
@@ -465,7 +465,7 @@ The full ACPX deep-dive is in **Part VI §46**. This chapter is just the toolbar
 
 Tick **ACPX** when:
 
-- You want a sub-task delegated to a *different* LLM than the one driving Tlamatini's chat. (Example: your chat runs glm-5, but you want Claude Code to do the actual refactor because it is better at long-context Python.)
+- You want a sub-task delegated to a *different* LLM than the one driving Tlamatini's chat. (Example: your chat runs kimi-k2.6, but you want Claude Code to do the actual refactor because it is better at long-context Python.)
 - You want a **multi-CLI relay** — Claude does the first pass, Gemini critiques, Cursor applies the fix.
 - You need a coding agent that can edit files in the *current working directory* without the wrapping ceremony of Multi-Turn.
 
@@ -1573,13 +1573,13 @@ The main file is `Tlamatini/agent/config.json`.
 ```json
 {
   "embeding-model": "Nomic-Embed-Text:latest",
-  "chained-model": "glm-5:cloud",
+  "chained-model": "kimi-k2.6:cloud",
   "ollama_base_url": "http://127.0.0.1:11434",
   "ollama_token": "",
   "ANTHROPIC_API_KEY": "config you api key here by claude",
   "GEMINI_API_KEY": "config your api key here by gemini",
   "enable_unified_agent": true,
-  "unified_agent_model": "glm-5:cloud",
+  "unified_agent_model": "kimi-k2.6:cloud",
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
   "unified_agent_max_iterations": 4096,

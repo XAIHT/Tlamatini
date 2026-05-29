@@ -4031,7 +4031,7 @@ class AcpxConfigDynamicGenerationTests(TestCase):
         return {
             "_comment": "Legacy config",
             "embeding-model": "qwen3-embedding:8b",
-            "chained-model": "glm-5.1:cloud",
+            "chained-model": "kimi-k2.6:cloud",
             "ollama_base_url": "http://127.0.0.1:11434",
             "enable_unified_agent": True,
             "_section_misc": "Miscellaneous Settings",
