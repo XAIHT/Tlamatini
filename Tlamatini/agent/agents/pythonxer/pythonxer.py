@@ -274,6 +274,13 @@ def start_agent(agent_name: str) -> bool:
         return False
 
 
+# Strict Ruff gate: when True (default, from config 'ruff_blocking' read in main()),
+# any Ruff finding ABORTS execution (Pythonxer returns non-zero) instead of running
+# a lint-failing script. Ruff being absent/timeout never blocks — the compile()
+# syntax floor in execute_python_script still guarantees the script at least parses.
+_RUFF_BLOCKING = True
+
+
 def validate_with_ruff(script_path: str) -> bool:
     """
     Run Ruff linter on the script. Returns True if no errors, False if errors found.
@@ -348,7 +355,7 @@ def validate_with_ruff(script_path: str) -> bool:
             logging.info("✅ Ruff validation passed - no issues found")
             return True
         else:
-            logging.warning(f"⚠️ Ruff found issues (exit code {result.returncode}) - proceeding anyway")
+            logging.warning(f"⚠️ Ruff found issues (exit code {result.returncode}) - see [Ruff] findings above")
             return False
 
     except FileNotFoundError:
@@ -381,9 +388,33 @@ def execute_python_script(script_content: str, execute_forked_window: bool = Fal
         with open(script_path, "w", encoding="utf-8") as f:
             f.write(script_content)
 
-        # Validate with Ruff (non-blocking)
-        logging.info("🔍 Running Ruff validation...")
-        validate_with_ruff(script_path)
+        # ── STRICT correctness gate (runs BEFORE any execution) ──
+        # 1. Deterministic syntax floor: a script that does not even parse is
+        #    refused outright — it is never executed. Works even if Ruff is absent.
+        try:
+            compile(script_content, script_path, "exec")
+        except SyntaxError as se:
+            loc = f"line {se.lineno}" + (f", col {se.offset}" if se.offset else "")
+            logging.error("=" * 60)
+            logging.error(f"⛔ SYNTAX ERROR - refusing to execute. {type(se).__name__}: {se.msg} ({loc})")
+            if (se.text or "").strip():
+                logging.error(f"   {se.text.rstrip()}")
+            logging.error("   Fix the script (rewrite it IN FULL if truncated) and run Pythonxer again.")
+            logging.error("=" * 60)
+            return False
+        # 2. Ruff gate: when _RUFF_BLOCKING (default), ANY Ruff finding ABORTS
+        #    execution so the caller can fix the script and retry. Findings are
+        #    logged as [Ruff] lines. Ruff absent/timeout fails open (the syntax
+        #    floor above already ran).
+        logging.info("🔍 Running Ruff validation (strict gate)...")
+        ruff_ok = validate_with_ruff(script_path)
+        if _RUFF_BLOCKING and not ruff_ok:
+            logging.error("=" * 60)
+            logging.error("⛔ RUFF FAILED - refusing to execute the script.")
+            logging.error("   The script has lint/static errors (see the [Ruff] findings above).")
+            logging.error("   Fix the reported issues and run Pythonxer again.")
+            logging.error("=" * 60)
+            return False
 
         # Execute the script
         cmd = get_python_command() + [script_path]
@@ -566,38 +597,48 @@ def main():
         script_content = config.get('script', '')
         target_agents = config.get('target_agents', [])
         execute_forked_window = config.get('execute_forked_window', False)
+        global _RUFF_BLOCKING
+        _RUFF_BLOCKING = bool(config.get('ruff_blocking', True))
 
         logging.info("🐍 PYTHONXER AGENT STARTED")
         logging.info(f"🎯 Targets: {target_agents}")
         logging.info(f"🪟 Forked window: {execute_forked_window}")
+        logging.info(f"🔒 Ruff blocking (strict gate): {_RUFF_BLOCKING}")
         logging.info("=" * 60)
 
         # Execute the Python script
         script_result = execute_python_script(script_content, execute_forked_window=execute_forked_window)
 
-        # Log the result
+        # Log the result. The detailed errors (SyntaxError / RUFF FAILED + [Ruff]
+        # findings / traceback / stderr) are ALWAYS logged above by the gate and
+        # execution paths — Pythonxer ALWAYS reports its errors.
         if script_result:
             logging.info("PYTHONXER RESULT: TRUE")
         else:
-            logging.info("PYTHONXER RESULT: FALSE")
+            logging.info("PYTHONXER RESULT: FALSE (errors are logged above)")
 
         logging.info("=" * 60)
 
-        # Trigger downstream agents ONLY if script returned True
-        if script_result:
-            total_triggered = 0
-            if target_agents:
-                wait_for_agents_to_stop(target_agents)
-                logging.info(f"🚀 Script returned True - triggering {len(target_agents)} downstream agents...")
-                for target in target_agents:
-                    logging.info(f"   ► Triggering: {target}")
-                    if start_agent(target):
-                        total_triggered += 1
-                logging.info(f"✨ Triggered {total_triggered}/{len(target_agents)} agents.")
-            else:
-                logging.info("ℹ️ No downstream agents configured.")
+        # ALWAYS trigger the downstream / output agents — NO MATTER WHAT: success, a
+        # Ruff/syntax gate refusal, OR a runtime failure. Pythonxer MUST NEVER
+        # dead-end an agentic-control-panel flow. The agents wired to Pythonxer's
+        # output are responsible for inspecting its result/log and acting accordingly
+        # (the user wires any validation they want downstream). The process still
+        # exits with the REAL code (0 success / 1 on any failure) for the LED state
+        # and the Multi-Turn chat fix->re-ruff->retry loop — but the exit code NEVER
+        # gates whether the downstream agents start.
+        total_triggered = 0
+        if target_agents:
+            wait_for_agents_to_stop(target_agents)
+            logging.info(f"🚀 Triggering {len(target_agents)} downstream agent(s) "
+                         "(ALWAYS - regardless of Pythonxer's result)...")
+            for target in target_agents:
+                logging.info(f"   ► Triggering: {target}")
+                if start_agent(target):
+                    total_triggered += 1
+            logging.info(f"✨ Triggered {total_triggered}/{len(target_agents)} agents.")
         else:
-            logging.info("⛔ Script returned False - NOT triggering downstream agents.")
+            logging.info("ℹ️ No downstream agents configured.")
 
         logging.info(f"🏁 Pythonxer agent finished. Result: {'TRUE' if script_result else 'FALSE'}")
 

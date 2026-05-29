@@ -2121,8 +2121,18 @@ def _launch_wrapped_chat_agent(spec, request):
     elif run.status == "completed":
         payload["message"] = f"{spec.display_name} completed in the isolated runtime copy."
     elif run.status == "failed":
-        payload["message"] = f"{spec.display_name} finished with a failure state. Inspect the log excerpt."
-        payload["retryable"] = False
+        payload["message"] = (
+            f"{spec.display_name} FAILED with a non-zero exit (exit_code={run.exitCode}). "
+            "Read 'log_excerpt' for the EXACT cause — e.g. a SyntaxError, the "
+            "'RUFF FAILED' banner with [Ruff] findings, or a Python traceback. "
+            "REWRITE the script to fix exactly what the log reports (rewrite it IN "
+            "FULL if it was truncated), then call this SAME tool again with the "
+            "corrected script. Repeat fix -> re-run -> re-check until it passes "
+            "(syntax OK + Ruff clean + exit 0). Never re-send the identical failing "
+            "input, and do NOT report failure to the user until a corrected retry "
+            "has actually been attempted."
+        )
+        payload["retryable"] = True
     else:
         payload["message"] = f"{spec.display_name} ended with status '{run.status}'."
 
