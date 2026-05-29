@@ -1533,6 +1533,341 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
     return runtime_config
 
 
+# ----------------------------------------------------------------------------
+# Pre-launch action preview (visibility into tlamatini.log BEFORE the spawn)
+# ----------------------------------------------------------------------------
+# Surfaces the exact action Tlamatini is ABOUT to hand off, immediately before
+# _launch_wrapped_chat_agent spawns the agent subprocess. This is the user's
+# "see what's going to run, in plain text, in the log file" moment -- a single
+# atomic INFO entry so concurrent log writes can't interleave it (same rule the
+# Parametrizer-section emitters in agents/*/<name>.py follow).
+#
+# Two shapes per agent, both optional:
+#   - body  : (config_field, payload_label) -- a long, free-form payload
+#             rendered between `--- begin <label> ---` and `--- end <label> ---`
+#             markers (e.g. Executer's shell command, Pythonxer's python code,
+#             SSHer's remote command, Apirer's HTTP body, File-Creator's file
+#             content). Truncated past _PRE_LAUNCH_PREVIEW_MAX_CHARS.
+#   - params: tuple of dotted config paths rendered as `key : value` lines
+#             (e.g. SSHer's user/ip, Apirer's method/url, Deleter's file glob).
+#
+# An agent can declare body, params, or both. Agents whose work is purely
+# observational (Crawler, Summarizer, Prompter, File-Interpreter,
+# File-Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer, Sleeper,
+# Googler) are deliberately ABSENT from the registry -- there is no
+# "about-to-mutate" surface worth pre-announcing for a read-only agent.
+_PRE_LAUNCH_PREVIEW_MAX_CHARS = 8000  # cap so a giant inlined payload can't flood the log
+
+# Keys whose values must NOT land in the log under any circumstance. Matched
+# case-insensitively against the LEAF key name (so 'smtp.password' and
+# 'tlamatini.password' both redact). Belt-and-braces beyond the existing
+# `secret_paths` in agent_contracts.py.
+_PRE_LAUNCH_PREVIEW_SECRET_LEAF_PATTERNS = (
+    'password', 'secret', 'api_hash', 'api_token', 'apikey', 'api_key',
+    'access_token', 'bot_token', 'private_key', 'verify_token',
+)
+
+_PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
+    # --- direct execution -----------------------------------------------
+    'executer':       {'title': 'EXECUTER COMMAND TO RUN',
+                       'body': ('script', 'command')},
+    'pythonxer':      {'title': 'PYTHONXER SCRIPT TO RUN',
+                       'body': ('script', 'python script')},
+
+    # --- remote shell / file transfer -----------------------------------
+    'ssher':          {'title': 'SSHER REMOTE COMMAND TO RUN',
+                       'body': ('script', 'remote command'),
+                       'params': ('user', 'ip')},
+    'scper':          {'title': 'SCPER FILE TRANSFER TO PERFORM',
+                       'params': ('direction', 'user', 'ip', 'file')},
+
+    # --- containers / infra ---------------------------------------------
+    'dockerer':       {'title': 'DOCKERER COMMAND TO RUN',
+                       'body': ('command', 'docker command')},
+    'kuberneter':     {'title': 'KUBERNETER kubectl COMMAND TO RUN',
+                       'params': ('command', 'namespace', 'extra_args', 'custom_command')},
+
+    # --- vcs ------------------------------------------------------------
+    'gitter':         {'title': 'GITTER GIT COMMAND TO RUN',
+                       'params': ('repo_path', 'command', 'branch', 'commit_message',
+                                  'remote', 'custom_command')},
+
+    # --- databases ------------------------------------------------------
+    'sqler':          {'title': 'SQLER SCRIPT TO EXECUTE',
+                       'body': ('script', 'sql / python script'),
+                       'params': ('sql_connection.server', 'sql_connection.database',
+                                  'sql_connection.username')},
+    'mongoxer':       {'title': 'MONGOXER SCRIPT TO RUN',
+                       'body': ('script', 'pymongo script'),
+                       'params': ('mongo_connection.connection_string',
+                                  'mongo_connection.database',
+                                  'mongo_connection.login')},
+
+    # --- ci -------------------------------------------------------------
+    'jenkinser':      {'title': 'JENKINSER JOB TO TRIGGER',
+                       'params': ('jenkins_url', 'job_name', 'user',
+                                  'parameters', 'use_parameters')},
+
+    # --- http -----------------------------------------------------------
+    'apirer':         {'title': 'APIRER HTTP REQUEST TO SEND',
+                       'body': ('body', 'request body'),
+                       'params': ('method', 'url', 'headers',
+                                  'expected_status', 'timeout')},
+
+    # --- filesystem -----------------------------------------------------
+    'file_creator':   {'title': 'FILE-CREATOR FILE TO WRITE',
+                       'body': ('content', 'file content'),
+                       'params': ('file_path',)},
+    'mover':          {'title': 'MOVER FILE OPERATION TO PERFORM',
+                       'params': ('operation', 'source_files', 'destination_folder',
+                                  'recursive', 'filetype_exclusions', 'trigger_mode',
+                                  'trigger_event_string')},
+    'deleter':        {'title': 'DELETER FILE DELETION TO PERFORM',
+                       'params': ('files_to_delete', 'recursive',
+                                  'filetype_exclusions', 'trigger_mode',
+                                  'trigger_event_string')},
+
+    # --- messaging ------------------------------------------------------
+    'emailer':        {'title': 'EMAILER MESSAGE TO SEND',
+                       'body': ('email.body', 'email body'),
+                       'params': ('smtp.host', 'smtp.port', 'smtp.username',
+                                  'smtp.use_tls', 'smtp.use_ssl',
+                                  'email.from_address', 'email.to_addresses',
+                                  'email.cc_addresses', 'email.bcc_addresses',
+                                  'email.subject', 'pattern', 'attach_log')},
+    'telegramer':     {'title': 'TELEGRAMER MESSAGE TO SEND',
+                       'body': ('telegram.message', 'telegram message'),
+                       'params': ('telegram.api_id', 'telegram.chat_id')},
+    'whatsapper':     {'title': 'WHATSAPPER MONITORING / SEND TO PERFORM',
+                       'params': ('textmebot.phone', 'keywords', 'poll_interval',
+                                  'llm.base_url', 'llm.model')},
+    'notifier':       {'title': 'NOTIFIER DESKTOP ALERT TO RAISE',
+                       'params': ('target.mode', 'target.search_strings',
+                                  'target.outcome_detail', 'target.sound_enabled',
+                                  'target.shutdown_on_match', 'target.poll_interval')},
+
+    # --- desktop ui -----------------------------------------------------
+    'keyboarder':     {'title': 'KEYBOARDER KEYSTROKES TO TYPE',
+                       'body': ('input_sequence', 'key sequence'),
+                       'params': ('stride_delay',)},
+    'mouser':         {'title': 'MOUSER POINTER ACTION TO PERFORM',
+                       'params': ('movement_type', 'actual_position',
+                                  'ini_posx', 'ini_posy', 'end_posx', 'end_posy',
+                                  'button_click', 'total_time',
+                                  'window_title', 'window_anchor',
+                                  'locate_image_path', 'locate_confidence',
+                                  'scroll_amount')},
+    'windower':       {'title': 'WINDOWER WINDOW OPERATION TO PERFORM',
+                       'params': ('action', 'window_title', 'match_mode',
+                                  'match_index', 'pos_x', 'pos_y',
+                                  'width', 'height', 'arrange_mode',
+                                  'activate_after', 'fail_if_absent')},
+
+    # --- offensive security ---------------------------------------------
+    'kalier':         {'title': 'KALIER PENTEST ACTION TO RUN',
+                       'body': ('command', 'shell command'),
+                       'params': ('action', 'server_url', 'target', 'url',
+                                  'additional_args', 'scan_type', 'ports',
+                                  'mode', 'wordlist', 'data', 'module', 'options',
+                                  'service', 'username', 'username_file',
+                                  'password_file', 'hash_file', 'format', 'timeout')},
+
+    # --- embedded firmware ----------------------------------------------
+    'stm32er':        {'title': 'STM32ER FIRMWARE ACTION TO RUN',
+                       'body': ('content', 'source content (write_source)'),
+                       'params': ('action', 'device', 'project_dir', 'name',
+                                  'dest_parent', 'rel_path', 'system',
+                                  'binary', 'port', 'baud', 'data',
+                                  'address', 'symbol', 'value', 'variables',
+                                  'monitor_seconds', 'server_script',
+                                  'mcp_python', 'auto_bootstrap', 'preflight')},
+
+    # --- browser automation ---------------------------------------------
+    'playwrighter':   {'title': 'PLAYWRIGHTER BROWSER SCRIPT TO RUN',
+                       'body': ('steps_json', 'steps json (overrides yaml steps)'),
+                       'params': ('start_url', 'browser', 'headless', 'timeout_ms',
+                                  'nav_wait_until', 'viewport_width', 'viewport_height',
+                                  'hold_open_seconds', 'hold_open_ms',
+                                  'storage_state_in', 'storage_state_out',
+                                  'output_file')},
+
+    # --- ue editor ------------------------------------------------------
+    'unrealer':       {'title': 'UNREALER COMMAND TO SEND TO UE5 EDITOR',
+                       'body': ('params.code', 'python code (execute_python)'),
+                       'params': ('host', 'port', 'command',
+                                  'params.name', 'params.actor_name',
+                                  'params.blueprint_name', 'params.console_command',
+                                  'params.class_name', 'params.path',
+                                  'params.source_file', 'params.destination_path',
+                                  'connect_timeout', 'read_timeout')},
+
+    # --- post-quantum crypto --------------------------------------------
+    'kyber_keygen':   {'title': 'KYBER-KEYGEN KEY PAIR TO GENERATE',
+                       'params': ('kyber_variant',)},
+    'kyber_cipher':   {'title': 'KYBER-CIPHER ENCRYPTION TO PERFORM',
+                       'body': ('buffer', 'plaintext to encrypt'),
+                       'params': ('kyber_variant', 'public_key')},
+    'kyber_decipher': {'title': 'KYBER-DECIPHER DECRYPTION TO PERFORM',
+                       'params': ('kyber_variant', 'private_key',
+                                  'encapsulation', 'initialization_vector',
+                                  'cipher_text')},
+
+    # --- archives -------------------------------------------------------
+    'de_compresser':  {'title': 'DE-COMPRESSER ARCHIVE OPERATION TO PERFORM',
+                       'params': ('input', 'output', 'passwordless')},
+
+    # --- decompilation --------------------------------------------------
+    'j_decompiler':   {'title': 'J-DECOMPILER DECOMPILATION TO PERFORM',
+                       'params': ('directory', 'recursive')},
+
+    # --- user interaction -----------------------------------------------
+    # Asker pops a runtime A/B choice dialog. Surfacing the two legends
+    # BEFORE the dialog appears lets the user see the question Tlamatini is
+    # about to ask (and confirm the wording matches the intent).
+    'asker':          {'title': 'ASKER USER CHOICE TO PROMPT',
+                       'params': ('legend_path_a', 'legend_path_b')},
+}
+
+# Wrapped chat-agents deliberately NOT in _PRE_LAUNCH_PREVIEW_BY_TEMPLATE.
+# Read-only / observational / trivial -- no destructive intent worth surfacing
+# before the spawn. The contract test in tests.py asserts every wrapped
+# chat-agent is in exactly one of these two sets.
+_PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES = frozenset({
+    'crawler', 'summarizer', 'prompter', 'file_interpreter', 'file_extractor',
+    'image_interpreter', 'shoter', 'monitor_log', 'monitor_netstat',
+    'recmailer', 'sleeper', 'pser',
+})
+
+
+def _looks_like_secret_key(dotted_path):
+    """Substring-match the leaf segment of a dotted key against the secret
+    pattern list. Defense-in-depth alongside agent_contracts.secret_paths."""
+    if not dotted_path:
+        return False
+    leaf = dotted_path.rsplit('.', 1)[-1].lower()
+    return any(pat in leaf for pat in _PRE_LAUNCH_PREVIEW_SECRET_LEAF_PATTERNS)
+
+
+def _lookup_dotted_config_value(runtime_config, dotted_path):
+    """Walk ``dotted_path`` (e.g. ``'smtp.host'``) through ``runtime_config``.
+
+    Returns the resolved value or the sentinel string ``'<MISSING>'`` if any
+    segment is absent. ``'<MISSING>'`` is logged literally so the user sees the
+    field was checked but not configured (vs. printed empty)."""
+    cursor = runtime_config
+    for seg in dotted_path.split('.'):
+        if not isinstance(cursor, dict) or seg not in cursor:
+            return '<MISSING>'
+        cursor = cursor[seg]
+    return cursor
+
+
+def _format_preview_value(value, dotted_path):
+    """Render a config value for the preview block.
+
+    - Secret-looking keys -> ``<REDACTED N chars>`` so the user knows the
+      value is set without ever exposing it.
+    - None / empty string -> ``(unset)``.
+    - dict / list / tuple -> compact JSON for one-line readability.
+    - everything else -> ``repr()``-free ``str()``.
+    """
+    if _looks_like_secret_key(dotted_path):
+        try:
+            length = len(value) if value is not None else 0
+        except TypeError:
+            length = 0
+        if not value:
+            return '(unset)'
+        return f'<REDACTED {length} chars>'
+    if value is None or value == '':
+        return '(unset)'
+    if value == '<MISSING>':
+        return '(missing from config)'
+    if isinstance(value, (dict, list, tuple)):
+        try:
+            return json.dumps(value, default=str, separators=(', ', ': '))
+        except (TypeError, ValueError):
+            return str(value)
+    return str(value)
+
+
+def _render_pre_launch_script_preview(spec, runtime_config, runtime_dir, log_path):
+    """Return the atomic multi-line log body for a state-changing chat-agent
+    launch. Returns ``None`` for agents not in the preview registry so the
+    launcher's call site can ``if body: logger.info(body)`` without branching
+    on template_dir."""
+    if not spec or not isinstance(runtime_config, dict):
+        return None
+    entry = _PRE_LAUNCH_PREVIEW_BY_TEMPLATE.get(getattr(spec, 'template_dir', ''))
+    if entry is None:
+        return None
+    title = entry.get('title', f'{spec.display_name} ACTION TO RUN'.upper())
+    body_spec = entry.get('body')
+    param_paths = entry.get('params', ()) or ()
+
+    out = [
+        "=" * 80,
+        f"[tools._launch_wrapped_chat_agent] ===== {title} =====",
+        f"[tools._launch_wrapped_chat_agent] agent          : {spec.display_name}",
+        f"[tools._launch_wrapped_chat_agent] runtime_dir    : {runtime_dir}",
+        f"[tools._launch_wrapped_chat_agent] log_path       : {log_path}",
+    ]
+
+    # Surface non_blocking / execute_forked_window only when the agent's
+    # config actually carries them (avoids noise for agents that don't).
+    if 'non_blocking' in runtime_config:
+        out.append(f"[tools._launch_wrapped_chat_agent] non_blocking   : "
+                   f"{bool(runtime_config.get('non_blocking', False))}")
+    if 'execute_forked_window' in runtime_config:
+        out.append(f"[tools._launch_wrapped_chat_agent] forked_window  : "
+                   f"{bool(runtime_config.get('execute_forked_window', False))}")
+
+    # Key parameters as `key : value` lines (key-redacted; long values inlined).
+    for path in param_paths:
+        value = _lookup_dotted_config_value(runtime_config, path)
+        out.append(
+            f"[tools._launch_wrapped_chat_agent] param {path:<24} : "
+            f"{_format_preview_value(value, path)}"
+        )
+
+    # Optional long body, with --- begin/end --- markers + size/truncation.
+    if body_spec:
+        body_field, body_label = body_spec
+        raw = _lookup_dotted_config_value(runtime_config, body_field)
+        if raw == '<MISSING>':
+            body_text = ''
+        else:
+            body_text = raw if isinstance(raw, str) else str(raw)
+        line_count = body_text.count('\n') + 1 if body_text else 0
+        char_count = len(body_text)
+        truncated = False
+        if char_count > _PRE_LAUNCH_PREVIEW_MAX_CHARS:
+            body_text = (
+                body_text[:_PRE_LAUNCH_PREVIEW_MAX_CHARS]
+                + f"\n... (truncated; {char_count - _PRE_LAUNCH_PREVIEW_MAX_CHARS} chars omitted)"
+            )
+            truncated = True
+        # Body fields whose KEY name looks secret never have their content
+        # printed -- only a size summary.
+        if _looks_like_secret_key(body_field):
+            out.append(
+                f"[tools._launch_wrapped_chat_agent] body {body_field:<25} : "
+                f"<REDACTED {char_count} chars>"
+            )
+        else:
+            out.append(
+                f"[tools._launch_wrapped_chat_agent] body size      : "
+                f"{line_count} line(s), {char_count} char(s)"
+                + ("  [TRUNCATED]" if truncated else "")
+            )
+            out.append(f"[tools._launch_wrapped_chat_agent] --- begin {body_label} ---")
+            out.append(body_text if body_text else "(empty)")
+            out.append(f"[tools._launch_wrapped_chat_agent] --- end {body_label} ---")
+
+    out.append("=" * 80)
+    return "\n".join(out)
+
+
 def _launch_wrapped_chat_agent(spec, request):
     logger.info("=" * 80)
     logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH START =====")
@@ -1717,6 +2052,13 @@ def _launch_wrapped_chat_agent(spec, request):
         log_path=log_path,
         request_text=str(request),
     )
+
+    # Surface the Executer command / Pythonxer code to the central log file
+    # BEFORE the subprocess starts, so the user can see in tlamatini.log
+    # exactly what's about to run. No-op for any other wrapped chat-agent.
+    preview = _render_pre_launch_script_preview(spec, runtime_config, runtime_dir, log_path)
+    if preview:
+        logger.info("%s", preview)
 
     logger.info("[tools._launch_wrapped_chat_agent] Starting subprocess...")
     try:
