@@ -6055,10 +6055,48 @@ class AskExecsHelperTests(TestCase):
     def test_requires_exec_permission_gate(self):
         from agent.mcp_agent import MultiTurnToolAgentExecutor
         exe = MultiTurnToolAgentExecutor.__new__(MultiTurnToolAgentExecutor)
+        # Allowlist: ONLY the Tier 1 + Tier 2 execution agents are gated.
+        # Tier 1 (arbitrary command / script execution).
         self.assertTrue(exe._requires_exec_permission('execute_command'))
         self.assertTrue(exe._requires_exec_permission('chat_agent_executer'))
-        self.assertTrue(exe._requires_exec_permission('acp_spawn'))
-        self.assertTrue(exe._requires_exec_permission('invoke_skill'))
+        self.assertTrue(exe._requires_exec_permission('execute_file'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_pythonxer'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_ssher'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_kalier'))
+        # Tier 2 (domain / tool-specific command runners + ACPX).
+        self.assertTrue(exe._requires_exec_permission('chat_agent_pser'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_dockerer'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_kuberneter'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_jenkinser'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_gitter'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_sqler'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_mongoxer'))
+        self.assertTrue(exe._requires_exec_permission('decompile_java'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_j_decompiler'))
+        # Explicitly omitted from the gate per request: De-Compresser,
+        # Unrealer, STM32er, and ACPXer (the acp_* family).
+        self.assertFalse(exe._requires_exec_permission('chat_agent_de_compresser'))
+        self.assertFalse(exe._requires_exec_permission('unzip_file'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_unrealer'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_stm32er'))
+        self.assertFalse(exe._requires_exec_permission('acp_spawn'))
+        self.assertFalse(exe._requires_exec_permission('acp_send'))
+        self.assertFalse(exe._requires_exec_permission('acp_send_and_wait'))
+        self.assertFalse(exe._requires_exec_permission('acp_kill'))
+        self.assertFalse(exe._requires_exec_permission('acp_relay'))
+        # NOT in Tier 1/2 → no prompt, even though several are state-changing.
+        self.assertFalse(exe._requires_exec_permission('invoke_skill'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_scper'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_file_creator'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_deleter'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_apirer'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_send_email'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_keyboarder'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_mouser'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_playwrighter'))
+        # Read-only / inspection tools were never executions to approve.
+        self.assertFalse(exe._requires_exec_permission('chat_agent_crawler'))
+        self.assertFalse(exe._requires_exec_permission('googler'))
         # Management / polling tools are inspection, not execution → exempt.
         self.assertFalse(exe._requires_exec_permission('chat_agent_run_status'))
         self.assertFalse(exe._requires_exec_permission('get_current_time'))
