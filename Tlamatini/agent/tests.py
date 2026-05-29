@@ -5373,3 +5373,385 @@ class LoadedContextPriorityTests(TestCase):
         self.assertIn("NOT Tlamatini's own", agent_input)
         self.assertIn('example.py', agent_input)
 
+
+class PreLaunchScriptPreviewTests(TestCase):
+    """The wrapped chat-agent launcher surfaces what the spawned agent is
+    ABOUT to do in ``tlamatini.log`` BEFORE the child starts, so the user
+    can see in plain text exactly what is going to run.
+
+    Pure-helper unit tests covering both shapes (body / params / both),
+    secret-key redaction, truncation, and a source-level contract test that
+    the launcher actually calls the helper at the right point, plus a
+    coverage contract that every wrapped chat-agent is accounted for.
+    """
+
+    def _spec(self, template_dir, display_name=None):
+        return SimpleNamespace(
+            template_dir=template_dir,
+            display_name=display_name or template_dir.capitalize(),
+            key=template_dir,
+        )
+
+    # -- existing shape: body-only (Executer / Pythonxer) -----------------
+
+    def test_executer_preview_contains_command_body_and_runtime_dir(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('executer'),
+            {'script': 'echo Hello && dir', 'non_blocking': False, 'execute_forked_window': True},
+            r'C:\runtime\executer_3_abc',
+            r'C:\runtime\executer_3_abc\executer_3_abc.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('EXECUTER COMMAND TO RUN', body)
+        self.assertIn('echo Hello && dir', body)
+        self.assertIn(r'C:\runtime\executer_3_abc', body)
+        self.assertIn('forked_window  : True', body)
+        self.assertIn('non_blocking   : False', body)
+        self.assertIn('--- begin command ---', body)
+        self.assertIn('--- end command ---', body)
+
+    def test_pythonxer_preview_contains_python_code_and_size_summary(self):
+        from agent import tools
+        code = "import sys\nprint('Hello from Pythonxer!')\nsys.exit(0)"
+        body = tools._render_pre_launch_script_preview(
+            self._spec('pythonxer'),
+            {'script': code, 'execute_forked_window': False},
+            r'C:\runtime\pythonxer_1_xyz',
+            r'C:\runtime\pythonxer_1_xyz\pythonxer_1_xyz.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('PYTHONXER SCRIPT TO RUN', body)
+        self.assertIn("print('Hello from Pythonxer!')", body)
+        self.assertIn('sys.exit(0)', body)
+        self.assertIn('3 line(s)', body)
+        self.assertIn('--- begin python script ---', body)
+        self.assertIn('--- end python script ---', body)
+
+    def test_preview_truncates_oversized_script_with_marker(self):
+        from agent import tools
+        cap = tools._PRE_LAUNCH_PREVIEW_MAX_CHARS
+        oversized = 'X' * (cap + 1234)
+        body = tools._render_pre_launch_script_preview(
+            self._spec('pythonxer'),
+            {'script': oversized},
+            r'C:\runtime\pythonxer_2_big',
+            r'C:\runtime\pythonxer_2_big\pythonxer_2_big.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('[TRUNCATED]', body)
+        self.assertIn('1234 chars omitted', body)
+        # The visible payload is the cap, not the full oversized blob.
+        self.assertLess(body.count('X'), len(oversized))
+        self.assertGreaterEqual(body.count('X'), cap)
+
+    def test_preview_handles_missing_or_empty_script_field(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('executer'),
+            {'non_blocking': True},  # no 'script' key at all
+            '/tmp/r',
+            '/tmp/r/log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('EXECUTER COMMAND TO RUN', body)
+        self.assertIn('(empty)', body)
+        self.assertIn('0 line(s), 0 char(s)', body)
+
+    def test_preview_handles_non_dict_or_missing_inputs(self):
+        from agent import tools
+        self.assertIsNone(
+            tools._render_pre_launch_script_preview(None, {'script': 'x'}, '/tmp', '/tmp/l'),
+        )
+        self.assertIsNone(
+            tools._render_pre_launch_script_preview(
+                self._spec('executer'), None, '/tmp', '/tmp/l',
+            ),
+        )
+        self.assertIsNone(
+            tools._render_pre_launch_script_preview(
+                self._spec('executer'), 'not-a-dict', '/tmp', '/tmp/l',
+            ),
+        )
+
+    # -- new shape: body + params (Ssher, Apirer, File-Creator, ...) ------
+
+    def test_ssher_preview_surfaces_remote_command_with_user_and_ip(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('ssher', 'SSHer'),
+            {'user': 'ops', 'ip': '10.0.0.5', 'script': 'systemctl status nginx'},
+            '/runtime/ssher_1_xx',
+            '/runtime/ssher_1_xx/ssher_1_xx.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('SSHER REMOTE COMMAND TO RUN', body)
+        self.assertIn('param user', body)
+        self.assertIn('ops', body)
+        self.assertIn('param ip', body)
+        self.assertIn('10.0.0.5', body)
+        self.assertIn('--- begin remote command ---', body)
+        self.assertIn('systemctl status nginx', body)
+        self.assertIn('--- end remote command ---', body)
+
+    def test_apirer_preview_surfaces_method_url_and_request_body(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('apirer', 'Apirer'),
+            {
+                'method': 'POST',
+                'url': 'https://api.example.com/v1/orders',
+                'headers': {'Content-Type': 'application/json'},
+                'body': '{"sku": "ABC", "qty": 3}',
+                'expected_status': 201,
+                'timeout': 30,
+            },
+            '/runtime/apirer_2_yy',
+            '/runtime/apirer_2_yy/apirer_2_yy.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('APIRER HTTP REQUEST TO SEND', body)
+        self.assertIn('POST', body)
+        self.assertIn('https://api.example.com/v1/orders', body)
+        self.assertIn('Content-Type', body)
+        self.assertIn('--- begin request body ---', body)
+        self.assertIn('"sku": "ABC"', body)
+
+    def test_file_creator_preview_surfaces_path_and_content(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('file_creator', 'File Creator'),
+            {'file_path': r'C:\tmp\hello.py', 'content': 'print("hello")\n'},
+            '/runtime/file_creator_4',
+            '/runtime/file_creator_4/file_creator.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('FILE-CREATOR FILE TO WRITE', body)
+        self.assertIn(r'C:\tmp\hello.py', body)
+        self.assertIn('--- begin file content ---', body)
+        self.assertIn('print("hello")', body)
+
+    # -- params-only shape (Deleter, Mover, Kuberneter, ...) --------------
+
+    def test_deleter_preview_lists_target_glob_without_body_block(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('deleter', 'Deleter'),
+            {
+                'files_to_delete': ['C:/Temp/*.tmp', 'D:/Logs/*.bak'],
+                'recursive': True,
+                'filetype_exclusions': '.profile',
+                'trigger_mode': 'immediate',
+                'trigger_event_string': 'EVENT DETECTED',
+            },
+            '/runtime/deleter_3',
+            '/runtime/deleter_3/deleter.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('DELETER FILE DELETION TO PERFORM', body)
+        # Lists render in compact json.
+        self.assertIn('C:/Temp/*.tmp', body)
+        self.assertIn('D:/Logs/*.bak', body)
+        self.assertIn('recursive', body)
+        # Params-only agents must NOT have begin/end body markers.
+        self.assertNotIn('--- begin', body)
+        self.assertNotIn('--- end', body)
+
+    def test_kuberneter_preview_lists_command_namespace_and_extras(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('kuberneter', 'Kuberneter'),
+            {
+                'command': 'apply',
+                'namespace': 'production',
+                'extra_args': '-f deployment.yaml',
+                'custom_command': '',
+            },
+            '/runtime/kuberneter_1',
+            '/runtime/kuberneter_1/kuberneter.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('KUBERNETER kubectl COMMAND TO RUN', body)
+        self.assertIn('param command', body)
+        self.assertIn('apply', body)
+        self.assertIn('production', body)
+        self.assertIn('deployment.yaml', body)
+
+    # -- dotted nested config paths (Emailer / Telegramer / SQLer / ...) --
+
+    def test_emailer_preview_resolves_dotted_smtp_and_email_paths(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('emailer', 'Send Email'),
+            {
+                'smtp': {
+                    'host': 'smtp.gmail.com',
+                    'port': 587,
+                    'username': 'me@example.com',
+                    'password': 'SUPER-SECRET',  # MUST be redacted
+                    'use_tls': True,
+                    'use_ssl': False,
+                },
+                'email': {
+                    'from_address': 'me@example.com',
+                    'to_addresses': ['ops@example.com'],
+                    'cc_addresses': [],
+                    'bcc_addresses': [],
+                    'subject': '[ALERT] {source_agent}',
+                    'body': 'Pattern matched at {timestamp}.',
+                },
+                'pattern': 'EVENT DETECTED',
+                'attach_log': False,
+            },
+            '/runtime/emailer_5',
+            '/runtime/emailer_5/emailer.log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('EMAILER MESSAGE TO SEND', body)
+        self.assertIn('smtp.host', body)
+        self.assertIn('smtp.gmail.com', body)
+        self.assertIn('smtp.port', body)
+        self.assertIn('587', body)
+        self.assertIn('email.subject', body)
+        self.assertIn('[ALERT] {source_agent}', body)
+        self.assertIn('--- begin email body ---', body)
+        self.assertIn('Pattern matched at {timestamp}.', body)
+        # Secret-key redaction defense-in-depth.
+        self.assertNotIn('SUPER-SECRET', body)
+
+    # -- secret-key redaction --------------------------------------------
+
+    def test_redaction_hides_value_for_secret_looking_leaf_keys(self):
+        from agent import tools
+        # Even if a future registry entry accidentally surfaced a password
+        # field, the value MUST be redacted, never logged in clear.
+        self.assertTrue(tools._looks_like_secret_key('smtp.password'))
+        self.assertTrue(tools._looks_like_secret_key('tlamatini.password'))
+        self.assertTrue(tools._looks_like_secret_key('telegram.api_hash'))
+        self.assertTrue(tools._looks_like_secret_key('whatsapp.access_token'))
+        self.assertTrue(tools._looks_like_secret_key('private_key'))
+        self.assertFalse(tools._looks_like_secret_key('smtp.host'))
+        self.assertFalse(tools._looks_like_secret_key('username'))
+        rendered = tools._format_preview_value('hunter2', 'smtp.password')
+        self.assertIn('REDACTED', rendered)
+        self.assertNotIn('hunter2', rendered)
+        # Empty secrets are explicitly noted as (unset), not as 0-char REDACTED.
+        self.assertEqual(tools._format_preview_value('', 'smtp.password'), '(unset)')
+
+    def test_redaction_hides_kyber_private_key_body_field(self):
+        """If a body_field's KEY looks secret, the whole body is suppressed
+        (size summary only)."""
+        from agent import tools
+        # Synthesize a registry entry whose body field is a secret-shaped key,
+        # then render against a normal config -- result should NOT contain the
+        # secret content even though the registry asked for it.
+        original = dict(tools._PRE_LAUNCH_PREVIEW_BY_TEMPLATE)
+        try:
+            tools._PRE_LAUNCH_PREVIEW_BY_TEMPLATE['kyber_decipher'] = {
+                'title': 'KYBER-DECIPHER (synthetic body-secret test)',
+                'body': ('private_key', 'private key'),
+            }
+            body = tools._render_pre_launch_script_preview(
+                self._spec('kyber_decipher', 'Kyber-Decipher'),
+                {'private_key': 'BASE64-PRIVATE-KEY-MATERIAL'},
+                '/runtime/kd', '/runtime/kd/k.log',
+            )
+        finally:
+            tools._PRE_LAUNCH_PREVIEW_BY_TEMPLATE.clear()
+            tools._PRE_LAUNCH_PREVIEW_BY_TEMPLATE.update(original)
+        self.assertIsNotNone(body)
+        self.assertNotIn('BASE64-PRIVATE-KEY-MATERIAL', body)
+        self.assertIn('REDACTED', body)
+
+    # -- value-rendering edge cases --------------------------------------
+
+    def test_unset_and_missing_values_render_clearly(self):
+        from agent import tools
+        # Missing dotted path -> `(missing from config)`.
+        body = tools._render_pre_launch_script_preview(
+            self._spec('scper', 'SCPer'),
+            {'direction': 'send'},  # user/ip/file all missing
+            '/runtime/scper', '/runtime/scper/log',
+        )
+        self.assertIsNotNone(body)
+        self.assertIn('(missing from config)', body)
+        # Empty string -> `(unset)`.
+        body2 = tools._render_pre_launch_script_preview(
+            self._spec('scper', 'SCPer'),
+            {'direction': 'send', 'user': '', 'ip': '', 'file': ''},
+            '/runtime/scper2', '/runtime/scper2/log',
+        )
+        self.assertIsNotNone(body2)
+        self.assertIn('(unset)', body2)
+        self.assertNotIn('(missing from config)', body2)
+
+    def test_list_and_dict_values_render_as_compact_json(self):
+        from agent import tools
+        body = tools._render_pre_launch_script_preview(
+            self._spec('jenkinser', 'Jenkinser'),
+            {
+                'jenkins_url': 'http://ci.example.com',
+                'job_name': 'deploy',
+                'user': 'svc',
+                'parameters': {'BRANCH': 'main', 'ENV': 'prod'},
+                'use_parameters': True,
+            },
+            '/runtime/jenkinser', '/runtime/jenkinser/log',
+        )
+        self.assertIsNotNone(body)
+        # Compact JSON for nested dict -> contains both keys on one line.
+        self.assertIn('BRANCH', body)
+        self.assertIn('ENV', body)
+        self.assertIn('main', body)
+        self.assertIn('prod', body)
+
+    # -- coverage contract ------------------------------------------------
+
+    def test_every_wrapped_chat_agent_is_in_preview_or_observational_set(self):
+        """Every wrapped chat-agent template_dir MUST be in EXACTLY ONE of
+        the preview registry (state-changing, surface it) or the
+        observational frozenset (read-only, skip on purpose). Catches the
+        drift case where someone adds a new wrapped agent and forgets to
+        categorize it."""
+        from agent import tools
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS
+        preview = set(tools._PRE_LAUNCH_PREVIEW_BY_TEMPLATE)
+        observational = set(tools._PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES)
+        overlap = preview & observational
+        self.assertFalse(
+            overlap,
+            f'template_dirs in both preview AND observational sets: {sorted(overlap)}',
+        )
+        uncategorized = []
+        for spec in WRAPPED_CHAT_AGENT_SPECS:
+            td = spec.template_dir
+            if td not in preview and td not in observational:
+                uncategorized.append(td)
+        self.assertFalse(
+            uncategorized,
+            f'wrapped chat-agents missing from BOTH sets (add to one): {sorted(uncategorized)}',
+        )
+
+    # -- launcher wires the helper at the right point ---------------------
+
+    def test_launcher_logs_preview_immediately_before_subprocess_start(self):
+        """Source-level contract: the launcher must INFO-log the preview
+        AFTER all config-mutating steps (so what we log is what we run) and
+        BEFORE ``start_chat_agent_subprocess(...)`` (so the user sees the
+        intent before any side effect)."""
+        import inspect as _inspect
+        from agent import tools
+        src = _inspect.getsource(tools._launch_wrapped_chat_agent)
+        self.assertIn('_render_pre_launch_script_preview(', src)
+        preview_at = src.index('_render_pre_launch_script_preview(')
+        spawn_at = src.index('start_chat_agent_subprocess(')
+        self.assertLess(
+            preview_at, spawn_at,
+            'preview render+log must happen BEFORE start_chat_agent_subprocess',
+        )
+        write_back_at = src.index('yaml.safe_dump(')
+        self.assertLess(
+            write_back_at, preview_at,
+            'preview must be rendered AFTER config.yaml is finalized to disk',
+        )
+
