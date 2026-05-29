@@ -51,6 +51,11 @@ pywin32==311
 pyyaml==6.0.3
 rank-bm25==0.2.2
 requests==2.32.3
+# ruff: REQUIRED (not just a dev tool). Pythonxer's STRICT correctness gate shells
+# out to `python -m ruff check <script>` before it runs ANY script; build.py verifies
+# `-m ruff` actually works in BOTH the build Python and the PYTHON_HOME (frozen) Python
+# and aborts the build if it does not. Do NOT remove or unpin — the gate would silently
+# fail open (degrade to the compile() syntax floor only).
 ruff==0.14.5
 setuptools==75.3.0
 telethon==1.42.0

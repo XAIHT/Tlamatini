@@ -11,6 +11,153 @@ evidence-backed diagnosis.)
 
 ---
 
+## 2026-05-29 — Pythonxer ALWAYS triggers its downstream/output agents (no dead-end), ALWAYS reports errors
+
+### Verbatim user request
+- "Change Pythonxer to always trigger the downstrean agent wether fail by ruff or runtime! ... the
+  agents in the output of Pythonxer must check if Pythonxer run ok (it depends on the user if put
+  something to validate...) but the important Pythonxer **MUST ALWAYS ALWAYS REPPORT THE ERRORS,
+  AND ALWYAS ALWAYS ALWAYS NO MATTER WHAT: IT MUST STARTUP THE AGENTS CONNECTED TO ITS OUTPUT!**"
+  (preceded by a narrower "log + trigger on ruff failure" request, then widened to ALL outcomes.)
+
+### Change (`agent/agents/pythonxer/pythonxer.py` + `config.yaml`)
+- `main()` now triggers `target_agents` UNCONDITIONALLY — on success, Ruff/syntax gate refusal,
+  AND runtime failure. Removed the old `if script_result:` gate around the downstream-trigger loop
+  (the documented "exit code != 0 → skip downstream" behaviour is intentionally dropped for
+  Pythonxer per the user: downstream agents do any result-checking the user wires).
+- Errors are ALWAYS logged (the syntax/Ruff gate banners + [Ruff] findings + stderr already log;
+  the FALSE result line now says "(errors are logged above)").
+- Exit code is unchanged (`0 success / 1 any failure`) — it still drives the LED and the Multi-Turn
+  chat fix→re-ruff→retry loop, but NO LONGER gates whether downstream agents start.
+- An interim `_GATE_BLOCKED` flag (added to trigger downstream only on gate failures) was removed
+  again once the requirement widened to "always" — no leftover cruft.
+- `config.yaml` BEHAVIOR header rewritten: steps 4-5 now say "ALWAYS trigger downstream NO MATTER
+  WHAT; exit code drives LED/retry only, never gates downstream."
+
+### Verification (hermetic — real pythonxer.py as a subprocess, target_agents=['dummy_1'], no windows)
+ruff clean. All four outcomes → `downstream_triggered=True` + error/result reported:
+- a) syntax-broken → exit 1, downstream triggered.
+- b) Ruff-fail     → exit 1, downstream triggered.
+- c) clean         → exit 0, downstream triggered.
+- d) runtime-fail  → exit 1, downstream triggered.
+
+### Caveat / follow-up (FLAGGED, not done)
+This changes a DOCUMENTED Pythonxer primitive ("exit-code gates downstream"). `agentic_skill.md`
+(FlowCreator's reference) and `README.md` still describe the old gating → FlowCreator may design
+flows assuming downstream is skipped on failure. Recommend updating those docs + the agents
+catalog to "Pythonxer always triggers downstream; validate via a downstream agent." Awaiting OK.
+
+### Rollback
+Restore the `if script_result:` guard around the downstream-trigger loop in `main()` and the old
+config.yaml BEHAVIOR steps 4-5.
+
+---
+
+## 2026-05-29 — Force Ruff to ALWAYS be present (build.py verification + requirements.txt)
+
+### Verbatim user requests
+- "Now, make a verification in build.py and in requirements.txt in order to make DAMN SURE RUFF
+  WILL ALWAYS BE PRESENT IN FROZEN AND NOT FROZEN MODES! PLEASE!."
+- "And continue checking the alwways forcefully prescence of Ruff in every mode of operation in
+  every SO, in every every!"
+
+### Findings
+`ruff==0.14.5` was already in requirements.txt; build.py already installs requirements.txt into
+BOTH the build Python and the PYTHON_HOME (frozen-agent) Python and has a post-install import
+verify — but Ruff was NOT in that verify, so a broken/missing Ruff install could ship silently and
+the strict gate would fail open. Frozen Pythonxer runs Ruff via the PYTHON_HOME python
+(`get_python_command`), so Ruff must live there.
+
+### Changes
+- `requirements.txt`: added a REQUIRED comment above `ruff==0.14.5` (do-not-remove; the gate needs it).
+- `build.py`: after the agent-libs import verify, added a dedicated check that runs the EXACT
+  invocation the agent uses — `[target_python, "-m", "ruff", "--version"]` — and `sys.exit(1)`
+  (aborts the build) if it fails. The enclosing loop runs for BOTH the build Python AND the
+  PYTHON_HOME Python, so a green build guarantees Ruff in frozen AND non-frozen modes. The command
+  form is OS-agnostic (works on every OS the build runs on). Runtime fallback unchanged: if Ruff is
+  ever absent at runtime, `validate_with_ruff` fails OPEN and the compile() syntax floor still runs.
+
+### Verification
+`build.py` compiles (py_compile OK); `python -m ruff --version` → `ruff 0.14.5` (exit 0) — the exact
+command the new check runs.
+
+### Rollback
+`build.py`: remove the `-m ruff --version` verification block. `requirements.txt`: remove the comment
+(keep the `ruff==0.14.5` pin).
+
+---
+
+## 2026-05-29 — STRICT Pythonxer correctness gate + LLM fix→re-ruff→retry loop
+
+### Verbatim user requests
+- "Claude check that ruff implementation along the code really help to detect if the code is
+  right before starting the Pythonxer agent at all, and the LLM must recodify the program and
+  then re-ruff and then if agin wrong then make the program again and then re-ruff up to having a
+  python script correct!"
+- "Strict"
+
+### Check finding (the gap)
+At HEAD (after the #1–#7 discard) Pythonxer ran Ruff but IGNORED it — `# Validate with Ruff
+(non-blocking)` / `validate_with_ruff(script_path)` with the return value discarded — so a
+wrong script ran anyway; there was no compile() floor; and a failed wrapped run told the LLM
+`retryable=False, "inspect the log"` (give up). Empirically confirmed Ruff itself works
+(detects invalid-syntax + F401/F821, exit 1) and is installed.
+
+### Files changed (production) — re-adds ONLY the ruff-gate + retry-loop subset of the discarded
+work; deliberately NOT the discarded containment / watcher / executer mirror.
+
+**1. `agent/agents/pythonxer/pythonxer.py`**
+- New module global `_RUFF_BLOCKING = True`.
+- `execute_python_script` now runs a STRICT gate BEFORE any execution:
+  - (1) `compile(script_content, script_path, "exec")` syntax floor — `SyntaxError` → log the
+    error (line/col/snippet) + `return False`, never executes. Works even if Ruff is absent.
+  - (2) `ruff_ok = validate_with_ruff(...)`; `if _RUFF_BLOCKING and not ruff_ok:` → log
+    `⛔ RUFF FAILED - refusing to execute` + `return False`. (Ruff absent/timeout fails open.)
+  - BEFORE was just `validate_with_ruff(script_path)` (return ignored, "non-blocking").
+- `main()` reads `_RUFF_BLOCKING = bool(config.get('ruff_blocking', True))` + logs it.
+- `validate_with_ruff` line wording: "proceeding anyway" → "see [Ruff] findings above".
+
+**2. `agent/agents/pythonxer/config.yaml`** — added `ruff_blocking: true` (with comment) +
+rewrote the BEHAVIOR header to describe the strict parse→ruff→run gate.
+
+**3. `agent/tools.py` `_launch_wrapped_chat_agent`** — failed-state (generic to ALL wrapped
+agents) BEFORE: `"finished with a failure state. Inspect the log excerpt."` + `retryable=False`.
+AFTER: instructs the LLM to read `log_excerpt` (SyntaxError / "RUFF FAILED" + [Ruff] findings /
+traceback), REWRITE the script (in full if truncated), call the SAME tool again, and repeat
+fix→re-run→re-check until it passes (syntax OK + Ruff clean + exit 0); never re-send identical;
+don't report failure until a corrected retry was attempted. `retryable=True`.
+
+### Why this closes the loop end-to-end
+Pythonxer exits non-zero on a bad script → `chat_agent_runtime.reconcile_chat_agent_run`
+(pre-existing, line 383) maps non-zero → `status="failed"` and forwards `log_excerpt` (tail of
+the agent log, which now carries the SYNTAX/RUFF banner + [Ruff] findings) → tools.py failed-state
+tells the LLM to fix & retry. The Multi-Turn repetition breaker blocks IDENTICAL re-sends, so only
+a CORRECTED script proceeds — naturally enforcing "remake the program", not "re-send the same".
+
+### Verification (HARD hermetic test — real pythonxer.py as a subprocess, no windows)
+ruff clean (pythonxer.py + tools.py). Drove the real agent in an isolated `pythonxer/` dir
+(log = `pythonxer.log`), config built via `yaml.safe_dump`:
+- a) syntax-broken (strict)    → exit 1, syntax gate fired, NOT executed.
+- b) valid + Ruff-fail (strict) → exit 1, RUFF gate fired, NOT executed (compile passed, ruff blocked).
+- c) clean (strict)            → exit 0, executed.
+- d) valid + Ruff-fail, ruff_blocking=false → exit 1, ruff did NOT block, executed (advisory escape works).
+
+### NOT done / notes
+- prompt.pmt was deliberately NOT edited — the tools.py failed-state message (returned to the LLM
+  on every failed call) + the repetition breaker drive the loop. Can add a prompt rule if a
+  stronger nudge is wanted.
+- Canvas Pythonxer is now strict-by-default too (a lint-failing node refuses to run); set
+  `ruff_blocking: false` in the node config for the old advisory behaviour.
+- Decisive proof is a live Multi-Turn run; frozen `c:\Tlamatini` needs `python build.py`.
+
+### Rollback
+`pythonxer.py`: remove `_RUFF_BLOCKING`, the compile()+ruff gate block (restore the single
+`validate_with_ruff(script_path)`), the `main()` flag read, and the wording change.
+`config.yaml`: remove `ruff_blocking` + restore the old BEHAVIOR header.
+`tools.py`: restore the failed-state message + `retryable=False`.
+
+---
+
 ## 2026-05-29 — REAL root cause of "the window never opened": Multi-Turn force-headlessed `execute_file`. Fix = user-driven foreground + parse-gate
 
 ### Background

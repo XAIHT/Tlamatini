@@ -1,12 +1,20 @@
 # Pythonxer Agent Configuration
 # This is a deterministic agent (no LLM) that executes a Python script.
 #
-# BEHAVIOR:
+# BEHAVIOR (STRICT correctness gate before any execution):
 # When executed, this agent will:
-# 1. Validate the script with Ruff (lint warnings are logged, not blocking)
-# 2. Run the Python script
-# 3. If exit code == 0 (True): trigger all downstream agents
-# 4. If exit code != 0 (False): skip downstream agents
+# 1. Parse the script (compile()). A script that does not even parse is REFUSED
+#    outright — it is never run, and Pythonxer returns non-zero.
+# 2. Validate with Ruff. When ruff_blocking is true (default), ANY Ruff finding
+#    ABORTS execution and Pythonxer returns non-zero, with the findings written
+#    to the log so the caller (Multi-Turn Tlamatini) can fix the script and retry.
+# 3. Run the Python script (only if it passed the gate above)
+# 4. ALWAYS trigger the downstream/output agents afterwards — NO MATTER WHAT
+#    (success, a Ruff/syntax gate refusal, OR a runtime failure). Pythonxer NEVER
+#    dead-ends a flow. Agents wired to its output should inspect Pythonxer's
+#    result/log and act accordingly (wire your own validation downstream if needed).
+# 5. The exit code (0 success / 1 on any failure) drives the LED and the Multi-Turn
+#    retry loop only — it does NOT gate whether the downstream agents start.
 #
 # The script is written to a temp file and executed via subprocess.
 # Use sys.exit(0) for True, sys.exit(1) for False, or let the script
@@ -24,6 +32,14 @@ script: "import sys\nprint('Hello from Pythonxer!')\nsys.exit(0)"
 # stdout and stderr are visible in real time. The agent still waits
 # for the script to finish and evaluates the exit code as usual.
 execute_forked_window: false
+
+# Strict Ruff gate (default true): a real Ruff failure (Ruff ran and found
+# lint/static errors) ABORTS execution and makes Pythonxer return non-zero, with
+# the findings written to the log so the caller can read them, fix the script and
+# retry. Set false to make Ruff advisory (findings logged but the script still
+# runs). Ruff being absent or timing out never blocks (fails open) — the compile()
+# syntax check still guarantees the script at least parses before it runs.
+ruff_blocking: true
 
 # Agents triggered after execution (auto-populated via canvas connections)
 source_agents: []

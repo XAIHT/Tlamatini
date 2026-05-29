@@ -468,6 +468,28 @@ def main():
                   f"Add them to requirements.txt so the frozen assets are complete. Aborting build.")
             sys.exit(1)
 
+        # 1b-post-2) VERIFY Ruff is runnable via `-m ruff` in this target Python.
+        # Pythonxer's STRICT correctness gate shells out to
+        # `<get_python_command()> -m ruff check <script>` before it runs ANY script;
+        # if Ruff is absent the gate silently fails OPEN (degrades to the compile()
+        # syntax floor only). Ruff is pinned in requirements.txt, but a broken/partial
+        # wheel can still pass an `import` check yet fail `-m ruff`, so assert the
+        # EXACT invocation the agent uses. This loop runs for BOTH the build Python
+        # AND the PYTHON_HOME (frozen-mode agent) Python, so a green build guarantees
+        # Ruff is present in frozen AND non-frozen modes. Abort loudly if it isn't.
+        print(f"  -> Verifying Ruff (`-m ruff --version`) in {target_python} ...")
+        ruff_check = subprocess.run(
+            [target_python, "-m", "ruff", "--version"],
+            capture_output=True, text=True,
+        )
+        print("     " + ((ruff_check.stdout or "") + (ruff_check.stderr or "")).strip())
+        if ruff_check.returncode != 0:
+            print(f"ERROR: Ruff is NOT runnable via `-m ruff` in {target_python}. "
+                  "Pythonxer's strict syntax/lint gate REQUIRES it. Confirm "
+                  "'ruff==0.14.5' in requirements.txt installed correctly into this "
+                  "Python. Aborting build.")
+            sys.exit(1)
+
         # 1c) Install Playwright browsers
         print(f"  -> Installing Playwright browsers for {target_python} ...")
         pw_result = subprocess.run([target_python, "-m", "playwright", "install"])
