@@ -185,6 +185,41 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Ask-Execs allowlist
+# ---------------------------------------------------------------------------
+# Ask Execs prompts the user (Proceed / Deny) ONLY before the tools listed
+# here. This is a tight ALLOWLIST — every other tool runs without a prompt.
+# The set is exactly the agents that *execute a command / script / .bat /
+# instruction, locally or remotely* (Tier 1 + Tier 2). Any tool not in this
+# set — including read-only tools, file/notify/messaging agents, the Kyber
+# crypto agents, desktop-input agents (Mouser / Keyboarder / Windower), Scper
+# (file transfer), Apirer, Playwrighter, and ``invoke_skill`` — is NOT gated.
+#
+# Each tool maps back to a Tier-1/Tier-2 execution agent. Both the direct
+# @tool name and the wrapped ``chat_agent_*`` launcher are listed where both
+# exist, so the prompt fires regardless of which surface the LLM uses.
+_ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
+    # ----- Tier 1: general-purpose arbitrary command / script execution -----
+    "execute_command",          # Executer  (local shell / .bat / .sh)
+    "chat_agent_executer",      # Executer
+    "execute_file",             # Pythonxer (local script file)
+    "chat_agent_pythonxer",     # Pythonxer
+    "chat_agent_ssher",         # SSHer     (remote shell / script over SSH)
+    "chat_agent_kalier",        # Kalier    (arbitrary shell on a Kali box, local/remote)
+    # ----- Tier 2: domain / tool-specific command runners -------------------
+    "chat_agent_pser",          # PSer       (ps / tasklist system command)
+    "chat_agent_dockerer",      # Dockerer   (docker CLI; local or remote daemon)
+    "chat_agent_kuberneter",    # Kuberneter (kubectl; local or remote cluster)
+    "chat_agent_jenkinser",     # Jenkinser  (triggers remote CI builds)
+    "chat_agent_gitter",        # Gitter     (git CLI)
+    "chat_agent_sqler",         # SQLer      (executes SQL; local or remote DB)
+    "chat_agent_mongoxer",      # Mongoxer   (MongoDB ops; local or remote DB)
+    "decompile_java",           # J-Decompiler (runs jd-cli)
+    "chat_agent_j_decompiler",  # J-Decompiler
+})
+
+
 def _tool_name_to_agent_display(tool_name: str) -> str | None:
     """Map a unified-agent tool name to the ACP agent display name, or None if skipped."""
     if tool_name in _MANAGEMENT_TOOLS:
@@ -480,16 +515,18 @@ class MultiTurnToolAgentExecutor:
 
     def _requires_exec_permission(self, tool_name: str) -> bool:
         """True when a tool call should be confirmed by the user before it
-        runs under Ask Execs. Management / polling tools (status, logs, time,
-        window-present, ...) are pure inspection — they are NOT "executions"
-        the user needs to approve, so they are exempt."""
+        runs under Ask Execs.
+
+        This is a tight ALLOWLIST: the prompt fires ONLY for the Tier 1 +
+        Tier 2 execution agents enumerated in ``_ASK_EXECS_REQUIRED_TOOLS``
+        (the agents that execute a command / script / .bat / instruction,
+        locally or remotely). Every other tool — read-only tools, management /
+        polling helpers, file / notify / messaging agents, crypto, desktop-input
+        agents, Scper, Apirer, Playwrighter, ``invoke_skill``, etc. — runs
+        without a prompt."""
         if not tool_name:
             return False
-        if tool_name in self._TOOL_QUOTA_EXEMPT:
-            return False
-        if tool_name in _MANAGEMENT_TOOLS:
-            return False
-        return True
+        return tool_name in _ASK_EXECS_REQUIRED_TOOLS
 
     def _build_exec_permission_detail(self, tool_call: Dict[str, Any]) -> Dict[str, Any]:
         """Assemble the detail dict shown in the browser's Ask-Execs dialog:
