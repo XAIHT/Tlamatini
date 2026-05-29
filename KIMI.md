@@ -16,6 +16,7 @@
 **What it is**: A locally-deployed AI developer assistant built with Django, featuring:
 - Advanced RAG system (FAISS + BM25 hybrid, metadata extraction, context budgeting, fallback mode)
 - Request-scoped Multi-Turn orchestration with dynamic tool binding and global execution planning
+- **Ask Execs** — optional human-in-the-loop gate that BLOCKS before every Multi-Turn tool execution on a browser Proceed/Deny prompt (bridged by `agent/exec_permission.py`); Deny halts the chain and shows a red "Execution interrupted" banner
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
@@ -75,13 +76,14 @@ Layer 7: Flow Compiler (Backend)
 
 ### Request Flow
 
-1. User sends message via WebSocket (optionally with `multi_turn_enabled`, `acpx_enabled`)
+1. User sends message via WebSocket (optionally with `multi_turn_enabled`, `acpx_enabled`, `exec_report_enabled`, `ask_execs_enabled`)
 2. `AgentConsumer` receives and routes
 3. Context determination (RAG loaded?)
 4. Internet check (classify if web search needed)
 5. Chain selection (RAG / Basic / Unified Agent)
 6. Multi-Turn gate: checked = planner/dynamic binding; unchecked = legacy one-shot
 7. ACPX gate: when checked, ACPX/Skill tools are added to planner surface; when unchecked, they are stripped
+7b. Ask-Execs gate (Multi-Turn-only): when `ask_execs_enabled`, the executor BLOCKS before every state-changing tool on a browser Proceed/Deny prompt (`agent/exec_permission.py::ExecPermissionBroker`); Deny halts the chain and appends a red "Execution interrupted" banner
 8. Context prefetch (system/file MCP)
 9. Execution loop (tool calls, wrapped agent monitoring, ACPX session management)
 10. Streaming response via WebSocket
@@ -157,6 +159,7 @@ Tlamatini/                          # Git root
 │   │   ├── capability_registry.py  # Request-scoped capability scoring
 │   │   ├── chat_agent_registry.py  # Wrapped chat-agent tool registry
 │   │   ├── chat_agent_runtime.py   # Wrapped-runtime lifecycle helpers
+│   │   ├── exec_permission.py      # Ask-Execs permission broker (sync executor ↔ async consumer; blocking Proceed/Deny)
 │   │   ├── global_state.py         # Thread-safe singleton (Singleton pattern)
 │   │   ├── constants.py            # Application constants and regex patterns
 │   │   ├── path_guard.py           # Path validation for dangerous operations
@@ -376,6 +379,13 @@ Chain types in `agent/rag/chains/`:
 - `CapabilityAwareToolAgentExecutor` accepts `acpx_enabled` from payload
 - When **disabled** (default), `filter_acpx_tools` strips all 12 ACPX/Skill tools from the LLM-facing surface before planning or capability selection
 - When **enabled**, ACPX tools are added to planner surface and co-selection rules apply (e.g., `acp_spawn` auto-co-selects `acp_doctor` + `acp_kill`)
+
+### Ask-Execs Gating (per-tool Proceed/Deny — Multi-Turn-only)
+- Fourth toolbar checkbox **Ask Execs** (between ACPX and internet), enabled only while Multi-Turn is on; sent as `ask_execs_enabled` and re-gated on `multi_turn_enabled` everywhere
+- The synchronous executor (worker thread) BLOCKS before every state-changing tool on a browser Proceed/Deny dialog, bridged by `agent/exec_permission.py::ExecPermissionBroker` (consumer registers a per-request broker keyed by user id; executor emits `exec_permission_request` onto the consumer loop via `asyncio.run_coroutine_threadsafe` and waits on a `threading.Event`; browser `exec-permission-response` → `resolve_permission` unblocks it)
+- Gate runs **after** dedup + quota, **before** `tool.invoke`; `_requires_exec_permission` exempts `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT` (read-only/polling tools are never prompted)
+- **Deny halts the whole chain**: `_exec_denied` recorded → `exec_report_denied` flows executor → both chains → `interface.ask_rag` (`last_exec_report_denied`) → consumer → `response_parser` appends the red "Execution interrupted" banner (after exec-report tables, before save_message; independent of `exec_report_enabled`)
+- Fail-safe: emit failure / Cancel / broker `close()` all resolve to `deny`; only "no broker registered" fails open. `ask_execs_enabled` + `conversation_user_id` MUST stay in `UnifiedAgentChain.invoke`'s payload whitelist
 
 ### Global Execution Planner (`global_execution_planner.py`)
 - Builds DAG with nodes: `prefetch` to `execute` to `monitor` to `answer`

@@ -269,6 +269,13 @@ STM32ER SPECIAL NOTES:
     like a broken chain hop. (A PREFLIGHT REFUSED for a missing board is NOT this —
     that is the fail-safe gate behaving correctly.)
 
+ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
+  "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
+  Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
+  process, so it NEVER produces agent log lines for you to monitor. You will never
+  see an "Ask Execs" agent, an `exec_permission` log, or a denial banner in flow
+  logs — there is nothing here to flag. (A canvas/.flw flow always runs unattended.)
+
 EXTERNAL-WINDOW agents (Sqler, Mongoxer):
   These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
 

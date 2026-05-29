@@ -124,6 +124,125 @@ function renderConfirmationDialog() {
 }
 
 // ----------------------------------------------------------------
+// Ask-Execs permission dialog
+// ----------------------------------------------------------------
+
+const EXEC_PERM_PROCEED_CSS = {
+    'background-color': '#2e7d32',
+    'color': 'white',
+    'border-radius': '8px',
+    'font-size': '1em',
+    'height': '4vh'
+};
+const EXEC_PERM_DENY_CSS = {
+    'background-color': '#c62828',
+    'color': 'white',
+    'border-radius': '8px',
+    'font-size': '1em',
+    'height': '4vh'
+};
+
+// Guards against double-sending a decision for the same prompt (button click
+// followed by the dialog's close handler, which also defaults to deny).
+let _execPermDecisionSent = false;
+
+/**
+ * Show the modal "execution permission" dialog for a single Multi-Turn tool
+ * call and POST the user's Proceed/Deny decision back over the chat socket.
+ * Matches the look-and-feel of the other jQuery-UI dialogs. Closing the
+ * dialog without choosing (Esc is disabled, the X is hidden) defaults to
+ * Deny so an unconfirmed execution never proceeds.
+ *
+ * @param {Object} detail - { request_id, tool_name, agent_display, kind,
+ *                            program, shell, parameters }
+ */
+function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-vars
+    detail = detail || {};
+    const requestId = detail.request_id;
+    _execPermDecisionSent = false;
+
+    const agentEl = document.getElementById('exec-perm-agent');
+    const toolEl = document.getElementById('exec-perm-toolname');
+    const paramsEl = document.getElementById('exec-perm-params');
+    const programEl = document.getElementById('exec-perm-program');
+    const shellEl = document.getElementById('exec-perm-shell');
+    if (agentEl) {
+        const kind = detail.kind ? (detail.kind + ': ') : '';
+        agentEl.textContent = kind + (detail.agent_display || detail.tool_name || '');
+    }
+    if (toolEl) toolEl.textContent = detail.tool_name || '';
+    if (paramsEl) paramsEl.value = detail.parameters || '';
+    if (programEl) programEl.value = detail.program || '';
+    if (shellEl) shellEl.value = detail.shell || '';
+
+    function sendDecision(decision) {
+        if (_execPermDecisionSent) return;
+        _execPermDecisionSent = true;
+        sendChatSocketMessage(JSON.stringify({
+            // 'message' is required by the consumer's receive() (it reads
+            // text_data_json['message'] unconditionally before branching).
+            message: 'exec-permission-response',
+            type: 'exec-permission-response',
+            request_id: requestId,
+            decision: decision
+        }));
+    }
+
+    try {
+        if ($('#exec-permission-dialog-message').hasClass('ui-dialog-content')) {
+            $('#exec-permission-dialog-message').dialog('destroy');
+        }
+    } catch (e) {
+        console.log('Exec-permission dialog destroy ignored:', e);
+    }
+
+    $('#exec-permission-dialog-message').dialog({
+        autoOpen: false,
+        modal: true,
+        width: 580,
+        resizable: false,
+        draggable: true,
+        closeOnEscape: false,
+        closeText: "",
+        dialogClass: 'exec-permission-dialog-wrapper',
+        open: function () {
+            document.body.style.overflow = 'hidden';
+            // Force an explicit Proceed / Deny choice — hide the titlebar X.
+            $(this).parent().find('.ui-dialog-titlebar-close').hide();
+        },
+        close: function () {
+            document.body.style.overflow = '';
+            // Closing without a button choice is treated as Deny (no-op if a
+            // decision was already sent by one of the buttons).
+            sendDecision('deny');
+        },
+        create: function () {
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Proceed")').css(EXEC_PERM_PROCEED_CSS);
+            $(this).parent().find('.ui-dialog-buttonpane button:contains("Deny")').css(EXEC_PERM_DENY_CSS);
+        },
+        buttons: [
+            {
+                text: "Proceed",
+                click: function () {
+                    sendDecision('proceed');
+                    $(this).dialog("close");
+                }
+            },
+            {
+                text: "Deny",
+                click: function () {
+                    sendDecision('deny');
+                    $(this).dialog("close");
+                }
+            }
+        ]
+    });
+    $('#exec-permission-dialog-message').dialog('open');
+    $('.ui-dialog-buttonpane button:contains("Proceed")').css(EXEC_PERM_PROCEED_CSS);
+    $('.ui-dialog-buttonpane button:contains("Deny")').css(EXEC_PERM_DENY_CSS);
+}
+
+// ----------------------------------------------------------------
 // Omissions dialog
 // ----------------------------------------------------------------
 

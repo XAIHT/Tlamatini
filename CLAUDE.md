@@ -108,6 +108,7 @@ Tlamatini/                          # Git root
 │   │   ├── capability_registry.py  # Request-scoped capability scoring (ACPX signal tokens)
 │   │   ├── chat_agent_registry.py  # Wrapped chat-agent tool registry (chat_agent_summarize_text, ...)
 │   │   ├── chat_agent_runtime.py   # Wrapped-runtime lifecycle helpers
+│   │   ├── exec_permission.py      # Ask-Execs permission broker (sync executor ↔ async consumer bridge; blocking Proceed/Deny)
 │   │   ├── global_state.py         # Thread-safe singleton (Singleton pattern)
 │   │   │
 │   │   ├── acpx/                   # ACPX runtime — agent_registry, runtime, tools, session_store, permissions
@@ -166,7 +167,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── flow_spec.py        # `FlowNode` / `FlowConnection` / `FlowSpec` dataclasses + `normalize_flow_payload()` / `flow_spec_to_legacy_json()` — schema_version=2 in-memory representation that both surfaces (canvas snapshot AND chat tool-call log) compile through
 │   │   │   └── flow_compiler.py    # `compile_flow_spec()` / `compile_flow_payload()` / `list_pool_agents_for_validation()` — wires connections per contract, redacts secrets, writes `config.yaml` + `interconnection-scheme.csv` to the session pool, used by both the Start sequence (mode='write') and the Validate dialog (mode='dry_run')
 │   │   ├── doc_generation/         # refresh_project_docs.py, mardown_to_pdf.py
-│   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX checkboxes)
+│   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
 │   │   │   ├── js/                 # 27 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 5 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js)
@@ -199,13 +200,14 @@ LLM Backends: Ollama (local) | Anthropic Claude (cloud) | Qwen (vision)
 ```
 
 ### Request Flow
-1. User sends message via WebSocket (optionally with `multi_turn_enabled`, `exec_report_enabled`, `acpx_enabled`)
+1. User sends message via WebSocket (optionally with `multi_turn_enabled`, `exec_report_enabled`, `acpx_enabled`, `ask_execs_enabled`)
 2. `AgentConsumer` receives and routes
 3. Context determination (RAG loaded?)
 4. Internet check (classify if web search needed)
 5. Chain selection (RAG / Basic / Unified Agent)
 6. Multi-Turn gate: checked = planner/dynamic binding; unchecked = legacy one-shot
 7. ACPX gate: when `acpx_enabled=False`, `agent.acpx.filter_acpx_tools()` strips every ACPX/Skill tool name from the bound tool list before the planner / executor see them, forcing the system back onto its legacy Multi-Turn / one-shot behavior
+7b. Ask-Execs gate (Multi-Turn-only): when `ask_execs_enabled=True`, the executor BLOCKS before every state-changing tool on a browser Proceed/Deny prompt, bridged by `agent/exec_permission.py::ExecPermissionBroker` (consumer registers a per-request broker keyed by user id; executor thread emits `exec_permission_request` onto the consumer loop via `run_coroutine_threadsafe` and waits on a `threading.Event`; the browser's `exec-permission-response` → `resolve_permission` unblocks it). **Deny halts the whole chain** and surfaces a red "Execution interrupted" banner; the round-trip is fail-safe (emit failure / Cancel / `close()` all resolve to *deny*). The flag must stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist alongside `conversation_user_id` (same drop-on-rebuild bug class as `exec_report_enabled`). See `docs/claude/multi-turn.md` → *Ask Execs* and `docs/claude/recent-fixes.md` (2026-05-29)
 8. Context prefetch (system/file MCP)
 9. Execution loop (tool calls, wrapped agent monitoring, ACPX child-process drain)
 10. Streaming response via WebSocket; on success, the chat header renders a **Create Flow** button that converts the executed tool-call log into a downloadable `.flw` (the browser POSTs the legacy draft to `/agent/flow_from_tool_calls/`, which normalizes it through `FlowSpec` and redacts known secret fields before download)

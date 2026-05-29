@@ -456,6 +456,8 @@ If the agent mutates anything (commands, files, DB, containers, clusters, extern
 
 Verification: `python manage.py test agent.tests.ExecReportCaptureTests` is generic; no per-agent test needed.
 
+> **Ask Execs (automatic — no wiring needed).** If your wrapped tool is state-changing, it is **automatically** gated by the "Ask Execs" toggle: when the user enables it, the Multi-Turn executor prompts Proceed/Deny before your `chat_agent_<key>` runs. `MultiTurnToolAgentExecutor._requires_exec_permission` prompts for **every** tool except those in `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT`. So: a state-changing or action tool needs **no** Ask-Execs code. A **read-only / polling** tool (status/log/inspection that should NOT be prompted) must be added to `_MANAGEMENT_TOOLS` and/or `_TOOL_QUOTA_EXEMPT` in `mcp_agent.py` (and is likely already absent from `_EXEC_REPORT_TOOLS` anyway). The permission dialog's "shell" line comes from `_infer_execution_shell(tool_name, args)` — add a branch there if your tool runs through an unusual shell/interpreter (else it falls back to the platform shell). See `docs/claude/multi-turn.md` → *Ask Execs*.
+
 ---
 
 ## Step 7.7 · REQUIRED if Step 7.5 done: Flow-Generator Mapping

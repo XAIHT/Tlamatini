@@ -13,7 +13,7 @@
 Tlamatini does a lot. This README is organized so you can stop reading at the depth you need.
 
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
-- **Part II — Using the Chat**: the four toolbar checkboxes (Multi-Turn, Exec Report, ACPX, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
+- **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
 - **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 68 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
@@ -255,7 +255,7 @@ Open `/agent/`. Here is what you are looking at:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼] [Config ▼] [Logout] │ ← Top navigation
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Multi-Turn ☐   Exec Report ☐   ACPX ☐   Add internet context ☐   Clear ⌫  │ ← Toolbar (the four checkboxes!)
+│ Multi-Turn ☐  Exec Report ☐  ACPX ☐  Ask Execs ☐  Add internet context ☐  │ ← Toolbar (the five checkboxes!)
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌─────────────────────────────────┐   ┌───────────────────────────────┐  │
@@ -271,7 +271,7 @@ Open `/agent/`. Here is what you are looking at:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The four checkboxes in the toolbar are **the** thing to learn. Each one is explained in its own chapter below. They are independent — tick whatever combination fits your task.
+The five checkboxes in the toolbar are **the** thing to learn. Each one is explained in its own chapter below. They are independent — except **Ask Execs**, which only activates while **Multi-Turn** is ticked — so tick whatever combination fits your task.
 
 The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for the main model-name fields and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
 
@@ -518,7 +518,49 @@ You will see:
 | Session left running | Always end with `acp_kill`. The LLM is rule-instructed to do so, but if a request times out, manually call `acp_list_sessions` and `acp_kill`. |
 | API key not picked up | Order matters: per-agent `acpx.agents.<id>.env` wins over a shell-exported variable. Double-check both layers. |
 
-## 15. Combining the four toggles — worked examples
+## 14.5. The "Ask Execs" toggle (approve every step before it runs)
+
+**Ask Execs** is the human-in-the-loop safety belt. With it on, Tlamatini asks your permission *before* it runs each action in a Multi-Turn chain — and a single **Deny** stops the whole run.
+
+It is a **Multi-Turn-only modifier**: the checkbox is disabled and greyed until you tick **Multi-Turn**, because the permission prompt lives inside the Multi-Turn tool loop. Leave it unticked and Tlamatini behaves exactly like it always has.
+
+### What you see
+
+When **Ask Execs** is on, before each state-changing **Tool / MCP / Agent** the chain wants to run, it *pauses* and a modal dialog (same look-and-feel as every other Tlamatini dialog) shows you:
+
+- **Tlamatini Tool / MCP / Agent** — what is about to execute, e.g. `Tool: Executer`, `Agent: SSHer`, `MCP / ACPX agent: ACPx`, `Skill: summarize`.
+- **Underlying tool** — the raw tool name (`execute_command`, `chat_agent_ssher`, `acp_spawn`, …).
+- **Parameters of execution** — the full argument set (read-only).
+- **Program to be executed** — the command / script / intent text (read-only).
+- **Shell to be executed** — `cmd.exe / PowerShell (Windows)`, `Python interpreter`, `Remote SSH shell @ <host>`, `Kali Linux (MCP-Kali-Server)`, … (read-only).
+
+Two buttons:
+
+- **Proceed** (green) — run this step, then continue to the next one (which prompts again).
+- **Deny** (red) — **halt the entire chain immediately**. Nothing else runs.
+
+### What a Deny gives you back
+
+1. The prose answer up to that point.
+2. The **Exec Report** tables of the steps that *did* run — only if **Exec Report** is also ticked.
+3. **Always**, a big red **⛔ "Execution interrupted"** banner that names exactly the Tool/MCP/Agent you denied, plus its program/command, shell, and parameters — so you have an auditable record of where and why the run stopped.
+
+### What is NOT prompted
+
+Read-only / polling tools (`chat_agent_run_status`, `chat_agent_run_log`, `get_current_time`, `window_present`, …) only *observe*; they are not "executions", so they never trigger a prompt.
+
+### Step-by-step: your first Ask-Execs run
+
+1. Tick **Multi-Turn**, then **Ask Execs** (it only becomes clickable once Multi-Turn is on). Tick **Exec Report** too if you want the run table.
+2. Send: *"Delete every `*.tmp` file under `C:/Temp`, then list what's left."*
+3. A permission dialog appears for the deletion step, showing the exact command and shell.
+4. Click **Deny** → the run halts with the red banner naming the denied deletion. Click **Proceed** → it deletes and carries on to the listing step (which prompts again).
+
+This is the toggle to reach for whenever a request touches destructive or sensitive operations and you want to eyeball each action before it runs.
+
+> **Under the hood.** The Multi-Turn executor runs in a worker thread and *blocks* on a browser round-trip via `agent/exec_permission.py` (`ExecPermissionBroker`): it emits a permission request onto the WebSocket and waits on a `threading.Event` until your Proceed/Deny reply resolves it. The round-trip is **fail-safe** — if the browser disconnects, the request is cancelled, or the emit fails, the decision defaults to *Deny* so an unconfirmed action never runs. See chapter §35 (Multi-Turn pipeline).
+
+## 15. Combining the five toggles — worked examples
 
 ### Example A — "Set up a new ACPX agent_id from scratch"
 
@@ -1370,7 +1412,8 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
 1. FRONTEND
    User types message + ticks Multi-Turn
    → WebSocket sends {message, multi_turn_enabled: true,
-                      exec_report_enabled: ?, acpx_enabled: ?}
+                      exec_report_enabled: ?, acpx_enabled: ?,
+                      ask_execs_enabled: ?}
                                 ↓
 2. WEBSOCKET CONSUMER (consumers.py)
    Saves to DB, broadcasts user message, queues LLM retrieval
@@ -1392,21 +1435,40 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
 6. MULTI-TURN TOOL LOOP
    for i in 1..unified_agent_max_iterations (default 4096):
      LLM call with bind_tools(selected_tools)
-     if tool_calls: execute each, append ToolMessage, continue
+     if tool_calls:
+       for each call (after dedup + quota):
+         if ask_execs_enabled and call is state-changing:
+           BLOCK on browser Proceed/Deny (ExecPermissionBroker)
+           if DENIED: record denial, HALT the whole chain
+         execute, append ToolMessage
+       continue
      if pure text: that's the final answer, exit loop
                                 ↓
 7. EXEC REPORT (if exec_report_enabled)
    Capture every state-changing tool call into _exec_report_entries
    Render <table class="exec-report-...">
    Append to llm_response BEFORE save_message (strict ordering)
+   If a tool was DENIED (Ask Execs): append the red "Execution
+   interrupted" banner (always, regardless of exec_report_enabled)
                                 ↓
 8. WEBSOCKET BROADCAST
    {message, tool_calls_log, multi_turn_used, answer_success}
                                 ↓
 9. FRONTEND
-   appendChatMessage() renders prose, then exec-report tables
+   appendChatMessage() renders prose, then exec-report tables / denial banner
    if all four gates pass → render "Create Flow" button
 ```
+
+### The Ask-Execs permission round-trip (step 6, expanded)
+
+The Multi-Turn executor is **synchronous** and runs in a worker thread (`sync_to_async(ask_rag, thread_sensitive=False)`), so it cannot `await` a WebSocket reply directly. `agent/exec_permission.py::ExecPermissionBroker` bridges the gap:
+
+1. The consumer registers one broker per request, keyed by user id, before invoking the chain (and tears it down in a `finally`).
+2. Before a state-changing tool runs, the executor calls `broker.request_permission(detail)`, which emits an `exec_permission_request` frame onto the consumer's event loop (`asyncio.run_coroutine_threadsafe`) and then **blocks on a `threading.Event`**.
+3. The browser shows the modal and replies with an `exec-permission-response` frame; the consumer routes it through `resolve_permission(user_id, request_id, decision)`, which sets the event and unblocks the executor.
+4. **Proceed** → the tool runs. **Deny** → `_exec_denied` is recorded and the executor returns immediately, halting the chain; the denial detail flows back through the chain → `interface.ask_rag` (`global_state['last_exec_report_denied']`) → the consumer → `response_parser` renders the red banner.
+
+The round-trip is **fail-safe**: an emit failure, a mid-flight Cancel, or a broker `close()` (e.g. the browser disconnected) all resolve to **Deny**, so an unconfirmed state-changing tool never runs. The wait loop polls `cancel_generation` on a short tick so a Cancel never deadlocks the worker thread. Read-only / polling tools are exempt from the prompt (they only observe).
 
 The capability-aware selector scores each tool with name match (+14 exact), alias / hint phrase match (+10–12), example-request token overlap (up to +3), description token overlap (up to +10), plus a +15 history-aware boost on short follow-ups (≤4 meaningful tokens). The cap is 20 tools per request by default — lowered from 50 after observing keyword inflation pulled in everything.
 
@@ -2427,6 +2489,8 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Added the "Ask Execs" Toggle — Approve Every Multi-Turn Execution Before It Runs — 2026-05-29** — A fifth chat-toolbar checkbox, **Ask Execs**, sits between **ACPX** and **Add internet context** and turns Multi-Turn into a human-in-the-loop operator: when it is on, Tlamatini *pauses before every state-changing Tool / MCP / Agent* and shows a modal dialog (the same look-and-feel as every other Tlamatini dialog) naming exactly what is about to execute — the Tool/MCP/Agent and its kind, the underlying tool name, the **parameters of execution**, the **program to be executed**, and the **shell to be executed** — with **Proceed** (green) and **Deny** (red) buttons. **Proceed** runs that step and the chain continues (prompting again at the next step); **Deny** halts the *entire* chain immediately and the answer carries back the prose so far, the **Exec Report** tables of whatever already ran (only if Exec Report is also ticked), and — *always* — a big red **⛔ "Execution interrupted"** banner naming the exact Tool/MCP/Agent you denied plus its program, shell, and parameters. It is a **Multi-Turn-only modifier**: the checkbox is disabled and greyed until Multi-Turn is ticked, and every backend read gates it on `multi_turn_enabled` (exactly like Exec Report); unticked, behaviour is byte-for-byte the legacy Multi-Turn flow. Read-only / polling tools (`chat_agent_run_status`, `chat_agent_run_log`, `get_current_time`, `window_present`, …) are *not* prompted — they only observe. The hard part is architectural: the Multi-Turn executor is **synchronous** and runs in a worker thread, so it cannot `await` a browser reply. A new module **`agent/exec_permission.py`** (`ExecPermissionBroker` + a user-id-keyed registry) bridges the gap — the executor emits an `exec_permission_request` frame onto the consumer's event loop via `asyncio.run_coroutine_threadsafe` and **blocks on a `threading.Event`** until the browser's `exec-permission-response` (routed through `consumers.receive` → `resolve_permission`) sets it. The round-trip is **fail-safe**: an emit failure, a mid-flight Cancel, or a broker `close()` (browser disconnected) all resolve to **Deny**, so an unconfirmed action never runs, and the wait loop polls `cancel_generation` on a short tick so a Cancel never deadlocks the thread. The flag is threaded through the *same* `UnifiedAgentChain.invoke` payload-rebuild whitelist that once dropped `exec_report_enabled` — `ask_execs_enabled` **and** `conversation_user_id` (the executor finds its broker by user id) must stay in it — and the denial detail flows executor → both chains → `interface.ask_rag` (`global_state['last_exec_report_denied']`) → consumer → `services/response_parser` which appends the banner *after* the Exec Report tables but *before* `save_message` (so a chat reload restores it; the banner is independent of the Exec Report toggle). The gate is placed *after* dedup + quota in the tool loop, so skipped calls never prompt, and only already-executed tools land in the Exec Report (the denied one never ran). Surfaces moved in lock-step: `agent_page.html` (checkbox `#ask-execs-enabled` + the `#exec-permission-dialog-message` dialog), `agent_page_state.js` (`isAskExecsEnabled`/`persist`/`applyStored`/`syncAskExecsAvailability`, availability tied to Multi-Turn), `agent_page_init.js` (sends `ask_execs_enabled`, wires the checkbox, re-syncs on Multi-Turn change), `agent_page_dialogs.js` (`showExecPermissionDialog` — Proceed[green]/Deny[red], titlebar-X hidden + Esc off, close==Deny, idempotent decision), `agent_page_chat.js` (the `exec-permission-request` handler), `agent_page.css` (`.exec-denied-*` banner + `.exec-perm-*` dialog + `.toolbar-toggle-disabled`), and `eslint.config.mjs` globals. One gotcha worth knowing: both `exec-permission-response` frames include a `message` key because `consumers.receive` reads `text_data_json['message']` unconditionally before branching. Coverage: 20 new tests (`ExecPermissionBrokerTests`, `AskExecsExecutorGateTests`, `AskExecsHelperTests`, `AskExecsDenialBannerTests`, `AskExecsChainPropagationTests`) — ruff + ESLint clean (0 errors); source and frozen need no `build.py` change (everything is read at runtime). No new agents/tools/skills — counts unchanged; this is a chat-safety modifier, not new capability.
 
 - **STM32 HIL Observatory Demo — Honest About the Discovery Board's Unbridged Serial Port — 2026-05-27** — A live run of the third STM32er catalog demo, **#65 STM32 HIL OBSERVATORY**, on a real **STM32F407G-DISC1** surfaced a board-specific flaw in the demo *as written* — not a bug in the agent. The board flashed perfectly (the green LED blinked) and the firmware was provably running: the `live_monitor` step read the global `g_blink_count` climbing 30 → 31 → 32 straight out of the running MCU's RAM over **SWD**. But the demo had made the **serial Virtual-COM-Port boot-banner read a *primary* proof step**, and that read returns **zero bytes forever** on this board, because **the STM32F4-Discovery family's on-board ST-LINK does not internally bridge its USB Virtual COM Port to any of the target STM32F407's USART pins** — *unlike ST Nucleo boards, which wire VCP ↔ USART2 on PA2/PA3*. A firmware printing on USART2 has nowhere to send those bytes on the Discovery PCB. With no "an empty VCP read is expected here, do **not** retry" guidance, the model thrashed — about six `serial_session` retries with escalating timeouts (5/6/8/10/12 s, even injecting a newline), plus `serial_connect` / `serial_read` and a stray `reset`: 21 STM32er calls for what should have been ~9. The fix (migration **`0104_fix_stm32er_hil_serial_proof.py`**, a content-only rewrite of prompt #65 via `update_or_create`) makes the demo honest about the hardware: the **SWD `live_monitor` read is now the *primary*, authoritative hardware-in-the-loop proof** (it works on any ST-LINK board, no wiring), the **serial VCP read is demoted to a best-effort, board-aware, at-most-once bonus** (the prompt states the VCP-not-routed fact up front, calls an empty read *expected*, and forbids the retry/connect-read loop), and the **"✅ SILICON VERIFIED" verdict is re-keyed on build + flash + live-memory** so the demo reaches a clean success on a bare Discovery board. **To actually exercise the serial banner**, the user must **bridge the port themselves** with an external USB-to-UART (USB-TTL) adapter — cross-wire adapter **RX ← PA2 (USART2_TX)**, adapter **TX → PA3 (USART2_RX)**, **GND ↔ GND** — and aim `serial_session` at *that adapter's* COM port; on a Nucleo board the on-board VCP already carries it. Docs updated in lock-step (README §3 STM32er callout, this book's agent-catalog row); the running frozen install's `agent_prompt` row 65 was patched directly so the corrected prompt is live without a rebuild (prompts are read fresh from the DB on each catalog selection — no restart needed).
 

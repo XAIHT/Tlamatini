@@ -203,7 +203,53 @@ def _render_exec_report_html(exec_report_entries):
     return "".join(parts)
 
 
-async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None, exec_report_enabled=False, exec_report_entries=None):
+def _render_exec_denied_banner(exec_report_denied):
+    """Build the big red "Execution interrupted" banner shown when the user
+    DENIED a tool under Ask Execs. Surfaces what was denied (kind, agent/tool,
+    program/command, and shell). Returns an empty string when nothing was
+    denied. Independent of the Exec report toggle — the banner always shows on
+    a denial so the user can see exactly which step was stopped."""
+    denied = exec_report_denied or {}
+    if not denied:
+        return ""
+    kind = _html_escape(denied.get("kind") or "Tool")
+    agent = _html_escape(denied.get("agent_display") or denied.get("tool_name") or "operation")
+    command = _html_escape(denied.get("command") or "")
+    shell = _html_escape(denied.get("shell") or "")
+    parameters = _html_escape(denied.get("parameters") or "")
+
+    parts = ['<div class="exec-denied-banner">']
+    parts.append('<div class="exec-denied-icon" aria-hidden="true">&#9940;</div>')
+    parts.append('<div class="exec-denied-body">')
+    parts.append('<div class="exec-denied-title">Execution interrupted</div>')
+    parts.append(
+        '<div class="exec-denied-sub">You denied the '
+        f'{kind} <strong>{agent}</strong> from executing. The Multi-Turn chain '
+        'was halted at this step — no further tools were run.</div>'
+    )
+    if command:
+        parts.append(
+            '<div class="exec-denied-detail">'
+            '<span class="exec-denied-label">Denied program / command</span>'
+            f'<pre class="exec-denied-cmd">{command}</pre></div>'
+        )
+    if shell:
+        parts.append(
+            '<div class="exec-denied-detail">'
+            '<span class="exec-denied-label">Shell</span>'
+            f'<pre class="exec-denied-cmd">{shell}</pre></div>'
+        )
+    if parameters:
+        parts.append(
+            '<div class="exec-denied-detail">'
+            '<span class="exec-denied-label">Parameters</span>'
+            f'<pre class="exec-denied-cmd">{parameters}</pre></div>'
+        )
+    parts.append('</div></div>')
+    return "".join(parts)
+
+
+async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None, exec_report_enabled=False, exec_report_entries=None, exec_report_denied=None):
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
@@ -358,6 +404,17 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             print(f"--- process_llm_response: appended exec_report HTML ({len(exec_report_html)} chars)")
         else:
             print("--- process_llm_response: exec_report HTML empty (no state-changing tool rows captured)")
+
+    # Append the red "Execution interrupted" banner when the user DENIED a
+    # tool under Ask Execs. This runs AFTER the exec report tables (so the
+    # user first sees what DID execute, then the big stop indicating where the
+    # chain was halted) but BEFORE save_message, so a chat reload restores the
+    # banner verbatim. The banner is NOT gated on exec_report_enabled.
+    if exec_report_denied:
+        denied_banner = _render_exec_denied_banner(exec_report_denied)
+        if denied_banner:
+            llm_response = llm_response + denied_banner
+            print("--- process_llm_response: appended Ask-Execs denial banner")
 
     # Persist the final message — including any appended exec report tables —
     # so reloading the chat history restores the exec report HTML verbatim,
