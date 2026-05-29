@@ -406,6 +406,10 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is `v1.10.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
+        )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is `v1.9.0` STM32er: Tlamatini now reaches 68 workflow agents and adds a zero-config bridge into the `STM32 Template Project MCP`, so she can scaffold, build, flash, observe, and reset STM32F4 firmware from chat or canvas while a critical-mission safety preflight refuses the wrong toolchain, probe, or device family."
@@ -502,6 +506,14 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "Multi-Turn behavior kept evolving across the period through quota tuning, execution-table persistence, autonomous-action improvements, and broader tool enablement."
         )
+    if any("kimi-k2.6:cloud" in subject or "default in config.json" in subject for subject in subjects):
+        highlights.append(
+            "The checked-in runtime defaults also moved: the shared config now points at `kimi-k2.6:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
+        )
+    if any("pythonxer" in subject or "forked windows execution" in subject or "reporting on the log file" in subject or "project skills" in subject for subject in subjects):
+        highlights.append(
+            "Follow-up implementation work in the same post-STM32 window tightened Pythonxer downstream execution, Windows forked-command launching, execution-log detail, and project-skill loading, so the release story is not only a UI toggle but also a reliability pass around the operator chain."
+        )
     if any("scroll" in subject or "icon" in subject or "web page" in subject or "scheme" in subject for subject in subjects):
         highlights.append(
             "The operator surface evolved too: ACP/ACPX visual mechanics, canvas scrolling, icons, and page framing all received polish."
@@ -524,6 +536,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.10.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
+        )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, `v1.9.0` added STM32er as the 68th workflow agent and `chat_agent_stm32er` as the new firmware-control surface: she now bridges the `STM32 Template Project MCP` to scaffold, build, flash, observe, and reset STM32F4 projects with a fail-safe hardware preflight."
@@ -543,6 +559,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("kalier" in subject or "kali" in subject for subject in subjects):
         highlights.append(
             "Kalier also matured during the same span: `v1.7.1` made Tlamatini the embedded MCP-Kali-Server client for chat-side runs, so operators configure the Kali box once in `Config -> URLs` instead of repeating it in every prompt."
+        )
+    if any("kimi-k2.6:cloud" in subject or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
+        highlights.append(
+            "The same span also refined the shipped operating baseline: handbook simplification, a `kimi-k2.6:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
         )
     if any("doc" in subject or "markdown" in subject or "graphical" in subject for subject in subjects):
         highlights.append(
@@ -690,6 +710,7 @@ WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
+    "Can pause before every state-changing Multi-Turn execution and ask the operator to approve or deny that exact step through the Ask Execs checkbox.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
@@ -711,6 +732,7 @@ HOW_IT_WORKS = [
     "Browser UI sends chat and workflow requests through Django views and Channels WebSockets.",
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
+    "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "A first-person self-knowledge file (`Tlamatini.md`) is injected into prompt construction for all chains, but loaded user context still outranks that self-reference when the request is a generic summary of the provided project.",
@@ -733,6 +755,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
     "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
@@ -775,7 +798,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.9.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.10.0` release state keeps the version badge, runtime surfaces, Ask Execs wording, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -794,6 +817,18 @@ MULTITURN_4096_GUIDE = [
     "The unified-agent loop now defaults to 4096 iterations instead of 256, giving long autonomous operator runs much more room before they exhaust the turn budget.",
     "That expansion is about conversational/tool-loop depth, not about blindly firing more tools at once: the planner’s selected-tool cap still keeps the tool surface bounded per request.",
     "Operationally, the bigger ceiling helps long workflows, while duplicate-call guards and the dedicated `chat_agent_sleeper` tool remain the antidote to accidental busy-polling loops.",
+]
+
+ASK_EXECS_GUIDE = [
+    "Version `1.10.0` adds the `Ask Execs` checkbox as a Multi-Turn-only safety modifier: when it is on, Tlamatini asks before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
+    "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
+]
+
+ASK_EXECS_PIPELINE_GUIDE = [
+    "Under the hood, `agent/exec_permission.py` provides `ExecPermissionBroker`, which lets the synchronous worker-thread executor emit a permission request onto the WebSocket event loop and then block on a `threading.Event` until the browser replies.",
+    "The gate sits after deduplication and quota checks, so skipped calls never prompt and denied calls never appear as executed rows; only work that truly ran lands in Exec Report.",
+    "The round-trip is fail-safe: browser disconnect, emit failure, cancel, or broker shutdown all resolve to Deny, so an unconfirmed state-changing action never slips through just because the UI vanished at the wrong time.",
 ]
 
 UNREAL_EXTENDED_GUIDE = [
@@ -895,10 +930,11 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
+    "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `kimi-k2.6:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
     "URL configuration now also includes `kali_server_url` plus the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
-    "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096.",
+    "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096, and Ask Execs only becomes available when Multi-Turn itself is on.",
     "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
 ]
 
@@ -991,6 +1027,7 @@ RECENT_RUNTIME_SAFEGUARDS = [
     "The restored-session autoload path now buffers early WebSocket frames so context-loading spinners and disabled-input state are not lost during automatic reconnect/restore flows.",
     "Startup and restart behavior now also re-apply GPU performance and Ollama keep-alive hooks in the background on supported NVIDIA Windows hosts, improving warm-model readiness without blocking Django boot.",
     "Windows process hygiene is now part of that safety story too: detached no-window spawns and the three-tier orphan reaper reduce the chance that Task Manager shows stale Tlamatini-icon console helpers after long runs.",
+    "Ask Execs extends that safety story into execution approval itself: the operator can now stop a destructive chain before the next mutation instead of only auditing it after the fact in Exec Report.",
 ]
 
 RELEASE_GUIDE = [
@@ -1005,6 +1042,7 @@ EXEC_REPORT_GUIDE = [
     "Exec Report is a Multi-Turn-only transparency layer that appends one operation table per state-changing agent family to the final answer.",
     "Rows are recorded from the live tool-call stream rather than guessed from the LLM prose, so the report is the operational ground truth.",
     "Each row receives a SUCCESS/FAILURE verdict from raw tool returns, making long installs, deployments, and remediations inspectable after the fact.",
+    "When Ask Execs is enabled, Exec Report and the red denial banner complement each other: already-executed steps still render as tables, while the denied step stays out of the tables and is surfaced only through the interruption banner.",
 ]
 
 ACPX_GUIDE = [
@@ -1028,7 +1066,7 @@ OLLAMA_COMMANDS = "\n".join(
         "ollama serve",
         "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
         "ollama pull qwen3-embedding:8b",
-        "ollama pull glm-5:cloud",
+        "ollama pull kimi-k2.6:cloud",
         "ollama pull qwen3.5:cloud",
         "ollama pull gpt-oss:120b-cloud",
         "ollama pull qwen3.5:397b-cloud",
@@ -1285,6 +1323,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("Multi-Turn 4096-turn autonomy", styles["h2"]))
     for item in MULTITURN_4096_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Ask Execs in v1.10.0", styles["h2"]))
+    for item in ASK_EXECS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Ask Execs runtime path", styles["h2"]))
+    for item in ASK_EXECS_PIPELINE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("De-Compresser agent", styles["h2"]))
     for item in DE_COMPRESSER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1387,6 +1431,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Prompt catalog and answer readability discipline", styles["h2"]))
     for item in PROMPT_CATALOG_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Ask Execs and execution approval", styles["h2"]))
+    for item in ASK_EXECS_GUIDE + ASK_EXECS_PIPELINE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unreal MCP runtime behavior", styles["h2"]))
     for item in UNREAL_RUNTIME_GUIDE:
@@ -1832,15 +1879,15 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "What The System Does", "capability map", THEME["copper"])
-    add_panel(slide, audit, 0.72, 1.56, 3.85, 4.95, "Knowledge", WHAT_IT_DOES[:3], THEME["jade"], "does-a", 15)
-    add_panel(slide, audit, 4.86, 1.56, 3.85, 4.95, "Action", WHAT_IT_DOES[3:5], THEME["copper"], "does-b", 15)
-    add_panel(slide, audit, 9.0, 1.56, 3.35, 4.95, "Delivery", WHAT_IT_DOES[5:], THEME["amber"], "does-c", 15)
+    add_panel(slide, audit, 0.72, 1.56, 3.85, 4.95, "Knowledge", WHAT_IT_DOES[:6], THEME["jade"], "does-a", 13)
+    add_panel(slide, audit, 4.86, 1.56, 3.85, 4.95, "Action", WHAT_IT_DOES[6:12], THEME["copper"], "does-b", 13)
+    add_panel(slide, audit, 9.0, 1.56, 3.35, 4.95, "Delivery", WHAT_IT_DOES[12:], THEME["amber"], "does-c", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "How It Works", "execution pipeline", THEME["jade"])
     add_flow_boxes(slide, audit, 0.82, 2.0, ["Browser", "Channels", "RAG", "Planner", "Tools", "Answer"], THEME["jade"])
-    add_panel(slide, audit, 0.78, 3.25, 5.85, 3.05, "Request path", HOW_IT_WORKS[:3], THEME["jade"], "works-a", 15)
-    add_panel(slide, audit, 6.92, 3.25, 5.55, 3.05, "Runtime path", HOW_IT_WORKS[3:], THEME["copper"], "works-b", 15)
+    add_panel(slide, audit, 0.78, 3.25, 5.85, 3.05, "Request path", HOW_IT_WORKS[:8], THEME["jade"], "works-a", 12)
+    add_panel(slide, audit, 6.92, 3.25, 5.55, 3.05, "Runtime path", HOW_IT_WORKS[8:], THEME["copper"], "works-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Design Principles", "how the software is shaped", THEME["amber"])
@@ -1873,6 +1920,11 @@ def build_ppt(context: dict) -> None:
         "Maintains compatibility for fast Q&A and simple context-grounded answers.",
         "Avoids forcing every chat request into agentic execution.",
     ], THEME["jade"], "mt-b", 16)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Ask Execs In v1.10.0", "human approval inside the Multi-Turn loop", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Agentic Control Panel", "visual workflow temple", THEME["jade"])
@@ -1976,8 +2028,8 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "How To Use Tlamatini", "operator path", THEME["jade"])
-    add_panel(slide, audit, 0.72, 1.56, 5.9, 5.0, "Daily use", HOW_TO_USE[:3], THEME["jade"], "use-a", 15)
-    add_panel(slide, audit, 6.92, 1.56, 5.65, 5.0, "Workflows and releases", HOW_TO_USE[3:], THEME["copper"], "use-b", 15)
+    add_panel(slide, audit, 0.72, 1.56, 5.9, 5.0, "Daily use", HOW_TO_USE[:6], THEME["jade"], "use-a", 13)
+    add_panel(slide, audit, 6.92, 1.56, 5.65, 5.0, "Workflows and releases", HOW_TO_USE[6:], THEME["copper"], "use-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Source Mode Bootstrap", "commands that matter", THEME["copper"])
@@ -2059,7 +2111,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Service and API", OLLAMA_GUIDE[2:], THEME["jade"], "ollama-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Default pull set", [
         "qwen3-embedding:8b",
-        "glm-5:cloud",
+        "kimi-k2.6:cloud",
         "qwen3.5:cloud",
         "gpt-oss:120b-cloud",
         "qwen3.5:397b-cloud",
