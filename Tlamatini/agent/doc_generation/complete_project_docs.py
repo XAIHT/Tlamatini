@@ -789,9 +789,9 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The live operator surface now stands at 68 workflow agents, 75 Multi-Turn tools, 12 ACPX tools, and 24 skills.",
+    "The live operator surface now stands at 68 workflow agents, 75 Multi-Turn tools, 12 ACPX tools, and 26 skills.",
     "Source inspection confirms the newer total: 43 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 75 Multi-Turn tools overall.",
-    "README.md and BookOfTlamatini.md now agree on those counts, so the dossier can mirror the docs and the live registry without reconciliation footnotes.",
+    "The workflow-agent and wrapped-tool totals align cleanly with the handbooks, while the skill total is validated from the on-disk `agent/skills_pkg/` catalog so the dossier stays honest even when a simplified markdown summary lags behind the live tree.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
 
