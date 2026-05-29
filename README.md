@@ -18,7 +18,7 @@ Hybrid RAG over your codebase · 75-tool multi-turn orchestration · 68 visual w
 </p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.9.0"><img src="https://img.shields.io/badge/VERSION-v1.9.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.9.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.10.0"><img src="https://img.shields.io/badge/VERSION-v1.10.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.10.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -39,7 +39,7 @@ Hybrid RAG over your codebase · 75-tool multi-turn orchestration · 68 visual w
 - **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
 - **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
 
-> **Latest — v1.9.0 (2026-05-26): STM32er, zero-config firmware bridge.** A new **STM32er** agent brings the catalog to **68 agents**. It bridges the [STM32 Template Project MCP](https://github.com/XAIHT/STM32TemplateProjectMCP) to scaffold, build, flash, observe, and reset STM32 firmware — with zero-config auto-bootstrap and a critical-mission safety preflight that **refuses** to flash mis-targeted firmware. See [§3.16](#316-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er).
+> **Latest — v1.10.0 (2026-05-26): STM32er, zero-config firmware bridge.** A new **STM32er** agent brings the catalog to **68 agents**. It bridges the [STM32 Template Project MCP](https://github.com/XAIHT/STM32TemplateProjectMCP) to scaffold, build, flash, observe, and reset STM32 firmware — with zero-config auto-bootstrap and a critical-mission safety preflight that **refuses** to flash mis-targeted firmware. See [§3.16](#316-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er).
 
 <p align="center">
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
@@ -1737,22 +1737,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.9.0 -m "Release 1.9.0: <one-line summary>"
-git push origin v1.9.0
+git tag -a v1.10.0 -m "Release 1.10.0: <one-line summary>"
+git push origin v1.10.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.9.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.10.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.9.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.9.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.9.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.10.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.10.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.10.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1776,8 +1776,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.9.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.9.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.10.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.10.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
