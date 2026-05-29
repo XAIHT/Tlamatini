@@ -5755,3 +5755,401 @@ class PreLaunchScriptPreviewTests(TestCase):
             'preview must be rendered AFTER config.yaml is finalized to disk',
         )
 
+
+class ExecPermissionBrokerTests(TestCase):
+    """Unit coverage for the Ask-Execs permission broker — the bridge that
+    lets the synchronous Multi-Turn executor block on a browser Proceed/Deny
+    choice."""
+
+    def _make_broker(self, decider):
+        """Build a broker whose emit synchronously resolves each request with
+        ``decider(detail)`` so request_permission returns without real I/O."""
+        from agent.exec_permission import ExecPermissionBroker
+
+        captured = []
+
+        def emit(detail):
+            captured.append(detail)
+            broker.resolve(detail['request_id'], decider(detail))
+
+        broker = ExecPermissionBroker(emit)
+        return broker, captured
+
+    def test_proceed_decision_round_trips(self):
+        broker, captured = self._make_broker(lambda d: 'proceed')
+        decision = broker.request_permission({'tool_name': 'execute_command', 'program': 'dir'})
+        self.assertEqual(decision, 'proceed')
+        self.assertEqual(len(captured), 1)
+        self.assertIn('request_id', captured[0])
+        self.assertEqual(captured[0]['program'], 'dir')
+
+    def test_deny_decision_round_trips(self):
+        broker, _ = self._make_broker(lambda d: 'deny')
+        self.assertEqual(broker.request_permission({'tool_name': 'execute_command'}), 'deny')
+
+    def test_unknown_decision_normalizes_to_deny(self):
+        broker, _ = self._make_broker(lambda d: 'maybe')
+        self.assertEqual(broker.request_permission({'tool_name': 'execute_command'}), 'deny')
+
+    def test_emit_failure_fails_safe_to_deny(self):
+        from agent.exec_permission import ExecPermissionBroker
+
+        def boom(_detail):
+            raise RuntimeError('socket gone')
+
+        broker = ExecPermissionBroker(boom)
+        # Must NOT raise into the executor and must deny rather than run an
+        # unconfirmed tool.
+        self.assertEqual(broker.request_permission({'tool_name': 'execute_command'}), 'deny')
+
+    def test_close_unblocks_pending_request_as_deny(self):
+        import threading
+        from agent.exec_permission import ExecPermissionBroker
+
+        # emit does nothing, so request_permission blocks until close().
+        broker = ExecPermissionBroker(lambda detail: None)
+        result = {}
+
+        def worker():
+            result['decision'] = broker.request_permission({'tool_name': 'execute_command'})
+
+        t = threading.Thread(target=worker)
+        t.start()
+        # Give the worker a moment to enter the wait loop, then close.
+        t.join(timeout=0.1)
+        broker.close()
+        t.join(timeout=5)
+        self.assertFalse(t.is_alive(), 'request_permission must unblock on close()')
+        self.assertEqual(result.get('decision'), 'deny')
+
+    def test_resolve_unknown_request_id_returns_false(self):
+        broker, _ = self._make_broker(lambda d: 'proceed')
+        self.assertFalse(broker.resolve('nonexistent', 'proceed'))
+
+    def test_registry_register_get_unregister(self):
+        from agent.exec_permission import (
+            ExecPermissionBroker, register_broker, get_broker, unregister_broker,
+        )
+        broker = ExecPermissionBroker(lambda d: None)
+        register_broker('user-xyz', broker)
+        self.assertIs(get_broker('user-xyz'), broker)
+        unregister_broker('user-xyz')
+        self.assertIsNone(get_broker('user-xyz'))
+
+    def test_resolve_permission_helper_routes_to_registered_broker(self):
+        from agent.exec_permission import (
+            ExecPermissionBroker, register_broker, unregister_broker, resolve_permission,
+        )
+        seen = {}
+
+        def emit(detail):
+            seen['request_id'] = detail['request_id']
+
+        broker = ExecPermissionBroker(emit)
+        register_broker('user-route', broker)
+        try:
+            import threading
+            out = {}
+
+            def worker():
+                out['decision'] = broker.request_permission({'tool_name': 'execute_command'})
+
+            t = threading.Thread(target=worker)
+            t.start()
+            # Wait until emit has captured the request_id, then resolve via the
+            # module-level helper (the path the consumer's receive() uses).
+            for _ in range(50):
+                if 'request_id' in seen:
+                    break
+                t.join(timeout=0.05)
+            self.assertTrue(resolve_permission('user-route', seen['request_id'], 'proceed'))
+            t.join(timeout=5)
+            self.assertEqual(out.get('decision'), 'proceed')
+        finally:
+            unregister_broker('user-route')
+
+
+class AskExecsExecutorGateTests(TestCase):
+    """Exercise the Ask-Execs permission gate inside the Multi-Turn executor:
+    a Deny halts the chain and records the denial; a Proceed runs normally."""
+
+    def _fake_llm_for_calls(self, calls_per_turn):
+        iterator = iter(calls_per_turn + [[]])
+
+        class _FakeLLM:
+            def bind_tools(self, tools):
+                return self
+
+            def invoke(self, messages):
+                try:
+                    calls = next(iterator)
+                except StopIteration:
+                    calls = []
+                if not calls:
+                    return SimpleNamespace(content='wrap up', tool_calls=[])
+                tool_calls = [
+                    {'id': f'c{idx}', 'name': name, 'args': args}
+                    for idx, (name, args) in enumerate(calls)
+                ]
+                return SimpleNamespace(content='', tool_calls=tool_calls)
+
+        return _FakeLLM()
+
+    def _build_executor(self, tools, calls_per_turn):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        return MultiTurnToolAgentExecutor(
+            llm=self._fake_llm_for_calls(calls_per_turn),
+            system_prompt='test',
+            tools=tools,
+            max_iterations=10,
+        )
+
+    def _register_decider_broker(self, user_id, decider):
+        from agent.exec_permission import ExecPermissionBroker, register_broker
+
+        def emit(detail):
+            broker.resolve(detail['request_id'], decider(detail))
+
+        broker = ExecPermissionBroker(emit)
+        register_broker(user_id, broker)
+        self.addCleanup(self._unregister, user_id)
+        return broker
+
+    @staticmethod
+    def _unregister(user_id):
+        from agent.exec_permission import unregister_broker
+        unregister_broker(user_id)
+
+    def _executer_tool(self):
+        from langchain.tools import tool
+
+        @tool
+        def execute_command(command: str) -> str:
+            """Run a shell command."""
+            return f"Command '{command}' executed successfully."
+
+        return execute_command
+
+    def _pythonxer_tool(self):
+        from langchain.tools import tool
+
+        @tool
+        def execute_file(command: str) -> str:
+            """Run a Python script."""
+            return f"Command '{command}' executed successfully."
+
+        return execute_file
+
+    def test_deny_on_first_tool_halts_chain_and_records_denial(self):
+        self._register_decider_broker('u1', lambda d: 'deny')
+        exe = self._build_executor(
+            tools=[self._executer_tool()],
+            calls_per_turn=[[('execute_command', {'command': 'rm -rf /'})]],
+        )
+        result = exe.invoke({
+            'input': 'wipe everything',
+            'exec_report_enabled': True,
+            'ask_execs_enabled': True,
+            'ask_execs_user_id': 'u1',
+        })
+        # Tool NEVER ran → no exec report entries captured.
+        self.assertEqual(result['exec_report_entries'], [])
+        denied = result.get('exec_report_denied')
+        self.assertIsNotNone(denied)
+        self.assertEqual(denied['agent_display'], 'Executer')
+        self.assertEqual(denied['kind'], 'Tool')
+        self.assertEqual(denied['command'], 'rm -rf /')
+        self.assertIn('⛔', result['output'])
+        self.assertIn('interrupted', result['output'].lower())
+
+    def test_proceed_runs_tool_normally(self):
+        self._register_decider_broker('u2', lambda d: 'proceed')
+        exe = self._build_executor(
+            tools=[self._executer_tool()],
+            calls_per_turn=[[('execute_command', {'command': 'git status'})]],
+        )
+        result = exe.invoke({
+            'input': 'status',
+            'exec_report_enabled': True,
+            'ask_execs_enabled': True,
+            'ask_execs_user_id': 'u2',
+        })
+        self.assertIsNone(result.get('exec_report_denied'))
+        self.assertEqual(len(result['exec_report_entries']), 1)
+        self.assertEqual(result['exec_report_entries'][0]['command'], 'git status')
+        self.assertEqual(result['output'], 'wrap up')
+
+    def test_deny_on_second_tool_keeps_first_execution_in_report(self):
+        # Proceed for the executer, deny when the pythonxer install.py runs.
+        def decider(detail):
+            return 'deny' if 'install.py' in (detail.get('program') or '') else 'proceed'
+
+        self._register_decider_broker('u3', decider)
+        exe = self._build_executor(
+            tools=[self._executer_tool(), self._pythonxer_tool()],
+            calls_per_turn=[
+                [('execute_command', {'command': 'git status'})],
+                [('execute_file', {'command': 'install.py'})],
+            ],
+        )
+        result = exe.invoke({
+            'input': 'do two things',
+            'exec_report_enabled': True,
+            'ask_execs_enabled': True,
+            'ask_execs_user_id': 'u3',
+        })
+        # First tool executed and is in the report; second was denied.
+        self.assertEqual(len(result['exec_report_entries']), 1)
+        self.assertEqual(result['exec_report_entries'][0]['agent_key'], 'executer')
+        denied = result.get('exec_report_denied')
+        self.assertIsNotNone(denied)
+        self.assertEqual(denied['agent_display'], 'Pythonxer')
+        self.assertEqual(denied['command'], 'install.py')
+
+    def test_gate_disabled_runs_without_prompting(self):
+        # No broker registered, ask_execs off → tool runs, no denial.
+        exe = self._build_executor(
+            tools=[self._executer_tool()],
+            calls_per_turn=[[('execute_command', {'command': 'echo hi'})]],
+        )
+        result = exe.invoke({'input': 'go', 'exec_report_enabled': True})
+        self.assertIsNone(result.get('exec_report_denied'))
+        self.assertEqual(len(result['exec_report_entries']), 1)
+
+    def test_missing_broker_fails_open_and_runs(self):
+        # ask_execs on but no broker registered for the user (detached
+        # browser / test) → fail-open: the tool still runs.
+        exe = self._build_executor(
+            tools=[self._executer_tool()],
+            calls_per_turn=[[('execute_command', {'command': 'echo hi'})]],
+        )
+        result = exe.invoke({
+            'input': 'go',
+            'exec_report_enabled': True,
+            'ask_execs_enabled': True,
+            'ask_execs_user_id': 'no-such-user',
+        })
+        self.assertIsNone(result.get('exec_report_denied'))
+        self.assertEqual(len(result['exec_report_entries']), 1)
+
+
+class AskExecsHelperTests(TestCase):
+    """Coverage for the pure classification / gate helpers."""
+
+    def test_classify_tool_kind(self):
+        from agent.mcp_agent import _classify_tool_kind
+        self.assertEqual(_classify_tool_kind('execute_command'), 'Tool')
+        self.assertEqual(_classify_tool_kind('chat_agent_ssher'), 'Agent')
+        self.assertEqual(_classify_tool_kind('acp_spawn'), 'MCP / ACPX agent')
+        self.assertEqual(_classify_tool_kind('invoke_skill'), 'Skill')
+
+    def test_infer_execution_shell(self):
+        from agent.mcp_agent import _infer_execution_shell
+        self.assertEqual(_infer_execution_shell('chat_agent_pser', {}), 'PowerShell')
+        self.assertEqual(_infer_execution_shell('execute_file', {}), 'Python interpreter')
+        self.assertIn('SSH', _infer_execution_shell('chat_agent_ssher', {'host': '10.0.0.1'}))
+        self.assertIn('10.0.0.1', _infer_execution_shell('chat_agent_ssher', {'host': '10.0.0.1'}))
+        # Generic tools resolve to the platform shell (non-empty string).
+        self.assertTrue(_infer_execution_shell('execute_command', {'command': 'dir'}))
+
+    def test_requires_exec_permission_gate(self):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        exe = MultiTurnToolAgentExecutor.__new__(MultiTurnToolAgentExecutor)
+        self.assertTrue(exe._requires_exec_permission('execute_command'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_executer'))
+        self.assertTrue(exe._requires_exec_permission('acp_spawn'))
+        self.assertTrue(exe._requires_exec_permission('invoke_skill'))
+        # Management / polling tools are inspection, not execution → exempt.
+        self.assertFalse(exe._requires_exec_permission('chat_agent_run_status'))
+        self.assertFalse(exe._requires_exec_permission('get_current_time'))
+        self.assertFalse(exe._requires_exec_permission('window_present'))
+        self.assertFalse(exe._requires_exec_permission(''))
+
+    def test_build_exec_permission_detail_shape(self):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        exe = MultiTurnToolAgentExecutor.__new__(MultiTurnToolAgentExecutor)
+        detail = exe._build_exec_permission_detail({
+            'name': 'execute_command',
+            'args': {'command': 'ipconfig /all'},
+        })
+        self.assertEqual(detail['tool_name'], 'execute_command')
+        self.assertEqual(detail['agent_display'], 'Executer')
+        self.assertEqual(detail['kind'], 'Tool')
+        self.assertEqual(detail['program'], 'ipconfig /all')
+        self.assertTrue(detail['shell'])
+        self.assertIn('command', detail['parameters'])
+
+
+class AskExecsDenialBannerTests(TestCase):
+    """Coverage for the red 'Execution interrupted' banner renderer."""
+
+    def test_banner_renders_with_denied_detail(self):
+        from agent.services.response_parser import _render_exec_denied_banner
+        html = _render_exec_denied_banner({
+            'kind': 'Agent',
+            'agent_display': 'SSHer',
+            'tool_name': 'chat_agent_ssher',
+            'command': "ssh admin@10.0.0.1 'rm -rf /'",
+            'shell': 'Remote SSH shell @ 10.0.0.1',
+            'parameters': '{"host": "10.0.0.1"}',
+        })
+        self.assertIn('exec-denied-banner', html)
+        self.assertIn('Execution interrupted', html)
+        self.assertIn('SSHer', html)
+        # Command is HTML-escaped (the single quotes become &#39;).
+        self.assertIn('rm -rf /', html)
+        self.assertIn('Remote SSH shell', html)
+        self.assertNotIn("ssh admin@10.0.0.1 'rm", html)  # raw quotes escaped
+
+    def test_banner_empty_when_no_denial(self):
+        from agent.services.response_parser import _render_exec_denied_banner
+        self.assertEqual(_render_exec_denied_banner(None), '')
+        self.assertEqual(_render_exec_denied_banner({}), '')
+
+
+class AskExecsChainPropagationTests(TestCase):
+    """The denial detail must survive the UnifiedAgentChain payload rebuild
+    (the same whitelist that once dropped exec_report_enabled) and be
+    forwarded to the executor + returned to the consumer."""
+
+    def test_chain_forwards_ask_execs_and_round_trips_denial(self):
+        captured = {}
+
+        class _FakeAgent:
+            def invoke(self, payload):
+                captured['payload'] = payload
+                return {
+                    'output': '⛔ Execution interrupted.',
+                    'tool_calls_log': [],
+                    'exec_report_denied': {
+                        'tool_name': 'execute_command',
+                        'agent_display': 'Executer',
+                        'kind': 'Tool',
+                        'command': 'rm -rf /',
+                        'shell': 'cmd.exe',
+                        'parameters': '{}',
+                    },
+                }
+
+        chain = UnifiedAgentChain.__new__(UnifiedAgentChain)
+        chain.history_summary_cfg = {'enable': False}
+        chain.loaded_context = ''
+        chain.unified_agent = _FakeAgent()
+        chain.last_programs_name = []
+        chain.httpx_client_instance = None
+
+        result = chain.invoke({
+            'input': 'wipe everything',
+            'chat_history': [],
+            'multi_turn_enabled': True,
+            'ask_execs_enabled': True,
+            'conversation_user_id': 4242,
+        })
+
+        # ask_execs_enabled + the user id must survive the payload whitelist.
+        self.assertTrue(captured['payload'].get('ask_execs_enabled'))
+        self.assertEqual(captured['payload'].get('ask_execs_user_id'), 4242)
+        # Denial is returned regardless of the Exec report toggle.
+        self.assertIn('exec_report_denied', result)
+        self.assertEqual(result['exec_report_denied']['command'], 'rm -rf /')
+

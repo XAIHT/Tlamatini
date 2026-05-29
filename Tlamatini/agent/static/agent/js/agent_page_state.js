@@ -186,6 +186,7 @@ const MAX_MCPS = 32;
 const MULTI_TURN_STORAGE_KEY = 'multiTurnEnabled';
 const EXEC_REPORT_STORAGE_KEY = 'execReportEnabled';
 const ACPX_STORAGE_KEY = 'acpxEnabled';
+const ASK_EXECS_STORAGE_KEY = 'askExecsEnabled';
 
 // --- Static DOM references ---
 const textEditorPre = document.querySelector('#text-editor pre');
@@ -207,6 +208,8 @@ const cleanHistoryButton = document.getElementById('clean-history');
 const multiTurnCheckbox = document.getElementById('multi-turn-enabled');
 const execReportCheckbox = document.getElementById('exec-report-enabled');
 const acpxCheckbox = document.getElementById('acpx-enabled');
+const askExecsCheckbox = document.getElementById('ask-execs-enabled');
+const askExecsToggleLabel = document.getElementById('ask-execs-toggle');
 const contextMenuButton = document.getElementById('context-menu-button');
 const mcpsMenuButton = document.getElementById('mcps-menu-button');
 const agentsMenuButton = document.getElementById('agents-menu-button');
@@ -355,6 +358,52 @@ function applyStoredAcpxState() { // eslint-disable-line no-unused-vars
     }
 
     acpxCheckbox.checked = enabled;
+}
+
+// --- Ask-Execs (per-tool permission prompt) — Multi-Turn-only modifier ---
+function isAskExecsEnabled() { // eslint-disable-line no-unused-vars
+    // Ask-Execs only has meaning inside Multi-Turn (the permission prompt
+    // lives in the multi-turn executor loop), so return false whenever
+    // Multi-Turn is off — mirrors isExecReportEnabled().
+    if (!multiTurnCheckbox || !multiTurnCheckbox.checked) {
+        return false;
+    }
+    return !!(askExecsCheckbox && askExecsCheckbox.checked);
+}
+
+function persistAskExecsState(enabled) { // eslint-disable-line no-unused-vars
+    try {
+        sessionStorage.setItem(ASK_EXECS_STORAGE_KEY, enabled ? 'true' : 'false');
+    } catch (err) {
+        console.error('Failed to persist Ask-Execs state:', err);
+    }
+}
+
+function applyStoredAskExecsState() { // eslint-disable-line no-unused-vars
+    if (!askExecsCheckbox) {
+        return;
+    }
+    let enabled = false;
+    try {
+        enabled = sessionStorage.getItem(ASK_EXECS_STORAGE_KEY) === 'true';
+    } catch (err) {
+        console.error('Failed to restore Ask-Execs state:', err);
+    }
+    askExecsCheckbox.checked = enabled;
+}
+
+// Enable the Ask-Execs checkbox ONLY when Multi-Turn is checked. When
+// Multi-Turn is off the box is disabled + visually greyed (the backend
+// ignores the flag anyway, but the UI must make the dependency obvious).
+function syncAskExecsAvailability() { // eslint-disable-line no-unused-vars
+    if (!askExecsCheckbox) {
+        return;
+    }
+    const multiTurnOn = !!(multiTurnCheckbox && multiTurnCheckbox.checked);
+    askExecsCheckbox.disabled = !multiTurnOn;
+    if (askExecsToggleLabel) {
+        askExecsToggleLabel.classList.toggle('toolbar-toggle-disabled', !multiTurnOn);
+    }
 }
 
 // --- Open in... dropdown references ---

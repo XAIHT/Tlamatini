@@ -186,6 +186,11 @@
                 <input id="acpx-enabled" type="checkbox" />
                 <span>ACPX</span>
               </label>
+              <label id="ask-execs-toggle" class="toolbar-toggle toolbar-toggle-disabled" for="ask-execs-enabled"
+                title="Ask permission before each Multi-Turn tool/agent execution. Enabled only when Multi-Turn is on.">
+                <input id="ask-execs-enabled" type="checkbox" disabled />
+                <span>Ask Execs</span>
+              </label>
               <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
                 <input id="internetEnabled" type="checkbox" />
                 <span>Add internet context</span>
@@ -228,6 +233,30 @@
   <div id="confirmation-dialog-message" title="" style="display: none;">
     <h2 id="confirmation-primary-dialog-legend"></h2>
     <p id="confirmation-secondary-dialog-legend"></p>
+  </div>
+  <div id="exec-permission-dialog-message" title="Execution permission required" style="display: none;">
+    <p id="exec-perm-intro">Tlamatini wants to run the following before continuing the Multi-Turn chain.
+      Review what is about to execute and choose <strong>Proceed</strong> or <strong>Deny</strong>.</p>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Tlamatini Tool / MCP / Agent</span>
+      <div id="exec-perm-agent" class="exec-perm-value"></div>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Underlying tool</span>
+      <div id="exec-perm-toolname" class="exec-perm-value"></div>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Parameters of execution</span>
+      <textarea id="exec-perm-params" class="exec-perm-textarea" readonly spellcheck="false" rows="5"></textarea>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Program to be executed</span>
+      <textarea id="exec-perm-program" class="exec-perm-textarea" readonly spellcheck="false" rows="4"></textarea>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Shell to be executed</span>
+      <textarea id="exec-perm-shell" class="exec-perm-textarea" readonly spellcheck="false" rows="2"></textarea>
+    </div>
   </div>
   <div id="omissions-dialog-message" title="" style="display: none;">
     <h5 id="omissions-primary-dialog-legend"></h5>

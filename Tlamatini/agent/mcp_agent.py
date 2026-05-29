@@ -2,7 +2,7 @@
 import json
 import logging
 import re
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
@@ -10,6 +10,7 @@ from .acpx import filter_acpx_tools
 from .capability_registry import select_tools_for_request
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
+from .exec_permission import get_broker
 from .global_execution_planner import (
     selected_tool_names_from_plan,
     summarize_global_execution_plan,
@@ -195,6 +196,64 @@ def _tool_name_to_agent_display(tool_name: str) -> str | None:
         return spec.display_name
     return None
 
+
+def _classify_tool_kind(tool_name: str) -> str:
+    """Classify a tool name into the human-facing kind shown in the Ask-Execs
+    permission dialog ("what Tlamatini Tool/MCP/Agent is going to execute")."""
+    if tool_name == "invoke_skill":
+        return "Skill"
+    if tool_name.startswith("acp_"):
+        return "MCP / ACPX agent"
+    if tool_name.startswith("chat_agent_"):
+        return "Agent"
+    return "Tool"
+
+
+# PowerShell-flavoured tools whose execution shell is unambiguous.
+_POWERSHELL_TOOLS: frozenset = frozenset({"chat_agent_pser"})
+# Tools that run through the OS shell (the program text is a shell command).
+_OS_SHELL_TOOLS: frozenset = frozenset({
+    "execute_command", "chat_agent_executer", "unzip_file", "decompile_java",
+    "execute_netstat", "googler",
+})
+# Tools that run through a Python interpreter rather than a shell.
+_PYTHON_TOOLS: frozenset = frozenset({"execute_file", "chat_agent_pythonxer"})
+
+
+def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
+    """Best-effort description of the SHELL the tool will execute through,
+    shown read-only in the Ask-Execs dialog. Informational only — it never
+    changes how the tool runs."""
+    import platform
+
+    is_windows = platform.system() == "Windows"
+    os_shell = "cmd.exe / PowerShell (Windows)" if is_windows else "/bin/sh (POSIX)"
+    name = tool_name or ""
+
+    if name in _POWERSHELL_TOOLS:
+        return "PowerShell"
+    if name in _PYTHON_TOOLS:
+        return "Python interpreter"
+    if name in _OS_SHELL_TOOLS:
+        return os_shell
+    if name == "chat_agent_ssher":
+        host = tool_input.get("host") if isinstance(tool_input, dict) else None
+        return f"Remote SSH shell{(' @ ' + str(host)) if host else ''}"
+    if name == "chat_agent_dockerer":
+        return f"Docker CLI via {os_shell}"
+    if name == "chat_agent_kuberneter":
+        return f"kubectl CLI via {os_shell}"
+    if name == "chat_agent_kalier":
+        return "Kali Linux (MCP-Kali-Server)"
+    if name == "chat_agent_stm32er":
+        return "STM32 Template Project MCP"
+    if name.startswith("acp_"):
+        return "External coding-agent CLI"
+    if name == "invoke_skill":
+        return "Tlamatini SkillHarness"
+    return os_shell
+
+
 logger = logging.getLogger(__name__)
 
 # Try to import ChatOllama (newer location) – fall back to the community package
@@ -321,6 +380,15 @@ class MultiTurnToolAgentExecutor:
         # when the user toggled the Exec report checkbox on.
         self._exec_report_enabled: bool = False
         self._exec_report_entries: list[Dict[str, Any]] = []
+        # Ask-Execs (per-tool permission prompt) per-invocation state. Set
+        # fresh at the top of invoke() because executor instances are cached
+        # and reused across requests (see CapabilityAwareToolAgentExecutor).
+        self._ask_execs_enabled: bool = False
+        self._ask_execs_user_id: Any = None
+        # Populated when the user DENIED a tool execution: halts the chain and
+        # is surfaced to the browser as the red "Execution interrupted" banner.
+        self._exec_denied: Optional[Dict[str, Any]] = None
+        self._pending_denial_detail: Optional[Dict[str, Any]] = None
         # Per-invocation accumulator of Tier-1 orphan-reaper survivors
         # (processes the executor failed to kill after a tool call).
         # The consumer flushes this list AFTER it broadcasts the final
@@ -405,6 +473,87 @@ class MultiTurnToolAgentExecutor:
         if len(values) == 1:
             return str(values[0])
         return ", ".join(f"{k}={v}" for k, v in tool_input.items() if v not in (None, ""))
+
+    # ------------------------------------------------------------------
+    # Ask-Execs permission gate
+    # ------------------------------------------------------------------
+
+    def _requires_exec_permission(self, tool_name: str) -> bool:
+        """True when a tool call should be confirmed by the user before it
+        runs under Ask Execs. Management / polling tools (status, logs, time,
+        window-present, ...) are pure inspection — they are NOT "executions"
+        the user needs to approve, so they are exempt."""
+        if not tool_name:
+            return False
+        if tool_name in self._TOOL_QUOTA_EXEMPT:
+            return False
+        if tool_name in _MANAGEMENT_TOOLS:
+            return False
+        return True
+
+    def _build_exec_permission_detail(self, tool_call: Dict[str, Any]) -> Dict[str, Any]:
+        """Assemble the detail dict shown in the browser's Ask-Execs dialog:
+        what is going to execute, its parameters, the program text, and the
+        shell it runs through."""
+        tool_name = tool_call.get("name", "")
+        raw_args = tool_call.get("args", {}) or {}
+        agent_display = (
+            (_EXEC_REPORT_TOOLS.get(tool_name) or (None, None))[1]
+            or _tool_name_to_agent_display(tool_name)
+            or tool_name
+        )
+        try:
+            parameters = json.dumps(raw_args, indent=2, ensure_ascii=False, sort_keys=True)
+        except (TypeError, ValueError):
+            parameters = str(raw_args)
+        return {
+            "tool_name": tool_name,
+            "agent_display": agent_display,
+            "kind": _classify_tool_kind(tool_name),
+            "program": self._extract_exec_report_command(raw_args, tool_name),
+            "shell": _infer_execution_shell(tool_name, raw_args),
+            "parameters": parameters,
+        }
+
+    def _request_exec_permission(self, tool_call: Dict[str, Any]) -> str:
+        """Block on the browser's Proceed/Deny choice for ``tool_call``.
+
+        Returns ``"proceed"`` or ``"deny"``. Stashes the detail so a denial can
+        reuse it for the banner without rebuilding. Fails OPEN only when no
+        broker is registered (unit tests / detached browser) — the consumer
+        always registers a broker when Ask Execs is on, so in production this
+        is a real round-trip."""
+        detail = self._build_exec_permission_detail(tool_call)
+        self._pending_denial_detail = detail
+        broker = (
+            get_broker(self._ask_execs_user_id)
+            if self._ask_execs_user_id is not None
+            else None
+        )
+        if broker is None:
+            logger.warning(
+                "[AskExecs] no broker registered for user=%s; proceeding (fail-open)",
+                self._ask_execs_user_id,
+            )
+            return "proceed"
+        decision = broker.request_permission(detail)
+        logger.info(
+            "[AskExecs] tool=%s decision=%s", detail.get("tool_name"), decision
+        )
+        return decision
+
+    def _record_exec_denial(self, tool_call: Dict[str, Any]) -> None:
+        """Capture the denied tool call so the chain can halt and the browser
+        can render the red "Execution interrupted" banner."""
+        detail = self._pending_denial_detail or self._build_exec_permission_detail(tool_call)
+        self._exec_denied = {
+            "tool_name": detail.get("tool_name", ""),
+            "agent_display": detail.get("agent_display", ""),
+            "kind": detail.get("kind", "Tool"),
+            "command": detail.get("program", ""),
+            "shell": detail.get("shell", ""),
+            "parameters": detail.get("parameters", ""),
+        }
 
     def _reap_after_tool(self, tool_name: str) -> None:
         """Tier-1 cleanup: after a tool call that may have spawned an
@@ -627,6 +776,11 @@ class MultiTurnToolAgentExecutor:
         self._exec_report_entries = []
         # Reset per-tool call counters for this request.
         self._tool_call_counts = {}
+        # Reset Ask-Execs permission state for this request.
+        self._ask_execs_enabled = bool(payload.get("ask_execs_enabled", False))
+        self._ask_execs_user_id = payload.get("ask_execs_user_id")
+        self._exec_denied = None
+        self._pending_denial_detail = None
 
         input_text = payload.get("input", "")
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
@@ -843,6 +997,28 @@ class MultiTurnToolAgentExecutor:
                     soft_warn_hint = None
                 self._tool_call_counts[tool_name] = prior_count + 1
 
+                # ── Ask-Execs permission gate ──
+                # When enabled, block on the browser's Proceed/Deny choice
+                # BEFORE the tool runs. A denial halts the entire chain: we
+                # record what was denied (for the red banner) and finalize
+                # immediately, so no further tools in this or later turns run.
+                if self._ask_execs_enabled and self._requires_exec_permission(tool_name):
+                    decision = self._request_exec_permission(tool_call)
+                    if decision != "proceed":
+                        self._record_exec_denial(tool_call)
+                        denied = self._exec_denied or {}
+                        denied_kind = denied.get("kind", "Tool")
+                        denied_name = denied.get("agent_display") or tool_name
+                        denied_cmd = denied.get("command", "")
+                        answer = (
+                            f"⛔ Execution interrupted. You denied the {denied_kind} "
+                            f"\"{denied_name}\" from running"
+                            + (f": {denied_cmd}" if denied_cmd else "")
+                            + ". The Multi-Turn chain was halted at this step and no "
+                            "further tools were executed."
+                        )
+                        return self._build_result_dict(answer)
+
                 tool_result = self._invoke_tool(tool_call)
                 if soft_warn_hint:
                     tool_result = (
@@ -882,13 +1058,19 @@ class MultiTurnToolAgentExecutor:
             )
         except Exception:  # noqa: BLE001 — never block the answer path
             pass
-        return {
+        result: Dict[str, Any] = {
             "output": answer,
             "tool_calls_log": list(self._tool_calls_log),
             "exec_report_enabled": bool(self._exec_report_enabled),
             "exec_report_entries": list(self._exec_report_entries),
             "orphan_survivors": list(self._orphan_survivors),
         }
+        # When the user denied a tool under Ask Execs, carry the denial detail
+        # up so the consumer can render the red "Execution interrupted" banner.
+        # This is independent of exec_report_enabled — the banner always shows.
+        if self._exec_denied:
+            result["exec_report_denied"] = dict(self._exec_denied)
+        return result
 
 
 def _build_system_prompt(preeliminary_prompt: str, tools) -> str:
@@ -1090,6 +1272,11 @@ class CapabilityAwareToolAgentExecutor:
         acpx_enabled = bool(payload.get("acpx_enabled", False))
         request_tools = filter_acpx_tools(self.tools, acpx_enabled)
         global_execution_plan = payload.get("global_execution_plan")
+        # Ask-Execs is a Multi-Turn-only modifier: the per-tool permission
+        # prompt only exists in the multi-turn executor loop, so it is ignored
+        # entirely on the legacy one-shot path below.
+        ask_execs_enabled = bool(payload.get("ask_execs_enabled", False)) and multi_turn_enabled
+        ask_execs_user_id = payload.get("ask_execs_user_id")
 
         with scoped_request_state(
             multi_turn_enabled=multi_turn_enabled,
@@ -1145,6 +1332,9 @@ class CapabilityAwareToolAgentExecutor:
             executor_payload = {"input": input_text}
             if exec_report_enabled:
                 executor_payload["exec_report_enabled"] = True
+            if ask_execs_enabled:
+                executor_payload["ask_execs_enabled"] = True
+                executor_payload["ask_execs_user_id"] = ask_execs_user_id
             if global_execution_plan:
                 executor_payload["global_execution_plan"] = global_execution_plan
                 executor_payload["planner_summary"] = (

@@ -586,6 +586,18 @@ body.resizing-vertical {
     line-height: 1;
 }
 
+/* Greyed-out state for a toggle that is gated by another toggle (e.g.
+   "Ask Execs" is only available while Multi-Turn is checked). */
+.toolbar-toggle-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.toolbar-toggle-disabled input,
+.toolbar-toggle-disabled span {
+    cursor: not-allowed;
+}
+
 #contextInfo {
     flex: 1 1 auto;
     min-width: 0;
@@ -1431,3 +1443,140 @@ body.resizing-vertical {
 .exec-report-stm32er .exec-report-cmd        { border-left: 3px solid #1E63FF; }
 .exec-report-acpx .exec-report-cmd           { border-left: 3px solid #BF360C; }
 .exec-report-skill .exec-report-cmd          { border-left: 3px solid #4527A0; }
+
+/* ------------------------------------------------------------------ */
+/* Ask-Execs: "Execution interrupted" denial banner                    */
+/* Appended to the answer (after any Exec report tables) when the user */
+/* denied a Multi-Turn tool execution. Big red Stop indicator + the    */
+/* detail of exactly what was denied.                                  */
+/* ------------------------------------------------------------------ */
+.exec-denied-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    margin-top: 1rem;
+    padding: 0.9rem 1.1rem;
+    border: 2px solid #ef4444;
+    border-left: 8px solid #dc2626;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3a1414 0%, #2a0d0d 100%);
+    color: #ffe3e3;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+}
+
+.exec-denied-icon {
+    flex: 0 0 auto;
+    font-size: 2.6rem;
+    line-height: 1;
+    color: #ff4d4d;
+    text-shadow: 0 0 10px rgba(255, 77, 77, 0.6);
+}
+
+.exec-denied-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.exec-denied-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #ff6b6b;
+    margin-bottom: 0.25rem;
+}
+
+.exec-denied-sub {
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #ffd6d6;
+    margin-bottom: 0.5rem;
+}
+
+.exec-denied-detail {
+    margin-top: 0.5rem;
+}
+
+.exec-denied-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #ff9b9b;
+    margin-bottom: 0.2rem;
+}
+
+.exec-denied-cmd {
+    margin: 0;
+    padding: 0.5rem 0.65rem;
+    background-color: #1e1212;
+    color: #ffecec;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 99, 99, 0.25);
+    border-left: 3px solid #dc2626;
+    max-height: 16rem;
+    overflow: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ask-Execs permission dialog (mirrors the other jQuery-UI dialogs)   */
+/* ------------------------------------------------------------------ */
+#exec-permission-dialog-message {
+    font-size: 0.9rem;
+}
+
+#exec-perm-intro {
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
+.exec-perm-row {
+    margin-bottom: 0.7rem;
+}
+
+.exec-perm-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #2f6f5f;
+    margin-bottom: 0.25rem;
+}
+
+.exec-perm-value {
+    padding: 0.35rem 0.5rem;
+    background-color: #f1f5f3;
+    border: 1px solid #cdd9d4;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #143b29;
+    word-break: break-word;
+}
+
+.exec-perm-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    padding: 0.45rem 0.6rem;
+    background-color: #1e1e1e;
+    color: #e6e6e6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.exec-permission-dialog-wrapper .ui-dialog-titlebar {
+    background: linear-gradient(135deg, #c62828 0%, #8e1d1d 100%);
+    color: #ffffff;
+    border: none;
+}

@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -462,7 +462,8 @@ document.getElementById('chat-form').onsubmit = function (e) {
             'message': rawMessage,
             'multi_turn_enabled': isMultiTurnEnabled(),
             'exec_report_enabled': isExecReportEnabled(),
-            'acpx_enabled': isAcpxEnabled()
+            'acpx_enabled': isAcpxEnabled(),
+            'ask_execs_enabled': isAskExecsEnabled()
         }));
         if (!messageSent) {
             return;
@@ -490,6 +491,8 @@ window.onload = () => {
     applyStoredMultiTurnState();
     applyStoredExecReportState();
     applyStoredAcpxState();
+    applyStoredAskExecsState();
+    syncAskExecsAvailability();
     if (openButton) {
         openButton.addEventListener('click', (e) => {
             e.preventDefault();
@@ -683,6 +686,9 @@ window.onload = () => {
     if (multiTurnCheckbox) {
         multiTurnCheckbox.addEventListener('change', function () {
             persistMultiTurnState(!!this.checked);
+            // Ask-Execs availability depends on Multi-Turn — re-sync the
+            // enabled/disabled state of its checkbox on every toggle.
+            syncAskExecsAvailability();
         });
     }
     if (execReportCheckbox) {
@@ -693,6 +699,11 @@ window.onload = () => {
     if (acpxCheckbox) {
         acpxCheckbox.addEventListener('change', function () {
             persistAcpxState(!!this.checked);
+        });
+    }
+    if (askExecsCheckbox) {
+        askExecsCheckbox.addEventListener('change', function () {
+            persistAskExecsState(!!this.checked);
         });
     }
     syncClearContextMenuState();

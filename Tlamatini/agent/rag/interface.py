@@ -630,16 +630,21 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         # is the baseline. Only an explicit ``True`` from the toolbar checkbox
         # opts the request into the ACPX-aided flow.
         acpx_enabled = bool(question.get("acpx_enabled", False))
+        # Ask-Execs is a Multi-Turn-only modifier: it has no effect on the
+        # legacy one-shot path, so it is only honoured when multi-turn is on.
+        ask_execs_enabled = bool(question.get("ask_execs_enabled", False)) and multi_turn_enabled
     elif isinstance(question, str):
         raw_text = question
         multi_turn_enabled = False
         exec_report_enabled = False
         acpx_enabled = False
+        ask_execs_enabled = False
     else:
         raw_text = str(question)
         multi_turn_enabled = False
         exec_report_enabled = False
         acpx_enabled = False
+        ask_execs_enabled = False
 
     try:
         with open(os.path.join(application_path, 'config.json'), 'r', encoding='utf-8') as f:
@@ -717,6 +722,11 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     # ACPX tool surface out of the bound tools when the user has unticked
     # the "ACPX" toolbar checkbox.
     payload["acpx_enabled"] = acpx_enabled
+    # Forward Ask-Execs so the multi-turn executor knows to prompt for
+    # permission before each state-changing tool. The conversation_user_id
+    # (already forwarded above when present) is what the executor uses to find
+    # this request's permission broker.
+    payload["ask_execs_enabled"] = ask_execs_enabled
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException
@@ -807,11 +817,18 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         else:
             global_state.set_state('last_exec_report_enabled', None)
             global_state.set_state('last_exec_report_entries', None)
+        # Ask-Execs denial: surfaced as the red "Execution interrupted" banner.
+        # Independent of the Exec report toggle — always carried through.
+        if response.get("exec_report_denied"):
+            global_state.set_state('last_exec_report_denied', response.get("exec_report_denied"))
+        else:
+            global_state.set_state('last_exec_report_denied', None)
         return response.get("answer", "I was unable to generate a response. Please try rephrasing your question or check the system status.")
 
     global_state.set_state('last_tool_calls_log', None)
     global_state.set_state('last_multi_turn_used', None)
     global_state.set_state('last_exec_report_enabled', None)
     global_state.set_state('last_exec_report_entries', None)
+    global_state.set_state('last_exec_report_denied', None)
     global_state.set_state('rag_chain_ready', True)
     return str(response)

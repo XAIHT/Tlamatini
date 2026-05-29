@@ -215,6 +215,12 @@ class UnifiedAgentChain:
             # the legacy Multi-Turn / one-shot behavior; only an explicit True
             # opts the request into the ACPX tool surface.
             "acpx_enabled": bool(payload.get("acpx_enabled", False)),
+            # Ask-Execs (per-tool permission prompt) + the user id used to find
+            # the request's permission broker. Both MUST stay in this whitelist
+            # or they are silently dropped at the chain boundary (the same
+            # drop-on-rebuild bug class that once broke exec_report_enabled).
+            "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
+            "conversation_user_id": payload.get("conversation_user_id"),
             "global_execution_plan": payload.get("global_execution_plan"),
             "planner_summary": payload.get("planner_summary", ""),
         }
@@ -271,6 +277,7 @@ User Question: {enhanced_input}"""
 
         # Use unified agent if available, otherwise fall back to basic LLM
         exec_report_entries: list = []
+        exec_report_denied = None
         exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         if self.unified_agent is not None:
             tool_calls_log = []
@@ -282,6 +289,8 @@ User Question: {enhanced_input}"""
                     "multi_turn_enabled": payload.get("multi_turn_enabled", False),
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(payload.get("acpx_enabled", False)),
+                    "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
+                    "ask_execs_user_id": payload.get("conversation_user_id"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 },
@@ -295,6 +304,7 @@ User Question: {enhanced_input}"""
                 tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
                 if isinstance(result, dict):
                     exec_report_entries = result.get("exec_report_entries", []) or []
+                    exec_report_denied = result.get("exec_report_denied")
                 if not answer or not answer.strip():
                     print(f"--- UnifiedAgentChain: WARNING - Empty answer received! Full result: {result}")
             else:
@@ -363,10 +373,15 @@ User Question: {enhanced_input}"""
         if exec_report_enabled:
             result_dict["exec_report_enabled"] = True
             result_dict["exec_report_entries"] = exec_report_entries
+        # The denial banner always surfaces when the user denied a tool —
+        # independent of the Exec report toggle.
+        if exec_report_denied:
+            result_dict["exec_report_denied"] = exec_report_denied
         print(
             f"--- UnifiedAgentChain: returning result_dict with exec_report_enabled="
             f"{result_dict.get('exec_report_enabled')} "
-            f"exec_report_entries_count={len(exec_report_entries)}"
+            f"exec_report_entries_count={len(exec_report_entries)} "
+            f"exec_report_denied={bool(exec_report_denied)}"
         )
         return result_dict
 
@@ -747,6 +762,7 @@ User Question: {enhanced_input}"""
         # 7) Use unified agent if available, otherwise fall back to basic LLM
         tool_calls_log = []
         exec_report_entries: list = []
+        exec_report_denied = None
         exec_report_enabled = bool(payload.get("exec_report_enabled", False))
         if self.unified_agent is not None:
             result, agent_exception = _invoke_unified_agent_with_retry(
@@ -756,6 +772,8 @@ User Question: {enhanced_input}"""
                     "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(payload.get("acpx_enabled", False)),
+                    "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
+                    "ask_execs_user_id": payload.get("conversation_user_id"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 },
@@ -765,6 +783,7 @@ User Question: {enhanced_input}"""
                 tool_calls_log = result.get("tool_calls_log", []) if isinstance(result, dict) else []
                 if isinstance(result, dict):
                     exec_report_entries = result.get("exec_report_entries", []) or []
+                    exec_report_denied = result.get("exec_report_denied")
             else:
                 print(
                     f"--- UnifiedAgentRAGChain: Agent invocation failed ({agent_exception}), "
@@ -829,4 +848,6 @@ User Question: {enhanced_input}"""
         if exec_report_enabled:
             result_dict["exec_report_enabled"] = True
             result_dict["exec_report_entries"] = exec_report_entries
+        if exec_report_denied:
+            result_dict["exec_report_denied"] = exec_report_denied
         return result_dict

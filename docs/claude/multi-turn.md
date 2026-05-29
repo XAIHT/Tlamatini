@@ -21,6 +21,36 @@ The toggle is per-browser-session, sent as `multi_turn_enabled` with each reques
 
 ---
 
+## Ask Execs — per-tool permission prompt (Multi-Turn-only modifier)
+
+The chat toolbar's fourth checkbox, **Ask Execs** (between **ACPX** and **Add internet context**), makes the Multi-Turn executor **BLOCK on a browser Proceed/Deny dialog before every state-changing Tool/MCP/Agent runs**. A **Deny halts the whole chain**. It is sent per-request as `ask_execs_enabled` and, like Exec report, is **only honoured while Multi-Turn is on** (the checkbox is disabled+greyed otherwise; every backend read re-gates it on `multi_turn_enabled`). Unchecked → byte-for-byte the legacy Multi-Turn flow.
+
+### The bridge (sync executor ↔ async consumer)
+
+The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask_rag, thread_sensitive=False)`), so it cannot `await`. `agent/exec_permission.py::ExecPermissionBroker` bridges it:
+
+1. `consumers.queue_llm_retrieval` registers one broker per request (keyed by `conversation_user.id`) when `ask_execs_enabled`, and unregisters it in a `finally`. Its emit callback schedules an `exec_permission_request` group frame onto the consumer's event loop via `asyncio.run_coroutine_threadsafe`.
+2. In `MultiTurnToolAgentExecutor.invoke`'s per-tool loop — **after** the dedup + quota checks, **before** `tool.invoke` — if `_requires_exec_permission(tool_name)` (i.e. not in `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT`), it calls `broker.request_permission(detail)` which emits the frame and **blocks on a `threading.Event`**.
+3. The browser shows the modal (`showExecPermissionDialog`) and replies with an `exec-permission-response` frame → `consumers.receive` → `resolve_permission(user_id, request_id, decision)` sets the event.
+4. **Proceed** → the tool runs. **Deny** → `self._exec_denied` is recorded and the executor returns immediately (no further tools, this turn or later).
+
+The detail dict shown in the dialog: `tool_name`, `agent_display`, `kind` (Tool / Agent / MCP-ACPX / Skill via `_classify_tool_kind`), `program` (`_extract_exec_report_command`), `shell` (`_infer_execution_shell`), and pretty-printed `parameters`.
+
+### Fail-safe contract (do NOT weaken)
+
+- Emit failure / mid-flight Cancel / broker `close()` (browser disconnected) all resolve to **`deny`** — never run an unconfirmed state-changing tool. The wait loop polls `cancel_generation` on a short tick so a Cancel never deadlocks the thread.
+- The **only** fail-OPEN case is "no broker registered" (unit tests / detached browser) — the consumer always registers one when `ask_execs_enabled`, so production never hits it.
+
+### Denial propagation + banner
+
+`exec_report_denied` flows executor `_build_result_dict` → both chains' `result_dict` (independent of `exec_report_enabled`) → `interface.ask_rag` stores `last_exec_report_denied` in `global_state` → consumer reads+clears it → `services/response_parser.process_llm_response(..., exec_report_denied=...)` appends `_render_exec_denied_banner(...)` **after** the Exec report tables but **before** `save_message` (so a chat reload restores it). The banner (big red ⛔ "Execution interrupted") is NOT gated on the Exec report toggle.
+
+### Whitelist contract (critical)
+
+`ask_execs_enabled` **and** `conversation_user_id` (the executor finds its broker by user id) MUST stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist — same drop-on-rebuild bug class that once broke `exec_report_enabled`. Both `UnifiedAgentChain` and `UnifiedAgentRAGChain` forward `ask_execs_enabled` + `ask_execs_user_id=conversation_user_id` into the executor sub-payload and return `exec_report_denied`. Adding a new payload flag here needs the same care. Both JS `exec-permission-response` frames include a `message` key because `consumers.receive` reads `text_data_json['message']` unconditionally. Full contract + coverage list in `docs/claude/recent-fixes.md` (2026-05-29).
+
+---
+
 ## Create Flow from a Multi-Turn Answer
 
 Every successful Multi-Turn response can be converted into a visual `.flw` workflow by clicking the **"Create Flow"** button rendered in the chat message header.

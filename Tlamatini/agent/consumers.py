@@ -618,7 +618,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False):
+        broker = None
+        broker_key = conversation_user.id
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -630,8 +632,38 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 return
 
             print("--- The message is being procesed by the LLM")
-            # Exec report is multi-turn-only by design.
+            # Exec report and Ask-Execs are both multi-turn-only by design.
             exec_report_enabled = bool(exec_report_enabled) and bool(multi_turn_enabled)
+            ask_execs_enabled = bool(ask_execs_enabled) and bool(multi_turn_enabled)
+
+            # ── Ask-Execs broker ──
+            # The multi-turn tool executor runs in a worker thread and must be
+            # able to BLOCK on a browser Proceed/Deny prompt before each
+            # state-changing tool. Register a per-request broker whose emit
+            # schedules an `exec_permission_request` frame onto THIS event
+            # loop; the executor thread looks it up by user id.
+            if ask_execs_enabled:
+                from .exec_permission import ExecPermissionBroker, register_broker
+                loop = asyncio.get_running_loop()
+                channel_layer = self.channel_layer
+                room_group_name = self.room_group_name
+
+                def _emit_permission_request(detail):
+                    try:
+                        asyncio.run_coroutine_threadsafe(
+                            channel_layer.group_send(
+                                room_group_name,
+                                {'type': 'exec_permission_request', 'detail': detail},
+                            ),
+                            loop,
+                        )
+                    except Exception as emit_err:  # noqa: BLE001
+                        print(f"--- [AskExecs] failed to emit permission request: {emit_err}")
+
+                broker = ExecPermissionBroker(_emit_permission_request)
+                register_broker(broker_key, broker)
+                print(f"--- [AskExecs] broker registered for user {broker_key}")
+
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
             llm_response = await ask_rag_async(
                 self.rag_chain,
@@ -641,6 +673,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     "multi_turn_enabled": bool(multi_turn_enabled),
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(acpx_enabled),
+                    "ask_execs_enabled": ask_execs_enabled,
                 },
                 inet_enabled=self.inet_enabled
             )
@@ -649,6 +682,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
             multi_turn_used = global_state.get_state('last_multi_turn_used')
             exec_report_used = global_state.get_state('last_exec_report_enabled')
             exec_report_entries = global_state.get_state('last_exec_report_entries') if exec_report_used else None
+            # Ask-Execs denial — surfaced as the red "Execution interrupted"
+            # banner regardless of the Exec report toggle.
+            exec_report_denied = global_state.get_state('last_exec_report_denied')
             # Tier-1 survivor list carried over from the multi-turn
             # executor — processes the per-tool reaper failed to kill.
             tier1_orphans = global_state.get_state('last_orphan_survivors') or []
@@ -657,6 +693,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             global_state.set_state('last_multi_turn_used', None)
             global_state.set_state('last_exec_report_enabled', None)
             global_state.set_state('last_exec_report_entries', None)
+            global_state.set_state('last_exec_report_denied', None)
             global_state.set_state('last_orphan_survivors', None)
 
             await process_llm_response(
@@ -669,6 +706,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 multi_turn_used=multi_turn_used,
                 exec_report_enabled=bool(exec_report_used),
                 exec_report_entries=exec_report_entries,
+                exec_report_denied=exec_report_denied,
             )
 
             # ── Tier-2 orphan-process sweep ───────────────────────
@@ -700,6 +738,26 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
             )
             print("--- Bot error message broadcast to room.")
+        finally:
+            # Always tear down the Ask-Execs broker so a still-pending prompt
+            # can never leave the executor thread blocked after the request
+            # ends (close() resolves any outstanding prompt to "deny").
+            if broker is not None:
+                from .exec_permission import unregister_broker
+                unregister_broker(broker_key)
+                print(f"--- [AskExecs] broker unregistered for user {broker_key}")
+
+    async def exec_permission_request(self, event):
+        """Group handler: forward an Ask-Execs permission request to this
+        browser as an `exec-permission-request` frame. Scheduled from the
+        executor's worker thread via run_coroutine_threadsafe."""
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'exec-permission-request',
+                'detail': event.get('detail') or {},
+            }))
+        except Exception as e:
+            print(f"Error in exec_permission_request: {e}")
 
     async def _tier2_orphan_sweep(self, tier1_survivors):
         """Post-answer orphan-process sweep + user notification.
@@ -789,6 +847,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # Multi-Turn / one-shot flow so the user must opt into ACPX
             # explicitly via the toolbar checkbox.
             acpx_enabled = bool(text_data_json.get('acpx_enabled', False))
+            # Ask-Execs (per-tool permission prompt) is a Multi-Turn-only
+            # modifier — gated to multi_turn_enabled like exec_report.
+            ask_execs_enabled = bool(text_data_json.get('ask_execs_enabled', False)) and multi_turn_enabled
 
             if 'type' in text_data_json:
                 type = text_data_json['type']
@@ -813,7 +874,21 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     {'type': 'agent_message', 'message': constants.ERROR_NOT_AUTHENTICATED, 'username': 'Tlamatini'}
                 )
                 return
-        
+
+            if type == 'exec-permission-response':
+                # The browser answered an Ask-Execs Proceed/Deny prompt. Route
+                # it to the request's broker so the blocked executor thread
+                # unblocks with the user's decision.
+                from .exec_permission import resolve_permission
+                request_id = text_data_json.get('request_id')
+                decision = text_data_json.get('decision', 'deny')
+                resolved = resolve_permission(user.id, request_id, decision)
+                print(
+                    f"--- exec-permission-response: request_id={request_id} "
+                    f"decision={decision} resolved={resolved}"
+                )
+                return
+
             if type == 'set-canvas-as-context':
                 print("--- Received set-canvas-as-context message from client.")
                 print(f"--- The message(filename) is: {message}")
@@ -1328,6 +1403,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 multi_turn_enabled=multi_turn_enabled,
                 exec_report_enabled=exec_report_enabled,
                 acpx_enabled=acpx_enabled,
+                ask_execs_enabled=ask_execs_enabled,
             ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")

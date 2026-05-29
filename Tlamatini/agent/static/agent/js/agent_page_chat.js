@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_chat.js  –  Chat messaging, WebSocket & form submit
 // ============================================================
-/* global applyContextUiState, isSessionRestoredInfoMessage */
+/* global applyContextUiState, isSessionRestoredInfoMessage, showExecPermissionDialog */
 
 const HTML_ENTITY_MAP = {
     '&amp;': '&',
@@ -1369,6 +1369,23 @@ chatSocket.onmessage = function (e) {
     }
     if (data.username === 'ping') {
         console.log('--- Received heartbeat message from server');
+        return;
+    }
+    // Ask-Execs: the backend is blocked waiting for the user to approve the
+    // next Multi-Turn tool execution. Pop the modal Proceed/Deny dialog.
+    if (data.type === 'exec-permission-request') {
+        if (typeof showExecPermissionDialog === 'function') {
+            showExecPermissionDialog(data.detail || {});
+        } else {
+            // Hard fallback: never leave the backend blocked if the dialog
+            // module is unavailable — deny so the chain halts cleanly.
+            sendChatSocketMessage(JSON.stringify({
+                message: 'exec-permission-response',
+                type: 'exec-permission-response',
+                request_id: (data.detail || {}).request_id,
+                decision: 'deny'
+            }));
+        }
         return;
     }
     // Handle session-restored: Context was restored from saved session

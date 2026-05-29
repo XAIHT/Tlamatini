@@ -2,13 +2,17 @@
 
 ## Chat Interface (8 modules)
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
-- `agent_page_chat.js` - Chat message handling
+- `agent_page_chat.js` - Chat message handling; handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog
 - `agent_page_canvas.js` - Code canvas rendering
 - `agent_page_context.js` - RAG context management
-- `agent_page_dialogs.js` - Modal dialogs
+- `agent_page_dialogs.js` - Modal dialogs (incl. `showExecPermissionDialog(detail)` — the Ask-Execs Proceed/Deny prompt)
 - `agent_page_layout.js` - UI layout
-- `agent_page_state.js` - Client state
+- `agent_page_state.js` - Client state (incl. the Ask-Execs checkbox helpers `isAskExecsEnabled` / `applyStoredAskExecsState` / `syncAskExecsAvailability`)
 - `agent_page_ui.js` - General UI utilities
+
+### Ask Execs — per-tool permission prompt (toolbar checkbox + modal dialog)
+
+The fourth toolbar checkbox **Ask Execs** (`#ask-execs-enabled`, between **ACPX** and **Add internet context**) is **enabled only while Multi-Turn is checked** — `syncAskExecsAvailability()` in `agent_page_state.js` toggles its `disabled` attribute and the `.toolbar-toggle-disabled` class, called on load and on every Multi-Turn change (`agent_page_init.js`). `agent_page_init.js` sends `ask_execs_enabled: isAskExecsEnabled()` on every chat submit. When the backend blocks before a state-changing tool it broadcasts an `exec_permission_request` group frame; `agent_page_chat.js`'s `onmessage` catches `data.type === 'exec-permission-request'` and calls `showExecPermissionDialog(data.detail)` (`agent_page_dialogs.js`). That modal shows the Tool/MCP/Agent, parameters, program (textarea), and shell (textarea), with **Proceed** (green) / **Deny** (red); the titlebar X is hidden and Esc is disabled, and closing without a button choice counts as **Deny** (decision is idempotent). It POSTs an `exec-permission-response` frame (which **must** include a `message` key — `consumers.receive` reads `text_data_json['message']` unconditionally) carrying `request_id` + `decision`. CSS: `.exec-perm-*` (dialog) and `.exec-denied-*` (the red "Execution interrupted" banner appended to a denied answer) in `agent_page.css`. Backend contract: `docs/claude/multi-turn.md` → *Ask Execs*.
 
 ### Context directory picker — native, nested-dir-capable (2026-05-25)
 

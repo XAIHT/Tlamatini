@@ -143,6 +143,14 @@ export default [
                 agents: "writable",
                 skills: "writable",
 
+                // Cross-file globals: agent_page_state.js (Ask-Execs)
+                askExecsCheckbox: "readonly",
+                askExecsToggleLabel: "readonly",
+                isAskExecsEnabled: "readonly",
+                persistAskExecsState: "readonly",
+                applyStoredAskExecsState: "readonly",
+                syncAskExecsAvailability: "readonly",
+
                 // Cross-file globals: agent_page_state.js (Open In)
                 openInDropdownItem: "readonly",
                 openInMenuButton: "readonly",
@@ -185,6 +193,7 @@ export default [
                 computeCheckboxGridLayout: "readonly",
                 preRenderConfirmationDialog: "readonly",
                 renderConfirmationDialog: "readonly",
+                showExecPermissionDialog: "readonly",
                 preRenderOmissionsDialog: "readonly",
                 renderOmissionsDialog: "readonly",
                 preRenderMcpsDialog: "readonly",
