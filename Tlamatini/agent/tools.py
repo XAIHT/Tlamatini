@@ -85,7 +85,7 @@ _COMMENT_REQUIRED_HINTS = (
 )
 
 
-def launch_in_new_terminal(script_pathfilename, arguments=None):
+def launch_in_new_terminal(script_pathfilename, arguments=None, force_foreground=False):
     script_path = os.path.normpath(script_pathfilename)
     # Use PYTHON_HOME env var to resolve the Python interpreter
     python_home = os.environ.get('PYTHON_HOME', '')
@@ -97,7 +97,11 @@ def launch_in_new_terminal(script_pathfilename, arguments=None):
         python_exe = sys.executable
 
     clean_path = script_path.strip('"')
-    if _suppress_visible_console_launches():
+    # ``force_foreground`` lets an explicit "run in a visible window" request
+    # (execute_file) override the request-scoped console suppression that
+    # Multi-Turn turns on by default — otherwise the user asks for a foreground
+    # window and silently gets a headless background process.
+    if _suppress_visible_console_launches() and not force_foreground:
         return _launch_python_in_background(python_exe, clean_path, arguments)
 
     quoted_path = f'"{clean_path}"'
@@ -2163,9 +2167,10 @@ def get_current_time() -> str:
     return datetime.now().isoformat()
 
 @tool
-def execute_file(command: str) -> str:
+def execute_file(command: str, foreground: bool = False) -> str:
     """
-    Open a new forked terminal window to execute a Python script with optional arguments.
+    Execute a Python script with optional arguments — in the background by default,
+    or in a visible foreground terminal window when the user explicitly asks for one.
 
     PREFERRED over chat_agent_keyboarder for running a Python script: pass the script path here —
     NEVER drive Keyboarder to open IDLE / VS Code / a terminal and type/run the script. For creating
@@ -2173,8 +2178,16 @@ def execute_file(command: str) -> str:
     chat_agent_pythonxer. Keyboarder and Mouser are reserved for explicit desktop-UI automation
     requests, not for running scripts.
 
+    WINDOW vs BACKGROUND — this choice is the USER'S, never yours:
+    - Set `foreground=True` ONLY when the user explicitly asks to run it in a
+      VISIBLE / FOREGROUND / FORKED / "in a window I can see" terminal. That opens
+      a real console window even in Multi-Turn.
+    - If the user says NOTHING about a window (just "run"/"execute" the script),
+      leave `foreground=False` — the script runs in the BACKGROUND with no window.
+    - Never pop a window the user didn't ask for, and never hide one they did.
+
     CRITICAL: Pass the COMPLETE command exactly as the user specified, including all arguments.
-    
+
     Examples of what to pass:
     - User says "Run whatever.py located at desktop" → Check the 'Files Context' (if available) to see if 'whatever.py' was found. If yes, pass the full path found.
     - User says "Run the sccript whatever.py located at u:\\path" → Pass the provided path and filename like this: "u:\\path\\whatever.py".
@@ -2188,8 +2201,11 @@ def execute_file(command: str) -> str:
     Input:
     - command: The complete command string including the script path AND any arguments/parameters
                (e.g., "manage.py collectstatic", "C:\\path\\script.py --arg value", "myscript.py")
-    
-    The script will be launched in a new terminal window.
+    - foreground: True only if the user explicitly asked for a visible/foreground/forked
+                  window; otherwise False (default) and the script runs in the background.
+
+    Default is background (no window). A window opens only when foreground=True
+    (or when Multi-Turn is off, where launches are visible by default).
     """
     try:
         if not command or command.strip() == "":
@@ -2205,13 +2221,50 @@ def execute_file(command: str) -> str:
         rejection = validate_tool_path(os.path.abspath(script_path))
         if rejection:
             return rejection
-        launch_in_new_terminal(script_path, arguments)
-        if _suppress_visible_console_launches():
+        # ── Parse-gate (fix #2): a .py that does not even compile would crash
+        # instantly — and under Multi-Turn it crashes headlessly into DEVNULL,
+        # invisibly — yet the launch would still report "success". Catch it here
+        # and return the real SyntaxError so the caller fixes the file instead of
+        # being told OK. Fails open on unreadable/odd files (never the reason a
+        # valid launch is blocked).
+        if script_path.lower().endswith(('.py', '.pyw')):
+            try:
+                with open(script_path, 'r', encoding='utf-8', errors='replace') as _f:
+                    _src = _f.read()
+                compile(_src, script_path, 'exec')
+            except SyntaxError as se:
+                loc = f"line {se.lineno}" + (f", col {se.offset}" if se.offset else "")
+                detail = f"{type(se).__name__}: {se.msg} ({loc})"
+                snippet = (se.text or "").rstrip()
+                if snippet:
+                    detail += f"\n    {snippet}"
+                return (
+                    f"Error: '{script_path}' has a syntax error and would crash "
+                    f"instead of running, so it was NOT launched. {detail}\n"
+                    "The file is most likely truncated or has bad escaping (e.g. a "
+                    "literal \\n or \\\" inside the source). Rewrite it IN FULL with "
+                    "chat_agent_file_creator / file_creator (do not patch a truncated "
+                    "file), then run it again."
+                )
+            except (ValueError, OSError):
+                pass  # NUL byte / unreadable — fail open; let the launch surface it
+        # Fix #1: the foreground/background choice is the USER'S. `foreground=True`
+        # (the user explicitly asked for a visible window) overrides the Multi-Turn
+        # console suppression; otherwise we honor the suppression and run headless.
+        # A window therefore opens iff the user asked for one OR suppression is off.
+        launch_in_new_terminal(script_path, arguments, force_foreground=foreground)
+        window_opened = foreground or not _suppress_visible_console_launches()
+        if window_opened:
             return (
-                f"Command '{command}' executed successfully in the background without "
-                "opening a console window."
+                f"Launched '{command}' in a foreground terminal window — the script "
+                "is running there now; check that window for its output. (This confirms "
+                "the window was launched, not that the script ran to completion.)"
             )
-        return f"Command '{command}' executed successfully in a new terminal window."
+        return (
+            f"Launched '{command}' in the background (no window, since no foreground/"
+            "forked window was requested). Its console output is not captured here. "
+            "(This confirms it was launched, not that the script ran to completion.)"
+        )
     except Exception as e:
         return f"Error executing command '{command}': {e}"
 
