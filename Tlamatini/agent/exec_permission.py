@@ -70,19 +70,30 @@ class ExecPermissionBroker:
         self._lock = threading.Lock()
         self._pending: Dict[str, _PendingPermission] = {}
         self._closed = False
+        # When the user unchecks "Ask Execs" WHILE this run is in flight, the
+        # consumer flips this flag via :meth:`set_auto_proceed`. From then on
+        # every tool auto-proceeds for the REMAINDER of the request (no prompt
+        # emitted). Re-checking the box flips it back so prompting resumes.
+        self._auto_proceed = False
 
     def request_permission(self, detail: Dict[str, Any]) -> str:
         """Emit a permission request and BLOCK until answered.
 
         Returns ``"proceed"`` or ``"deny"``. Always returns ``"deny"`` on any
         failure / cancel / close so an unconfirmed execution never slips
-        through while Ask Execs is enabled.
+        through while Ask Execs is enabled. If the user relaxed the gate
+        mid-run (``_auto_proceed``), returns ``"proceed"`` immediately without
+        emitting a prompt.
         """
         request_id = uuid.uuid4().hex
         pending = _PendingPermission()
         with self._lock:
             if self._closed:
                 return "deny"
+            if self._auto_proceed:
+                # User turned Ask Execs off mid-run — stop prompting for the
+                # rest of this request and let the tool run.
+                return "proceed"
             self._pending[request_id] = pending
 
         payload = dict(detail or {})
@@ -125,6 +136,33 @@ class ExecPermissionBroker:
             pending.decision = normalized
             pending.event.set()
         return True
+
+    def set_auto_proceed(self, enabled: bool) -> None:
+        """Relax (``enabled=True``) or re-arm (``enabled=False``) the gate for
+        the REMAINDER of this request.
+
+        Called when the user toggles the "Ask Execs" checkbox WHILE the run is
+        already executing. When relaxed, every subsequent
+        :meth:`request_permission` returns ``"proceed"`` without emitting a
+        prompt, and any prompt currently blocking the executor is resolved to
+        ``"proceed"`` right away (so an open dialog stops blocking the chain).
+        When re-armed, future tools prompt again. No-op once :meth:`close` has
+        run — a torn-down request must never spring back to life.
+        """
+        with self._lock:
+            if self._closed:
+                return
+            self._auto_proceed = bool(enabled)
+            if not self._auto_proceed:
+                return
+            pending_items = list(self._pending.values())
+        # Unblock anything already waiting as "proceed" (mirrors close(), which
+        # unblocks pending as "deny"). Done outside the lock; setting the event
+        # is thread-safe and request_permission re-checks under its own lock.
+        for pending in pending_items:
+            if pending.decision is None:
+                pending.decision = "proceed"
+            pending.event.set()
 
     def close(self) -> None:
         """Resolve every still-pending request to ``deny`` and stop accepting
@@ -174,3 +212,17 @@ def resolve_permission(key: Any, request_id: str, decision: str) -> bool:
     if broker is None:
         return False
     return broker.resolve(request_id, decision)
+
+
+def set_broker_auto_proceed(key: Any, auto_proceed: bool) -> bool:
+    """Relax / re-arm the live broker registered under ``key`` mid-run.
+
+    Called when the user toggles "Ask Execs" while a run is in flight. Returns
+    True if a broker was found (a run gated by Ask Execs is executing), False
+    otherwise (nothing to relax — e.g. the run started with Ask Execs off, so
+    no broker was ever registered)."""
+    broker = get_broker(key)
+    if broker is None:
+        return False
+    broker.set_auto_proceed(auto_proceed)
+    return True

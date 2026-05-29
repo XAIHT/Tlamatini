@@ -242,6 +242,24 @@ function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-var
     $('.ui-dialog-buttonpane button:contains("Deny")').css(EXEC_PERM_DENY_CSS);
 }
 
+/**
+ * Silently close an open exec-permission prompt because the user unchecked
+ * "Ask Execs" mid-run. The backend broker auto-resolves the pending request to
+ * "proceed" (via the set-ask-execs-runtime frame), so we must NOT let the
+ * dialog's close handler fire a stale "deny" — marking the decision as already
+ * sent makes that close-handler sendDecision('deny') a no-op.
+ */
+function dismissExecPermissionDialogForRuntimeProceed() { // eslint-disable-line no-unused-vars
+    _execPermDecisionSent = true;
+    try {
+        if ($('#exec-permission-dialog-message').hasClass('ui-dialog-content')) {
+            $('#exec-permission-dialog-message').dialog('close');
+        }
+    } catch (e) {
+        console.log('Exec-permission dialog dismiss ignored:', e);
+    }
+}
+
 // ----------------------------------------------------------------
 // Omissions dialog
 // ----------------------------------------------------------------

@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, dismissExecPermissionDialogForRuntimeProceed */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -703,7 +703,28 @@ window.onload = () => {
     }
     if (askExecsCheckbox) {
         askExecsCheckbox.addEventListener('change', function () {
-            persistAskExecsState(!!this.checked);
+            const enabled = !!this.checked;
+            persistAskExecsState(enabled);
+            // If a Multi-Turn run is already in flight, propagate the new
+            // choice to the live broker so it takes effect for the REMAINDER
+            // of that run (uncheck → stop asking / auto-proceed; re-check →
+            // resume asking). Harmless if no run is in flight — the backend
+            // no-ops without a registered broker.
+            if (inLongOperation === true) {
+                sendChatSocketMessage(JSON.stringify({
+                    // 'message' is required by the consumer's receive() (it
+                    // reads text_data_json['message'] unconditionally).
+                    message: 'set-ask-execs-runtime',
+                    type: 'set-ask-execs-runtime',
+                    ask_execs_runtime_enabled: enabled
+                }));
+                // When relaxing mid-run, dismiss any open permission prompt so
+                // the user isn't left staring at a dialog the backend has
+                // already auto-proceeded.
+                if (!enabled && typeof dismissExecPermissionDialogForRuntimeProceed === 'function') {
+                    dismissExecPermissionDialogForRuntimeProceed();
+                }
+            }
         });
     }
     syncClearContextMenuState();

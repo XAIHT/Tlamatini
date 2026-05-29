@@ -5822,6 +5822,75 @@ class ExecPermissionBrokerTests(TestCase):
         self.assertFalse(t.is_alive(), 'request_permission must unblock on close()')
         self.assertEqual(result.get('decision'), 'deny')
 
+    def test_auto_proceed_skips_prompt_for_future_tools(self):
+        # User unchecked Ask Execs mid-run: subsequent tools must run without
+        # ever emitting a prompt.
+        from agent.exec_permission import ExecPermissionBroker
+
+        captured = []
+        broker = ExecPermissionBroker(lambda detail: captured.append(detail))
+        broker.set_auto_proceed(True)
+        decision = broker.request_permission({'tool_name': 'execute_command', 'program': 'dir'})
+        self.assertEqual(decision, 'proceed')
+        self.assertEqual(captured, [], 'no prompt should be emitted once auto-proceed is on')
+
+    def test_auto_proceed_unblocks_currently_pending_prompt_as_proceed(self):
+        import threading
+        from agent.exec_permission import ExecPermissionBroker
+
+        # emit does nothing, so request_permission blocks (a prompt is showing)
+        # until the user relaxes the gate mid-run.
+        broker = ExecPermissionBroker(lambda detail: None)
+        result = {}
+
+        def worker():
+            result['decision'] = broker.request_permission({'tool_name': 'execute_command'})
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join(timeout=0.1)  # let the worker enter the wait loop
+        broker.set_auto_proceed(True)
+        t.join(timeout=5)
+        self.assertFalse(t.is_alive(), 'set_auto_proceed(True) must unblock the pending prompt')
+        self.assertEqual(result.get('decision'), 'proceed')
+
+    def test_auto_proceed_can_be_rearmed_to_resume_prompting(self):
+        # Re-checking Ask Execs mid-run must restore prompting behavior.
+        broker, captured = self._make_broker(lambda d: 'proceed')
+        broker.set_auto_proceed(True)
+        self.assertEqual(broker.request_permission({'tool_name': 'execute_command'}), 'proceed')
+        self.assertEqual(len(captured), 0)
+        broker.set_auto_proceed(False)  # re-arm
+        self.assertEqual(broker.request_permission({'tool_name': 'execute_command'}), 'proceed')
+        self.assertEqual(len(captured), 1, 're-armed gate must emit a prompt again')
+
+    def test_auto_proceed_is_noop_after_close(self):
+        # A torn-down request must never spring back to life.
+        from agent.exec_permission import ExecPermissionBroker
+
+        broker = ExecPermissionBroker(lambda detail: None)
+        broker.close()
+        broker.set_auto_proceed(True)
+        # Still denies — close() wins over a late relax.
+        self.assertEqual(broker.request_permission({'tool_name': 'execute_command'}), 'deny')
+
+    def test_set_broker_auto_proceed_helper_routes_to_registered_broker(self):
+        from agent.exec_permission import (
+            ExecPermissionBroker, register_broker, unregister_broker,
+            set_broker_auto_proceed,
+        )
+        broker = ExecPermissionBroker(lambda d: None)
+        register_broker('user-relax', broker)
+        try:
+            self.assertTrue(set_broker_auto_proceed('user-relax', True))
+            self.assertEqual(
+                broker.request_permission({'tool_name': 'execute_command'}), 'proceed'
+            )
+        finally:
+            unregister_broker('user-relax')
+        # No broker registered → helper reports nothing to relax.
+        self.assertFalse(set_broker_auto_proceed('user-relax', True))
+
     def test_resolve_unknown_request_id_returns_false(self):
         broker, _ = self._make_broker(lambda d: 'proceed')
         self.assertFalse(broker.resolve('nonexistent', 'proceed'))

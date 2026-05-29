@@ -889,6 +889,23 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 )
                 return
 
+            if type == 'set-ask-execs-runtime':
+                # The user toggled the "Ask Execs" checkbox WHILE a Multi-Turn
+                # run is in flight. Propagate the new choice to the live broker
+                # so it takes effect for the REMAINDER of that run: unchecked
+                # (enabled=False) → stop prompting / auto-proceed; re-checked
+                # (enabled=True) → resume prompting. No effect if no broker is
+                # registered (the run started with Ask Execs off, so there is
+                # nothing to relax — applied=False).
+                from .exec_permission import set_broker_auto_proceed
+                desired = bool(text_data_json.get('ask_execs_runtime_enabled', False))
+                applied = set_broker_auto_proceed(user.id, auto_proceed=not desired)
+                print(
+                    f"--- set-ask-execs-runtime: enabled={desired} "
+                    f"auto_proceed={not desired} applied={applied}"
+                )
+                return
+
             if type == 'set-canvas-as-context':
                 print("--- Received set-canvas-as-context message from client.")
                 print(f"--- The message(filename) is: {message}")
