@@ -175,7 +175,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 - **Monitor-Netstat** - LLM-powered network port monitor
 - **Emailer** - SMTP email on pattern detection
 - **RecMailer** - IMAP email receiver/monitor
-- **Notifier** - Desktop notification + sound
+- **Notifier** - Notification on pattern match (or oneshot from chat). Two surfaces, both fire together: (1) the legacy **in-browser DOM popup** (writes `notification.json`, polled by the frontend) + optional `.wav`; (2) a **native Windows toast** (OS banner, bottom-right, persists in Action Center) via `agent/native_toast.py`'s mechanism mirrored inline (pool subprocesses can't import `agent.*`). The toast shells out to **Windows PowerShell 5.1** (`powershell.exe`, NOT `pwsh` — PowerShell 7 can't load the WinRT toast types) using the registered AUMID `XAIHT.Tlamatini.Server`, shows the Tlamatini PNG logo, and on click focuses the **existing** Tlamatini browser tab via the `tlamatini:` URL protocol + a Win32 focus helper (opens nothing new). **Non-admin/HKCU only** — an elevated process gets its toasts suppressed and the focus dance fails across integrity levels. Config keys (`notifier/config.yaml` → `target`): `native_toast` (default true), `toast_title`, `toast_image` (empty → registered HKCU IconUri), `toast_click` (`focus`/`none`), reuses `sound_enabled`. Identity + protocol are registered once at Django startup (`apps.py` → `native_toast.register_all()`).
 - **Whatsapper** - WhatsApp messages (TextMeBot)
 - **TelegramRX** - Telegram message receiver
 - **FlowHypervisor** - LLM-powered flow health monitor (system agent)

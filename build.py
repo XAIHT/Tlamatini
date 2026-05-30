@@ -657,6 +657,13 @@ def main():
             # executable in frozen mode) exactly like prompt.pmt / config.json,
             # so it must land at the install root — not only inside the bundle.
             Path("Tlamatini") / "agent" / "Tlamatini.md": dist_manage / "Tlamatini.md",
+            # Tlamatini.png is the native Windows toast logo (Notifier agent /
+            # agent/native_toast.py). The per-user HKCU IconUri registered at
+            # startup must point at a STABLE path that survives across runs, so
+            # the PNG ships next to the executable (a _MEIPASS temp path would
+            # be deleted on exit and change every run -> stale toast icon).
+            Path("Tlamatini") / "agent" / "static" / "agent" / "img" / "Tlamatini.png":
+                dist_manage / "Tlamatini.png",
         }
         for src, dst in optional_file_copies.items():
             if src.exists():

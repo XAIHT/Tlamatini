@@ -419,6 +419,17 @@ class AgentConfig(AppConfig):
                 t2.start()
                 global_state.set_state('mcp_files_server_running', True)
 
+            # ── Native Windows toast identity + click-to-focus protocol ──
+            # Register the per-user (HKCU, no-admin) AUMID identity and the
+            # `tlamatini:` focus protocol so Notifier toasts show "Tlamatini" +
+            # icon, persist in the Action Center, and focus the existing
+            # browser tab on click. Fast (registry writes only) and fail-open.
+            try:
+                from . import native_toast
+                native_toast.register_all()
+            except Exception:
+                logging.exception("Native toast registration failed (non-fatal)")
+
             # ── ACPX runtime + skill registry boot ──────────────────
             # Both of these are best-effort: if ACPX cannot probe a CLI
             # or the skills package is missing, Django keeps starting.

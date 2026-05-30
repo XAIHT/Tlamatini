@@ -289,9 +289,111 @@ def trigger_frontend_notification(matches: List[str], source_agent: str):
             json.dump(data, f)
             
         logging.info(f"🔔 Notification file created for: {matches}")
-        
+
     except Exception as e:
         logging.error(f"❌ Failed to create notification file: {e}")
+
+
+# --- Native Windows toast (inline; pool subprocesses can't import agent.*) ---
+# Mirror of agent/native_toast.py kept self-contained per the pool-agent
+# contract (create_new_agent.md Pitfall #10). MUST shell out to Windows
+# PowerShell 5.1 (powershell.exe) — NOT pwsh, which can't load the WinRT toast
+# types. HKCU/non-admin only. Every step is fail-open: a missed toast must
+# never crash the Notifier.
+_TOAST_AUMID = "XAIHT.Tlamatini.Server"
+
+
+def _resolve_powershell_51():
+    windir = os.environ.get("WINDIR", r"C:\Windows")
+    candidate = os.path.join(windir, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    if os.path.exists(candidate):
+        return candidate
+    try:
+        import shutil
+        return shutil.which("powershell")
+    except Exception:
+        return None
+
+
+def _resolve_toast_icon():
+    """config.toast_image wins; else the IconUri the server registered in HKCU."""
+    cfg_img = (CONFIG.get('target', {}) or {}).get('toast_image') or ''
+    if cfg_img and os.path.exists(cfg_img):
+        return cfg_img
+    try:
+        import winreg
+        key_path = rf"Software\Classes\AppUserModelId\{_TOAST_AUMID}"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            value, _ = winreg.QueryValueEx(key, "IconUri")
+            if value and os.path.exists(value):
+                return value
+    except Exception:
+        pass
+    return None
+
+
+def trigger_native_toast(title: str, body: str):
+    """Show a native Windows toast (additive to the browser popup). No-op off
+    Windows or when native_toast is disabled. Fail-open."""
+    if os.name != 'nt':
+        return
+    target_cfg = CONFIG.get('target', {}) or {}
+    if not target_cfg.get('native_toast', True):
+        return
+    powershell = _resolve_powershell_51()
+    if not powershell:
+        logging.info("⚠️ Windows PowerShell 5.1 not found; skipping native toast.")
+        return
+
+    from xml.sax.saxutils import escape as _esc
+    sound_enabled = bool(target_cfg.get('sound_enabled', False))
+    clickable = (target_cfg.get('toast_click', 'focus') or 'focus').lower() == 'focus'
+    icon = _resolve_toast_icon()
+
+    activation = ' activationType="protocol" launch="tlamatini:focus"' if clickable else ''
+    image_el = ''
+    if icon:
+        image_el = f'<image placement="appLogoOverride" src="{_esc(icon, {chr(34): "&quot;"})}"/>'
+    audio_el = ('<audio src="ms-winsoundevent:Notification.Default"/>'
+                if sound_enabled else '<audio silent="true"/>')
+    toast_xml = (
+        f'<toast{activation}><visual><binding template="ToastGeneric">'
+        f'{image_el}<text>{_esc(title or "Tlamatini")}</text>'
+        f'<text>{_esc(body or "")}</text>'
+        f'</binding></visual>{audio_el}</toast>'
+    )
+    script = (
+        "$ErrorActionPreference = 'Stop'\n"
+        "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null\n"
+        "[Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null\n"
+        "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null\n"
+        "$xml = @'\n" + toast_xml + "\n'@\n"
+        "$doc = New-Object Windows.Data.Xml.Dom.XmlDocument\n"
+        "$doc.LoadXml($xml)\n"
+        "$toast = New-Object Windows.UI.Notifications.ToastNotification $doc\n"
+        f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{_TOAST_AUMID}').Show($toast)\n"
+    )
+
+    import tempfile
+    tmp_path = None
+    try:
+        fd, tmp_path = tempfile.mkstemp(suffix=".ps1", prefix="tlam_toast_")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(script)
+        subprocess.run(
+            [powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", tmp_path],
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=15,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        )
+        logging.info(f"🔔 Native toast shown: {title}")
+    except Exception as e:
+        logging.warning(f"⚠️ Native toast failed: {e}")
+    finally:
+        if tmp_path:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 # --- Agent Logic ---
 
@@ -330,6 +432,9 @@ def tool_node(state: NotifierState):
         matches = search_strings or [CONFIG['target'].get('outcome_detail') or 'Notification']
         logging.critical(f"🚨 ONESHOT NOTIFICATION: {matches}")
         trigger_frontend_notification(matches, CURRENT_DIR_NAME)
+        _toast_title = CONFIG['target'].get('toast_title') or 'Tlamatini'
+        _toast_body = CONFIG['target'].get('outcome_detail') or f"Detected: {', '.join(matches)}"
+        trigger_native_toast(_toast_title, _toast_body)
         # Brief delay so the frontend poller has a chance to pick up the file.
         time.sleep(1.0)
         remove_pid_file()
@@ -371,7 +476,11 @@ def tool_node(state: NotifierState):
                     if matches:
                         logging.critical(f"🚨 DETECTED {matches} in {agent_name}")
                         trigger_frontend_notification(matches, agent_name)
-                        
+                        _toast_title = CONFIG['target'].get('toast_title') or 'Tlamatini'
+                        _toast_body = (CONFIG['target'].get('outcome_detail')
+                                       or f"Detected: {', '.join(matches)} in {agent_name}")
+                        trigger_native_toast(_toast_title, _toast_body)
+
                         # Start Targets
                         targets = CONFIG.get('target_agents', [])
                         wait_for_agents_to_stop(targets)
