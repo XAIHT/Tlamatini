@@ -119,7 +119,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 
 ### Action Agents
 - **Executer** - Shell commands
-- **Pythonxer** - Inline Python (exit code gating)
+- **Pythonxer** - Inline Python behind a STRICT correctness gate (`compile()` syntax floor + blocking Ruff when `ruff_blocking=true`, the default). **ALWAYS triggers `target_agents` afterwards — no matter what** (success, gate refusal, or runtime failure); the exit code drives only the LED and the Multi-Turn fix→re-ruff→retry loop, never whether downstream starts. (2026-05-29 — was "exit-code gates downstream"; see `docs/claude/recent-fixes.md`)
 - **Prompter** - LLM prompt execution
 - **Summarizer** - LLM text/log summarization
 - **Crawler** - Web crawling with LLM analysis

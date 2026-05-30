@@ -644,7 +644,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ### Action Agents
 - **Executer** — Shell commands
-- **Pythonxer** — Inline Python (exit code gating, Ruff validation)
+- **Pythonxer** — Inline Python behind a strict gate (`compile()` syntax floor + blocking Ruff, `ruff_blocking=true` default); ALWAYS triggers downstream no matter the outcome (exit code drives only the LED + Multi-Turn retry loop)
 - **Prompter** — LLM prompt execution
 - **Summarizer** — Log monitoring + one-shot text summarization
 - **Crawler** — Developer-oriented web crawler with LLM analysis
@@ -700,7 +700,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Monitor-Netstat** — LLM-powered network port monitor
 - **Emailer** — SMTP email sender on pattern detection
 - **RecMailer** — IMAP email receiver/monitor
-- **Notifier** — Desktop notification + sound
+- **Notifier** — In-browser popup + native Windows toast (Action Center) + optional sound
 - **Whatsapper** — WhatsApp notifications (TextMeBot)
 - **TelegramRX** — Telegram message receiver
 - **FlowHypervisor** — System-managed LLM anomaly detector (system agent)

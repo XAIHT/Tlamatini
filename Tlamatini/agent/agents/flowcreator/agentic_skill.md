@@ -580,18 +580,19 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 ### 8. Pythonxer
-- **Purpose**: Executes a Python script. Exit code 0 = success (triggers downstream), non-zero = failure (skips downstream).
-- **Used for**: Running inline Python code within a flow for custom data processing, conditional logic, file comparison, or glue code between agents. It validates code with Ruff linting before execution and only triggers downstream agents on success (exit code 0).
-- **Aimed at**: Embedding custom logic directly into a workflow without needing external script files. Its exit-code-based gating makes it ideal for conditional flow progression — the flow only continues if the Python script succeeds.
-- **Application example**: A Pythonxer reads a remote state file copied by an SCP agent, checks whether the content contains "GENERAL_STATE=0", and prints either "STATE_ZERO" or "STATE_CHANGED" — allowing a downstream Raiser to branch the flow based on the detected state.
+- **Purpose**: Executes a Python script behind a STRICT correctness gate, then **ALWAYS triggers its downstream agents — no matter what** (success, a Ruff/syntax gate refusal, OR a runtime failure). Pythonxer never dead-ends a flow. The exit code (0 success / non-zero on any failure) drives only the LED and the Multi-Turn fix→re-ruff→retry loop — it does **NOT** gate whether downstream agents start.
+- **Used for**: Running inline Python code within a flow for custom data processing, conditional logic, file comparison, or glue code between agents. Before any execution it (1) `compile()`-parses the script — an unparsable script is refused outright — and (2) validates it with Ruff: when `ruff_blocking` is true (the default), ANY Ruff finding ABORTS execution and Pythonxer returns non-zero with the findings logged. A failed gate or runtime error still triggers downstream.
+- **Aimed at**: Embedding custom logic directly into a workflow without needing external script files. Because downstream ALWAYS fires, **conditional branching must be done by a downstream agent reading Pythonxer's result/log** (e.g. a Forker/Raiser on a marker the script printed), NOT by relying on Pythonxer to skip downstream on failure. Wire your own validation downstream if a step must only proceed on success.
+- **Application example**: A Pythonxer reads a remote state file copied by an SCP agent, checks whether the content contains "GENERAL_STATE=0", and prints either "STATE_ZERO" or "STATE_CHANGED" — a downstream Raiser/Forker then branches the flow on that printed marker (not on Pythonxer's exit code).
 - **WHEN NOT TO USE**: Do NOT use Pythonxer for tasks that have a specialized agent. See the **Agent Selection Priority Rules** section above. Specifically: do NOT use Pythonxer to analyze images (use Image-Interpreter), read documents (use File-Interpreter/File-Extractor), call APIs (use Apirer), crawl websites (use Crawler), run SQL (use SQLer), send prompts to LLMs (use Prompter), or create files (use File-Creator).
 - **Pool name pattern**: `pythonxer_<n>`
-- **Starts other agents**: YES (only on success, exit code 0)
+- **Starts other agents**: YES (ALWAYS — on success, gate refusal, AND runtime failure; never gated)
 - **Config parameters**:
   - `script`: "import sys\nprint('Hello!')\nsys.exit(0)" (Python code — formulate based on the flow's objective)
   - `execute_forked_window`: false
+  - `ruff_blocking`: true (strict gate: a real Ruff failure ABORTS execution and returns non-zero — findings logged; set false to make Ruff advisory. Ruff absent/timeout fails open and the compile() syntax floor still runs.)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start on success)
+  - `target_agents`: [] (downstream agents — ALWAYS started after execution)
 
 ### 9. Sleeper
 - **Purpose**: Waits for a specified duration then triggers downstream agents. Use for adding delays in a flow.
