@@ -172,6 +172,50 @@
     flex-grow: 1;
 }
 
+/* ── Mode indicator badges ───────────────────────────────────────────────
+   Little squares on each catalog card that tell the user which toolbar
+   checkboxes the prompt needs (and which get set automatically when the card
+   is clicked): One-Shot (both OFF), Multi-turn (Multi-Turn ON), ACPX (ACPX +
+   Multi-Turn ON). A prompt can carry more than one badge. */
+.prompt-card-modes {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.prompt-mode-badge {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    cursor: help;
+}
+
+/* Multi-turn — teal/cyan (mirrors the reference image). */
+.prompt-mode-badge-multiturn {
+    background: linear-gradient(135deg, #0e7490 0%, #22d3ee 100%);
+    color: #06222b;
+}
+
+/* ACPX — fire-orange → violet (the ACPX brand colours used across the UI). */
+.prompt-mode-badge-acpx {
+    background: linear-gradient(135deg, #b91c1c 0%, #f97316 55%, #9d3bff 100%);
+}
+
+/* One-Shot — muted slate (no toolbar modifiers needed; both get unchecked). */
+.prompt-mode-badge-oneshot {
+    background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+    color: #eef3ff;
+}
+
 .prompt-card-preview {
     margin: 0 0 10px 0;
     font-size: 13px;

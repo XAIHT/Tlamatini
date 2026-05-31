@@ -419,16 +419,17 @@ class AgentConfig(AppConfig):
                 t2.start()
                 global_state.set_state('mcp_files_server_running', True)
 
-            # ── Native Windows toast identity + click-to-focus protocol ──
-            # Register the per-user (HKCU, no-admin) AUMID identity and the
-            # `tlamatini:` focus protocol so Notifier toasts show "Tlamatini" +
-            # icon, persist in the Action Center, and focus the existing
-            # browser tab on click. Fast (registry writes only) and fail-open.
+            # ── Windows "Installed apps" / Programs-and-Features entry ──
+            # Self-heal the per-user (HKCU, no-admin) Add/Remove-Programs entry
+            # on every frozen launch so Tlamatini shows up in Windows' uninstall
+            # list — including installs made before this feature existed. No-ops
+            # in source mode (no Uninstaller.exe next to a python.exe). Fail-open.
             try:
-                from . import native_toast
-                native_toast.register_all()
+                from . import windows_app_registration
+                from .version import get_version
+                windows_app_registration.self_heal_for_frozen(version=get_version())
             except Exception:
-                logging.exception("Native toast registration failed (non-fatal)")
+                logging.exception("Windows app registration failed (non-fatal)")
 
             # ── ACPX runtime + skill registry boot ──────────────────
             # Both of these are best-effort: if ACPX cannot probe a CLI

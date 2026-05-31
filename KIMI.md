@@ -700,7 +700,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Monitor-Netstat** — LLM-powered network port monitor
 - **Emailer** — SMTP email sender on pattern detection
 - **RecMailer** — IMAP email receiver/monitor
-- **Notifier** — In-browser popup + native Windows toast (Action Center) + optional sound
+- **Notifier** — In-browser popup + optional sound
 - **Whatsapper** — WhatsApp notifications (TextMeBot)
 - **TelegramRX** — Telegram message receiver
 - **FlowHypervisor** — System-managed LLM anomaly detector (system agent)

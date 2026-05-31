@@ -273,3 +273,6 @@ Tlamatini/agent/_version.py
 Tlamatini.version.txt
 Installer.version.txt
 Uninstaller.version.txt
+
+# Build concurrency lock (build.py)
+.build.lock

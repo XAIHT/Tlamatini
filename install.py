@@ -567,11 +567,17 @@ class FancyInstaller:
             self._set_progress(cumulative)
             self._mark_step(step_idx)
 
-            # ── Step 4: copy Uninstaller.exe into install dir ─────────
+            # ── Step 4: copy Uninstaller.exe + register in "Installed apps" ──
             step_idx = 4
             self._activate_step(step_idx)
             self._set_progress(cumulative, "Copying uninstaller…")
             self._copy_uninstaller(target)
+            # Now that Uninstaller.exe is in place, advertise Tlamatini in the
+            # Windows Settings ▸ Apps ▸ Installed apps (and legacy Programs and
+            # Features) list with a working Uninstall button. Per-user (HKCU),
+            # non-fatal: a registry hiccup must not fail the whole install.
+            self._set_progress(cumulative, "Registering with Windows…")
+            self._register_programs_entry(target)
             cumulative += self.STEPS[step_idx][1]
             self._set_progress(cumulative)
             self._mark_step(step_idx)
@@ -669,6 +675,74 @@ class FancyInstaller:
         else:
             # Non-fatal: older release packages may not include it
             print(f"WARNING: Uninstaller.exe not found at {src} — skipping copy.")
+
+    # ─── "Installed apps" (Add/Remove Programs) registration ─────────
+    def _register_programs_entry(self, target_dir: str):
+        """Write the per-user ARP entry so Tlamatini appears in Windows'
+        Settings ▸ Apps ▸ Installed apps (and legacy Programs and Features),
+        with an Uninstall button that launches the bundled Uninstaller.exe.
+
+        Self-contained (the installer is a standalone frozen exe and cannot
+        import agent.*). HKCU only — matches the per-user, non-elevated install.
+        Best-effort: never raises into the install pipeline.
+        """
+        if sys.platform != "win32":
+            return
+        try:
+            import winreg
+
+            install_dir = os.path.abspath(target_dir)
+            uninstaller = os.path.join(install_dir, "Uninstaller.exe")
+            if not os.path.isfile(uninstaller):
+                print("WARNING: Uninstaller.exe missing — skipping Installed-apps registration.")
+                return
+
+            icon = os.path.join(install_dir, "Tlamatini.ico")
+            exe = os.path.join(install_dir, "Tlamatini.exe")
+            display_icon = icon if os.path.isfile(icon) else (
+                f"{exe},0" if os.path.isfile(exe) else uninstaller
+            )
+            quoted_uninstaller = f'"{uninstaller}"'
+
+            # EstimatedSize (KB) for the "Size" column — best-effort, capped.
+            size_kb = 0
+            try:
+                seen = 0
+                total = 0
+                for root, _dirs, files in os.walk(install_dir):
+                    for name in files:
+                        seen += 1
+                        if seen > 60000:
+                            raise StopIteration
+                        try:
+                            total += os.path.getsize(os.path.join(root, name))
+                        except OSError:
+                            pass
+                size_kb = total // 1024
+            except StopIteration:
+                size_kb = total // 1024
+            except Exception:
+                size_kb = 0
+
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tlamatini"
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "Tlamatini")
+                if self.version:
+                    winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, self.version)
+                winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "XAIHT")
+                winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, display_icon)
+                winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_dir)
+                winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, quoted_uninstaller)
+                winreg.SetValueEx(key, "QuietUninstallString", 0, winreg.REG_SZ, quoted_uninstaller)
+                winreg.SetValueEx(key, "URLInfoAbout", 0, winreg.REG_SZ,
+                                  "https://github.com/XAIHT/Tlamatini")
+                winreg.SetValueEx(key, "NoModify", 0, winreg.REG_DWORD, 1)
+                winreg.SetValueEx(key, "NoRepair", 0, winreg.REG_DWORD, 1)
+                if size_kb > 0:
+                    winreg.SetValueEx(key, "EstimatedSize", 0, winreg.REG_DWORD, size_kb)
+            print(f"Registered Tlamatini in Installed apps (HKCU): {key_path}")
+        except Exception as e:
+            print(f"WARNING: Could not register Installed-apps entry: {e}")
 
     # ─── Desktop refresh helper ──────────────────────────────────────
     @staticmethod

@@ -547,6 +547,7 @@ class FancyUninstaller:
             step_idx = 3
             self._activate_step(step_idx)
             self._set_progress(cumulative, "Cleaning up…")
+            self._unregister_programs_entry()
             self._cleanup_install_dir(target)
             cumulative += self.STEPS[step_idx][1]
             self._set_progress(cumulative)
@@ -637,6 +638,24 @@ class FancyUninstaller:
                 cumulative + weight * frac,
                 f"Removing files… ({processed}/{total})",
             )
+
+    @staticmethod
+    def _unregister_programs_entry():
+        """Remove the per-user "Installed apps" (Add/Remove Programs) entry that
+        install.py wrote under HKCU. Best-effort: never raises into the
+        uninstall pipeline, and a missing key counts as success."""
+        if sys.platform != "win32":
+            return
+        try:
+            import winreg
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tlamatini"
+            try:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
+                print("Removed Installed-apps entry (HKCU).")
+            except FileNotFoundError:
+                pass  # already absent
+        except Exception as e:
+            print(f"WARNING: Could not remove Installed-apps entry: {e}")
 
     @staticmethod
     def _cleanup_install_dir(target: str):
