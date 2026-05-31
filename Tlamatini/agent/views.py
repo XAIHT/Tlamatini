@@ -3101,6 +3101,33 @@ def check_all_agents_status_view(request):
         }), content_type='application/json', status=500)
 
 
+def flash_window_view(request):
+    """Flash the Tlamatini.exe console taskbar button + log an UPPERCASE
+    attention banner.
+
+    Called by the browser when an Ask-Execs approval prompt or a Notifier
+    notification is surfaced, so the user notices even with the browser and the
+    console minimized. Page JavaScript cannot flash its own browser taskbar
+    button (sandbox), but the Django process IS the Tlamatini.exe that owns the
+    console window, so it can. Best-effort and fail-safe — a flash failure is
+    never fatal. Body: {"page": "...", "reason": "..."}.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8')) if request.body else {}
+    except Exception:
+        data = {}
+    page = str(data.get('page') or '')
+    reason = str(data.get('reason') or '')
+    try:
+        from .window_flash import notify_attention
+        flashed = notify_attention(page, reason)
+    except Exception as e:
+        return HttpResponse(json.dumps({"success": False, "error": str(e)}),
+                            content_type='application/json', status=500)
+    return HttpResponse(json.dumps({"success": True, "flashed": bool(flashed)}),
+                        content_type='application/json')
+
+
 _CHAT_RUNTIME_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+_\d{3,}_[0-9a-f]{6,}$")
 
 

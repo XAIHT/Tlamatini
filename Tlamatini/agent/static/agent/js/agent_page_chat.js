@@ -1374,6 +1374,11 @@ chatSocket.onmessage = function (e) {
     // Ask-Execs: the backend is blocked waiting for the user to approve the
     // next Multi-Turn tool execution. Pop the modal Proceed/Deny dialog.
     if (data.type === 'exec-permission-request') {
+        // Flash the Tlamatini.exe taskbar button + log an uppercase banner so
+        // the user notices the pending approval even with the browser minimized.
+        if (window.SharedRuntimeDialogs && typeof window.SharedRuntimeDialogs.flashTlamatiniWindow === 'function') {
+            window.SharedRuntimeDialogs.flashTlamatiniWindow('execution-approval', 'agent_page.html');
+        }
         if (typeof showExecPermissionDialog === 'function') {
             showExecPermissionDialog(data.detail || {});
         } else {

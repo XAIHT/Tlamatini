@@ -22,12 +22,49 @@
         return div.innerHTML;
     }
 
+    // Detect which Tlamatini page this module is running on, so the backend
+    // attention banner can name the right surface.
+    function detectCurrentPage() {
+        const p = ((window.location && window.location.pathname) || '').toLowerCase();
+        if (p.indexOf('agentic_control_panel') !== -1) return 'agentic_control_panel.html';
+        return 'agent_page.html';
+    }
+
+    /**
+     * Ask the backend to flash the Tlamatini.exe console taskbar button and log
+     * an uppercase attention banner. Page JavaScript cannot flash its OWN
+     * browser taskbar button (sandbox), but the Django process can flash the
+     * .exe window it owns. Best-effort: failures are silently ignored.
+     * @param {string} reason - 'execution-approval' | 'notification'.
+     * @param {string} [page] - Override the auto-detected page identifier.
+     */
+    function flashTlamatiniWindow(reason, page) {
+        try {
+            const targetPage = page || detectCurrentPage();
+            const cookieValue = `; ${document.cookie}`;
+            const parts = cookieValue.split('; csrftoken=');
+            const csrf = parts.length === 2 ? (parts.pop().split(';').shift() || '') : '';
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrf) headers['X-CSRFToken'] = csrf;
+            fetch('/agent/flash_window/', {
+                method: 'POST',
+                headers: headers,
+                credentials: 'same-origin',
+                body: JSON.stringify({ page: targetPage, reason: reason || '' })
+            }).catch(() => { /* attention flash is best-effort */ });
+        } catch (_e) { /* best-effort; never break the caller */ }
+    }
+
     /**
      * Render the Notifier toast for a single notification payload.
      * @param {Object} notification - Payload as emitted by notifier.py.
      */
     function renderNotifierToast(notification) {
         if (!notification) return;
+        // Flash the Tlamatini.exe taskbar button + log banner. The backend
+        // dedupes notifications (notification.json is deleted after one read),
+        // so this fires exactly once per notification.
+        flashTlamatiniWindow('notification');
         const matchesArray = notification.matches || [];
         const matches = matchesArray.join(', ');
         const sourceAgent = notification.source_agent || notification.runtime_name || 'unknown';
@@ -233,6 +270,7 @@
         escapeHtml: escapeHtmlShared,
         clearSubmittedAskerRequest: clearSubmittedAskerRequest,
         isAskerRequestSubmitted: isAskerRequestSubmitted,
-        submittedAskerRequests: submittedAskerRequests
+        submittedAskerRequests: submittedAskerRequests,
+        flashTlamatiniWindow: flashTlamatiniWindow
     };
 })(typeof window !== 'undefined' ? window : this);
