@@ -657,13 +657,6 @@ def main():
             # executable in frozen mode) exactly like prompt.pmt / config.json,
             # so it must land at the install root — not only inside the bundle.
             Path("Tlamatini") / "agent" / "Tlamatini.md": dist_manage / "Tlamatini.md",
-            # Tlamatini.png is the native Windows toast logo (Notifier agent /
-            # agent/native_toast.py). The per-user HKCU IconUri registered at
-            # startup must point at a STABLE path that survives across runs, so
-            # the PNG ships next to the executable (a _MEIPASS temp path would
-            # be deleted on exit and change every run -> stale toast icon).
-            Path("Tlamatini") / "agent" / "static" / "agent" / "img" / "Tlamatini.png":
-                dist_manage / "Tlamatini.png",
         }
         for src, dst in optional_file_copies.items():
             if src.exists():
@@ -893,5 +886,91 @@ def main():
     print(f"{'=' * 60}")
 
 
+# ── Concurrency guard ────────────────────────────────────────────────────
+# Two builds in this directory at once is fatal: they share the PyInstaller
+# work dir (build/manage) and the dist/ tree, and whichever finishes first runs
+# the "Cleaning previous build artifacts" rmtree (and the end-of-run cleanup),
+# deleting the OTHER build's work dir mid-flight — the loser then dies with
+# `FileNotFoundError: build/manage/warn-manage.txt`. This lock makes a second
+# build refuse to start instead of silently clobbering the first.
+_BUILD_LOCK = Path(".build.lock")
+
+
+def _pid_alive(pid):
+    """True if `pid` is a currently-running process. Errs on the side of
+    'alive' on unknown so we never clobber a possibly-running build."""
+    if not pid or pid <= 0:
+        return False
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except Exception:
+        pass
+    if os.name == "nt":
+        try:
+            import ctypes
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            h = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid))
+            if not h:
+                return False
+            code = ctypes.c_ulong()
+            ok = ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))
+            ctypes.windll.kernel32.CloseHandle(h)
+            return bool(ok) and code.value == 259  # STILL_ACTIVE
+        except Exception:
+            return True
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except OSError:
+        return False
+    except Exception:
+        return True
+
+
+def _acquire_build_lock():
+    """Refuse to start if another build is genuinely running; otherwise (no lock
+    or a stale lock from a crashed build) take ownership. Fail-open on any I/O
+    error so it never blocks a legitimate single build."""
+    if _BUILD_LOCK.exists():
+        try:
+            other = int((_BUILD_LOCK.read_text(encoding="utf-8").strip() or "0"))
+        except Exception:
+            other = 0
+        if other and other != os.getpid() and _pid_alive(other):
+            print("=" * 60)
+            print(f"  ABORT: another Tlamatini build is already running (PID {other}).")
+            print("  Concurrent builds share the build/ and dist/ work dirs and")
+            print("  clobber each other (the loser dies writing")
+            print("  build/manage/warn-manage.txt). Let it finish, or kill that")
+            print(f"  process and delete {_BUILD_LOCK} if the lock is stale.")
+            print("=" * 60)
+            sys.exit(2)
+        print(f"Reclaiming stale build lock (PID {other} not running).")
+    try:
+        _BUILD_LOCK.write_text(str(os.getpid()), encoding="utf-8")
+    except Exception as e:
+        print(f"WARNING: could not write build lock ({e}); proceeding without it.")
+
+
+def _release_build_lock():
+    """Remove the lock, but only if it is still ours (never delete another
+    run's lock). Best-effort — runs even when main() exits via sys.exit()."""
+    try:
+        if _BUILD_LOCK.exists():
+            try:
+                owner = int((_BUILD_LOCK.read_text(encoding="utf-8").strip() or "0"))
+            except Exception:
+                owner = os.getpid()
+            if owner == os.getpid():
+                _BUILD_LOCK.unlink()
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
-    main()
+    _acquire_build_lock()
+    try:
+        main()
+    finally:
+        _release_build_lock()

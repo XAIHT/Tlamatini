@@ -2060,13 +2060,29 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         self.assertEqual(captured['label'], 'legacy')
         self.assertEqual(captured['payload'], {'input': 'Tell me the current time.'})
 
-    def test_launch_in_new_terminal_keeps_legacy_shell_launch_when_not_suppressed(self):
+    def test_launch_in_new_terminal_opens_visible_new_console_when_not_suppressed(self):
         with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=1234)) as mock_popen:
             agent_tools.launch_in_new_terminal(r'C:\Temp\demo.py', '--flag "hello world"')
 
         args, kwargs = mock_popen.call_args
-        self.assertTrue(kwargs['shell'])
-        self.assertIn('start "Tlamatini Console" cmd /k', args[0])
+        if os.name == 'nt':
+            # Robust visible console: cmd.exe via CREATE_NEW_CONSOLE + an explicit
+            # SW_SHOWNORMAL STARTUPINFO — NOT `start ... shell=True`, which was a
+            # confirmed false-OK in the Daphne worker thread (no console/window
+            # station) and let cmd AutoRun overwrite the title.
+            self.assertFalse(kwargs.get('shell', False))
+            self.assertIn('cmd.exe /k title Tlamatini Console - demo.py', args[0])
+            self.assertIn(r'C:\Temp\demo.py', args[0])
+            self.assertEqual(
+                kwargs.get('creationflags', 0),
+                subprocess.CREATE_NEW_CONSOLE,
+            )
+            startupinfo = kwargs.get('startupinfo')
+            self.assertIsNotNone(startupinfo)
+            self.assertEqual(startupinfo.wShowWindow, 1)  # SW_SHOWNORMAL
+        else:
+            self.assertTrue(kwargs['shell'])
+            self.assertIn('start "Tlamatini Console" cmd /k', args[0])
 
     def test_launch_in_new_terminal_uses_headless_background_launch_when_suppressed(self):
         with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=1234)) as mock_popen, \
@@ -2084,6 +2100,41 @@ class MultiTurnBackgroundLaunchTests(TestCase):
             self.assertNotEqual(kwargs.get('creationflags', 0), 0)
         else:
             self.assertTrue(kwargs.get('start_new_session'))
+
+    def _run_execute_file_foreground(self, verify_result):
+        """Drive the REAL execute_file foreground path with a valid temp script,
+        a no-op launch, and a stubbed window-verification verdict."""
+        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False, encoding='utf-8') as handle:
+            handle.write("print('ok')\n")
+            script_path = handle.name
+        self.addCleanup(lambda: os.path.exists(script_path) and os.remove(script_path))
+        with patch('agent.tools._resolve_script_path', return_value=script_path), \
+                patch('agent.tools.validate_tool_path', return_value=None), \
+                patch('agent.tools.launch_in_new_terminal') as mock_launch, \
+                patch('agent.tools._verify_foreground_window', return_value=verify_result):
+            result = agent_tools.execute_file.func(script_path, foreground=True)
+        mock_launch.assert_called_once()
+        # foreground=True must propagate as force_foreground=True.
+        self.assertTrue(mock_launch.call_args.kwargs.get('force_foreground'))
+        return result
+
+    def test_execute_file_foreground_confirms_when_window_verified(self):
+        result = self._run_execute_file_foreground(True)
+        self.assertIn('CONFIRMED', result)
+        self.assertNotIn('did NOT appear', result)
+
+    def test_execute_file_foreground_reports_failure_when_window_missing(self):
+        # The whole point: NO MORE false-OK. A window that never appeared must be
+        # reported as a failure the LLM can act on, not "ran visibly on your desktop".
+        result = self._run_execute_file_foreground(False)
+        self.assertIn('did NOT appear', result)
+        self.assertIn('DO NOT report this as success', result)
+
+    def test_execute_file_foreground_neutral_when_unverifiable(self):
+        result = self._run_execute_file_foreground(None)
+        self.assertIn('could not be', result)
+        self.assertNotIn('CONFIRMED', result)
+        self.assertNotIn('did NOT appear', result)
 
     def test_start_template_agent_process_keeps_legacy_console_when_not_suppressed(self):
         with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=4321)) as mock_popen:

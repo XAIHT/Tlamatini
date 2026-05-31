@@ -35,6 +35,92 @@ function buildPromptPreview(raw, maxChars = 240) {
     return cleaned.slice(0, maxChars - 1).replace(/\s+\S*$/, '') + '…';
 }
 
+// Each catalog prompt is run best with a specific set of toolbar checkboxes. The
+// badges below tell the user which ones, and clicking the card sets them.
+const PROMPT_MODE_META = {
+    oneshot: {
+        label: 'One-Shot',
+        cls: 'prompt-mode-badge-oneshot',
+        tip: 'Single-shot prompt — selecting it turns Multi-Turn AND ACPX OFF.'
+    },
+    multiturn: {
+        label: 'Multi-turn',
+        cls: 'prompt-mode-badge-multiturn',
+        tip: 'Needs Multi-Turn — selecting it checks the Multi-Turn box.'
+    },
+    acpx: {
+        label: 'ACPX',
+        cls: 'prompt-mode-badge-acpx',
+        tip: 'Needs ACPX (with Multi-Turn) — selecting it checks the ACPX box.'
+    }
+};
+
+// Classify which toolbar checkboxes a catalog prompt needs, from its content.
+// Mirrors a backend-verified rule set (validated against all 65 seeded prompts,
+// 0 mismatches):
+//   • ACPX  ⇔ the prompt actually CALLS an acp_* / skill tool, OR drives a named
+//             Skill (code-review / security-audit). A "do NOT use acp_spawn"
+//             disclaimer is scrubbed FIRST so a forbidden tool is never mistaken
+//             for a requirement.
+//   • Multi-turn ⇔ ACPX, OR it drives a chat_agent_* wrapped agent, OR it says
+//             "multi-turn".
+//   • One-Shot ⇔ neither (a plain single-shot Q&A / action).
+// Returns an ordered array: ['oneshot'] | ['multiturn'] | ['multiturn','acpx'].
+function classifyPromptModes(content) {
+    const c = content || '';
+    // Drop "do NOT use <…>" forbidden-tool clauses so a tool the prompt
+    // EXPLICITLY forbids is never counted as one it requires.
+    const scrubbed = c.replace(/(?:do\s+not|don['’]?t|never|not)\s+use\b[^.;]*[.;]?/gi, ' ');
+    const acpx =
+        /\b(?:acp_doctor|acp_spawn|acp_send|acp_send_and_wait|acp_relay|acp_kill|acp_transcript|acp_session_status|acp_list_sessions|list_acp_agents|invoke_skill|list_skills)\b/i.test(scrubbed)
+        || /\b(?:code-review|security-audit)\b[\s\S]{0,16}\bskill\b/i.test(scrubbed)
+        || /\bskill\b[\s\S]{0,16}\b(?:code-review|security-audit)\b/i.test(scrubbed);
+    const multiturn = acpx
+        || /\bchat_agent_\w+/i.test(c)
+        || /\bmulti-?turn\b/i.test(c);
+    if (acpx) return ['multiturn', 'acpx'];
+    if (multiturn) return ['multiturn'];
+    return ['oneshot'];
+}
+
+// Build the badge cluster for a card header from a modes array.
+function buildPromptModeBadges(modes) {
+    const wrap = document.createElement('span');
+    wrap.className = 'prompt-card-modes';
+    modes.forEach((mode) => {
+        const meta = PROMPT_MODE_META[mode];
+        if (!meta) return;
+        const chip = document.createElement('span');
+        chip.className = 'prompt-mode-badge ' + meta.cls;
+        chip.textContent = meta.label;
+        chip.title = meta.tip;
+        wrap.appendChild(chip);
+    });
+    return wrap;
+}
+
+// Set a toolbar checkbox to `desired` and fire its `change` handler so the app's
+// existing persistence + dependent-state wiring (sessionStorage, Ask-Execs
+// availability) runs exactly as if the user had clicked it.
+function setToolbarToggle(checkboxId, desired) {
+    const cb = document.getElementById(checkboxId);
+    if (!cb) return;
+    if (!!cb.checked !== !!desired) {
+        cb.checked = !!desired;
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+// Apply a prompt's required modes to the Multi-Turn + ACPX checkboxes. ACPX
+// always implies Multi-Turn; One-Shot turns both off. Multi-Turn is set first so
+// the Ask-Execs availability re-sync sees the final Multi-Turn state.
+function applyPromptModesToToggles(modes) {
+    const wantAcpx = modes.includes('acpx');
+    const wantMultiTurn = wantAcpx || modes.includes('multiturn');
+    setToolbarToggle('multi-turn-enabled', wantMultiTurn);
+    setToolbarToggle('acpx-enabled', wantAcpx);
+}
+
 $(function () {
     const MAX_PROMPTS = 100;
     const catalogButton = document.getElementById('prompts-catalog');
@@ -60,10 +146,13 @@ $(function () {
                 return true;
             }
 
+            const modes = classifyPromptModes(content);
+
             const card = document.createElement('div');
             card.className = 'text-box prompt-card';
             card.id = promptName;
             card.dataset.fullContent = content;
+            card.dataset.modes = modes.join(',');
 
             const header = document.createElement('div');
             header.className = 'prompt-card-header';
@@ -78,6 +167,7 @@ $(function () {
 
             header.appendChild(badge);
             header.appendChild(title);
+            header.appendChild(buildPromptModeBadges(modes));
 
             const preview = document.createElement('p');
             preview.className = 'prompt-card-preview tool-box-entry';
@@ -128,6 +218,10 @@ $(function () {
             const fullContent = this.dataset.fullContent || '';
             const chatInput = document.getElementById('chat-message-input');
             chatInput.value = fullContent;
+            // Set the toolbar checkboxes to what this prompt needs so it runs in
+            // the right mode without the user hunting for the right toggles.
+            const modes = (this.dataset.modes || 'oneshot').split(',').filter(Boolean);
+            applyPromptModesToToggles(modes);
             closeModal();
         });
     }

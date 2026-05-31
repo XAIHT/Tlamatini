@@ -34,12 +34,14 @@ if (-not (Test-Path $TlamatiniExe)) {
 if ($FlowFile) {
     if (-not (Test-Path $FlowFile)) {
         Write-Host "Warning: Flow file not found: $FlowFile" -ForegroundColor Yellow
-    } else {
+    }
+    else {
         $FlowFile = (Resolve-Path $FlowFile).Path
     }
     Write-Host "Opening flow file: $FlowFile" -ForegroundColor Magenta
     $serverArgs = @($FlowFile)
-} else {
+}
+else {
     $serverArgs = @('runserver', '--noreload')
 }
 
@@ -52,8 +54,8 @@ Write-Host ""
 
 # Open browser in background 10 seconds after the server starts
 $browserUrl = "http://localhost:8000/"
-Write-Host "Browser will open at $browserUrl in 10 seconds..." -ForegroundColor Yellow
-Start-Process powershell.exe -ArgumentList "-NoProfile -WindowStyle Hidden -Command `"Start-Sleep -Seconds 10; Start-Process '$browserUrl'`"" -WindowStyle Hidden
+Write-Host "Browser will open at $browserUrl in 20 seconds..." -ForegroundColor Yellow
+Start-Process powershell.exe -ArgumentList "-NoProfile -WindowStyle Hidden -Command `"Start-Sleep -Seconds 20; Start-Process '$browserUrl'`"" -WindowStyle Hidden
 
 # Run Tlamatini.exe directly so all output and errors are visible in this console
 & $TlamatiniExe $serverArgs

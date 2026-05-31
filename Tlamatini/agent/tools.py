@@ -114,8 +114,96 @@ def launch_in_new_terminal(script_pathfilename, arguments=None, force_foreground
     else:
         cmd_args = f'{quoted_path}'
 
+    if sys.platform == 'win32':
+        # RELIABLE visible console window. The old approach —
+        #   subprocess.Popen('start "Tlamatini Console" cmd /k python ...', shell=True)
+        # — was a confirmed *false-OK*: the outer ``cmd /c`` exits 0 instantly so
+        # the launch "succeeds", but whether a window actually appears depends on
+        # the spawning process having a usable console / window-station. The
+        # Multi-Turn executor runs in a Daphne thread-pool worker with no such
+        # console, so the window silently never showed (the user's "nothing
+        # happened"). ``start`` via shell=True also fires cmd AutoRun (doskey
+        # macros) which overwrote the window title, breaking title-based close.
+        #
+        # CREATE_NEW_CONSOLE + an explicit SW_SHOWNORMAL STARTUPINFO is the
+        # documented mechanism that *forces* a brand-new on-screen console for the
+        # child regardless of the parent's console state — the same flag the
+        # visible wrapped-agent path (`_start_template_agent_process`) already uses
+        # successfully. ``title`` stamps the script name into the window title so
+        # Windower / Keyboarder can find and close the exact window afterwards.
+        script_name = os.path.basename(clean_path)
+        full_command = (
+            f'cmd.exe /k title Tlamatini Console - {script_name} & {python_exe} {cmd_args}'
+        )
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 1  # SW_SHOWNORMAL — guarantee the console is visible
+        return subprocess.Popen(
+            full_command,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            startupinfo=startupinfo,
+            close_fds=True,
+        )
+
+    # Non-Windows fallback (the foreground-console concept is Windows-centric;
+    # Multi-Turn desktop flows run on Windows). Kept for completeness.
     full_command = f'start "Tlamatini Console" cmd /k {python_exe} {cmd_args}'
     return subprocess.Popen(full_command, shell=True)
+
+
+def _verify_foreground_window(script_path, timeout=2.5):
+    """Best-effort proof that a VISIBLE console window for ``script_path`` actually
+    appeared after a foreground launch.
+
+    Returns:
+        True  — a visible top-level window whose title contains the script's
+                basename was found within ``timeout`` seconds (confirmed on screen);
+        False — Windows, but no such window appeared within ``timeout`` (likely
+                failed to open — caller must NOT report success);
+        None  — could not verify (non-Windows host or enumeration error). Caller
+                stays neutral/honest rather than claiming success or failure.
+
+    Fail-open: never raises. This is the antidote to the historical *false-OK*
+    where ``execute_file`` told the user a window "opened visibly on your desktop"
+    while nothing actually appeared.
+    """
+    if sys.platform != 'win32':
+        return None
+    try:
+        import time as _t
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        needle = os.path.basename(str(script_path)).lower()
+        if not needle:
+            return None
+
+        def _scan_once():
+            hits = []
+            EnumProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+            def _cb(hwnd, _lparam):
+                if user32.IsWindowVisible(hwnd):
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        if needle in buf.value.lower():
+                            hits.append(buf.value)
+                return True
+
+            user32.EnumWindows(EnumProc(_cb), 0)
+            return hits
+
+        deadline = _t.time() + max(0.2, timeout)
+        while _t.time() < deadline:
+            if _scan_once():
+                return True
+            _t.sleep(0.1)
+        return False
+    except Exception:
+        return None
 
 
 def _suppress_visible_console_launches() -> bool:
@@ -2263,12 +2351,32 @@ def execute_file(command: str, foreground: bool = False) -> str:
         # console suppression; otherwise we honor the suppression and run headless.
         # A window therefore opens iff the user asked for one OR suppression is off.
         launch_in_new_terminal(script_path, arguments, force_foreground=foreground)
-        window_opened = foreground or not _suppress_visible_console_launches()
-        if window_opened:
+        window_should_open = foreground or not _suppress_visible_console_launches()
+        if window_should_open:
+            # Bullet-proof the old false-OK: don't ASSUME the window opened — verify
+            # a visible console for this script actually appeared, and report the
+            # truth. (verified is True/False/None — see _verify_foreground_window.)
+            script_name = os.path.basename(script_path)
+            verified = _verify_foreground_window(script_path)
+            if verified is True:
+                return (
+                    f"Launched '{command}' in a foreground terminal window and CONFIRMED a "
+                    f"visible window for '{script_name}' is now open on the user's desktop. "
+                    "(Confirms the window opened, not that the script ran to completion.)"
+                )
+            if verified is False:
+                return (
+                    f"Attempted to launch '{command}' in a foreground terminal window, but a "
+                    f"visible window for '{script_name}' did NOT appear within the verification "
+                    "window — it most likely failed to open. DO NOT report this as success. "
+                    "Likely causes: the script crashed on startup, there is no interactive "
+                    "desktop session, or the path is wrong. Investigate before continuing."
+                )
+            # verified is None -> could not check (non-Windows / enumeration error).
             return (
-                f"Launched '{command}' in a foreground terminal window — the script "
-                "is running there now; check that window for its output. (This confirms "
-                "the window was launched, not that the script ran to completion.)"
+                f"Launched '{command}' in a foreground terminal window — check that window for "
+                "its output. (Confirms the launch was issued; the window could not be "
+                "auto-verified on this host.)"
             )
         return (
             f"Launched '{command}' in the background (no window, since no foreground/"
