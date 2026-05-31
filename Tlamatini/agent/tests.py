@@ -6311,3 +6311,96 @@ class AskExecsChainPropagationTests(TestCase):
         self.assertIn('exec_report_denied', result)
         self.assertEqual(result['exec_report_denied']['command'], 'rm -rf /')
 
+
+class FlashWindowAttentionTests(TestCase):
+    """Taskbar-flash + uppercase-log-banner attention notice for Ask-Execs
+    prompts and Notifier notifications. Drives the REAL view and the REAL
+    ``window_flash`` helper (no mocking the code under test) — the Win32 flash
+    simply degrades to ``False`` in a headless test process, exactly as it does
+    in a windowless launch."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='flash_user', password='pw123456')
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def _post(self, body):
+        return self.client.post(
+            reverse('flash_window'),
+            data=json.dumps(body),
+            content_type='application/json',
+        )
+
+    def test_view_logs_uppercase_banner_naming_the_page(self):
+        import io
+        import contextlib
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            resp = self._post({'page': 'agent_page.html', 'reason': 'execution-approval'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get('success'))
+        self.assertIn('flashed', data)  # bool — False in headless test, True with a console
+        printed = buf.getvalue()
+        self.assertIn('TLAMATINI NEEDS YOUR ATTENTION', printed)
+        self.assertIn('AN EXECUTION APPROVAL (ASK-EXECS) IS PENDING', printed)
+        self.assertIn('AGENT_PAGE.HTML', printed)
+
+    def test_view_handles_notification_for_acp_page(self):
+        import io
+        import contextlib
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            resp = self._post({'page': 'agentic_control_panel.html', 'reason': 'notification'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get('success'))
+        printed = buf.getvalue()
+        self.assertIn('A NOTIFIER NOTIFICATION HAS BEEN RAISED', printed)
+        self.assertIn('AGENTIC_CONTROL_PANEL.HTML', printed)
+
+    def test_view_tolerates_malformed_body(self):
+        # Garbage body must not 500 — the view falls back to an empty dict and
+        # emits the generic banner so the attention notice still fires.
+        resp = self.client.post(
+            reverse('flash_window'),
+            data='this is not json',
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get('success'))
+
+    def test_view_requires_authentication(self):
+        anon = Client()
+        resp = anon.post(reverse('flash_window'), data='{}', content_type='application/json')
+        self.assertEqual(resp.status_code, 302)
+
+    def test_view_rejects_get(self):
+        resp = self.client.get(reverse('flash_window'))
+        self.assertEqual(resp.status_code, 405)
+
+    def test_banner_is_fully_uppercase(self):
+        from agent.window_flash import build_attention_banner
+
+        banner = build_attention_banner('agent_page.html', 'execution-approval')
+        # No lowercase letters anywhere — the user asked for MAYÚSCULAS.
+        self.assertEqual(banner, banner.upper())
+
+    def test_banner_falls_back_on_unknown_page_and_reason(self):
+        from agent.window_flash import build_attention_banner
+
+        banner = build_attention_banner('', '')
+        self.assertEqual(banner, banner.upper())
+        self.assertIn('TLAMATINI NEEDS YOUR ATTENTION', banner)
+        self.assertIn('A TLAMATINI EVENT NEEDS YOU', banner)
+
+    def test_helpers_never_raise_headless(self):
+        from agent import window_flash
+
+        # Both must return a bool and never raise, regardless of console state.
+        self.assertIsInstance(window_flash.flash_console_window(), bool)
+        self.assertIsInstance(
+            window_flash.notify_attention('agent_page.html', 'notification'), bool
+        )
+
