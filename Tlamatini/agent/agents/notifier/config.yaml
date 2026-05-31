@@ -12,16 +12,5 @@ target:
   shutdown_on_match: false
   poll_interval: 2
   recursion_limit: 1000
-  # Native Windows toast (OS banner, bottom-right, persists in Action Center).
-  # Additive to the in-browser popup. Windows-only + non-admin (see
-  # agent/native_toast.py). native_toast=false → only the browser popup fires.
-  native_toast: true
-  toast_title: 'Tlamatini'
-  # toast_image: absolute PNG path; empty → use the icon registered in HKCU
-  # by the server at startup (agent/native_toast.register_toast_identity).
-  toast_image: ''
-  # toast_click: 'focus' → clicking the toast focuses the existing Tlamatini
-  # browser tab (opens NOTHING new); 'none' → display-only.
-  toast_click: 'focus'
 source_agents: []
 target_agents: []
