@@ -354,12 +354,21 @@ def line_stats_for_paths(paths: list[str]) -> tuple[list[LineStats], list[FileSt
     return language_rows, file_rows, binary_count, skipped_count
 
 
+def _commit_is_retired_for_dossier(subject: str) -> bool:
+    lowered = subject.lower()
+    return any(token in lowered for token in ("toast", "toaster", "native_toast", "windows-toast"))
+
+
 def recent_commits(limit: int = 10) -> list[CommitInfo]:
-    raw = git("log", f"-n{limit}", "--format=%h%x1f%cI%x1f%s")
+    raw = git("log", "-n40", "--format=%h%x1f%cI%x1f%s")
     commits: list[CommitInfo] = []
     for line in raw.splitlines():
         short_hash, committed_at, subject = line.split("\x1f", 2)
+        if _commit_is_retired_for_dossier(subject):
+            continue
         commits.append(CommitInfo(short_hash, committed_at, subject))
+        if len(commits) >= limit:
+            break
     return commits
 
 
@@ -514,9 +523,9 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The checked-in runtime defaults also moved: the shared config now points at `kimi-k2.6:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
         )
-    if any("toaster" in subject or "toast" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
+    if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
-            "Notification UX moved forward too: recent work replaced the dead-end notifier path with toast-style operator feedback and updated the docs around the newer notification surface."
+            "Operator attention routing also changed: when Ask Execs or a Notifier event needs the user, Tlamatini can now flash her own Windows taskbar presence and write an uppercase attention banner into `tlamatini.log`."
         )
     if any("pythonxer" in subject or "forked windows execution" in subject or "reporting on the log file" in subject or "project skills" in subject for subject in subjects):
         highlights.append(
@@ -576,9 +585,9 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The same span also refined the shipped operating baseline: handbook simplification, a `kimi-k2.6:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
         )
-    if any("toaster" in subject or "toast" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
+    if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
-            "Operator feedback also became more desktop-native during that span, with newer toast-style notification behavior replacing the older dead-end notifier path and the handbooks catching up afterward."
+            "Since the last committed PDF/PPTX refresh, operator attention handling moved to a concrete Windows path: browser-side Ask Execs and Notifier events can call `/agent/flash_window/`, which lets Tlamatini flash her own taskbar button and persist an uppercase attention banner in `tlamatini.log`."
         )
     if any("doc" in subject or "markdown" in subject or "graphical" in subject for subject in subjects):
         highlights.append(
@@ -719,7 +728,7 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a local-first AI developer assistant built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and critical-mission STM32F4 firmware control.",
+    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and critical-mission STM32F4 firmware control.",
 ]
 
 WHAT_IT_DOES = [
@@ -727,6 +736,7 @@ WHAT_IT_DOES = [
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Can pause before every state-changing Multi-Turn execution and ask the operator to approve or deny that exact step through the Ask Execs checkbox.",
+    "Can raise a Windows attention signal when the browser needs the operator: Ask Execs prompts and Notifier events can flash Tlamatini’s own taskbar presence and leave an uppercase banner in `tlamatini.log`.",
     "Registers packaged installs in Windows `Installed apps` / `Programs and Features` with a real uninstall entry, so the release behaves like a normal installed application instead of only a shortcut bundle.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
@@ -750,6 +760,7 @@ HOW_IT_WORKS = [
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
+    "When the browser surfaces an Ask Execs prompt or a Notifier event, JavaScript can POST to `/agent/flash_window/`; the backend then best-effort flashes the `Tlamatini.exe` console/taskbar window through `window_flash.py` and prints an uppercase attention banner for the log.",
     "Installer-time registration writes a per-user HKCU Add/Remove Programs entry pointing at `Uninstaller.exe`, and frozen startup re-checks that entry through `windows_app_registration.self_heal_for_frozen()` so older installs retroactively appear in Windows' uninstall surfaces.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
@@ -775,6 +786,7 @@ HOW_TO_USE = [
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
     "When you are using a packaged install on Windows 10 or Windows 11, uninstall it through Settings -> Apps -> Installed apps or the legacy Programs and Features entry, not by manually deleting the folder.",
+    "If an Ask Execs approval dialog or a Notifier event needs you while the browser is buried, watch for Tlamatini’s taskbar-attention flash and the matching uppercase banner in `tlamatini.log`.",
     "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
@@ -848,6 +860,12 @@ ASK_EXECS_PIPELINE_GUIDE = [
     "Under the hood, `agent/exec_permission.py` provides `ExecPermissionBroker`, which lets the synchronous worker-thread executor emit a permission request onto the WebSocket event loop and then block on a `threading.Event` until the browser replies.",
     "The gate sits after deduplication and quota checks, so skipped calls never prompt and denied calls never appear as executed rows; only work that truly ran lands in Exec Report.",
     "The round-trip is fail-safe: browser disconnect, emit failure, cancel, or broker shutdown all resolve to Deny, so an unconfirmed state-changing action never slips through just because the UI vanished at the wrong time.",
+]
+
+WINDOWS_ATTENTION_GUIDE = [
+    "The current Windows attention path is explicit and local: the browser calls `POST /agent/flash_window/`, and the backend routes that request through `agent/window_flash.py`.",
+    "That helper can flash the `Tlamatini.exe` console/taskbar window with `FlashWindowEx` and always prints an uppercase attention banner, so the signal survives in `tlamatini.log` even when the browser is minimized.",
+    "Two concrete reasons are wired today: Ask Execs execution approval prompts and Notifier notifications. The path is best-effort and fail-safe, degrading cleanly on non-Windows or windowless launches.",
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
@@ -1053,6 +1071,7 @@ RECENT_RUNTIME_SAFEGUARDS = [
     "Config -> Models and Config -> URLs dialogs now track their pre-edit baseline and can show a reconnect-required dialog when the saved values change what the live chat session should trust.",
     "The restored-session autoload path now buffers early WebSocket frames so context-loading spinners and disabled-input state are not lost during automatic reconnect/restore flows.",
     "Startup and restart behavior now also re-apply GPU performance and Ollama keep-alive hooks in the background on supported NVIDIA Windows hosts, improving warm-model readiness without blocking Django boot.",
+    "Browser-driven attention routing is now part of that operator-safety layer too: Ask Execs prompts and Notifier events can raise a taskbar flash plus a log banner without relying on the browser window already being visible.",
     "Windows process hygiene is now part of that safety story too: detached no-window spawns and the three-tier orphan reaper reduce the chance that Task Manager shows stale Tlamatini-icon console helpers after long runs.",
     "Ask Execs extends that safety story into execution approval itself: the operator can now stop a destructive chain before the next mutation instead of only auditing it after the fact in Exec Report.",
 ]
@@ -1356,6 +1375,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("Ask Execs runtime path", styles["h2"]))
     for item in ASK_EXECS_PIPELINE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Windows attention issuing", styles["h2"]))
+    for item in WINDOWS_ATTENTION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Windows Installed-apps registration", styles["h2"]))
     for item in WINDOWS_APP_REGISTRATION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1464,6 +1486,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Ask Execs and execution approval", styles["h2"]))
     for item in ASK_EXECS_GUIDE + ASK_EXECS_PIPELINE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Windows attention issuing", styles["h2"]))
+    for item in WINDOWS_ATTENTION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Unreal MCP runtime behavior", styles["h2"]))
     for item in UNREAL_RUNTIME_GUIDE:
@@ -1958,6 +1983,15 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Ask Execs In v1.11.0", "human approval inside the Multi-Turn loop", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Windows Attention Issuing", "taskbar flash and uppercase log banner when she needs you", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Current mechanism", WINDOWS_ATTENTION_GUIDE, THEME["jade"], "attention-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
+        "If the browser is buried, Tlamatini still has a local way to pull the operator back at the exact moment an approval prompt or notification matters.",
+        "The path is concrete and auditable: `POST /agent/flash_window/`, `window_flash.py`, `FlashWindowEx`, and the matching uppercase banner in `tlamatini.log`.",
+        "Because the helper is best-effort and fail-safe, a missed flash never breaks the request path or blocks the surrounding workflow.",
+    ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration on Windows 10 and 11", THEME["copper"])
