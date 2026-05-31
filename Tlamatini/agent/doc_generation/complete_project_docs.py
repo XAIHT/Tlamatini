@@ -408,7 +408,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.10.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
+            "Today’s headline change is `v1.11.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
@@ -538,7 +538,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.10.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
+            "Since the last committed PDF/PPTX refresh, `v1.11.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
@@ -798,7 +798,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.10.0` release state keeps the version badge, runtime surfaces, Ask Execs wording, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.11.0` release state keeps the version badge, runtime surfaces, Ask Execs wording, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -820,7 +820,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Version `1.10.0` adds the `Ask Execs` checkbox as a Multi-Turn-only safety modifier: when it is on, Tlamatini asks before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Version `1.11.0` adds the `Ask Execs` checkbox as a Multi-Turn-only safety modifier: when it is on, Tlamatini asks before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -1323,7 +1323,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Multi-Turn 4096-turn autonomy", styles["h2"]))
     for item in MULTITURN_4096_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Ask Execs in v1.10.0", styles["h2"]))
+    story.append(p("Ask Execs in v1.11.0", styles["h2"]))
     for item in ASK_EXECS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Ask Execs runtime path", styles["h2"]))
@@ -1922,7 +1922,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs In v1.10.0", "human approval inside the Multi-Turn loop", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs In v1.11.0", "human approval inside the Multi-Turn loop", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
