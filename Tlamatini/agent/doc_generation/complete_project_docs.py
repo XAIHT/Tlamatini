@@ -406,6 +406,10 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.11.0" in subject for subject in subjects):
+        highlights.append(
+            "Today’s headline change is `v1.11.0`: Ask Execs was refined into the current release surface, and the frozen Windows install now registers itself in `Installed apps` / `Programs and Features` with a real per-user uninstall entry that can self-heal on later launches."
+        )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is `v1.11.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
@@ -510,6 +514,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The checked-in runtime defaults also moved: the shared config now points at `kimi-k2.6:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
         )
+    if any("toaster" in subject or "toast" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
+        highlights.append(
+            "Notification UX moved forward too: recent work replaced the dead-end notifier path with toast-style operator feedback and updated the docs around the newer notification surface."
+        )
     if any("pythonxer" in subject or "forked windows execution" in subject or "reporting on the log file" in subject or "project skills" in subject for subject in subjects):
         highlights.append(
             "Follow-up implementation work in the same post-STM32 window tightened Pythonxer downstream execution, Windows forked-command launching, execution-log detail, and project-skill loading, so the release story is not only a UI toggle but also a reliability pass around the operator chain."
@@ -536,6 +544,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.11.0" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.11.0` added a second release-level operator change on top of Ask Execs: frozen installs now write a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Windows `Installed apps` and can be uninstalled through normal Windows 10/11 mechanisms."
+        )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, `v1.11.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
@@ -563,6 +575,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("kimi-k2.6:cloud" in subject or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
         highlights.append(
             "The same span also refined the shipped operating baseline: handbook simplification, a `kimi-k2.6:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
+        )
+    if any("toaster" in subject or "toast" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
+        highlights.append(
+            "Operator feedback also became more desktop-native during that span, with newer toast-style notification behavior replacing the older dead-end notifier path and the handbooks catching up afterward."
         )
     if any("doc" in subject or "markdown" in subject or "graphical" in subject for subject in subjects):
         highlights.append(
@@ -703,7 +719,7 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a local-first AI developer assistant built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, Windows packaging, first-person self-knowledge about her own runtime, and now critical-mission STM32F4 firmware control.",
+    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and critical-mission STM32F4 firmware control.",
 ]
 
 WHAT_IT_DOES = [
@@ -711,6 +727,7 @@ WHAT_IT_DOES = [
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Can pause before every state-changing Multi-Turn execution and ask the operator to approve or deny that exact step through the Ask Execs checkbox.",
+    "Registers packaged installs in Windows `Installed apps` / `Programs and Features` with a real uninstall entry, so the release behaves like a normal installed application instead of only a shortcut bundle.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
@@ -733,6 +750,7 @@ HOW_IT_WORKS = [
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
+    "Installer-time registration writes a per-user HKCU Add/Remove Programs entry pointing at `Uninstaller.exe`, and frozen startup re-checks that entry through `windows_app_registration.self_heal_for_frozen()` so older installs retroactively appear in Windows' uninstall surfaces.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "A first-person self-knowledge file (`Tlamatini.md`) is injected into prompt construction for all chains, but loaded user context still outranks that self-reference when the request is a generic summary of the provided project.",
@@ -756,6 +774,7 @@ HOW_TO_USE = [
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
+    "When you are using a packaged install on Windows 10 or Windows 11, uninstall it through Settings -> Apps -> Installed apps or the legacy Programs and Features entry, not by manually deleting the folder.",
     "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
@@ -829,6 +848,12 @@ ASK_EXECS_PIPELINE_GUIDE = [
     "Under the hood, `agent/exec_permission.py` provides `ExecPermissionBroker`, which lets the synchronous worker-thread executor emit a permission request onto the WebSocket event loop and then block on a `threading.Event` until the browser replies.",
     "The gate sits after deduplication and quota checks, so skipped calls never prompt and denied calls never appear as executed rows; only work that truly ran lands in Exec Report.",
     "The round-trip is fail-safe: browser disconnect, emit failure, cancel, or broker shutdown all resolve to Deny, so an unconfirmed state-changing action never slips through just because the UI vanished at the wrong time.",
+]
+
+WINDOWS_APP_REGISTRATION_GUIDE = [
+    "Version `1.11.0` makes the frozen install behave like a real Windows application: `install.py` now writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
+    "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
 
 UNREAL_EXTENDED_GUIDE = [
@@ -944,6 +969,7 @@ RUNNING_GUIDE = [
     "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
     "Current startup also re-applies GPU-performance / Ollama-pinning hooks in the background on supported NVIDIA Windows hosts, so restart-time behavior stays closer to the tuned development baseline.",
     "That same early startup window is also where a staged `DB/ToLoad/db.sqlite3` file is promoted into the live database path, before Django opens SQLite.",
+    "In frozen mode, startup now also self-heals the per-user Windows Installed-apps entry when `Uninstaller.exe` is present beside `Tlamatini.exe`, so old installs can gain a standard uninstall surface without a reinstall.",
     "Startup now also prints a `--- [VERSION] Tlamatini ...` banner, making the running build visible in both the console and `tlamatini.log` without an HTTP call.",
     "Startup cleans pool state, repopulates the agent registry, launches MCP metrics/file-search servers, and then serves HTTP plus WebSocket traffic.",
 ]
@@ -969,6 +995,7 @@ VERSIONING_GUIDE = [
 
 VERSION_SURFACES_GUIDE = [
     "Operators can now see the running version in the About dialog, the startup banner, the open `GET /agent/version/` health-check endpoint, and Windows file properties on the built executables.",
+    "Packaged installs also project the same release identity into Windows' Installed-apps metadata through the ARP `DisplayVersion` field, so the uninstall surface and the binaries agree on the version being removed.",
     "The runtime resolver lives in `Tlamatini/agent/version.py`, while the build-oriented coordination logic lives in the repo-root `versioning.py` and the longer policy notes live in `VERSIONING.md`.",
     "Build overrides are supported in a predictable order: CLI `--version`, then `TLAMATINI_VERSION`, then git describe, then the sentinel `0.0.0+unknown`.",
 ]
@@ -1032,10 +1059,10 @@ RECENT_RUNTIME_SAFEGUARDS = [
 
 RELEASE_GUIDE = [
     "Release production is a three-step pipeline: `build.py` -> `build_uninstaller.py` -> `build_installer.py`.",
-    "The final distributable is the full `dist/Tlamatini_Release/` folder, not a stray executable copied outside its payload.",
+    "The final distributable is the full versioned release folder `dist/Tlamatini_Release_v<version>/`, not a stray executable copied outside its payload.",
     "Use `build.py --self-modify` when you intentionally want a release that ships `TlamatiniSourceCode/` so she can inspect or modify herself at runtime.",
     "Current `build.py` treats `README.md` and `jd-cli/` as required post-build assets and fails hard if those payloads are missing.",
-    "Bundled support scripts cover shortcut creation/removal, `.flw` association, the PowerShell launcher, and Windows-specific installer ergonomics.",
+    "Bundled support scripts cover shortcut creation/removal, `.flw` association, the PowerShell launcher, Windows-specific installer ergonomics, and the per-user Installed-apps registration path.",
 ]
 
 EXEC_REPORT_GUIDE = [
@@ -1329,6 +1356,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("Ask Execs runtime path", styles["h2"]))
     for item in ASK_EXECS_PIPELINE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Windows Installed-apps registration", styles["h2"]))
+    for item in WINDOWS_APP_REGISTRATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("De-Compresser agent", styles["h2"]))
     for item in DE_COMPRESSER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1443,6 +1473,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Release pipeline", styles["h2"]))
     for item in RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Windows uninstall registration", styles["h2"]))
+    for item in WINDOWS_APP_REGISTRATION_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Exec Report", styles["h2"]))
     for item in EXEC_REPORT_GUIDE:
@@ -1927,6 +1960,15 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration on Windows 10 and 11", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
+        "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
+        "The registration is HKCU-only and non-elevated, matching the installer’s per-user design on Windows 10 and Windows 11.",
+        "Because frozen startup self-heals the entry, even older installs can gain the uninstall surface after a later app launch without a reinstall.",
+    ], THEME["jade"], "arp-b", 12)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Agentic Control Panel", "visual workflow temple", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "ACP workflow", [
         "Drag prebuilt agents onto the canvas and connect them visually.",
@@ -2130,6 +2172,7 @@ def build_ppt(context: dict) -> None:
         "Initializes Django and runtime guards in manage.py.",
         "Cleans pool state and repopulates the Agent table from current disk templates.",
         "Launches MCP metrics and gRPC file-search servers before steady-state traffic.",
+        "Self-heals the frozen Windows Installed-apps entry when `Uninstaller.exe` is present beside the executable.",
         "Handles shutdown by killing tracked/untracked agent processes and clearing pool artifacts.",
     ], THEME["jade"], "run-b", 15)
     audit_layout(audit, len(prs.slides))
@@ -2138,8 +2181,8 @@ def build_ppt(context: dict) -> None:
     add_flow_boxes(slide, audit, 1.15, 2.0, ["build.py", "pkg.zip", "build_uninstaller", "Uninstaller", "build_installer", "Release"], THEME["amber"])
     add_panel(slide, audit, 0.92, 3.35, 11.35, 2.55, "Release rule", [
         "Run packaging only when preparing a Windows distribution.",
-        "The final distributable is the full `dist/Tlamatini_Release/` folder, not one executable copied out of context.",
-        "Installer scripts register shortcuts and `.flw` file associations and place the uninstaller next to the app.",
+        "The final distributable is the full `dist/Tlamatini_Release_v<version>/` folder, not one executable copied out of context.",
+        "Installer scripts register shortcuts, `.flw` file associations, the bundled uninstaller, and the per-user Installed-apps entry.",
     ], THEME["amber"], "packaging", 16)
     audit_layout(audit, len(prs.slides))
 
