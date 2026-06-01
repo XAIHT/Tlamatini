@@ -1654,14 +1654,35 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 68. FlowCreator
+### 68. ESP32er
+- **Purpose**: Tlamatini's bridge to **PlatformIO Core** (https://platformio.org). On trigger it resolves the `pio` CLI (auto-installing PlatformIO Core when absent), runs ONE capability selected by its `action` field as a direct `pio` subprocess, captures the result into an `INI_SECTION_ESP32ER` block (`action`, `tool`, `ok`, `returncode`, `success`, `project_dir`, `port`, `environment`, `stage`, plus a `response_body` carrying the `pio` stdout/stderr). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
+- **Used for**: Scaffolding, authoring, building, uploading (flashing) and OBSERVING ESP32 / ESP8266 / Espressif firmware as unattended flow steps — **no IDE**. Unlike STM32er (which drives an MCP server), PlatformIO ships a complete CLI, so ESP32er calls `pio` directly. The `action` field selects ONE capability: environment/meta (`bootstrap`, `validate`, `system_info`, `boards`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`, `clean`); build & flash (`build`, `upload`, `build_and_upload`, `list_artifacts`); serial HIL (`device_list`, `monitor` — a bounded `pio device monitor` drained for `monitor_seconds`, and the composite `monitor_session` = upload → monitor in one run); packages & QA (`pkg_install`, `pkg_list`, `pkg_update`, `check`, `test`).
+- **Aimed at**: Building visual, repeatable ESP32 firmware pipelines. Chain `create_project` (`board: esp32dev`) → Parametrizer (carry `{project_dir}` forward) → `write_source` (drop generated `src/main.cpp`) → `build` → `upload` → a `monitor` / `monitor_session` that proves it runs on real silicon, with a Forker branching on `{success}`. **Zero-config**: leave `pio_executable` blank and ESP32er DOWNLOADS + installs PlatformIO Core itself on first use (the official `get-platformio.py` installer, with a `pip install platformio` fallback) into a per-user cache — `action='bootstrap'` does this explicitly, so the user installs only the board USB driver. Before every build/upload ESP32er runs a **safety preflight** (validates `pio` resolvable + a `platformio.ini`, and for upload/monitor that a serial port is connected) and REFUSES rather than run a build/upload that cannot succeed; `action='validate'` reports the whole environment without building. NOTE: the FIRST build downloads the espressif32 platform + toolchain (hundreds of MB) so it is slow. The visual-canvas counterpart of the `chat_agent_esp32er` Multi-Turn tool.
+- **Application example**: Starter → ESP32er (`action: create_project`, `project_dir: C:/esp/blink`, `board: esp32dev`) → Parametrizer (map `{project_dir}` into the next node) → ESP32er (`action: write_source`, `rel_path: src/main.cpp`, `content: <generated firmware>`) → Parametrizer → ESP32er (`action: upload`) → Forker (branch on `{success}`) → ESP32er (`action: monitor`, `monitor_seconds: 8`) → File-Creator (write the serial output) → Ender.
+- **Pool name pattern**: `esp32er_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `action`: "validate" (one of the capabilities listed above)
+  - `pio_executable`: "" (path to an existing `pio`/`platformio` binary; **blank = zero-config auto-install** into a per-user cache; set ONLY to point at a pre-installed PlatformIO)
+  - `auto_bootstrap`: true / `pio_install_method`: "script" ("script" | "pip") / `pio_core_dir`: "" / `auto_update`: false / `pip_install`: true (zero-config bootstrap — install/refresh PlatformIO Core)
+  - `preflight`: true (safety preflight — validate `pio`/`platformio.ini`/serial port and REFUSE a build/upload that cannot succeed)
+  - `project_dir`: "" (PlatformIO project root, holds `platformio.ini` — used by build/upload/monitor/clean/...)
+  - `board`: "esp32dev" / `framework`: "" ("arduino" | "espidf"; "" = the board's default) (create_project / preflight)
+  - `environment`: "" (platformio.ini [env:NAME] to target; "" = default/all) / `command_timeout`: 900 (seconds for a single `pio` run)
+  - `rel_path`: "" / `content`: "" (write_source / read_source)
+  - `port`: "" / `baud`: 115200 / `monitor_seconds`: 10 (upload / monitor / monitor_session; "" port = PlatformIO auto-detect)
+  - `boards_query`: "" (boards search) / `pkg_spec`: "" (pkg_install library spec)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
+### 69. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (68). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (69). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

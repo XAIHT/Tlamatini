@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -347,6 +347,9 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             }
             if (sourceAgentName.toLowerCase() === 'stm32er') {
                 await updateStm32erConnection(sourceId, targetId, 'remove');
+            }
+            if (sourceAgentName.toLowerCase() === 'esp32er') {
+                await updateEsp32erConnection(sourceId, targetId, 'remove');
             }
             if (targetAgentName.toLowerCase() === 'file-interpreter') {
                 await updateFileInterpreterConnection(targetId, sourceId, 'remove', 'source');
@@ -694,6 +697,9 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'stm32er') {
         await updateStm32erConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'esp32er') {
+        await updateEsp32erConnection(sourceId, targetId, 'add');
     }
     if (targetAgentName === 'file-interpreter') {
         await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source');

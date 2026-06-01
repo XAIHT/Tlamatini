@@ -925,6 +925,64 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=180,
         long_running=True,
     ),
+    ChatWrappedAgentSpec(
+        key="esp32er",
+        template_dir="esp32er",
+        tool_name="chat_agent_esp32er",
+        tool_description="Chat-Agent-ESP32er",
+        display_name="ESP32er",
+        purpose=(
+            "Scaffold, author, build, upload (flash), and OBSERVE ESP32 firmware programmatically "
+            "through PlatformIO Core's `pio` CLI (https://platformio.org) — no IDE. This is the "
+            "canonical tool for ANY ESP32 / ESP8266 / Espressif / Arduino-on-ESP / ESP-IDF firmware "
+            "task: creating a PlatformIO project, writing src/main.cpp, compiling, flashing over the "
+            "board's USB-serial bootloader (NO external probe needed), and hardware-in-the-loop (HIL) "
+            "verification by draining the serial monitor. Unlike STM32er, PlatformIO already ships a "
+            "complete CLI, so ESP32er runs `pio` subcommands DIRECTLY (no MCP server). Pick ONE "
+            "capability per call with `action`: bootstrap / validate / system_info / boards "
+            "(environment); create_project / write_source / read_source / list_sources / clean "
+            "(project lifecycle); build / upload / build_and_upload / list_artifacts (build & flash); "
+            "device_list / monitor / monitor_session (serial HIL); pkg_install / pkg_list / pkg_update "
+            "/ check / test (packages & QA). ZERO-CONFIG: ESP32er AUTO-BOOTSTRAPS PlatformIO Core on "
+            "first use — it downloads the official get-platformio.py installer (with a `pip install "
+            "platformio` fallback) into a per-user dir, with NO manual setup; the end user installs "
+            "only the board USB driver. Use action='bootstrap' to (re)install/validate the PlatformIO "
+            "environment explicitly. CHAIN calls across iterations for a full firmware cycle: "
+            "create_project (project_dir=<dir>, board='esp32dev') -> write_source (rel_path="
+            "'src/main.cpp', content='<the code>') -> build (project_dir=<dir>) -> upload -> "
+            "monitor / monitor_session to prove it runs. RESULT — the wrapped tool's JSON return and "
+            "the INI_SECTION_ESP32ER block both carry: action, tool, ok, returncode, success, "
+            "project_dir, port, environment, stage, and the `pio` stdout/stderr as the body — so a "
+            "downstream step or a canvas Forker can branch on {success} / {returncode}. An upload that "
+            "errors 'could not open port' or a build that fails to compile is routable evidence, NOT a "
+            "Tlamatini crash. NOTE: the FIRST build downloads the espressif32 platform + toolchain "
+            "(hundreds of MB) so it is slow. AUTHORIZED hardware only — upload/erase mutate a real MCU."
+        ),
+        example_request=(
+            "Run ESP32er with action='create_project' and project_dir='C:/esp/blink' and "
+            "board='esp32dev'  (then in the next iteration: action='write_source', "
+            "project_dir='C:/esp/blink', rel_path='src/main.cpp', content='<firmware>'; "
+            "then action='upload', project_dir='C:/esp/blink'; then action='monitor', "
+            "project_dir='C:/esp/blink', monitor_seconds=8)."
+        ),
+        aliases=(
+            "esp32er", "esp32", "esp8266", "esp-idf", "espidf", "espressif", "platformio",
+            "pio", "arduino", "firmware", "microcontroller",
+        ),
+        security_hints=(
+            "esp32", "esp32er", "esp8266", "esp32-s3", "esp32s3", "esp32-c3", "esp32c3",
+            "espressif", "esp-idf", "espidf", "platformio", "pio", "arduino", "arduino ide",
+            "firmware", "microcontroller", "micro controller", "mcu", "embedded",
+            "embedded firmware", "blinky", "flash the esp32", "flash firmware", "build firmware",
+            "scaffold a firmware project", "create firmware", "upload firmware", "serial monitor",
+            "esptool", "devkit", "wemos", "nodemcu", "platformio.ini",
+        ),
+        # A build (first one downloads the toolchain), an upload, or a bounded
+        # monitor stream can take tens of seconds to a couple of minutes; drain
+        # inside the wrapped runtime rather than poll round-trips, like STM32er.
+        poll_window_seconds=180,
+        long_running=True,
+    ),
 )
 
 

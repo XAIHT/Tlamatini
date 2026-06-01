@@ -135,6 +135,9 @@
   "stm32_ide_root": "",
   "stm32_mcp_repo_url": "https://github.com/XAIHT/STM32TemplateProjectMCP.git",
   "stm32_mcp_install_dir": "",
+  "_section_esp32": "ESP32er / PlatformIO Core (pio CLI) bridge (https://platformio.org). ZERO-CONFIG by default: leave 'pio_executable' EMPTY and ESP32er auto-bootstraps — it downloads the official get-platformio.py installer (pip-install fallback) into 'pio_core_dir' (empty = a per-user LOCALAPPDATA/Tlamatini/platformio cache) on first use, so the user installs only the board USB driver + Tlamatini. Set 'pio_executable' to an absolute path of an existing pio/platformio binary ONLY to point at a pre-installed PlatformIO (it wins and skips bootstrap). The wrapped chat_agent_esp32er tool auto-injects both on every run so firmware prompts never repeat them; the LLM may override either per-call by naming it.",
+  "pio_executable": " C:/Users/angel/.platformio/penv/Scripts/pio.exe",
+  "pio_core_dir": "C:/Users/angel/.platformio",
   "allowed_paths": [
     "application",
     "docs",

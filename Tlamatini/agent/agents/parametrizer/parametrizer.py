@@ -117,6 +117,7 @@ SECTION_AGENT_TYPES = [
     'playwrighter',
     'kalier',
     'stm32er',
+    'esp32er',
 ]
 
 

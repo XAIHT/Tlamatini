@@ -993,6 +993,32 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             }
         });
 
+    // ── ESP32er ──────────────────────────────────────────────────────
+    // Template fields: action, pio_executable, pio_install_method, pio_core_dir,
+    //   project_dir, board, framework, environment, rel_path, content,
+    //   command_timeout, port, baud, monitor_seconds, boards_query, pkg_spec
+    } else if (lower === 'esp32er') {
+        set('action', pairs.action);
+        set('pio_executable', pairs.pio_executable);
+        set('pio_install_method', pairs.pio_install_method);
+        set('pio_core_dir', pairs.pio_core_dir);
+        set('project_dir', pairs.project_dir);
+        set('board', pairs.board);
+        set('framework', pairs.framework);
+        set('environment', pairs.environment);
+        set('rel_path', pairs.rel_path);
+        set('content', pairs.content);
+        set('port', pairs.port);
+        set('boards_query', pairs.boards_query);
+        set('pkg_spec', pairs.pkg_spec);
+        // integer fields
+        ['command_timeout', 'baud', 'monitor_seconds'].forEach((k) => {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
+
     // ── Telegramer ───────────────────────────────────────────────────
     // Template field: telegram (nested)
     } else if (lower === 'telegramer') {
