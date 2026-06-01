@@ -6,7 +6,7 @@ metadata:
     emoji: "🌊"
   tlamatini:
     runtime: in-process
-    requires_tools: ["chat_agent_file_creator"]
+    requires_tools: ["execute_command", "chat_agent_file_creator"]
     requires_mcps: []
     budget:
       max_iterations: 12
@@ -34,34 +34,50 @@ metadata:
 
 # Flow from objective
 
-Author a `.flw` JSON for the user's stated objective.
+Produce a canvas-loadable `.flw` for the user's stated objective.
 
-## Design rules (enforced by FlowCreator)
+> **Superseded by the `flow-making` skill.** Prefer `flow-making`: it drives the
+> FlowCreator engine (full 69-agent catalog + connection contracts) and emits a
+> validated, schemaVersion-2 `.flw`. This skill is kept as an alias/entry point —
+> do NOT hand-author the `.flw` JSON, because you do not carry the agent catalog
+> in context and a hand-written flow hallucinates agent types and will not load.
 
-- Minimize agents. Choose the shortest sequence that accomplishes the goal.
-- Prefer sequential chains over parallel fan-out unless the objective is
-  explicitly parallel.
-- Starter starts only the first agent; never start Emailer / Notifier from
-  Starter.
-- Terminal agents (Emailer, Notifier, Whatsapper, RecMailer, TelegramRX,
-  Monitor-*) always sit at the END.
-- Use Raisers for exception branches; do not create Raisers for both sides
-  of binary checks.
-- Parametrizer is a strict single-lane queue: one source -> one target.
+## Procedure (delegate)
 
-## Procedure
+1. Invoke the `flow-making` skill with the same inputs:
+   `invoke_skill('flow-making', { "objective": "${input.objective}", "out_path": "${input.out_path}" })`.
+2. Return its result verbatim: `{ flw_path, agent_count, connection_count }`.
 
-1. Inspect agent names in `Tlamatini/agent/agents/` to know the available
-   visual agents.
-2. Compose the workflow as a list of nodes (agent type, label, position)
-   and edges (`target_agents`, optionally `source_agents`).
-3. Emit `.flw` JSON matching the existing format (see `acp-file-io.js`):
-   ```json
-   {
-     "version": 1,
-     "agents": [{"id":1,"type":"starter","name":"Starter","x":..., "y":..., "config":{}}, ...],
-     "connections": [{"from":1,"to":2,"kind":"target_agents"}, ...]
-   }
-   ```
-4. Write the file to `${input.out_path}`.
-5. Return `{ flw_path, agent_count, connection_count }`.
+## If you must run it directly
+
+Use the shipped driver — it copies the FlowCreator template to an isolated dir,
+runs it, and writes the `.flw`:
+
+```
+python Tlamatini/agent/skills_pkg/flow_making/scripts/make_flow.py \
+  --objective "${input.objective}" --out "${input.out_path}"
+```
+
+The last stdout line is `agent_count=<N> connection_count=<M> flw_path=<path>`.
+
+## Correct `.flw` shape (schemaVersion 2)
+
+If you ever emit `.flw` JSON by hand, it MUST match the loader contract
+(`acp-file-io.js::loadDiagram` / `flow_spec.py`) — NOT a `{version, agents,
+connections:[{from,to,kind}]}` shape (that is obsolete and will not load):
+
+```json
+{
+  "schemaVersion": 2,
+  "nodes": [
+    {"id": "starter-1", "text": "Starter", "left": "50px", "top": "50px",
+     "agentPurpose": "", "configData": {"target_agents": ["monitor_log_1"]}}
+  ],
+  "connections": [
+    {"sourceIndex": 0, "targetIndex": 1, "inputSlot": 0, "outputSlot": 0}
+  ],
+  "artifacts": {}
+}
+```
+
+See `agent/skills_pkg/flow_making/references/flw_schema.md` for the full contract.

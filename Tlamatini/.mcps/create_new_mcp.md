@@ -75,6 +75,7 @@ Examples:
 - `acp-router` — picks the best `agent_id` for a stated intent (claude / cursor / gemini / qwen / ...). Pure routing decision, no implementation surface.
 - `summarize` — instruct the LLM how to compress a transcript, with target word counts and tone guidance.
 - `setup-new-acpx-key` — multi-step procedure to inject a credential into `data.keys`, `config.json` (top-level + `acpx.agents.<id>.env`), and verify via `acp_doctor`.
+- `flow-making` — turn a plain objective into a canvas-loadable `.flw` by driving the FlowCreator engine (a runbook that shells out to the skill's own `scripts/make_flow.py` via `execute_command`). A skill MAY ship helper scripts under its directory and call them.
 - `tlamatini_csrf_exempt_audit` / `tlamatini_planner_trace_replay` / `tlamatini_flw_doctor` — internal audit-and-fix runbooks the LLM can invoke when working ON the Tlamatini codebase itself.
 - `gmail` / `slack` / `github` / `jira` / `notion` / `todoist` / `trello` / `weather` — integration stubs that document how to call the corresponding chat.ai-style MCPs once they are connected.
 
@@ -646,6 +647,8 @@ If you added multiple buckets, verify each checklist independently.
 ## Skill Workflow (SKILL.md package)
 
 Follow these steps when the requested feature is a **procedural runbook** rather than an imperative tool or context provider.
+
+> **Dedicated guide**: `Tlamatini/.skills/create_new_skill.md` is the full, standalone authoring reference for a `SKILL.md` (the two runtimes `in-process` vs `acpx`, the frontmatter schema ranges, discovery + the 30 s staleness cache, lint/validate, ACPX-surface gotchas). The steps below are the short version. The `flow-making` skill (`agent/skills_pkg/flow_making/`) is a good worked example of an in-process skill that ships and shells out to `scripts/*.py`.
 
 ### Step 1: Decide whether a skill is the right surface
 
