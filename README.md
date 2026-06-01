@@ -598,13 +598,13 @@ Both directories must exist on day one (the swap-in opens them with `os.makedirs
 
 ### 3.12. The **ACPX-Skills** menu — Browse, Configure, Diagnostics, Reload
 
-Tlamatini ships with **24 skills** — markdown SKILL.md packages under `agent/skills_pkg/` that the LLM can invoke through `invoke_skill('<name>', '{...args...}')`. They cover everything from the canonical `acp-router` (pick the right external CLI for an intent) and `summarize` (compress text faithfully) to `setup-new-acpx-key`, `skill-creator`, `code-review` (senior-engineer git-diff review with an APPROVE/REQUEST_CHANGES verdict), `security-audit` (multi-scanner SAST/secret/dependency sweep) and `kali-pentest` (an authorized Kali Linux assessment runbook that drives the Kalier agent / MCP-Kali-Server), the `tlamatini_*` audit/lint/refactor helpers, and integration stubs for GitHub / Notion / Slack / Gmail / Jira / Todoist / Trello / Weather.
+Tlamatini ships with **27 skills** — markdown SKILL.md packages under `agent/skills_pkg/` that the LLM can invoke through `invoke_skill('<name>', '{...args...}')`. They cover everything from the canonical `acp-router` (pick the right external CLI for an intent) and `summarize` (compress text faithfully) to `setup-new-acpx-key`, `skill-creator`, `flow-making` (turn a plain-language objective into a canvas-loadable `.flw` by driving the FlowCreator engine — supersedes the legacy `tlamatini-flow-from-objective`), `code-review` (senior-engineer git-diff review with an APPROVE/REQUEST_CHANGES verdict), `security-audit` (multi-scanner SAST/secret/dependency sweep) and `kali-pentest` (an authorized Kali Linux assessment runbook that drives the Kalier agent / MCP-Kali-Server), the `tlamatini_*` audit/lint/refactor helpers, and integration stubs for GitHub / Notion / Slack / Gmail / Jira / Todoist / Trello / Weather.
 
 Before 2026-05-17 the only way to interact with them was through the LLM (`list_skills` to enumerate, `invoke_skill` to run). The **ACPX-Skills** navbar dropdown — added next to **Agents** and **Config** in the chat toolbar — gives you an operator-grade admin surface that does NOT require the LLM. Four entries:
 
 #### `ACPX-Skills -> Browse Skills`
 
-Opens a two-pane modal: a left-side list of all 24 skills (with a green/red dot for enabled / disabled and a runtime tag) and a right-side detail pane that shows the selected skill's full identity — description, runtime (in-process / acpx), `acpx_agent` if any, budgets (max_iterations · max_seconds · max_tokens), trigger keywords, `requires_tools` and `requires_mcps`, inputs and outputs (with required-field markers), and the full markdown body. A search box at the top filters by name or description as you type. Pure read — nothing is written back.
+Opens a two-pane modal: a left-side list of all 27 skills (with a green/red dot for enabled / disabled and a runtime tag) and a right-side detail pane that shows the selected skill's full identity — description, runtime (in-process / acpx), `acpx_agent` if any, budgets (max_iterations · max_seconds · max_tokens), trigger keywords, `requires_tools` and `requires_mcps`, inputs and outputs (with required-field markers), and the full markdown body. A search box at the top filters by name or description as you type. Pure read — nothing is written back.
 
 Backed by `GET /agent/skills/` (list payload) and `GET /agent/skills/<name>/` (deep detail). Use it when you want to know what a skill *actually does* before you ask the LLM to call it, or when you've just authored a new SKILL.md and want to confirm it parsed correctly.
 
@@ -949,7 +949,7 @@ All return JSON envelopes. Failures: `{"ok": false, "reason": "...", "code": "..
 | `invoke_skill(skill_name, args_json)` | Run a `SKILL.md` package inside `SkillHarness`. |
 | `list_skills(filter_keywords)` | List registered skills. |
 
-24 seed skills live under `agent/skills_pkg/` (acp-router, summarize, setup-new-acpx-key, skill-creator, code-review, security-audit, kali-pentest, 8× tlamatini-* maintenance helpers, plus OpenClaw-format ports for github / gmail / slack / jira / notion / todoist / trello / weather).
+27 seed skills live under `agent/skills_pkg/` (acp-router, summarize, setup-new-acpx-key, skill-creator, flow-making, code-review, security-audit, kali-pentest, the create-new-agent / create-new-mcp authoring runbooks, hello-world, 8× tlamatini-* maintenance helpers incl. flow-from-objective → which now delegates to flow-making, plus OpenClaw-format ports for github / gmail / slack / jira / notion / todoist / trello / weather).
 
 ### 5.4. Tutorial: spawn-and-go (single agent)
 

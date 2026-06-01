@@ -86,6 +86,7 @@ Templates live in `agent/templates/agent/`. Default installer credentials: `user
 - **Direct tools:** `execute_command`, `execute_file`, file ops, `googler`, `unzip_file`, `decompile_java`, image vision (`opus_analyze_image` / `qwen_analyze_image` / Image-Interpreter).
 - **~43 wrapped `chat_agent_*` launchers** (executer, pythonxer, gitter, ssher, sqler, emailer, telegramer, playwrighter, windower, mouser, keyboarder, kalier, stm32er, …).
 - **12 ACPX tools:** `acp_doctor`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_relay`, … + `list_skills` / `invoke_skill`.
+- **27 skills** (`SKILL.md` packages) via `invoke_skill` — incl. **`flow-making`**: hand it a plain objective + an `out_path` and it builds a real, canvas-loadable `.flw` for you by driving the FlowCreator engine (it ships `scripts/make_flow.py`; needs Ollama running). The skill tools are ACPX-surface, so they only appear when the **ACPX** toggle is on.
 - **68 visual agents** for unattended `.flw` flows (`Starter → … → Ender`, with Forker/Raiser/Parametrizer/Counter/AND/OR routing) — including **STM32er**, the zero-config STM32F4 firmware agent that downloads + installs its own MCP and runs a fail-safe preflight (compiler/CubeIDE/ST-LINK/device) before building or flashing real hardware.
 
 ## 9. Improving yourself (read this before you change your own code)

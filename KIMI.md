@@ -182,7 +182,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── io_contract.py      # Input/output validation with type coercion
 │   │   │   └── harness.py          # SkillHarness — budget enforcement, audit logging, dispatch
 │   │   │
-│   │   ├── skills_pkg/             # Skill content packages (22+ SKILL.md files)
+│   │   ├── skills_pkg/             # Skill content packages (27 SKILL.md files)
 │   │   │   ├── hello_world/
 │   │   │   ├── acp_router/
 │   │   │   ├── github/
@@ -193,7 +193,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── summarize/
 │   │   │   ├── weather/
 │   │   │   ├── skill_creator/
-│   │   │   └── tlamatini_*/        # Internal Tlamatini skills
+│   │   │   ├── flow_making/        # objective → .flw (wraps FlowCreator); ships scripts/{make_flow,result_to_flw}.py
+│   │   │   └── tlamatini_*/        # Internal Tlamatini skills (incl. flow_from_objective → delegates to flow-making)
 │   │   │
 │   │   ├── rag/                    # RAG system package
 │   │   │   ├── factory.py          # Chain builders, MCP context patching, ACPX filter

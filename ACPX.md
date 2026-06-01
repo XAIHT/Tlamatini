@@ -346,6 +346,8 @@ Every harness loop tick calls `budget.tick_iteration()` which checks both iterat
 
 ## 5. The catalog (20 seed skills)
 
+> **Historical revision snapshot.** The numbers in this section (and the verification log below) reflect the original ACPX port. The catalog has since grown — **27 skills as of 2026-06-01** (added: `code-review`, `security-audit`, `kali-pentest`, `create-new-agent`, `create-new-mcp`, `tlamatini-flow-from-objective`, **`flow-making`**). See `CLAUDE.md` / `README.md` §3.12 for the current list; run `python agent/skills_pkg/_meta/lint.py` for the live count.
+
 | # | Skill name | Runtime | Purpose |
 |---|---|---|---|
 | 1 | `hello-world` | in-process | Smoke test the harness |
