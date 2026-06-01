@@ -415,13 +415,13 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.11.0" in subject for subject in subjects):
+    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.12.0" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.11.0`: Ask Execs was refined into the current release surface, and the frozen Windows install now registers itself in `Installed apps` / `Programs and Features` with a real per-user uninstall entry that can self-heal on later launches."
+            "Today’s headline change is `v1.12.0`: Ask Execs was refined into the current release surface, and the frozen Windows install now registers itself in `Installed apps` / `Programs and Features` with a real per-user uninstall entry that can self-heal on later launches."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.11.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
+            "Today’s headline change is `v1.12.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
@@ -553,13 +553,13 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.11.0" in subject for subject in subjects):
+    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.12.0" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.11.0` added a second release-level operator change on top of Ask Execs: frozen installs now write a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Windows `Installed apps` and can be uninstalled through normal Windows 10/11 mechanisms."
+            "Since the last committed PDF/PPTX refresh, `v1.12.0` added a second release-level operator change on top of Ask Execs: frozen installs now write a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Windows `Installed apps` and can be uninstalled through normal Windows 10/11 mechanisms."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.11.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
+            "Since the last committed PDF/PPTX refresh, `v1.12.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
@@ -829,7 +829,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.11.0` release state keeps the version badge, runtime surfaces, Ask Execs wording, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.12.0` release state keeps the version badge, runtime surfaces, Ask Execs wording, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -851,7 +851,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Version `1.11.0` adds the `Ask Execs` checkbox as a Multi-Turn-only safety modifier: when it is on, Tlamatini asks before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Version `1.12.0` adds the `Ask Execs` checkbox as a Multi-Turn-only safety modifier: when it is on, Tlamatini asks before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -869,7 +869,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Version `1.11.0` makes the frozen install behave like a real Windows application: `install.py` now writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Version `1.12.0` makes the frozen install behave like a real Windows application: `install.py` now writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -1369,7 +1369,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Multi-Turn 4096-turn autonomy", styles["h2"]))
     for item in MULTITURN_4096_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Ask Execs in v1.11.0", styles["h2"]))
+    story.append(p("Ask Execs in v1.12.0", styles["h2"]))
     for item in ASK_EXECS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Ask Execs runtime path", styles["h2"]))
@@ -1980,7 +1980,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs In v1.11.0", "human approval inside the Multi-Turn loop", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs In v1.12.0", "human approval inside the Multi-Turn loop", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -1994,7 +1994,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration on Windows 10 and 11", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.12.0 uninstall integration on Windows 10 and 11", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",

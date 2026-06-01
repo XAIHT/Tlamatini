@@ -1230,6 +1230,21 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(30, 99, 255, 0.5);
 }
 
+/* ESP32er Agent — PlatformIO / Espressif. 4-color ramp distinct from STM32er's
+   blue: near-black charcoal -> Espressif red -> warm amber -> light cream. The
+   text-shadow keeps the white label legible across the light right-hand end. */
+.canvas-item.esp32er-agent {
+    background-color: #1A1A1A;
+    background: linear-gradient(135deg, #1A1A1A 0%, #E7352C 33%, #FF8A3D 66%, #FFE2C2 100%);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    font-size: smaller;
+}
+.canvas-item.esp32er-agent:hover {
+    background: linear-gradient(135deg, #2B2B2B 0%, #F0564E 33%, #FFA869 66%, #FFFFFF 100%);
+    box-shadow: 0 6px 15px rgba(231, 53, 44, 0.5);
+}
+
 /* FlowBacker Agent Styles - Infrastructure backup (3-color: Deep-Teal / Burnt-Orange / Amber gradient) */
 .canvas-item.flowbacker-agent {
     background-color: #0F4C5C;

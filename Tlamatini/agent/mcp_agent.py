@@ -165,6 +165,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # list_sources / read_memory / serial reads) share the ``stm32er`` agent_key
     # so a mixed firmware flow renders as one "List of STM32er Operations" table.
     "chat_agent_stm32er":        ("stm32er",        "STM32er"),
+    # ESP32er is state-changing: it drives PlatformIO Core's `pio` CLI to scaffold /
+    # write / build / upload (flash) ESP32 firmware. Read-only actions (boards /
+    # read_source / list_sources / device_list / monitor) share the ``esp32er``
+    # agent_key so a mixed firmware flow renders as one "List of ESP32er Operations"
+    # table.
+    "chat_agent_esp32er":        ("esp32er",        "ESP32er"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every
@@ -282,6 +288,8 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
         return "Kali Linux (MCP-Kali-Server)"
     if name == "chat_agent_stm32er":
         return "STM32 Template Project MCP"
+    if name == "chat_agent_esp32er":
+        return "PlatformIO Core (pio CLI)"
     if name.startswith("acp_"):
         return "External coding-agent CLI"
     if name == "invoke_skill":

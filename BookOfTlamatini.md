@@ -1852,14 +1852,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.11.0 -m "Release 1.11.0: <one-liner>"   # annotated tag
-git push origin v1.11.0
+git tag -a v1.12.0 -m "Release 1.12.0: <one-liner>"   # annotated tag
+git push origin v1.12.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.11.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.12.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -1867,8 +1867,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.11.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.11.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.11.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.12.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.12.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.12.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -2414,6 +2414,155 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 
 ---
 
+# Bonus Chapter — § 58. The ESP32 Template Project — a known-good ESP32 firmware baseline for ESP32er
+
+This bonus chapter documents the **ESP32 Template Project** — a small, standalone
+PlatformIO project that blinks an ESP32's onboard LED and prints the LED state
+over the serial port. It is the ESP32 counterpart of the **STM32 Template Project
+MCP** (the project STM32er drives): a clean, version-controlled,
+*guaranteed-to-compile* starting point that Tlamatini's **ESP32er** agent can
+build, flash and monitor, and that you can equally use on its own from the
+command line or the VS Code PlatformIO IDE.
+
+> **Read this if** you want to prove an ESP32 board + toolchain are healthy before
+> writing real firmware, or you want a baseline ESP32er can drive end-to-end
+> (build → upload → monitor), or you want to publish your own ESP32 firmware
+> starter to GitHub.
+
+## 58.1. Why a separate template project at all?
+
+ESP32er and STM32er solve the same problem — "let Tlamatini scaffold, build,
+flash and observe embedded firmware" — but through deliberately different plumbing:
+
+| | **STM32er** | **ESP32er** |
+|---|---|---|
+| Toolchain driver | A separate **MCP server** (the STM32 Template Project MCP), because STM32CubeIDE has no single unified CLI. | The **`pio` CLI directly** — PlatformIO already ships a complete command line, so there is **no MCP server**. |
+| What gets downloaded | The MCP repo (`git clone`/zip) + its Python deps. | PlatformIO Core itself (the official `get-platformio.py` installer), once. |
+| The "template project" | Lives *inside* the MCP repo and is F407VG-specific. | Is **this** independent repository (`ESP32TemplateProject`), board-and-framework agnostic by editing one file. |
+
+So the ESP32 Template Project is intentionally a **plain PlatformIO project**, not
+a server. ESP32er does not embed it — ESP32er can either point at a checkout of it
+(set `project_dir`) or scaffold an equivalent one from scratch with
+`action: create_project`. This repository is the **reference shape** that scaffold
+produces, kept as a maintained, CI-tested baseline.
+
+## 58.2. Where it lives and what's in it
+
+The scaffold ships at **`C:\Development\ESP32TemplateProject`** and is meant to be
+its own GitHub repository (the natural home, mirroring the STM32 one, is
+`https://github.com/XAIHT/ESP32TemplateProject`):
+
+```
+ESP32TemplateProject/
+├── platformio.ini             # board (esp32dev), framework (arduino), build flags
+├── src/
+│   └── main.cpp               # the blinking-LED firmware
+├── include/  lib/  test/      # standard PlatformIO directories (each with a README)
+├── .github/workflows/build.yml# CI: compiles the firmware on every push
+├── scripts/
+│   ├── create_github_repo.ps1 # one-shot "publish to GitHub" helper (Windows)
+│   └── create_github_repo.sh  # same, for bash / Git Bash / Linux / macOS
+├── .gitignore  CHANGELOG.md  LICENSE (MIT)  README.md
+```
+
+`platformio.ini` targets the generic **`esp32dev`** board with the **Arduino**
+framework — exactly the defaults ESP32er's `config.yaml` uses (`board: esp32dev`,
+`framework: arduino`) — and exposes two compile-time knobs:
+
+| Build flag | Default | Meaning |
+|---|---|---|
+| `-DBLINK_LED_PIN=2` | GPIO 2 | The GPIO the LED is wired to (GPIO 2 is the onboard blue LED on most DevKitC / WROOM-32 boards). |
+| `-DBLINK_INTERVAL_MS=500` | 500 ms | Half-period of the blink → 1 Hz. |
+
+`src/main.cpp` is the whole firmware: in `setup()` it configures the LED pin and
+opens the serial port at 115200 baud; in `loop()` it toggles the LED and prints
+`LED ON` / `LED OFF`. Printing the state means you can confirm the board is alive
+over the serial monitor even without watching the physical LED.
+
+## 58.3. Using it standalone (no Tlamatini)
+
+You need PlatformIO Core (`pip install platformio` or the official installer) and
+your board's USB-serial driver (CP210x / CH34x). Then, from the project root:
+
+```bash
+pio run                 # compile (the FIRST build also pulls the espressif32
+                        # platform + toolchain — several hundred MB — once)
+pio run -t upload       # flash over the onboard USB-serial bootloader (no JTAG)
+pio device monitor      # watch the log at 115200 baud (Ctrl+] to quit)
+```
+
+Expected serial output:
+
+```
+ESP32TemplateProject :: blink starting
+LED pin = 2, interval = 500 ms
+LED ON
+LED OFF
+LED ON
+...
+```
+
+To target a different ESP32 variant, run `pio boards espressif32`, change
+`board =` in `platformio.ini` (e.g. `esp32-s3-devkitc-1`, `esp32-c3-devkitm-1`),
+and — if the LED is on another pin — change `-DBLINK_LED_PIN=`.
+
+## 58.4. Driving it from ESP32er (the Tlamatini way)
+
+ESP32er auto-bootstraps PlatformIO Core if it is missing, so the only thing you
+install is the board's USB driver + Tlamatini. Point ESP32er at the project by
+setting its `project_dir` to the folder that holds `platformio.ini`, then run one
+`action` per invocation:
+
+| ESP32er `action` | Effect on this project |
+|---|---|
+| `validate` | Preflight — confirms `pio` resolves, `platformio.ini` exists, and (for hardware actions) a serial port is connected. Refuses fail-safe rather than mis-run. |
+| `build` | `pio run` — compiles `src/main.cpp`. Needs no board. |
+| `upload` / `build_and_upload` | `pio run -t upload` — flashes over USB. Requires a connected serial port. |
+| `monitor` | A bounded `pio device monitor` window (`monitor_seconds`, default 10 s). |
+| `monitor_session` | Composite: upload, then monitor — the end-to-end "flash and watch it blink" proof in one run. |
+| `write_source` / `read_source` / `list_sources` | Author / inspect files under `project_dir` — e.g. edit `src/main.cpp` to change the blink rate. |
+
+A natural Multi-Turn chat prompt:
+
+> *Using ESP32er, build and upload the ESP32TemplateProject at
+> `C:\Development\ESP32TemplateProject` to my board on COM5, then monitor the
+> serial port for 8 seconds and show me the LED log.*
+
+ESP32er emits an `INI_SECTION_ESP32ER` block for every run (fields `action`,
+`tool`, `ok`, `returncode`, `success`, `project_dir`, `port`, `environment`,
+`stage`) and **always** triggers its `target_agents`, so a downstream Forker can
+branch on `{success}` / `{returncode}` — making this template the first node of a
+larger firmware CI flow on the canvas.
+
+## 58.5. Publishing it to GitHub
+
+The project is ready to become its own repository. Two helper scripts wrap the
+[`gh` CLI](https://cli.github.com/) (install it and run `gh auth login` first):
+
+```powershell
+# Windows (PowerShell)
+.\scripts\create_github_repo.ps1 -RepoName ESP32TemplateProject -Owner XAIHT -Visibility public
+```
+```bash
+# bash / Git Bash / Linux / macOS
+./scripts/create_github_repo.sh ESP32TemplateProject XAIHT public
+```
+
+Each script will `git init` (if needed), make the first commit, create the GitHub
+repository under the given owner, push `main`, and print the URL. Equivalent by hand:
+
+```bash
+git init -b main && git add . && git commit -m "Initial commit: ESP32 blinking-LED template"
+gh repo create XAIHT/ESP32TemplateProject --public --source=. --remote=origin --push
+```
+
+Once pushed, the bundled GitHub Actions workflow (`.github/workflows/build.yml`)
+compiles the firmware on every push so the template never silently rots. The
+template has been verified to build clean with **PlatformIO Core 6.1.19** (it
+produces `firmware.bin` + `firmware.elf`).
+
+---
+
 # Appendix B — Glossary
 
 | Term | Definition |
@@ -2477,6 +2626,7 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 | **Skill** | Markdown-driven extension package — a directory under `agent/skills_pkg/<name>/` with a `SKILL.md` (YAML frontmatter + body). 24 seed skills ship. |
 | **STM32er** | Tlamatini agent that scaffolds, builds, flashes, and observes STM32F407VG firmware through the STM32 Template Project MCP (`https://github.com/XAIHT/STM32TemplateProjectMCP`), via a self-contained inline MCP stdio JSON-RPC client. Zero-config auto-bootstrap downloads the MCP itself and a safety preflight refuses to build/flash on a bad toolchain or wrong device family. Available both as the wrapped Multi-Turn tool `chat_agent_stm32er` and as a visual canvas node. The 68th entry in the agent catalog. |
 | **STM32 Template Project MCP** | FastMCP stdio server (`https://github.com/XAIHT/STM32TemplateProjectMCP`) exposing 23 tools for STM32F407VG firmware scaffolding, build, flash, and serial observation. STM32er is a client of it — it does not embed it — and auto-downloads it on first use. |
+| **ESP32 Template Project** | A standalone PlatformIO project (`https://github.com/XAIHT/ESP32TemplateProject`) that blinks an ESP32's onboard LED and prints the LED state over serial — the ESP32 counterpart of the STM32 Template Project MCP. Unlike the STM32 one it is a plain PlatformIO project, not a server, because ESP32er drives the `pio` CLI directly. ESP32er can build/flash/monitor a checkout of it (`project_dir`) or scaffold an equivalent with `action: create_project`. See bonus chapter §58. |
 | **Stopper** | Single-threaded pattern-based agent terminator. |
 | **Summarizer** | LLM polls source logs for events. |
 | **Tlamatini** | Nahuatl for "one who knows" — and the name of this assistant. The LLM responds to it as a self-reference. |
@@ -2489,6 +2639,9 @@ The **Keyboarder** agent simulates human keyboard input through the `input_seque
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Added the ESP32 Template Project — a Standalone, GitHub-Ready ESP32 Firmware Baseline for ESP32er — 2026-05-31** — A new independent project, **ESP32TemplateProject** (scaffolded at `C:\Development\ESP32TemplateProject`, intended home `https://github.com/XAIHT/ESP32TemplateProject`), gives **ESP32er** the same kind of known-good baseline that the STM32 Template Project MCP gives STM32er — but built to ESP32er's grain. Where STM32er drives a separate MCP server (STM32CubeIDE has no unified CLI), ESP32er drives the **`pio` CLI directly**, so the ESP32 template is a **plain PlatformIO project, not a server**: a generic `esp32dev` / Arduino-framework project whose `src/main.cpp` blinks the onboard LED (GPIO 2) and prints `LED ON` / `LED OFF` over serial at 115200 baud, with `BLINK_LED_PIN` / `BLINK_INTERVAL_MS` exposed as `platformio.ini` build flags. It ships the standard PlatformIO layout (`src/`, `include/`, `lib/`, `test/`), an MIT `LICENSE`, a `README.md` and `CHANGELOG.md`, a GitHub Actions CI workflow that compiles the firmware on every push so it never silently rots, and one-shot **publish-to-GitHub** helpers (`scripts/create_github_repo.ps1` / `.sh`) that wrap the `gh` CLI to `git init` → commit → `gh repo create` → push in a single command. ESP32er can either point at a checkout (set `project_dir`, then run `build` / `upload` / `monitor` / `monitor_session`) or scaffold an equivalent from scratch (`action: create_project`); this repo is the maintained reference shape that scaffold produces. Verified to build clean with **PlatformIO Core 6.1.19** (produces `firmware.bin` + `firmware.elf`). Documented in full in this book's new bonus chapter **§58 — The ESP32 Template Project**, with a matching Glossary entry.
+
 
 
 - **Pythonxer — Strict Correctness Gate + It NEVER Dead-Ends a Flow — 2026-05-29** — Two deliberate behaviour changes to the **Pythonxer** agent, both at the user's emphatic request. **First, a strict pre-execution correctness gate.** Before Pythonxer runs a single line it now (a) `compile()`-parses the script — a script that doesn't even parse is *refused outright*, logged with the exact line/column/snippet, and never executed; then (b) validates with Ruff, and when `ruff_blocking` is true (the new default) **any** real Ruff finding *aborts execution* with `⛔ RUFF FAILED` and the `[Ruff]` findings written to the log. Previously Ruff ran but its result was discarded ("non-blocking"), so a broken script ran anyway. Ruff being absent or timing out *fails open* — the `compile()` syntax floor still protects you — and setting `ruff_blocking: false` restores the old advisory behaviour (findings logged, script still runs). **Second — and this is the part that changes flow design — Pythonxer now ALWAYS triggers its downstream/output agents, no matter what:** success, a gate refusal, *or* a runtime failure. The old "exit code 0 → start downstream, non-zero → skip" gating is *gone* for Pythonxer; the exit code (0/1) still drives the LED and the Multi-Turn fix-and-retry loop, but it no longer decides whether the next agent starts. Pythonxer never silently dead-ends a flow again — and because downstream always fires, **conditional branching must now be done by a downstream agent reading Pythonxer's result/log** (a Forker/Raiser on a marker the script printed), not by relying on Pythonxer to skip. Riding along: a failed *wrapped* Pythonxer run (`chat_agent_pythonxer`) now tells the Multi-Turn LLM to read the log, rewrite the script in full, and retry — fix → re-ruff → re-run until it passes — closing the loop end-to-end (the repetition breaker blocks identical re-sends, so only a *corrected* script proceeds). And `build.py` now hard-verifies `ruff --version` against **both** the build Python and the frozen-agent Python so the strict gate is guaranteed to have Ruff in frozen *and* source modes. The `agentic_skill.md` (FlowCreator's reference), `agents_descriptions.md`, `docs/claude/agents.md`, `KIMI.md`, and this book's catalog rows were all updated so the AI flow-designer no longer assumes downstream is skipped on failure. Frozen installs need a `python build.py` to pick this up.

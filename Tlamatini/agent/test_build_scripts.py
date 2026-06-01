@@ -221,6 +221,11 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
         self.assertTrue((stm / "stm32er.py").exists(), "stm32er.py missing")
         self.assertTrue((stm / "config.yaml").exists(), "stm32er config.yaml missing")
 
+    def test_esp32er_agent_ships_complete(self):
+        esp = AGENTS_DIR / "esp32er"
+        self.assertTrue((esp / "esp32er.py").exists(), "esp32er.py missing")
+        self.assertTrue((esp / "config.yaml").exists(), "esp32er config.yaml missing")
+
     def test_every_runnable_agent_has_its_config(self):
         # Each agent dir that ships a <name>.py runtime must also ship its
         # config.yaml (the pair the pool launcher needs). System agents that have

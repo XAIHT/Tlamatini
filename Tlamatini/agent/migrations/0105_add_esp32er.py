@@ -1,0 +1,36 @@
+from django.db import migrations
+
+
+def add_esp32er_agent(apps, schema_editor):
+    Agent = apps.get_model('agent', 'Agent')
+    max_id = 0
+    for agent in Agent.objects.all():
+        if agent.idAgent > max_id:
+            max_id = agent.idAgent
+
+    existing = Agent.objects.filter(agentDescription='ESP32er').first()
+    if existing:
+        return
+
+    next_id = max_id + 1
+    Agent.objects.create(
+        idAgent=next_id,
+        agentName=f'agent-{next_id}',
+        agentDescription='ESP32er',
+        agentContent='true',
+    )
+
+
+def remove_esp32er_agent(apps, schema_editor):
+    Agent = apps.get_model('agent', 'Agent')
+    Agent.objects.filter(agentDescription='ESP32er').delete()
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ('agent', '0104_fix_stm32er_hil_serial_proof'),
+    ]
+
+    operations = [
+        migrations.RunPython(add_esp32er_agent, remove_esp32er_agent),
+    ]
