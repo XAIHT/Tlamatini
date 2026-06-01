@@ -415,13 +415,13 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.12.0" in subject for subject in subjects):
+    if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.12.0`: Ask Execs was refined into the current release surface, and the frozen Windows install now registers itself in `Installed apps` / `Programs and Features` with a real per-user uninstall entry that can self-heal on later launches."
+            "Today’s headline change is `v1.12.0` ESP32er: Tlamatini now reaches 69 workflow agents and adds a direct PlatformIO Core bridge, so she can scaffold, author, build, upload, and monitor ESP32-class firmware from chat or canvas without an external MCP server."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.12.0` Ask Execs: Tlamatini can now pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
+            "The newer ESP32 release still carries forward the Ask Execs safety surface introduced earlier: Tlamatini can pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
@@ -553,13 +553,13 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any("fixing commit to asking method" in subject or "asking method" in subject or "v1.12.0" in subject for subject in subjects):
+    if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.12.0` added a second release-level operator change on top of Ask Execs: frozen installs now write a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Windows `Installed apps` and can be uninstalled through normal Windows 10/11 mechanisms."
+            "Since the last committed PDF/PPTX refresh, `v1.12.0` added ESP32er as the 69th workflow agent and `chat_agent_esp32er` as the new embedded-firmware surface: she now drives PlatformIO Core directly to scaffold, build, upload, and monitor ESP32-class firmware with zero-config bootstrap and a serial-aware safety preflight."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.12.0` added the Ask Execs checkbox: she can now block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
+            "Earlier in the same post-baseline window, the Ask Execs checkbox added the human-in-the-loop gate: she can block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
@@ -588,6 +588,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, operator attention handling moved to a concrete Windows path: browser-side Ask Execs and Notifier events can call `/agent/flash_window/`, which lets Tlamatini flash her own taskbar button and persist an uppercase attention banner in `tlamatini.log`."
+        )
+    if any("esp32 template project" in subject or "template project" in subject and "esp32" in subject for subject in subjects):
+        highlights.append(
+            "The same span also documented the `ESP32TemplateProject` reference repository: a plain PlatformIO project that gives ESP32er a known-good, GitHub-ready firmware baseline for build, upload, and serial-monitor verification."
         )
     if any("doc" in subject or "markdown" in subject or "graphical" in subject for subject in subjects):
         highlights.append(
@@ -728,7 +732,7 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a local-first AI developer assistant built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and critical-mission STM32F4 firmware control.",
+    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for both STM32F4 and ESP32-class boards.",
 ]
 
 WHAT_IT_DOES = [
@@ -743,6 +747,7 @@ WHAT_IT_DOES = [
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
+    "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
@@ -770,6 +775,7 @@ HOW_IT_WORKS = [
     "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, auto-seeding the default box from `kali_server_url` in Config -> URLs before any one-off per-call override is applied, and captures one atomic `INI_SECTION_KALIER` block per run.",
     "The STM32er path spawns the STM32 Template Project MCP stdio server, performs the MCP initialize handshake, runs exactly one requested tool or composite action, and emits one atomic `INI_SECTION_STM32ER` block with the result, project directory, and stage metadata.",
     "Before any flash-capable STM32er action, a critical-mission preflight validates the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK presence, and STM32F-family match; compile-only steps can run boardless, but unsafe hardware mutations are refused fail-safe.",
+    "The ESP32er path resolves or bootstraps PlatformIO Core, invokes `pio` subcommands directly with Python-stdlib process control, validates project and serial-port readiness, and emits one atomic `INI_SECTION_ESP32ER` block with stage, project, port, and stdout/stderr payloads.",
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
@@ -790,6 +796,7 @@ HOW_TO_USE = [
     "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
+    "For ESP32 firmware work, leave `Config -> URLs -> pio_executable` blank for zero-config PlatformIO bootstrap, then call `chat_agent_esp32er` from Multi-Turn with actions like `bootstrap`, `validate`, `create_project`, `write_source`, `build`, `upload`, `build_and_upload`, `monitor`, or `monitor_session`.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
@@ -820,8 +827,8 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The live operator surface now stands at 68 workflow agents, 75 Multi-Turn tools, 12 ACPX tools, and 26 skills.",
-    "Source inspection confirms the newer total: 43 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 75 Multi-Turn tools overall.",
+    "The live operator surface now stands at 69 workflow agents, 76 Multi-Turn tools, 12 ACPX tools, and 26 skills.",
+    "Source inspection confirms the newer total: 44 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 76 Multi-Turn tools overall.",
     "The workflow-agent and wrapped-tool totals align cleanly with the handbooks, while the skill total is validated from the on-disk `agent/skills_pkg/` catalog so the dossier stays honest even when a simplified markdown summary lags behind the live tree.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
@@ -829,7 +836,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the newer `v1.12.0` release state keeps the version badge, runtime surfaces, Ask Execs wording, self-knowledge wording, STM32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the newer `v1.12.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -851,7 +858,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Version `1.12.0` adds the `Ask Execs` checkbox as a Multi-Turn-only safety modifier: when it is on, Tlamatini asks before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.12.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -869,7 +876,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Version `1.12.0` makes the frozen install behave like a real Windows application: `install.py` now writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.12.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -953,6 +960,24 @@ STM32ER_SURFACES_GUIDE = [
     "Config -> URLs now seeds the chat path with `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, so firmware prompts normally describe only the task and target board instead of the plumbing.",
 ]
 
+ESP32ER_GUIDE = [
+    "ESP32er is the new 69th workflow agent in `v1.12.0`: Tlamatini’s direct bridge to PlatformIO Core, built so she can scaffold, author, build, upload, and monitor ESP32-class firmware without relying on an external MCP server or IDE.",
+    "The operator promise is zero-config bootstrap: leave `pio_executable` blank and ESP32er downloads or pip-falls-back to PlatformIO Core on first use, validates it, and caches it under a per-user directory so the user installs only the board USB driver plus Tlamatini.",
+    "Before any build-or-upload action, ESP32er runs a serial-aware preflight over `pio` resolution, project shape, and connected ports; upload and monitor require a real serial device, while non-espressif32 targets are warned about rather than hard-refused because PlatformIO is intentionally multi-target.",
+]
+
+ESP32ER_SURFACES_GUIDE = [
+    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_esp32er` takes one `action` per call, while the visual ESP32er canvas node stores the same fields in YAML and triggers downstream agents on both success and failure.",
+    "The tool surface covers environment/meta (`bootstrap`, `validate`, `system_info`, `boards`), project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`, `clean`), build and flash (`build`, `upload`, `build_and_upload`, `list_artifacts`), serial HIL (`device_list`, `monitor`, `monitor_session`), and package / QA paths (`pkg_install`, `pkg_list`, `pkg_update`, `check`, `test`), with every run emitting an `INI_SECTION_ESP32ER` block for Forker or Parametrizer routing.",
+    "Config -> URLs now seeds the chat path with `pio_executable` and `pio_core_dir`, so firmware prompts usually describe only the board, project, and task while the wrapped tool auto-injects the PlatformIO runtime plumbing.",
+]
+
+ESP32_TEMPLATE_GUIDE = [
+    "The new `ESP32TemplateProject` repository is the known-good baseline documented in BookOfTlamatini’s bonus chapter: a plain PlatformIO project, not a server, meant to prove an ESP32 board and toolchain are healthy before larger firmware work.",
+    "It mirrors ESP32er’s grain: `platformio.ini`, `src/`, `include/`, `lib/`, `test/`, a blinking `main.cpp`, serial output at 115200, and GitHub-ready docs/CI so the reference project does not silently rot.",
+    "Operationally, ESP32er can either point at a checkout of that template (`project_dir`) or scaffold an equivalent from scratch with `action='create_project'`, then carry the directory through build, upload, and monitor steps.",
+]
+
 DESIGN_PRINCIPLES = [
     "Evidence-first answers: Tlamatini grounds responses in selected project context and hybrid retrieval rather than freeform model memory.",
     "Explicit orchestration: checked Multi-Turn uses a visible tool loop, capability scoring, and staged planning instead of a single opaque call.",
@@ -974,7 +999,7 @@ CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
     "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `kimi-k2.6:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
-    "URL configuration now also includes `kali_server_url` plus the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
+    "URL configuration now also includes `kali_server_url`, the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, plus ESP32er’s `pio_executable` and `pio_core_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096, and Ask Execs only becomes available when Multi-Turn itself is on.",
@@ -1138,7 +1163,7 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, esp32er, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -1369,7 +1394,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Multi-Turn 4096-turn autonomy", styles["h2"]))
     for item in MULTITURN_4096_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Ask Execs in v1.12.0", styles["h2"]))
+    story.append(p("Ask Execs in Multi-Turn", styles["h2"]))
     for item in ASK_EXECS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Ask Execs runtime path", styles["h2"]))
@@ -1425,6 +1450,14 @@ def build_pdf(context: dict) -> None:
     for item in STM32ER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in STM32ER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("ESP32er in v1.12.0", styles["h2"]))
+    for item in ESP32ER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in ESP32ER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("ESP32 Template Project reference baseline", styles["h2"]))
+    for item in ESP32_TEMPLATE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Windower on Multi-Turn and canvas", styles["h2"]))
     for item in WINDOWER_GUIDE:
@@ -1980,7 +2013,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs In v1.12.0", "human approval inside the Multi-Turn loop", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.12.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -1994,7 +2027,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.12.0 uninstall integration on Windows 10 and 11", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.12.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2055,6 +2088,20 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "STM32er In v1.9.0", "critical-mission STM32F4 firmware control", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", STM32ER_GUIDE, THEME["copper"], "stm32-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", STM32ER_SURFACES_GUIDE, THEME["jade"], "stm32-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "ESP32er In v1.12.0", "PlatformIO-driven ESP32 firmware control", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", ESP32ER_GUIDE, THEME["jade"], "esp32-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", ESP32ER_SURFACES_GUIDE, THEME["amber"], "esp32-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "ESP32 Template Project", "known-good PlatformIO baseline for ESP32er", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Why it matters", ESP32_TEMPLATE_GUIDE, THEME["amber"], "esp32-c", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Operator result", [
+        "The reference project gives Tlamatini a stable build/upload/monitor proving ground before a user asks her to generate larger ESP32 firmware.",
+        "Because it is a plain PlatformIO repo, it matches the exact grain of `chat_agent_esp32er` and the visual ESP32er node instead of introducing another sidecar protocol.",
+        "This closes the gap between the new agent and a practical first project a user can build, flash, and watch over serial on real silicon.",
+    ], THEME["jade"], "esp32-d", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Self-Knowledge In v1.8.0", "who she is and how she can improve herself", THEME["amber"])
