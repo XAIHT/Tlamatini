@@ -19,6 +19,39 @@ import time
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# ── Tlamatini Temp policy ────────────────────────────────────────────────────
+# Pin ALL temporary files to ``<application-root>/Temp`` so nothing ever leaks
+# to ``C:\Temp`` / ``%TEMP%``.  manage.py already does this before Django on the
+# normal launch paths; this repeats it (idempotently) in settings so a DIRECT
+# ``daphne tlamatini.asgi:application`` / ``uvicorn`` launch that bypasses
+# manage.py is still covered.  Self-contained, fail-open; resolution matches
+# manage.py::_enforce_app_temp_dir and agent/path_guard.py::_get_application_root
+# (frozen → exe dir; source → repo root = the dir above this Django project).
+def _pin_temp_directory():
+    try:
+        if getattr(sys, 'frozen', False):
+            _temp_base = Path(sys.executable).resolve().parent
+        else:
+            _temp_base = BASE_DIR.parent
+        _temp_root = _temp_base / 'Temp'
+        _temp_root.mkdir(parents=True, exist_ok=True)
+        _temp_root_str = str(_temp_root)
+        for _var in ('TMP', 'TEMP', 'TMPDIR'):
+            os.environ[_var] = _temp_root_str
+        os.environ['TLAMATINI_TEMP'] = _temp_root_str
+        import tempfile
+        tempfile.tempdir = _temp_root_str
+        # Templates: default parent for firmware/engine agent scaffold projects.
+        _templates_root = _temp_base / 'Templates'
+        _templates_root.mkdir(parents=True, exist_ok=True)
+        os.environ['TLAMATINI_TEMPLATES'] = str(_templates_root)
+    except Exception:
+        pass
+
+
+_pin_temp_directory()
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 

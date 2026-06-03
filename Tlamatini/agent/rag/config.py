@@ -10,6 +10,47 @@ from typing import Tuple, Dict, Any
 SELF_KNOWLEDGE_FILENAME = 'Tlamatini.md'
 SELF_KNOWLEDGE_PLACEHOLDER = '{self_knowledge}'
 
+# The Tlamatini Temp policy surfaces the ABSOLUTE temporary directory to the LLM
+# so its instruction ("write all temp files under your Temp directory, never
+# outside Tlamatini") is actionable — the LLM can pass this exact path to
+# chat_agent_file_creator / execute_command. Resolved through path_guard so it is
+# byte-identical to what manage.py / settings.py pin at runtime (frozen: next to
+# the .exe; source: the application root).
+TEMP_DIRECTORY_PLACEHOLDER = '{temp_directory}'
+
+
+TEMPLATES_DIRECTORY_PLACEHOLDER = '{templates_directory}'
+
+
+def _resolve_temp_directory_for_prompt() -> str:
+    """Return the absolute app Temp directory for prompt injection (fail-open)."""
+    try:
+        from ..path_guard import get_app_temp_root
+        root = get_app_temp_root()
+        if root:
+            # Brace-escape so a (hypothetical) brace in the path can't be read as
+            # an f-string variable by ChatPromptTemplate.
+            return root.replace('{', '{{').replace('}', '}}')
+    except Exception:
+        pass
+    return ('your application root\'s "Temp" subdirectory (the folder named '
+            'Temp next to your executable in frozen mode, or at the application '
+            'root in source mode)')
+
+
+def _resolve_templates_directory_for_prompt() -> str:
+    """Return the absolute app Templates directory for prompt injection (fail-open)."""
+    try:
+        from ..path_guard import get_app_templates_root
+        root = get_app_templates_root()
+        if root:
+            return root.replace('{', '{{').replace('}', '}}')
+    except Exception:
+        pass
+    return ('your application root\'s "Templates" subdirectory (the folder named '
+            'Templates next to your executable in frozen mode, or at the '
+            'application root in source mode)')
+
 
 def _load_self_knowledge_block(application_path: str) -> str:
     """Return the contents of Tlamatini.md, brace-escaped for prompt templates.
@@ -63,6 +104,23 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str, 
         prompt_template = prompt_template.replace(
             SELF_KNOWLEDGE_PLACEHOLDER,
             _load_self_knowledge_block(application_path),
+        )
+
+    # Inject the absolute Temp directory into {temp_directory} (same single load
+    # site, same .replace-before-template-parse pattern as self-knowledge) so the
+    # LLM's "all temp files go under your Temp directory" rule is concrete.
+    if TEMP_DIRECTORY_PLACEHOLDER in prompt_template:
+        prompt_template = prompt_template.replace(
+            TEMP_DIRECTORY_PLACEHOLDER,
+            _resolve_temp_directory_for_prompt(),
+        )
+
+    # Inject the absolute Templates directory into {templates_directory} so the
+    # LLM's "scaffold template projects under your Templates dir" rule is concrete.
+    if TEMPLATES_DIRECTORY_PLACEHOLDER in prompt_template:
+        prompt_template = prompt_template.replace(
+            TEMPLATES_DIRECTORY_PLACEHOLDER,
+            _resolve_templates_directory_for_prompt(),
         )
 
     return config, prompt_template, config_file_path

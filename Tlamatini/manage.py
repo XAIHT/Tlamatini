@@ -185,6 +185,52 @@ def _setup_log_tee():
 _setup_log_tee()
 
 
+def _enforce_app_temp_dir():
+    """Pin ALL temporary files to ``<application-root>/Temp`` — never elsewhere.
+
+    Tlamatini's policy is that every transient artefact (the core process, every
+    pool agent it spawns, the STM32 MCP server, external coding-agent CLIs, and
+    any third-party library) lives under one ``Temp`` directory at the app root,
+    so a single wipe cleans everything and nothing leaks to ``C:\\Temp`` /
+    ``%TEMP%``.  We set this BEFORE Django (and before anything imports
+    ``tempfile``) so the very first temp allocation already lands correctly, and
+    we export the env vars so EVERY child process inherits the same directory
+    (``get_agent_env`` in the pool agents does ``os.environ.copy()``).
+
+    Resolution mirrors ``agent/path_guard.py::_get_application_root`` exactly:
+      * frozen → directory of the executable (e.g. ``C:\\Tlamatini\\Temp``)
+      * source → repo root, two levels above this file's own directory
+                 (``manage.py`` sits in the Django project dir, inside the repo
+                 root) — e.g. ``D:\\devenv\\source\\Tlamatini\\Temp``.
+    Self-contained (no Django / agent import) and fail-open.
+    """
+    try:
+        if getattr(sys, 'frozen', False):
+            base = os.path.dirname(sys.executable)
+        else:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        temp_root = os.path.join(base, 'Temp')
+        os.makedirs(temp_root, exist_ok=True)
+        for var in ('TMP', 'TEMP', 'TMPDIR'):
+            os.environ[var] = temp_root
+        os.environ['TLAMATINI_TEMP'] = temp_root
+        import tempfile
+        tempfile.tempdir = temp_root
+        print(f"--- [TEMP] Temporary files pinned to: {temp_root}")
+        # Templates: the DEFAULT parent for the template-projects the firmware /
+        # engine agents (STM32er / ESP32er / Arduiner / Unrealer) scaffold, unless
+        # the user names another path. Exported so spawned agents inherit it.
+        templates_root = os.path.join(base, 'Templates')
+        os.makedirs(templates_root, exist_ok=True)
+        os.environ['TLAMATINI_TEMPLATES'] = templates_root
+        print(f"--- [TEMPLATES] Template projects default to: {templates_root}")
+    except Exception as exc:
+        print(f"--- [TEMP] Could not pin temp/templates directories (non-fatal): {exc}")
+
+
+_enforce_app_temp_dir()
+
+
 def _print_version_banner():
     """Print the running Tlamatini version on every startup.
 

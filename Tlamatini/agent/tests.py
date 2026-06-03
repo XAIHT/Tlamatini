@@ -4949,6 +4949,8 @@ class AgentDescriptionsCoverageTests(TestCase):
         for child in sorted(agents_dir.iterdir()):
             if not child.is_dir():
                 continue
+            if child.name.startswith('.'):
+                continue  # tooling caches (.ruff_cache, .pytest_cache, …) are never agents
             if child.name.lower() in cls.EXCLUDED_DIRS:
                 continue
             cls.folder_keys[child.name] = views._normalize_agent_purpose_key(child.name)

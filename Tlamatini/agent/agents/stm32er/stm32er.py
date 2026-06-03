@@ -29,6 +29,23 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+# ── Tlamatini Temp policy: temporary files ONLY under <app>/Temp ─────────
+# Honor TLAMATINI_TEMP (exported by the Tlamatini core and inherited by every
+# spawned agent via get_agent_env's os.environ.copy()) so every temp file this
+# agent writes — including the downloaded MCP zip and its extraction dir — lands
+# under <app>/Temp, never C:\Temp / %TEMP% / the OS default. Fail-open: when the
+# handle is unset (agent launched fully standalone) Python's default is used.
+if (os.environ.get('TLAMATINI_TEMP') or '').strip():
+    try:
+        import tempfile as _tlt_tempfile
+        _tlt_temp_root = os.environ['TLAMATINI_TEMP'].strip()
+        os.makedirs(_tlt_temp_root, exist_ok=True)
+        _tlt_tempfile.tempdir = _tlt_temp_root
+        os.environ['TEMP'] = _tlt_temp_root
+        os.environ['TMP'] = _tlt_temp_root
+    except Exception:
+        pass
+
 import re
 import json
 import time
@@ -424,9 +441,17 @@ def _build_arguments(action: str, config: dict) -> dict:
         return args
 
     if action == "create_project":
+        _dest_parent = str(_cfg(config, "dest_parent")).strip()
+        if not _dest_parent:
+            # Tlamatini policy: default the scaffold parent to <app>/Templates
+            # (exported as TLAMATINI_TEMPLATES by the core) unless dest_parent was
+            # set explicitly. Gated on the env var so a fully-standalone run with
+            # neither keeps the MCP server's own default (and unit tests that pass
+            # no env var see unchanged behavior).
+            _dest_parent = (os.environ.get("TLAMATINI_TEMPLATES") or "").strip()
         return {
             "name": str(_cfg(config, "name")),
-            "dest_parent": str(_cfg(config, "dest_parent")),
+            "dest_parent": _dest_parent,
             "overwrite": _as_bool(_cfg(config, "overwrite", False), False),
         }
 

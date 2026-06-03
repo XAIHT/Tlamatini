@@ -14,6 +14,23 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+# ── Tlamatini Temp policy: temporary files ONLY under <app>/Temp ─────────
+# Honor TLAMATINI_TEMP (exported by the Tlamatini core and inherited by every
+# spawned agent via get_agent_env's os.environ.copy()) so every temp file this
+# agent writes lands under <app>/Temp — never C:\Temp, %TEMP%, or the OS default
+# temp dir. Fail-open: when the handle is unset (agent launched fully standalone)
+# Python's default tempdir is used.
+if (os.environ.get('TLAMATINI_TEMP') or '').strip():
+    try:
+        import tempfile as _tlt_tempfile
+        _tlt_temp_root = os.environ['TLAMATINI_TEMP'].strip()
+        os.makedirs(_tlt_temp_root, exist_ok=True)
+        _tlt_tempfile.tempdir = _tlt_temp_root
+        os.environ['TEMP'] = _tlt_temp_root
+        os.environ['TMP'] = _tlt_temp_root
+    except Exception:
+        pass
+
 import gzip
 import shutil
 import tarfile

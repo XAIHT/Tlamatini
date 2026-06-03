@@ -669,7 +669,10 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "response JSON is captured in the run log and is consumable by Parametrizer downstream. "
             "Override host/port with host='10.0.0.5' and port=55557 to target a remote UE instance. "
             "Headless build/cook/test is NOT available here — that needs UnrealEditor-Cmd, not this "
-            "editor socket."
+            "editor socket. PROJECT LOCATION: when you create or save a new project, level, or on-disk "
+            "asset/import staging folder, default it under Tlamatini's Templates directory unless the user "
+            "(or an explicit engine content path) dictates otherwise — see the system-prompt "
+            "'Template / project directory location rule'."
         ),
         example_request=(
             "Run Unreal command with command='spawn_actor' and params.name='MyCube' "
@@ -898,14 +901,19 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "project_dir, session_id, stage, and the tool's stdout/stderr (or JSON) as the body — so a "
             "downstream step or a canvas Forker can branch on {success} / {returncode}. A flash that "
             "errors 'No STLink detected' or a build that fails to compile is routable evidence, NOT a "
-            "Tlamatini crash. AUTHORIZED hardware only — flash/erase/reset/write_memory mutate a real MCU."
+            "Tlamatini crash. AUTHORIZED hardware only — flash/erase/reset/write_memory mutate a real MCU. "
+            "PROJECT LOCATION: unless the user names another path, default create_project's `dest_parent` "
+            "to Tlamatini's Templates directory (the new project becomes <Templates>/<name>) — see the "
+            "system-prompt 'Template / project directory location rule'; do NOT scatter projects across "
+            "the disk or default to C:/."
         ),
         example_request=(
             "Run STM32er with action='create_project' and name='leg_ctrl' and "
-            "dest_parent='C:/robot/fw'  (then in the next iteration: action='write_source', "
-            "project_dir=<the returned project_dir>, rel_path='Core/Src/main.c', content='<firmware>'; "
-            "then action='build_and_flash', project_dir=<project_dir>). The MCP server path is injected "
-            "automatically from config — omit server_script unless overriding."
+            "dest_parent='<your Templates directory>' "
+            "(default dest_parent to your Templates directory unless the user named another path; the "
+            "MCP server path is injected automatically from config, so omit server_script unless "
+            "overriding. CHAIN write_source, build_and_flash and live_monitor as separate calls next — "
+            "see purpose)."
         ),
         aliases=(
             "stm32er", "stm32", "stm32f4", "stm32f407", "firmware", "microcontroller",
@@ -956,14 +964,17 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "downstream step or a canvas Forker can branch on {success} / {returncode}. An upload that "
             "errors 'could not open port' or a build that fails to compile is routable evidence, NOT a "
             "Tlamatini crash. NOTE: the FIRST build downloads the espressif32 platform + toolchain "
-            "(hundreds of MB) so it is slow. AUTHORIZED hardware only — upload/erase mutate a real MCU."
+            "(hundreds of MB) so it is slow. AUTHORIZED hardware only — upload/erase mutate a real MCU. "
+            "PROJECT LOCATION: unless the user names another path, default create_project's `project_dir` "
+            "to a sub-folder of Tlamatini's Templates directory (e.g. <Templates>/<project_name>) — see "
+            "the system-prompt 'Template / project directory location rule'; do NOT default to C:/ or the "
+            "current working directory."
         ),
         example_request=(
-            "Run ESP32er with action='create_project' and project_dir='C:/esp/blink' and "
-            "board='esp32dev'  (then in the next iteration: action='write_source', "
-            "project_dir='C:/esp/blink', rel_path='src/main.cpp', content='<firmware>'; "
-            "then action='upload', project_dir='C:/esp/blink'; then action='monitor', "
-            "project_dir='C:/esp/blink', monitor_seconds=8)."
+            "Run ESP32er with action='create_project' and project_dir='<your Templates directory>/blink' and "
+            "board='esp32dev' "
+            "(root project_dir under your Templates directory unless the user named another path; then "
+            "CHAIN write_source, build, upload and monitor as separate calls — see purpose)."
         ),
         aliases=(
             "esp32er", "esp32", "esp8266", "esp-idf", "espidf", "espressif", "platformio",
@@ -1020,14 +1031,16 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "fqbn, port, sketch_path, stage, and the `arduino-cli` stdout/stderr as the body — so a "
             "downstream step or a canvas Forker can branch on {success} / {returncode}. An upload "
             "that errors 'no device found' or a build that fails to compile is routable evidence, "
-            "NOT a Tlamatini crash. AUTHORIZED hardware only — upload mutates a real MCU."
+            "NOT a Tlamatini crash. AUTHORIZED hardware only — upload mutates a real MCU. "
+            "PROJECT LOCATION: unless the user names another path, default create_project's `sketch_path` "
+            "to a sub-folder of Tlamatini's Templates directory (e.g. <Templates>/<sketch_name>) — see the "
+            "system-prompt 'Template / project directory location rule'; do NOT default to C:/."
         ),
         example_request=(
-            "Run Arduiner with action='create_project' and sketch_path='C:/arduino/blink' and "
-            "fqbn='arduino:avr:uno'  (then in the next iteration: action='write_source', "
-            "sketch_path='C:/arduino/blink', rel_path='blink.ino', content='<firmware>'; "
-            "then action='upload', sketch_path='C:/arduino/blink', fqbn='arduino:avr:uno', "
-            "port='COM3'; then action='monitor', sketch_path='C:/arduino/blink', monitor_seconds=8)."
+            "Run Arduiner with action='create_project' and sketch_path='<your Templates directory>/blink' and "
+            "fqbn='arduino:avr:uno' "
+            "(root sketch_path under your Templates directory unless the user named another path; then "
+            "CHAIN write_source, build, upload and monitor as separate calls — see purpose)."
         ),
         aliases=(
             "arduiner", "arduino", "arduino-cli", "arduino cli", "avr", "atmega", "atmega328",

@@ -746,10 +746,25 @@ def main():
         # ``DB/ToLoad/db.sqlite3`` into place after archiving the current one
         # under ``DB/Older/<timestamp>/``. Ship both directories empty so the
         # swap-in can write to them on first run without raising an OSError.
+        #
+        # ``Temp`` is Tlamatini's SOLE temporary directory: manage.py /
+        # settings.py pin TEMP/TMP/TMPDIR + Python's tempfile to <app>/Temp and
+        # every pool agent honors TLAMATINI_TEMP (see agent/path_guard.py
+        # ::enforce_app_temp_dir and prompt.pmt Rule 15). It MUST exist next to
+        # the executable, empty, on first run — get_app_temp_root() self-creates
+        # it, but shipping it empty makes the install layout explicit and avoids
+        # a first-write race before the directory is created.
+        # ``Templates`` is the DEFAULT parent for the template-projects the
+        # firmware/engine agents (STM32er/ESP32er/Arduiner/Unrealer) scaffold
+        # when the user gives no path (exported as TLAMATINI_TEMPLATES; see
+        # agent/path_guard.py::enforce_app_templates_dir + prompt.pmt Rule 16).
+        # Ship it empty next to the executable so the first create_project lands
+        # in a predictable place inside Tlamatini.
         empty_dirs = (
             "application", "applications", "documentation",
             "context_files", "content_generated", "doc_generated",
             "DB/ToLoad", "DB/Older",
+            "Temp", "Templates",
         )
         for d in empty_dirs:
             target_dir = dist_manage / d

@@ -276,3 +276,17 @@ Uninstaller.version.txt
 
 # Build concurrency lock (build.py)
 .build.lock
+
+# Tlamatini Temp directory — the SOLE runtime temporary dir (pinned by
+# manage.py / settings.py to <app-root>/Temp). Created on demand at the repo
+# root (source mode) and next to the .exe (frozen). Pure transient state —
+# never commit its contents. See agent/path_guard.py + prompt.pmt Rule 15.
+/Temp/
+Tlamatini/Temp/
+
+# Tlamatini Templates directory — the DEFAULT home for template/firmware/engine
+# projects the STM32er/ESP32er/Arduiner/Unrealer agents scaffold (exported as
+# TLAMATINI_TEMPLATES; ships empty next to the .exe). Generated project trees
+# are user output, not repo content — never commit them. See prompt.pmt Rule 16.
+/Templates/
+Tlamatini/Templates/

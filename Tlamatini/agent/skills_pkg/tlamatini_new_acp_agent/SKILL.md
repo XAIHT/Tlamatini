@@ -57,6 +57,12 @@ end-to-end.
 1. Validate `agent_name` is snake_case ASCII; reject collisions with
    existing agents in `Tlamatini/agent/agents/`.
 2. Copy `shoter.py` boilerplate into the new directory; rename references.
+   **Temp/Templates policy (2026-06-02):** if the agent creates temp files, add
+   the module-top `if (os.environ.get('TLAMATINI_TEMP') or '').strip(): …
+   tempfile.tempdir = …` guard (verbatim from `executer.py` — an `if`-block, not
+   a `def`, so ruff E402 stays clean); if it scaffolds a project/template dir
+   (firmware/engine style), default the parent to `<app>/Templates`
+   (`TLAMATINI_TEMPLATES`). See `prompt.pmt` Rules 15/16 + `agent/path_guard.py`.
 3. Add a Django view + URL pair for the connection-update endpoint.
 4. Create the migration that seeds an `Agent` row with the display name.
 5. Add the CSS gradient block in `agentic_control_panel.css` and the

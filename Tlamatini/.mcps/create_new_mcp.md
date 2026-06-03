@@ -313,6 +313,7 @@ Match the existing patterns:
 - keep the function synchronous
 - return plain strings
 - validate dangerous paths with `path_guard` when filesystem access is involved
+- write any temp/scratch/intermediate file under `<app>/Temp` via `path_guard.get_app_temp_root()` / `resolve_temp_path(...)` — never `tempfile.gettempdir()` / `C:\Temp` / `%TEMP%` (2026-06-02 policy; the Django process already pins `tempfile.tempdir` + `TEMP`/`TMP`/`TLAMATINI_TEMP` to `<app>/Temp`)
 - keep side effects explicit
 - include a docstring with several call examples so the LLM can invoke it correctly
 
@@ -605,6 +606,8 @@ Use those patterns when building tools that touch bundled assets or template-age
 14. **The Exec Report capture point in `mcp_agent.py` is `_invoke_tool()`, not the chain layer.** Capture is unconditional (ignores the per-request flag). The flag only gates rendering. This separation is deliberate to prevent whitelist-style bugs from silently hiding data again.
 15. **Flow-Generator emits cardinal-suffixed pool names** (`executer_1`, `executer_2`, …) in `target_agents` / `source_agents` lists. A wrapped chat-agent tool whose Flow-Generator branch emits bare names like `"executer"` will produce a `.flw` whose Starter cannot find the agent and the chain dies on the first hop.
 16. **"Ask Execs" gates EVERY tool by default — exempt only read-only/polling tools.** When the user ticks the **Ask Execs** toolbar checkbox, the Multi-Turn executor BLOCKS on a browser Proceed/Deny prompt before running each tool — and `MultiTurnToolAgentExecutor._requires_exec_permission` prompts for **every** tool that is NOT in `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT` (in `mcp_agent.py`). So any new direct `@tool`, wrapped `chat_agent_*`, `acp_*` tool, or Skill is **automatically** prompted with no extra wiring. If your new tool is **read-only / inspection / polling** and should NOT interrupt the user with a prompt (the same role as `chat_agent_run_status` / `get_current_time` / `window_present`), add its name to `_MANAGEMENT_TOOLS` and/or `_TOOL_QUOTA_EXEMPT`. The dialog's "shell" line comes from `_infer_execution_shell(tool_name, args)` — extend it if your tool runs through an unusual shell/interpreter. See `docs/claude/multi-turn.md` → *Ask Execs* and `docs/claude/recent-fixes.md` (2026-05-29).
+
+17. **Temp files live ONLY under `<app>/Temp`; scaffolded project dirs under `<app>/Templates` (2026-06-02 policy).** A new `@tool` / wrapped chat-agent that writes scratch must resolve it through `agent/path_guard.py` (`get_app_temp_root()` / `resolve_temp_path()`), NEVER `tempfile.gettempdir()` / `C:\Temp` / `%TEMP%`. The Django process pins `tempfile.tempdir` + `TEMP`/`TMP`/`TMPDIR`/`TLAMATINI_TEMP` to `<app>/Temp` (`manage.py` / `settings.py`) and exports `TLAMATINI_TEMPLATES` for the firmware-style agents' default scaffold parent. LLM-facing contract: `prompt.pmt` Rules 15/16 (absolute paths injected as `{temp_directory}` / `{templates_directory}` by `rag/config.py`). Full notes: `docs/claude/recent-fixes.md` (2026-06-02).
 
 ## Self-Check Before Saying It Is Done
 
