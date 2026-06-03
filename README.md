@@ -8,7 +8,7 @@
 
 <p align="center">
 Run it on your machine with <a href="https://ollama.com/">Ollama</a>. Your code never leaves your box.<br/>
-Hybrid RAG over your codebase · 76-tool multi-turn orchestration · 69 visual workflow agents · multi-agent delegation to Claude Code, Cursor, Codex, Gemini CLI
+Hybrid RAG over your codebase · 77-tool multi-turn orchestration · 70 visual workflow agents · multi-agent delegation to Claude Code, Cursor, Codex, Gemini CLI
 </p>
 
 <p align="center">
@@ -18,14 +18,14 @@ Hybrid RAG over your codebase · 76-tool multi-turn orchestration · 69 visual w
 </p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.12.0"><img src="https://img.shields.io/badge/VERSION-v1.12.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.12.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.13.0"><img src="https://img.shields.io/badge/VERSION-v1.13.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.13.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
   <a href="#95-agent-catalog-the-70-types-by-family"><img src="https://img.shields.io/badge/AGENTS-70-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="70 Agents" /></a>
-  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-75-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="75 Multi-Turn Tools" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-77-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="77 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
-  <a href="#312-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-24-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="24 Skills" /></a>
+  <a href="#312-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-27-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="27 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
@@ -39,7 +39,7 @@ Hybrid RAG over your codebase · 76-tool multi-turn orchestration · 69 visual w
 - **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
 - **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
 
-> **Latest — v1.12.0 (2026-05-30): Ask Execs, a human in the loop before every action.** The new **Ask Execs** toolbar toggle makes Multi-Turn pause before each state-changing Tool, MCP, or wrapped agent and block on a browser **Proceed / Deny** dialog — failing safe with a red `Execution interrupted` banner when you refuse a step. See [§3.8](#38-tutorial-the-ask-execs-toggle).
+> **Latest — v1.13.0 (2026-06-03): Arduiner — the Arduino-CLI firmware agent and the 70th agent type.** Arduiner drives `arduino-cli` directly (no MCP server) to compile and flash Arduino firmware — the microcontroller is selected by `fqbn`, with zero-config binary bootstrap, auto-core-install, and a serial-port preflight. It joins STM32er and ESP32er to complete the 3-agent microcontroller-firmware family. This release also ships the **flow-making** skill (turn a plain objective into a canvas-loadable `.flw` by wrapping the FlowCreator engine) and a unified **Temp/Templates directory policy** (every transient file under `<app>/Temp`, scaffolded project trees under `<app>/Templates`, never outside Tlamatini). See [§3.18](#318-tutorial-build-and-upload-arduino-firmware-from-chat-chat_agent_arduiner).
 
 <p align="center">
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
@@ -80,6 +80,7 @@ Hybrid RAG over your codebase · 76-tool multi-turn orchestration · 69 visual w
   - [3.15. Tutorial: run Kali Linux tools from chat (`chat_agent_kalier`)](#315-tutorial-run-kali-linux-tools-from-chat-chat_agent_kalier)
   - [3.16. Tutorial: build and flash STM32 firmware from chat (`chat_agent_stm32er`)](#316-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er)
   - [3.17. Tutorial: build and upload ESP32 firmware from chat (`chat_agent_esp32er`)](#317-tutorial-build-and-upload-esp32-firmware-from-chat-chat_agent_esp32er)
+  - [3.18. Tutorial: build and upload Arduino firmware from chat (`chat_agent_arduiner`)](#318-tutorial-build-and-upload-arduino-firmware-from-chat-chat_agent_arduiner)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -371,7 +372,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of Tlamatini's **75 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 43 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
+- The planner picks the relevant subset of Tlamatini's **77 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 45 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
 - The unified-agent loop runs **up to 4096 iterations** (the `unified_agent_max_iterations` default) — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
@@ -721,6 +722,24 @@ Tick **only the Multi-Turn** checkbox (ESP32er is a normal Multi-Turn tool — n
 Tlamatini calls **`chat_agent_esp32er`** — bootstrapping PlatformIO if needed, running the safety preflight, then driving `create_project` → `write_source` → `build` → `upload` → `monitor`. The `action` field selects the capability: environment/meta (`bootstrap`, `validate`, `system_info`, `boards`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`, `clean`); build & flash (`build`, `upload`, `build_and_upload`, `list_artifacts`); serial HIL (`device_list`, `monitor`, `monitor_session`); packages & QA (`pkg_install`, `pkg_list`, `pkg_update`, `check`, `test`). The tool captures an `INI_SECTION_ESP32ER` block for the Exec Report and Parametrizer. **Headless step-debug (`pio debug`) is a planned fast-follow** (it needs JTAG — an external probe or the built-in USB-JTAG on ESP32-S3/C3).
 
 On the canvas the same capability is the visual **ESP32er** node: chain `Starter → ESP32er (create_project) → Parametrizer → ESP32er (write_source) → ESP32er (build) → ESP32er (upload) → ESP32er (monitor) → Ender` to build a fully unattended firmware pipeline. The agent is implemented self-contained with the Python stdlib (`subprocess` + `urllib`), with automated tests in `agent/test_esp32er_agent.py`.
+
+### 3.18. Tutorial: build and upload Arduino firmware from chat (`chat_agent_arduiner`)
+
+**Arduiner** bridges Tlamatini to Arduino firmware development through the **[Arduino CLI](https://arduino.github.io/arduino-cli/)** — Arduino's official command-line tool for cores, libraries, compile, upload and serial monitor. It is the third microcontroller-firmware agent and the direct-CLI sibling of ESP32er: like PlatformIO's `pio` (and unlike STM32er's MCP server), `arduino-cli` is itself a complete CLI, so Arduiner invokes `arduino-cli` subcommands **directly** (no MCP server). It is **state-changing** (it compiles firmware and writes to hardware), so it appears in the Exec Report. The visual canvas counterpart is the **Arduiner** node (see §4 and §9.5).
+
+> **The microcontroller is selected by `fqbn`.** The board's Fully Qualified Board Name — e.g. `arduino:avr:uno`, `arduino:avr:mega2560`, `arduino:samd:mkr1000`, `esp32:esp32:esp32` — chooses the target chip; `port` + `baud` set the upload/monitor link.
+
+> **Zero-config auto-bootstrap — you only install the board USB driver + Tlamatini.** With no on-disk `arduino_cli_executable` configured (the default), Arduiner **downloads the `arduino-cli` binary itself** — the platform release archive from `downloads.arduino.cc`, unzipped into a per-user cache (`%LOCALAPPDATA%/Tlamatini/arduino-cli`) — then runs `config init` + `core update-index`, all on first use. (arduino-cli is a Go binary, so the bootstrap is a **binary download**, not a pip install.) **Auto-core-install:** unlike PlatformIO, arduino-cli does *not* auto-install platforms on compile, so before a build/upload Arduiner derives the FQBN's platform and, when it is missing, runs `core update-index` + `core install` (honoring `additional_urls` for third-party ESP32 / STM32 / RP2040 cores). A `bootstrap` action triggers the binary download explicitly; `auto_bootstrap` and `auto_core_install` (both default `true`) do it lazily.
+
+> ⚠️ **Safety preflight.** Before it builds or uploads anything, Arduiner runs a `validate` preflight: `arduino-cli` must be resolvable, a sketch (`.ino`) and an FQBN must exist, and for an **upload/monitor** a serial port must actually be connected (probed via `arduino-cli board list`). If the environment is wrong, Arduiner **refuses** rather than running a build/upload that cannot succeed. A malformed FQBN is a *warning*, not a refusal (arduino-cli is multi-vendor — no shared-linker-script risk like STM32 has).
+
+Tick **only the Multi-Turn** checkbox (Arduiner is a normal Multi-Turn tool — not behind the ACPX/Skill surface). Then ask, for example:
+
+> *"Create a blinky sketch for an Arduino Uno at C:/ino/blink, build it, and upload it to the connected board, then show me the serial output."*
+
+Tlamatini calls **`chat_agent_arduiner`** — bootstrapping the CLI and installing the FQBN's core if needed, running the safety preflight, then driving `create_project` → `write_source` → `build` → `upload` → `monitor`. The `action` field selects the capability: environment/meta (`bootstrap`, `validate`, `system_info`, `boards`, `device_list`); cores & libraries (`core_update_index`, `core_search`, `core_list`, `core_install`, `core_uninstall`, `lib_update_index`, `lib_search`, `lib_list`, `lib_install`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`); build & flash (`build`, `upload`, `build_and_upload`, `clean`, `list_artifacts`); serial HIL (`monitor`, `monitor_session`). `create_project` scaffolds from the bundled **ArduinoTemplateProject** (the Arduino analog of STM32er's STM32 Template Project and ESP32er's `pio` scaffold) and stamps the FQBN/port into the template's `sketch.yaml` profile. The tool captures an `INI_SECTION_ARDUINER` block for the Exec Report and Parametrizer.
+
+On the canvas the same capability is the visual **Arduiner** node: chain `Starter → Arduiner (create_project) → Parametrizer → Arduiner (write_source) → Arduiner (build) → Arduiner (upload) → Arduiner (monitor) → Ender` to build a fully unattended firmware pipeline. The agent is implemented self-contained with the Python stdlib (`subprocess` + `urllib` + `zipfile`/`tarfile`), with automated tests in `agent/test_arduiner_agent.py`. (Note: the first core install + compile downloads the board toolchain, so it is slow once.)
 
 ---
 
@@ -1359,6 +1378,7 @@ Key knobs: `chunk_size` (3000), `chunk_overlap` (800), `k_vector` / `k_bm25` (10
 - `kali_server_url` (`http://127.0.0.1:5000`) — the MCP-Kali-Server address auto-injected into `chat_agent_kalier` (see §3.15).
 - `stm32_mcp_server_script` (now `""` — empty triggers zero-config auto-bootstrap), `stm32_mcp_repo_url`, `stm32_mcp_install_dir` — the STM32 Template Project MCP for STM32er (see §3.16). Leave `stm32_mcp_server_script` empty and STM32er downloads, installs, and validates the server itself on first use.
 - `pio_executable` (now `""` — empty triggers zero-config auto-bootstrap), `pio_core_dir` — PlatformIO Core for ESP32er (see §3.17). Leave `pio_executable` empty and ESP32er downloads, installs, and validates PlatformIO itself on first use.
+- `arduino_cli_executable` (now `""` — empty triggers zero-config auto-bootstrap), `arduino_cli_install_dir` — the Arduino CLI for Arduiner (see §3.18). Leave `arduino_cli_executable` empty and Arduiner downloads the `arduino-cli` binary, initializes it, and (when `auto_core_install` is on) installs the FQBN's core itself on first use.
 
 You no longer need to hand-edit all of those values. On `/agent/`, open `Config -> Models` or `Config -> URLs` to edit the most common runtime knobs in-place. The browser validates model strings / URLs / hosts / ports, the backend validates again, and `config_loader.save_config_updates()` atomically merges only the changed keys into the active `config.json`. The same loader path is used in source mode and frozen builds, so the chat UI and the executable stop drifting onto different config copies.
 
@@ -1390,7 +1410,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 | 2. Runtime MCP services | System-Metrics (WebSocket) + Files-Search (gRPC) daemons. | `agent/mcp_*` |
 | 3. Context fetcher chains | LCEL sidecars that inject system / files context. | `agent/chain_*_lcel.py` |
 | 4. Main answer chains | Basic / History-aware / Unified. `factory.py` monkey-patches `invoke()`. | `agent/rag/chains/` |
-| 5. Unified-agent tools | **74** synchronous `@tool` functions (20 core Python + 42 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
+| 5. Unified-agent tools | **77** synchronous `@tool` functions (20 core Python + 45 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
 
 ### 9.3. Multi-Turn execution pipeline
 
@@ -1755,22 +1775,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.12.0 -m "Release 1.12.0: <one-line summary>"
-git push origin v1.12.0
+git tag -a v1.13.0 -m "Release 1.13.0: <one-line summary>"
+git push origin v1.13.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.12.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.13.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.12.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.12.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.12.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.13.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.13.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.13.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1794,8 +1814,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.12.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.12.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.13.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.13.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
