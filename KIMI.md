@@ -20,7 +20,7 @@
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **68** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **70** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -113,7 +113,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 67-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 70-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -202,7 +202,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 68 workflow agent templates
+│   │   ├── agents/                 # 70 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -262,7 +262,15 @@ Tlamatini/                          # Git root
 │   │   │   ├── kyber_decipher/     # CRYSTALS-Kyber decryption
 │   │   │   ├── acpxer/             # ACPX session driver for external CLIs
 │   │   │   ├── teletlamatini/      # Telegram bot bridge to Tlamatini chat
-│   │   │   └── whatstlamatini/     # WhatsApp Cloud API bridge to Tlamatini chat
+│   │   │   ├── whatstlamatini/     # WhatsApp Cloud API bridge to Tlamatini chat
+│   │   │   ├── windower/           # Win32 window manager (focus/move/resize/tile/close)
+│   │   │   ├── kalier/             # Kali Linux offensive-security bridge (MCP-Kali-Server)
+│   │   │   ├── unrealer/           # Unreal Engine 5 editor driver (Unreal MCP TCP socket)
+│   │   │   ├── reviewer/           # LLM-powered code reviewer (git diff)
+│   │   │   ├── analyzer/           # Deterministic static/security scanner (no LLM)
+│   │   │   ├── stm32er/            # STM32 firmware bridge (STM32 Template Project MCP)
+│   │   │   ├── esp32er/            # ESP32 firmware bridge (PlatformIO pio CLI, no MCP)
+│   │   │   └── arduiner/           # Arduino firmware bridge (arduino-cli, no MCP)
 │   │   │
 │   │   ├── services/               # Backend services
 │   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
@@ -442,7 +450,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-43 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, and `chat_agent_stm32er`). Key ones:
+45 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, and `chat_agent_arduiner`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -455,6 +463,8 @@ Chain types in `agent/rag/chains/`:
 - `chat_agent_pser` (process finder), `chat_agent_jenkinser`
 - `chat_agent_monitor_log`, `chat_agent_monitor_netstat` (long-running)
 - `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph`
+- `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`
+- `chat_agent_stm32er` (STM32 firmware), `chat_agent_esp32er` (ESP32 firmware via PlatformIO), `chat_agent_arduiner` (Arduino firmware via arduino-cli)
 - `chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop` (management)
 - `chat_agent_run_wait` (blocking wait)
 - `chat_agent_sleeper` (delay helper)
@@ -573,7 +583,7 @@ Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 - `acp-globals.js` — Shared global state, `updateCanvasContentSize()`
 - `acp-canvas-core.js` — Canvas rendering, drag-and-drop, classMap, connection handlers (6 touch points per agent)
 - `acp-canvas-undo.js` — Undo/redo state (1024 actions)
-- `acp-agent-connectors.js` — 68 agent connection handlers
+- `acp-agent-connectors.js` — 67 agent connection handlers (per-agent `update<Name>Connection` fetch helpers; some agents share or omit a handler, so this is NOT the agent-type count)
 - `acp-control-buttons.js` — Start/stop/pause/hypervisor; now calls `compileCurrentACPFlow({ mode: 'write' })` before start
 - `acp-file-io.js` — .flw save/load; uses `buildACPFlowSnapshot()` for schema-v2 JSON
 - `acp-running-state.js` — LED indicators, process monitoring
@@ -622,7 +632,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 68 Workflow Agent Types
+## 12. All 70 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -682,6 +692,8 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Reviewer** — LLM-powered code reviewer; resolves a `git diff` for `repo_path` (`diff_ref` like `HEAD~1`/`origin/main`, or empty = working-tree + staged), reviews it with an Ollama model, emits `INI_SECTION_REVIEWER` with a `verdict` (`APPROVE`/`REQUEST_CHANGES`/`COMMENT`); always triggers `target_agents` so a Forker can branch on `{verdict}`. Canvas counterpart of the `code-review` skill
 - **Analyzer** — Deterministic static/security scanner (no LLM); runs whichever of `bandit`/`semgrep`/`ruff`/`eslint`/`gitleaks`/`pip-audit` are on PATH over `target_path`, emits `INI_SECTION_ANALYZER` with `status` (`clean`/`findings`/`error`) + `total_findings`; always triggers `target_agents` so a Forker can gate on `{status}`. Canvas counterpart of the `security-audit` skill
 - **STM32er** — STM32 firmware bridge to the **STM32 Template Project MCP** (`https://github.com/XAIHT/STM32TemplateProjectMCP`); a self-contained inline MCP stdio JSON-RPC client (no `mcp` dep in the pool) that scaffolds/builds/flashes/observes STM32F407VG firmware. `action` ∈ the **23 MCP tools** + 2 composites (`serial_session`, `live_monitor`) + 2 meta (`bootstrap`, `validate`). **Zero-config auto-bootstrap**: with no on-disk `server_script` (the default is now empty) STM32er DOWNLOADS the MCP itself (shallow `git clone`, with a GitHub-zip fallback when git is absent) into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`, pip-installs `mcp`+`pyserial` if missing, and validates — so the user installs **only STM32CubeIDE + Tlamatini** (new `action: bootstrap`; new `config.yaml` keys `auto_bootstrap`/`mcp_repo_url`/`mcp_ref`/`mcp_install_dir`/`auto_update`/`pip_install`; new `config.json` globals `stm32_mcp_server_script` (now `""`)/`stm32_mcp_repo_url`/`stm32_mcp_install_dir`). **Safety preflight** (critical-mission fail-safe): validates compiler / CubeIDE / make / programmer / ST-LINK driver+probe / device-family before any compile or flash and REFUSES rather than mis-build or mis-flash — compile needs NO board, while flash/erase/reset/serial/SWD/`live_*` require a connected ST-LINK, and a cross-STM32F-family device is refused (new `action: validate`; new `config.yaml` keys `preflight` (true) / `device`). The MCP template is still STM32F407VG-specific; STM32er safely REFUSES other families (multi-family fork is future work). Emits `INI_SECTION_STM32ER` and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_stm32er` Multi-Turn tool. Verified zero-config end-to-end (download → build → flash → reset) on a real **STM32F407G-DISC1**
+- **ESP32er** — ESP32 firmware bridge via **PlatformIO Core** (`pio`). Unlike STM32er (which drives a separate MCP server), PlatformIO already ships a complete CLI, so ESP32er invokes `pio` subcommands **directly** (no MCP server) over a stdlib-only pool script (`subprocess` + `urllib`). **Zero-config auto-bootstrap**: with no on-disk `pio_executable` and `auto_bootstrap: true`, ESP32er downloads PlatformIO Core itself (official `get-platformio.py`, `pip install platformio` fallback) into `%LOCALAPPDATA%/Tlamatini/platformio` — the user installs **only the board USB driver + Tlamatini**. **Safety preflight** (fail-safe): validates `pio` is resolvable + a `platformio.ini` exists and, for upload/monitor, that a serial port is connected (ESP32 flashes over its onboard USB-serial bootloader — no external JTAG probe needed), and REFUSES rather than run a build/upload that cannot succeed. One capability per run via `action` ∈ environment/meta (`bootstrap`/`validate`/`system_info`/`boards`); project lifecycle (`create_project`/`write_source`/`read_source`/`list_sources`/`clean`); build & flash (`build`/`upload`/`build_and_upload`/`list_artifacts`/`scaffold_build_upload`); serial HIL (`device_list`/`monitor`/`monitor_session`); packages & QA (`pkg_install`/`pkg_list`/`pkg_update`/`check`/`test`). Emits `INI_SECTION_ESP32ER` (`action`/`tool`/`ok`/`returncode`/`success`/`project_dir`/`port`/`environment`/`stage`) and always triggers `target_agents`. NOTE: the first build downloads the espressif32 platform + toolchain (hundreds of MB). Both a canvas agent and the LLM-callable `chat_agent_esp32er` Multi-Turn tool
+- **Arduiner** — Arduino firmware bridge via the **Arduino CLI** (`arduino-cli`). The direct-CLI sibling of ESP32er: like `pio` (and unlike STM32er's MCP server), `arduino-cli` is itself a complete CLI, so Arduiner invokes `arduino-cli` subcommands **directly** (no MCP server) over a stdlib-only pool script. **The microcontroller is selected by `fqbn`** (Fully Qualified Board Name, e.g. `arduino:avr:uno`, `arduino:avr:mega2560`, `arduino:samd:mkr1000`, `esp32:esp32:esp32`); `port` + `baud` set the upload/monitor link. **Zero-config auto-bootstrap**: with no on-disk `arduino_cli_executable` and `auto_bootstrap: true`, Arduiner downloads the arduino-cli **binary** itself (Go binary from `downloads.arduino.cc`, unzipped into `%LOCALAPPDATA%/Tlamatini/arduino-cli`, then `config init` + `core update-index`) — a binary download, NOT a pip install. **Auto-core-install**: arduino-cli (unlike PlatformIO) does NOT auto-install platforms on compile, so before a build Arduiner derives the FQBN's platform and runs `core install` when missing (`auto_core_install: true`; honors `additional_urls` for third-party ESP32/STM32/RP2040 cores). **Safety preflight** (fail-safe): validates `arduino-cli` resolvable + a sketch (`.ino`) + an FQBN exist and, for upload/monitor, a connected serial port; REFUSES rather than run a build/upload that cannot succeed. Ships the bundled **ArduinoTemplateProject** scaffold (the Arduino analog of STM32er's and ESP32er's templates) — `create_project` copies it, renames the `.ino`, and stamps the FQBN/port into `sketch.yaml`. One capability per run via `action` (bootstrap/validate/boards/device_list, cores & libs, project lifecycle, build/upload/build_and_upload/clean, monitor/monitor_session). Emits `INI_SECTION_ARDUINER` (`action`/`tool`/`ok`/`returncode`/`success`/`fqbn`/`port`/`sketch_path`/`stage`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_arduiner` Multi-Turn tool
 
 ### Cryptography Agents
 - **Kyber-KeyGen** — CRYSTALS-Kyber key pair generation (post-quantum)
@@ -701,7 +713,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Monitor-Netstat** — LLM-powered network port monitor
 - **Emailer** — SMTP email sender on pattern detection
 - **RecMailer** — IMAP email receiver/monitor
-- **Notifier** — In-browser popup + optional sound
+- **Notifier** — In-browser DOM popup (chat UI polls a dropped `notification.json`) + optional sound, plus a Tlamatini.exe console-window flash (FlashWindowEx) and an UPPERCASE log banner. (The earlier OS/desktop-toast experiment was REMOVED 2026-05-30 and replaced by the window-flash attention surface — there is no OS toast.)
 - **Whatsapper** — WhatsApp notifications (TextMeBot)
 - **TelegramRX** — Telegram message receiver
 - **FlowHypervisor** — System-managed LLM anomaly detector (system agent)

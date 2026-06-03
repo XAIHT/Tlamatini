@@ -16,7 +16,7 @@ Descriptions are written for **non-expert readers** — when in doubt, prefer th
 
 ## Workflow Agents
 
-The visual workflow designer ships with **67 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
+The visual workflow designer ships with **70 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
 
 ### Control Agents
 
@@ -101,7 +101,7 @@ These are *terminal* agents — they react to upstream events but do NOT start a
 
 | Agent | Description |
 |-------|-------------|
-| **Notifier** | The browser-notification agent. Watches its `source_agents` for any of a comma-separated list of `search_strings` and, on a match, drops a `notification.json` file that the Tlamatini chat UI polls and renders as an in-page toast (with optional sound). Per-source file offsets and reanim files mean it never re-processes old log content even across restarts. |
+| **Notifier** | The browser-notification agent. Watches its `source_agents` for any of a comma-separated list of `search_strings` and, on a match, drops a `notification.json` file that the Tlamatini chat UI polls and renders as an in-browser DOM popup (with optional sound). Per-source file offsets and reanim files mean it never re-processes old log content even across restarts. |
 | **Emailer** | Sends an SMTP email when triggered. Configurable sender, password, list of recipients, subject, and body. Common pattern: wire a Raiser to detect the success or failure of an upstream pipeline and have it trigger Emailer to notify a team mailing list. |
 | **RecMailer** | An IMAP email receiver with LLM analysis. Polls a configured inbox, downloads new messages, and asks an Ollama model whether the body matches one of your `keywords_or_phrases`. Logs every match with the configured `outcome_word`. Use it to make a flow react to a real email arriving, e.g. an alert from an external SaaS. |
 | **WhatsApper** | Sends WhatsApp messages via the **TextMeBot** API in response to log patterns. Watches its `source_agents` in parallel threads, summarizes any matched issue with an Ollama model, and posts the summary to a configured phone number. Handy as a "page my own phone when the build breaks" channel. |
