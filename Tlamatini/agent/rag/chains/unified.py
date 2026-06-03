@@ -26,10 +26,18 @@ _FILE_LISTING_CONTEXT_RE = re.compile(
 
 # Transient-error fingerprints that warrant retrying the unified-agent call
 # before falling back to the tool-less basic-LLM path. Cloud Ollama in
-# particular returns 502 / forcibly-closed sockets under load; when that
+# particular returns 500 / 502 / forcibly-closed sockets under load; when that
 # happens, dropping Multi-Turn without retrying silently demotes the user's
 # tool-calling request to a plain chat answer.
+#
+# NOTE on 500: for the ollama.com cloud relay a bare "Internal Server Error
+# (ref: <uuid>) (status code: 500)" is a SERVER-SIDE blip, not a malformed
+# request (the relay uses 400/422 for those). It is therefore as retryable as
+# a 502/503/504 — verified by reproducing the exact failing request (full
+# system prompt + the 25 bound tool schemas + the user prompt), which the cloud
+# model answers with HTTP 200 once the blip clears.
 _UNIFIED_AGENT_TRANSIENT_PATTERNS = (
+    "status code: 500",
     "status code: 502",
     "status code: 503",
     "status code: 504",
