@@ -33,6 +33,11 @@
 #     build            : pio run            (compile + link -> .elf/.bin)
 #     upload           : pio run -t upload  (flash over USB-serial bootloader — esptool)
 #     build_and_upload : pio run -t upload  (build is implicit)
+#     scaffold_build_upload : ONE-CALL LIFECYCLE COMPOSITE (fastest path) — create_project
+#                        (if no platformio.ini) -> write_source (when `content` set; default
+#                        rel_path src/main.cpp) -> build -> upload (only if a board is
+#                        connected, else built-OK/upload-skipped) -> monitor (if monitor_seconds>0).
+#                        Replaces the 4-call create/write/build/upload chain in ONE run.
 #     list_artifacts   : paths to firmware.* under .pio/build/<env>/
 #   Observe (HIL):
 #     device_list      : pio device list --json-output  (enumerate serial ports)

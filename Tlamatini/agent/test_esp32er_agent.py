@@ -127,6 +127,18 @@ _FAKE_PIO = textwrap.dedent(r'''
     if args[:1] == ["boards"]:
         out("[]")
         sys.exit(0)
+    if args[:2] == ["project", "init"]:
+        # Honor -d <dir>: scaffold a minimal PlatformIO project so a following
+        # build/upload finds a platformio.ini (mirrors `pio project init`).
+        d = None
+        if "-d" in args:
+            d = args[args.index("-d") + 1]
+        if d:
+            os.makedirs(os.path.join(d, "src"), exist_ok=True)
+            with open(os.path.join(d, "platformio.ini"), "w") as f:
+                f.write("[env:esp32dev]\nplatform = espressif32\nboard = esp32dev\nframework = arduino\n")
+        out("Project has been successfully initialized!")
+        sys.exit(0)
     if args[:1] == ["run"]:
         rc = int(os.environ.get("FAKE_PIO_RUN_RC", "0"))
         if rc == 0:
@@ -187,6 +199,12 @@ class Esp32erHelperTests(unittest.TestCase):
         # upload IS a build action too (build is implicit on upload)? No — only build/clean/...
         self.assertIn("build", m._BUILD_ACTIONS)
         self.assertNotIn("upload", m._BUILD_ACTIONS)
+        # The one-call lifecycle composite is a build-class action (preflight checks
+        # only pio-resolvable) and must NOT be a hardware action (it gates the upload
+        # leg internally so a missing board still scaffolds + builds).
+        self.assertIn("scaffold_build_upload", m._ALL_ACTIONS)
+        self.assertIn("scaffold_build_upload", m._BUILD_ACTIONS)
+        self.assertNotIn("scaffold_build_upload", m._HARDWARE_ACTIONS)
 
     def test_coercion_and_arg_helpers(self):
         m = self.mod
@@ -309,6 +327,54 @@ class Esp32erPioTests(unittest.TestCase):
             out = m._run_action("device_list", {}, pio, env, 60)
             self.assertTrue(out["ok"])
             self.assertIn("COM5", out["result"]["stdout"])
+
+    def test_scaffold_build_upload_full_cycle(self):
+        """ONE call creates the project, writes the sketch, builds, and uploads
+        (board present) — every stage appears in the combined body."""
+        m = self.mod
+        with tempfile.TemporaryDirectory() as tmp:
+            pio = _fake_pio_cmd(tmp)
+            proj = os.path.join(tmp, "blink")  # does NOT exist yet → create leg runs
+            ports = [{"port": "COM9", "hwid": "USB VID:PID=10C4:EA60"}]
+            env = dict(os.environ, FAKE_PIO_PORTS=json.dumps(ports))
+            cfg = {"project_dir": proj, "board": "esp32dev",
+                   "content": "void setup(){} void loop(){}", "port": "COM9"}
+            out = m._run_action("scaffold_build_upload", cfg, pio, env, 120)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["result"]["stage"], "upload")
+            body = out["result"]["stdout"]
+            for stage in ("create_project", "write_source", "build", "upload"):
+                self.assertIn(stage, body, f"missing stage {stage} in:\n{body}")
+            # the sketch was actually written under the created project
+            self.assertTrue(os.path.exists(os.path.join(proj, "src", "main.cpp")))
+
+    def test_scaffold_build_upload_no_board_builds_then_skips_upload(self):
+        """Fail-safe partial success: no serial port → still scaffold + build,
+        report built-OK with stage='upload_skipped' (NOT a failure)."""
+        m = self.mod
+        with tempfile.TemporaryDirectory() as tmp:
+            pio = _fake_pio_cmd(tmp)
+            proj = _make_project(tmp)  # project already exists → create leg skipped
+            env = dict(os.environ, FAKE_PIO_PORTS="[]")  # no board
+            cfg = {"project_dir": proj, "board": "esp32dev",
+                   "content": "void setup(){} void loop(){}"}
+            out = m._run_action("scaffold_build_upload", cfg, pio, env, 120)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["result"]["stage"], "upload_skipped")
+            self.assertIn("upload", out["tool"].lower())
+            self.assertIn("SUCCESS", out["result"]["stdout"])  # build still ran
+
+    def test_scaffold_build_upload_build_failure_short_circuits(self):
+        """A failing build aborts before upload and is routable (stage='build')."""
+        m = self.mod
+        with tempfile.TemporaryDirectory() as tmp:
+            pio = _fake_pio_cmd(tmp)
+            proj = _make_project(tmp)
+            env = dict(os.environ, FAKE_PIO_RUN_RC="1", FAKE_PIO_PORTS="[]")
+            cfg = {"project_dir": proj, "board": "esp32dev", "content": "broken"}
+            out = m._run_action("scaffold_build_upload", cfg, pio, env, 120)
+            self.assertFalse(out["ok"])
+            self.assertEqual(out["result"]["stage"], "build")
 
     def test_probe_serial_detects_esp_vid(self):
         m = self.mod
@@ -433,6 +499,28 @@ class Esp32erMainTests(unittest.TestCase):
         self.assertIn("success: false", sections[0])
         self.assertIn("PREFLIGHT REFUSED", sections[0])
         self.assertEqual(started, ["ender_1"])
+
+    def test_main_scaffold_build_upload_full_path(self):
+        """Full agent path: config(action=scaffold_build_upload) -> main() emits ONE
+        section with success:true and stage upload, and still triggers downstream.
+        preflight must NOT refuse it (it creates the project + gates upload itself)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            pio = _fake_pio_cmd(tmp)
+            proj = os.path.join(tmp, "blink")  # absent → create leg runs through main()
+            ports = [{"port": "COM9", "hwid": "USB VID:PID=10C4:EA60"}]
+            cfg = {"action": "scaffold_build_upload", "auto_bootstrap": False,
+                   "preflight": True, "project_dir": proj, "board": "esp32dev",
+                   "content": "void setup(){} void loop(){}", "port": "COM9",
+                   "target_agents": ["parametrizer_1"]}
+            sections, started = self._run_main(cfg, pio, {"FAKE_PIO_PORTS": json.dumps(ports)})
+            # Check the on-disk artifact INSIDE the with-block (the TemporaryDirectory
+            # is deleted on exit, so a filesystem assert outside it would always fail).
+            sketch_written = os.path.exists(os.path.join(proj, "src", "main.cpp"))
+        self.assertEqual(len(sections), 1)
+        self.assertIn("success: true", sections[0])
+        self.assertIn("action: scaffold_build_upload", sections[0])
+        self.assertEqual(started, ["parametrizer_1"])
+        self.assertTrue(sketch_written, "scaffold_build_upload did not write src/main.cpp through main()")
 
 
 # ===========================================================================

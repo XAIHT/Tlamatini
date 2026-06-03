@@ -382,7 +382,14 @@ _FILE_ACTIONS = {"write_source", "read_source", "list_sources"}
 
 # Build-class actions: need `pio` + a project (platformio.ini), but NO hardware.
 # (The compiler toolchain auto-installs on the first `pio run`.)
-_BUILD_ACTIONS = {"build", "clean", "check", "test", "create_project", "pkg_install", "pkg_update"}
+# ``scaffold_build_upload`` is the one-call lifecycle COMPOSITE (create -> write ->
+# build -> upload-if-board -> optional monitor). It lives here — not in
+# _HARDWARE_ACTIONS — on purpose: it creates the project itself (so it must NOT be
+# refused for "no platformio.ini") and it gates the upload leg INTERNALLY on a
+# serial probe (so a missing board does not refuse the whole scaffold+build). This
+# lets a single Multi-Turn tool call replace the 4-round-trip chain.
+_BUILD_ACTIONS = {"build", "clean", "check", "test", "create_project", "pkg_install",
+                  "pkg_update", "scaffold_build_upload"}
 
 # Upload actions: ALSO require a connected serial port (esptool over USB — ESP32
 # flashes over its onboard USB-serial bootloader, so NO external JTAG probe needed).
@@ -954,8 +961,87 @@ def _list_artifacts(config: dict) -> dict:
             "stdout": "\n".join(artifacts) or "(no firmware artifacts found)"}
 
 
+def _scaffold_build_upload(config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
+    """One-call firmware lifecycle: create_project (if needed) -> write_source
+    (if `content` given) -> build -> upload (only when a board is present) ->
+    optional monitor (when monitor_seconds > 0).
+
+    This collapses what is otherwise a 4+ round-trip Multi-Turn chain into a SINGLE
+    agent run. It is fail-safe: a missing board does NOT abort — the project is
+    still scaffolded and compiled, and the result reports "built OK, upload
+    skipped" so a downstream Forker can branch on {success}. Any failing stage
+    short-circuits and is reported with its `stage`.
+    """
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    stage_logs: list = []
+
+    def _section(title: str, res: dict) -> None:
+        out = (res.get("stdout") or "") if isinstance(res, dict) else ""
+        err = (res.get("stderr") or "") if isinstance(res, dict) else ""
+        body = "\n".join(p for p in (out, err) if p).strip()
+        stage_logs.append(f"===== {title} =====\n{body or '(no output)'}")
+
+    def _envelope(tool: str, ok: bool, stage: str, rc, extra: dict = None) -> dict:
+        result = {"ok": ok, "returncode": rc, "stage": stage,
+                  "project_dir": project_dir, "stdout": "\n\n".join(stage_logs)}
+        if extra:
+            result.update(extra)
+        return {"ok": ok, "tool": tool, "result": result}
+
+    # 1. Ensure a PlatformIO project exists (skip when platformio.ini already there).
+    if not (project_dir and os.path.exists(_platformio_ini(project_dir))):
+        cp = _create_project(config, pio_cmd, env, timeout)
+        _section("create_project", cp)
+        if not _ok(cp):
+            return _envelope("scaffold_build_upload", False, "create_project", cp.get("returncode", 1))
+    else:
+        stage_logs.append(f"===== create_project =====\n(skipped — platformio.ini already present in {project_dir})")
+
+    # 2. Write the sketch when content was supplied (default to src/main.cpp).
+    if str(_cfg(config, "content")).strip():
+        if not str(_cfg(config, "rel_path")).strip():
+            config["rel_path"] = "src/main.cpp"
+        ws = _write_source(config)
+        _section("write_source", ws)
+        if not _ok(ws):
+            return _envelope("scaffold_build_upload", False, "write_source", ws.get("returncode", 1))
+
+    # 3. Probe the board ONCE, then do the fewest `pio` runs possible:
+    #    * board present -> `pio run -t upload` compiles AND flashes in a SINGLE
+    #      invocation (build is implicit), avoiding a redundant separate compile pass.
+    #    * no board     -> `pio run` compiles only, to verify the sketch builds, and
+    #      the upload leg is skipped (fail-safe partial success — still "built OK").
+    serial = _probe_serial(pio_cmd, env)
+    if not serial.get("present"):
+        bd = _pio_run([], config, pio_cmd, env, timeout)
+        _section("build", bd)
+        if not _ok(bd):
+            return _envelope("scaffold_build_upload", False, "build", bd.get("returncode", 1))
+        stage_logs.append(
+            "===== upload =====\nSKIPPED — no serial port detected. The project compiled "
+            "successfully; connect the ESP32 over USB and run action='upload' to flash it.")
+        return _envelope("scaffold_build_upload (upload skipped: no board)", True, "upload_skipped", 0)
+
+    up = _pio_run(["-t", "upload"], config, pio_cmd, env, timeout)
+    _section("build+upload", up)
+    port = serial.get("ports", [""])[0] if serial.get("ports") else str(_cfg(config, "port"))
+    if not _ok(up):
+        return _envelope("scaffold_build_upload", False, "upload", up.get("returncode", 1), {"port": port})
+
+    # 4. Optional bounded monitor to prove it runs (HIL) when monitor_seconds > 0.
+    if _as_int(_cfg(config, "monitor_seconds", 0), 0) > 0:
+        mon = _bounded_monitor(pio_cmd, config, env)
+        _section("monitor", mon)
+
+    return _envelope("scaffold->build->upload", True, "upload", up.get("returncode", 0), {"port": port})
+
+
 def _run_action(action: str, config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
     """Execute one action. Returns a normalized envelope {ok, tool, result}."""
+    # ── one-call lifecycle composite (create -> write -> build -> upload -> monitor) ──
+    if action == "scaffold_build_upload":
+        return _scaffold_build_upload(config, pio_cmd, env, timeout)
+
     # ── stdlib-only project file ops ──
     if action == "write_source":
         return _wrap(action, _write_source(config))
