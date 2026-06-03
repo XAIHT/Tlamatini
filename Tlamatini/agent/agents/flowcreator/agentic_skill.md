@@ -1675,7 +1675,29 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 69. FlowCreator
+### 69. Arduiner
+- **Purpose**: Tlamatini's bridge to the **Arduino CLI** (https://arduino.github.io/arduino-cli/). On trigger it resolves the `arduino-cli` binary (auto-downloading it when absent), runs ONE capability selected by its `action` field as a direct `arduino-cli` subprocess, captures the result into an `INI_SECTION_ARDUINER` block (`action`, `tool`, `ok`, `returncode`, `success`, `fqbn`, `port`, `sketch_path`, `stage`, plus a `response_body` carrying the `arduino-cli` stdout/stderr). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
+- **Used for**: Scaffolding, authoring, building, uploading (flashing) and OBSERVING classic-Arduino / AVR / SAMD / Arduino-core firmware as unattended flow steps — **no IDE**. Like ESP32er (and unlike STM32er's MCP server), arduino-cli ships a complete CLI, so Arduiner calls it directly. **The microcontroller is selected by `fqbn`** (e.g. `arduino:avr:uno`, `arduino:avr:mega2560`, `arduino:samd:mkr1000`, `esp32:esp32:esp32`). The `action` field selects ONE capability: environment/meta (`bootstrap`, `validate`, `system_info`, `boards`, `device_list`); cores & libraries (`core_update_index`, `core_search`, `core_list`, `core_install`, `core_uninstall`, `lib_update_index`, `lib_search`, `lib_list`, `lib_install`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`); build & flash (`build`, `upload`, `build_and_upload`, `clean`, `list_artifacts`); serial HIL (`monitor` — a bounded `arduino-cli monitor --config baudrate=<baud>` drained for `monitor_seconds`, and the composite `monitor_session` = upload → monitor in one run).
+- **Aimed at**: Building visual, repeatable Arduino firmware pipelines. Chain `create_project` (`fqbn: arduino:avr:uno`) → Parametrizer (carry `{sketch_path}` forward) → `write_source` (drop generated `.ino`) → `build` → `upload` → a `monitor` / `monitor_session` that proves it runs on real silicon, with a Forker branching on `{success}`. **Zero-config**: leave `arduino_cli_executable` blank and Arduiner DOWNLOADS + installs the arduino-cli binary itself on first use (the platform release archive from downloads.arduino.cc) into a per-user cache, runs `core update-index`, and AUTO-INSTALLS the board's core for the FQBN before a build (`auto_core_install`) — `action='bootstrap'` does the install explicitly, so the user installs only the board USB driver. For THIRD-PARTY silicon (ESP32/STM32/RP2040) set `additional_urls` to the vendor's `package_*_index.json`. Before every build/upload Arduiner runs a **safety preflight** (validates `arduino-cli` resolvable + a sketch `.ino` + an FQBN, and for upload/monitor that a serial port is connected) and REFUSES rather than run a build/upload that cannot succeed; `action='validate'` reports the whole environment without building. `create_project` scaffolds from the bundled **ArduinoTemplateProject** (the Arduino analog of STM32er's STM32 Template Project / ESP32er's `pio` scaffold). The visual-canvas counterpart of the `chat_agent_arduiner` Multi-Turn tool.
+- **Application example**: Starter → Arduiner (`action: create_project`, `sketch_path: C:/arduino/blink`, `fqbn: arduino:avr:uno`) → Parametrizer (map `{sketch_path}` into the next node) → Arduiner (`action: write_source`, `rel_path: blink.ino`, `content: <generated firmware>`) → Parametrizer → Arduiner (`action: upload`, `port: COM3`) → Forker (branch on `{success}`) → Arduiner (`action: monitor`, `monitor_seconds: 8`) → File-Creator (write the serial output) → Ender.
+- **Pool name pattern**: `arduiner_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `action`: "validate" (one of the capabilities listed above)
+  - `arduino_cli_executable`: "" (path to an existing `arduino-cli` binary; **blank = zero-config auto-install** into a per-user cache; set ONLY to point at a pre-installed CLI)
+  - `auto_bootstrap`: true / `arduino_cli_install_dir`: "" / `auto_update`: false (zero-config bootstrap — download/refresh the arduino-cli binary)
+  - `preflight`: true (safety preflight — validate cli/sketch/fqbn/serial port and REFUSE a build/upload that cannot succeed)
+  - `fqbn`: "arduino:avr:uno" (THE microcontroller selector — VENDOR:ARCH:BOARD[:opts]; use `device_list`/`boards` to discover it)
+  - `sketch_path`: "" (the sketch folder holding `<folder>.ino` — set by create_project; used by build/upload/monitor/clean/...)
+  - `auto_core_install`: true (install the FQBN's platform/core before a build when missing) / `additional_urls`: "" (package_*_index.json for third-party cores)
+  - `rel_path`: "" / `content`: "" (write_source / read_source)
+  - `core_spec`: "" (core_install/uninstall/search target, e.g. `arduino:avr`) / `lib_spec`: "" (lib_install/search target) / `boards_query`: "" (search filter)
+  - `warnings`: "none" / `build_property`: "" / `extra_compile_args`: "" / `command_timeout`: 900 (build knobs)
+  - `port`: "" / `programmer`: "" / `baud`: 115200 / `monitor_seconds`: 10 (upload / monitor; "" port = arduino-cli auto-detect)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
+### 70. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.

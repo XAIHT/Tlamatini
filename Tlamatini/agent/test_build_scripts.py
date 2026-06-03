@@ -226,6 +226,17 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
         self.assertTrue((esp / "esp32er.py").exists(), "esp32er.py missing")
         self.assertTrue((esp / "config.yaml").exists(), "esp32er config.yaml missing")
 
+    def test_arduiner_agent_ships_complete(self):
+        ard = AGENTS_DIR / "arduiner"
+        self.assertTrue((ard / "arduiner.py").exists(), "arduiner.py missing")
+        self.assertTrue((ard / "config.yaml").exists(), "arduiner config.yaml missing")
+        # The bundled ArduinoTemplateProject must ship with the agent so the uniform
+        # template-project scheme works offline in both source and frozen builds.
+        tpl = ard / "ArduinoTemplateProject"
+        self.assertTrue((tpl / "ArduinoTemplateProject.ino").exists(), "template .ino missing")
+        self.assertTrue((tpl / "sketch.yaml").exists(), "template sketch.yaml missing")
+        self.assertTrue((tpl / "src" / "Heartbeat.h").exists(), "template src/Heartbeat.h missing")
+
     def test_every_runnable_agent_has_its_config(self):
         # Each agent dir that ships a <name>.py runtime must also ship its
         # config.yaml (the pair the pool launcher needs). System agents that have

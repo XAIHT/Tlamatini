@@ -57,11 +57,30 @@ _FLOWCHART_ARROW_RE = re.compile('[▲▼▶◀←-↙]')
 _ASCII_ART_RUN_RE = re.compile(r'[+\-=|]{3,}')
 _PIPED_BOX_LINE_RE = re.compile(r'^\s*\|.*\|\s*$')
 _DIAGRAM_PLACEHOLDER_RE = re.compile(r'\x00DGRM_\d+\x00')
+# A genuine ASCII / box-drawing diagram is PLAIN TEXT. A line carrying a real
+# HTML tag must NEVER be auto-detected as a diagram row — otherwise
+# _html_escape() turns it into unclickable raw source text. This is the root of
+# two reported bugs that fire only when >= 2 such lines are consecutive (the
+# auto-detector's minimum run):
+#   1. The injected "Load in canvas" anchors — `<a ... onclick="loadCanvas(..)">
+#      ---Load in canvas: NAME---</a>` — whose `---` label matches the ASCII-art
+#      run, so a multi-program answer renders its anchors as escaped text and the
+#      user cannot click them to load the code into the canvas.
+#   2. An LLM-emitted HTML list whose <li> lines contain a `->`/arrow glyph that
+#      matches the flowchart-arrow heuristic, so the list shows as raw source.
+# The pattern matches an actual tag open/close (`<a `, `<li>`, `<code…`, `<br>`,
+# `</a>`, `<h2>`, …) WITHOUT tripping on ASCII art like `<--->`, `<==`, or
+# `a < b` (a `<` not immediately followed by a letter is left alone).
+_HTML_TAG_RE = re.compile(r'</?[A-Za-z][A-Za-z0-9]*(?:\s|/?>)')
 
 
 def _is_diagram_line(line):
     """Heuristic: does this single line look like part of an ASCII diagram?"""
     if not line.strip():
+        return False
+    if _HTML_TAG_RE.search(line):
+        # Carries real HTML markup (anchor / list / inline code / break) — this
+        # is rendered prose, not a fixed-width diagram. Never auto-wrap it.
         return False
     if _DIAGRAM_PLACEHOLDER_RE.search(line):
         # Lines that already collapsed into a placeholder count as diagram

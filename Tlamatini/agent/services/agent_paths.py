@@ -112,6 +112,7 @@ def display_name_from_agent_type(agent_type: str) -> str:
         "kyber_decipher": "Kyber-DeCipher",
         "stm32er": "STM32er",
         "esp32er": "ESP32er",
+        "arduiner": "Arduiner",
     }
     if normalized in overrides:
         return overrides[normalized]

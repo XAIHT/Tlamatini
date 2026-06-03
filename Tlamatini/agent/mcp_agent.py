@@ -171,6 +171,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # agent_key so a mixed firmware flow renders as one "List of ESP32er Operations"
     # table.
     "chat_agent_esp32er":        ("esp32er",        "ESP32er"),
+    # Arduiner is state-changing: it drives the Arduino CLI (`arduino-cli`) to scaffold /
+    # write / build / upload (flash) Arduino firmware. Read-only actions (boards /
+    # device_list / read_source / list_sources / core_list / lib_list / monitor) share
+    # the ``arduiner`` agent_key so a mixed firmware flow renders as one "List of
+    # Arduiner Operations" table.
+    "chat_agent_arduiner":       ("arduiner",       "Arduiner"),
     # ACPX child-process launchers (spawn / send-turn / kill an external
     # coding-agent CLI such as claude / cursor / codex / qwen / etc.).
     # All three share the ``acpx`` agent_key on purpose so spawn + every
@@ -290,6 +296,8 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
         return "STM32 Template Project MCP"
     if name == "chat_agent_esp32er":
         return "PlatformIO Core (pio CLI)"
+    if name == "chat_agent_arduiner":
+        return "Arduino CLI (arduino-cli)"
     if name.startswith("acp_"):
         return "External coding-agent CLI"
     if name == "invoke_skill":

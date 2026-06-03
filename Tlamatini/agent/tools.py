@@ -1643,6 +1643,27 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                     field, cfg_key, configured.strip(),
                 )
 
+    if template_dir == "arduiner":
+        # Arduiner is the "embedded client" for the Arduino CLI: the `arduino-cli`
+        # binary path and install dir live once in config.json (Config -> URLs) so
+        # firmware prompts never repeat them. Only non-empty configured values are
+        # seeded, so an explicit per-call value still wins.
+        for cfg_key, field in (
+            ("arduino_cli_executable", "arduino_cli_executable"),
+            ("arduino_cli_install_dir", "arduino_cli_install_dir"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                continue
+            if isinstance(configured, str) and configured.strip():
+                runtime_config[field] = configured.strip()
+                logger.info(
+                    "[tools._seed_global_agent_defaults] Arduiner %s seeded from config %s: %s",
+                    field, cfg_key, configured.strip(),
+                )
+
     return runtime_config
 
 

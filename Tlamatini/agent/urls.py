@@ -127,6 +127,7 @@ urlpatterns = [
     path('update_kalier_connection/<str:agent_name>/', secure_post(views.update_kalier_connection_view), name='update_kalier_connection'),
     path('update_stm32er_connection/<str:agent_name>/', secure_post(views.update_stm32er_connection_view), name='update_stm32er_connection'),
     path('update_esp32er_connection/<str:agent_name>/', secure_post(views.update_esp32er_connection_view), name='update_esp32er_connection'),
+    path('update_arduiner_connection/<str:agent_name>/', secure_post(views.update_arduiner_connection_view), name='update_arduiner_connection'),
     path('execute_flowhypervisor/<str:agent_name>/', secure_post(views.execute_flowhypervisor_view), name='execute_flowhypervisor'),
     path('check_flowhypervisor_alert/<str:agent_name>/', secure_get(views.check_flowhypervisor_alert_view), name='check_flowhypervisor_alert'),
     path('validate_flow/', secure_get(views.validate_flow_view), name='validate_flow'),
