@@ -955,7 +955,15 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "first use — it downloads the official get-platformio.py installer (with a `pip install "
             "platformio` fallback) into a per-user dir, with NO manual setup; the end user installs "
             "only the board USB driver. Use action='bootstrap' to (re)install/validate the PlatformIO "
-            "environment explicitly. CHAIN calls across iterations for a full firmware cycle: "
+            "environment explicitly. FASTEST PATH for a 'create + compile + upload a sketch' request — "
+            "make ONE call with action='scaffold_build_upload' (project_dir=<dir>, board='esp32dev', "
+            "rel_path='src/main.cpp', content='<the code>', plus port=<COMx> and/or monitor_seconds=N to "
+            "also observe): it runs create_project -> write_source -> build -> upload -> monitor in a "
+            "SINGLE agent run (it creates the project only if needed, and skips just the upload leg with a "
+            "'built OK' result when no board is connected). Prefer this over the slower 4-separate-calls "
+            "chain; use the granular actions only when you need step-by-step control. Because build/upload "
+            "are long-running, AWAIT completion with ONE chat_agent_run_wait(run_id) call rather than "
+            "repeatedly polling chat_agent_run_status. The granular cycle still exists: "
             "create_project (project_dir=<dir>, board='esp32dev') -> write_source (rel_path="
             "'src/main.cpp', content='<the code>') -> build (project_dir=<dir>) -> upload -> "
             "monitor / monitor_session to prove it runs. RESULT — the wrapped tool's JSON return and "
@@ -971,10 +979,10 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "current working directory."
         ),
         example_request=(
-            "Run ESP32er with action='create_project' and project_dir='<your Templates directory>/blink' and "
-            "board='esp32dev' "
-            "(root project_dir under your Templates directory unless the user named another path; then "
-            "CHAIN write_source, build, upload and monitor as separate calls — see purpose)."
+            "Run ESP32er with action='scaffold_build_upload' and project_dir='<your Templates directory>/blink' "
+            "and board='esp32dev' and rel_path='src/main.cpp' and content='<the sketch>' and port='COM9' "
+            "(one call does create+write+build+upload; root project_dir under your Templates directory unless "
+            "the user named another path, then await it with chat_agent_run_wait — see purpose)."
         ),
         aliases=(
             "esp32er", "esp32", "esp8266", "esp-idf", "espidf", "espressif", "platformio",
