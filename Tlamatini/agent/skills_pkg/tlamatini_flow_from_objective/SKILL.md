@@ -23,7 +23,7 @@ metadata:
       - { name: objective, type: string, required: true,
           description: "One-sentence high-level goal" }
       - { name: out_path,  type: string, required: true,
-          description: "Where to write the .flw file" }
+          description: "Where to write the .flw file. With no user-given folder, default it under the Tlamatini Templates directory (TLAMATINI_TEMPLATES) — never C:\\Temp / %TEMP%." }
     outputs:
       - { name: flw_path,        type: string, required: true }
       - { name: agent_count,     type: integer, required: true }

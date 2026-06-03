@@ -96,3 +96,10 @@ Describe the skill. Be concise. Body must stay under 8 KiB.
   inlined.
 - Skills with `runtime: acpx` MUST set `acpx_agent` to a registered agent_id
   (see `list_acp_agents`).
+- **Scratch/output under `<app>/Temp` (2026-06-02 policy)**: if the skill writes
+  any temporary or intermediate file, target `<app>/Temp` — read the
+  `TLAMATINI_TEMP` env var, or (in-process) resolve via
+  `agent/path_guard.py::resolve_temp_path` — never `C:\Temp` / `%TEMP%`, and
+  declare that path in `permissions.filesystem.write`. Files the user keeps
+  (deliverables) go to their chosen path; only throwaway artefacts go to Temp.
+  See `prompt.pmt` Rule 15.

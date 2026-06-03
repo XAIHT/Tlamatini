@@ -24,6 +24,7 @@ Step-by-step guide for a new workflow agent. Follow all 8 steps in order. Replac
 8. **6 JS edit locations** — `acp-canvas-core.js` touches connections in 6 separate places. Missing any one breaks creation, removal, undo, redo, or `.flw` load.
 9. **CSS gradient duplicated in JS** — never type a gradient string inside `populateAgentsList()`. Use `applyAgentToolIconStyle()` so the sidebar icon inherits from CSS.
 10. **Importing `agent.*` from a pool subprocess** — `ModuleNotFoundError` at runtime. Port the needed ~100-200 lines inline instead. See `acpxer.py`.
+11. **Temp / Templates outside Tlamatini** — an agent that writes temp files to `C:\Temp` / `%TEMP%` / a bare `tempfile.gettempdir()`, or scaffolds a project dir to an arbitrary location, violates the 2026-06-02 directory policy. Temp → `<app>/Temp` (`TLAMATINI_TEMP`); scaffolded project/template dirs → `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless the user gives a path. See Step 1b and `agent/path_guard.py` / `prompt.pmt` Rules 15/16.
 
 ---
 
@@ -62,6 +63,7 @@ Critical requirements (do not skip any):
 - PID file written immediately, removed in a `finally` block.
 - Concurrency guard: if `target_agents`, call `wait_for_agents_to_stop(target_agents)` **before** the `start_agent` loop.
 - If the agent persists restart state (offsets, counters, checkpoints), name those files `reanim*` so Ender can reset them on shutdown.
+- **Temp/Templates directory policy (2026-06-02).** If the agent creates **temporary** files, write them under `<app>/Temp`, never `C:\Temp` / `%TEMP%` / a bare `tempfile.gettempdir()`. The parent exports `TLAMATINI_TEMP` + `TEMP`/`TMP` and pins `tempfile.tempdir`, all inherited by the pool, so `tempfile.*` already lands correctly — but for standalone correctness copy the module-top guard from `executer.py` verbatim: `if (os.environ.get('TLAMATINI_TEMP') or '').strip(): import tempfile as _tlt_tempfile; _tlt_tempfile.tempdir = os.environ['TLAMATINI_TEMP'].strip(); …` (keep it an `if`-block, NOT a top-level `def`, so it sits above the imports without tripping ruff **E402**). If the agent **scaffolds a project/template directory** (firmware/engine style — STM32er/ESP32er/Arduiner/Unrealer), default its parent to `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless the user supplies a path. Resolvers: `agent/path_guard.py` (`get_app_temp_root` / `get_app_templates_root`). LLM-facing: `prompt.pmt` Rules 15/16.
 
 The agent's `main()` skeleton:
 

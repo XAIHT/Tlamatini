@@ -102,6 +102,134 @@ def get_runtime_agent_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+# ── Tlamatini Temp policy (single source of truth) ───────────────────────────
+# Every temporary file Tlamatini writes — by the core LLM process, by any pool
+# agent, by any bundled library — MUST live under ONE directory: ``Temp`` at the
+# application root, and NEVER anywhere else on the machine (no ``C:\\Temp``, no
+# ``%TEMP%``, no ``tempfile.gettempdir()`` default).  This keeps every transient
+# artefact inside Tlamatini, so a single ``Temp`` wipe cleans the whole system.
+#
+#   * frozen → ``<dir of Tlamatini.exe>\\Temp``   (e.g. ``C:\\Tlamatini\\Temp``)
+#   * source → ``<application root>\\Temp``        (e.g. ``D:\\devenv\\source\\Tlamatini\\Temp``)
+#
+# The base is ``_get_application_root()`` — the same root the path-guard already
+# treats as "the application" — so ``is_within_app_temp(p)`` ⊂
+# ``is_within_application_root(p)`` and the "never outside Tlamatini" rule holds.
+TEMP_DIR_NAME = "Temp"
+
+# Environment variable the parent process exports so every spawned child (pool
+# agents, the STM32 MCP server, external coding-agent CLIs, …) inherits the
+# exact absolute Temp directory without having to re-derive the app root from a
+# possibly-relocated location.  Python's ``tempfile`` also honours TMPDIR / TEMP
+# / TMP, which ``enforce_app_temp_dir`` sets alongside this one.
+TEMP_DIR_ENV_VAR = "TLAMATINI_TEMP"
+
+
+def get_app_temp_root() -> str:
+    """Return the ONE allowed temporary directory: ``<application-root>/Temp``.
+
+    The directory is created on demand (``exist_ok=True``) and the call never
+    raises — a creation failure still returns the intended path so callers get a
+    consistent answer (and a later write surfaces the real error).
+    """
+    root = os.path.join(_get_application_root(), TEMP_DIR_NAME)
+    try:
+        os.makedirs(root, exist_ok=True)
+    except Exception:
+        pass
+    return root
+
+
+def enforce_app_temp_dir() -> str:
+    """Force this process — and everything it spawns via inherited env — to use
+    ``<app>/Temp`` for ALL temporary files.
+
+    Sets ``TMP`` / ``TEMP`` / ``TMPDIR`` (honoured by Python's ``tempfile`` and
+    by most third-party libraries / CLIs) plus ``TLAMATINI_TEMP`` (the explicit
+    Tlamatini handle), and points ``tempfile.tempdir`` at it directly so even a
+    library that cached ``gettempdir()`` lands in the right place.  Idempotent;
+    never raises.  Returns the resolved Temp root.
+    """
+    root = get_app_temp_root()
+    try:
+        for var in ("TMP", "TEMP", "TMPDIR"):
+            os.environ[var] = root
+        os.environ[TEMP_DIR_ENV_VAR] = root
+        import tempfile as _tempfile
+        _tempfile.tempdir = root
+    except Exception:
+        pass
+    return root
+
+
+def is_within_app_temp(path: str) -> bool:
+    """Return ``True`` when *path* is the app Temp directory or any descendant."""
+    return is_path_within_base(get_app_temp_root(), path)
+
+
+def resolve_temp_path(*parts: str) -> str | None:
+    """Safely join *parts* under ``<app>/Temp``, rejecting traversal escapes.
+
+    Returns the absolute path, or ``None`` if the result would escape the Temp
+    directory (e.g. a leading ``..`` or an absolute drive jump).
+    """
+    return safe_join_under(get_app_temp_root(), *parts)
+
+
+# ── Tlamatini Templates policy (template / scaffold project home) ────────────
+# DISTINCT from Temp: ``Temp`` holds throwaway scratch; ``Templates`` is the
+# DEFAULT parent for the template-PROJECTS the firmware / engine agents scaffold
+# (STM32er / ESP32er / Arduiner / Unrealer). Unless the user names another path,
+# those project trees are created beneath ``<application-root>/Templates``
+# (frozen: next to the .exe; source: the application root) so generated projects
+# live in one predictable place inside Tlamatini instead of scattered across the
+# disk.  The LLM still honours an EXPLICIT user-supplied destination.
+TEMPLATES_DIR_NAME = "Templates"
+
+# Environment variable the parent exports so every spawned agent can resolve the
+# default templates parent without re-deriving the (possibly relocated) app root.
+TEMPLATES_DIR_ENV_VAR = "TLAMATINI_TEMPLATES"
+
+
+def get_app_templates_root() -> str:
+    """Return the default template-project parent: ``<application-root>/Templates``.
+
+    Created on demand; never raises (returns the intended path either way).
+    """
+    root = os.path.join(_get_application_root(), TEMPLATES_DIR_NAME)
+    try:
+        os.makedirs(root, exist_ok=True)
+    except Exception:
+        pass
+    return root
+
+
+def enforce_app_templates_dir() -> str:
+    """Create ``<app>/Templates`` and export ``TLAMATINI_TEMPLATES`` so every
+    child process (the firmware agents) inherits the default scaffold parent.
+
+    Unlike ``enforce_app_temp_dir`` this does NOT touch ``TMP`` / ``TEMP`` /
+    ``tempfile`` — template projects are deliverables, not OS temp. Idempotent;
+    never raises. Returns the resolved Templates root.
+    """
+    root = get_app_templates_root()
+    try:
+        os.environ[TEMPLATES_DIR_ENV_VAR] = root
+    except Exception:
+        pass
+    return root
+
+
+def is_within_app_templates(path: str) -> bool:
+    """Return ``True`` when *path* is the Templates dir or any descendant."""
+    return is_path_within_base(get_app_templates_root(), path)
+
+
+def resolve_templates_path(*parts: str) -> str | None:
+    """Safely join *parts* under ``<app>/Templates``, rejecting traversal."""
+    return safe_join_under(get_app_templates_root(), *parts)
+
+
 def safe_join_under(base_path: str, *parts: str) -> str | None:
     """Safely join path parts under a base directory, rejecting traversal."""
     if not base_path:

@@ -25,7 +25,7 @@ metadata:
       - { name: objective, type: string, required: true,
           description: "One-sentence high-level goal for the flow." }
       - { name: out_path,  type: string, required: true,
-          description: "Absolute path to write the .flw file (e.g. C:\\tmp\\alert.flw)." }
+          description: "Absolute path to write the .flw file. If the user gives no folder, default it under the Tlamatini Templates directory (TLAMATINI_TEMPLATES, e.g. <Templates>/alert.flw) — never C:\\Temp / %TEMP%." }
       - { name: flow_name, type: string, required: false,
           description: "Logical flow name FlowCreator records (defaults to the out_path basename)." }
       - { name: llm_model, type: string, required: false,
