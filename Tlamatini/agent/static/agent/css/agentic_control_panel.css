@@ -1245,6 +1245,21 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(231, 53, 44, 0.5);
 }
 
+/* Arduiner Agent — Arduino CLI. 4-color teal->cyan ramp built around the Arduino
+   brand teal (#008184), distinct from STM32er's blue, ESP32er's red/amber, and
+   FlowBacker's teal+orange+amber: deep teal -> Arduino teal -> bright cyan -> pale aqua. */
+.canvas-item.arduiner-agent {
+    background-color: #00363A;
+    background: linear-gradient(135deg, #00363A 0%, #008184 33%, #00C4CC 66%, #C8F2F0 100%);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    font-size: smaller;
+}
+.canvas-item.arduiner-agent:hover {
+    background: linear-gradient(135deg, #0A4F54 0%, #009DA1 33%, #36DDE4 66%, #EAFBFA 100%);
+    box-shadow: 0 6px 15px rgba(0, 129, 132, 0.5);
+}
+
 /* FlowBacker Agent Styles - Infrastructure backup (3-color: Deep-Teal / Burnt-Orange / Amber gradient) */
 .canvas-item.flowbacker-agent {
     background-color: #0F4C5C;

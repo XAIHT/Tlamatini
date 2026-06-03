@@ -1,0 +1,125 @@
+# Arduiner Agent Configuration
+#
+# Arduiner is Tlamatini's bridge to the **Arduino CLI** (https://arduino.github.io/arduino-cli/)
+# — the official all-in-one command-line tool whose `arduino-cli` binary covers the
+# Boards/Library Managers, sketch builder, board detection, compiler, uploader, and serial
+# monitor. It is the THIRD microcontroller agent and shares the ESP32er scheme: like
+# PlatformIO's `pio`, arduino-cli IS a complete CLI, so Arduiner invokes `arduino-cli`
+# subcommands DIRECTLY (no MCP server — unlike STM32er) and captures their stdout/stderr
+# into an INI_SECTION_ARDUINER block, then ALWAYS triggers downstream agents.
+#
+# It is fully self-contained (stdlib only: subprocess + urllib + zipfile + tarfile +
+# json + threading) exactly like ESP32er / Kalier, so it runs identically in source and
+# frozen builds and never imports from agent.* — the agent pool runs as standalone subprocesses.
+#
+# ZERO-CONFIG: leave arduino_cli_executable blank with auto_bootstrap: true and Arduiner
+# DOWNLOADS the arduino-cli binary itself (the platform release archive from
+# downloads.arduino.cc), unzips it into a per-user dir, runs `config init` + `core
+# update-index`, and is ready — the end user installs only the board USB driver + Tlamatini.
+# (arduino-cli is a Go binary; there is no pip package, so the bootstrap is a binary
+# download, NOT a pip install like ESP32er.)
+#
+# UNIFORM TEMPLATE PROJECT: Arduiner ships ArduinoTemplateProject/ beside its script (the
+# Arduino-family analog of STM32er's STM32 Template Project and ESP32er's pio scaffold).
+# create_project copies it, renames the .ino to the destination folder name, and stamps
+# the FQBN + port into the template's sketch.yaml profile (the Arduino-native peer of
+# platformio.ini).
+
+# ── action — which arduino-cli capability to invoke (one per run):
+#   Environment / meta:
+#     bootstrap         : download + install the arduino-cli binary, validate, report (no build)
+#     validate          : full environment preflight report (no build/upload)
+#     system_info       : arduino-cli version --json
+#     boards            : arduino-cli board search <boards_query|fqbn> --json   (board search)
+#     device_list       : arduino-cli board list --json   (enumerate connected boards + FQBN)
+#   Cores / libraries (GLOBAL state):
+#     core_update_index : arduino-cli core update-index   (refresh the platform index)
+#     core_search       : arduino-cli core search <core_spec|boards_query> --json
+#     core_list         : arduino-cli core list --json   (installed platforms)
+#     core_install      : arduino-cli core install <core_spec>   (e.g. arduino:avr, esp32:esp32)
+#     core_uninstall    : arduino-cli core uninstall <core_spec>
+#     lib_update_index  : arduino-cli lib update-index
+#     lib_search        : arduino-cli lib search <lib_spec|boards_query> --json
+#     lib_list          : arduino-cli lib list --json
+#     lib_install       : arduino-cli lib install <lib_spec>   (add a library)
+#   Project lifecycle:
+#     create_project    : scaffold a sketch from ArduinoTemplateProject (rename .ino, stamp sketch.yaml)
+#     write_source      : write/overwrite a file under the sketch  (rel_path, content)
+#     read_source       : read a file back from the sketch  (rel_path)
+#     list_sources      : list source files under the sketch
+#   Build & flash:
+#     build             : arduino-cli compile --fqbn <fqbn> <sketch_path> --export-binaries
+#     upload            : arduino-cli compile -u -p <port> --fqbn <fqbn> <sketch_path>
+#     build_and_upload  : alias of upload (compile + flash in one)
+#     clean             : arduino-cli compile --clean ...   (rebuild from scratch)
+#     list_artifacts    : paths to firmware.* under <sketch>/build/
+#   Observe (HIL):
+#     monitor           : bounded `arduino-cli monitor --config baudrate=<baud>` for monitor_seconds
+#     monitor_session   : upload -> monitor for monitor_seconds (composite, one run)
+action: "validate"
+
+# ── arduino-cli install / resolution ──────────────────────────────────────
+# arduino_cli_executable — absolute path to an existing `arduino-cli` binary.
+# LEAVE BLANK for the zero-config experience: Arduiner resolves it from the
+# bootstrapped per-user install, then PATH. Auto-injected from config.json
+# `arduino_cli_executable` on the chat path when non-empty.
+arduino_cli_executable: ""
+# auto_bootstrap — download + install the arduino-cli binary automatically when not found.
+auto_bootstrap: true
+# arduino_cli_install_dir — holds the downloaded binary + its data/sketchbook/config.
+# Empty = %LOCALAPPDATA%/Tlamatini/arduino-cli on Windows (~/.local/share/... elsewhere)
+# — a per-user, writable location that works for both source and frozen installs.
+arduino_cli_install_dir: ""
+# auto_update — re-download arduino-cli / refresh the index each run when already present.
+auto_update: false
+
+# ── Safety preflight (fail-safe gate) ─────────────────────────────────────
+# preflight — before building/uploading, validate the environment and REFUSE when
+# correctness cannot be guaranteed. Compile actions require arduino-cli + a sketch (.ino)
+# + an FQBN; upload/monitor actions ALSO require a connected serial port (Arduino-family
+# boards flash over USB-serial — no external probe needed for the common path). Leave true.
+preflight: true
+
+# ── Board / build identity ─────────────────────────────────────────────────
+# fqbn — Fully Qualified Board Name: THE microcontroller selector.
+#   Format VENDOR:ARCHITECTURE:BOARD_ID[:MENU=OPTION,...]. Examples:
+#   arduino:avr:uno  arduino:avr:mega2560  arduino:avr:nano  arduino:samd:mkr1000
+#   esp32:esp32:esp32  esp32:esp32:esp32:FlashSize=4M  rp2040:rp2040:rpipico
+#   Use action='device_list' (connected board) or action='boards' to discover it.
+fqbn: "arduino:avr:uno"
+# sketch_path — the sketch folder (holds <folder>.ino). Set by create_project.
+sketch_path: ""
+# auto_core_install — when true (default), if the FQBN's platform/core is not installed,
+#   Arduiner runs core update-index + core install for it before compiling. arduino-cli —
+#   unlike PlatformIO — does NOT auto-install platforms on compile, so this closes the gap.
+auto_core_install: true
+# additional_urls — space/comma-separated package_*_index.json URLs for THIRD-PARTY cores
+#   (ESP32, STM32, RP2040, Adafruit, ...). Needed before core_install of non-arduino cores.
+#   e.g. "https://espressif.github.io/arduino-esp32/package_esp32_index.json"
+additional_urls: ""
+
+# ── Project file ops ───────────────────────────────────────────────────────
+rel_path: ""           # write_source/read_source: path under the sketch, e.g. "MySketch.ino"
+content: ""            # write_source: full file contents
+
+# ── Cores / libraries ──────────────────────────────────────────────────────
+core_spec: ""          # core_install/uninstall/search target, e.g. "arduino:avr", "esp32:esp32"
+lib_spec: ""           # lib_install/search target, e.g. "ArduinoJson" or "ArduinoJson@7.0.4"
+boards_query: ""       # boards/core_search/lib_search filter ('' = use fqbn/core_spec/lib_spec)
+
+# ── Build knobs ────────────────────────────────────────────────────────────
+warnings: "none"       # compile warning level: none | default | more | all
+build_property: ""     # ;-separated --build-property overrides, e.g. "build.extra_flags=-DFOO"
+extra_compile_args: "" # escape hatch: extra raw flags appended to `compile`
+command_timeout: 900   # seconds for a single arduino-cli run (the FIRST core install +
+                       #   compile downloads the toolchain — that can be slow)
+
+# ── Upload / serial monitor (HIL) ─────────────────────────────────────────
+port: ""               # upload/monitor: serial port (e.g. "COM3"); '' = arduino-cli auto-detect
+programmer: ""         # upload: -P programmer (only for raw-ISP/JTAG paths, e.g. "atmel_ice")
+baud: 115200           # monitor: serial baud rate (passed as --config baudrate=)
+monitor_seconds: 10    # monitor / monitor_session: how long to drain serial before stopping
+
+# ── Connection fields ────────────────────────────────────────────────────
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the run (ALWAYS triggered)

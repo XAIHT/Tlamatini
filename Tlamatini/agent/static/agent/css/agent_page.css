@@ -1306,6 +1306,14 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* Arduiner — deep teal -> Arduino teal, mirrors .canvas-item.arduiner-agent in
+   agentic_control_panel.css. State-changing because it scaffolds / writes / builds
+   / uploads (flashes) Arduino firmware through the `arduino-cli` binary. */
+.exec-report-caption-arduiner {
+    background: linear-gradient(135deg, #00363A 0%, #008184 100%);
+    color: #ffffff;
+}
+
 /* ACPx — fire-orange/coral/violet/black, mirrors .canvas-item.acpx-agent
    in agentic_control_panel.css. State-changing because acp_spawn /
    acp_send / acp_kill all touch a real external CLI subprocess. */
@@ -1361,6 +1369,7 @@ body.resizing-vertical {
 .exec-report-kalier thead th,
 .exec-report-stm32er thead th,
 .exec-report-esp32er thead th,
+.exec-report-arduiner thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {
     color: #f5f5f5;
@@ -1451,6 +1460,7 @@ body.resizing-vertical {
 .exec-report-kalier .exec-report-cmd         { border-left: 3px solid #00C838; }
 .exec-report-stm32er .exec-report-cmd        { border-left: 3px solid #1E63FF; }
 .exec-report-esp32er .exec-report-cmd        { border-left: 3px solid #E7352C; }
+.exec-report-arduiner .exec-report-cmd       { border-left: 3px solid #008184; }
 .exec-report-acpx .exec-report-cmd           { border-left: 3px solid #BF360C; }
 .exec-report-skill .exec-report-cmd          { border-left: 3px solid #4527A0; }
 

@@ -1058,6 +1058,25 @@ async function updateEsp32erConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateArduinerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_arduiner_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Arduiner ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Arduiner ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Arduiner ${agentId}:`, error);
+    }
+}
+
 async function updateFileInterpreterConnection(agentId, targetAgentId, action, type = 'target') {
     try {
         const response = await fetch(`/agent/update_file_interpreter_connection/${agentId}/`, {

@@ -1,0 +1,23 @@
+# sketch.yaml — Arduino CLI sketch project file (the Arduino-native peer of
+# PlatformIO's platformio.ini). Arduiner stamps default_fqbn / default_port here
+# when it scaffolds a project from this template, so the sketch carries its board
+# identity the same way ESP32er's project carries its board and STM32er's template
+# carries its target. arduino-cli honors default_fqbn / default_port when --fqbn / -p
+# are omitted from compile / upload / monitor.
+#
+# default_fqbn / default_port are overwritten by Arduiner's create_project from the
+# agent's `fqbn` / `port` config. The values below are sensible placeholders.
+default_fqbn: arduino:avr:uno
+# default_port: COM3        # uncomment / set the connected serial port
+
+# Optional reproducible-build profiles. A profile pins the platform + library
+# versions so a clone builds identically. Compile a profile with:
+#   arduino-cli compile --profile uno
+# (Left commented because exact platform versions are environment-specific; Arduiner's
+#  auto_core_install installs the core for default_fqbn automatically.)
+#
+# profiles:
+#   uno:
+#     fqbn: arduino:avr:uno
+#     platforms:
+#       - platform: arduino:avr (1.8.6)

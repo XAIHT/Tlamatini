@@ -983,6 +983,71 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=180,
         long_running=True,
     ),
+    ChatWrappedAgentSpec(
+        key="arduiner",
+        template_dir="arduiner",
+        tool_name="chat_agent_arduiner",
+        tool_description="Chat-Agent-Arduiner",
+        display_name="Arduiner",
+        purpose=(
+            "Scaffold, author, build, upload (flash), and OBSERVE Arduino firmware "
+            "programmatically through the official Arduino CLI (`arduino-cli`) — no IDE. This "
+            "is the canonical tool for ANY classic-Arduino / AVR / SAMD / Arduino-core firmware "
+            "task: creating a sketch, writing the .ino, installing the board core, compiling, "
+            "flashing over USB-serial (NO external probe needed for the common path), and "
+            "hardware-in-the-loop (HIL) verification by draining the serial monitor. Like "
+            "ESP32er (PlatformIO) and unlike STM32er (an MCP server), arduino-cli is itself a "
+            "complete CLI, so Arduiner runs `arduino-cli` subcommands DIRECTLY (no MCP server). "
+            "Pick ONE capability per call with `action`: bootstrap / validate / system_info / "
+            "boards / device_list (environment); core_update_index / core_search / core_list / "
+            "core_install / core_uninstall / lib_update_index / lib_search / lib_list / lib_install "
+            "(cores & libraries); create_project / write_source / read_source / list_sources "
+            "(project lifecycle); build / upload / build_and_upload / clean / list_artifacts "
+            "(build & flash); monitor / monitor_session (serial HIL). THE MICROCONTROLLER IS "
+            "SELECTED BY `fqbn` (Fully Qualified Board Name, e.g. fqbn='arduino:avr:uno', "
+            "'arduino:avr:mega2560', 'arduino:samd:mkr1000', 'esp32:esp32:esp32'); the serial "
+            "`port` (e.g. 'COM3') and `baud` set the upload/monitor link. Use action='device_list' "
+            "to read the FQBN+port of the connected board. ZERO-CONFIG: Arduiner AUTO-BOOTSTRAPS "
+            "arduino-cli on first use — it downloads the official binary into a per-user dir and "
+            "runs core update-index, with NO manual setup; the end user installs only the board "
+            "USB driver. It also AUTO-INSTALLS the board's core before a build (auto_core_install). "
+            "For THIRD-PARTY silicon (ESP32/STM32/RP2040) set `additional_urls` to the vendor's "
+            "package_*_index.json. CHAIN calls across iterations for a full firmware cycle: "
+            "create_project (sketch_path=<dir>, fqbn='arduino:avr:uno') -> write_source (rel_path="
+            "'<folder>.ino', content='<the code>') -> build (sketch_path=<dir>) -> upload -> "
+            "monitor / monitor_session to prove it runs. RESULT — the wrapped tool's JSON return "
+            "and the INI_SECTION_ARDUINER block both carry: action, tool, ok, returncode, success, "
+            "fqbn, port, sketch_path, stage, and the `arduino-cli` stdout/stderr as the body — so a "
+            "downstream step or a canvas Forker can branch on {success} / {returncode}. An upload "
+            "that errors 'no device found' or a build that fails to compile is routable evidence, "
+            "NOT a Tlamatini crash. AUTHORIZED hardware only — upload mutates a real MCU."
+        ),
+        example_request=(
+            "Run Arduiner with action='create_project' and sketch_path='C:/arduino/blink' and "
+            "fqbn='arduino:avr:uno'  (then in the next iteration: action='write_source', "
+            "sketch_path='C:/arduino/blink', rel_path='blink.ino', content='<firmware>'; "
+            "then action='upload', sketch_path='C:/arduino/blink', fqbn='arduino:avr:uno', "
+            "port='COM3'; then action='monitor', sketch_path='C:/arduino/blink', monitor_seconds=8)."
+        ),
+        aliases=(
+            "arduiner", "arduino", "arduino-cli", "arduino cli", "avr", "atmega", "atmega328",
+            "uno", "nano", "mega", "leonardo", "samd", "firmware", "microcontroller",
+        ),
+        security_hints=(
+            "arduino", "arduiner", "arduino-cli", "arduino cli", "arduino ide", "avr", "atmega",
+            "atmega328", "attiny", "uno", "arduino uno", "nano", "arduino nano", "mega",
+            "mega2560", "leonardo", "micro", "samd", "mkr", "avrdude", "bossac", "fqbn",
+            "sketch", "ino", "firmware", "microcontroller", "micro controller", "mcu",
+            "embedded", "embedded firmware", "blink", "blinky", "flash the arduino",
+            "flash firmware", "build firmware", "scaffold a firmware project", "create firmware",
+            "upload firmware", "serial monitor", "burn-bootloader", "board manager", "core install",
+        ),
+        # A core install + first compile downloads the toolchain; an upload or a
+        # bounded monitor stream can take tens of seconds to a couple of minutes;
+        # drain inside the wrapped runtime rather than poll round-trips, like ESP32er.
+        poll_window_seconds=180,
+        long_running=True,
+    ),
 )
 
 

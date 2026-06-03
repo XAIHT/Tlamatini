@@ -1019,6 +1019,37 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             }
         });
 
+    // ── Arduiner ─────────────────────────────────────────────────────
+    // Template fields: action, arduino_cli_executable, arduino_cli_install_dir,
+    //   fqbn, sketch_path, auto_core_install, additional_urls, rel_path, content,
+    //   core_spec, lib_spec, boards_query, warnings, build_property,
+    //   extra_compile_args, command_timeout, port, programmer, baud, monitor_seconds
+    } else if (lower === 'arduiner') {
+        set('action', pairs.action);
+        set('arduino_cli_executable', pairs.arduino_cli_executable);
+        set('arduino_cli_install_dir', pairs.arduino_cli_install_dir);
+        set('fqbn', pairs.fqbn);
+        set('sketch_path', pairs.sketch_path);
+        set('auto_core_install', pairs.auto_core_install);
+        set('additional_urls', pairs.additional_urls);
+        set('rel_path', pairs.rel_path);
+        set('content', pairs.content);
+        set('core_spec', pairs.core_spec);
+        set('lib_spec', pairs.lib_spec);
+        set('boards_query', pairs.boards_query);
+        set('warnings', pairs.warnings);
+        set('build_property', pairs.build_property);
+        set('extra_compile_args', pairs.extra_compile_args);
+        set('port', pairs.port);
+        set('programmer', pairs.programmer);
+        // integer fields
+        ['command_timeout', 'baud', 'monitor_seconds'].forEach((k) => {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
+
     // ── Telegramer ───────────────────────────────────────────────────
     // Template field: telegram (nested)
     } else if (lower === 'telegramer') {

@@ -4811,6 +4811,71 @@ class DiagramRenderingTests(TestCase):
         wrapped, placeholders = self._wrap(multi)
         self.assertEqual(len(placeholders), 1)
 
+    def test_consecutive_load_in_canvas_anchors_are_never_wrapped_as_diagram(self):
+        # REGRESSION (image.png): a multi-program answer injects several
+        # `<a ... onclick="loadCanvas(..)">---Load in canvas: NAME---</a>`
+        # anchors on consecutive lines. The `---` in the label matches the
+        # ASCII-art-run heuristic, so the auto-detector USED to wrap the whole
+        # block in <pre class="ascii-diagram"> and HTML-escape it — turning the
+        # clickable links into unclickable raw text. They must survive intact.
+        raw = (
+            "## Solution\n"
+            "Here's the working code:\n"
+            "BEGIN-CODE<<<AuthFilter.java>>>\n"
+            "public class AuthFilter {}\n"
+            "END-CODE\n"
+            "BEGIN-CODE<<<TokenHelper.java>>>\n"
+            "public class TokenHelper {}\n"
+            "END-CODE\n"
+            "BEGIN-CODE<<<MainClient.java>>>\n"
+            "public class MainClient {}\n"
+            "END-CODE\n"
+            "---\n"
+            "END-RESPONSE"
+        )
+        final = self._process(raw)
+        # The anchors are rendered as live HTML, NOT escaped source text.
+        self.assertIn("loadCanvas(", final)
+        self.assertIn("Load in canvas: ", final)
+        self.assertNotIn("&lt;a ", final)
+        self.assertNotIn("onclick=&#39;loadCanvas", final)
+        # And the auto-detector did NOT mistake the anchor block (or the lone
+        # `---` rule) for a diagram.
+        self.assertNotIn('class="ascii-diagram"', final)
+
+    def test_html_list_lines_with_arrows_are_not_wrapped_as_diagram(self):
+        # REGRESSION (image copy.png): an LLM-emitted HTML list whose <li>
+        # lines contain a `->`/arrow glyph matched the flowchart-arrow
+        # heuristic, so two consecutive <li> lines were wrapped + escaped and
+        # shown as raw source instead of a rendered bullet list.
+        multi = (
+            "<li><strong>Fade IN</strong> – duty cycle ramps 0 → 255</li>\n"
+            "<li><strong>Fade OUT</strong> – duty cycle ramps 255 → 0</li>\n"
+        )
+        wrapped, placeholders = self._wrap(multi)
+        self.assertEqual(placeholders, [])
+        self.assertEqual(wrapped, multi)
+
+    def test_ascii_art_with_angle_brackets_is_still_auto_detected(self):
+        # The HTML-tag guard must NOT over-exclude: ASCII art that uses `<` as
+        # part of an arrow (`<--->`) carries no real tag, so it stays a diagram.
+        art = "<---->\n<---->\n"
+        wrapped, placeholders = self._wrap(art)
+        self.assertEqual(len(placeholders), 1)
+        self.assertIn('class="ascii-diagram"', placeholders[0])
+
+    def test_is_diagram_line_excludes_real_html_tags_only(self):
+        from agent.services.response_parser import _is_diagram_line
+        # Real tags → not a diagram line, even when they also carry diagram glyphs.
+        self.assertFalse(_is_diagram_line("<a href='#'>---Load in canvas: x---</a>"))
+        self.assertFalse(_is_diagram_line("<li>ramps 0 → 255</li>"))
+        self.assertFalse(_is_diagram_line("text<br>more"))
+        # ASCII art / box drawing → still a diagram line.
+        self.assertTrue(_is_diagram_line("+----------+"))
+        self.assertTrue(_is_diagram_line("│  Client  │ ───▶ │  Server  │"))
+        self.assertTrue(_is_diagram_line("<---->"))
+        self.assertTrue(_is_diagram_line("a < b and c > d ===="))
+
 
 class AgentDescriptionsFileTests(TestCase):
     """The shipped ``agents_descriptions.md`` must be present at the repo root

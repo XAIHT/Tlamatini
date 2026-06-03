@@ -97,6 +97,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "kalier": ("action", "endpoint", "method", "subject", "return_code", "success", "timed_out", "server_url", "response_body"),
     "stm32er": ("action", "tool", "ok", "returncode", "success", "project_dir", "session_id", "stage", "server_script", "response_body"),
     "esp32er": ("action", "tool", "ok", "returncode", "success", "project_dir", "port", "environment", "stage", "response_body"),
+    "arduiner": ("action", "tool", "ok", "returncode", "success", "fqbn", "port", "sketch_path", "stage", "response_body"),
 }
 
 

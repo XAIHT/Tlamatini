@@ -118,6 +118,7 @@ SECTION_AGENT_TYPES = [
     'kalier',
     'stm32er',
     'esp32er',
+    'arduiner',
 ]
 
 
