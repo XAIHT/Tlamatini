@@ -18,7 +18,7 @@ Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual w
 </p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.13.0"><img src="https://img.shields.io/badge/VERSION-v1.13.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.13.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.14.0"><img src="https://img.shields.io/badge/VERSION-v1.14.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.14.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -39,7 +39,7 @@ Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual w
 - **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
 - **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
 
-> **Latest — v1.13.0 (2026-06-03): Arduiner — the Arduino-CLI firmware agent and the 70th agent type.** Arduiner drives `arduino-cli` directly (no MCP server) to compile and flash Arduino firmware — the microcontroller is selected by `fqbn`, with zero-config binary bootstrap, auto-core-install, and a serial-port preflight. It joins STM32er and ESP32er to complete the 3-agent microcontroller-firmware family. This release also ships the **flow-making** skill (turn a plain objective into a canvas-loadable `.flw` by wrapping the FlowCreator engine) and a unified **Temp/Templates directory policy** (every transient file under `<app>/Temp`, scaffolded project trees under `<app>/Templates`, never outside Tlamatini). See [§3.18](#318-tutorial-build-and-upload-arduino-firmware-from-chat-chat_agent_arduiner).
+> **Latest — v1.14.0 (2026-06-04): the observational capture pair — Camcorder (71st) and Recorder (72nd agent types).** **Camcorder** captures from a physical **webcam** via OpenCV — a photo (default) or a short video — and **Recorder** captures **microphone** audio to a WAV via `sounddevice`; together with **Shoter** (screen) they complete the screen / camera / microphone trio. Both are read-only/observational (they record and trigger downstream, so they stay out of the Exec Report), native-resolution / native-sample-rate by default, and ship on both the canvas and as the wrapped Multi-Turn tools `chat_agent_camcorder` / `chat_agent_recorder`. The previous release (**v1.13.0**) added **Arduiner** (the Arduino-CLI firmware agent, 70th type) to complete the STM32er / ESP32er / Arduiner microcontroller-firmware family, plus the **flow-making** skill and the unified **Temp/Templates directory policy**.
 
 <p align="center">
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
@@ -1775,22 +1775,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.13.0 -m "Release 1.13.0: <one-line summary>"
-git push origin v1.13.0
+git tag -a v1.14.0 -m "Release 1.14.0: <one-line summary>"
+git push origin v1.14.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.13.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.14.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.13.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.13.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.13.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.14.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.14.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.14.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1814,8 +1814,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.13.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.13.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.14.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.14.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
