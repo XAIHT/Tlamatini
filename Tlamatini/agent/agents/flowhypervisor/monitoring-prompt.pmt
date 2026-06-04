@@ -70,7 +70,11 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er
+  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, Arduiner,
+  Camcorder, Recorder
+  (NOTE: STM32er / ESP32er / Arduiner are short-lived in steady state, but their
+   FIRST build/flash can run for MANY minutes while a large toolchain downloads —
+   see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
@@ -269,6 +273,94 @@ STM32ER SPECIAL NOTES:
     like a broken chain hop. (A PREFLIGHT REFUSED for a missing board is NOT this —
     that is the fail-safe gate behaving correctly.)
 
+ESP32ER SPECIAL NOTES:
+  - ESP32er is SHORT-LIVED and ACTIVE: it invokes ONE PlatformIO `pio`
+    subcommand (selected by `action` — create_project / write_source / build /
+    upload / build_and_upload / monitor / pkg_* / check / test, or the
+    scaffold_build_upload / monitor_session composites, or the `bootstrap` /
+    `validate` meta-actions), captures the result into an
+    `INI_SECTION_ESP32ER<<<` block, then ALWAYS triggers `target_agents`
+    regardless of success or failure. Unlike STM32er it drives the `pio` CLI
+    DIRECTLY (no MCP server).
+  - ZERO-CONFIG + PREFLIGHT: on first use ESP32er DOWNLOADS and installs
+    PlatformIO Core itself (a `stage: bootstrap` section is NORMAL, NOT an
+    error), and before every build/upload it runs a safety preflight. A
+    `stage: preflight` section that REFUSES (e.g. "no serial port" for an
+    upload) is the agent working as DESIGNED (fail-safe) — routable content,
+    NOT a flow error; do NOT flag it. ESP32 flashes over its onboard
+    USB-serial bootloader, so an upload needs only a COM/tty port — there is NO
+    external JTAG probe to look for.
+  - **FIRST-BUILD CAVEAT (IMPORTANT):** the FIRST `build` for a given board
+    DOWNLOADS the espressif32 platform + the full toolchain (hundreds of MB).
+    This can legitimately take MANY minutes while `pio` prints
+    "Downloading...", "Installing...", "Unpacking..." progress. Do NOT flag a
+    long FIRST build as stuck while NEW log output keeps appearing — only flag
+    if output is COMPLETELY silent for > 10 minutes, OR an explicit error line
+    appears. Steady-state builds afterwards are tens of seconds to a couple of
+    minutes (same "don't flag a silent build before ~5 min" rule as STM32er).
+  - `success: false` or a non-zero `returncode` inside the section is NOT a
+    flow error — a sketch that fails to compile, or an upload that reports "no
+    serial port found", is routable content for a downstream Forker / Raiser.
+    NEVER flag an `INI_SECTION_ESP32ER<<<` block as an error even when its body
+    looks like a compiler / esptool error.
+  - Legitimate ESP32er error to flag: a bootstrap that COULD NOT install
+    PlatformIO ("PlatformIO Core could not be auto-installed" — usually no
+    internet on the host) or "pio executable not resolvable". Treat a
+    bootstrap / CLI-launch failure like a broken chain hop.
+
+ARDUINER SPECIAL NOTES:
+  - Arduiner is SHORT-LIVED and ACTIVE: it invokes ONE `arduino-cli`
+    subcommand (selected by `action` — create_project / write_source / build /
+    upload / build_and_upload / core_* / lib_* / monitor / boards /
+    device_list, or the monitor_session composite, or the `bootstrap` /
+    `validate` meta-actions), captures the result into an
+    `INI_SECTION_ARDUINER<<<` block, then ALWAYS triggers `target_agents`
+    regardless of success or failure. It drives `arduino-cli` DIRECTLY (no MCP
+    server); the target microcontroller is chosen by its `fqbn` (e.g.
+    `arduino:avr:uno`, `esp32:esp32:esp32`).
+  - ZERO-CONFIG + AUTO-CORE-INSTALL + PREFLIGHT: on first use Arduiner
+    DOWNLOADS the `arduino-cli` binary itself (a `stage: bootstrap` section is
+    NORMAL, NOT an error); before a build it AUTO-INSTALLS the FQBN's board
+    core if missing (a `stage: core_install` / "core update-index" section is
+    NORMAL); and a safety preflight runs before build/upload. A `stage:
+    preflight` section that REFUSES (e.g. "no serial port" for an upload, or a
+    missing core when `auto_core_install` is off — it prints the exact `core
+    install` to run) is the agent working as DESIGNED (fail-safe) — routable
+    content, NOT a flow error; do NOT flag it.
+  - **FIRST-RUN CAVEAT (IMPORTANT):** the FIRST `core install` + compile for a
+    given board DOWNLOADS the board toolchain (compiler + tools, can be
+    hundreds of MB). This can legitimately take MANY minutes while
+    `arduino-cli` prints "Downloading..." progress. Do NOT flag a long FIRST
+    core-install / build as stuck while NEW log output keeps appearing — only
+    flag if output is COMPLETELY silent for > 10 minutes, OR an explicit error
+    line appears. Steady-state builds afterwards are seconds to a couple of
+    minutes.
+  - `success: false` or a non-zero `returncode` inside the section is NOT a
+    flow error — a sketch that fails to compile, or an upload that reports "no
+    serial port", is routable content for a downstream Forker / Raiser. NEVER
+    flag an `INI_SECTION_ARDUINER<<<` block as an error even when its body looks
+    like a compiler / avrdude error.
+  - Legitimate Arduiner error to flag: a bootstrap that COULD NOT download
+    arduino-cli ("arduino-cli could not be auto-installed" — usually no
+    internet), "arduino-cli not resolvable", or a `core install` that failed to
+    fetch the platform (bad `additional_urls` / no network). Treat a
+    bootstrap / CLI-launch / core-install failure like a broken chain hop.
+
+CAMCORDER / RECORDER SPECIAL NOTES (observational capture agents):
+  - Camcorder (webcam → photo/video) and Recorder (microphone → WAV) are the
+    capture siblings of Shoter (Shoter = screen, Camcorder = camera, Recorder =
+    sound). All three are READ-ONLY / observational — they do NOT mutate state
+    and are deliberately absent from the Exec Report.
+  - Each is SHORT-LIVED and ACTIVE: it captures media, then ALWAYS triggers
+    `target_agents`. Camcorder `photo` mode is < 5 s; Camcorder `video` mode and
+    Recorder both run for ~their configured duration (`video_duration_seconds` /
+    `record_seconds`) then write the file and exit.
+  - They ALWAYS emit their `INI_SECTION_CAMCORDER<<<` / `INI_SECTION_RECORDER<<<`
+    block (the saved file path + capture parameters). NEVER flag these blocks as
+    errors. A missing camera / microphone surfaces as a device error in the
+    block body — that is routable content for a downstream Forker, not a flow
+    crash.
+
 ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
   Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
@@ -284,11 +376,14 @@ TYPICAL TIMING:
   - Executer/Ssher/Scper: seconds to minutes (flag if > 10 min with no output)
   - Crawler: can take minutes (web requests + LLM analysis per page)
   - Googler: seconds to a minute (Playwright-driven Google search + text extraction; flag if > 5 min)
+  - Playwrighter: drives a real multi-step browser (goto / click / fill / wait_for / extract / screenshot / download); seconds for a simple page up to a few minutes for a multi-step or authenticated flow, PLUS any `hold_open_seconds` it deliberately lingers before closing (a visible browser left open on purpose is NORMAL). Don't flag a Playwrighter that is still emitting step logs, or that is inside its hold-open window, before ~5 min.
   - Asker: waits up to 5 minutes for user input
   - Sleeper: runs for exactly its configured duration
   - Croner: waits until scheduled time (can be hours — silence is NORMAL)
   - Kyber agents: < 30 seconds (CPU-intensive polynomial math)
   - Counter/File-Creator: < 5 seconds
+  - Recorder: records for ~its configured `record_seconds` (default 5 s), then writes the WAV and exits — observational (read-only audio capture, NOT in the Exec Report). The audio sibling of Shoter/Camcorder. Flag only if it runs well beyond `record_seconds` with no "Recorder agent finished" completion.
+  - Camcorder: `photo` mode is < 5 s (one webcam shot); `video` mode runs for ~its `video_duration_seconds` then writes the `.mp4` and exits — observational (read-only camera capture, NOT in the Exec Report). The camera sibling of Shoter/Recorder. Flag only if it runs well beyond `video_duration_seconds` with no "Camcorder agent finished" completion.
   - Keyboarder/Mouser/Windower/Shoter: < 5 seconds per invocation (desktop UI primitives). Windower
     `matched: false` / `state: no_match` is NOT a flow error — it is routable content (the window was not
     open yet); only flag `state: win32_unavailable` (a real platform/environment problem) or a Windower
@@ -303,7 +398,9 @@ TYPICAL TIMING:
   - Reviewer: one LLM call over a git diff — sub-second to ~2 min depending on diff size and model (local vs cloud). Flag only if > 5 min with no completion.
   - Analyzer: runs installed scanners (bandit/semgrep/ruff/eslint/gitleaks/pip-audit); seconds for small trees to a few minutes for `semgrep --config auto` on a large repo. Flag only if > 5 min with no completion.
   - Kalier: tracks the Kali tool it dispatches — sub-second for `health` / a tiny `nmap`, up to the MCP-Kali-Server's ~180 s per-run cap for `gobuster` / `nikto` / `hydra` / `sqlmap` / `john`. Flag only if > 5 min with no completion (or on a "Cannot reach MCP-Kali-Server" error).
-  - STM32er: tracks the STM32 MCP tool it calls — sub-second for get_config / read / list / read_memory; tens of seconds to ~2 min for `build` / `build_and_flash` (compiles the full HAL); `live_monitor` is intentionally silent for its `monitor_seconds`. Flag only if > 5 min with no completion (or on an "MCP server script not found" / "MCP server exited before responding" error).
+  - STM32er: tracks the STM32 MCP tool it calls — sub-second for get_config / read / list / read_memory; tens of seconds to ~2 min for `build` / `build_and_flash` (compiles the full HAL); `live_monitor` is intentionally silent for its `monitor_seconds`. Flag only if > 5 min with no completion (or on an "MCP server script not found" / "MCP server exited before responding" error). (First-use bootstrap of the MCP can add a minute — see STM32ER SPECIAL NOTES.)
+  - ESP32er: tracks the `pio` subcommand — sub-second for system_info / boards / list_sources; tens of seconds to a couple of minutes for a steady-state `build` / `upload`. The FIRST build for a board DOWNLOADS the espressif32 platform + toolchain (hundreds of MB) and can take MANY minutes — do NOT flag a long first build while `pio` keeps printing Downloading/Installing progress; flag only on total silence > 10 min, an explicit error, or "PlatformIO Core could not be auto-installed". See ESP32ER SPECIAL NOTES.
+  - Arduiner: tracks the `arduino-cli` subcommand — sub-second for boards / device_list / list_sources; seconds to a couple of minutes for a steady-state `build` / `upload`. The FIRST core_install + build for a board DOWNLOADS the board toolchain (can be hundreds of MB) and can take MANY minutes — do NOT flag a long first run while it keeps printing Downloading progress; flag only on total silence > 10 min, an explicit error, or "arduino-cli could not be auto-installed". See ARDUINER SPECIAL NOTES.
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════
@@ -320,6 +417,10 @@ STARTUP markers (each agent logs one of these when it starts):
   "🛡️ ANALYZER AGENT STARTED" — Analyzer began running static-analysis / security scanners
   "🐉 KALIER AGENT STARTED (MCP-Kali-Server bridge)" — Kalier began dispatching a request to the MCP-Kali-Server API
   "⚡ STM32er AGENT STARTED (STM32 Template Project MCP bridge)" — STM32er began driving the STM32 MCP server (scaffold/build/flash/observe firmware)
+  "🎙️ RECORDER AGENT STARTED" — Recorder began capturing audio from a microphone / input device (observational; writes a WAV, then triggers downstream)
+  "📸 CAMCORDER AGENT STARTED" — Camcorder began capturing a photo / video from a webcam (observational; writes the file, then triggers downstream)
+  "⚡ ESP32er AGENT STARTED (PlatformIO Core / pio CLI bridge)" — ESP32er began driving the `pio` CLI (scaffold / build / upload / monitor ESP32 firmware)
+  "🔌 Arduiner AGENT STARTED (Arduino CLI / arduino-cli bridge)" — Arduiner began driving `arduino-cli` (scaffold / build / upload / monitor Arduino firmware)
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -333,7 +434,8 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  De-Compresser, Unrealer, Reviewer, Analyzer, Kalier, STM32er).
+  Shoter, Camcorder, Recorder, Mouser, Windower, Playwrighter, De-Compresser, Unrealer,
+  Reviewer, Analyzer, Kalier, STM32er, ESP32er, Arduiner).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -424,6 +526,10 @@ DO NOT report these as problems:
   - Analyzer INI_SECTION_ANALYZER<<< ... >>>END_SECTION_ANALYZER blocks with any `status` — including `status: findings` and a non-zero `total_findings` (scanners finding issues is the agent working as intended; a scanner exiting non-zero because it found issues is also normal — the count is routable content for a downstream Forker, NOT a flow error)
   - Kalier INI_SECTION_KALIER<<< ... >>>END_SECTION_KALIER blocks with any `success` / `return_code` / `timed_out` — including `success: false`, a non-zero `return_code`, or `timed_out: true` (a scan finding nothing, a failed brute-force, or a tool hitting the server's run cap is the agent working as intended; the result is routable content for a downstream Forker, NOT a flow error)
   - STM32er INI_SECTION_STM32ER<<< ... >>>END_SECTION_STM32ER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a firmware build that fails to compile, a flash that reports "No STLink detected", or a read that found nothing is routable content for a downstream Forker, NOT a flow error)
+  - ESP32er INI_SECTION_ESP32ER<<< ... >>>END_SECTION_ESP32ER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a sketch that fails to compile or an upload that reports "no serial port" is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run PlatformIO install) or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
+  - Arduiner INI_SECTION_ARDUINER<<< ... >>>END_SECTION_ARDUINER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a compile/upload failure is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run arduino-cli download), a `stage: core_install` (auto board-core install), or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
+  - Camcorder / Recorder INI_SECTION_CAMCORDER / INI_SECTION_RECORDER blocks — observational capture agents (webcam / microphone) that ALWAYS emit their block and trigger target_agents; never a flow error (read-only camera / mic capture, NOT in the Exec Report). A device-not-found message in the block body is routable content for a downstream Forker.
+  - Long FIRST firmware build/flash on STM32er / ESP32er / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

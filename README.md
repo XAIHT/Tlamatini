@@ -8,7 +8,7 @@
 
 <p align="center">
 Run it on your machine with <a href="https://ollama.com/">Ollama</a>. Your code never leaves your box.<br/>
-Hybrid RAG over your codebase · 78-tool multi-turn orchestration · 71 visual workflow agents · multi-agent delegation to Claude Code, Cursor, Codex, Gemini CLI
+Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual workflow agents · multi-agent delegation to Claude Code, Cursor, Codex, Gemini CLI
 </p>
 
 <p align="center">
@@ -22,8 +22,8 @@ Hybrid RAG over your codebase · 78-tool multi-turn orchestration · 71 visual w
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
-  <a href="#95-agent-catalog-the-71-types-by-family"><img src="https://img.shields.io/badge/AGENTS-71-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="71 Agents" /></a>
-  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-78-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="78 Multi-Turn Tools" /></a>
+  <a href="#95-agent-catalog-the-72-types-by-family"><img src="https://img.shields.io/badge/AGENTS-72-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="72 Agents" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-79-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="79 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
   <a href="#312-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-27-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="27 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
@@ -35,7 +35,7 @@ Hybrid RAG over your codebase · 78-tool multi-turn orchestration · 71 visual w
 - **Real RAG over your code** — FAISS + BM25 hybrid retrieval with context budgeting. The model sees the *right* code, not random chunks.
 - **Multi-Turn mode** — the LLM becomes an operator: shell, Python, APIs, browser automation, screenshots, keyboard/mouse — all chained in one conversation.
 - **ACPX** — delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen, and relay output between them.
-- **Visual workflow designer** — drag and drop 71 agent types, wire them together, run flows unattended.
+- **Visual workflow designer** — drag and drop 72 agent types, wire them together, run flows unattended.
 - **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
 - **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
 
@@ -127,7 +127,7 @@ Hybrid RAG over your codebase · 78-tool multi-turn orchestration · 71 visual w
   - [9.2. The five layers](#92-the-five-layers)
   - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
   - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
-  - [9.5. Agent catalog (the 71 types, by family)](#95-agent-catalog-the-71-types-by-family)
+  - [9.5. Agent catalog (the 72 types, by family)](#95-agent-catalog-the-72-types-by-family)
   - [9.6. Self-Knowledge & Self-Modification](#96-self-knowledge--self-modification)
 - [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
   - [10.1. Why this exists](#101-why-this-exists)
@@ -167,7 +167,7 @@ Hybrid RAG over your codebase · 78-tool multi-turn orchestration · 71 visual w
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 71 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 72 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -372,7 +372,7 @@ Tlamatini classifies the prompt with a small LLM call ("does this need the web?"
 
 This is the big one. Multi-Turn turns Tlamatini from *answerer* into **operator**:
 
-- The planner picks the relevant subset of Tlamatini's **78 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 46 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
+- The planner picks the relevant subset of Tlamatini's **79 Multi-Turn tools** — 20 core Python tools (`execute_command`, `agent_starter`, `googler`, the image-analysis pair, the `chat_agent_run_*` lifecycle helpers, …), 47 wrapped chat-agent tools, and 12 ACPX/Skill tools — binding at most `max_selected_tools` per request (default cap: **20**).
 - The unified-agent loop runs **up to 4096 iterations** (the `unified_agent_max_iterations` default) — call tool, see result, decide next, chain.
 - Wrapped sub-agents run in headless background runtimes (no console pop-ups).
 
@@ -886,7 +886,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-26 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**.
+27 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**.
 
 Canonical example:
 
@@ -1242,7 +1242,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 71 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 72 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
@@ -1410,7 +1410,7 @@ LLM Backends: Ollama | Claude API | Qwen vision     +     ACPX Runtime → exter
 | 2. Runtime MCP services | System-Metrics (WebSocket) + Files-Search (gRPC) daemons. | `agent/mcp_*` |
 | 3. Context fetcher chains | LCEL sidecars that inject system / files context. | `agent/chain_*_lcel.py` |
 | 4. Main answer chains | Basic / History-aware / Unified. `factory.py` monkey-patches `invoke()`. | `agent/rag/chains/` |
-| 5. Unified-agent tools | **78** synchronous `@tool` functions (20 core Python + 46 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
+| 5. Unified-agent tools | **79** synchronous `@tool` functions (20 core Python + 47 wrapped chat-agent + 12 ACPX/Skill). Active only in Multi-Turn. | `agent/tools.py` + `agent/chat_agent_registry.py` + `agent/acpx/` |
 
 ### 9.3. Multi-Turn execution pipeline
 
@@ -1459,14 +1459,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 9.5. Agent catalog (the 71 types, by family)
+### 9.5. Agent catalog (the 72 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, **Camcorder**, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, **Camcorder**, **Recorder**, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |

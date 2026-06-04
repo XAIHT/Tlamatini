@@ -98,7 +98,7 @@ Because `{self_knowledge}` is **always** present and authoritative, a generic pr
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 46 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`; the newest are `chat_agent_arduiner` and `chat_agent_camcorder`)
+- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 47 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`; the newest are `chat_agent_camcorder` and `chat_agent_recorder`)
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---

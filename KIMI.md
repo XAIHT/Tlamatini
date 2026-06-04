@@ -202,7 +202,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 71 workflow agent templates
+│   │   ├── agents/                 # 72 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -271,7 +271,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── stm32er/            # STM32 firmware bridge (STM32 Template Project MCP)
 │   │   │   ├── esp32er/            # ESP32 firmware bridge (PlatformIO pio CLI, no MCP)
 │   │   │   ├── arduiner/           # Arduino firmware bridge (arduino-cli, no MCP)
-│   │   │   └── camcorder/          # Webcam capture (OpenCV) — photo/video, Shoter's camera sibling
+│   │   │   ├── camcorder/          # Webcam capture (OpenCV) — photo/video, Shoter's camera sibling
+│   │   │   └── recorder/           # Microphone capture (sounddevice) — WAV, the audio sibling of Camcorder/Shoter
 │   │   │
 │   │   ├── services/               # Backend services
 │   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
@@ -451,7 +452,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-46 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, and `chat_agent_camcorder`). Key ones:
+47 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_camcorder`, and `chat_agent_recorder`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -467,6 +468,7 @@ Chain types in `agent/rag/chains/`:
 - `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`
 - `chat_agent_stm32er` (STM32 firmware), `chat_agent_esp32er` (ESP32 firmware via PlatformIO), `chat_agent_arduiner` (Arduino firmware via arduino-cli)
 - `chat_agent_camcorder` (webcam photo/video capture via OpenCV)
+- `chat_agent_recorder` (microphone audio → WAV capture via `sounddevice`)
 - `chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop` (management)
 - `chat_agent_run_wait` (blocking wait)
 - `chat_agent_sleeper` (delay helper)
@@ -677,6 +679,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Deleter** — File deletion with glob patterns
 - **Shoter** — Screenshot capture (silent, structured output)
 - **Camcorder** — Physical-camera (webcam) capture via OpenCV (`cv2`); the hardware-camera sibling of Shoter (Shoter = screen, Camcorder = camera). `capture_mode` ∈ `photo` (default, one `.jpg` shot) / `video` (a `.mp4` segment of `video_duration_seconds`, no audio); `camera_index` picks the device; `resolution_width`/`resolution_height` default `0×0` = camera-native (set `W×H` to request a mode, read back + logged). Saves to `Pictures/TlamatiniCamcorder`. Observational (NOT in the Exec Report); emits `INI_SECTION_CAMCORDER` and always triggers `target_agents`. Needs `opencv-python`. Canvas counterpart of `chat_agent_camcorder`
+- **Recorder** — Microphone / audio-input capture via `sounddevice`, saved as a WAV (stdlib `wave`); the audio sibling of the capture trio (Shoter = screen, Camcorder = camera, Recorder = sound). Records from the system DEFAULT input device for `record_seconds` (pick another mic with `device_index` — the agent logs the numbered device list at startup — or by name substring with `device_name`); `sample_rate` defaults `0` = device-native (read back + logged), `channels` defaults mono (clamped to the device max), `input_gain_percent` is post-capture digital gain (`100` = unity — amplifying may CLIP, so `clipped_samples` is reported). Saves to `Music/TlamatiniRecords`. Observational (NOT in the Exec Report); emits `INI_SECTION_RECORDER` and always triggers `target_agents`. Needs `sounddevice`. Canvas counterpart of `chat_agent_recorder`
 - **Mouser** — Mouse pointer movement (7 movement types)
 - **Keyboarder** — Keyboard typing / hotkey automation (robust parser)
 - **Windower** — Win32 window manager (pywin32 + ctypes, self-contained; ports the window-management subset of Microsoft's Windows-MCP incl. the `AttachThreadInput` cross-process focus dance). The third member of the desktop-UI trio — acts on the WINDOW itself (Windower = the window, Mouser = clicks inside it, Keyboarder = types into it). `action` ∈ list / focus / minimize / maximize / restore / move / resize / move_resize / close / topmost / untopmost / arrange (snap/tile to halves, quadrants, center, full); matches `window_title` by substring/exact/regex (+ `match_index`); emits `INI_SECTION_WINDOWER` (`action`/`window_title`/`matched`/`match_count`/`state`/`left`/`top`/`width`/`height`/`response_body`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_windower` Multi-Turn tool
