@@ -109,6 +109,7 @@ SECTION_AGENT_TYPES = [
     'googler',
     'acpxer',
     'shoter',
+    'camcorder',
     'mouser',
     'windower',
     'unrealer',

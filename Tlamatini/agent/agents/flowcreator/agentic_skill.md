@@ -1697,7 +1697,24 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 70. FlowCreator
+### 70. Camcorder
+- **Purpose**: Captures from a SYSTEM CAMERA (webcam) using OpenCV. On trigger it opens the configured camera and either takes ONE photo (the default) or records a video segment of `video_duration_seconds`, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_CAMCORDER` block (`output_path`, `output_dir`, `filename`, `media_type`, `camera_index`, `duration_seconds`, `resolution`, `fps`, plus a `response_body`), and always triggers `target_agents`. It is read-only/observational (like Shoter) — it does NOT appear in the Exec Report.
+- **Used for**: Grabbing a webcam still or recording a short clip as an unattended flow step — visual proof-of-presence, time-lapse stills, "what does the camera see", or a recorded segment for a downstream Image-Interpreter / File-Creator. Distinct from **Shoter**, which captures the SCREEN; Camcorder captures the physical CAMERA. Files default to the user's Pictures folder under `TlamatiniCamcorder`.
+- **Aimed at**: Visual capture pipelines from real cameras. Pair `capture_mode: photo` → Parametrizer (carry `{output_path}`) → Image-Interpreter to analyze the shot, or schedule with a Croner for periodic snapshots. The default mode is a single photo; switch `capture_mode` to `video` with a `video_duration_seconds` to record. **Resolution is optional**: leave `resolution_width`/`resolution_height` at 0 to use the camera's native resolution (recommended — a webcam only supports a discrete set of modes), or request a specific one (the applied value is read back into the log + INI block). Pick a non-default camera on multi-camera machines with `camera_index`.
+- **Application example**: Starter → Camcorder (`capture_mode: photo`, `camera_index: 0`) → Parametrizer (map `{output_path}` into the next node's `image_path`) → Image-Interpreter ("Describe who/what is in front of the camera") → Forker (branch on the description) → Ender. Or a recording flow: Starter → Camcorder (`capture_mode: video`, `video_duration_seconds: 15`) → File-Creator (log the saved clip path) → Ender.
+- **Pool name pattern**: `camcorder_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `camera_index`: 0 (OpenCV device index; 0 = default camera, set 1/2/... for others)
+  - `capture_mode`: "photo" ("photo" = one shot, the default | "video" = record a segment)
+  - `video_duration_seconds`: 10 (record length when capture_mode == video)
+  - `video_fps`: 20.0 (target FPS for video; the camera's reported FPS is preferred when sane)
+  - `resolution_width`: 0 / `resolution_height`: 0 (0 x 0 = camera native resolution; W x H requests a specific one)
+  - `warmup_seconds`: 1.0 (let the camera auto-expose before capture)
+  - `output_dir`: "" ("" = <User Pictures>/TlamatiniCamcorder)
+  - `target_agents`: [] (downstream agents to start after the capture)
+
+### 71. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.

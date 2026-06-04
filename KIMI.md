@@ -20,7 +20,7 @@
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **70** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **71** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -113,7 +113,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 70-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 71-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -202,7 +202,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 70 workflow agent templates
+│   │   ├── agents/                 # 71 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -270,7 +270,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── analyzer/           # Deterministic static/security scanner (no LLM)
 │   │   │   ├── stm32er/            # STM32 firmware bridge (STM32 Template Project MCP)
 │   │   │   ├── esp32er/            # ESP32 firmware bridge (PlatformIO pio CLI, no MCP)
-│   │   │   └── arduiner/           # Arduino firmware bridge (arduino-cli, no MCP)
+│   │   │   ├── arduiner/           # Arduino firmware bridge (arduino-cli, no MCP)
+│   │   │   └── camcorder/          # Webcam capture (OpenCV) — photo/video, Shoter's camera sibling
 │   │   │
 │   │   ├── services/               # Backend services
 │   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
@@ -450,7 +451,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-45 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, and `chat_agent_arduiner`). Key ones:
+46 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, and `chat_agent_camcorder`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -465,6 +466,7 @@ Chain types in `agent/rag/chains/`:
 - `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph`
 - `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`
 - `chat_agent_stm32er` (STM32 firmware), `chat_agent_esp32er` (ESP32 firmware via PlatformIO), `chat_agent_arduiner` (Arduino firmware via arduino-cli)
+- `chat_agent_camcorder` (webcam photo/video capture via OpenCV)
 - `chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop` (management)
 - `chat_agent_run_wait` (blocking wait)
 - `chat_agent_sleeper` (delay helper)
@@ -674,6 +676,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Mover** — File move/copy with glob patterns
 - **Deleter** — File deletion with glob patterns
 - **Shoter** — Screenshot capture (silent, structured output)
+- **Camcorder** — Physical-camera (webcam) capture via OpenCV (`cv2`); the hardware-camera sibling of Shoter (Shoter = screen, Camcorder = camera). `capture_mode` ∈ `photo` (default, one `.jpg` shot) / `video` (a `.mp4` segment of `video_duration_seconds`, no audio); `camera_index` picks the device; `resolution_width`/`resolution_height` default `0×0` = camera-native (set `W×H` to request a mode, read back + logged). Saves to `Pictures/TlamatiniCamcorder`. Observational (NOT in the Exec Report); emits `INI_SECTION_CAMCORDER` and always triggers `target_agents`. Needs `opencv-python`. Canvas counterpart of `chat_agent_camcorder`
 - **Mouser** — Mouse pointer movement (7 movement types)
 - **Keyboarder** — Keyboard typing / hotkey automation (robust parser)
 - **Windower** — Win32 window manager (pywin32 + ctypes, self-contained; ports the window-management subset of Microsoft's Windows-MCP incl. the `AttachThreadInput` cross-process focus dance). The third member of the desktop-UI trio — acts on the WINDOW itself (Windower = the window, Mouser = clicks inside it, Keyboarder = types into it). `action` ∈ list / focus / minimize / maximize / restore / move / resize / move_resize / close / topmost / untopmost / arrange (snap/tile to halves, quadrants, center, full); matches `window_title` by substring/exact/regex (+ `match_index`); emits `INI_SECTION_WINDOWER` (`action`/`window_title`/`matched`/`match_count`/`state`/`left`/`top`/`width`/`height`/`response_body`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_windower` Multi-Turn tool

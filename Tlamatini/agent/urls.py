@@ -97,6 +97,7 @@ urlpatterns = [
     path('update_counter_connection/<str:agent_name>/', secure_post(views.update_counter_connection_view), name='update_counter_connection'),
     path('flash_window/', secure_post(views.flash_window_view), name='flash_window'),
     path('update_shoter_connection/<str:agent_name>/', secure_post(views.update_shoter_connection_view), name='update_shoter_connection'),
+    path('update_camcorder_connection/<str:agent_name>/', secure_post(views.update_camcorder_connection_view), name='update_camcorder_connection'),
     path('update_ssher_connection/<str:agent_name>/', secure_post(views.update_ssher_connection_view), name='update_ssher_connection'),
     path('update_scper_connection/<str:agent_name>/', secure_post(views.update_scper_connection_view), name='update_scper_connection'),
     path('update_teletlamatini_connection/<str:agent_name>/', secure_post(views.update_teletlamatini_connection_view), name='update_teletlamatini_connection'),

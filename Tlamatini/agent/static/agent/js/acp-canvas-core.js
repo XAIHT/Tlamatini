@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -187,6 +187,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'cleaner': 'cleaner-agent',
     'sleeper': 'sleeper-agent',
     'shoter': 'shoter-agent',
+    'camcorder': 'camcorder-agent',
     'keyboarder': 'keyboarder-agent',
     'recmailer': 'recmailer-agent',
     'notifier': 'notifier-agent',
@@ -881,6 +882,7 @@ function removeConnection(conn) {
 
         if (targetAgentName.toLowerCase() === 'cleaner') updateCleanerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'cleaner') updateCleanerConnection(sourceId, 'target', targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'camcorder') updateCamcorderConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'mover') updateMoverConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'mover') updateMoverConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'deleter') updateDeleterConnection(targetId, sourceId, 'remove', 'source');
@@ -1003,6 +1005,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'starter' && !sourceBeingDeleted) updateStarterConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'cleaner' && !targetBeingDeleted) updateCleanerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'cleaner' && !sourceBeingDeleted) updateCleanerConnection(sourceId, 'target', targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'camcorder' && !sourceBeingDeleted) updateCamcorderConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'mover' && !targetBeingDeleted) updateMoverConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'mover' && !sourceBeingDeleted) updateMoverConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'deleter' && !targetBeingDeleted) updateDeleterConnection(targetId, sourceId, 'remove', 'source');
@@ -1472,6 +1475,7 @@ function initCanvasEvents() {
                     if (targetAgentName.toLowerCase() === 'sleeper') updateSleeperConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'sleeper') updateSleeperConnection(sourceId, targetId, 'add', 'target');
                     if (sourceAgentName.toLowerCase() === 'shoter') updateShoterConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'camcorder') updateCamcorderConnection(sourceId, targetId, 'add');
                     if (targetAgentName.toLowerCase() === 'deleter') updateDeleterConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'deleter') updateDeleterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'executer') updateExecuterConnection(targetId, sourceId, 'add', 'source');

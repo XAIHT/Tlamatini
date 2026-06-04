@@ -1,0 +1,44 @@
+# Camcorder Agent Configuration
+# ---------------------------------------------------------------------------
+# Captures from a system camera (webcam) and saves the result to disk.
+# DEFAULT MODE is a SINGLE photo. Set capture_mode to "video" to record a
+# segment of video_duration_seconds.
+
+# Which camera to use. 0 = the system DEFAULT camera. If the machine has more
+# than one camera, set 1, 2, ... to pick another (OpenCV device index).
+camera_index: 0
+
+# "photo" -> take ONE shot (THE DEFAULT).
+# "video" -> record a video segment of video_duration_seconds (no audio).
+capture_mode: "photo"
+
+# How many seconds to record when capture_mode == "video". Ignored for photos.
+video_duration_seconds: 10
+
+# Frames-per-second TARGET when recording video. The camera's real FPS is read
+# back and preferred when it reports a sane value; this is the fallback/request.
+video_fps: 20.0
+
+# Resolution policy (see the Camcorder docs for the full analysis):
+#   0 x 0  -> use the camera's NATIVE/default resolution (RECOMMENDED). A webcam
+#            only supports a discrete set of modes; forcing an unsupported one
+#            makes OpenCV silently snap to the nearest, so the safe default is
+#            to let the camera pick. The applied resolution is logged either way.
+#   W x H  -> REQUEST this resolution (e.g. 1280 x 720). The value the driver
+#            actually applies is read back and written to the log + the
+#            INI_SECTION_CAMCORDER block.
+resolution_width: 0
+resolution_height: 0
+
+# Seconds to let the camera warm up / auto-expose before the capture. Cheap
+# webcams return dark first frames; a short warmup yields a usable image.
+warmup_seconds: 1.0
+
+# Output directory for the saved media. Leave empty ("") to use the default:
+#   <User Pictures folder>/TlamatiniCamcorder
+# (On a Spanish Windows the Pictures known-folder is shown as "Imagenes".)
+output_dir: ""
+
+# Downstream agents to start after the capture finishes (canvas connection
+# tracking). Camcorder ALWAYS triggers these once the file is saved.
+target_agents: []
