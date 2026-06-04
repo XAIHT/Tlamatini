@@ -1822,6 +1822,24 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #06b6d4 0%, #d946ef 100%);
 }
 
+/* Camcorder Agent - Webcam photo / video capture (Cinematic charcoal -> REC-red -> amber -> gold) */
+.canvas-item.camcorder-agent {
+    background-color: #c1121f;
+    background: linear-gradient(135deg, #1a1a2e 0%, #c1121f 33%, #f08700 66%, #ffd60a 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.camcorder-agent:hover {
+    background: linear-gradient(135deg, #2a2a44 0%, #e63946 33%, #ffa733 66%, #ffe566 100%);
+    box-shadow: 0 6px 15px rgba(193, 18, 31, 0.5);
+}
+
+/* Camcorder agent icon in sidebar */
+.agent-tool-item[data-content="Camcorder"] .agent-tool-icon {
+    background: linear-gradient(135deg, #1a1a2e 0%, #c1121f 33%, #f08700 66%, #ffd60a 100%);
+}
+
 /* Ssher Agent Styles - SSH remote execution (Dark Blue to Red gradient) */
 .canvas-item.ssher-agent {
     background-color: #1a237e;

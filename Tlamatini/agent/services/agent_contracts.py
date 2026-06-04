@@ -88,6 +88,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "googler": ("url", "status", "content_length", "response_body"),
     "acpxer": ("agent_id", "session_id", "transport", "settle", "transcript_path", "response_body"),
     "shoter": ("output_path", "output_dir", "filename", "response_body"),
+    "camcorder": ("output_path", "output_dir", "filename", "media_type", "camera_index", "duration_seconds", "resolution", "fps", "response_body"),
     "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
     "windower": ("action", "window_title", "matched", "match_count", "state", "left", "top", "width", "height", "response_body"),
     "unrealer": ("host", "port", "command", "status", "error", "response_body"),

@@ -362,6 +362,7 @@ export default [
                 updateMoverConnection: "readonly",
                 updateSleeperConnection: "readonly",
                 updateShoterConnection: "readonly",
+                updateCamcorderConnection: "readonly",
                 updateDeleterConnection: "readonly",
                 updateExecuterConnection: "readonly",
                 updateStopperConnection: "readonly",

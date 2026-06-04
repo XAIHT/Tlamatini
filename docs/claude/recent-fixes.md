@@ -10,6 +10,15 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-03 — Camcorder agent (#71): webcam photo/video, the observational sibling of Shoter
+
+New workflow agent **Camcorder** (`agent/agents/camcorder/`) — physical-camera capture via OpenCV (`cv2`), on BOTH the canvas and Multi-Turn (`chat_agent_camcorder`). It is the hardware-camera peer of Shoter (Shoter = screen, Camcorder = camera) and, like Shoter, is **observational → deliberately NOT in `_EXEC_REPORT_TOOLS`** (it records, it doesn't mutate state). Things to keep aligned / not revert:
+
+- **Defaults that matter:** `capture_mode` defaults to `photo` (ONE shot, `.jpg`); `video` records `video_duration_seconds` (no audio, `.mp4`/`mp4v`). `resolution_width`/`resolution_height` default to `0×0` = the camera's NATIVE mode on purpose — webcams only support discrete modes, so forcing an unsupported one snaps to the nearest; when a `W×H` is requested the **read-back applied** value is logged. Do not "default" these to a fixed resolution.
+- **Output location:** the Pictures known-folder (`SHGetKnownFolderPath` FOLDERID_Pictures via `ctypes`, fallback `~/Pictures`) under `TlamatiniCamcorder`, collision-proof timestamped filename. (Captured media are user deliverables, not scratch — so this is NOT under `<app>/Temp`; that's intentional and consistent with the 2026-06-02 policy, which governs *transient* files.)
+- **Wiring (mirrors Shoter, plus the bits Shoter lacks):** `update_camcorder_connection_view` (views.py, target-only producer) + urls.py route; migrations **0112** (Agent row) / **0113** (Tool row); `ChatWrappedAgentSpec` in `chat_agent_registry.py`; `_PARAMETRIZER_OUTPUT_FIELDS['camcorder']` in `services/agent_contracts.py`; `'camcorder'` in `parametrizer.py` `SECTION_AGENT_TYPES`; `opencv-python==4.13.0.92` in `requirements.txt`. Frontend: unique CSS gradient (charcoal→REC-red→amber→gold), and the FULL connection set in `acp-canvas-core.js` (classMap + mouseup + `removeConnection` + `removeConnectionsFor` — more complete than Shoter, which is missing the remove paths), undo/redo in `acp-canvas-undo.js`, `.flw` load in `acp-file-io.js`, `updateCamcorderConnection` connector, `_mapToolArgsToAgentConfig` branch in `agent_page_chat.js`, eslint global + 3 `/* global */` headers.
+- Emits an atomic `INI_SECTION_CAMCORDER` block (`output_path`/`output_dir`/`filename`/`media_type`/`camera_index`/`duration_seconds`/`resolution`/`fps`/`response_body`) and ALWAYS triggers `target_agents`. 22 tests; E2E-verified against a real camera. **Frozen needs `python build.py`** (bundles OpenCV + the agent dir) and a `migrate`. Memory: `project_camcorder_agent`.
+
 ### 2026-06-02 — Temp + Templates directory policy (all transient files stay INSIDE Tlamatini)
 
 Two application-root directories now own every non-source file Tlamatini writes. **Do NOT revert** the resolution/enforcement or the LLM indications:

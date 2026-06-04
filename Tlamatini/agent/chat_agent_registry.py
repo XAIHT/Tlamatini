@@ -263,6 +263,37 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         ),
     ),
     ChatWrappedAgentSpec(
+        key="camcorder",
+        template_dir="camcorder",
+        tool_name="chat_agent_camcorder",
+        tool_description="Chat-Agent-Camcorder",
+        display_name="Camcorder",
+        purpose=(
+            "Capture from a SYSTEM CAMERA (webcam): take a single PHOTO (the default) or "
+            "record a VIDEO segment of a given number of seconds. Distinct from chat_agent_shoter, "
+            "which captures the SCREEN — use Camcorder for the physical camera / webcam, a selfie, "
+            "'what does the camera see', or recording a clip. The wrapped result includes a top-level "
+            "'output_path' field with the absolute path of the saved file, so you do NOT need to parse "
+            "the log to find it. By default the file lands in the user's Pictures folder under "
+            "TlamatiniCamcorder with a timestamped, collision-proof name. To record video, pass "
+            "capture_mode='video' and video_duration_seconds=N. To pick a non-default camera on a "
+            "multi-camera machine, pass camera_index=1 (2, 3, ...). Resolution is OPTIONAL — omit it "
+            "to use the camera's native resolution (recommended), or pass resolution_width/"
+            "resolution_height to request a specific one."
+        ),
+        example_request=(
+            "Take a photo with camera_index=0, OR record video with capture_mode='video' and "
+            "video_duration_seconds=15 and camera_index=0 and output_dir='E:\\Clips'"
+        ),
+        aliases=("camcorder", "camera", "webcam", "take a photo", "record video", "selfie"),
+        security_hints=(
+            "camera", "webcam", "camcorder", "take a photo", "take a picture",
+            "record video", "record a clip", "selfie", "capture from camera",
+            "what does the camera see",
+        ),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
         key="mouser",
         template_dir="mouser",
         tool_name="chat_agent_mouser",

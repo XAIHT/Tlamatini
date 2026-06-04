@@ -880,6 +880,36 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     } else if (lower === 'shoter') {
         set('output_dir', pairs.output_path || pairs.output_dir);
 
+    // ── Camcorder ────────────────────────────────────────────────────
+    // Template fields: camera_index, capture_mode, video_duration_seconds,
+    //                  video_fps, resolution_width, resolution_height,
+    //                  warmup_seconds, output_dir
+    } else if (lower === 'camcorder') {
+        if (pairs.camera_index !== undefined && pairs.camera_index !== '') {
+            const ci = parseInt(pairs.camera_index, 10);
+            if (!Number.isNaN(ci)) config.camera_index = ci;
+        }
+        set('capture_mode', pairs.capture_mode);
+        if (pairs.video_duration_seconds !== undefined && pairs.video_duration_seconds !== '') {
+            const vd = parseInt(pairs.video_duration_seconds, 10);
+            if (!Number.isNaN(vd)) config.video_duration_seconds = vd;
+        }
+        if (pairs.video_fps !== undefined && pairs.video_fps !== '') {
+            const vf = parseFloat(pairs.video_fps);
+            if (!Number.isNaN(vf)) config.video_fps = vf;
+        }
+        for (const k of ['resolution_width', 'resolution_height']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        if (pairs.warmup_seconds !== undefined && pairs.warmup_seconds !== '') {
+            const ws = parseFloat(pairs.warmup_seconds);
+            if (!Number.isNaN(ws)) config.warmup_seconds = ws;
+        }
+        set('output_dir', pairs.output_dir);
+
     // ── Windower ─────────────────────────────────────────────────────
     // Template fields: action, window_title, match_mode, match_index,
     //                  pos_x, pos_y, width, height, arrange_mode,
