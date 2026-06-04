@@ -447,6 +447,7 @@ def main():
             "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
             "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
             "pymongo", "pyodbc", "win32gui",        # db / windows agents
+            "sounddevice",                          # microphone capture (Recorder) — native PortAudio
         ]
         verify_src = "\n".join([
             "import importlib",

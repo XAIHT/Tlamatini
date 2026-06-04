@@ -23,6 +23,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -415,6 +416,22 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("camcorder" in subject or "recorder" in subject for subject in subjects):
+        highlights.append(
+            "New observational capture pair: Camcorder (webcam photo/video via OpenCV) and Recorder (microphone WAV via sounddevice) — read-only siblings of Shoter, on the canvas and as wrapped chat_agent_camcorder / chat_agent_recorder tools."
+        )
+    if any("arduiner" in subject or "arduino" in subject for subject in subjects):
+        highlights.append(
+            "Arduiner added as the third microcontroller agent: a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight."
+        )
+    if any("flow-making" in subject or "flow making" in subject or "flw" in subject for subject in subjects):
+        highlights.append(
+            "The new in-process flow-making skill turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so operators build runnable flows straight from chat."
+        )
+    if any("temp/template" in subject or "template generation" in subject for subject in subjects):
+        highlights.append(
+            "Directory policy: every transient file now stays under <app>/Temp and every scaffolded firmware/engine project tree under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts."
+        )
     if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
             "Today’s headline change is `v1.12.0` ESP32er: Tlamatini now reaches 69 workflow agents and adds a direct PlatformIO Core bridge, so she can scaffold, author, build, upload, and monitor ESP32-class firmware from chat or canvas without an external MCP server."
@@ -553,6 +570,22 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("camcorder" in subject or "recorder" in subject for subject in subjects):
+        highlights.append(
+            "New observational capture pair: Camcorder (webcam photo/video via OpenCV) and Recorder (microphone WAV via sounddevice) — read-only siblings of Shoter, on the canvas and as wrapped chat_agent_camcorder / chat_agent_recorder tools."
+        )
+    if any("arduiner" in subject or "arduino" in subject for subject in subjects):
+        highlights.append(
+            "Arduiner added as the third microcontroller agent: a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight."
+        )
+    if any("flow-making" in subject or "flow making" in subject or "flw" in subject for subject in subjects):
+        highlights.append(
+            "The new in-process flow-making skill turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so operators build runnable flows straight from chat."
+        )
+    if any("temp/template" in subject or "template generation" in subject for subject in subjects):
+        highlights.append(
+            "Directory policy: every transient file now stays under <app>/Temp and every scaffolded firmware/engine project tree under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts."
+        )
     if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, `v1.12.0` added ESP32er as the 69th workflow agent and `chat_agent_esp32er` as the new embedded-firmware surface: she now drives PlatformIO Core directly to scaffold, build, upload, and monitor ESP32-class firmware with zero-config bootstrap and a serial-aware safety preflight."
@@ -1163,12 +1196,12 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, esp32er, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, esp32er, arduiner, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
     ("Communication", "notifier, emailer, recmailer, telegramer, telegramrx, teletlamatini, whatsapper, whatstlamatini"),
-    ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, shoter, j_decompiler"),
+    ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, shoter, camcorder, recorder, j_decompiler"),
     ("Workflow intelligence", "flowcreator, gatewayer, gateway_relayer, node_manager, parametrizer, prompter, summarizer, acpxer"),
 ]
 
@@ -1300,6 +1333,24 @@ def pdf_page_footer(canvas, doc) -> None:
     canvas.restoreState()
 
 
+def cover_image_flowable(image_path: Path, max_width: float, max_height: float) -> Image:
+    """Return a reportlab Image scaled to fit WITHIN ``max_width`` x ``max_height``
+    (points) while PRESERVING the source image's natural aspect ratio — so the
+    cover is letter-boxed, never stretched. Falls back to the box size if the
+    image's dimensions cannot be read."""
+    try:
+        src_w, src_h = ImageReader(str(image_path)).getSize()
+    except Exception:
+        src_w = src_h = 0
+    if src_w <= 0 or src_h <= 0:
+        img = Image(str(image_path), width=max_width, height=max_height)
+    else:
+        scale = min(max_width / src_w, max_height / src_h)
+        img = Image(str(image_path), width=src_w * scale, height=src_h * scale)
+    img.hAlign = "CENTER"
+    return img
+
+
 def build_pdf(context: dict) -> None:
     styles = pdf_styles()
     doc = SimpleDocTemplate(
@@ -1324,7 +1375,7 @@ def build_pdf(context: dict) -> None:
     )
     if cover_image.exists():
         try:
-            story.append(Image(str(cover_image), width=6.8 * inch, height=3.8 * inch))
+            story.append(cover_image_flowable(cover_image, 6.8 * inch, 3.8 * inch))
             story.append(Spacer(1, 12))
         except Exception:
             pass
@@ -1766,6 +1817,38 @@ def add_text(
     audit.append((x, y, w, h, name))
 
 
+def fit_bullet_size(
+    bullets: list[str],
+    box_w_in: float,
+    box_h_in: float,
+    max_size: float,
+    min_size: float = 9.0,
+    space_after_pt: float = 4.0,
+) -> int:
+    """Deterministically pick the LARGEST font size in [min_size, max_size] at
+    which the bullet block is estimated to fit inside ``box_w_in`` x ``box_h_in``.
+
+    This does NOT rely on ``TextFrame.fit_text`` — that path silently fails when
+    PowerPoint cannot resolve the display font (Aptos) on the build host, which is
+    exactly why dense cards used to overflow. The estimate is intentionally
+    CONSERVATIVE (slightly over-counts wrapped lines and reserves a vertical
+    gutter) so rendered text never spills its card. ``space_after_pt`` must match
+    the paragraph spacing used by :func:`add_bullets`."""
+    usable_w_pt = max(box_w_in * 72.0 - 30.0, 36.0)   # minus bullet glyph + indent + margins
+    budget_h_pt = box_h_in * 72.0 * 0.93              # keep a safety gutter
+    lo, hi = int(round(min_size)), int(round(max_size))
+    for size in range(hi, lo - 1, -1):
+        chars_per_line = max(int(usable_w_pt / (0.52 * size)), 6)
+        line_h = 1.26 * size
+        total = 0.0
+        for text in bullets:
+            n_lines = max(1, -(-len(str(text)) // chars_per_line))  # ceil
+            total += n_lines * line_h + space_after_pt
+        if total <= budget_h_pt:
+            return size
+    return lo
+
+
 def add_bullets(
     slide,
     audit: list[tuple[float, float, float, float, str]],
@@ -1783,24 +1866,24 @@ def add_bullets(
     frame.clear()
     frame.word_wrap = True
     frame.vertical_anchor = MSO_ANCHOR.TOP
+    # Backstop only: PowerPoint may re-shrink on edit. The deterministic size
+    # computed below is the primary guarantee against overflow.
     frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
     frame.margin_left = Pt(3)
     frame.margin_right = Pt(3)
     frame.margin_top = Pt(2)
     frame.margin_bottom = Pt(2)
+    space_after_pt = 4.0
+    fitted = fit_bullet_size(bullets, w, h, size, space_after_pt=space_after_pt)
     for idx, item in enumerate(bullets):
         para = frame.paragraphs[0] if idx == 0 else frame.add_paragraph()
         para.text = item
         para.level = 0
         para.font.name = "Aptos"
-        para.font.size = Pt(size)
+        para.font.size = Pt(fitted)
         para.font.color.rgb = color or THEME["muted"]
-        para.space_after = Pt(6)
+        para.space_after = Pt(space_after_pt)
         para.bullet = True
-    try:
-        frame.fit_text(max_size=size)
-    except Exception:
-        frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
     audit.append((x, y, w, h, name))
 
 
@@ -1907,6 +1990,37 @@ def add_slide(prs: Presentation, title: str, kicker: str, accent: RGBColor, imag
     return slide, audit
 
 
+def add_themed_column_slides(
+    prs: Presentation,
+    title: str,
+    kicker: str,
+    accent: RGBColor,
+    columns: list[tuple[str, RGBColor, list[str]]],
+    per_column: int = 5,
+    top: float = 1.58,
+    height: float = 5.0,
+    size: int = 14,
+) -> None:
+    """Render labelled columns of bullets, PAGINATING onto as many slides as
+    needed so no column ever holds more than ``per_column`` bullets — the
+    "split into more slides" rule that keeps dense content from overflowing its
+    cards. Each ``columns`` entry is ``(header, accent, items)``; a column's
+    items beyond ``per_column`` continue, in the same lane, on the next page."""
+    margin, gap = 0.72, 0.3
+    n = len(columns)
+    col_w = (SLIDE_W - 2 * margin - (n - 1) * gap) / n
+    max_items = max((len(items) for _, _, items in columns), default=0)
+    pages = max(1, -(-max_items // per_column))  # ceil
+    for page in range(pages):
+        page_title = title if pages == 1 else f"{title} ({page + 1}/{pages})"
+        slide, audit = add_slide(prs, page_title, kicker, accent)
+        for ci, (header, col_accent, items) in enumerate(columns):
+            seg = items[page * per_column:(page + 1) * per_column]
+            x = margin + ci * (col_w + gap)
+            add_panel(slide, audit, x, top, col_w, height, header, seg, col_accent, f"col-{page}-{ci}", size)
+        audit_layout(audit, len(prs.slides))
+
+
 def language_table_text(rows: list[LineStats], total_effective: int) -> str:
     lines = ["LANGUAGE                 FILES   EFFECTIVE      TOTAL   SHARE"]
     for row in rows:
@@ -1969,17 +2083,24 @@ def build_ppt(context: dict) -> None:
     ], THEME["copper"], "identity-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "What The System Does", "capability map", THEME["copper"])
-    add_panel(slide, audit, 0.72, 1.56, 3.85, 4.95, "Knowledge", WHAT_IT_DOES[:6], THEME["jade"], "does-a", 13)
-    add_panel(slide, audit, 4.86, 1.56, 3.85, 4.95, "Action", WHAT_IT_DOES[6:12], THEME["copper"], "does-b", 13)
-    add_panel(slide, audit, 9.0, 1.56, 3.35, 4.95, "Delivery", WHAT_IT_DOES[12:], THEME["amber"], "does-c", 12)
-    audit_layout(audit, len(prs.slides))
+    add_themed_column_slides(prs, "What The System Does", "capability map", THEME["copper"], [
+        ("Knowledge", THEME["jade"], WHAT_IT_DOES[:6]),
+        ("Action", THEME["copper"], WHAT_IT_DOES[6:12]),
+        ("Delivery", THEME["amber"], WHAT_IT_DOES[12:]),
+    ], per_column=5)
 
     slide, audit = add_slide(prs, "How It Works", "execution pipeline", THEME["jade"])
-    add_flow_boxes(slide, audit, 0.82, 2.0, ["Browser", "Channels", "RAG", "Planner", "Tools", "Answer"], THEME["jade"])
-    add_panel(slide, audit, 0.78, 3.25, 5.85, 3.05, "Request path", HOW_IT_WORKS[:8], THEME["jade"], "works-a", 12)
-    add_panel(slide, audit, 6.92, 3.25, 5.55, 3.05, "Runtime path", HOW_IT_WORKS[8:], THEME["copper"], "works-b", 12)
+    add_flow_boxes(slide, audit, 0.95, 2.6, ["Browser", "Channels", "RAG", "Planner", "Tools", "Answer"], THEME["jade"])
+    add_panel(slide, audit, 0.82, 4.0, 11.55, 2.45, "Request-to-answer flow", [
+        "A browser request flows through Django Channels into the RAG/context layer, the Multi-Turn planner, the tool executor, and back as a synthesized answer.",
+        "The next two pages detail the request path (intake, retrieval, permission gating) and the runtime path (planning, tool execution, agent bridges, packaging).",
+    ], THEME["jade"], "works-intro", 15)
     audit_layout(audit, len(prs.slides))
+
+    add_themed_column_slides(prs, "How It Works — Detail", "execution pipeline", THEME["jade"], [
+        ("Request path", THEME["jade"], HOW_IT_WORKS[:11]),
+        ("Runtime path", THEME["copper"], HOW_IT_WORKS[11:]),
+    ], per_column=6)
 
     slide, audit = add_slide(prs, "Design Principles", "how the software is shaped", THEME["amber"])
     add_panel(slide, audit, 0.82, 1.72, 11.55, 4.75, "Core design choices", DESIGN_PRINCIPLES, THEME["amber"], "design", 16)
@@ -2150,10 +2271,10 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "gate-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "How To Use Tlamatini", "operator path", THEME["jade"])
-    add_panel(slide, audit, 0.72, 1.56, 5.9, 5.0, "Daily use", HOW_TO_USE[:6], THEME["jade"], "use-a", 13)
-    add_panel(slide, audit, 6.92, 1.56, 5.65, 5.0, "Workflows and releases", HOW_TO_USE[6:], THEME["copper"], "use-b", 13)
-    audit_layout(audit, len(prs.slides))
+    add_themed_column_slides(prs, "How To Use Tlamatini", "operator path", THEME["jade"], [
+        ("Daily use", THEME["jade"], HOW_TO_USE[:10]),
+        ("Workflows and releases", THEME["copper"], HOW_TO_USE[10:]),
+    ], per_column=5)
 
     slide, audit = add_slide(prs, "Source Mode Bootstrap", "commands that matter", THEME["copper"])
     commands = "\n".join([
@@ -2173,7 +2294,11 @@ def build_ppt(context: dict) -> None:
 
     slide, audit = add_slide(prs, "Installation And Configuration", "README-backed operator path", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.85, 4.95, "Install essentials", INSTALLATION_GUIDE, THEME["jade"], "install-a", 15)
-    add_panel(slide, audit, 6.92, 1.6, 5.55, 4.95, "Config essentials", CONFIGURATION_GUIDE, THEME["copper"], "install-b", 15)
+    add_panel(slide, audit, 6.92, 1.6, 5.55, 4.95, "Config essentials", CONFIGURATION_GUIDE[:4], THEME["copper"], "install-b", 14)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Configuration Essentials (continued)", "README-backed operator path", THEME["jade"])
+    add_panel(slide, audit, 0.82, 1.6, 11.55, 4.95, "Config essentials", CONFIGURATION_GUIDE[4:], THEME["copper"], "install-c", 15)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "ACPX-Skills And Prompts", "recent operator-surface documentation updates", THEME["amber"])
@@ -2226,8 +2351,8 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Ollama Without Admin Rights", "local model setup on Windows", THEME["amber"])
-    add_text(slide, audit, 0.85, 1.72, 11.55, 3.45, OLLAMA_COMMANDS, 9, THEME["white"], False, name="ollama-commands", font="Cascadia Mono")
-    add_panel(slide, audit, 0.85, 5.32, 11.55, 1.0, "Checklist", OLLAMA_GUIDE[:2], THEME["amber"], "ollama-check", 14)
+    add_text(slide, audit, 0.85, 1.72, 11.55, 3.2, OLLAMA_COMMANDS, 9, THEME["white"], False, name="ollama-commands", font="Cascadia Mono")
+    add_panel(slide, audit, 0.85, 5.02, 11.55, 1.9, "Checklist", OLLAMA_GUIDE[:2], THEME["amber"], "ollama-check", 14)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Ollama Readiness", "service, API, and model pulls", THEME["jade"])
@@ -2300,7 +2425,7 @@ def build_ppt(context: dict) -> None:
     ]
     for idx, (label, value) in enumerate(metrics):
         add_metric_card(slide, audit, 0.82 + idx * 2.05, 1.75, 1.75, label, str(value), THEME["jade"] if idx % 2 == 0 else THEME["copper"], f"repo-{idx}")
-    add_panel(slide, audit, 1.05, 3.55, 10.85, 2.05, "Current HEAD", [
+    add_panel(slide, audit, 1.05, 3.1, 10.85, 3.35, "Current HEAD", [
         f"{context['head_short']} - {context['head_subject']}",
         f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",
         f"Generated on {context['generated_at']}",
@@ -2320,6 +2445,21 @@ def build_ppt(context: dict) -> None:
         ], THEME["copper"], "since-a", 13)
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Since-Monday Additions", "newest agents, skill, directory policy, and monitoring coverage", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "New agents — the capture trio + firmware", [
+        "Camcorder: physical-webcam capture via OpenCV — a photo (default) or a short video — saved to Pictures/TlamatiniCamcorder; read-only, the camera sibling of Shoter.",
+        "Recorder: microphone capture via sounddevice to a WAV in Music/TlamatiniRecords, native sample-rate by default — the audio sibling that completes the screen/camera/mic trio.",
+        "Both are observational, so they stay out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool.",
+        "Arduiner: the third microcontroller agent — a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight.",
+    ], THEME["copper"], "monday-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "New skill, policy & monitoring", [
+        "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
+        "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
+        "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with a first-build-downloads-a-large-toolchain caveat.",
+        f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
+    ], THEME["jade"], "monday-b", 13)
+    audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Effective Lines By Language", "no comments, no blanks", THEME["copper"])
     add_metric_card(slide, audit, 0.9, 1.64, 2.35, "Total effective", f"{context['total_effective_lines']:,}", THEME["copper"], "lines-m1")

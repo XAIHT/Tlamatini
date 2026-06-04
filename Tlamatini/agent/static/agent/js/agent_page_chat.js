@@ -910,6 +910,23 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         }
         set('output_dir', pairs.output_dir);
 
+    // ── Recorder ─────────────────────────────────────────────────────
+    // Template fields: device_index, device_name, record_seconds,
+    //                  sample_rate, channels, input_gain_percent, output_dir
+    } else if (lower === 'recorder') {
+        if (pairs.device_index !== undefined && pairs.device_index !== '') {
+            const di = parseInt(pairs.device_index, 10);
+            if (!Number.isNaN(di)) config.device_index = di;
+        }
+        set('device_name', pairs.device_name);
+        for (const k of ['record_seconds', 'sample_rate', 'channels', 'input_gain_percent']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        set('output_dir', pairs.output_dir);
+
     // ── Windower ─────────────────────────────────────────────────────
     // Template fields: action, window_title, match_mode, match_index,
     //                  pos_x, pos_y, width, height, arrange_mode,

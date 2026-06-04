@@ -388,6 +388,25 @@ async function updateCamcorderConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateRecorderConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_recorder_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Recorder ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Recorder ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Recorder ${agentId}:`, error);
+    }
+}
+
 async function updateDeleterConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_deleter_connection/${agentId}/`, {

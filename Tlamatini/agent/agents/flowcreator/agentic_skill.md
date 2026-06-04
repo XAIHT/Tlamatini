@@ -1714,7 +1714,24 @@ system_prompt: |
   - `output_dir`: "" ("" = <User Pictures>/TlamatiniCamcorder)
   - `target_agents`: [] (downstream agents to start after the capture)
 
-### 71. FlowCreator
+### 71. Recorder
+- **Purpose**: Records AUDIO from a system input device (MICROPHONE) using `sounddevice` and saves a WAV (written with the stdlib `wave` module). On trigger it resolves the input device, records `record_seconds` of audio, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_RECORDER` block (`output_path`, `output_dir`, `filename`, `device_index`, `device_name`, `sample_rate`, `channels`, `duration_seconds`, `format`, plus a `response_body`), and always triggers `target_agents`. The audio sibling of Camcorder (camera) and Shoter (screen); read-only/observational, so it does NOT appear in the Exec Report.
+- **Used for**: Capturing sound as an unattended flow step — a voice memo, an ambient-noise sample, a microphone test, or an audio clip for a downstream File-Creator / transcription step. Distinct from Camcorder (camera) and Shoter (screen); Recorder captures the MICROPHONE. Files default to the user's Music folder under `TlamatiniRecords`.
+- **Aimed at**: Audio-capture pipelines from a real microphone. By default it records from the SYSTEM DEFAULT input device — pick another mic on a multi-microphone machine with `device_index` (the agent logs the numbered device list at startup) or by name with `device_name`. **Sampling rate is optional**: leave `sample_rate` at 0 to use the device's native default rate (recommended — the device always supports it), or force one (`44100`/`48000`/`16000`). `channels` defaults to mono (1) and is clamped to the device's max. Pair with a Croner for periodic recordings, or Parametrizer to carry `{output_path}` to a downstream node.
+- **Application example**: Starter → Recorder (`record_seconds: 10`, `device_index: -1`) → Parametrizer (map `{output_path}` into the next node's `file_path`) → File-Creator (log the saved clip path) → Ender. Or a scheduled capture: Croner → Recorder (`sample_rate: 16000`) → Sleeper → Croner (loop).
+- **Pool name pattern**: `recorder_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `device_index`: -1 (-1 = system default mic; 0/1/2/... = a specific PortAudio input-device index)
+  - `device_name`: "" (optional case-insensitive substring to pick the mic by name; only used when device_index is -1)
+  - `record_seconds`: 5 (how many seconds of audio to record)
+  - `sample_rate`: 0 (0 = device native default rate, recommended; or 44100/48000/16000)
+  - `channels`: 1 (1 = mono, the default; 2 = stereo; clamped to the device max)
+  - `input_gain_percent`: 100 (software/digital gain %, 100 = unity/default; 200 = louder, 50 = quieter, 0 = silence; post-capture so amplifying may clip — the clipped-sample count is reported)
+  - `output_dir`: "" ("" = <User Music>/TlamatiniRecords)
+  - `target_agents`: [] (downstream agents to start after the recording)
+
+### 72. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.

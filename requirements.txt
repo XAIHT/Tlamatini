@@ -37,6 +37,14 @@ pillow==12.0.0
 # error rather than a crash, but it MUST be bundled for the frozen build to
 # capture from the camera. Brings its own numpy (compatible with the <2.3.0 pin).
 opencv-python==4.13.0.92
+# Recorder agent (agent/agents/recorder/recorder.py) uses sounddevice to capture
+# audio from a system input device (microphone) into an int16 numpy buffer that
+# the stdlib `wave` module writes out as a WAV. Imported inside the agent so a
+# missing install degrades to a clear error rather than a crash, but it MUST be
+# bundled for the frozen build to record from the mic. The wheel ships the
+# PortAudio binary, so no system PortAudio install is required. Uses the numpy
+# already pinned above (<2.3.0).
+sounddevice==0.5.1
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
 psutil==7.2.2

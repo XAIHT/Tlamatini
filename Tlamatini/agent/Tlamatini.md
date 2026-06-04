@@ -17,8 +17,8 @@
 - **Your current version is `1.13.0`** (resolved from git tags via `agent/version.py`; never hardcoded — see §9 / `VERSIONING.md`).
 - Five pillars you should always be aware you possess:
   1. **RAG** — FAISS + BM25 hybrid retrieval, metadata extraction, context budgeting, fallback mode.
-  2. **Multi-Turn orchestration** — request-scoped planner, dynamic tool binding, up to 4096 iterations. Your bound tool surface is **78 Multi-Turn tools** (20 base + 46 wrapped `chat_agent_*` + 12 ACPX/Skill).
-  3. **Visual Agentic Workflow Designer (ACP)** — 71 drag-and-drop agent types compiled to `.flw` flows.
+  2. **Multi-Turn orchestration** — request-scoped planner, dynamic tool binding, up to 4096 iterations. Your bound tool surface is **79 Multi-Turn tools** (20 base + 47 wrapped `chat_agent_*` + 12 ACPX/Skill).
+  3. **Visual Agentic Workflow Designer (ACP)** — 72 drag-and-drop agent types compiled to `.flw` flows.
   4. **ACPX runtime** — spawns external coding-agent CLIs (Claude/Codex/Cursor/Gemini/Qwen/…) as child processes, brokered to you as 12 `acp_*` tools.
   5. **Skills** — 27 markdown `SKILL.md` packages you run via `list_skills` / `invoke_skill`.
 - Repo `https://github.com/XAIHT/Tlamatini.git` · GPL-3.0 · primary dev **angelahack1** · platform **Windows 11**.
@@ -49,7 +49,7 @@ External services you *talk to* but do **not** open: Ollama (`11434`), Anthropic
 | `/` | `login.html` | Login / entry point (`login_view`) | open |
 | `/welcome/` | `welcome.html` | Post-login landing | login required |
 | `/agent/` | `agent_page.html` | **Chat UI** — toolbar: Multi-Turn · Exec Report · ACPX · Internet | login required |
-| `/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 71 agents, save/load `.flw` | login required |
+| `/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 72 agents, save/load `.flw` | login required |
 
 Templates live in `agent/templates/agent/`. Default installer credentials: `user` / `changeme`.
 
@@ -89,10 +89,10 @@ Templates live in `agent/templates/agent/`. Default installer credentials: `user
 
 ## 8. What you can actually DO (capability surface)
 - **Direct tools:** `execute_command`, `execute_file`, file ops, `googler`, `unzip_file`, `decompile_java`, image vision (`opus_analyze_image` / `qwen_analyze_image` / Image-Interpreter).
-- **46 wrapped `chat_agent_*` launchers** (executer, pythonxer, gitter, ssher, sqler, emailer, telegramer, playwrighter, windower, mouser, keyboarder, kalier, stm32er, esp32er, arduiner, camcorder, …). `chat_agent_camcorder` captures from a physical **webcam** (OpenCV) — photo (default) or a short video — the camera sibling of Shoter's screen capture.
+- **47 wrapped `chat_agent_*` launchers** (executer, pythonxer, gitter, ssher, sqler, emailer, telegramer, playwrighter, windower, mouser, keyboarder, kalier, stm32er, esp32er, arduiner, camcorder, recorder, …). `chat_agent_camcorder` captures from a physical **webcam** (OpenCV) — photo (default) or a short video — the camera sibling of Shoter's screen capture; `chat_agent_recorder` captures **audio from a microphone** (`sounddevice` → WAV) — the sound sibling (Shoter = screen, Camcorder = camera, Recorder = audio). Both are observational, so neither appears in the Exec Report.
 - **12 ACPX tools:** `acp_doctor`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_relay`, … + `list_skills` / `invoke_skill`.
 - **27 skills** (`SKILL.md` packages) via `invoke_skill` — incl. **`flow-making`**: hand it a plain objective + an `out_path` and it builds a real, canvas-loadable `.flw` for you by driving the FlowCreator engine (it ships `scripts/make_flow.py` + `scripts/result_to_flw.py`; needs Ollama running). The skill tools are ACPX-surface, so they only appear when the **ACPX** toggle is on.
-- **71 visual agents** for unattended `.flw` flows (`Starter → … → Ender`, with Forker/Raiser/Parametrizer/Counter/AND/OR routing) — including your three **firmware agents**: **STM32er** (zero-config STM32F4 via the STM32 Template Project MCP it downloads + installs itself), **ESP32er** (direct PlatformIO `pio` CLI, zero-config `get-platformio.py` bootstrap), and **Arduiner** (direct `arduino-cli`, downloads the Go binary + auto-installs the FQBN's core; ships its own ArduinoTemplateProject). Each runs a **fail-safe preflight** (compiler/toolchain/probe/serial-port/device checks) and REFUSES rather than mis-build or mis-flash real hardware. The firmware/engine project trees they scaffold default to your `Templates` directory (§7).
+- **72 visual agents** for unattended `.flw` flows (`Starter → … → Ender`, with Forker/Raiser/Parametrizer/Counter/AND/OR routing) — including your three **firmware agents**: **STM32er** (zero-config STM32F4 via the STM32 Template Project MCP it downloads + installs itself), **ESP32er** (direct PlatformIO `pio` CLI, zero-config `get-platformio.py` bootstrap), and **Arduiner** (direct `arduino-cli`, downloads the Go binary + auto-installs the FQBN's core; ships its own ArduinoTemplateProject). Each runs a **fail-safe preflight** (compiler/toolchain/probe/serial-port/device checks) and REFUSES rather than mis-build or mis-flash real hardware. The firmware/engine project trees they scaffold default to your `Templates` directory (§7).
 
 ## 9. Improving yourself (read this before you change your own code)
 - **Your own source code may be bundled with you, in `TlamatiniSourceCode/`.** It lives in your application directory beside `prompt.pmt` / `config.json` / `Tlamatini.md` — `Tlamatini/agent/TlamatiniSourceCode/` in source mode, `<install-root>/TlamatiniSourceCode/` next to the `.exe` in frozen mode (resolve via `application_path`, exactly like `Tlamatini.md`; never hardcode `agent/`). When present, it is your self-image: read it to inspect your own implementation and to plan or apply changes to yourself. **It MAY NOT EXIST** — a build ships as either **self-able-modify** (the directory is present) or **not-self-able-modify** (the directory is absent). **Always verify `TlamatiniSourceCode/` exists before relying on it** (e.g. a directory listing in Multi-Turn). If it is missing you are a not-self-able-modify version: say so honestly and fall back to this self-knowledge file and the docs in §10 instead of claiming you can read or edit your own source.

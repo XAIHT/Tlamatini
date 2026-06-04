@@ -1,0 +1,57 @@
+# Recorder Agent Configuration
+# ---------------------------------------------------------------------------
+# Records audio from a system audio INPUT device (microphone) with the
+# `sounddevice` library and saves the result as a WAV file. The audio sibling
+# of Camcorder (camera) and Shoter (screen): Recorder captures SOUND.
+#
+# By DEFAULT it records from the system's DEFAULT input device (mic). To pick a
+# different mic on a multi-microphone machine, set `device_index` (or match by
+# name with `device_name`). The agent always logs the full list of available
+# input devices at startup so you can read the correct index from its log.
+
+# Which microphone / input device to use.
+#   -1  -> the SYSTEM DEFAULT input device (THE DEFAULT — recommended).
+#    0, 1, 2 ...  -> a specific PortAudio input-device index (see the device
+#                    list the agent prints to its log at startup).
+device_index: -1
+
+# OPTIONAL: pick the input device by a case-insensitive substring of its name
+# (e.g. "USB" or "Microphone Array") INSTEAD of a numeric index. Only consulted
+# when device_index is -1. Leave empty ("") to use device_index / the default.
+device_name: ""
+
+# How many seconds of audio to record.
+record_seconds: 5
+
+# Sampling rate (Hz). See the "Sampling-rate analysis" note below.
+#   0      -> use the selected device's NATIVE default sample rate
+#             (RECOMMENDED — robust: the device always supports it). The value
+#             actually used is read back and written to the log + INI section.
+#   44100  -> CD quality.  48000 -> studio/most modern mics.  16000 -> speech.
+# Forcing a rate the driver does not support raises a PortAudio error, so the
+# safe default (0) is to let the device choose; expose the override for callers
+# who need a specific rate (e.g. a 16 kHz speech-to-text pipeline).
+sample_rate: 0
+
+# Number of input channels.  1 = mono (THE DEFAULT — universal for mics),
+# 2 = stereo. Clamped down to the device's reported max input channels so an
+# over-request can never crash the capture.
+channels: 1
+
+# Software (digital) input gain as a PERCENT applied to the captured samples.
+#   100  -> unity (THE DEFAULT — buffer written byte-identical to the capture).
+#   200  -> +6 dB amplify.   50 -> -6 dB attenuate.   0 -> silence.
+# NOTE: this is POST-capture digital scaling, NOT the hardware mic level — it
+# amplifies the noise floor too, and amplifying a hot signal CLIPS. The count of
+# samples that hit the int16 rail is logged + reported as `clipped_samples` in
+# the INI_SECTION_RECORDER block so a downstream Forker can react.
+input_gain_percent: 100
+
+# Output directory for the saved WAV. Leave empty ("") to use the default:
+#   <User Music folder>/TlamatiniRecords
+# (On a localized Windows the Music known-folder may display as "Música".)
+output_dir: ""
+
+# Downstream agents to start after the recording is saved (canvas connection
+# tracking). Recorder ALWAYS triggers these once the file is written.
+target_agents: []

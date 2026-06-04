@@ -294,6 +294,41 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=8,
     ),
     ChatWrappedAgentSpec(
+        key="recorder",
+        template_dir="recorder",
+        tool_name="chat_agent_recorder",
+        tool_description="Chat-Agent-Recorder",
+        display_name="Recorder",
+        purpose=(
+            "Record AUDIO from a system input device (MICROPHONE) and save it as a WAV file. "
+            "The audio sibling of chat_agent_camcorder (camera) and chat_agent_shoter (screen) — "
+            "use Recorder to capture SOUND: 'record the mic', 'record N seconds of audio', "
+            "'capture from the microphone'. By DEFAULT it records from the system's DEFAULT input "
+            "device; to pick a specific mic on a multi-microphone machine pass device_index=N (the "
+            "agent logs the full numbered device list at startup), or match by name with "
+            "device_name='USB'. record_seconds sets the duration (default 5). sample_rate is "
+            "OPTIONAL — omit it (or pass 0) to use the device's native rate (recommended), or pass "
+            "44100 / 48000 / 16000 to force one. channels defaults to 1 (mono). input_gain_percent "
+            "applies a SOFTWARE (digital) gain to the captured audio — 100 = unity (default), 200 = "
+            "louder (+6 dB), 50 = quieter; it is post-capture scaling (not the hardware mic level), "
+            "so amplifying can clip (the clipped-sample count is reported). The wrapped result "
+            "includes a top-level 'output_path' field with the absolute path of the saved file, so "
+            "you do NOT need to parse the log to find it. By default the file lands in the user's "
+            "Music folder under TlamatiniRecords with a timestamped, collision-proof name."
+        ),
+        example_request=(
+            "Record audio for 5 seconds from the default microphone, OR record with "
+            "record_seconds=10 and device_index=1 and sample_rate=48000 and channels=1 and "
+            "input_gain_percent=150 and output_dir='E:\\Recordings'"
+        ),
+        aliases=("recorder", "record audio", "microphone", "mic", "record sound", "voice recorder"),
+        security_hints=(
+            "record audio", "record sound", "microphone", "mic", "voice recorder",
+            "capture audio", "record my voice", "record the mic", "audio recording",
+        ),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
         key="mouser",
         template_dir="mouser",
         tool_name="chat_agent_mouser",

@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 71 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 72 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 
@@ -15,7 +15,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
-- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 71 workflow agents.
+- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 72 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -53,7 +53,7 @@ The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 1. **A real RAG pipeline** that reads your project files, classifies their architectural roles, and grounds answers in your real source code.
 2. **Multi-Turn mode** that turns the chat into a tool operator: the LLM can run shell commands, hit APIs, send emails, take screenshots, type into windows, query SQL — and chain those steps to finish the job.
 3. **ACPX** that lets the LLM delegate sub-tasks to external coding-agent CLIs you already have installed (Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, and more).
-4. **A visual workflow designer** where you drag 71 different agent types onto a canvas (including the microcontroller-firmware trio **STM32er** / **ESP32er** / **Arduiner**, the **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57 — and the **Camcorder** for grabbing photos/video off a webcam), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
+4. **A visual workflow designer** where you drag 72 different agent types onto a canvas (including the microcontroller-firmware trio **STM32er** / **ESP32er** / **Arduiner**, the **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57 — the **Camcorder** for grabbing photos/video off a webcam, and the **Recorder** for capturing audio off a microphone), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
 
 Everything is local. No cloud lock-in (though cloud LLMs are an option). The whole app packages into a standalone Windows `.exe` if you want to ship it.
 
@@ -941,7 +941,7 @@ Rules:
 
 29 agents emit Parametrizer-compatible sections:
 
-Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
+Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
 
 ### How the visual mapping works
 
@@ -1037,7 +1037,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 71 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57.
+A compact reference for all 72 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -1092,6 +1092,7 @@ A compact reference for all 71 workflow-agent types. Spotlight chapters for **Pa
 | **Mover / Deleter** | File move/copy / deletion (glob, recursive, `filetype_exclusions`). |
 | **Shoter** | Screenshot capture (read-only). |
 | **Camcorder** | Physical-camera (webcam) capture via OpenCV (`cv2`) — Shoter's hardware-camera sibling (Shoter = screen, Camcorder = camera). `capture_mode` ∈ `photo` (default, one `.jpg`) / `video` (a `.mp4` segment of `video_duration_seconds`, no audio); `camera_index` selects the device; `resolution_width`/`resolution_height` default `0×0` = camera-native (set `W×H` to request a mode — requested + read-back logged); `warmup_seconds` lets the sensor settle. Saves to `Pictures/TlamatiniCamcorder` with a collision-proof timestamped filename (override via `output_dir`). Observational (read-only — NOT in the Exec Report); emits `INI_SECTION_CAMCORDER<<<` and always triggers `target_agents`. Needs `opencv-python`. Canvas counterpart of `chat_agent_camcorder`. |
+| **Recorder** | Microphone / audio-input capture via `sounddevice`, saved as a WAV (stdlib `wave`) — the audio sibling of the capture trio (Shoter = screen, Camcorder = camera, Recorder = sound). Records from the system DEFAULT input device for `record_seconds` (pick another mic with `device_index` — the agent logs the numbered device list at startup — or by case-insensitive name substring with `device_name`); `sample_rate` defaults `0` = the device's NATIVE rate (forcing an unsupported rate raises a PortAudio error, so the safe default lets the device choose — the value used is read back + logged); `channels` defaults mono (`1`, clamped down to the device max); `input_gain_percent` is POST-capture digital gain (`100` = unity; `200`/`50`/`0` = louder/quieter/silence — amplifying may CLIP, so `clipped_samples` is reported). Saves to `Music/TlamatiniRecords` with a collision-proof timestamped filename (override via `output_dir`). Observational (read-only — NOT in the Exec Report); emits `INI_SECTION_RECORDER<<<` and always triggers `target_agents`. Needs `sounddevice`. Canvas counterpart of `chat_agent_recorder`. |
 | **Mouser** | Pointer movement, click, drag, scroll, click-at-window, locate-image. |
 | **Keyboarder** | Keyboard typing / hotkey chords (PyAutoGUI). |
 | **Windower** | Deterministic Win32 window manager (pywin32 + ctypes). Locates an application window by title (`match_mode` ∈ substring/exact/regex, plus `match_index` to disambiguate same-titled windows) and runs ONE window-lifecycle operation: `focus`, `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close`, `topmost` / `untopmost` (always-on-top), or `arrange` (snap/tile to left/right/top/bottom halves, four quadrants, center, or full) — or `list` every open window with its position, size, and state. The window member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). Ports the window-management subset of Microsoft's Windows-MCP (incl. the AttachThreadInput cross-process focus-transfer dance). Emits an `INI_SECTION_WINDOWER<<<` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_windower` Multi-Turn tool. |
@@ -1184,7 +1185,7 @@ Each wrapped tool launches an isolated, sequenced runtime copy of a workflow age
 | **DevOps & infra** | `chat_agent_gitter`, `chat_agent_dockerer`, `chat_agent_kuberneter`, `chat_agent_jenkinser`, `chat_agent_ssher`, `chat_agent_scper` |
 | **Data & interpretation** | `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_file_creator`, `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`, `chat_agent_summarize_text` |
 | **Notifications & comms** | `chat_agent_send_email`, `chat_agent_notifier`, `chat_agent_telegramer`, `chat_agent_whatsapper`, `chat_agent_recmailer` |
-| **Desktop UI automation** | `chat_agent_shoter` (read-only), `chat_agent_camcorder` (read-only — webcam photo/video via OpenCV; canvas counterpart is the Camcorder workflow agent), `chat_agent_keyboarder`, `chat_agent_mouser`, `chat_agent_windower` |
+| **Desktop UI automation** | `chat_agent_shoter` (read-only), `chat_agent_camcorder` (read-only — webcam photo/video via OpenCV; canvas counterpart is the Camcorder workflow agent), `chat_agent_recorder` (read-only — microphone audio → WAV via `sounddevice`; canvas counterpart is the Recorder workflow agent), `chat_agent_keyboarder`, `chat_agent_mouser`, `chat_agent_windower` |
 | **Routing** | `chat_agent_asker` |
 | **Archives & decompilation** | `chat_agent_j_decompiler`, `chat_agent_de_compresser` |
 | **Game engines** | `chat_agent_unrealer` (drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket; canvas counterpart is the Unrealer workflow agent — see §57) |
@@ -2580,6 +2581,7 @@ produces `firmware.bin` + `firmware.elf`).
 | **Barrier** | Synchronization barrier; fires when ALL N source agents have started. |
 | **BM25** | Best Matching 25 — probabilistic keyword retrieval algorithm. |
 | **Camcorder** | Tlamatini agent that captures from a physical camera (webcam) via OpenCV — a photo (default) or a short video — and saves it to `Pictures/TlamatiniCamcorder`. The hardware-camera sibling of Shoter (screen capture); observational, so not in the Exec Report. Available both as the wrapped Multi-Turn tool `chat_agent_camcorder` and as a visual canvas node. The 71st entry in the agent catalog. |
+| **Recorder** | Tlamatini agent that records audio from a system input device (microphone) via `sounddevice` and saves a WAV to `Music/TlamatiniRecords` — the SOUND sibling of the capture trio (Shoter = screen, Camcorder = camera, Recorder = audio); observational, so not in the Exec Report. Records from the default mic by default (`device_index`/`device_name` to pick another); `sample_rate: 0` = device-native. Available both as the wrapped Multi-Turn tool `chat_agent_recorder` and as a visual canvas node. The 72nd entry in the agent catalog. |
 | **Canvas** | The right-hand code panel in the chat *and* the drag-and-drop area in the designer. Context-dependent. |
 | **Cardinal** | Numeric suffix added to deployed agents to support multiple instances (e.g. `monitor_log_1`). |
 | **Chunk** | A segment of a document after splitting for processing. |

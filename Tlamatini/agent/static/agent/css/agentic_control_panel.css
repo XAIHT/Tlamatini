@@ -1840,6 +1840,24 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #1a1a2e 0%, #c1121f 33%, #f08700 66%, #ffd60a 100%);
 }
 
+/* Recorder Agent - Microphone / audio capture (Deep-ocean abyss -> teal -> seafoam soundwave) */
+.canvas-item.recorder-agent {
+    background-color: #0a9396;
+    background: linear-gradient(135deg, #001219 0%, #005f73 33%, #0a9396 66%, #94d2bd 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.recorder-agent:hover {
+    background: linear-gradient(135deg, #0a2a36 0%, #0b7d96 33%, #2bb9bc 66%, #b7e4d3 100%);
+    box-shadow: 0 6px 15px rgba(10, 147, 150, 0.5);
+}
+
+/* Recorder agent icon in sidebar */
+.agent-tool-item[data-content="Recorder"] .agent-tool-icon {
+    background: linear-gradient(135deg, #001219 0%, #005f73 33%, #0a9396 66%, #94d2bd 100%);
+}
+
 /* Ssher Agent Styles - SSH remote execution (Dark Blue to Red gradient) */
 .canvas-item.ssher-agent {
     background-color: #1a237e;
