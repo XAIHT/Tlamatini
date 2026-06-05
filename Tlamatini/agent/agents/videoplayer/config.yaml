@@ -1,0 +1,69 @@
+# VideoPlayer Agent Configuration
+# ---------------------------------------------------------------------------
+# Plays a VIDEO FILE (with audio) on a chosen DISPLAY (screen) using
+# `ffpyplayer` (decode + synchronized audio + volume) and OpenCV (`cv2`) for
+# the on-screen window. The visual sibling of AudioPlayer: AudioPlayer drives
+# the speakers, VideoPlayer drives a screen window (with sound).
+#
+# ffpyplayer bundles ffmpeg + SDL inside its pip wheel (no external ffmpeg, no
+# runtime download), so any common container plays: .mp4, .mov, .mkv, .avi,
+# .webm, ... If ffpyplayer is unavailable the agent falls back to silent
+# OpenCV-only video playback (volume becomes a no-op, logged).
+
+# REQUIRED: path to the video file to play. Absolute path recommended; a
+# relative path is resolved against the agent's runtime directory. The full
+# absolute path actually played is written to the log + the INI section.
+video_file: ""
+
+# Which DISPLAY (screen / monitor) to show the video on.
+#   -1  -> the PRIMARY monitor (THE DEFAULT — recommended).
+#    0, 1, 2 ...  -> a specific monitor index (the agent logs the full numbered
+#                    monitor list — geometry + which is primary — at startup).
+display_index: -1
+
+# Playback VOLUME as a PERCENT of the file's audio.
+#   100 -> full / normal (THE DEFAULT).   50 -> half.   0 -> muted.
+# Applied to the ffpyplayer audio output. Values above 100 are capped at 100
+# (the file's full level). Has no effect on the silent OpenCV fallback.
+volume_percent: 100
+
+# How many SECONDS to play ('time_played'). This shapes the output length:
+#   0   -> play the ENTIRE video exactly ONCE (no truncation, no looping) — DEFAULT.
+#   N>0 -> play for EXACTLY N seconds:
+#            * if the video is LONGER than N  -> playback is TRUNCATED at N seconds.
+#            * if the video is SHORTER than N -> the video is LOOPED (repeated) as
+#              many whole times as fit in N seconds, then a final PARTIAL segment
+#              fills the remainder so the total is approximately N seconds.
+time_played: 0
+
+# Size of the player WINDOW in pixels (ignored when fullscreen is true).
+#   0 -> use the video's NATIVE frame size for that dimension (DEFAULT).
+#   >0 -> force that width / height (the video is scaled to fit; see keep_aspect).
+# The window is centered on the chosen display.
+window_width: 0
+window_height: 0
+
+# Show the video FULLSCREEN on the chosen display (true) or in a window (false).
+# When true, window_width / window_height are ignored and the video fills the
+# selected monitor.
+fullscreen: false
+
+# Preserve the video's aspect ratio when the window/screen does not match it
+# (true -> letterbox / pillarbox, the picture is never distorted; false ->
+# stretch to fill). Default true.
+keep_aspect: true
+
+# Downstream agents to start after playback finishes (canvas connection
+# tracking). VideoPlayer ALWAYS triggers these once playback completes (or on a
+# handled error), so a Forker/Parametrizer can react to the result.
+target_agents: []
+
+# ---------------------------------------------------------------------------
+# Additional-video-parameters analysis (why these and not more):
+#   INCLUDED  : video_file, display_index, volume_percent, time_played,
+#               window_width/height, fullscreen, keep_aspect.
+#   OMITTED   : playback speed / fps (the file's native timing is used — correct
+#               motion), decode resolution / codec (intrinsic to the file; the
+#               window size controls only DISPLAY scaling, not decode), and audio
+#               -track / subtitle selection (advanced, rarely needed). Add them
+#               later only if a concrete flow needs them.

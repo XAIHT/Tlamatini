@@ -1224,6 +1224,20 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "device_index", "device_name", "sample_rate", "channels",
         "duration_seconds", "gain_percent", "clipped_samples", "format",
     ),
+    "audioplayer": (
+        "input_path", "input_dir", "filename",
+        "device_index", "device_name", "file_sample_rate", "play_sample_rate",
+        "channels", "volume_percent", "clipped_samples",
+        "file_duration_seconds", "played_seconds", "play_mode", "loops",
+        "format", "status",
+    ),
+    "videoplayer": (
+        "input_path", "input_dir", "filename",
+        "display_index", "display_geometry", "video_width", "video_height",
+        "window_width", "window_height", "fullscreen", "volume_percent",
+        "backend", "has_audio", "file_duration_seconds", "played_seconds",
+        "play_mode", "loops", "format", "status",
+    ),
     "mouser": (
         "movement_type", "end_posx", "end_posy",
         "button_click", "clicked", "located_via",

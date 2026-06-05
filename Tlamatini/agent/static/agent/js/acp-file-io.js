@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateRecorderConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateRecorderConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
 
 // ========================================
 // SAVE BUTTON
@@ -446,6 +446,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'shoter': await updateShoterConnection(sourceId, targetId, 'add'); break;
                 case 'camcorder': await updateCamcorderConnection(sourceId, targetId, 'add'); break;
                 case 'recorder': await updateRecorderConnection(sourceId, targetId, 'add'); break;
+                case 'audioplayer': await updateAudioPlayerConnection(sourceId, targetId, 'add'); break;
+                case 'videoplayer': await updateVideoPlayerConnection(sourceId, targetId, 'add'); break;
                 case 'deleter': await updateDeleterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'mover': await updateMoverConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'pythonxer': await updatePythonxerConnection(sourceId, targetId, 'add', 'target'); break;

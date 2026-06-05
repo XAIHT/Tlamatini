@@ -1731,14 +1731,48 @@ system_prompt: |
   - `output_dir`: "" ("" = <User Music>/TlamatiniRecords)
   - `target_agents`: [] (downstream agents to start after the recording)
 
-### 72. FlowCreator
+### 72. AudioPlayer
+- **Purpose**: PLAYS an audio file through a system audio OUTPUT device (speakers / audio out) using `soundfile` + `sounddevice`. On trigger it reads `audio_file`, resolves the output device, applies a software volume, plays for `time_played` seconds (whole file once when 0, truncating a longer file, looping a shorter one with a streaming callback), emits an `INI_SECTION_AUDIOPLAYER` block (`input_path`, `input_dir`, `filename`, `device_index`, `device_name`, `file_sample_rate`, `play_sample_rate`, `channels`, `volume_percent`, `clipped_samples`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents` (success or failure). The playback counterpart of Recorder (microphone-IN) — AudioPlayer is speakers-OUT; observational/output, so it does NOT appear in the Exec Report.
+- **Used for**: Playing a sound as an unattended flow step — an audible alert/chime on an event, a voice prompt, playing back a clip a Recorder just captured, or a fixed-length audio cue. Distinct from Recorder (records the mic) and Notifier (in-browser popup); AudioPlayer drives the SPEAKERS.
+- **Aimed at**: Audio-playback steps. By default it plays to the SYSTEM DEFAULT output device — pick another with `device_index` (the agent logs the numbered output-device list at startup) or by name with `device_name`. `volume_percent` is a software gain (100 = unity; NOT the OS volume slider). `time_played` shapes the length: 0 = whole file once, N>0 = exactly N seconds (truncate a longer file / loop a shorter one). **Sampling rate is optional**: leave `sample_rate` at 0 to play at the file's own native rate (recommended, correct pitch), or force one (alters pitch — the audio is not resampled). Pair with Parametrizer to carry a `{output_path}` from a Recorder/Camcorder into AudioPlayer's `audio_file`, or with a Forker to branch on `{status}`.
+- **Application example**: Starter → Recorder (`record_seconds: 5`) → Parametrizer (map Recorder's `{output_path}` into AudioPlayer's `audio_file`) → AudioPlayer (`time_played: 0`) → Ender (record a clip then play it straight back). Or an audible alert: Starter → Monitor-Log → Raiser (on `FATAL`) → AudioPlayer (`audio_file: alert.wav`, `time_played: 10`) → Ender.
+- **Pool name pattern**: `audioplayer_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `audio_file`: "" (REQUIRED — path to the audio file to play; WAV/FLAC/OGG/AIFF, MP3 with a recent libsndfile)
+  - `device_index`: -1 (-1 = system default output/speakers; 0/1/2/... = a specific PortAudio output-device index)
+  - `device_name`: "" (optional case-insensitive substring to pick the output device by name; only used when device_index is -1)
+  - `volume_percent`: 100 (software/digital gain %, 100 = unity/default; 200 = louder, 50 = quieter, 0 = silence; amplifying may clip — the clipped-sample count is reported)
+  - `time_played`: 0 (seconds to play; 0 = whole file once; N>0 = exactly N seconds, truncating a longer file or looping a shorter one)
+  - `sample_rate`: 0 (0 = file's native rate, recommended; a non-zero value forces the output rate and alters pitch — not resampled)
+  - `target_agents`: [] (downstream agents to start after playback)
+
+### 73. VideoPlayer
+- **Purpose**: PLAYS a video file (WITH audio) on a chosen DISPLAY (screen) using `ffpyplayer` (decode + synchronized audio + volume; its pip wheel bundles ffmpeg+SDL so nothing external is needed) and OpenCV for the window. On trigger it reads `video_file`, resolves the target monitor, opens a sized/fullscreen window on it, sets the volume, plays for `time_played` seconds (whole video once when 0, truncating a longer file, looping a shorter one), emits an `INI_SECTION_VIDEOPLAYER` block (`input_path`, `input_dir`, `filename`, `display_index`, `display_geometry`, `video_width`, `video_height`, `window_width`, `window_height`, `fullscreen`, `volume_percent`, `backend`, `has_audio`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The on-screen sibling of AudioPlayer (speakers); observational/output, so it does NOT appear in the Exec Report. If ffpyplayer is unavailable it plays SILENTLY via OpenCV (volume no-op).
+- **Used for**: Showing a video as an unattended flow step — a demo/intro clip on a kiosk screen, an alert video on an event, playing back a captured clip, or a fixed-length looping signage segment. Distinct from AudioPlayer (sound only) and Shoter (still screenshot); VideoPlayer drives a SCREEN window with motion + sound.
+- **Aimed at**: Video-playback steps. By default it plays on the PRIMARY display — pick another with `display_index` (the agent logs the numbered display list at startup). `volume_percent` is the audio level (100 = full). `time_played` shapes the length: 0 = whole video once, N>0 = exactly N seconds (truncate a longer file / loop a shorter one). `window_width`/`window_height` size the window (0 = native); `fullscreen: true` fills the display; `keep_aspect: true` letterboxes. Pair with Parametrizer to carry a `{output_path}` from a Camcorder/another source into VideoPlayer's `video_file`, or a Forker to branch on `{status}`.
+- **Application example**: Starter → VideoPlayer (`video_file: intro.mp4`, `fullscreen: true`, `display_index: 1`) → Ender (play a fullscreen intro on the second monitor). Or a looping signage clip: Croner → VideoPlayer (`time_played: 300`, `window_width: 1280`, `window_height: 720`) → Sleeper → Croner (loop).
+- **Pool name pattern**: `videoplayer_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `video_file`: "" (REQUIRED — path to the video file to play; .mp4/.mov/.mkv/.avi/.webm, any ffmpeg container)
+  - `display_index`: -1 (-1 = primary monitor; 0/1/2/... = a specific monitor index)
+  - `volume_percent`: 100 (audio volume %, 100 = full/default; 50 = half, 0 = muted; over 100 capped at 100)
+  - `time_played`: 0 (seconds to play; 0 = whole video once; N>0 = exactly N seconds, truncating a longer file or looping a shorter one)
+  - `window_width`: 0 (window width in px; 0 = video's native width; ignored when fullscreen)
+  - `window_height`: 0 (window height in px; 0 = video's native height; ignored when fullscreen)
+  - `fullscreen`: false (true = fill the chosen display, ignoring the window size)
+  - `keep_aspect`: true (true = letterbox/pillarbox so the picture is never distorted; false = stretch to fill)
+  - `target_agents`: [] (downstream agents to start after playback)
+
+### 74. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (69). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (73). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

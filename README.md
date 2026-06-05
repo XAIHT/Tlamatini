@@ -35,11 +35,13 @@ Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual w
 - **Real RAG over your code** — FAISS + BM25 hybrid retrieval with context budgeting. The model sees the *right* code, not random chunks.
 - **Multi-Turn mode** — the LLM becomes an operator: shell, Python, APIs, browser automation, screenshots, keyboard/mouse — all chained in one conversation.
 - **ACPX** — delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen, and relay output between them.
-- **Visual workflow designer** — drag and drop 72 agent types, wire them together, run flows unattended.
+- **Visual workflow designer** — drag and drop 74 agent types, wire them together, run flows unattended.
 - **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
 - **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
 
-> **Latest — v1.14.0 (2026-06-04): the observational capture pair — Camcorder (71st) and Recorder (72nd agent types).** **Camcorder** captures from a physical **webcam** via OpenCV — a photo (default) or a short video — and **Recorder** captures **microphone** audio to a WAV via `sounddevice`; together with **Shoter** (screen) they complete the screen / camera / microphone trio. Both are read-only/observational (they record and trigger downstream, so they stay out of the Exec Report), native-resolution / native-sample-rate by default, and ship on both the canvas and as the wrapped Multi-Turn tools `chat_agent_camcorder` / `chat_agent_recorder`. The previous release (**v1.13.0**) added **Arduiner** (the Arduino-CLI firmware agent, 70th type) to complete the STM32er / ESP32er / Arduiner microcontroller-firmware family, plus the **flow-making** skill and the unified **Temp/Templates directory policy**.
+> **Latest — v1.16.0 (2026-06-04): VideoPlayer (74th agent type) — on-screen video PLAYBACK with audio.** **VideoPlayer** plays a video file (`.mp4`/`.mov`/`.mkv`/`.avi`/`.webm`) **with sound** on a chosen **display**, the on-screen sibling of AudioPlayer (speakers). It decodes + plays audio via **`ffpyplayer`** — whose pip wheel **bundles ffmpeg + SDL** so it ships entirely through `requirements.txt` and PyInstaller's `--collect-all` (no external ffmpeg, no runtime download) — and draws the window with the already-bundled **OpenCV**; if ffpyplayer is ever unavailable it degrades to silent OpenCV video. Knobs: `display_index` (which monitor), `volume_percent`, **`time_played`** (0 = whole video once; N>0 = exactly N seconds, TRUNCATING a longer file or LOOPING a shorter one with a final partial segment), `window_width`/`window_height`, `fullscreen`, and `keep_aspect` (letterbox vs stretch). Observational/output, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_videoplayer`, and emits an `INI_SECTION_VIDEOPLAYER` block (full played path + time played) for Parametrizer. The previous release (**v1.15.0**) added **AudioPlayer** — audio PLAYBACK completing the media-I/O family.
+>
+> **Earlier — v1.15.0 (2026-06-04): AudioPlayer (73rd agent type) — audio PLAYBACK completes the media-I/O family.** **AudioPlayer** plays an audio file through a system **output device (speakers / audio out)** via `soundfile` + `sounddevice` — the playback counterpart of **Recorder** (microphone-IN): together with **Shoter** (screen) and **Camcorder** (camera) they now cover screen / camera / microphone-in / speakers-out. It plays to the default output by default (or a chosen `device_index`/`device_name`), applies a software `volume_percent`, and honours **`time_played`** — 0 plays the whole file once, a positive value plays exactly that long, TRUNCATING a longer file or LOOPING a shorter one (with a streaming callback so a huge duration over a tiny file never allocates a giant buffer). Sample rate is read from the file by default (`sample_rate: 0`, correct pitch). Observational/output (it changes no persistent state), so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_audioplayer`, and emits an `INI_SECTION_AUDIOPLAYER` block (full played path + time played) for Parametrizer. The previous release (**v1.14.0**) added the observational capture pair **Camcorder** (webcam) and **Recorder** (microphone).
 
 <p align="center">
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
@@ -127,7 +129,7 @@ Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual w
   - [9.2. The five layers](#92-the-five-layers)
   - [9.3. Multi-Turn execution pipeline](#93-multi-turn-execution-pipeline)
   - [9.4. Agent contracts and the Flow Compiler](#94-agent-contracts-and-the-flow-compiler)
-  - [9.5. Agent catalog (the 72 types, by family)](#95-agent-catalog-the-72-types-by-family)
+  - [9.5. Agent catalog (the 74 types, by family)](#95-agent-catalog-the-74-types-by-family)
   - [9.6. Self-Knowledge & Self-Modification](#96-self-knowledge--self-modification)
 - [10. Embedding-Memory Pre-Flight Guard (GPU hosts)](#10-embedding-memory-pre-flight-guard-gpu-hosts)
   - [10.1. Why this exists](#101-why-this-exists)
@@ -167,7 +169,7 @@ Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual w
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 72 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 74 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -886,7 +888,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-27 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**.
+29 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**.
 
 Canonical example:
 
@@ -1242,7 +1244,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 72 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 74 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 
@@ -1459,14 +1461,14 @@ The compiler does a few quiet but important safety jobs:
 
 This is the Pareto improvement: a small shared backend layer makes both major features safer. Chat-created flows and ACP-created flows now speak the same format before they touch the runtime.
 
-### 9.5. Agent catalog (the 72 types, by family)
+### 9.5. Agent catalog (the 74 types, by family)
 
 | Family | Members |
 |---|---|
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, **Camcorder**, **Recorder**, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |
