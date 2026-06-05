@@ -1858,6 +1858,42 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #001219 0%, #005f73 33%, #0a9396 66%, #94d2bd 100%);
 }
 
+/* AudioPlayer Agent - Audio playback to speakers (Deep indigo -> violet -> magenta -> amber sound-pulse) */
+.canvas-item.audioplayer-agent {
+    background-color: #6411ad;
+    background: linear-gradient(135deg, #1b1035 0%, #6411ad 33%, #e01e84 66%, #ffb700 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.audioplayer-agent:hover {
+    background: linear-gradient(135deg, #2a1a4d 0%, #7d2bc9 33%, #f23f9c 66%, #ffc933 100%);
+    box-shadow: 0 6px 15px rgba(224, 30, 132, 0.5);
+}
+
+/* AudioPlayer agent icon in sidebar */
+.agent-tool-item[data-content="AudioPlayer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #1b1035 0%, #6411ad 33%, #e01e84 66%, #ffb700 100%);
+}
+
+/* VideoPlayer Agent - Video playback on a screen (Cinema midnight -> royal blue -> crimson -> gold) */
+.canvas-item.videoplayer-agent {
+    background-color: #1f3a93;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1f3a93 33%, #e94560 66%, #f5d76e 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.videoplayer-agent:hover {
+    background: linear-gradient(135deg, #16162e 0%, #2d4fb8 33%, #f25b73 66%, #ffe48a 100%);
+    box-shadow: 0 6px 15px rgba(233, 69, 96, 0.5);
+}
+
+/* VideoPlayer agent icon in sidebar */
+.agent-tool-item[data-content="VideoPlayer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #0a0a1a 0%, #1f3a93 33%, #e94560 66%, #f5d76e 100%);
+}
+
 /* Ssher Agent Styles - SSH remote execution (Dark Blue to Red gradient) */
 .canvas-item.ssher-agent {
     background-color: #1a237e;

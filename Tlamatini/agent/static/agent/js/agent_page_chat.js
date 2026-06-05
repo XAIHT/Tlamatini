@@ -927,6 +927,47 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         }
         set('output_dir', pairs.output_dir);
 
+    // ── AudioPlayer ──────────────────────────────────────────────────
+    // Template fields: audio_file, device_index, device_name,
+    //                  volume_percent, time_played, sample_rate
+    } else if (lower === 'audioplayer') {
+        set('audio_file', pairs.audio_file || pairs.file || pairs.path);
+        if (pairs.device_index !== undefined && pairs.device_index !== '') {
+            const di = parseInt(pairs.device_index, 10);
+            if (!Number.isNaN(di)) config.device_index = di;
+        }
+        set('device_name', pairs.device_name);
+        for (const k of ['volume_percent', 'time_played', 'sample_rate']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = Number(pairs[k]);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+
+    // ── VideoPlayer ──────────────────────────────────────────────────
+    // Template fields: video_file, display_index, volume_percent,
+    //                  time_played, window_width, window_height,
+    //                  fullscreen, keep_aspect
+    } else if (lower === 'videoplayer') {
+        set('video_file', pairs.video_file || pairs.file || pairs.path);
+        for (const k of ['display_index', 'window_width', 'window_height']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        for (const k of ['volume_percent', 'time_played']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = Number(pairs[k]);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        for (const k of ['fullscreen', 'keep_aspect']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = String(pairs[k]).toLowerCase() === 'true';
+            }
+        }
+
     // ── Windower ─────────────────────────────────────────────────────
     // Template fields: action, window_title, match_mode, match_index,
     //                  pos_x, pos_y, width, height, arrange_mode,

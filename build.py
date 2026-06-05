@@ -448,6 +448,8 @@ def main():
             "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
             "pymongo", "pyodbc", "win32gui",        # db / windows agents
             "sounddevice",                          # microphone capture (Recorder) — native PortAudio
+            "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
+            "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
         ]
         verify_src = "\n".join([
             "import importlib",
@@ -596,6 +598,11 @@ def main():
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',
         '--collect-all', 'filesearch_pb2_grpc',
+        # VideoPlayer audio+video: ffpyplayer ships compiled extensions + bundled
+        # ffmpeg/SDL DLLs inside its package dir; --collect-all pulls those
+        # binaries (PyInstaller's module-graph alone misses the .dll payload),
+        # so the frozen build plays video WITH audio and no external ffmpeg.
+        '--collect-all', 'ffpyplayer',
         'Tlamatini/manage.py'
     ]
 

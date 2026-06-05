@@ -329,6 +329,81 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=8,
     ),
     ChatWrappedAgentSpec(
+        key="audioplayer",
+        template_dir="audioplayer",
+        tool_name="chat_agent_audioplayer",
+        tool_description="Chat-Agent-AudioPlayer",
+        display_name="AudioPlayer",
+        purpose=(
+            "PLAY an audio FILE through a system audio OUTPUT device (speakers / audio out). "
+            "The playback counterpart of the media family — chat_agent_recorder records the "
+            "MICROPHONE, AudioPlayer plays to the SPEAKERS — use it for 'play this file', "
+            "'play <song>.wav', 'play <clip> for 30 seconds', 'play it on the headphones', "
+            "'play it at half volume'. REQUIRED: audio_file = the path of the file to play "
+            "(WAV/FLAC/OGG/AIFF, and MP3 with a recent libsndfile). By DEFAULT it plays to the "
+            "system's DEFAULT output device; to send it to a specific device pass device_index=N "
+            "(the agent logs the full numbered OUTPUT-device list at startup) or match by name "
+            "with device_name='Headphones'. volume_percent is a SOFTWARE gain — 100 = unity "
+            "(default), 200 = louder, 50 = quieter (NOT the Windows volume slider; amplifying can "
+            "clip and the clipped-sample count is reported). time_played sets HOW MANY SECONDS to "
+            "play: 0 (default) plays the WHOLE file once; a positive value plays EXACTLY that long "
+            "— a longer file is TRUNCATED, a shorter file is LOOPED (repeated to fill the time, "
+            "with a final partial segment). sample_rate is OPTIONAL — omit it (or pass 0) to play "
+            "at the file's own native rate (recommended, correct pitch); a non-zero value forces "
+            "the output rate and alters pitch/tempo. The agent does NOT change the OS default "
+            "audio device. The wrapped result includes a top-level 'input_path' field with the "
+            "absolute path that was played, so you do NOT need to parse the log to find it."
+        ),
+        example_request=(
+            "Play the audio file 'C:\\Music\\song.wav', OR play with "
+            "audio_file='C:\\clips\\beep.wav' and time_played=30 and volume_percent=150 and "
+            "device_index=1 and sample_rate=0"
+        ),
+        aliases=("audioplayer", "audio player", "play audio", "play sound", "play file", "speaker", "speakers"),
+        security_hints=(
+            "play audio", "play sound", "play the file", "play music", "audio player",
+            "speakers", "audio out", "play it on", "playback", "play wav", "play mp3",
+        ),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
+        key="videoplayer",
+        template_dir="videoplayer",
+        tool_name="chat_agent_videoplayer",
+        tool_description="Chat-Agent-VideoPlayer",
+        display_name="VideoPlayer",
+        purpose=(
+            "PLAY a VIDEO FILE (with audio) on a screen via ffpyplayer (decode + audio + volume) "
+            "and OpenCV (the window). The on-screen sibling of chat_agent_audioplayer — AudioPlayer "
+            "drives the speakers, VideoPlayer opens a video window WITH sound — use it for 'play "
+            "this video', 'play <clip>.mp4', 'play <movie> for 30 seconds', 'play it fullscreen on "
+            "the second monitor', 'play it at half volume in a 1280x720 window'. REQUIRED: "
+            "video_file = the path of the file to play (.mp4/.mov/.mkv/.avi/.webm, any ffmpeg "
+            "container). display_index picks the monitor (-1 = primary, the default; the agent logs "
+            "the numbered display list at startup). volume_percent is the audio volume (100 = full "
+            "default, 50 = half, 0 = muted; values over 100 are capped at 100). time_played sets HOW "
+            "MANY SECONDS to play: 0 (default) plays the WHOLE video once; a positive value plays "
+            "EXACTLY that long — a longer video is TRUNCATED, a shorter one is LOOPED (repeated to "
+            "fill the time, with a final partial segment). window_width / window_height set the "
+            "window size in pixels (0 = the video's native size); fullscreen=true fills the chosen "
+            "display (ignoring the window size); keep_aspect=true (default) letterboxes instead of "
+            "stretching. The wrapped result includes a top-level 'input_path' field with the "
+            "absolute path that was played. If ffpyplayer is unavailable the video plays SILENTLY "
+            "via OpenCV (volume has no effect, noted in the result)."
+        ),
+        example_request=(
+            "Play the video file 'C:\\Videos\\demo.mp4', OR play with "
+            "video_file='C:\\Videos\\clip.mp4' and time_played=30 and volume_percent=80 and "
+            "display_index=1 and fullscreen=true, OR window_width=1280 and window_height=720"
+        ),
+        aliases=("videoplayer", "video player", "play video", "play movie", "play clip", "screen", "monitor"),
+        security_hints=(
+            "play video", "play movie", "play clip", "play the video", "video player",
+            "play mp4", "play mov", "fullscreen video", "watch", "playback video",
+        ),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
         key="mouser",
         template_dir="mouser",
         tool_name="chat_agent_mouser",

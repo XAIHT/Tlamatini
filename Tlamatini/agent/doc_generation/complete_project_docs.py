@@ -417,6 +417,10 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("audioplayer" in subject or "videoplayer" in subject or ("playback" in subject and ("audio" in subject or "video" in subject)) for subject in subjects):
+        highlights.append(
+            "New media-playback pair completes the media-I/O family: AudioPlayer plays an audio file to the speakers (soundfile + sounddevice, volume and a truncate/loop time budget) and VideoPlayer plays a video file with audio on a chosen display (ffpyplayer — its wheel bundles ffmpeg + SDL — plus an OpenCV window, with display/volume/time-budget/window/fullscreen). Both are observational/output, on the canvas and as wrapped chat_agent_audioplayer / chat_agent_videoplayer tools."
+        )
     if any("camcorder" in subject or "recorder" in subject for subject in subjects):
         highlights.append(
             "New observational capture pair: Camcorder (webcam photo/video via OpenCV) and Recorder (microphone WAV via sounddevice) — read-only siblings of Shoter, on the canvas and as wrapped chat_agent_camcorder / chat_agent_recorder tools."
@@ -571,6 +575,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("audioplayer" in subject or "videoplayer" in subject or ("playback" in subject and ("audio" in subject or "video" in subject)) for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, the media-PLAYBACK pair landed and completed the media-I/O family: AudioPlayer plays an audio file to the speakers (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), and VideoPlayer plays a video file with audio on a chosen display (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same time budget, window size, and fullscreen). Both are observational/output and ship on the canvas and as wrapped chat_agent_audioplayer / chat_agent_videoplayer tools."
+        )
     if any("camcorder" in subject or "recorder" in subject for subject in subjects):
         highlights.append(
             "New observational capture pair: Camcorder (webcam photo/video via OpenCV) and Recorder (microphone WAV via sounddevice) — read-only siblings of Shoter, on the canvas and as wrapped chat_agent_camcorder / chat_agent_recorder tools."
@@ -789,6 +797,7 @@ WHAT_IT_DOES = [
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
+    "Can play media on the operator's machine: an audio file to the speakers through AudioPlayer (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), or a video file with audio on a chosen display through VideoPlayer (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen); both are observational/output and ship on the canvas and as wrapped chat tools.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
@@ -1209,7 +1218,7 @@ AGENT_CATEGORIES = [
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
     ("Communication", "notifier, emailer, recmailer, telegramer, telegramrx, teletlamatini, whatsapper, whatstlamatini"),
-    ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, shoter, camcorder, recorder, j_decompiler"),
+    ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, shoter, camcorder, recorder, audioplayer, videoplayer, j_decompiler"),
     ("Workflow intelligence", "flowcreator, gatewayer, gateway_relayer, node_manager, parametrizer, prompter, summarizer, acpxer"),
 ]
 
@@ -1296,8 +1305,34 @@ def bullet(text: str, style: ParagraphStyle) -> Paragraph:
     return p(f"- {text}", style)
 
 
+def _table_cell(text: str, font_size: float, *, header: bool) -> Paragraph:
+    """Wrap a string cell in a Paragraph so ReportLab word-wraps it inside the
+    column width instead of letting a long single-line string overflow the page.
+    Long unbreakable tokens (e.g. deep slash-paths) are force-split by
+    Paragraph's default splitLongWords behavior."""
+    style = ParagraphStyle(
+        "TableHeaderCell" if header else "TableBodyCell",
+        fontName="Helvetica-Bold" if header else "Helvetica",
+        fontSize=font_size,
+        leading=font_size + 2,
+        textColor=colors.white if header else colors.HexColor("#1f2933"),
+    )
+    safe = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return Paragraph(safe, style)
+
+
 def table(data: list[list], widths: list[float] | None = None, font_size: int = 8) -> Table:
-    tbl = Table(data, colWidths=widths, repeatRows=1)
+    # Cells are wrapped in Paragraphs (the only flowable that word-wraps within a
+    # column). Plain string cells passed straight to Table render on a single
+    # line and overflow narrow columns; Paragraphs wrap to the column width.
+    wrapped = [
+        [
+            _table_cell(cell, font_size, header=(row_index == 0)) if isinstance(cell, str) else cell
+            for cell in row
+        ]
+        for row_index, row in enumerate(data)
+    ]
+    tbl = Table(wrapped, colWidths=widths, repeatRows=1)
     tbl.setStyle(
         TableStyle(
             [
@@ -2454,13 +2489,14 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Since-Monday Additions", "newest agents, skill, directory policy, and monitoring coverage", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "New agents — the capture trio + firmware", [
-        "Camcorder: physical-webcam capture via OpenCV — a photo (default) or a short video — saved to Pictures/TlamatiniCamcorder; read-only, the camera sibling of Shoter.",
-        "Recorder: microphone capture via sounddevice to a WAV in Music/TlamatiniRecords, native sample-rate by default — the audio sibling that completes the screen/camera/mic trio.",
-        "Both are observational, so they stay out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool.",
+    slide, audit = add_slide(prs, "Newest Additions", "the media-I/O family completes, plus skill, directory policy, and monitoring coverage", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "New agents — the media-I/O family + firmware", [
+        "Camcorder + Recorder (capture): webcam photo/video via OpenCV and microphone WAV via sounddevice — read-only siblings of Shoter (screen), saved to Pictures/Music.",
+        "AudioPlayer (playback): plays an audio file to the speakers via soundfile + sounddevice — volume in percent, and a time-played budget that TRUNCATES a longer file or LOOPS a shorter one; sample-rate read from the file (correct pitch).",
+        "VideoPlayer (playback): plays a video file WITH audio on a chosen display via ffpyplayer (its wheel bundles ffmpeg + SDL — no external ffmpeg) plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen; silent-OpenCV fallback.",
+        "The whole family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool (screen / camera-in / mic-in / speakers-out / screen-out).",
         "Arduiner: the third microcontroller agent — a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight.",
-    ], THEME["copper"], "monday-a", 13)
+    ], THEME["copper"], "monday-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "New skill, policy & monitoring", [
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",

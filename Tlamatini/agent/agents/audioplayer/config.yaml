@@ -1,0 +1,74 @@
+# AudioPlayer Agent Configuration
+# ---------------------------------------------------------------------------
+# Plays an AUDIO FILE through a system audio OUTPUT device (speakers / audio
+# out) with the `sounddevice` + `soundfile` libraries. The PLAYBACK counterpart
+# of the media-I/O family: Shoter = screen, Camcorder = camera, Recorder =
+# microphone-IN, AudioPlayer = speakers-OUT.
+#
+# By DEFAULT it plays to the system's DEFAULT output device (speakers). To send
+# the audio to a different device on a multi-output machine, set `device_index`
+# (or match by name with `device_name`). The agent always logs the full list of
+# available OUTPUT devices at startup so you can read the correct index.
+#
+# NOTE on "default audio output": this agent targets the chosen/default output
+# device for THIS playback. It does NOT change the Windows OS-wide default
+# audio endpoint (that requires undocumented COM APIs and is unreliable), and
+# `volume_percent` is a per-playback SOFTWARE gain, not the OS volume slider.
+
+# REQUIRED: path to the audio file to play. Absolute path recommended; a
+# relative path is resolved against the agent's runtime directory. Supported
+# formats are whatever the bundled libsndfile understands — WAV, FLAC, OGG,
+# AIFF, and (with a recent libsndfile) MP3. The full absolute path that was
+# actually played is written to the log and the INI_SECTION_AUDIOPLAYER block.
+audio_file: ""
+
+# Which OUTPUT device (speakers / audio out) to play through.
+#   -1  -> the SYSTEM DEFAULT output device (THE DEFAULT — recommended).
+#    0, 1, 2 ...  -> a specific PortAudio output-device index (see the device
+#                    list the agent prints to its log at startup).
+device_index: -1
+
+# OPTIONAL: pick the output device by a case-insensitive substring of its name
+# (e.g. "Speakers" or "Headphones") INSTEAD of a numeric index. Only consulted
+# when device_index is -1. Leave empty ("") to use device_index / the default.
+device_name: ""
+
+# Software (digital) playback VOLUME as a PERCENT applied to the audio samples.
+#   100  -> unity (THE DEFAULT — samples played as-is).
+#   200  -> +6 dB louder.   50 -> -6 dB quieter.   0 -> silence.
+# NOTE: this is digital scaling applied to the decoded samples, NOT the Windows
+# OS volume slider. Amplifying a hot file CLIPS; the count of samples that hit
+# the [-1, 1] rail is logged + reported as `clipped_samples`.
+volume_percent: 100
+
+# How many SECONDS to play ('time_played'). This shapes the output length:
+#   0   -> play the ENTIRE file exactly ONCE (no truncation, no looping) — DEFAULT.
+#   N>0 -> play for EXACTLY N seconds:
+#            * if the file is LONGER than N  -> playback is TRUNCATED at N seconds.
+#            * if the file is SHORTER than N -> the file is LOOPED (repeated) as
+#              many whole times as fit in N seconds, then a final PARTIAL segment
+#              fills the remainder so the total is exactly N seconds.
+# The truncate/loop is done with a streaming output callback, so even a very
+# long time_played over a tiny file never allocates a giant buffer.
+time_played: 0
+
+# Output sample rate (Hz). See the "Sampling-rate analysis" note below.
+#   0      -> use the AUDIO FILE'S OWN native sample rate (RECOMMENDED — robust:
+#             it is read from the file, so the audio plays at correct pitch/tempo).
+#             The value actually used is read back and written to the log + INI.
+#   44100 / 48000 / 16000 ... -> FORCE the output stream to this rate. This does
+#             NOT resample the audio, so the pitch/tempo will be altered unless
+#             the value equals the file's native rate. Rarely needed — the safe
+#             default is 0 (let the file decide).
+#
+# Sampling-rate analysis (why 0 is the default): an audio file embeds its own
+# sample rate. Correct playback REQUIRES playing at that embedded rate; any
+# other rate pitch-shifts/time-stretches the sound. We therefore READ the rate
+# from the file and DO NOT require the user to supply it. The override exists
+# only for advanced "force the stream rate" use and is logged with a warning.
+sample_rate: 0
+
+# Downstream agents to start after playback finishes (canvas connection
+# tracking). AudioPlayer ALWAYS triggers these once playback completes (or on a
+# handled error), so a Forker/Parametrizer can react to the result.
+target_agents: []

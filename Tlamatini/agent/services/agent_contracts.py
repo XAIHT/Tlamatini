@@ -90,6 +90,8 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "shoter": ("output_path", "output_dir", "filename", "response_body"),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "camera_index", "duration_seconds", "resolution", "fps", "response_body"),
     "recorder": ("output_path", "output_dir", "filename", "device_index", "device_name", "sample_rate", "channels", "duration_seconds", "gain_percent", "clipped_samples", "format", "response_body"),
+    "audioplayer": ("input_path", "input_dir", "filename", "device_index", "device_name", "file_sample_rate", "play_sample_rate", "channels", "volume_percent", "clipped_samples", "file_duration_seconds", "time_played_requested", "played_seconds", "play_mode", "loops", "partial_segment", "format", "status", "response_body"),
+    "videoplayer": ("input_path", "input_dir", "filename", "display_index", "display_geometry", "video_width", "video_height", "window_width", "window_height", "fullscreen", "volume_percent", "backend", "has_audio", "file_duration_seconds", "time_played_requested", "played_seconds", "play_mode", "loops", "partial_segment", "format", "status", "response_body"),
     "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
     "windower": ("action", "window_title", "matched", "match_count", "state", "left", "top", "width", "height", "response_body"),
     "unrealer": ("host", "port", "command", "status", "error", "response_body"),

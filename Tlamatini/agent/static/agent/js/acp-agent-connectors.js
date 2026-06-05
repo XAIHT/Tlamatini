@@ -407,6 +407,44 @@ async function updateRecorderConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateAudioPlayerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_audioplayer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- AudioPlayer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update AudioPlayer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating AudioPlayer ${agentId}:`, error);
+    }
+}
+
+async function updateVideoPlayerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_videoplayer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- VideoPlayer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update VideoPlayer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating VideoPlayer ${agentId}:`, error);
+    }
+}
+
 async function updateDeleterConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_deleter_connection/${agentId}/`, {

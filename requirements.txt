@@ -45,6 +45,23 @@ opencv-python==4.13.0.92
 # PortAudio binary, so no system PortAudio install is required. Uses the numpy
 # already pinned above (<2.3.0).
 sounddevice==0.5.1
+# AudioPlayer agent (agent/agents/audioplayer/audioplayer.py) decodes the audio
+# file to play with soundfile (libsndfile) and streams it to a system OUTPUT
+# device via sounddevice. soundfile reads WAV / FLAC / OGG / AIFF (always) and
+# MP3 (with the recent libsndfile its wheel bundles). Imported inside the agent
+# so a missing install degrades to a clear error rather than a crash, but it
+# MUST be bundled for the frozen build to play audio. The wheel ships the
+# libsndfile binary, so no system libsndfile install is required.
+soundfile==0.12.1
+# VideoPlayer agent (agent/agents/videoplayer/videoplayer.py) renders video with
+# AUDIO. ffpyplayer's wheel BUNDLES ffmpeg + SDL inside the package (no external
+# ffmpeg binary, no runtime download), so it ships entirely via pip and is
+# collected into the frozen build by build.py's `--collect-all ffpyplayer`. It
+# decodes any ffmpeg-supported container (.mp4/.mov/.mkv/.avi/.webm/...), plays
+# the audio track itself, and exposes per-frame video + set_volume() so the
+# already-bundled OpenCV (opencv-python, above) draws the window. If ffpyplayer
+# is ever unavailable the agent degrades to silent OpenCV-only video playback.
+ffpyplayer==4.5.3
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
 psutil==7.2.2

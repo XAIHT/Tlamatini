@@ -1,6 +1,6 @@
 ---
 name: create-new-agent
-description: The authoritative 8-step contract for scaffolding a NEW Tlamatini workflow agent end-to-end (backend script + config.yaml, connection-update view + URL, migration seeding the Agent row, CSS gradient, four JS files, agentic_skill.md, README.md, lint). READ THIS BEFORE adding or renaming any of the 72 visual agents, before touching `agent/agents/<name>/`, before writing a `00NN_add_<name>.py` migration, before adding a `.canvas-item.<x>-agent` rule, or before extending the `acp-*.js` classMap / connectors. Companion to the `tlamatini-new-acp-agent` skill (which drives the procedure) and to `tlamatini-agent-naming` (the naming-convention guard).
+description: The authoritative 8-step contract for scaffolding a NEW Tlamatini workflow agent end-to-end (backend script + config.yaml, connection-update view + URL, migration seeding the Agent row, CSS gradient, four JS files, agentic_skill.md, README.md, lint). READ THIS BEFORE adding or renaming any of the 74 visual agents, before touching `agent/agents/<name>/`, before writing a `00NN_add_<name>.py` migration, before adding a `.canvas-item.<x>-agent` rule, or before extending the `acp-*.js` classMap / connectors. Companion to the `tlamatini-new-acp-agent` skill (which drives the procedure) and to `tlamatini-agent-naming` (the naming-convention guard).
 metadata:
   openclaw:
     emoji: "📘"

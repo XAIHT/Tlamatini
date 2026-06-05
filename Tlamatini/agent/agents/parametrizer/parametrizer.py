@@ -111,6 +111,8 @@ SECTION_AGENT_TYPES = [
     'shoter',
     'camcorder',
     'recorder',
+    'audioplayer',
+    'videoplayer',
     'mouser',
     'windower',
     'unrealer',

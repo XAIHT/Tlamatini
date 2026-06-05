@@ -202,7 +202,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 72 workflow agent templates
+│   │   ├── agents/                 # 74 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -272,7 +272,9 @@ Tlamatini/                          # Git root
 │   │   │   ├── esp32er/            # ESP32 firmware bridge (PlatformIO pio CLI, no MCP)
 │   │   │   ├── arduiner/           # Arduino firmware bridge (arduino-cli, no MCP)
 │   │   │   ├── camcorder/          # Webcam capture (OpenCV) — photo/video, Shoter's camera sibling
-│   │   │   └── recorder/           # Microphone capture (sounddevice) — WAV, the audio sibling of Camcorder/Shoter
+│   │   │   ├── recorder/           # Microphone capture (sounddevice) — WAV, the audio sibling of Camcorder/Shoter
+│   │   │   ├── audioplayer/        # Audio-file PLAYBACK to speakers (soundfile + sounddevice) — playback counterpart of Recorder
+│   │   │   └── videoplayer/        # Video-file PLAYBACK with audio on a display (ffpyplayer + OpenCV) — on-screen sibling of AudioPlayer
 │   │   │
 │   │   ├── services/               # Backend services
 │   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
@@ -452,7 +454,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-47 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_camcorder`, and `chat_agent_recorder`). Key ones:
+49 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_camcorder`, `chat_agent_recorder`, `chat_agent_audioplayer`, and `chat_agent_videoplayer`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -469,6 +471,8 @@ Chain types in `agent/rag/chains/`:
 - `chat_agent_stm32er` (STM32 firmware), `chat_agent_esp32er` (ESP32 firmware via PlatformIO), `chat_agent_arduiner` (Arduino firmware via arduino-cli)
 - `chat_agent_camcorder` (webcam photo/video capture via OpenCV)
 - `chat_agent_recorder` (microphone audio → WAV capture via `sounddevice`)
+- `chat_agent_audioplayer` (audio-file playback to speakers via `soundfile` + `sounddevice`; volume / time_played truncate-loop)
+- `chat_agent_videoplayer` (video-file playback with audio on a display via `ffpyplayer` + OpenCV; volume / time_played truncate-loop / window / fullscreen)
 - `chat_agent_run_list`, `chat_agent_run_status`, `chat_agent_run_log`, `chat_agent_run_stop` (management)
 - `chat_agent_run_wait` (blocking wait)
 - `chat_agent_sleeper` (delay helper)
@@ -680,6 +684,8 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Shoter** — Screenshot capture (silent, structured output)
 - **Camcorder** — Physical-camera (webcam) capture via OpenCV (`cv2`); the hardware-camera sibling of Shoter (Shoter = screen, Camcorder = camera). `capture_mode` ∈ `photo` (default, one `.jpg` shot) / `video` (a `.mp4` segment of `video_duration_seconds`, no audio); `camera_index` picks the device; `resolution_width`/`resolution_height` default `0×0` = camera-native (set `W×H` to request a mode, read back + logged). Saves to `Pictures/TlamatiniCamcorder`. Observational (NOT in the Exec Report); emits `INI_SECTION_CAMCORDER` and always triggers `target_agents`. Needs `opencv-python`. Canvas counterpart of `chat_agent_camcorder`
 - **Recorder** — Microphone / audio-input capture via `sounddevice`, saved as a WAV (stdlib `wave`); the audio sibling of the capture trio (Shoter = screen, Camcorder = camera, Recorder = sound). Records from the system DEFAULT input device for `record_seconds` (pick another mic with `device_index` — the agent logs the numbered device list at startup — or by name substring with `device_name`); `sample_rate` defaults `0` = device-native (read back + logged), `channels` defaults mono (clamped to the device max), `input_gain_percent` is post-capture digital gain (`100` = unity — amplifying may CLIP, so `clipped_samples` is reported). Saves to `Music/TlamatiniRecords`. Observational (NOT in the Exec Report); emits `INI_SECTION_RECORDER` and always triggers `target_agents`. Needs `sounddevice`. Canvas counterpart of `chat_agent_recorder`
+- **AudioPlayer** — Audio-file PLAYBACK to a speakers/output device via `soundfile` (decode) + `sounddevice` (stream); the playback counterpart of Recorder (mic-IN → AudioPlayer = speakers-OUT). `audio_file` (required) is the path (WAV/FLAC/OGG/AIFF, MP3 with a recent libsndfile); plays to the system DEFAULT output by default (or `device_index`/`device_name`). `volume_percent` is a software gain (`100` = unity; `clipped_samples` reported). `time_played`: `0` = whole file once; `N>0` = exactly N s, TRUNCATING a longer file or LOOPING a shorter one (whole repeats + final partial) via a streaming wrap-around callback. `sample_rate` defaults `0` = the file's own native rate (correct pitch; read from the file). Does NOT change the OS default output device. Observational/output (NOT in the Exec Report); emits `INI_SECTION_AUDIOPLAYER` and always triggers `target_agents`. Needs `sounddevice` + `soundfile`. Canvas counterpart of `chat_agent_audioplayer`
+- **VideoPlayer** — Video-file PLAYBACK (WITH audio) on a chosen display via `ffpyplayer` (decode + synced audio + volume; its pip wheel BUNDLES ffmpeg + SDL — no external ffmpeg, no runtime download) + OpenCV (`cv2`) for the window; degrades to SILENT cv2 video if ffpyplayer is absent. `video_file` (required) is the path (.mp4/.mov/.mkv/.avi/.webm). `display_index` picks the monitor (`-1` = primary; enumerated + logged at startup). `volume_percent` = audio level (capped at 100). `time_played`: `0` = whole video once; `N>0` = exactly N s, TRUNCATING a longer file or LOOPING a shorter one (whole repeats + final partial). `window_width`/`window_height` size the window (`0` = native, centered on the chosen display); `fullscreen` fills the monitor; `keep_aspect` (default) letterboxes. Observational/output (NOT in the Exec Report); emits `INI_SECTION_VIDEOPLAYER` and always triggers `target_agents`. Needs `ffpyplayer` + `opencv-python`. Canvas counterpart of `chat_agent_videoplayer`
 - **Mouser** — Mouse pointer movement (7 movement types)
 - **Keyboarder** — Keyboard typing / hotkey automation (robust parser)
 - **Windower** — Win32 window manager (pywin32 + ctypes, self-contained; ports the window-management subset of Microsoft's Windows-MCP incl. the `AttachThreadInput` cross-process focus dance). The third member of the desktop-UI trio — acts on the WINDOW itself (Windower = the window, Mouser = clicks inside it, Keyboarder = types into it). `action` ∈ list / focus / minimize / maximize / restore / move / resize / move_resize / close / topmost / untopmost / arrange (snap/tile to halves, quadrants, center, full); matches `window_title` by substring/exact/regex (+ `match_index`); emits `INI_SECTION_WINDOWER` (`action`/`window_title`/`matched`/`match_count`/`state`/`left`/`top`/`width`/`height`/`response_body`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_windower` Multi-Turn tool
