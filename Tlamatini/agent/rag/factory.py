@@ -7,7 +7,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from ..global_state import global_state
 from agent.rag_enhancements import enrich_documents_with_metadata, get_project_summary
-from .config import load_config_and_prompt
+from .config import load_config_and_prompt, apply_conditional_rule_blocks
 from .loaders import report_oversized_docs
 from .splitters import get_text_splitter
 from .prompts import get_contextualize_q_prompt
@@ -308,26 +308,34 @@ def build_prompt_only_chain(config, prompt_template_string, documents=None):
 
     contextualize_q_prompt = get_contextualize_q_prompt()
 
+    # The non-tool (prompt-only) chain never has any tools bound, so the
+    # feature-gated ACPX (Rule 12) / Templates (Rule 16) blocks are always
+    # irrelevant there — strip both so a smaller model isn't handed them. The
+    # tool-enabled UnifiedAgentChain keeps the raw string (with sentinels) so
+    # _build_system_prompt can resolve the blocks per-request from its tool set.
+    non_tool_prompt_string = apply_conditional_rule_blocks(
+        prompt_template_string, include_acpx=False, include_templates=False)
+
     # Create unified prompt that supports all contexts
     final_qa_prompt = ChatPromptTemplate.from_messages([
-        ("system", prompt_template_string),
+        ("system", non_tool_prompt_string),
         MessagesPlaceholder("chat_history"),
         ("human", "{input}"),
         ("system", "Apply all of the Rules only to the **CURRENT** human input ({input}); ignore chat_history for all of the Rules.")
     ])
-    
+
     if SystemRAGChain is not None:
         print("[SystemRAGChain] Integration enabled - system context will be fetched when needed")
     else:
         print("[SystemRAGChain] Integration disabled - SystemRAGChain not available")
-    
+
     if FileSearchRAGChain is not None:
         print("[FileSearchRAGChain] Integration enabled - file search context will be fetched when needed")
     else:
         print("[FileSearchRAGChain] Integration disabled - FileSearchRAGChain not available")
 
     use_unified_agent = bool(config.get("enable_unified_agent", False))
-    
+
     if use_unified_agent:
         print("--- UnifiedAgentChain: Building tool-enabled chain ---")
         chain = UnifiedAgentChain(llm, prompt_template_string, history_summary_cfg, loaded_context=loaded_context)
@@ -336,7 +344,7 @@ def build_prompt_only_chain(config, prompt_template_string, documents=None):
             llm,
             contextualize_q_prompt,
             final_qa_prompt,
-            prompt_template_string,
+            non_tool_prompt_string,
             history_summary_cfg
             ,loaded_context=loaded_context
         )
@@ -425,8 +433,12 @@ def build_retrieval_chain(documents, config, prompt_template_string):
         }
 
         if not has_docs:
+            # No-docs, non-tool path: strip the feature-gated ACPX/Templates
+            # rule blocks (no tools are ever bound on this chain).
+            non_tool_prompt_string = apply_conditional_rule_blocks(
+                prompt_template_string, include_acpx=False, include_templates=False)
             final_qa_prompt = ChatPromptTemplate.from_messages([
-                ("system", prompt_template_string),
+                ("system", non_tool_prompt_string),
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
                 ("system", "Apply all of the Rules only to the **CURRENT** human input ({input}); ignore chat_history for all of the Rules.")
@@ -542,9 +554,12 @@ def build_retrieval_chain(documents, config, prompt_template_string):
                 bm25=bm25,
             )
         else:
+            # Non-tool RAG chain: strip the feature-gated ACPX/Templates rule
+            # blocks (this chain never binds tools).
             chain = OptimizedHistoryAwareRAGChain(
                 llm=llm,
-                prompt_template_string=final_prompt_string,
+                prompt_template_string=apply_conditional_rule_blocks(
+                    final_prompt_string, include_acpx=False, include_templates=False),
                 contextualize_q_prompt=contextualize_q_prompt,
                 vector_store=vector_store,
                 split_docs=split_docs,

@@ -10,6 +10,7 @@ from langchain_core.documents import Document
 from ...chat_history_loader import DBChatHistoryLoader
 from ...global_state import global_state
 from ...mcp_agent import create_unified_agent
+from ..config import apply_conditional_rule_blocks
 from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, _unique_filenames_from_split, _pack_context, prepend_loaded_context_scope
 from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
@@ -22,6 +23,15 @@ _FILE_LISTING_CONTEXT_RE = re.compile(
     r"(^FILE MANIFEST\b|^Allowed Directories:\b|^Found \d+ files matching\b|^No files found matching\b)",
     re.IGNORECASE | re.MULTILINE,
 )
+
+
+def _non_tool_system_prompt(prompt_template_string: str) -> str:
+    """System prompt for the tool-LESS fallback QA path. No tools are bound
+    here, so the feature-gated ACPX (Rule 12) / Templates (Rule 16) rule blocks
+    are never relevant — strip them both so the fallback prompt stays lean and
+    no sentinel markers leak to the model."""
+    return apply_conditional_rule_blocks(
+        prompt_template_string, include_acpx=False, include_templates=False)
 
 
 # Transient-error fingerprints that warrant retrying the unified-agent call
@@ -342,7 +352,7 @@ User Question: {enhanced_input}"""
                     "context": loaded_context,
                 }
                 qa_prompt = ChatPromptTemplate.from_messages([
-                    ("system", self.prompt_template_string),
+                    ("system", _non_tool_system_prompt(self.prompt_template_string)),
                     MessagesPlaceholder("chat_history"),
                     ("human", "{input}"),
                 ])
@@ -360,7 +370,7 @@ User Question: {enhanced_input}"""
                 "context": loaded_context,
             }
             qa_prompt = ChatPromptTemplate.from_messages([
-                ("system", self.prompt_template_string),
+                ("system", _non_tool_system_prompt(self.prompt_template_string)),
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
             ])
@@ -813,7 +823,7 @@ User Question: {enhanced_input}"""
                         f"User request: {q_rewritten}"
                     )
                 qa_prompt = ChatPromptTemplate.from_messages([
-                    ("system", self.prompt_template_string),
+                    ("system", _non_tool_system_prompt(self.prompt_template_string)),
                     MessagesPlaceholder("chat_history"),
                     ("human", "{input}"),
                 ])
@@ -830,7 +840,7 @@ User Question: {enhanced_input}"""
         else:
             # Fallback to basic LLM call with context
             qa_prompt = ChatPromptTemplate.from_messages([
-                ("system", self.prompt_template_string),
+                ("system", _non_tool_system_prompt(self.prompt_template_string)),
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
             ])

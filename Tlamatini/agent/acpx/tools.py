@@ -85,8 +85,10 @@ def acp_spawn(agent_id: str, task: str, cwd: str = "",
         agent_id: registered agent id. Use list_acp_agents to see options.
         task: the prompt the child should start working on.
         cwd: working directory for the child (default: ACPX config cwd).
-        mode: "session" (long-lived, follow-up turns possible via
-              acp_send) or "one-shot" (single-turn). Note: ``mode`` is
+        mode: controls follow-up continuity ONLY, NOT the transport (the
+              transport is fixed per agent_id by the registry, regardless of
+              this value). "session" (long-lived, follow-up turns possible
+              via acp_send) or "one-shot" (single-turn). Note: ``mode`` is
               effectively ignored by ``oneshot-prompt`` agents because
               every turn is its own fresh process — there is no in-child
               session state between calls.
