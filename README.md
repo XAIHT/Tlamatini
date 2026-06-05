@@ -4,18 +4,33 @@
 
 <h1 align="center">Tlamatini</h1>
 
-<h3 align="center">A local-first AI developer assistant that goes beyond chat.</h3>
+<h3 align="center">She doesn't chat. She <em>does</em>.</h3>
 
 <p align="center">
-Run it on your machine with <a href="https://ollama.com/">Ollama</a>. Your code never leaves your box.<br/>
-Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual workflow agents · multi-agent delegation to Claude Code, Cursor, Codex, Gemini CLI
+  <em>"One who knows" — in Nahuatl.</em><br/>
+  A local-first AI developer assistant that turns your laptop into a workshop where 74 agents collaborate to actually <strong>get things done</strong>.
 </p>
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s"><strong>▶️ Watch the one-minute demo</strong></a> &nbsp;·&nbsp;
   <a href="https://xaiht.org"><strong>🌐 Website</strong></a> &nbsp;·&nbsp;
-  <a href="#13-demo-videos"><strong>🎬 More demos</strong></a>
+  <a href="#13-demo-videos"><strong>🎬 More demos</strong></a> &nbsp;·&nbsp;
+  <a href="#-quickstart-in-5-minutes"><strong>⚡ Quickstart</strong></a>
 </p>
+
+---
+
+### 🌟 What can you do with her? A few examples in plain English:
+
+> *"Read this whole codebase, find every endpoint that touches the user table, and write me a security report."*  
+> *"Open Chrome, log into our staging dashboard, screenshot the analytics page, email it to the team."*  
+> *"Build the STM32 firmware, flash it to the connected board, and watch the serial output for errors."*  
+> *"Spin up Claude Code, give it the refactor task, then hand the output to Cursor for testing."*  
+> *"Design a flow that runs every morning, scrapes our competitors' pricing, and posts the diff to Slack."*
+
+She can do all of that. Locally. With your own model. While your code stays on your machine.
+
+---
 
 <p align="center">
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.15.0"><img src="https://img.shields.io/badge/VERSION-v1.15.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.15.0" /></a>
@@ -30,22 +45,50 @@ Hybrid RAG over your codebase · 79-tool multi-turn orchestration · 72 visual w
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License GPLv3" /></a>
 </p>
 
-### What it gives you that a plain chatbox doesn't
+### 🚀 What it gives you that a plain chatbox doesn't
 
-- **Real RAG over your code** — FAISS + BM25 hybrid retrieval with context budgeting. The model sees the *right* code, not random chunks.
-- **Multi-Turn mode** — the LLM becomes an operator: shell, Python, APIs, browser automation, screenshots, keyboard/mouse — all chained in one conversation.
-- **ACPX** — delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen, and relay output between them.
-- **Visual workflow designer** — drag and drop 74 agent types, wire them together, run flows unattended.
-- **Self-aware** — Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify herself.
-- **Local-first** — everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box.
+| | |
+|---|---|
+| 🧠 **Real RAG over your code** | FAISS + BM25 hybrid retrieval with context budgeting. The model sees the *right* code, not random chunks. |
+| 🛠️ **Multi-Turn mode** | The LLM becomes an **operator**: shell, Python, APIs, browser automation, screenshots, keyboard/mouse — all chained in one conversation. |
+| 🤝 **ACPX** | Delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen — and relay output between them. One conductor, an orchestra of agents. |
+| 🎨 **Visual workflow designer** | Drag and drop 74 agent types, wire them together, run flows unattended. No code required to compose a pipeline. |
+| 🪞 **Self-aware** | Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify **herself**. |
+| 🔒 **Local-first** | Everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box. |
 
-> **Latest — v1.15.0 (2026-06-04): VideoPlayer (74th agent type) — on-screen video PLAYBACK with audio.** **VideoPlayer** plays a video file (`.mp4`/`.mov`/`.mkv`/`.avi`/`.webm`) **with sound** on a chosen **display**, the on-screen sibling of AudioPlayer (speakers). It decodes + plays audio via **`ffpyplayer`** — whose pip wheel **bundles ffmpeg + SDL** so it ships entirely through `requirements.txt` and PyInstaller's `--collect-all` (no external ffmpeg, no runtime download) — and draws the window with the already-bundled **OpenCV**; if ffpyplayer is ever unavailable it degrades to silent OpenCV video. Knobs: `display_index` (which monitor), `volume_percent`, **`time_played`** (0 = whole video once; N>0 = exactly N seconds, TRUNCATING a longer file or LOOPING a shorter one with a final partial segment), `window_width`/`window_height`, `fullscreen`, and `keep_aspect` (letterbox vs stretch). Observational/output, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_videoplayer`, and emits an `INI_SECTION_VIDEOPLAYER` block (full played path + time played) for Parametrizer. The same **v1.15.0** release also added **AudioPlayer** — audio PLAYBACK completing the media-I/O family.
+### 💡 The thesis behind Tlamatini
+
+> A 20B-parameter local LLM, given the right tools, the right agents, and skills fine-tuned to your operating procedures, **outperforms a 200B cloud model with no tools — almost every time.**
+>
+> Parameter count isn't the bottleneck. **The toolbelt is.** Tlamatini is the toolbelt.
+
+### ⚡ Quickstart in 5 minutes
+
+```bash
+git clone https://github.com/XAIHT/Tlamatini.git
+cd Tlamatini && pip install -r requirements.txt
+python Tlamatini/manage.py migrate
+python Tlamatini/manage.py runserver --noreload
+# Open http://127.0.0.1:8000 and say hi
+```
+
+Full quickstart (with Ollama setup): [§2 below](#2-quickstart-source-mode).
+
+---
+
+<details>
+<summary><strong>📦 What's new in v1.15.0 (2026-06-04) — click to expand</strong></summary>
+
+> **VideoPlayer (74th agent type) — on-screen video PLAYBACK with audio.** **VideoPlayer** plays a video file (`.mp4`/`.mov`/`.mkv`/`.avi`/`.webm`) **with sound** on a chosen **display**, the on-screen sibling of AudioPlayer (speakers). It decodes + plays audio via **`ffpyplayer`** — whose pip wheel **bundles ffmpeg + SDL** so it ships entirely through `requirements.txt` and PyInstaller's `--collect-all` (no external ffmpeg, no runtime download) — and draws the window with the already-bundled **OpenCV**; if ffpyplayer is ever unavailable it degrades to silent OpenCV video. Knobs: `display_index` (which monitor), `volume_percent`, **`time_played`** (0 = whole video once; N>0 = exactly N seconds, TRUNCATING a longer file or LOOPING a shorter one with a final partial segment), `window_width`/`window_height`, `fullscreen`, and `keep_aspect` (letterbox vs stretch). Observational/output, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_videoplayer`, and emits an `INI_SECTION_VIDEOPLAYER` block (full played path + time played) for Parametrizer. The same **v1.15.0** release also added **AudioPlayer** — audio PLAYBACK completing the media-I/O family.
 >
 > **Also in v1.15.0 (2026-06-04): AudioPlayer (73rd agent type) — audio PLAYBACK completes the media-I/O family.** **AudioPlayer** plays an audio file through a system **output device (speakers / audio out)** via `soundfile` + `sounddevice` — the playback counterpart of **Recorder** (microphone-IN): together with **Shoter** (screen) and **Camcorder** (camera) they now cover screen / camera / microphone-in / speakers-out. It plays to the default output by default (or a chosen `device_index`/`device_name`), applies a software `volume_percent`, and honours **`time_played`** — 0 plays the whole file once, a positive value plays exactly that long, TRUNCATING a longer file or LOOPING a shorter one (with a streaming callback so a huge duration over a tiny file never allocates a giant buffer). Sample rate is read from the file by default (`sample_rate: 0`, correct pitch). Observational/output (it changes no persistent state), so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_audioplayer`, and emits an `INI_SECTION_AUDIOPLAYER` block (full played path + time played) for Parametrizer. The previous release (**v1.14.0**) added the observational capture pair **Camcorder** (webcam) and **Recorder** (microphone).
 
+</details>
+
 <p align="center">
   <a href="BookOfTlamatini.md"><strong>📖 Long-form docs</strong></a> &nbsp;·&nbsp;
-  <a href="VERSIONING.md"><strong>🏷️ Versioning</strong></a>
+  <a href="VERSIONING.md"><strong>🏷️ Versioning</strong></a> &nbsp;·&nbsp;
+  <a href="#14-contributing--license"><strong>🤝 Contributing</strong></a>
 </p>
 
 ---
