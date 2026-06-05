@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, Tuple
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
-from .acpx import filter_acpx_tools
+from .acpx import ACPX_TOOL_NAMES, filter_acpx_tools
 from .capability_registry import select_tools_for_request
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
@@ -1126,12 +1126,38 @@ class MultiTurnToolAgentExecutor:
         return result
 
 
+# Wrapped chat-agent tools whose presence means the firmware/engine "scaffold
+# projects under your Templates directory" rule (prompt.pmt Rule 16) is relevant
+# for the request. When none are bound the whole Templates rule block is dropped.
+_FIRMWARE_TEMPLATE_TOOL_NAMES = frozenset({
+    "chat_agent_stm32er",
+    "chat_agent_esp32er",
+    "chat_agent_arduiner",
+    "chat_agent_unrealer",
+})
+
+
 def _build_system_prompt(preeliminary_prompt: str, tools) -> str:
     import platform
     import sys as _sys
+    # Lazy import (avoids any rag<->mcp_agent import-cycle at module load).
+    from .rag.config import apply_conditional_rule_blocks
 
     tool_descriptions = "\n".join(
         f"- {tool.name}: {tool.description}" for tool in tools
+    )
+
+    # Inject the feature-gated rule blocks (ACPX mechanics → Rule 12, Templates
+    # directory → Rule 16) ONLY when their tool surface is actually bound for
+    # this request. With ACPX disabled, filter_acpx_tools has already stripped
+    # every acp_*/skill tool from ``tools`` upstream, so this drops ~1.8k words
+    # of ACPX instructions a smaller model would otherwise have to read and obey
+    # for tools it does not even have. Same idea for the firmware Templates rule.
+    tool_names = {getattr(tool, "name", "") for tool in tools}
+    preeliminary_prompt = apply_conditional_rule_blocks(
+        preeliminary_prompt,
+        include_acpx=bool(tool_names & ACPX_TOOL_NAMES),
+        include_templates=bool(tool_names & _FIRMWARE_TEMPLATE_TOOL_NAMES),
     )
 
     # Remove the empty placeholder blocks from the base prompt since context

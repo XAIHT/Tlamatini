@@ -121,11 +121,37 @@ function appendFormattedBotContent(targetNode, message) {
     }
 }
 
+// Sentinel inserted by the backend (response_parser.py::EXEC_REPORT_BOUNDARY)
+// between the answer prose and the system-appended Execution Report / Ask-Execs
+// denial banner. Keep this value byte-for-byte in sync with that constant.
+const EXEC_REPORT_BOUNDARY = '<!--TLAMATINI_EXEC_REPORT_BOUNDARY-->';
+
 function buildAutomatedMessageElement(message, addedContent = null) {
     const automatedMessage = document.createElement('div');
 
     automatedMessage.classList.add('automated-message');
-    automatedMessage.innerHTML = String(message ?? '');
+
+    const raw = String(message ?? '');
+    const boundaryIndex = raw.indexOf(EXEC_REPORT_BOUNDARY);
+    if (boundaryIndex !== -1) {
+        // Render the answer prose and the appended Execution Report in TWO
+        // separate child elements, each with its own innerHTML parse. This is
+        // what structurally prevents the execution tables from ever being
+        // absorbed into a malformed / unclosed HTML table in the answer body
+        // (the browser HTML-parser foster-parenting that mixed them before):
+        // the two halves are parsed in completely independent DOM subtrees.
+        const proseDiv = document.createElement('div');
+        proseDiv.classList.add('automated-message-body');
+        proseDiv.innerHTML = raw.slice(0, boundaryIndex);
+        automatedMessage.appendChild(proseDiv);
+
+        const systemDiv = document.createElement('div');
+        systemDiv.classList.add('automated-message-execreport');
+        systemDiv.innerHTML = raw.slice(boundaryIndex + EXEC_REPORT_BOUNDARY.length);
+        automatedMessage.appendChild(systemDiv);
+    } else {
+        automatedMessage.innerHTML = raw;
+    }
 
     if (addedContent != null) {
         $(addedContent).off('click').on('click', function (e) {

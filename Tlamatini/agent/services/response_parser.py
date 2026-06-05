@@ -23,6 +23,18 @@ def save_snippet(snippetName, snippetLanguage, snippetContent):
 def get_or_create_bot_user():
     return User.objects.get_or_create(username='Tlamatini')
 
+# Sentinel string inserted between the answer prose and the system-appended
+# Execution Report / Ask-Execs denial banner. The frontend
+# (agent_page_chat.js::buildAutomatedMessageElement) splits the saved message on
+# this marker and renders each half in its OWN innerHTML parse, so a malformed /
+# unclosed HTML table in the answer body (prompt.pmt rule 6) can NEVER absorb the
+# execution tables via the browser's HTML-parser foster-parenting. It is an HTML
+# comment so that an old / cached frontend that doesn't know to split degrades
+# gracefully (the marker renders invisibly instead of as literal text). Keep this
+# value byte-for-byte in sync with the constant in agent_page_chat.js.
+EXEC_REPORT_BOUNDARY = "<!--TLAMATINI_EXEC_REPORT_BOUNDARY-->"
+
+
 def _html_escape(text):
     if text is None:
         return ""
@@ -189,7 +201,21 @@ def _render_exec_report_html(exec_report_entries):
             display_names[agent_key] = str(row.get("agent_display") or agent_key.title())
         buckets[agent_key].append(row)
 
-    parts = ['<div class="exec-report-block">']
+    # Wrap the whole report in a self-contained FRAME so the execution tables
+    # can never visually blend into the answer body (or the answer's own HTML
+    # tables — prompt.pmt rule 6). The frame opens with a divider + a labelled
+    # header bar, then the per-agent tables, so the boundary is unmistakable.
+    parts = [
+        '<div class="exec-report-frame">',
+        '<div class="exec-report-divider" aria-hidden="true"></div>',
+        '<div class="exec-report-header">',
+        '<span class="exec-report-header-icon" aria-hidden="true">&#9881;</span>',
+        '<span class="exec-report-header-title">Last Executions</span>',
+        '<span class="exec-report-header-sub">A standalone card of the tools that '
+        'actually ran &mdash; kept completely separate from the answer above.</span>',
+        '</div>',
+        '<div class="exec-report-block">',
+    ]
     for agent_key in ordered_keys:
         rows = buckets[agent_key]
         display = display_names[agent_key]
@@ -218,7 +244,8 @@ def _render_exec_report_html(exec_report_entries):
                 '</tr>'
             )
         parts.append('</tbody></table>')
-    parts.append('</div>')
+    parts.append('</div>')   # .exec-report-block
+    parts.append('</div>')   # .exec-report-frame
     return "".join(parts)
 
 
@@ -408,9 +435,19 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         answer_success = await analyze_answer_success(llm_response)
         print(f"--- AnswerAnalizer: verdict = {'SUCCESS' if answer_success else 'FAILURE'}")
 
-    # Append the Exec report HTML (one per-agent table per state-changing
-    # tool that fired) to the final answer, but only when the user enabled
-    # the Exec report checkbox AND at least one capture was recorded.
+    # Build the system-appended section (Exec report tables + Ask-Execs denial
+    # banner) SEPARATELY from the answer prose, then join it on with the
+    # EXEC_REPORT_BOUNDARY sentinel. The sentinel — not bare concatenation — is
+    # what guarantees the execution tables can never visually merge into the
+    # answer body: the frontend splits on it and parses each half as its own
+    # innerHTML, so an unclosed HTML table in the prose (prompt.pmt rule 6)
+    # cannot foster-parent the exec tables into itself. The frame markup +
+    # boundary together are belt-and-suspenders.
+    system_section_parts = []
+
+    # Exec report HTML (one per-agent table per state-changing tool that fired),
+    # but only when the user enabled the Exec report checkbox AND at least one
+    # capture was recorded.
     entries_count = len(exec_report_entries) if exec_report_entries else 0
     print(
         f"--- process_llm_response: exec_report_enabled={exec_report_enabled} "
@@ -419,21 +456,27 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     if exec_report_enabled:
         exec_report_html = _render_exec_report_html(exec_report_entries)
         if exec_report_html:
-            llm_response = llm_response + exec_report_html
+            system_section_parts.append(exec_report_html)
             print(f"--- process_llm_response: appended exec_report HTML ({len(exec_report_html)} chars)")
         else:
             print("--- process_llm_response: exec_report HTML empty (no state-changing tool rows captured)")
 
-    # Append the red "Execution interrupted" banner when the user DENIED a
-    # tool under Ask Execs. This runs AFTER the exec report tables (so the
-    # user first sees what DID execute, then the big stop indicating where the
-    # chain was halted) but BEFORE save_message, so a chat reload restores the
-    # banner verbatim. The banner is NOT gated on exec_report_enabled.
+    # The red "Execution interrupted" banner when the user DENIED a tool under
+    # Ask Execs. It goes AFTER the exec report tables (so the user first sees
+    # what DID execute, then the big stop indicating where the chain was halted)
+    # but is NOT gated on exec_report_enabled — a denial always shows the banner.
     if exec_report_denied:
         denied_banner = _render_exec_denied_banner(exec_report_denied)
         if denied_banner:
-            llm_response = llm_response + denied_banner
+            system_section_parts.append(denied_banner)
             print("--- process_llm_response: appended Ask-Execs denial banner")
+
+    # Join the isolated system section onto the answer with the boundary
+    # sentinel — only when there is something to append, so a plain answer is
+    # never followed by a stray marker. Persisted into the saved message verbatim
+    # so a chat reload splits and re-isolates it identically.
+    if system_section_parts:
+        llm_response = llm_response + EXEC_REPORT_BOUNDARY + "".join(system_section_parts)
 
     # Persist the final message — including any appended exec report tables —
     # so reloading the chat history restores the exec report HTML verbatim,

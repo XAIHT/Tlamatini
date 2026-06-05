@@ -2342,8 +2342,9 @@ def get_current_time() -> str:
 @tool
 def execute_file(command: str, foreground: bool = False) -> str:
     """
-    Execute a Python script with optional arguments — in the background by default,
-    or in a visible foreground terminal window when the user explicitly asks for one.
+    Execute a Python script with optional arguments — pass the script path (plus any
+    arguments) in `command`. Runs in the background by default, or in a visible
+    foreground terminal window (set `foreground=True`) when the user explicitly asks for one.
 
     PREFERRED over chat_agent_keyboarder for running a Python script: pass the script path here —
     NEVER drive Keyboarder to open IDLE / VS Code / a terminal and type/run the script. For creating

@@ -21,6 +21,74 @@ TEMP_DIRECTORY_PLACEHOLDER = '{temp_directory}'
 
 TEMPLATES_DIRECTORY_PLACEHOLDER = '{templates_directory}'
 
+# ---------------------------------------------------------------------------
+# Conditional (feature-gated) rule blocks — weak-model legibility
+# ---------------------------------------------------------------------------
+# Two large, feature-specific rule blocks in prompt.pmt — the ACPX mechanics
+# rule (Rule 12, ~1.8k words) and the Templates-directory rule (Rule 16) — are
+# only meaningful when the matching tool surface is actually bound for the
+# request. They are wrapped in plain HTML-comment sentinels so the prompt
+# assembler can DROP them when their tools are absent, instead of asking a
+# smaller model to read and obey instructions for tools it does not have.
+#
+# The markers are HTML comments (no curly braces) on purpose, so they never
+# collide with the f-string template variables ({context}, {system_context},
+# {self_knowledge}, …) nor with the brace-escaping in
+# mcp_agent._build_system_prompt. Each marker pair may appear MORE THAN ONCE
+# (the full Rule block AND its one-line Quick-Map pointer share the same pair),
+# so resolution loops over every occurrence. A simple index walk is used (no
+# regex backtracking over the very large ACPX block).
+ACPX_RULE_MARKERS = ('<!--ACPX_RULES_BEGIN-->', '<!--ACPX_RULES_END-->')
+TEMPLATES_RULE_MARKERS = ('<!--TEMPLATES_RULES_BEGIN-->', '<!--TEMPLATES_RULES_END-->')
+
+
+def _resolve_rule_block(prompt: str, markers: Tuple[str, str], include: bool) -> str:
+    begin, end = markers
+    while True:
+        start = prompt.find(begin)
+        if start == -1:
+            break
+        stop = prompt.find(end, start + len(begin))
+        if stop == -1:
+            # Unbalanced begin with no following end → strip the stray marker
+            # so it never leaks, and stop (malformed prompt revision).
+            return prompt.replace(begin, '', 1)
+        seg_end = stop + len(end)
+        # Swallow one trailing newline after the end marker so neither keeping
+        # nor dropping the block leaves a dangling blank line.
+        if seg_end < len(prompt) and prompt[seg_end] == '\n':
+            seg_end += 1
+        if include:
+            # Keep the inner content (trim a leading/trailing newline that hugged
+            # the markers) and re-terminate with a single newline.
+            inner = prompt[start + len(begin):stop]
+            if inner.startswith('\n'):
+                inner = inner[1:]
+            if inner.endswith('\n'):
+                inner = inner[:-1]
+            prompt = prompt[:start] + inner + '\n' + prompt[seg_end:]
+        else:
+            # Drop the whole block, markers included.
+            prompt = prompt[:start] + prompt[seg_end:]
+    return prompt
+
+
+def apply_conditional_rule_blocks(prompt: str, *, include_acpx: bool,
+                                  include_templates: bool) -> str:
+    """Resolve the sentinel-wrapped ACPX / Templates rule blocks in a prompt.
+
+    ``include_*=True`` keeps the block's content (stripping just the markers);
+    ``False`` removes the whole block. Fails open — a missing marker pair leaves
+    the prompt unchanged — so this is safe on any prompt revision and can never
+    raise into the prompt-build path.
+    """
+    try:
+        prompt = _resolve_rule_block(prompt, ACPX_RULE_MARKERS, include_acpx)
+        prompt = _resolve_rule_block(prompt, TEMPLATES_RULE_MARKERS, include_templates)
+    except Exception:
+        return prompt
+    return prompt
+
 
 def _resolve_temp_directory_for_prompt() -> str:
     """Return the absolute app Temp directory for prompt injection (fail-open)."""

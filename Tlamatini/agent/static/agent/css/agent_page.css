@@ -1084,9 +1084,78 @@ body.resizing-vertical {
  * Rendered at the tail of a multi-turn answer when the "Exec report"
  * toolbar toggle is on. The gradients mirror the Executer and Pythonxer
  * canvas tiles so the tables feel native to the agentic UI. */
+/* The frontend (agent_page_chat.js) renders the answer prose and this report in
+ * TWO separate child elements, each with its OWN innerHTML parse — proseDiv =
+ * .automated-message-body, the report = .automated-message-execreport. That
+ * split is the HARD guarantee the execution tables can never be foster-parented
+ * into a malformed/unclosed answer table. This wrapper just adds the visual
+ * "this is its own card, detached from the answer" separation on top of it. */
+.automated-message-execreport {
+    display: block;
+    clear: both;
+    margin-top: 1.35rem;
+}
+
+/* Exec report FRAME — the standalone "Last Executions" CARD. A self-contained,
+ * clearly bounded box appended after the answer prose so the execution tables
+ * can NEVER visually blend into the answer body (or the answer's own HTML
+ * tables — prompt.pmt rule 6). Top accent border, a divider, and a filled title
+ * bar make the boundary between "the answer" and "what ran" unmistakable. */
+.exec-report-frame {
+    display: block;
+    clear: both;
+    margin-top: 0;
+    padding: 0 0.9rem 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-top: 4px solid #38bdf8;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.62);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+/* A bold dashed rule spanning the full inner width — the visual "cut" between
+ * the answer above and the report below. */
+.exec-report-divider {
+    height: 0;
+    margin: 0 -0.9rem 0;
+    border-top: 2px dashed rgba(56, 189, 248, 0.55);
+}
+
+/* Filled title bar so the card reads as a titled card, not a loose heading. */
+.exec-report-header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    padding: 0.6rem 0.7rem 0.55rem;
+    margin: 0 -0.9rem 0.55rem;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(15, 23, 42, 0.1) 100%);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 0 0 4px 4px;
+}
+
+.exec-report-header-icon {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.exec-report-header-title {
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+    color: #e2f3ff;
+}
+
+.exec-report-header-sub {
+    font-size: 0.75rem;
+    color: #9fb4cc;
+    font-style: italic;
+}
+
 .exec-report-block {
     display: block;
-    margin-top: 0.9rem;
+    margin-top: 0.2rem;
     width: 100%;
 }
 

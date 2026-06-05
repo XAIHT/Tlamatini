@@ -6471,3 +6471,113 @@ class FlashWindowAttentionTests(TestCase):
             window_flash.notify_attention('agent_page.html', 'notification'), bool
         )
 
+
+
+class ConditionalRuleBlockTests(TestCase):
+    """Pins item-3 of the weak-model prompt audit: the ACPX (Rule 12) and
+    Templates (Rule 16) rule blocks are sentinel-wrapped in prompt.pmt and are
+    injected into the Multi-Turn system prompt ONLY when their tool surface is
+    actually bound for the request — so a smaller model is never handed ~1.8k
+    words of ACPX instructions (or the firmware Templates rule) for tools it
+    does not have. A leaked sentinel marker, or the wrong inclusion decision,
+    fails here."""
+
+    @staticmethod
+    def _agent_dir():
+        return os.path.dirname(os.path.abspath(__file__))
+
+    @staticmethod
+    def _tool(name):
+        # _build_system_prompt only reads .name and .description off each tool.
+        return SimpleNamespace(name=name, description=f"{name} description")
+
+    # --- the pure helper -------------------------------------------------
+    def test_apply_conditional_rule_blocks_include_keeps_body_strips_markers(self):
+        from agent.rag.config import apply_conditional_rule_blocks
+        sample = ("HEAD\n<!--ACPX_RULES_BEGIN-->\nACPX BODY\n<!--ACPX_RULES_END-->\n"
+                  "MID\n<!--TEMPLATES_RULES_BEGIN-->\nTPL BODY\n<!--TEMPLATES_RULES_END-->\nTAIL")
+        out = apply_conditional_rule_blocks(sample, include_acpx=True, include_templates=True)
+        self.assertIn("ACPX BODY", out)
+        self.assertIn("TPL BODY", out)
+        self.assertNotIn("ACPX_RULES_BEGIN", out)
+        self.assertNotIn("ACPX_RULES_END", out)
+        self.assertNotIn("TEMPLATES_RULES_BEGIN", out)
+        self.assertNotIn("TEMPLATES_RULES_END", out)
+        for anchor in ("HEAD", "MID", "TAIL"):
+            self.assertIn(anchor, out)
+
+    def test_apply_conditional_rule_blocks_exclude_drops_whole_block(self):
+        from agent.rag.config import apply_conditional_rule_blocks
+        sample = ("HEAD\n<!--ACPX_RULES_BEGIN-->\nACPX BODY\n<!--ACPX_RULES_END-->\n"
+                  "MID\n<!--TEMPLATES_RULES_BEGIN-->\nTPL BODY\n<!--TEMPLATES_RULES_END-->\nTAIL")
+        out = apply_conditional_rule_blocks(sample, include_acpx=False, include_templates=False)
+        self.assertNotIn("ACPX BODY", out)
+        self.assertNotIn("TPL BODY", out)
+        self.assertNotIn("ACPX_RULES_BEGIN", out)
+        self.assertNotIn("TEMPLATES_RULES_BEGIN", out)
+        # Surrounding prose is untouched.
+        for anchor in ("HEAD", "MID", "TAIL"):
+            self.assertIn(anchor, out)
+
+    def test_apply_conditional_rule_blocks_mixed_inclusion(self):
+        from agent.rag.config import apply_conditional_rule_blocks
+        sample = ("<!--ACPX_RULES_BEGIN-->\nACPX BODY\n<!--ACPX_RULES_END-->\n"
+                  "<!--TEMPLATES_RULES_BEGIN-->\nTPL BODY\n<!--TEMPLATES_RULES_END-->")
+        out = apply_conditional_rule_blocks(sample, include_acpx=True, include_templates=False)
+        self.assertIn("ACPX BODY", out)
+        self.assertNotIn("TPL BODY", out)
+
+    def test_apply_conditional_rule_blocks_missing_markers_is_noop(self):
+        from agent.rag.config import apply_conditional_rule_blocks
+        sample = "no markers here at all"
+        self.assertEqual(
+            apply_conditional_rule_blocks(sample, include_acpx=False, include_templates=False),
+            sample,
+        )
+
+    # --- the real prompt + _build_system_prompt integration --------------
+    def test_real_prompt_pmt_has_balanced_sentinel_pairs(self):
+        with open(os.path.join(self._agent_dir(), "prompt.pmt"), "r", encoding="utf-8") as fh:
+            raw = fh.read()
+        # Each marker wraps TWO spans: the full Rule block AND its one-line
+        # Quick-Map pointer. begin/end counts must match per family.
+        self.assertEqual(raw.count("<!--ACPX_RULES_BEGIN-->"),
+                         raw.count("<!--ACPX_RULES_END-->"))
+        self.assertEqual(raw.count("<!--TEMPLATES_RULES_BEGIN-->"),
+                         raw.count("<!--TEMPLATES_RULES_END-->"))
+        self.assertEqual(raw.count("<!--ACPX_RULES_BEGIN-->"), 2)
+        self.assertEqual(raw.count("<!--TEMPLATES_RULES_BEGIN-->"), 2)
+
+    def _build(self, tool_names):
+        from agent.rag.config import load_config_and_prompt
+        from agent.mcp_agent import _build_system_prompt
+        _, prompt_template, _ = load_config_and_prompt(self._agent_dir())
+        return _build_system_prompt(prompt_template, [self._tool(n) for n in tool_names])
+
+    def test_acpx_rule_present_only_when_acpx_tool_bound(self):
+        with_acpx = self._build(["acp_spawn", "execute_command"])
+        self.assertIn("12) ACPX mechanics rule", with_acpx)
+        # The Quick-Map pointer line gates with the rule block.
+        self.assertIn("→ Rule 12", with_acpx)
+        without_acpx = self._build(["execute_command"])
+        self.assertNotIn("12) ACPX mechanics rule", without_acpx)
+        self.assertNotIn("→ Rule 12", without_acpx)
+
+    def test_templates_rule_present_only_when_firmware_tool_bound(self):
+        with_fw = self._build(["chat_agent_stm32er"])
+        self.assertIn("16) Template / project directory location rule", with_fw)
+        self.assertIn("→ Rule 16", with_fw)
+        without_fw = self._build(["execute_command"])
+        self.assertNotIn("16) Template / project directory location rule", without_fw)
+        self.assertNotIn("→ Rule 16", without_fw)
+        # Rule 15's Quick-Map pointer must survive (it is NOT inside the block).
+        self.assertIn("→ Rule 15", without_fw)
+
+    def test_no_sentinel_marker_ever_leaks_into_system_prompt(self):
+        for tool_names in (["execute_command"], ["acp_spawn"],
+                           ["chat_agent_esp32er"], ["acp_relay", "chat_agent_unrealer"]):
+            prompt = self._build(tool_names)
+            for marker in ("ACPX_RULES_BEGIN", "ACPX_RULES_END",
+                           "TEMPLATES_RULES_BEGIN", "TEMPLATES_RULES_END"):
+                self.assertNotIn(marker, prompt,
+                                 f"sentinel {marker} leaked with tools {tool_names}")

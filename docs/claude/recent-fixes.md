@@ -10,6 +10,18 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-05 — Exec Report can no longer bleed into the answer body (boundary sentinel + split-render)
+
+**Symptom (user-reported):** the per-agent Execution Report tables appended at the tail of a Multi-Turn answer were getting *embedded into the answer's own HTML tables* — a visual mess where "what ran" merged into the response.
+
+**Root cause:** the answer prose and the appended exec-report HTML were concatenated into ONE string and rendered in a SINGLE `innerHTML` parse (`agent_page_chat.js::buildAutomatedMessageElement`). When the LLM answer contained an HTML table (prompt.pmt rule 6) that wasn't perfectly closed, the browser's HTML parser **foster-parented** the trailing exec `<table>`s into/around it. A wrapper `<div class="exec-report-frame">` alone (added the prior session) **cannot** prevent this — it is the same parse — and that prior CSS had also never reached the served `staticfiles/` (DEBUG serves live from `agent/static/`, so the real gap was the un-restarted server + the structural parse issue, not the CSS).
+
+**Fix (the contract — do NOT revert):**
+- `agent/services/response_parser.py` defines `EXEC_REPORT_BOUNDARY = "<!--TLAMATINI_EXEC_REPORT_BOUNDARY-->"`. `process_llm_response` now builds the system-appended section (exec-report tables + Ask-Execs denial banner) separately and joins it onto the answer with this sentinel — **only when non-empty** (a plain answer is never followed by a stray marker). It is persisted into the saved `AgentMessage` verbatim, so reload re-isolates identically.
+- `agent/static/agent/js/agent_page_chat.js` declares the byte-identical `const EXEC_REPORT_BOUNDARY` and, in `buildAutomatedMessageElement`, splits the message on it and parses **each half in its OWN `innerHTML`** (prose → `.automated-message-body`, system section → `.automated-message-execreport`). Two independent DOM subtrees = a malformed/unclosed answer table can NEVER absorb the exec tables. This is the structural guarantee; the `.exec-report-frame` markup/CSS is now belt-and-suspenders, not the load-bearing part.
+- **Keep the two `EXEC_REPORT_BOUNDARY` constants byte-for-byte in sync.** It is an HTML comment so an old/cached frontend degrades gracefully (marker renders invisibly, falls back to the legacy single concatenated parse).
+- Untouched: `_render_exec_report_html` output (still emits `.exec-report-frame`/`.exec-report-block`/per-agent captions), the executor capture path, and the `exec_report_enabled` gating — so `ExecReportCaptureTests` / `ExecReportPersistenceTests` / `AskExecsDenialBannerTests` stay green (they assert on captions/`exec-report-block`/`row.message == final`, none of which the boundary changes). **Requires a Django server restart** to emit the new markup (and a browser hard-refresh; `STATIC_VERSION` cache-busts JS/CSS on each restart).
+
 ### 2026-06-04 — AudioPlayer (#73) + VideoPlayer (#74): the media-PLAYBACK pair that completes the media-I/O family
 
 The media-I/O family is now **screen / camera-in / mic-in / speakers-out / screen-out**: Shoter (screen), Camcorder (camera capture), Recorder (mic capture), **AudioPlayer** (audio file → speakers), **VideoPlayer** (video file → a display, with audio). Both new agents ship on the canvas AND as wrapped Multi-Turn tools (`chat_agent_audioplayer` / `chat_agent_videoplayer`). Contracts to keep:
