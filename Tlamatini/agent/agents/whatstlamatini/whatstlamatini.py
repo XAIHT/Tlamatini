@@ -329,6 +329,15 @@ _SPECIAL_TYPES_TO_SKIP: Tuple[str, ...] = (
     "mcp", "tool", "agent",
     "heartbeat", "session-restored", "context-path-set",
     "establishment-completed",
+    # Ask-Execs UI-control frames. The bot never enables Ask Execs
+    # (ask_execs_enabled is hard-pinned False), so it never triggers these
+    # for its OWN requests. But the consumer broadcasts `exec-permission-
+    # request` to the whole per-user room group (chat_user_<id>); if a human
+    # browser is logged into the SAME Tlamatini account and ticks Ask Execs,
+    # that frame lands on the bot's socket too. Skip it explicitly so it can
+    # never be mistaken for a partial/final answer. (Run the bot on a
+    # dedicated account to avoid this cross-talk entirely — see config.yaml.)
+    "exec-permission-request", "exec-permission-response",
 )
 
 _NOISE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
@@ -477,6 +486,7 @@ class TlamatiniBridge:
         password: str,
         multi_turn_enabled: bool,
         exec_report_enabled: bool,
+        acpx_enabled: bool,
         total_timeout: float,
         idle_timeout: float = 8.0,
     ):
@@ -486,6 +496,14 @@ class TlamatiniBridge:
         self.password = password
         self.multi_turn_enabled = multi_turn_enabled
         self.exec_report_enabled = exec_report_enabled
+        # ACPX gate — when True, Tlamatini exposes the 12 ACPX/Skill tools to
+        # the planner for this request, so the LLM can run the complete ACPX
+        # scheme (acp_doctor → acp_spawn → acp_send_and_wait → acp_relay →
+        # acp_kill, plus list_skills / invoke_skill) straight from a WhatsApp
+        # message. When False, `agent.acpx.filter_acpx_tools()` strips them out
+        # and the request falls back to the legacy Multi-Turn / one-shot flow.
+        # Mirrors the `#acpx-enabled` toolbar checkbox (and TeleTlamatini).
+        self.acpx_enabled = acpx_enabled
         self.total_timeout = float(total_timeout)
         self.idle_timeout = float(idle_timeout)
 
@@ -637,12 +655,24 @@ class TlamatiniBridge:
             'message': user_message,
             'multi_turn_enabled': bool(self.multi_turn_enabled),
             'exec_report_enabled': bool(self.exec_report_enabled),
+            'acpx_enabled': bool(self.acpx_enabled),
+            # Ask-Execs is HARD-PINNED OFF for the bot. The per-tool
+            # Proceed/Deny gate (consumers.py) renders as a BROWSER modal —
+            # a WhatsApp operator can never answer it, so a request with
+            # ask_execs on would BLOCK the executor thread until total_timeout
+            # and then return empty. By design WhatsTlamatini is fully
+            # authorized: every state-changing tool runs unattended (the
+            # access password IS the authorization). We send the flag
+            # explicitly as False rather than omitting it so a future change
+            # to the server-side default can never silently re-gate the bot.
+            'ask_execs_enabled': False,
         }
         await self._ws.send(json.dumps(send_payload))
         logging.info(
             f"{log_tag} bridge: sent (len={len(user_message)}, "
             f"multi_turn={self.multi_turn_enabled}, "
-            f"exec_report={self.exec_report_enabled})"
+            f"exec_report={self.exec_report_enabled}, "
+            f"acpx={self.acpx_enabled})"
         )
 
         final_html: Optional[str] = None
@@ -1019,13 +1049,29 @@ def _resolve_tlamatini_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
     ws_url = tla.get('ws_url')
     if not ws_url:
         ws_url = base.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/agent/'
+    multi_turn_enabled = bool(tla.get('multi_turn_enabled', True))
+    # ACPX defaults to False at the resolver level (matching the chat toolbar's
+    # system-wide default) so a WhatsTlamatini deploy from before this change
+    # keeps its legacy behavior. The shipped config.yaml sets `acpx_enabled:
+    # true` so fresh deploys can drive the full ACPX scheme out of the box.
+    acpx_enabled = bool(tla.get('acpx_enabled', False))
+    # ACPX needs the Multi-Turn planner to bind the 12 acp_* / *_skill tools;
+    # with multi_turn off, the planner never runs and the ACPX surface is
+    # effectively dead. Warn (non-fatal) rather than silently no-op.
+    if acpx_enabled and not multi_turn_enabled:
+        logging.warning(
+            "tlamatini.acpx_enabled is true but multi_turn_enabled is false — "
+            "the ACPX tool surface only binds under Multi-Turn, so ACPX will be "
+            "inert this run. Set multi_turn_enabled: true to use ACPX."
+        )
     return {
         'base_url': base,
         'ws_url': ws_url,
         'username': tla.get('username', 'user'),
         'password': tla.get('password', 'changeme'),
-        'multi_turn_enabled': bool(tla.get('multi_turn_enabled', True)),
+        'multi_turn_enabled': multi_turn_enabled,
         'exec_report_enabled': bool(tla.get('exec_report_enabled', True)),
+        'acpx_enabled': acpx_enabled,
         'total_timeout': float(tla.get('total_timeout', 1800)),
         'idle_timeout': float(tla.get('response_idle_timeout', 8)),
     }
@@ -1035,10 +1081,22 @@ def _resolve_tlamatini_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
 # Telegram sense; the gate triggers on the first message regardless.
 _MSG_PASSWORD_PROMPT = "🔒 Send the access password to use this bot."
 _MSG_AUTH_REJECTED = "❌ Wrong password. Try again."
-_MSG_AUTH_OK = (
-    "✅ Authenticated. Send any request — I'll forward it to Tlamatini "
-    "(Multi-Turn + Exec Report). For example: \"What's my CPU usage?\"."
-)
+def _format_auth_ok(multi_turn_enabled: bool, exec_report_enabled: bool, acpx_enabled: bool) -> str:
+    flags = []
+    if multi_turn_enabled:
+        flags.append("Multi-Turn")
+    if exec_report_enabled:
+        flags.append("Exec Report")
+    if acpx_enabled:
+        flags.append("ACPX")
+    suffix = f" ({' + '.join(flags)})" if flags else " (legacy one-shot)"
+    examples = ["\"What's my CPU usage?\""]
+    if acpx_enabled:
+        examples.append("\"Use ACPX to spawn claude and ask it to summarize the current branch\"")
+    return (
+        "✅ Authenticated. Send any request — I'll forward it to Tlamatini"
+        f"{suffix}. For example: {' or '.join(examples)}."
+    )
 _MSG_WORKING = "🔄 Working on your request..."
 _MSG_NEED_INFO = "🟡 I need a bit more detail:"
 _MSG_EMPTY_RESULT = "⚠️ Tlamatini returned an empty response."
@@ -1078,6 +1136,7 @@ async def _whatsapp_main_loop(config: Dict[str, Any]):
         password=tla_cfg['password'],
         multi_turn_enabled=tla_cfg['multi_turn_enabled'],
         exec_report_enabled=tla_cfg['exec_report_enabled'],
+        acpx_enabled=tla_cfg['acpx_enabled'],
         total_timeout=tla_cfg['total_timeout'],
         idle_timeout=tla_cfg['idle_timeout'],
     )
@@ -1216,7 +1275,11 @@ async def _whatsapp_main_loop(config: Dict[str, Any]):
                     chat_state['phase'] = PHASE_READY
                     chat_state['conversation'] = []
                     await _persist()
-                    await _send(chat_key, _MSG_AUTH_OK)
+                    await _send(chat_key, _format_auth_ok(
+                        tla_cfg['multi_turn_enabled'],
+                        tla_cfg['exec_report_enabled'],
+                        tla_cfg['acpx_enabled'],
+                    ))
                     return
                 elif not password_gate:
                     chat_state['phase'] = PHASE_READY
@@ -1271,6 +1334,7 @@ async def _whatsapp_main_loop(config: Dict[str, Any]):
         f"WhatsTlamatini ready. completeness_check={cc_cfg['enabled']} "
         f"multi_turn={tla_cfg['multi_turn_enabled']} "
         f"exec_report={tla_cfg['exec_report_enabled']} "
+        f"acpx={tla_cfg['acpx_enabled']} "
         f"target_agents={target_agents} "
         f"webhook=http://{wa_cfg['webhook_host']}:{wa_cfg['webhook_port']}{wa_cfg['webhook_path']}"
     )

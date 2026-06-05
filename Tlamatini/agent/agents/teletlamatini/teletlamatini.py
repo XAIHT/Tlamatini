@@ -327,6 +327,15 @@ _SPECIAL_TYPES_TO_SKIP: Tuple[str, ...] = (
     "mcp", "tool", "agent",
     "heartbeat", "session-restored", "context-path-set",
     "establishment-completed",
+    # Ask-Execs UI-control frames. The bot never enables Ask Execs
+    # (ask_execs_enabled is hard-pinned False), so it never triggers these
+    # for its OWN requests. But the consumer broadcasts `exec-permission-
+    # request` to the whole per-user room group (chat_user_<id>); if a human
+    # browser is logged into the SAME Tlamatini account and ticks Ask Execs,
+    # that frame lands on the bot's socket too. Skip it explicitly so it can
+    # never be mistaken for a partial/final answer. (Run the bot on a
+    # dedicated account to avoid this cross-talk entirely — see config.yaml.)
+    "exec-permission-request", "exec-permission-response",
 )
 
 _NOISE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
@@ -663,6 +672,16 @@ class TlamatiniBridge:
             'multi_turn_enabled': bool(self.multi_turn_enabled),
             'exec_report_enabled': bool(self.exec_report_enabled),
             'acpx_enabled': bool(self.acpx_enabled),
+            # Ask-Execs is HARD-PINNED OFF for the bot. The per-tool
+            # Proceed/Deny gate (consumers.py) renders as a BROWSER modal —
+            # a Telegram operator can never answer it, so a request with
+            # ask_execs on would BLOCK the executor thread until total_timeout
+            # and then return empty. By design TeleTlamatini is fully
+            # authorized: every state-changing tool runs unattended (the
+            # access password IS the authorization). We send the flag
+            # explicitly as False rather than omitting it so a future change
+            # to the server-side default can never silently re-gate the bot.
+            'ask_execs_enabled': False,
         }
         await self._ws.send(json.dumps(send_payload))
         logging.info(
@@ -823,19 +842,30 @@ def _resolve_tlamatini_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
         # Derive ws:// from http:// automatically — one less thing to keep in
         # sync in config.yaml.
         ws_url = base.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/agent/'
+    multi_turn_enabled = bool(tla.get('multi_turn_enabled', True))
+    # ACPX defaults to False at the resolver level (matching the chat
+    # toolbar's system-wide default) so a TeleTlamatini deploy from
+    # before this change keeps its legacy behavior. The shipped
+    # config.yaml sets `acpx_enabled: true` so fresh deploys can drive
+    # the full ACPX scheme out of the box.
+    acpx_enabled = bool(tla.get('acpx_enabled', False))
+    # ACPX needs the Multi-Turn planner to bind the 12 acp_* / *_skill tools;
+    # with multi_turn off, the planner never runs and the ACPX surface is
+    # effectively dead. Warn (non-fatal) rather than silently no-op.
+    if acpx_enabled and not multi_turn_enabled:
+        logging.warning(
+            "tlamatini.acpx_enabled is true but multi_turn_enabled is false — "
+            "the ACPX tool surface only binds under Multi-Turn, so ACPX will be "
+            "inert this run. Set multi_turn_enabled: true to use ACPX."
+        )
     return {
         'base_url': base,
         'ws_url': ws_url,
         'username': tla.get('username', 'user'),
         'password': tla.get('password', 'changeme'),
-        'multi_turn_enabled': bool(tla.get('multi_turn_enabled', True)),
+        'multi_turn_enabled': multi_turn_enabled,
         'exec_report_enabled': bool(tla.get('exec_report_enabled', True)),
-        # ACPX defaults to False at the resolver level (matching the chat
-        # toolbar's system-wide default) so a TeleTlamatini deploy from
-        # before this change keeps its legacy behavior. The shipped
-        # config.yaml sets `acpx_enabled: true` so fresh deploys can drive
-        # the full ACPX scheme out of the box.
-        'acpx_enabled': bool(tla.get('acpx_enabled', False)),
+        'acpx_enabled': acpx_enabled,
         'total_timeout': float(tla.get('total_timeout', 1800)),
         'idle_timeout': float(tla.get('response_idle_timeout', 8)),
     }

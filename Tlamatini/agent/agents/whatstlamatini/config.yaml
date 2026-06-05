@@ -41,12 +41,40 @@ password: <WHATSTLAMATINI_PASSWORD goes here>
 
 # ── Tlamatini chat backend ─────────────────────────────────────────────────
 # ws_url is auto-derived from base_url if omitted.
+#
+# ⚠️ EXECUTION-AUTHORITY MODEL (read this):
+#   WhatsTlamatini is FULLY AUTHORIZED by design. The chat "Ask Execs" gate
+#   (the per-tool Proceed/Deny prompt) is a BROWSER modal — a WhatsApp user
+#   cannot answer it — so the bot intentionally does NOT expose it and
+#   hard-pins `ask_execs_enabled: false` on every request. Consequently every
+#   state-changing tool the LLM chooses (shell via Executer, Deleter, Kalier
+#   offensive tooling, file writes, ...) runs UNATTENDED. Treat the `password`
+#   below as full execution access to THIS machine — keep it strong and
+#   private. (The WhatsApp number is reachable publicly; the password is the
+#   only gate.)
+#
+# ⚠️ RUN THE BOT ON A DEDICATED TLAMATINI ACCOUNT (recommended):
+#   The chat backend keys its WebSocket room group, its global request state,
+#   AND the per-user Ask-Execs broker all by Tlamatini USER ID. If the bot
+#   logs in with the SAME account a human uses in the browser, their requests
+#   share that room/state. Give the bot its own `username`/`password` so the
+#   two never collide.
+#
+# The three feature flags below mirror the chat toolbar checkboxes
+# (Multi-Turn, Exec Report, ACPX). Each WhatsApp message WhatsTlamatini
+# forwards to Tlamatini carries these flags verbatim, so a WhatsApp user gets
+# exactly the same operational surface as a browser user. `acpx_enabled: true`
+# exposes the 12 ACPX/Skill tools (acp_doctor / acp_spawn / acp_send_and_wait /
+# acp_relay / acp_kill / list_skills / invoke_skill / ...) so the LLM can spawn
+# external coding-agent CLIs and run the complete ACPX scheme from a WhatsApp
+# message — full parity with TeleTlamatini.
 tlamatini:
   base_url: "http://127.0.0.1:8000"
   username: <TLAMATINI_USERNAME goes here>
   password: <TLAMATINI_PASSWORD goes here>
   multi_turn_enabled: true
   exec_report_enabled: true
+  acpx_enabled: true
   total_timeout: 1800              # hard ceiling for one request (seconds)
   response_idle_timeout: 8         # WS-silence after first frame to call it done
 
