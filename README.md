@@ -33,7 +33,7 @@ She can do all of that. Locally. With your own model. While your code stays on y
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.0"><img src="https://img.shields.io/badge/VERSION-v1.17.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.17.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.1"><img src="https://img.shields.io/badge/VERSION-v1.17.1-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.17.1" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -85,7 +85,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.17.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.0)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.17.1](https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.1)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
