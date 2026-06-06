@@ -426,6 +426,18 @@ def bundle_playwright_browsers(dist_manage):
 
     Non-fatal: a missing browser cache only disables Playwrighter/Googler, not
     the rest of the install, so this WARNS rather than aborting the build.
+
+    DETERMINISTIC PAYLOAD (size lock): Playwrighter and the Googler tool only
+    ever drive **Chromium**, but a developer who runs the bare ``playwright
+    install`` (default = ALL engines) ends up with Firefox (~257 MB) and WebKit
+    (~160 MB) sitting in the SAME cache. The old code copied the cache verbatim,
+    so the release size silently tracked whatever happened to be installed on
+    the build machine — that is exactly how the lean ~1.3 GB v1.17.0 zip grew by
+    ~0.4 GB on a later "patch-only" build. We now copy ONLY the engines Tlamatini
+    actually uses (chromium + its headless shell + ffmpeg + the tiny resolution
+    metadata) and SKIP firefox/webkit, so every future build is byte-stable
+    regardless of the dev's browser cache. Override with
+    ``TLAMATINI_BUNDLE_ALL_BROWSERS=1`` to carry the full set.
     """
     src = os.path.join(os.environ.get("LOCALAPPDATA", ""), "ms-playwright")
     dst = Path(dist_manage) / "ms-playwright"
@@ -433,13 +445,33 @@ def bundle_playwright_browsers(dist_manage):
         print(
             f"WARNING: Playwright browsers not found at '{src}'. Playwrighter / "
             "Googler will NOT work on the target until browsers are provisioned. "
-            "Run `python -m playwright install` and rebuild."
+            "Run `python -m playwright install chromium` and rebuild."
         )
         return
     if dst.exists():
         shutil.rmtree(dst)
+
+    bundle_all = os.environ.get("TLAMATINI_BUNDLE_ALL_BROWSERS", "").strip() in ("1", "true", "True")
+    # Engines Tlamatini never launches — excluded by default to keep the payload
+    # deterministic and ~0.4 GB smaller. Matched as a case-insensitive prefix on
+    # the top-level cache entry name (e.g. ``firefox-1482``, ``webkit-2158``).
+    _UNUSED_ENGINE_PREFIXES = ("firefox", "webkit")
+
+    def _ignore(directory, names):
+        skipped = {n for n in names if n == "__pycache__"}
+        if not bundle_all and os.path.normpath(directory) == os.path.normpath(src):
+            for n in names:
+                if n.lower().startswith(_UNUSED_ENGINE_PREFIXES):
+                    skipped.add(n)
+        return list(skipped)
+
     print(f"\n--- Bundling Playwright browsers: {src} -> {dst} ---")
-    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+    if bundle_all:
+        print("  TLAMATINI_BUNDLE_ALL_BROWSERS=1 — carrying ALL engines (firefox/webkit included).")
+    else:
+        print("  Carrying Chromium-only (firefox/webkit skipped). "
+              "Set TLAMATINI_BUNDLE_ALL_BROWSERS=1 to include them.")
+    shutil.copytree(src, dst, ignore=_ignore)
     size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
     print(f"  Playwright browsers bundled ({size_mb:.0f} MB). Runtime path: "
           "<install_dir>/ms-playwright (PLAYWRIGHT_BROWSERS_PATH).")
