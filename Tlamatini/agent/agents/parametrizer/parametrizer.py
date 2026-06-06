@@ -275,7 +275,24 @@ def get_python_command():
     return ['python3']
 
 
-def get_user_python_home():
+def get_user_python_home() -> str:
+    """Resolve the Python home used to spawn pool-agent subprocesses.
+
+    FROZEN: ALWAYS prefer the Python interpreter CARRIED INSIDE Tlamatini's
+    installation (``<install_dir>/python``) so pool agents NEVER depend on a
+    system Python or a user-set ``PYTHON_HOME``. The carried interpreter is
+    pinned to Python 3.12.10 (shipped by the installer). Only when the carried
+    interpreter is somehow absent (e.g. running from source) does this fall
+    back to the registry / environment ``PYTHON_HOME``.
+    """
+    if getattr(sys, 'frozen', False):
+        _carried = os.path.join(os.path.dirname(sys.executable), 'python')
+        if sys.platform.startswith('win'):
+            _exe = os.path.join(_carried, 'python.exe')
+        else:
+            _exe = os.path.join(_carried, 'bin', 'python3')
+        if os.path.isfile(_exe):
+            return _carried
     if not sys.platform.startswith('win'):
         return os.environ.get('PYTHON_HOME', '')
     try:
@@ -772,6 +789,28 @@ def _set_config_value(config, target_param, value):
     current[keys[-1]] = value
 
 
+def _coerce_value_for_target(existing_value, value):
+    """Shape an incoming mapped `value` to fit the target field's existing type.
+
+    Emailer (and other agents) carry LIST-typed config fields — e.g.
+    ``email.attachments``, ``email.to_addresses``, ``email.cc_addresses``,
+    ``email.bcc_addresses``. A Parametrizer maps ONE source value (typically a
+    scalar string) per block, so a naive ``_set_config_value`` would replace a
+    list field with a bare string. Emailer then either char-iterates the string
+    (to_addresses) or salvages it (attachments via _normalize_attachments).
+
+    To make the mapping correct for every list field, when the target's current
+    value is a list and the incoming value is NOT already a list, wrap it in a
+    single-element list. An incoming list is passed through unchanged. Non-list
+    targets are unaffected.
+    """
+    if isinstance(existing_value, list) and not isinstance(value, (list, tuple)):
+        return [value]
+    if isinstance(value, tuple):
+        return list(value)
+    return value
+
+
 def _apply_marker_mapping(config, target_param, target_marker, value):
     """Replace a configured marker inside an existing target string value."""
     marker_name = normalize_target_marker_name(target_marker)
@@ -859,9 +898,15 @@ def apply_mappings_to_config(target_agent_name, mappings, output_block, base_con
                         f"   Mapped: {source_field} -> {target_param} {{{target_marker}}} ({len(str(value))} chars)"
                     )
             else:
-                _set_config_value(config, target_param, value)
+                existing_value = _get_config_value(config, target_param)
+                coerced = _coerce_value_for_target(existing_value, value)
+                _set_config_value(config, target_param, coerced)
                 applied = True
-                logging.info(f"   Mapped: {source_field} -> {target_param} ({len(str(value))} chars)")
+                shape = 'list' if isinstance(coerced, list) else 'scalar'
+                logging.info(
+                    f"   Mapped: {source_field} -> {target_param} "
+                    f"({len(str(value))} chars, target shape: {shape})"
+                )
 
             if applied:
                 applied_count += 1

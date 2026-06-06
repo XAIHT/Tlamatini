@@ -228,7 +228,74 @@ def _enforce_app_temp_dir():
         print(f"--- [TEMP] Could not pin temp/templates directories (non-fatal): {exc}")
 
 
+def _pin_playwright_browsers():
+    """Point Playwright at the browsers CARRIED inside the install (frozen only).
+
+    Playwright keeps its browser binaries OUTSIDE site-packages (normally in
+    ``%LOCALAPPDATA%/ms-playwright``), which does not exist on a machine that
+    never ran ``playwright install``. The build ships them to
+    ``<install_dir>/ms-playwright`` (build.py::bundle_playwright_browsers), so
+    here — before Django and before any agent spawns — we export
+    ``PLAYWRIGHT_BROWSERS_PATH`` to that directory. Every child process inherits
+    it (pool agents do ``os.environ.copy()``), so BOTH the in-process Googler
+    tool and the Playwrighter pool agent find chromium/firefox/webkit without a
+    system Python or a prior ``playwright install``. Source mode is left alone
+    (dev uses the default cache). Fail-open.
+    """
+    try:
+        if not getattr(sys, 'frozen', False):
+            return
+        browsers = os.path.join(os.path.dirname(sys.executable), 'ms-playwright')
+        if os.path.isdir(browsers):
+            os.environ['PLAYWRIGHT_BROWSERS_PATH'] = browsers
+            print(f"--- [PLAYWRIGHT] Browsers pinned to: {browsers}")
+        else:
+            print(f"--- [PLAYWRIGHT] Carried browsers not found at {browsers} "
+                  "(Playwrighter/Googler may be unavailable).")
+    except Exception as exc:
+        print(f"--- [PLAYWRIGHT] Could not pin browser path (non-fatal): {exc}")
+
+
+def _pin_bundled_tools():
+    """Put the CARRIED external runtimes (Java, Git) on JAVA_HOME / PATH (frozen).
+
+    The build carries a JDK/JRE into ``<install_dir>/jre`` and Git into
+    ``<install_dir>/git`` (build.py::bundle_java_runtime / bundle_git). Here —
+    before Django and before any agent spawns — we export ``JAVA_HOME`` and
+    prepend the bundled ``jre/bin`` and ``git/cmd`` (+ mingw64/usr bins) to PATH.
+    Every child process inherits this (pool agents do ``os.environ.copy()``), so
+    J-Decompiler (java -jar jd-cli.jar), Gitter (bare ``git``), and the STM32er
+    MCP git-clone bootstrap all work on a machine with no system Java/Git.
+    Source mode is left alone. Fail-open.
+    """
+    try:
+        if not getattr(sys, 'frozen', False):
+            return
+        base = os.path.dirname(sys.executable)
+        extra_path = []
+        jre = os.path.join(base, 'jre')
+        if os.path.isdir(jre):
+            os.environ['JAVA_HOME'] = jre
+            jre_bin = os.path.join(jre, 'bin')
+            if os.path.isdir(jre_bin):
+                extra_path.append(jre_bin)
+            print(f"--- [JAVA] JAVA_HOME pinned to carried JRE: {jre}")
+        git = os.path.join(base, 'git')
+        if os.path.isdir(git):
+            for sub in ('cmd', os.path.join('mingw64', 'bin'), os.path.join('usr', 'bin')):
+                d = os.path.join(git, sub)
+                if os.path.isdir(d):
+                    extra_path.append(d)
+            print(f"--- [GIT] Carried Git on PATH: {os.path.join(git, 'cmd')}")
+        if extra_path:
+            os.environ['PATH'] = os.pathsep.join(extra_path) + os.pathsep + os.environ.get('PATH', '')
+    except Exception as exc:
+        print(f"--- [TOOLS] Could not pin carried Java/Git (non-fatal): {exc}")
+
+
 _enforce_app_temp_dir()
+_pin_playwright_browsers()
+_pin_bundled_tools()
 
 
 def _print_version_banner():

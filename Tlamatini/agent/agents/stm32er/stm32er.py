@@ -144,6 +144,23 @@ def get_python_command() -> list:
 
 
 def get_user_python_home() -> str:
+    """Resolve the Python home used to spawn pool-agent subprocesses.
+
+    FROZEN: ALWAYS prefer the Python interpreter CARRIED INSIDE Tlamatini's
+    installation (``<install_dir>/python``) so pool agents NEVER depend on a
+    system Python or a user-set ``PYTHON_HOME``. The carried interpreter is
+    pinned to Python 3.12.10 (shipped by the installer). Only when the carried
+    interpreter is somehow absent (e.g. running from source) does this fall
+    back to the registry / environment ``PYTHON_HOME``.
+    """
+    if getattr(sys, 'frozen', False):
+        _carried = os.path.join(os.path.dirname(sys.executable), 'python')
+        if sys.platform.startswith('win'):
+            _exe = os.path.join(_carried, 'python.exe')
+        else:
+            _exe = os.path.join(_carried, 'bin', 'python3')
+        if os.path.isfile(_exe):
+            return _carried
     if not sys.platform.startswith('win'):
         return os.environ.get('PYTHON_HOME', '')
     try:

@@ -1,6 +1,11 @@
 source_agents: []
 poll_interval: 10
 
+# Number of mailbox-check cycles before the agent exits.
+# 0 = run indefinitely (canvas / monitoring). Set to 1 (or N) for a one-shot
+# "check my mailbox once" — the agent does N passes and then terminates.
+max_checks: 0
+
 # IMAP Configuration
 imap:
   host: "imap.gmail.com"

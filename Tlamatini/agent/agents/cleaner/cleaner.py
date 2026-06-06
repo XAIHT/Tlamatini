@@ -77,14 +77,22 @@ def get_python_command() -> List[str]:
     """
     if not getattr(sys, 'frozen', False):
         return [sys.executable]
-    
+
+    # FROZEN: ALWAYS use the Python carried inside Tlamatini's installation
+    # (<install_dir>/python) — never a system Python or user PYTHON_HOME.
+    exe_dir = os.path.dirname(sys.executable)
     if sys.platform.startswith('win'):
-        # Check for bundled python.exe next to main executable
-        bundled_python = os.path.join(os.path.dirname(sys.executable), 'python.exe')
-        if os.path.exists(bundled_python):
-            return [bundled_python]
+        carried = os.path.join(exe_dir, 'python', 'python.exe')
+        if os.path.exists(carried):
+            return [carried]
+        legacy = os.path.join(exe_dir, 'python.exe')
+        if os.path.exists(legacy):
+            return [legacy]
         return ['python']
-    
+
+    carried = os.path.join(exe_dir, 'python', 'bin', 'python3')
+    if os.path.exists(carried):
+        return [carried]
     return ['python3']
 
 

@@ -381,5 +381,101 @@ class BuildUninstallerContractTests(SimpleTestCase):
         self.assertIn('"Uninstaller.exe"', self.src)
 
 
+class CarriedPythonContractTests(SimpleTestCase):
+    """The frozen build MUST ship a self-contained Python 3.12.10 (with deps)
+    into <install_dir>/python so the pool agents can run on a machine that has
+    no system Python — and every agent/app resolver must ALWAYS prefer it.
+    """
+
+    def setUp(self):
+        self.build_src = _read(BUILD_PY)
+
+    def test_build_pins_carried_python_to_31210_exactly(self):
+        self.assertIn("CARRIED_PYTHON_VERSION = (3, 12, 10)", self.build_src)
+
+    def test_build_defines_and_calls_bundler(self):
+        self.assertIn("def bundle_carried_python(", self.build_src)
+        self.assertIn("bundle_carried_python(dist_manage", self.build_src)
+
+    def test_build_bundler_targets_the_python_subdir(self):
+        # The interpreter must land at <dist>/python (the path every resolver uses).
+        self.assertRegex(self.build_src, r'Path\(dist_manage\)\s*/\s*"python"')
+
+    def test_build_aborts_on_venv_or_wrong_version(self):
+        # Fail-loud preflight: a venv or a non-3.12.10 source must raise.
+        self.assertIn("is a VIRTUALENV", self.build_src)
+        self.assertIn("MUST be exactly", self.build_src)
+
+    def test_agents_resolver_prefers_carried_python(self):
+        # Every agent that resolves an interpreter must look in <install_dir>/python.
+        # get_user_python_home (62 agents) returns that dir first in frozen mode.
+        checked = 0
+        missing = []
+        for py in AGENTS_DIR.rglob("*.py"):
+            src = _read(py)
+            if "def get_user_python_home(" not in src:
+                continue
+            checked += 1
+            if "os.path.dirname(sys.executable), 'python')" not in src:
+                missing.append(py.name)
+        self.assertGreaterEqual(checked, 50, "expected the helper in many agents")
+        self.assertEqual(missing, [], f"agents not preferring carried python: {missing}")
+
+    def test_cleaner_special_case_prefers_carried_python(self):
+        # cleaner.py has get_python_command but no helper — patched directly.
+        cleaner = _read(AGENTS_DIR / "cleaner" / "cleaner.py")
+        self.assertIn("exe_dir, 'python', 'python.exe'", cleaner)
+
+    def test_app_side_resolvers_prefer_carried_python(self):
+        for rel in ("views.py", "tools.py", "chat_agent_runtime.py"):
+            src = _read(REPO_ROOT / "Tlamatini" / "agent" / rel)
+            self.assertIn(
+                "'python'", src.replace('"python"', "'python'"),
+                f"{rel} should reference the carried python subdir",
+            )
+        # The two app-side resolvers must NOT fall back to a user PYTHON_HOME first.
+        tools_src = _read(REPO_ROOT / "Tlamatini" / "agent" / "tools.py")
+        self.assertIn("carried = os.path.join(os.path.dirname(sys.executable), 'python', 'python.exe')",
+                      tools_src)
+
+    def test_build_carries_playwright_browsers(self):
+        # Playwright browsers live outside site-packages, so the carried Python
+        # alone is not enough — Playwrighter/Googler need them bundled too.
+        self.assertIn("def bundle_playwright_browsers(", self.build_src)
+        self.assertIn("bundle_playwright_browsers(dist_manage)", self.build_src)
+        self.assertIn("ms-playwright", self.build_src)
+
+    def test_frozen_app_pins_playwright_browsers_path(self):
+        # manage.py must export PLAYWRIGHT_BROWSERS_PATH at the carried location
+        # so the in-process Googler and every spawned agent (os.environ.copy)
+        # find the bundled browsers on a clean machine.
+        manage_src = _read(REPO_ROOT / "Tlamatini" / "manage.py")
+        self.assertIn("PLAYWRIGHT_BROWSERS_PATH", manage_src)
+        self.assertIn("'ms-playwright'", manage_src)
+        self.assertIn("_pin_playwright_browsers()", manage_src)
+
+    def test_build_carries_java_and_git(self):
+        # J-Decompiler needs Java; Gitter + the STM32er MCP clone need Git.
+        for fn in ("def bundle_java_runtime(", "def bundle_git(",
+                   "bundle_java_runtime(dist_manage)", "bundle_git(dist_manage)"):
+            self.assertIn(fn, self.build_src)
+
+    def test_frozen_app_pins_java_and_git(self):
+        manage_src = _read(REPO_ROOT / "Tlamatini" / "manage.py")
+        self.assertIn("_pin_bundled_tools()", manage_src)
+        self.assertIn("JAVA_HOME", manage_src)
+        self.assertIn("'jre'", manage_src)
+        self.assertIn("'git'", manage_src)
+
+    def test_jdcli_bat_has_no_hardcoded_dev_path(self):
+        # The J-Decompiler launcher must NEVER hardcode a developer JAVA_HOME;
+        # it resolves an ambient JAVA_HOME or the carried <install>/jre.
+        bat = _read(REPO_ROOT / "Tlamatini" / "jd-cli" / "jd-cli.bat")
+        self.assertNotIn("D:\\devenv", bat)
+        self.assertNotIn("GlassFish", bat)
+        self.assertIn("%~dp0..\\jre", bat)
+        self.assertIn("if not defined JAVA_HOME", bat)
+
+
 if __name__ == "__main__":
     unittest.main()

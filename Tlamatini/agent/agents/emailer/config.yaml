@@ -89,11 +89,11 @@ smtp:
 # =============================================================================
 email:
   # Sender email address (defaults to smtp.username if not specified)
-  from_address: ""
+  from_address: "mikespei64bit@gmail.com"
   
   # Primary recipients (required - at least one address)
   to_addresses:
-    - ""
+    - "mikespei64bit@gmail.com"
   
   # CC recipients (optional)
   cc_addresses: []
@@ -134,3 +134,14 @@ email:
   
   # Whether to attach the source agent's log file to the email
   attach_log: false
+
+  # Arbitrary file attachments (any type: PDF, images, zip, docs, ...).
+  # A list of file paths attached to EVERY email this agent sends — works in
+  # both one-shot direct-send mode and source-agent monitoring mode.
+  # A path that is missing or unreadable is skipped with a WARNING and never
+  # crashes the send. A single path may also be given as a bare string.
+  # Examples:
+  #   attachments:
+  #     - "C:/Reports/build_report.pdf"
+  #     - "C:/Logs/run.zip"
+  attachments: []
