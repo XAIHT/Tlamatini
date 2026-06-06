@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/announce_skills.py",
+            "timeout": 20,
+            "statusMessage": "Loading Tlamatini + Claude skills..."
+          }
+        ]
+      }
+    ]
+  }
+}

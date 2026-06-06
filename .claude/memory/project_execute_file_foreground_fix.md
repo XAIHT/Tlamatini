@@ -1,0 +1,33 @@
+---
+name: project_execute_file_foreground_fix
+description: "REAL root cause of 'execute_file window never opened + false OK'; 2026-05-29 made the foreground path reachable, 2026-05-30 fixed the LAUNCH MECHANISM (start cmd /k shell=True false-OK in Daphne worker → CREATE_NEW_CONSOLE + SW_SHOWNORMAL + EnumWindows verification) in tools.py"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 1e984263-7cb7-4f48-a806-931aeb417374
+---
+
+2026-05-29: Definitive, log-evidenced diagnosis of the recurring "create a script then run it in a foreground window → window never opens, Tlamatini says OK" incident. This SUPERSEDES the discarded [[feedback_dont_overbuild_exec_safety]] series (which fixed the wrong layer).
+
+**Root cause (3 layers, all in the live tlamatini.log):**
+1. **No window** — `mcp_agent.py:1096` does `scoped_request_state(..., suppress_visible_consoles=multi_turn_enabled)`. Multi-Turn ON ⇒ `_suppress_visible_console_launches()` True ⇒ `launch_in_new_terminal` (tools.py) takes `_launch_python_in_background` (`CREATE_NO_WINDOW|DETACHED_PROCESS`, stdio→DEVNULL). The `start "Tlamatini Console" cmd /k` foreground path is never reached. So a user's "foreground window" silently runs HEADLESS. (My Bash sandbox could NOT reproduce this because the hang/headless precedence needs daphne's real console-attached stdin — classic stand-in trap.)
+2. **False "OK"** — `execute_file` returned "executed successfully in a new terminal window" unconditionally (background launch is fire-and-forget into DEVNULL, no exit-code check).
+3. **Broken file** — the content the LLM passed to file_creator had escaping bugs (literal `\n` → one-line file; then `COLORS[\"cyan\"]` escaped quotes in an f-string → `SyntaxError: unexpected character after line continuation`). So even a window would show a SyntaxError, not output.
+
+**Fix (tools.py ONLY, two functions; minimal, right-layer):**
+- `launch_in_new_terminal(..., force_foreground=False)`: suppression now `if _suppress_visible_console_launches() and not force_foreground:`.
+- `execute_file(command, foreground=False)`: foreground/background is the USER'S choice (per explicit user rule "depends only on the user; silent ⇒ background"). LLM sets `foreground=True` ONLY when the user asks for a visible/foreground/forked window (docstring carries the guidance — no prompt.pmt edit). Default = background under Multi-Turn. Passes `force_foreground=foreground`. Honest result string for window vs background. Added a `compile()` parse-gate: a `.py`/`.pyw` that doesn't parse returns an actionable `Error:` (line/col/snippet) and is NOT launched; fail-open on NUL/unreadable.
+
+**Why this is the keeper version:** the only idea worth salvaging from the discarded work was a compile() check — applied here inside execute_file, reporting honestly, with NO watcher daemon / containment / executer.py mirror / config toggles. Recorded in repo PIVOT_CHANGES.md (recreated fresh 2026-05-29).
+
+**Verified** window-safe (launch mocked): ruff clean; the 6 MultiTurnBackgroundLaunchTests launch/console tests pass (2 failures there are PRE-EXISTING planner/selector tests, unrelated); hermetic proof against the real broken cat-art.py + temp valid file confirmed all 3 paths. **NOT yet proven live** — decisive test is redoing the cat-art scenario on the running daphne (window opens with foreground; broken file returns SyntaxError not "success"). `execute_command`'s analogous `start …` false-OK left untouched (out of scope). Frozen c:\Tlamatini needs `python build.py`.
+
+---
+
+**2026-05-30 — the live test happened; the 2026-05-29 fix was necessary but NOT sufficient.** User ran the cat-art foreground scenario on the FROZEN `C:\Tlamatini` (built that day 13:34, so it HAD the 2026-05-29 fix). Still "a total failure again — nothing happened". `tlamatini.log` proved: LLM correctly called `execute_file(foreground=true)`, the 2026-05-29 gating worked (path reached), and the tool RETURNED `"Launched … in a foreground terminal window — the script opened and ran visibly on your desktop"` — but NO window appeared (Windower then had no `cat_art` window to close). The remaining bug was the **LAUNCH MECHANISM itself**, exactly what [[feedback_dont_overbuild_exec_safety]] warned: `subprocess.Popen('start "Tlamatini Console" cmd /k python …', shell=True)` is a FALSE-OK — outer `cmd /c` exits 0 instantly, but the window only appears if the spawner has a usable console/window-station; the **Daphne thread-pool worker has none**, so silent no-show. `shell=True` also fired cmd **AutoRun** (doskey macros) that overwrote the title (live probe: `'Tlamatini Console - doskey npm=pnpm $*'`, no script name → Windower close-by-title also broken).
+
+**The real fix (tools.py ONLY, still no prompt.pmt/agent edits):**
+1. `launch_in_new_terminal` Windows foreground path now spawns `cmd.exe /k title Tlamatini Console - <script> & <python> <args>` with `creationflags=CREATE_NEW_CONSOLE` + `STARTUPINFO(dwFlags|=STARTF_USESHOWWINDOW, wShowWindow=1 SW_SHOWNORMAL)`. CREATE_NEW_CONSOLE FORCES an on-screen console regardless of parent console state (same flag `_start_template_agent_process` uses for visible wrapped agents). No shell=True ⇒ no AutoRun title pollution. `title` stamps the script BASENAME into the window title so Windower/Keyboarder can close it.
+2. New `_verify_foreground_window(script_path, timeout=2.5)` — polls `EnumWindows` for a visible window whose title contains the basename; returns True/False/None (fail-open). `execute_file` foreground branch now reports the TRUTH: True→"CONFIRMED … is now open"; False→"did NOT appear … DO NOT report this as success … investigate"; None→"could not be auto-verified". The old blind `window_opened = foreground or not _suppress…` with zero on-screen check WAS the false-OK.
+
+**Proven LIVE (real code, per [[feedback_dont_overbuild_exec_safety]]):** drove real `agent.tools.execute_file.func(r'C:\Tlamatini\applications\cat_art.py', foreground=True)` via real `django.setup()` + `suppress_visible_consoles=True` → window `Tlamatini Console - cat_art.py - …` appeared (independent EnumWindows confirm), result said CONFIRMED. ruff clean; 5 targeted MultiTurnBackgroundLaunchTests green (updated the legacy `start … shell=True` assertion to CREATE_NEW_CONSOLE+wShowWindow=1+title-has-scriptname; added 3 execute_file confirm/failure/neutral tests). **Frozen `C:\Tlamatini` still needs `python build.py`** — tools.py is compiled into the PYZ inside Tlamatini.exe (`_internal/agent/` is DATA only; no loose .pyc to hot-patch), so the running frozen app keeps the stale launch until rebuilt + restarted.

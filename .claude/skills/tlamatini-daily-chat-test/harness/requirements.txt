@@ -1,0 +1,7 @@
+# Tlamatini daily chat test harness
+# Install:  pip install -r requirements.txt
+#           python -m playwright install chrome   # (or: ... install chromium)
+playwright>=1.40
+# Optional -- only needed for the "LLM judge on failures" stage. The harness
+# degrades gracefully (judge -> skip) if this or an API key is absent.
+anthropic>=0.70

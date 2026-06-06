@@ -219,7 +219,11 @@ key.txt
 *.exe
 
 #Varios additionals...
-.claude
+# .claude/ assets (hooks, settings.json, skills, memories) ARE tracked and
+# uploaded to GitHub. ONLY settings.local.json stays ignored — it holds
+# machine-local permission rules that embed live API-key fragments.
+.claude/settings.local.json
+.codex
 .vscode
 *.pos
 *.log

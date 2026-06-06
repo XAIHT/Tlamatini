@@ -1,0 +1,8 @@
+# Per-run outputs (regenerated daily)
+harness/reports/
+# Local credentials (never commit)
+harness/.creds.env
+.creds.env
+# Python bytecode
+__pycache__/
+*.pyc
