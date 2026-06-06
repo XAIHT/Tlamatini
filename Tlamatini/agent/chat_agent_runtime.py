@@ -112,27 +112,21 @@ def _copytree_ignore(_dir: str, names: list[str]) -> set[str]:
 
 
 def _resolve_python_executable() -> str:
-    python_home = os.environ.get("PYTHON_HOME", "").strip()
-    if python_home:
-        candidate = os.path.join(
-            python_home,
-            "python.exe" if sys.platform.startswith("win") else "python3",
-        )
-        if os.path.isfile(candidate):
-            logger.info("[ChatRuntime._resolve_python_executable] Using PYTHON_HOME: %s", candidate)
-            return candidate
-        logger.info("[ChatRuntime._resolve_python_executable] PYTHON_HOME set to %s but candidate %s not found", python_home, candidate)
-
+    # FROZEN: ALWAYS use the Python carried inside Tlamatini's installation
+    # (<install_dir>/python) — never a system Python or a user-set PYTHON_HOME.
     if getattr(sys, "frozen", False):
-        bundled = os.path.join(
-            os.path.dirname(sys.executable),
-            "python.exe" if sys.platform.startswith("win") else "python3",
-        )
-        if os.path.isfile(bundled):
-            logger.info("[ChatRuntime._resolve_python_executable] FROZEN mode, using bundled: %s", bundled)
-            return bundled
+        exe_dir = os.path.dirname(sys.executable)
+        leaf = "python.exe" if sys.platform.startswith("win") else os.path.join("bin", "python3")
+        carried = os.path.join(exe_dir, "python", leaf)
+        if os.path.isfile(carried):
+            logger.info("[ChatRuntime._resolve_python_executable] FROZEN, using CARRIED Python: %s", carried)
+            return carried
+        legacy = os.path.join(exe_dir, "python.exe" if sys.platform.startswith("win") else "python3")
+        if os.path.isfile(legacy):
+            logger.info("[ChatRuntime._resolve_python_executable] FROZEN, using legacy bundled: %s", legacy)
+            return legacy
         fallback = "python" if sys.platform.startswith("win") else "python3"
-        logger.info("[ChatRuntime._resolve_python_executable] FROZEN mode, bundled not found at %s, falling back to PATH: %s", bundled, fallback)
+        logger.warning("[ChatRuntime._resolve_python_executable] FROZEN, CARRIED Python missing at %s — falling back to PATH: %s", carried, fallback)
         return fallback
 
     logger.info("[ChatRuntime._resolve_python_executable] SOURCE mode, using sys.executable: %s", sys.executable)

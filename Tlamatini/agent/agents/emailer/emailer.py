@@ -17,8 +17,11 @@ import time
 import yaml
 import logging
 import smtplib
+import mimetypes
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
+from email import encoders
 from datetime import datetime
 from typing import List, Dict, Optional
 
@@ -285,7 +288,53 @@ def check_log_for_pattern(log_path: str, offset: int, pattern: str, file_sizes: 
         return False, offset, None
 
 
-def send_email_smtp(smtp_config: Dict, email_config: Dict, subject: str, body: str, 
+def _normalize_attachments(raw) -> List[str]:
+    """Coerce the ``email.attachments`` config value into a clean list of paths.
+
+    Accepts a list of paths, a single bare-string path, or None/empty. Blank
+    entries are dropped. This tolerates both the canvas/.flw shape (a YAML list)
+    and the chat one-shot shape (a single quoted string), so the LLM passing
+    ``email.attachments='C:/report.pdf'`` works as well as a multi-item list.
+    """
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        return []
+    return [str(p).strip() for p in raw if p is not None and str(p).strip()]
+
+
+def _attach_files(msg: MIMEMultipart, attachments: List[str]) -> None:
+    """Attach arbitrary files (any type) to ``msg``, fail-safe.
+
+    Each path is read as binary and attached with a guessed MIME type (falling
+    back to ``application/octet-stream``), base64-encoded. A missing or
+    unreadable path is logged as a WARNING and skipped — an attachment problem
+    must NEVER crash the send (same contract as ``_safe_format``).
+    """
+    for path in attachments:
+        try:
+            if not os.path.isfile(path):
+                logging.warning(f"⚠️ Attachment not found, skipping: {path}")
+                continue
+            ctype, encoding = mimetypes.guess_type(path)
+            if ctype is None or encoding is not None:
+                ctype = 'application/octet-stream'
+            maintype, subtype = ctype.split('/', 1)
+            with open(path, 'rb') as f:
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', 'attachment',
+                            filename=os.path.basename(path))
+            msg.attach(part)
+            logging.info(f"📎 Attached file: {path} ({ctype})")
+        except Exception as e:
+            logging.warning(f"⚠️ Could not attach file '{path}': {e}")
+
+
+def send_email_smtp(smtp_config: Dict, email_config: Dict, subject: str, body: str,
                     source_agent: str, matched_line: str, log_path: Optional[str] = None) -> bool:
     """
     Send an email notification via SMTP.
@@ -343,7 +392,14 @@ def send_email_smtp(smtp_config: Dict, email_config: Dict, subject: str, body: s
                 logging.info(f"📎 Attached log file: {log_path}")
             except Exception as e:
                 logging.warning(f"⚠️ Could not attach log file: {e}")
-        
+
+        # Attach arbitrary user-specified files (any type). Fail-safe: a bad
+        # path is skipped with a WARNING, never crashing the send.
+        attachments = _normalize_attachments(email_config.get('attachments'))
+        if attachments:
+            logging.info(f"📎 Attaching {len(attachments)} file(s): {attachments}")
+            _attach_files(msg, attachments)
+
         # Build recipient list
         recipients = email_config.get('to_addresses', [])[:]
         recipients.extend(cc_addresses)
@@ -453,18 +509,64 @@ def main():
         email_config: Dict = config.get('email', {})
         
         
-        if not source_agents:
-            logging.error("❌ No source agents configured. Exiting.")
-            sys.exit(1)
-        
         if not smtp_config:
             logging.error("❌ No SMTP configuration found. Exiting.")
             sys.exit(1)
-        
-        if not email_config.get('to_addresses'):
-            logging.error("❌ No recipient email addresses configured. Exiting.")
+
+        # Resolve effective sender / recipients and normalize provider creds.
+        # Gmail SMTP AUTH requires the FULL address as the username, so a config
+        # username that omits the domain (e.g. "alice") silently fails login —
+        # append the provider domain when the host makes it unambiguous.
+        username = (smtp_config.get('username') or '').strip()
+        host = (smtp_config.get('host') or '').strip().lower()
+        if username and '@' not in username and ('gmail.com' in host or 'googlemail.com' in host):
+            username = f"{username}@gmail.com"
+            smtp_config['username'] = username
+            logging.info(f"ℹ️ SMTP username had no domain; using '{username}' for Gmail login.")
+
+        from_address = (email_config.get('from_address') or '').strip() or username
+        email_config['from_address'] = from_address
+
+        # Drop blank recipient placeholders (the template ships to_addresses: [""]).
+        to_addresses = [a.strip() for a in (email_config.get('to_addresses') or []) if a and a.strip()]
+        if not to_addresses and from_address:
+            to_addresses = [from_address]
+            logging.info(f"ℹ️ No recipient configured; defaulting to sender '{from_address}' (send-to-self test).")
+        email_config['to_addresses'] = to_addresses
+
+        if not to_addresses:
+            logging.error("❌ No recipient email addresses configured (and no sender to default to). Exiting.")
             sys.exit(1)
-        
+
+        # ── One-shot direct send ────────────────────────────────────────────
+        # When NO source agents are wired (standalone / chat-agent launch), the
+        # Emailer is NOT a log monitor — it sends the configured email once and
+        # exits, mirroring Telegramer's action-agent behavior. Source-agent
+        # monitoring (below) only applies when the canvas wired upstream logs.
+        if not source_agents:
+            logging.info("📧 EMAILER AGENT STARTED (one-shot direct send — no source agents configured)")
+            logging.info(f"📬 SMTP Server: {smtp_config.get('host', 'N/A')}:{smtp_config.get('port', 'N/A')}")
+            logging.info(f"📨 From: {from_address}  →  To: {to_addresses}")
+            logging.info("=" * 60)
+            ok = send_email_smtp(
+                smtp_config=smtp_config,
+                email_config=email_config,
+                subject=email_config.get('subject', '[EMAILER] Test message from Tlamatini'),
+                body=email_config.get(
+                    'body',
+                    "Test message from the Tlamatini Emailer agent.\n\nTimestamp: {timestamp}\n",
+                ),
+                source_agent="chat (direct send)",
+                matched_line="(direct send — no source-agent pattern match)",
+                log_path=None,
+            )
+            if ok:
+                logging.info("✅ Email sent successfully (one-shot direct send).")
+            else:
+                logging.error("❌ Email send FAILED (one-shot direct send). See errors above.")
+            sys.exit(0 if ok else 1)
+
+        # ── Monitoring mode: watch source-agent logs for `pattern` ───────────
         logging.info("📧 EMAILER AGENT STARTED")
         logging.info(f"📁 Pool path: {get_pool_path()}")
         logging.info(f"📁 Template path: {get_template_agents_path()}")

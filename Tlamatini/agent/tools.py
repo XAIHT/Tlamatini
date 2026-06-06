@@ -87,12 +87,11 @@ _COMMENT_REQUIRED_HINTS = (
 
 def launch_in_new_terminal(script_pathfilename, arguments=None, force_foreground=False):
     script_path = os.path.normpath(script_pathfilename)
-    # Use PYTHON_HOME env var to resolve the Python interpreter
-    python_home = os.environ.get('PYTHON_HOME', '')
-    if python_home and os.path.isfile(os.path.join(python_home, 'python.exe')):
-        python_exe = os.path.join(python_home, 'python.exe')
-    elif getattr(sys, 'frozen', False):
-        python_exe = "python"
+    # FROZEN: ALWAYS use the Python carried inside Tlamatini's installation
+    # (<install_dir>/python) — never a system Python or user PYTHON_HOME.
+    if getattr(sys, 'frozen', False):
+        _carried = os.path.join(os.path.dirname(sys.executable), 'python', 'python.exe')
+        python_exe = _carried if os.path.isfile(_carried) else "python"
     else:
         python_exe = sys.executable
 
@@ -1307,15 +1306,19 @@ def _resolve_template_agent_script_path(template_agent):
 
 
 def _resolve_python_executable():
-    python_home = os.environ.get('PYTHON_HOME', '')
-    if python_home:
-        python_exe = os.path.join(python_home, 'python.exe')
-        if os.path.isfile(python_exe):
-            return python_exe, None
-        return None, f"PYTHON_HOME is set to '{python_home}' but python.exe was not found there."
-
+    # FROZEN: ALWAYS use the Python carried inside Tlamatini's installation
+    # (<install_dir>/python) — never a system Python or user PYTHON_HOME.
     if getattr(sys, 'frozen', False):
-        return 'python', None
+        carried = os.path.join(os.path.dirname(sys.executable), 'python', 'python.exe')
+        if os.path.isfile(carried):
+            return carried, None
+        legacy = os.path.join(os.path.dirname(sys.executable), 'python.exe')
+        if os.path.isfile(legacy):
+            return legacy, None
+        return None, (
+            f"Tlamatini's carried Python was not found at '{carried}'. "
+            "The installation appears incomplete — please reinstall Tlamatini."
+        )
 
     return sys.executable, None
 
@@ -1788,7 +1791,8 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                                   'smtp.use_tls', 'smtp.use_ssl',
                                   'email.from_address', 'email.to_addresses',
                                   'email.cc_addresses', 'email.bcc_addresses',
-                                  'email.subject', 'pattern', 'attach_log')},
+                                  'email.subject', 'email.attachments',
+                                  'pattern', 'attach_log')},
     'telegramer':     {'title': 'TELEGRAMER MESSAGE TO SEND',
                        'body': ('telegram.message', 'telegram message'),
                        'params': ('telegram.api_id', 'telegram.chat_id')},

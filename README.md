@@ -246,7 +246,9 @@ This is the fastest way to be productive: clone, install, run. No installer, no 
 
 | Requirement | Recommended | Notes |
 |---|---|---|
-| Python | **3.12.10** | The only version Tlamatini is fully tested on. |
+| Python | **3.12.10** | **Installer users do NOT need Python** — the installer ships a self-contained Python 3.12.10 (with all dependencies) into `<install_dir>\python\`, and every pool agent runs on that carried interpreter. Python 3.12.10 is required **only** when running Tlamatini from source. |
+| Java / Git | *(bundled)* | **Installer users do NOT need these either** — a Java runtime (`<install_dir>\jre`, for J-Decompiler) and Git (`<install_dir>\git`, for Gitter + the STM32er MCP clone) are carried and wired onto `JAVA_HOME`/`PATH` at startup. Playwright browsers are also bundled (Playwrighter/Googler). |
+| External backends | *(your own)* | Still your responsibility: **Ollama** (the LLM server + models), **STM32CubeIDE** (STM32 builds), any **remote infra** the connector agents target (Docker/Kubernetes/SSH/SCP/SQL/MongoDB), and **ACPX external coding CLIs** (claude/codex/gemini/…). Firmware toolchains (ESP32/Arduino) self-download on first use (needs network). |
 | OS | Windows 11 | Linux/macOS work for chat + designer; Mouser/Keyboarder are Windows-leaning. |
 | RAM | 16 GB+ | 32 GB comfortable for bigger embedding models. |
 | Disk | ~10 GB | Most is local LLM models. |

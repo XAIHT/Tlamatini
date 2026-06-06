@@ -13,7 +13,7 @@ from email.header import decode_header
 from typing import TypedDict, Literal, List, Any
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import StateGraph, START
+from langgraph.graph import StateGraph, START, END
 
 # --- Logging Setup ---
 try:
@@ -52,6 +52,15 @@ def load_config(path="config.yaml"):
 
 CONFIG = load_config()
 
+# Maximum number of mailbox-check cycles before the agent exits.
+# 0 (default) = run indefinitely (canvas / monitoring use). A positive value
+# turns RecMailer into a one-shot check (e.g. max_checks: 1 for a chat
+# "check my mailbox once") that does N passes and then terminates cleanly.
+try:
+    MAX_CHECKS = int(CONFIG.get('max_checks', 0) or 0)
+except (TypeError, ValueError):
+    MAX_CHECKS = 0
+
 # --- State Definition ---
 class RecmailerState(TypedDict):
     messages: List[Any]
@@ -66,10 +75,17 @@ def connect_imap():
     port = imap_config.get('port', 993)
     user = imap_config.get('username')
     password = imap_config.get('password')
-    
+
     if not user or not password:
         logging.error("❌ IMAP credentials missing in config.")
         return None
+
+    # Gmail IMAP login requires the FULL address as the username — a config
+    # username that omits the domain (e.g. "alice") silently fails auth.
+    host_l = (host or '').strip().lower()
+    if user and '@' not in user and ('gmail.com' in host_l or 'googlemail.com' in host_l):
+        user = f"{user}@gmail.com"
+        logging.info(f"ℹ️ IMAP username had no domain; using '{user}' for Gmail login.")
 
     try:
         mail = imaplib.IMAP4_SSL(host, port)
@@ -140,23 +156,29 @@ def fetch_latest_email(mail):
 def check_email_node(state: RecmailerState):
     """Check for new emails."""
     logging.info("\n--- 📧 CHECKING FOR EMAILS ---")
-    
+
+    # When this is the final allowed check (one-shot mode), skip the inter-poll
+    # sleep so the agent returns a result promptly instead of idling.
+    is_last = bool(MAX_CHECKS) and (state['loop_count'] + 1) >= MAX_CHECKS
+
     mail = connect_imap()
     if not mail:
         logging.warning("⚠️ Could not connect to IMAP. Retrying later.")
-        time.sleep(5)
+        if not is_last:
+            time.sleep(5)
         return {"messages": [], "loop_count": state['loop_count'] + 1}
-        
+
     email_data = fetch_latest_email(mail)
     try:
         mail.logout()
     except Exception:
         pass
-        
+
     if not email_data:
         logging.info("📭 No new emails found.")
-        interval = CONFIG.get('poll_interval', 10)
-        time.sleep(interval)
+        if not is_last:
+            interval = CONFIG.get('poll_interval', 10)
+            time.sleep(interval)
         return {"messages": [], "loop_count": state['loop_count'] + 1}
         
     logging.info(f"📨 New Email Found:\nSubject: {email_data['subject']}\nSender: {email_data['sender']}")
@@ -220,11 +242,20 @@ def analyze_email_node(state: RecmailerState):
         logging.error(f"❌ LLM Error: {e}")
         return {}
 
-def router(state: RecmailerState) -> Literal["analyze", "loop"]:
-    """Decide whether to analyze or loop back."""
+def router(state: RecmailerState) -> Literal["analyze", "loop", "end"]:
+    """Decide whether to analyze, loop back, or terminate (one-shot mode)."""
     messages = state.get('messages', [])
     if messages and isinstance(messages[-1], HumanMessage):
         return "analyze"
+    if MAX_CHECKS and state.get('loop_count', 0) >= MAX_CHECKS:
+        return "end"
+    return "loop"
+
+
+def after_analyze(state: RecmailerState) -> Literal["loop", "end"]:
+    """After processing an email, terminate in one-shot mode or keep watching."""
+    if MAX_CHECKS and state.get('loop_count', 0) >= MAX_CHECKS:
+        return "end"
     return "loop"
 
 # --- Workflow Setup ---
@@ -240,11 +271,19 @@ workflow.add_conditional_edges(
     router,
     {
         "analyze": "analyze_email",
-        "loop": "check_email"
+        "loop": "check_email",
+        "end": END
     }
 )
 
-workflow.add_edge("analyze_email", "check_email") # Loop back after analysis
+workflow.add_conditional_edges(
+    "analyze_email",
+    after_analyze,
+    {
+        "loop": "check_email",  # keep watching (monitoring mode)
+        "end": END              # one-shot: stop after processing
+    }
+)
 
 app = workflow.compile()
 

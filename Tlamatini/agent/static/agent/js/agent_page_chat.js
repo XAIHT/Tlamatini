@@ -887,6 +887,8 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         if (pairs['email.to_addresses']) email.to_addresses = [pairs['email.to_addresses']];
         if (pairs['email.subject']) email.subject = pairs['email.subject'];
         if (pairs['email.body']) email.body = pairs['email.body'];
+        const attach = pairs['email.attachments'] || pairs.attachments;
+        if (attach) email.attachments = Array.isArray(attach) ? attach : [attach];
         if (Object.keys(email).length > 0) config.email = email;
 
     // ── Notifier ─────────────────────────────────────────────────────

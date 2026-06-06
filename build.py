@@ -313,6 +313,212 @@ def clean_directory(path):
         print(f"Removed: {p}")
 
 
+# The ONLY Python version Tlamatini ships to run its pool agents. The carried
+# interpreter MUST match this exactly — see _probe_carried_python below.
+CARRIED_PYTHON_VERSION = (3, 12, 10)
+# A few representative third-party deps the pool agents import. The carried
+# interpreter must be able to import all of them, or the agents would fail at
+# runtime on a clean machine — exactly the bug this whole feature fixes.
+_CARRIED_PYTHON_REQUIRED_IMPORTS = ("yaml", "langgraph", "langchain", "requests")
+
+
+def _probe_carried_python(python_exe):
+    """Run *python_exe* and return (version_tuple, prefix, is_venv, import_error).
+
+    ``import_error`` is None when all required imports succeed, else a message.
+    Returns None if the interpreter could not be probed at all.
+    """
+    code = (
+        "import sys, json\n"
+        "info = {'v': list(sys.version_info[:3]), 'prefix': sys.prefix, "
+        "'venv': sys.prefix != sys.base_prefix}\n"
+        "missing = []\n"
+        "for m in %r:\n"
+        "    try: __import__(m)\n"
+        "    except Exception as e: missing.append(m + ': ' + str(e)[:80])\n"
+        "info['missing'] = missing\n"
+        "print(json.dumps(info))\n"
+    ) % (list(_CARRIED_PYTHON_REQUIRED_IMPORTS),)
+    try:
+        out = subprocess.check_output([python_exe, "-c", code], text=True, timeout=120)
+        info = json.loads(out.strip().splitlines()[-1])
+    except Exception as e:
+        print(f"ERROR: could not probe carried Python '{python_exe}': {e}")
+        return None
+    ver = tuple(info.get("v", []))
+    import_error = "; ".join(info.get("missing", [])) or None
+    return ver, info.get("prefix", ""), bool(info.get("venv", False)), import_error
+
+
+def bundle_carried_python(dist_manage, frozen_python, build_python):
+    """Copy a self-contained, deps-complete Python 3.12.10 into ``<dist>/python``.
+
+    This is the interpreter that the FROZEN pool agents resolve via
+    ``get_user_python_home`` / ``get_python_command`` / ``_resolve_python_executable``
+    (they ALWAYS prefer ``<install_dir>/python``). Without it, agents cannot run
+    on a machine that has no system Python.
+
+    The build ABORTS LOUDLY unless the source interpreter is EXACTLY
+    Python %s, is a full standalone install (NOT a venv, so it is portable),
+    and can import the pool agents' third-party dependencies.
+    """ % ".".join(map(str, CARRIED_PYTHON_VERSION))
+    source_exe = frozen_python or build_python
+    print(f"\n--- Bundling carried Python (for pool agents) from: {source_exe} ---")
+
+    probe = _probe_carried_python(source_exe)
+    if probe is None:
+        raise RuntimeError(f"Carried-Python source '{source_exe}' is not runnable.")
+    ver, prefix, is_venv, import_error = probe
+
+    if ver != CARRIED_PYTHON_VERSION:
+        raise RuntimeError(
+            f"Carried Python MUST be exactly {'.'.join(map(str, CARRIED_PYTHON_VERSION))}, "
+            f"but '{source_exe}' is {'.'.join(map(str, ver)) or '?'}. "
+            "Set PYTHON_HOME to a full Python "
+            f"{'.'.join(map(str, CARRIED_PYTHON_VERSION))} install (with requirements.txt "
+            "installed into it) before building."
+        )
+    if is_venv:
+        raise RuntimeError(
+            f"Carried Python '{source_exe}' is a VIRTUALENV (sys.prefix != base_prefix). "
+            "A venv is not portable — point PYTHON_HOME at a FULL standalone Python "
+            f"{'.'.join(map(str, CARRIED_PYTHON_VERSION))} installation (with deps) so the "
+            "shipped interpreter runs on a machine with no Python."
+        )
+    if import_error:
+        raise RuntimeError(
+            f"Carried Python '{source_exe}' is missing pool-agent dependencies: {import_error}. "
+            "Run `pip install -r requirements.txt` into it (or set PYTHON_HOME to one that has them)."
+        )
+
+    src_prefix = Path(prefix)
+    if not (src_prefix / ("python.exe" if os.name == "nt" else "bin/python3")).exists():
+        raise RuntimeError(f"Carried Python prefix '{src_prefix}' has no python executable at its root.")
+
+    dst = Path(dist_manage) / "python"
+    if dst.exists():
+        shutil.rmtree(dst)
+
+    def _ignore(_dir, names):
+        # Skip caches and pip's own download/temp caches to keep the payload lean.
+        return [n for n in names if n in ("__pycache__", ".cache") or n.endswith((".pyc", ".pyo"))]
+
+    print(f"  Copying {src_prefix} -> {dst} (this is large; please wait)...")
+    shutil.copytree(src_prefix, dst, ignore=_ignore, dirs_exist_ok=False)
+    file_total = sum(1 for p in dst.rglob("*") if p.is_file())
+    size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
+    carried_exe = dst / ("python.exe" if os.name == "nt" else "bin/python3")
+    print(f"  Carried Python {'.'.join(map(str, ver))} bundled: {file_total} files, {size_mb:.0f} MB.")
+    print(f"  Pool agents will run via: {carried_exe}")
+
+
+def bundle_playwright_browsers(dist_manage):
+    """Carry the Playwright browser binaries into ``<dist>/ms-playwright``.
+
+    Playwright stores its browsers OUTSIDE site-packages (in
+    ``%LOCALAPPDATA%/ms-playwright``), so bundle_carried_python does NOT pick
+    them up. Without this, Playwrighter and the Googler tool fail on a clean
+    machine ("browser not found"). At runtime manage.py points
+    ``PLAYWRIGHT_BROWSERS_PATH`` at ``<install_dir>/ms-playwright`` — inherited
+    by every spawned pool agent via ``os.environ.copy()`` — so BOTH the
+    in-process Googler (embedded exe Python) AND the Playwrighter pool agent
+    (carried Python) find these browsers.
+
+    Non-fatal: a missing browser cache only disables Playwrighter/Googler, not
+    the rest of the install, so this WARNS rather than aborting the build.
+    """
+    src = os.path.join(os.environ.get("LOCALAPPDATA", ""), "ms-playwright")
+    dst = Path(dist_manage) / "ms-playwright"
+    if not os.path.isdir(src):
+        print(
+            f"WARNING: Playwright browsers not found at '{src}'. Playwrighter / "
+            "Googler will NOT work on the target until browsers are provisioned. "
+            "Run `python -m playwright install` and rebuild."
+        )
+        return
+    if dst.exists():
+        shutil.rmtree(dst)
+    print(f"\n--- Bundling Playwright browsers: {src} -> {dst} ---")
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+    size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
+    print(f"  Playwright browsers bundled ({size_mb:.0f} MB). Runtime path: "
+          "<install_dir>/ms-playwright (PLAYWRIGHT_BROWSERS_PATH).")
+
+
+def _java_home_for_bundle():
+    """Resolve a JDK/JRE root to carry: $JAVA_HOME first, else `which java`."""
+    jh = os.environ.get("JAVA_HOME", "").strip()
+    leaf = "java.exe" if os.name == "nt" else "java"
+    if jh and (Path(jh) / "bin" / leaf).exists():
+        return Path(jh)
+    exe = shutil.which("java")
+    if exe:
+        return Path(exe).resolve().parent.parent
+    return None
+
+
+def _git_install_root_for_bundle():
+    """Resolve the Git-for-Windows install root to carry."""
+    exe = shutil.which("git")
+    if not exe:
+        return None
+    p = Path(exe).resolve()
+    # C:\Program Files\Git\cmd\git.exe  or  ...\mingw64\bin\git.exe -> the root
+    # holds both `cmd` and `mingw64`.
+    for cand in (p.parent.parent, p.parent.parent.parent, p.parent):
+        if (cand / "cmd").is_dir() and (cand / "mingw64").is_dir():
+            return cand
+    return p.parent.parent
+
+
+def bundle_java_runtime(dist_manage):
+    """Carry a Java runtime into ``<dist>/jre`` so J-Decompiler works offline.
+
+    jd-cli (the J-Decompiler payload) needs Java. Without a carried runtime it
+    depends on a system JDK — which a clean machine will not have. At runtime
+    manage.py sets ``JAVA_HOME=<install_dir>/jre`` and prepends ``jre/bin`` to
+    PATH (inherited by every agent), and ``jd-cli.bat`` also resolves the
+    bundled JRE relative to itself. WARNS (non-fatal) if no Java is found.
+    """
+    src = _java_home_for_bundle()
+    dst = Path(dist_manage) / "jre"
+    if src is None or not src.exists():
+        print("WARNING: No Java (JAVA_HOME / `java` on PATH) found on the build "
+              "machine — J-Decompiler will NOT work on the target. Install a JDK "
+              "and rebuild to carry it.")
+        return
+    if dst.exists():
+        shutil.rmtree(dst)
+    print(f"\n--- Bundling Java runtime: {src} -> {dst} ---")
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+    size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
+    print(f"  Java bundled ({size_mb:.0f} MB). Runtime: JAVA_HOME=<install_dir>/jre.")
+
+
+def bundle_git(dist_manage):
+    """Carry portable Git into ``<dist>/git`` so Gitter + the STM32er MCP clone
+    work on a machine with no system Git.
+
+    Gitter shells out to a bare ``git`` and the STM32er zero-config bootstrap
+    does a ``git clone``. At runtime manage.py prepends ``git/cmd`` (+ the
+    mingw64/usr bin dirs) to PATH, inherited by every agent. WARNS (non-fatal)
+    if no Git is found on the build machine.
+    """
+    src = _git_install_root_for_bundle()
+    dst = Path(dist_manage) / "git"
+    if src is None or not src.exists():
+        print("WARNING: No Git found on the build machine — Gitter and the STM32er "
+              "MCP git-clone bootstrap will NOT work on the target. Install "
+              "Git for Windows and rebuild to carry it.")
+        return
+    if dst.exists():
+        shutil.rmtree(dst)
+    print(f"\n--- Bundling Git: {src} -> {dst} ---")
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+    size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
+    print(f"  Git bundled ({size_mb:.0f} MB). Runtime: <install_dir>/git/cmd on PATH.")
+
+
 def main():
     """Runs the PyInstaller command with correctly resolved paths."""
     build_start = time.time()
@@ -747,6 +953,24 @@ def main():
                 f"Required jd-cli payload is incomplete. Missing launcher: {jd_cli_bat}"
             )
         print(f"Verified jd-cli payload at: {jd_cli_bat.parent}")
+
+        # Carried Python — the interpreter the FROZEN pool agents ALWAYS use
+        # (<install_dir>/python). Mandatory: a Tlamatini install with no carried
+        # Python cannot run any agent on a machine without a system Python.
+        # Aborts the build if the source interpreter isn't exactly
+        # Python 3.12.10 (full install, deps present). See bundle_carried_python.
+        bundle_carried_python(dist_manage, frozen_python, build_python)
+
+        # Playwright browser binaries live OUTSIDE site-packages, so the carried
+        # Python alone is not enough for Playwrighter / Googler — carry them too.
+        bundle_playwright_browsers(dist_manage)
+
+        # Carry the external (non-Python) runtimes the pool agents shell out to,
+        # so a clean machine with NO Java and NO Git can still run J-Decompiler,
+        # Gitter, and the STM32er MCP git-clone bootstrap. manage.py wires both
+        # onto JAVA_HOME / PATH at startup (inherited by every spawned agent).
+        bundle_java_runtime(dist_manage)
+        bundle_git(dist_manage)
 
         # Required empty directories (must survive in pkg.zip)
         # ``DB/ToLoad`` and ``DB/Older`` back the "Set DB" mechanic in
