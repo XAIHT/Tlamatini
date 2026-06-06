@@ -61,7 +61,7 @@ Everything is local. No cloud lock-in (though cloud LLMs are an option). The who
 
 | Requirement | Recommended | Notes |
 |---|---|---|
-| **Python** | 3.12.10 | The only version Tlamatini has been fully tested with. |
+| **Python** | 3.12.10 | **Installer users do NOT need Python** — as of **v1.17.0** the installer carries a self-contained Python 3.12.10 (with all dependencies) into `<install_dir>\python\`, and every pool agent runs on that carried interpreter. Python 3.12.10 is required **only** when running from source (Path A). It is the only version Tlamatini has been fully tested with. |
 | **Operating system** | Windows 11 | The visual designer is cross-platform; some Windows-specific helpers (Mouser, Keyboarder, `.flw` file association) are best on Windows. |
 | **Disk space** | ~10 GB | Most of this is the local LLM models you pull through Ollama. |
 | **RAM** | 16 GB minimum | 32 GB is comfortable for the bigger embedding models. |
@@ -119,7 +119,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull qwen3.5:cloud
 ollama pull gpt-oss:120b-cloud
 ollama pull qwen3.5:397b-cloud
-ollama pull llama3.2-vision:11b
+ollama pull glm-5.1:cloud
 ```
 
 | Model tag | Used by |
@@ -129,7 +129,7 @@ ollama pull llama3.2-vision:11b
 | `qwen3.5:cloud` | Default Image-Interpreter vision model |
 | `gpt-oss:120b-cloud` | Several workflow-agent templates (Monitor Log, Notifier, Prompter, Summarizer, Pser, Recmailer, Whatsapper, File-Interpreter, FlowHypervisor) |
 | `qwen3.5:397b-cloud` | Default FlowCreator model |
-| `llama3.2-vision:11b` | Local vision fallback |
+| `glm-5.1:cloud` | Alternative high-capability cloud chat / reasoning model (swap in for `chained-model` / `unified_agent_model`) |
 
 Some pulls are large and slow. Start them, walk away, come back.
 
@@ -139,7 +139,7 @@ Some pulls are large and slow. Start them, walk away, come back.
 
 ## 5. Cloud models require an Ollama Pro/Max plan
 
-Four of the six default model tags in chapter §4 carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command only registers a thin stub on the local daemon that proxies inference requests to Ollama's servers. To make those proxied requests actually return something, three things have to be true: you have an Ollama account, you are signed in on the host that runs Tlamatini, and the account is on a subscription tier that allows the workload you are about to run.
+Five of the six default model tags in chapter §4 carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, `qwen3.5:397b-cloud`, and `glm-5.1:cloud` (only `Nomic-Embed-Text:latest` runs locally). Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command only registers a thin stub on the local daemon that proxies inference requests to Ollama's servers. To make those proxied requests actually return something, three things have to be true: you have an Ollama account, you are signed in on the host that runs Tlamatini, and the account is on a subscription tier that allows the workload you are about to run.
 
 ### 5.1. The three tiers, in plain English
 
@@ -163,7 +163,7 @@ Tlamatini does not *require* Ollama Cloud. The cloud tags are convenience defaul
 | `unified_agent_model` | `kimi-k2.6:cloud` | same as above |
 | `mcp_file_search_model` | `kimi-k2.6:cloud` | same as above |
 | `flow_creator_model` | `qwen3.5:397b-cloud` | `qwen2.5:32b` or any large local model you can fit in VRAM |
-| `image_interpreter_model` | `qwen3.5:cloud` | `llama3.2-vision:11b` (already in chapter §4's pull list as the local fallback) |
+| `image_interpreter_model` | `qwen3.5:cloud` | `llama3.2-vision:11b` (a local vision model — pull it first with `ollama pull llama3.2-vision:11b`) |
 
 Then also walk through `Tlamatini/agent/agents/*/config.yaml` and replace any cloud tag the agent templates name (several workflow agents — Prompter, Summarizer, Monitor-Log, FlowHypervisor, Recmailer, Whatsapper, File-Interpreter — all default to `gpt-oss:120b-cloud`). After the swap, restart Tlamatini. Quality and latency will scale with your hardware, but Multi-Turn and ACPX both work fine on a sufficiently large local model.
 
@@ -207,15 +207,15 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-If somebody handed you a `Tlamatini_Release/` folder (or you built one — see Part VIII):
+Download the latest release ZIP — **[Tlamatini v1.17.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
-1. Open the folder.
+1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
 3. Pick a destination directory (any folder you can write to — no admin needed).
 4. Click **Install**.
 5. The installer creates a desktop shortcut, registers `.flw` as a Tlamatini file type, copies in the bundled Ollama-default `config.json`, and creates a default user (`user` / `changeme`).
 
-That is it. Double-click the desktop shortcut to launch.
+That is it. Double-click the desktop shortcut to launch. The carried Python 3.12.10, Java, Git and Playwright browsers all come inside the ZIP — nothing else to install except Ollama and the models from chapters §3–§4.
 
 ### Path C — Build the installer yourself (releasers)
 
@@ -1858,14 +1858,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.14.0 -m "Release 1.14.0: <one-liner>"   # annotated tag
-git push origin v1.14.0
+git tag -a v1.17.0 -m "Release 1.17.0: <one-liner>"   # annotated tag
+git push origin v1.17.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.14.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.17.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -1873,8 +1873,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.14.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.14.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.14.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.17.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.17.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.17.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -2652,6 +2652,8 @@ produces `firmware.bin` + `firmware.elf`).
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Bullet-proof installation — the installer now carries its own Python, plus prompting-chain fixes — v1.17.0, 2026-06-05** — The release re-engineers the install process to be **bullet-proof**: the installer ships a **self-contained Python 3.12.10** (with every pool-agent dependency already installed) into `<install_dir>\python\`, and **all** pool agents now run on that carried interpreter unconditionally — immune to a missing, wrong-version, or PATH-shadowed system Python and to a stale `PYTHON_HOME`. `build.py` bundles and verifies the carried interpreter (`bundle_carried_python` + a hard `CARRIED_PYTHON_VERSION = 3.12.10` preflight), every agent's `get_user_python_home` / `get_python_command` / `_resolve_python_executable` now **always prefer `<install_dir>\python`**, and an end user installs **only Ollama + the models** — no separate Python install anymore. Riding along: an **improvement to the prompting chain** and assorted README / install-flow fixes. The **Quickstart** (chapters §3–§7) and the model list (chapter §4) were refreshed for this release; the default model set is now `glm-5.1:cloud`, `gpt-oss:120b-cloud`, `qwen3.5:397b-cloud`, `qwen3.5:cloud`, `kimi-k2.6:cloud`, and the local `Nomic-Embed-Text:latest`. Frozen installs are produced by a fresh `python build.py` → `build_uninstaller.py` → `build_installer.py` (the carried-Python bundle is created during `build.py`).
 
 - **Added the VideoPlayer Agent — On-screen Video Playback (with audio) over `ffpyplayer` + OpenCV, the 74th Agent — v1.15.0, 2026-06-04** — The agent catalog reaches **74** with **VideoPlayer**, the on-screen sibling of AudioPlayer: where AudioPlayer drives the *speakers*, VideoPlayer plays a **video file with sound on a chosen display**. It decodes + plays audio via **`ffpyplayer`** — whose pip wheel **bundles ffmpeg + SDL inside the package**, so it ships entirely through `requirements.txt` and PyInstaller's `--collect-all ffpyplayer` with **no external ffmpeg and no runtime download** — and draws the window with the already-bundled **OpenCV** (`cv2`); if ffpyplayer is ever unavailable it degrades gracefully to **silent OpenCV-only** video (so the core honors the "bundles with no problems" bar even worst-case). `video_file` (required) accepts any ffmpeg container (`.mp4`/`.mov`/`.mkv`/`.avi`/`.webm`); `display_index` picks the monitor (`-1` = primary; the monitors are enumerated via the Win32 `EnumDisplayMonitors` API and logged at startup); `volume_percent` is the audio level (capped at 100). **`time_played`** shapes the length: `0` plays the whole video once, while a positive value plays for *exactly* that long — a longer video is **TRUNCATED**, a shorter one is **LOOPED** (whole repeats plus a final partial segment), driven by a wall-clock loop. `window_width`/`window_height` size the window (`0` = the video's native size, centered on the chosen display), `fullscreen` fills the monitor, and `keep_aspect` (default true) letterboxes via cv2 `WINDOW_KEEPRATIO` instead of stretching. *(Additional-video-params analysis: playback-speed/fps, decode-resolution/codec, and audio-track/subtitle selection are deliberately OMITTED — the file's native timing is used, the window size controls only display scaling, and track selection is advanced/rarely needed.)* Observational/output (it changes no persistent state), so it is **NOT in the Exec Report**. Two surfaces ship in lock-step: the visual **VideoPlayer** canvas node and the wrapped Multi-Turn tool **`chat_agent_videoplayer`** — wrapped chat-agent count moves to **49** (Multi-Turn tool total → **81**). It emits one atomic `INI_SECTION_VIDEOPLAYER<<<` block (`input_path`, `display_index`, `display_geometry`, `video_width`/`video_height`, `window_width`/`window_height`, `fullscreen`, `volume_percent`, `backend`, `has_audio`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, `response_body`) for Parametrizer and ALWAYS triggers `target_agents` (the error path emits `status: error`). Agent + Tool rows via migrations `0118` / `0119`; `requirements.txt` adds `ffpyplayer` and `build.py` adds `--collect-all ffpyplayer` plus a `_agent_libs` verify. Coverage: 38 tests (a fake clock + fake backend drive the real truncate/loop math; fake ffpyplayer/cv2 backends), all green; verified **end-to-end** by looping a real 2-second clip to fill a 5-second `time_played` in a window on the desktop. Frozen installs need a `python build.py` + `migrate`.
 
