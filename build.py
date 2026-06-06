@@ -399,15 +399,77 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
     if dst.exists():
         shutil.rmtree(dst)
 
-    def _ignore(_dir, names):
+    # ── SIZE LOCK: prune ML libs the POOL AGENTS never load ──────────────
+    # The carried interpreter exists ONLY for the pool agents (executer,
+    # gitter, stm32er, playwrighter, camcorder, ...). Heavy ML stacks like
+    # torch/transformers/mxnet are used by the DJANGO RAG process, which runs
+    # from the FROZEN _internal — NOT from here. A developer's PYTHON_HOME
+    # accumulates the *CUDA* build of torch (~4 GB on its own), and the old
+    # wholesale copytree dragged all of it in, ballooning the release to ~4 GB.
+    # No pool agent imports any of these (audited: only cv2/ffpyplayer are used,
+    # and those are KEPT), so we drop them at the site-packages level. This is
+    # the single change that brings the release back to the lean ~1.3 GB shape.
+    # Override with TLAMATINI_BUNDLE_FULL_PYTHON=1 to carry the interpreter
+    # verbatim (e.g. if a future agent genuinely needs torch).
+    prune_full = os.environ.get("TLAMATINI_BUNDLE_FULL_PYTHON", "").strip() in ("1", "true", "True")
+    # Exact site-packages directory names (and their <stem>-<ver>.dist-info /
+    # .egg-info / <stem>.libs siblings) to drop. KEEP: cv2, ffpyplayer, numpy,
+    # pillow, yaml, langchain, langgraph, requests, scipy — agents need or may
+    # transitively need them.
+    _PRUNE_PKG_STEMS = (
+        "torch", "torchvision", "torchaudio", "torchgen", "functorch",
+        "triton", "transformers", "mxnet",
+    )
+    # Namespace-package prefixes to drop wholesale (NVIDIA CUDA runtime wheels).
+    _PRUNE_PKG_PREFIXES = ("nvidia",)
+    _pruned = []
+
+    def _is_pruned_sp_entry(name):
+        low = name.lower()
+        if low.startswith(_PRUNE_PKG_PREFIXES):
+            return True
+        # exact package dir
+        if low in _PRUNE_PKG_STEMS:
+            return True
+        # <stem>-<ver>.dist-info / .egg-info  and  <stem>.libs
+        for stem in _PRUNE_PKG_STEMS:
+            if low == f"{stem}.libs":
+                return True
+            if (low.startswith(stem + "-") or low.startswith(stem + "_")) and \
+               (low.endswith(".dist-info") or low.endswith(".egg-info")):
+                return True
+        return False
+
+    src_norm = os.path.normpath(str(src_prefix))
+    doc_html = os.path.normpath(os.path.join(src_norm, "Doc", "html"))
+
+    def _ignore(directory, names):
         # Skip caches and pip's own download/temp caches to keep the payload lean.
-        return [n for n in names if n in ("__pycache__", ".cache") or n.endswith((".pyc", ".pyo"))]
+        skipped = {n for n in names if n in ("__pycache__", ".cache") or n.endswith((".pyc", ".pyo"))}
+        if prune_full:
+            return list(skipped)
+        # CPython's bundled HTML docs (~55 MB) — never needed at runtime.
+        if os.path.normpath(directory) == doc_html:
+            skipped.update(names)
+            return list(skipped)
+        # Drop the heavy unused packages only at a site-packages level.
+        if os.path.basename(os.path.normpath(directory)).lower() == "site-packages":
+            for n in names:
+                if _is_pruned_sp_entry(n):
+                    skipped.add(n)
+                    _pruned.append(n)
+        return list(skipped)
 
     print(f"  Copying {src_prefix} -> {dst} (this is large; please wait)...")
+    if prune_full:
+        print("  TLAMATINI_BUNDLE_FULL_PYTHON=1 — carrying the interpreter verbatim (no ML prune).")
     shutil.copytree(src_prefix, dst, ignore=_ignore, dirs_exist_ok=False)
     file_total = sum(1 for p in dst.rglob("*") if p.is_file())
     size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
     carried_exe = dst / ("python.exe" if os.name == "nt" else "bin/python3")
+    if _pruned:
+        print(f"  Pruned {len(_pruned)} unused ML entries from site-packages: "
+              f"{', '.join(sorted(set(_pruned)))}")
     print(f"  Carried Python {'.'.join(map(str, ver))} bundled: {file_total} files, {size_mb:.0f} MB.")
     print(f"  Pool agents will run via: {carried_exe}")
 
