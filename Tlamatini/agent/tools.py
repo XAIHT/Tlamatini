@@ -2466,6 +2466,59 @@ def execute_file(command: str, foreground: bool = False) -> str:
     except Exception as e:
         return f"Error executing command '{command}': {e}"
 
+
+# Hard ceiling for a single execute_command run. Long enough for real builds /
+# installs (cmake, pip, choco, git clone) but short enough that an interactive or
+# hung command can never wedge the Multi-Turn worker thread forever.
+_EXECUTE_COMMAND_TIMEOUT_SECONDS = 600
+
+
+def _run_command_bounded(command, *, shell, timeout=_EXECUTE_COMMAND_TIMEOUT_SECONDS):
+    """Run a command with stdin starved to DEVNULL and a hard timeout that kills the
+    WHOLE process tree on expiry.
+
+    Two failure modes this guards against, both of which previously froze the
+    executor indefinitely (no ``timeout`` + inherited stdin on a bare
+    ``subprocess.run(..., shell=True)``):
+
+    1. Interactive commands that block waiting for console/stdin input
+       (``copy con file``, ``pause``, ``set /p``, a tool prompting Y/N, ...).
+       Starving stdin with DEVNULL makes those get immediate EOF instead of hanging.
+    2. A command whose grandchild leaks the stdout/stderr pipe write-handle, so a
+       naive ``subprocess.run(timeout=...)`` would kill only the direct child and
+       still deadlock at EOF. We kill the entire tree via ``_terminate_process_tree``
+       so every handle holder dies before the final drain.
+
+    Returns ``(returncode, stdout, stderr, timed_out)``.
+    """
+    proc = subprocess.Popen(
+        command,
+        shell=shell,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        out, err = proc.communicate(timeout=timeout)
+        return proc.returncode, out, err, False
+    except subprocess.TimeoutExpired:
+        # Kill cmd.exe AND every descendant so leaked pipe handles are released and
+        # the drain below can actually reach EOF.
+        try:
+            _terminate_process_tree(psutil.Process(proc.pid))
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        try:
+            out, err = proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            out, err = "", ""
+        return (proc.returncode if proc.returncode is not None else -1), out, err, True
+
+
 @tool
 def execute_command(command: str) -> str:
     """
@@ -2520,24 +2573,39 @@ def execute_command(command: str) -> str:
         # On Windows, always use shell=True so that builtins (dir, type, mkdir,
         # echo, copy, move, del, set, cd) and commands with backslash paths work
         # correctly.  On Unix, try non-shell first and fall back to shell=True.
+        # Every path goes through _run_command_bounded: stdin is starved to DEVNULL
+        # and the whole process tree is killed on timeout, so an interactive or hung
+        # command (e.g. 'copy con') can never freeze the Multi-Turn worker thread.
+        # Read the ceiling from the module global at call time (not bound as a
+        # default) so it stays tunable — and unit-testable — without monkeypatching
+        # the real bounded runner.
+        run_timeout = _EXECUTE_COMMAND_TIMEOUT_SECONDS
         if _is_windows:
-            result = subprocess.run(command, capture_output=True, text=True, shell=True)
+            returncode, output, error_output, timed_out = _run_command_bounded(command, shell=True, timeout=run_timeout)
         else:
             try:
                 cmd_list = shlex.split(command)
-                result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
+                returncode, output, error_output, timed_out = _run_command_bounded(cmd_list, shell=False, timeout=run_timeout)
             except (ValueError, FileNotFoundError):
-                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                returncode, output, error_output, timed_out = _run_command_bounded(command, shell=True, timeout=run_timeout)
 
-        output = result.stdout or ""
-        error_output = result.stderr or ""
+        output = output or ""
+        error_output = error_output or ""
         # Many CLI tools write progress/info to stderr even on success
         combined = output
         if error_output:
             combined = f"{output}\nStderr: {error_output}" if output else f"Stderr: {error_output}"
 
-        if result.returncode != 0:
-            return f"Error: Command '{command}' failed with return code {result.returncode}. Output: {combined}"
+        if timed_out:
+            return (
+                f"Error: Command '{command}' timed out after {_EXECUTE_COMMAND_TIMEOUT_SECONDS} seconds and its entire "
+                f"process tree was terminated. This almost always means the command waited for interactive input "
+                f"(e.g. 'copy con', 'pause', 'set /p', a Y/N prompt) or otherwise hung. Do NOT use interactive "
+                f"commands here — to create a source file use file_creator / chat_agent_file_creator instead. "
+                f"Partial output: {combined}"
+            )
+        if returncode != 0:
+            return f"Error: Command '{command}' failed with return code {returncode}. Output: {combined}"
         else:
             return f"Command '{command}' executed successfully. Output: {combined}"
     except Exception as e:
