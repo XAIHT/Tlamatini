@@ -207,7 +207,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.17.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.17.1](https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.1)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
