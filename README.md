@@ -33,7 +33,7 @@ She can do all of that. Locally. With your own model. While your code stays on y
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.15.0"><img src="https://img.shields.io/badge/VERSION-v1.15.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.15.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.0"><img src="https://img.shields.io/badge/VERSION-v1.17.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.17.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -64,22 +64,48 @@ She can do all of that. Locally. With your own model. While your code stays on y
 
 ### ⚡ Quickstart in 5 minutes
 
-```bash
-git clone https://github.com/XAIHT/Tlamatini.git
-cd Tlamatini && pip install -r requirements.txt
-python Tlamatini/manage.py migrate
-python Tlamatini/manage.py runserver --noreload
-# Open http://127.0.0.1:8000 and say hi
+Three steps: install Ollama, pull the models Tlamatini ships with, run Tlamatini from the release ZIP.
+
+**1 · Install Ollama** (no admin rights — full detail in [§2.2](#22-install-ollama-no-admin-rights)):
+
+```powershell
+$env:OLLAMA_INSTALL_DIR = "$env:LOCALAPPDATA\Programs\Ollama"
+irm https://ollama.com/install.ps1 | iex
+ollama serve     # leave this running in its own window
 ```
 
-Full quickstart (with Ollama setup): [§2 below](#2-quickstart-source-mode).
+**2 · Pull the six default models** — these exact tags, nothing else (the five `:cloud` tags need an Ollama Pro/Max plan, see [§2.4](#24-cloud-models-require-an-ollama-promax-plan); only `Nomic-Embed-Text:latest` runs locally):
+
+```powershell
+ollama pull glm-5.1:cloud
+ollama pull gpt-oss:120b-cloud
+ollama pull qwen3.5:397b-cloud
+ollama pull qwen3.5:cloud
+ollama pull kimi-k2.6:cloud
+ollama pull Nomic-Embed-Text:latest
+```
+
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.17.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.17.0)**, then:
+
+```text
+1. Unzip the release archive anywhere (no admin rights needed).
+2. Run  Installer.exe  → pick an install directory → finish.
+   (The bundled Python 3.12.10, Java, Git and Playwright browsers are carried in —
+    nothing else to install.)
+3. Launch Tlamatini from the desktop / Start-Menu shortcut.
+4. Open  http://127.0.0.1:8000  and log in with   user / changeme   — then say hi.
+```
+
+Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quickstart (source mode)](#2-quickstart-source-mode).
 
 ---
 
 <details>
-<summary><strong>📦 What's new in v1.15.0 (2026-06-04) — click to expand</strong></summary>
+<summary><strong>📦 What's new in v1.17.0 (2026-06-05) — click to expand</strong></summary>
 
-> **VideoPlayer (74th agent type) — on-screen video PLAYBACK with audio.** **VideoPlayer** plays a video file (`.mp4`/`.mov`/`.mkv`/`.avi`/`.webm`) **with sound** on a chosen **display**, the on-screen sibling of AudioPlayer (speakers). It decodes + plays audio via **`ffpyplayer`** — whose pip wheel **bundles ffmpeg + SDL** so it ships entirely through `requirements.txt` and PyInstaller's `--collect-all` (no external ffmpeg, no runtime download) — and draws the window with the already-bundled **OpenCV**; if ffpyplayer is ever unavailable it degrades to silent OpenCV video. Knobs: `display_index` (which monitor), `volume_percent`, **`time_played`** (0 = whole video once; N>0 = exactly N seconds, TRUNCATING a longer file or LOOPING a shorter one with a final partial segment), `window_width`/`window_height`, `fullscreen`, and `keep_aspect` (letterbox vs stretch). Observational/output, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_videoplayer`, and emits an `INI_SECTION_VIDEOPLAYER` block (full played path + time played) for Parametrizer. The same **v1.15.0** release also added **AudioPlayer** — audio PLAYBACK completing the media-I/O family.
+> **Bullet-proof installation — the installer now carries its own Python.** v1.17.0 re-engineers the install process so it can't be tripped by the host machine's Python: the installer ships a **self-contained Python 3.12.10** (with every pool-agent dependency already installed) into `<install_dir>\python\`, and **all** pool agents now run on that carried interpreter unconditionally — immune to a missing, wrong-version, or PATH-shadowed system Python and to a stale `PYTHON_HOME`. An end user installs **only Ollama + the models**; there is no separate Python install. `build.py` bundles and version-pins the carried interpreter (`bundle_carried_python` + a hard `CARRIED_PYTHON_VERSION = 3.12.10` preflight), and every agent's Python resolver now prefers `<install_dir>\python` first. This release also lands an **improvement to the prompting chain** plus assorted install-flow and README fixes.
+>
+> **Recently (v1.15.0, 2026-06-04) — the media-playback pair VideoPlayer + AudioPlayer.** **VideoPlayer (74th agent type) — on-screen video PLAYBACK with audio.** **VideoPlayer** plays a video file (`.mp4`/`.mov`/`.mkv`/`.avi`/`.webm`) **with sound** on a chosen **display**, the on-screen sibling of AudioPlayer (speakers). It decodes + plays audio via **`ffpyplayer`** — whose pip wheel **bundles ffmpeg + SDL** so it ships entirely through `requirements.txt` and PyInstaller's `--collect-all` (no external ffmpeg, no runtime download) — and draws the window with the already-bundled **OpenCV**; if ffpyplayer is ever unavailable it degrades to silent OpenCV video. Knobs: `display_index` (which monitor), `volume_percent`, **`time_played`** (0 = whole video once; N>0 = exactly N seconds, TRUNCATING a longer file or LOOPING a shorter one with a final partial segment), `window_width`/`window_height`, `fullscreen`, and `keep_aspect` (letterbox vs stretch). Observational/output, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_videoplayer`, and emits an `INI_SECTION_VIDEOPLAYER` block (full played path + time played) for Parametrizer. The same **v1.15.0** release also added **AudioPlayer** — audio PLAYBACK completing the media-I/O family.
 >
 > **Also in v1.15.0 (2026-06-04): AudioPlayer (73rd agent type) — audio PLAYBACK completes the media-I/O family.** **AudioPlayer** plays an audio file through a system **output device (speakers / audio out)** via `soundfile` + `sounddevice` — the playback counterpart of **Recorder** (microphone-IN): together with **Shoter** (screen) and **Camcorder** (camera) they now cover screen / camera / microphone-in / speakers-out. It plays to the default output by default (or a chosen `device_index`/`device_name`), applies a software `volume_percent`, and honours **`time_played`** — 0 plays the whole file once, a positive value plays exactly that long, TRUNCATING a longer file or LOOPING a shorter one (with a streaming callback so a huge duration over a tiny file never allocates a giant buffer). Sample rate is read from the file by default (`sample_rate: 0`, correct pitch). Observational/output (it changes no persistent state), so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_audioplayer`, and emits an `INI_SECTION_AUDIOPLAYER` block (full played path + time played) for Parametrizer. The previous release (**v1.14.0**) added the observational capture pair **Camcorder** (webcam) and **Recorder** (microphone).
 
@@ -283,7 +309,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull qwen3.5:cloud
 ollama pull gpt-oss:120b-cloud
 ollama pull qwen3.5:397b-cloud
-ollama pull llama3.2-vision:11b
+ollama pull glm-5.1:cloud
 ```
 
 | Tag | Used for |
@@ -293,7 +319,7 @@ ollama pull llama3.2-vision:11b
 | `qwen3.5:cloud` | Default vision (Image-Interpreter) |
 | `gpt-oss:120b-cloud` | Several workflow-agent templates (Monitor-Log, Notifier, Prompter, Summarizer, …) |
 | `qwen3.5:397b-cloud` | Default FlowCreator |
-| `llama3.2-vision:11b` | Local vision fallback |
+| `glm-5.1:cloud` | Alternative high-capability cloud chat / reasoning model (swap in for `chained-model` / `unified_agent_model`) |
 
 You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§8.1](#81-llm-and-unified-agent)) or the relevant agent's `config.yaml`.
 
@@ -301,7 +327,7 @@ You can substitute any tag — just edit `Tlamatini/agent/config.json` (see [§8
 
 ### 2.4. Cloud models require an Ollama Pro/Max plan
 
-Four of the six default model tags in [§2.3](#23-pull-the-default-models) carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, and `qwen3.5:397b-cloud`. Those are **Ollama Cloud** models: they live on Ollama's servers, not on your machine, and `ollama pull` only registers a stub that proxies inference to the cloud. Reaching that cloud requires a logged-in Ollama account and a subscription tier that allows the workload you intend to run.
+Five of the six default model tags in [§2.3](#23-pull-the-default-models) carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, `qwen3.5:397b-cloud`, and `glm-5.1:cloud` (only `Nomic-Embed-Text:latest` runs locally). Those are **Ollama Cloud** models: they live on Ollama's servers, not on your machine, and `ollama pull` only registers a stub that proxies inference to the cloud. Reaching that cloud requires a logged-in Ollama account and a subscription tier that allows the workload you intend to run.
 
 The plan structure (prices are deliberately omitted from this README because they change — check **<https://ollama.com/pricing>** for the current numbers):
 
@@ -1822,22 +1848,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.15.0 -m "Release 1.15.0: <one-line summary>"
-git push origin v1.15.0
+git tag -a v1.17.0 -m "Release 1.17.0: <one-line summary>"
+git push origin v1.17.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.15.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.17.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.15.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.15.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.15.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.17.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.17.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.17.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1861,8 +1887,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.15.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.15.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.17.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.17.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
