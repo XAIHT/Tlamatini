@@ -582,7 +582,8 @@ def _download_archive(env: dict) -> tuple:
 def _safe_tar_extractall(tar, dest_dir: str) -> None:
     """Extract tar members without path traversal (requires Python 3.12+)."""
     os.makedirs(dest_dir, exist_ok=True)
-    tar.extractall(path=dest_dir, filter='data')
+    for member in tar.getmembers():
+        tar.extract(member, path=dest_dir, filter='data')
 
 
 def _safe_zip_extractall(zf, dest_dir: str) -> None:
@@ -596,7 +597,7 @@ def _safe_zip_extractall(zf, dest_dir: str) -> None:
             raise _zipfile.BadZipFile(
                 f"Blocked path traversal in zip member: {info.filename}"
             )
-    zf.extractall(dest_dir)
+        zf.extract(info, dest_dir)
 
 
 def _extract_cli(archive_path: str, install_dir: str) -> tuple:
