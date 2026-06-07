@@ -85,6 +85,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "kyber_decipher": ("deciphered_buffer",),
     "gatewayer": ("event_id", "event_type", "session_id", "correlation_id", "content_type", "method", "path", "body"),
     "gateway_relayer": ("event_type", "delivery_id", "action", "ref", "repository", "sender", "body"),
+    "de_compresser": ("operation", "extension", "input", "output", "passwordless", "success", "response_body"),
     "googler": ("url", "status", "content_length", "response_body"),
     "acpxer": ("agent_id", "session_id", "transport", "settle", "transcript_path", "response_body"),
     "shoter": ("output_path", "output_dir", "filename", "response_body"),

@@ -106,6 +106,7 @@ SECTION_AGENT_TYPES = [
     'file_interpreter', 'image_interpreter', 'file_extractor',
     'kyber_keygen', 'kyber_cipher', 'kyber_decipher',
     'gatewayer', 'gateway_relayer',
+    'de_compresser',
     'googler',
     'acpxer',
     'shoter',

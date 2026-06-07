@@ -959,7 +959,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-29 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**.
+33 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, **De-Compresser**, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
 
 Canonical example:
 

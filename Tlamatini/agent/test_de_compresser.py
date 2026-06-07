@@ -64,6 +64,34 @@ def _load_de_compresser_module():
     return module
 
 
+@lru_cache(maxsize=1)
+def _load_parametrizer_module():
+    """Load the real Parametrizer pool script the same isolated way the agent
+    test modules do, so we can exercise its actual source-log parser against a
+    De-Compresser ``INI_SECTION`` block (proves De-Compresser is a usable
+    Parametrizer *source*, not just an emitter)."""
+    module_path = os.path.join(
+        os.path.dirname(__file__),
+        'agents',
+        'parametrizer',
+        'parametrizer.py',
+    )
+    spec = importlib.util.spec_from_file_location(
+        'agent_parametrizer_module_for_tests',
+        module_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f'Unable to load Parametrizer module from {module_path}')
+
+    module = importlib.util.module_from_spec(spec)
+    current_dir = os.getcwd()
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        os.chdir(current_dir)
+    return module
+
+
 # ---------------------------------------------------------------------------
 # Pure-function helpers (no I/O on the agent script's working dir)
 # ---------------------------------------------------------------------------
@@ -591,6 +619,103 @@ class RegistryIntegrationTests(SimpleTestCase):
         self.assertEqual(
             css_source.count(gradient), 1,
             "The De-Compresser canvas gradient must be unique to its rule",
+        )
+
+
+class ParametrizerSourceWiringTests(SimpleTestCase):
+    """De-Compresser emits a clean ``INI_SECTION_DE_COMPRESSER`` block, but it
+    was historically NOT registered as a Parametrizer source — so the
+    Parametrizer agent could not parse it and the mapping dialog offered no
+    De-Compresser source fields. These tests pin the fix:
+
+    1. ``SECTION_AGENT_TYPES`` (the runtime parser membership) includes it.
+    2. ``get_source_base_name`` resolves ``de_compresser`` AND ``de_compresser_N``.
+    3. The real parser extracts every field of an actual emitted block.
+    4. The contract registry exposes the source field tuple (which is what
+       ``views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS`` is derived from).
+    """
+
+    # A byte-faithful copy of the block de_compresser.py emits in its end-stage,
+    # wrapped in surrounding log noise so the regex extraction is exercised too.
+    _SAMPLE_LOG = (
+        "2026-06-07 12:00:00 INFO 📦 DE-COMPRESSER AGENT STARTED\n"
+        "2026-06-07 12:00:01 INFO ✅ Decompressed 'bundle.zip' -> 'out' (.zip)\n"
+        "INI_SECTION_DE_COMPRESSER<<<\n"
+        "operation: decompress\n"
+        "extension: .zip\n"
+        "input: C:\\Templates\\bundle.zip\n"
+        "output: C:\\Templates\\out\n"
+        "passwordless: true\n"
+        "success: true\n"
+        "\n"
+        "Decompressed 'bundle.zip' -> 'out' (.zip)\n"
+        ">>>END_SECTION_DE_COMPRESSER\n"
+        "2026-06-07 12:00:02 INFO 🚀 Triggering 1 downstream agents...\n"
+    )
+
+    def setUp(self):
+        self.par = _load_parametrizer_module()
+
+    def test_section_agent_types_contains_de_compresser(self):
+        self.assertIn('de_compresser', self.par.SECTION_AGENT_TYPES)
+        self.assertIn('de_compresser', self.par.OUTPUT_PARSERS)
+
+    def test_source_base_name_resolves_bare_and_cardinal(self):
+        # This is the gate that returned None before the fix — with it None,
+        # the Parametrizer rejects the source outright.
+        self.assertEqual(self.par.get_source_base_name('de_compresser'), 'de_compresser')
+        self.assertEqual(self.par.get_source_base_name('de_compresser_2'), 'de_compresser')
+        self.assertEqual(self.par.get_source_base_name('De-Compresser_3'), 'de_compresser')
+
+    def test_real_parser_extracts_every_field(self):
+        blocks = self.par.parse_unified_output(self._SAMPLE_LOG, 'de_compresser')
+        self.assertEqual(len(blocks), 1)
+        fields = blocks[0]
+        self.assertEqual(fields['operation'], 'decompress')
+        self.assertEqual(fields['extension'], '.zip')
+        self.assertEqual(fields['input'], 'C:\\Templates\\bundle.zip')
+        self.assertEqual(fields['output'], 'C:\\Templates\\out')
+        self.assertEqual(fields['passwordless'], 'true')
+        self.assertEqual(fields['success'], 'true')
+        self.assertEqual(fields['response_body'], "Decompressed 'bundle.zip' -> 'out' (.zip)")
+
+    def test_next_output_parser_returns_block_and_offset(self):
+        result = self.par.parse_next_unified_output(self._SAMPLE_LOG, 'de_compresser')
+        self.assertIsNotNone(result)
+        fields, end_offset = result
+        self.assertEqual(fields['success'], 'true')
+        self.assertGreater(end_offset, 0)
+
+    def test_contract_registry_exposes_de_compresser_source_fields(self):
+        from agent.services.agent_contracts import (
+            get_agent_contract,
+            get_parametrizer_source_fields,
+        )
+
+        expected = (
+            'operation', 'extension', 'input', 'output',
+            'passwordless', 'success', 'response_body',
+        )
+        # The contract carries the field tuple ...
+        self.assertEqual(get_agent_contract('de_compresser').parametrizer_fields, expected)
+        # ... and views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS is derived from this.
+        source_fields = get_parametrizer_source_fields()
+        self.assertIn('de_compresser', source_fields)
+        self.assertEqual(list(source_fields['de_compresser']), list(expected))
+
+    def test_emitted_block_field_names_match_registered_fields(self):
+        # Guard against drift: every KV-header field the agent actually emits
+        # must be addressable by a downstream Parametrizer (i.e. registered),
+        # and 'response_body' must be registered because the block has a body.
+        from agent.services.agent_contracts import get_agent_contract
+
+        emitted = set(
+            self.par.parse_unified_output(self._SAMPLE_LOG, 'de_compresser')[0].keys()
+        )
+        registered = set(get_agent_contract('de_compresser').parametrizer_fields)
+        self.assertTrue(
+            emitted.issubset(registered),
+            f"Emitted fields {emitted - registered} are not registered as source fields",
         )
 
 
