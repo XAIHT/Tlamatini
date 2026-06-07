@@ -4,8 +4,9 @@ asgiref==3.8.1
 certifi==2024.7.4
 channels==4.1.0
 daphne==4.1.2
-Django==5.2.4
+Django==5.2.15
 django-bootstrap5==24.3
+defusedxml==0.7.1
 duckduckgo-search==8.1.1
 chardet==5.2.0
 faiss-cpu==1.9.0.post1
@@ -15,22 +16,22 @@ grpcio==1.76.0
 grpcio-tools==1.76.0
 httpx==0.28.0
 javalang==0.13.0
-langchain==0.3.27
-langchain-community==0.3.27
-langchain-core==0.3.79
+langchain==0.3.30
+langchain-community==0.3.31
+langchain-core==0.3.86
 langchain-ollama==0.2.1
 langchain-text-splitters==0.3.11
 langgraph==0.2.74
-langsmith==0.4.37
+langsmith==0.4.60
 markdown==3.7
 mcp==1.25.0
-nltk==3.9.1
+nltk==3.9.4
 numpy<2.3.0
 ollama==0.5.3
 openpyxl==3.1.5
 openai-whisper==20250625
 torch
-pillow==12.0.0
+pillow==12.2.0
 # Camcorder agent (agent/agents/camcorder/camcorder.py) uses OpenCV's
 # cv2.VideoCapture / cv2.VideoWriter to take a webcam photo or record a video
 # segment. Imported inside the agent so a missing install degrades to a clear
@@ -88,13 +89,13 @@ requests==2.32.3
 # and aborts the build if it does not. Do NOT remove or unpin — the gate would silently
 # fail open (degrade to the compile() syntax floor only).
 ruff==0.14.5
-setuptools==75.3.0
+setuptools==82.0.1
 telethon==1.42.0
 typing-extensions==4.15.0
-unstructured==0.18.5
+unstructured==0.22.31
 uvicorn==0.38.0
 websockets==15.0.1
-wheel==0.45.0
+wheel==0.47.0
 whitenoise==6.8.2
 xhtml2pdf==0.2.17
 PyAutoGUI==0.9.54
