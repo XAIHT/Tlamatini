@@ -237,6 +237,7 @@ class CommandWatchdog:
         self._tracked: Dict[int, _Tracked] = {}
         self._protected: Set[int] = _protected_pids(self.our_pid)
         self._stop = threading.Event()
+        self._tick_count = 0
 
     # -- real-psutil descendant enumeration (overridable in tests) --
     def _default_descendants(self) -> list:
@@ -308,6 +309,7 @@ class CommandWatchdog:
     def scan_and_reap(self) -> List[int]:
         """One tick. Returns the list of root PIDs whose tree was killed."""
         killed: List[int] = []
+        self._tick_count += 1
         try:
             current = self._descendant_provider() or []
         except Exception:
@@ -377,6 +379,25 @@ class CommandWatchdog:
         for pid in list(self._tracked.keys()):
             if pid not in seen:
                 self._tracked.pop(pid, None)
+
+        # Visible per-tick heartbeat. Uses print() (NOT logger.info) on purpose:
+        # the manage.py stdout tee captures print into tlamatini.log, whereas
+        # agent.* logger INFO records are not emitted to that stream — so this is
+        # the line that proves the watchdog is alive and actively scanning every
+        # tick. Lists the tracked shells (the "instances" it is watching) so a
+        # hung cmd/powershell shows up here before it is reaped.
+        try:
+            tracked_desc = ", ".join(
+                f"{t.name}#{pid}(idle={t.idle_ticks})" for pid, t in self._tracked.items()
+            ) or "none"
+            print(
+                f"--- [WATCHDOG] tick #{self._tick_count}: scanned {len(current)} "
+                f"descendant proc(es), watching {len(self._tracked)} shell(s) "
+                f"[{tracked_desc}], killed {len(killed)} this tick",
+                flush=True,
+            )
+        except Exception:
+            pass
         return killed
 
     @staticmethod
@@ -394,6 +415,11 @@ class CommandWatchdog:
             logger.warning(banner)
         except Exception:
             pass
+        # Also print so the kill is visible in tlamatini.log (the stdout tee).
+        try:
+            print(banner, flush=True)
+        except Exception:
+            pass
 
     # -- daemon-thread loop --
     def run_forever(self) -> None:
@@ -403,6 +429,19 @@ class CommandWatchdog:
             self.tick_seconds, self.hang_grace_seconds, self.required_idle_ticks,
             self.progress_cpu_seconds, self.progress_io_bytes,
         )
+        # print() so it lands in tlamatini.log (logger.info from agent.* is not
+        # emitted to the stdout tee). This is the boot proof that the watchdog
+        # daemon thread is up.
+        try:
+            print(
+                f"--- [WATCHDOG] STARTED: tick={self.tick_seconds:.0f}s "
+                f"grace={self.hang_grace_seconds:.0f}s idle={self.required_idle_ticks} ticks "
+                "(kills a shell only after no CPU/IO progress in its whole tree "
+                "for the grace+idle window)",
+                flush=True,
+            )
+        except Exception:
+            pass
         while not self._stop.is_set():
             try:
                 self.scan_and_reap()
