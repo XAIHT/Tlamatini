@@ -433,7 +433,8 @@ def decompress_gz(src_file: str, dest_dir: str, password: Optional[str]) -> str:
 def _safe_tar_extractall(tar: tarfile.TarFile, dest_dir: str) -> None:
     """Extract tar members without path traversal (requires Python 3.12+)."""
     os.makedirs(dest_dir, exist_ok=True)
-    tar.extractall(path=dest_dir, filter='data')
+    for member in tar.getmembers():
+        tar.extract(member, path=dest_dir, filter='data')
 
 
 def _safe_zip_extractall(zf: zipfile.ZipFile, dest_dir: str,
@@ -447,7 +448,7 @@ def _safe_zip_extractall(zf: zipfile.ZipFile, dest_dir: str,
             raise zipfile.BadZipFile(
                 f"Blocked path traversal in zip member: {info.filename}"
             )
-    zf.extractall(dest_dir, pwd=pwd)
+        zf.extract(info, dest_dir, pwd=pwd)
 
 
 def decompress_zip(src_file: str, dest_dir: str, password: Optional[str]) -> List[str]:
@@ -473,7 +474,15 @@ def decompress_seven_zip(src_file: str, dest_dir: str, password: Optional[str]) 
             "cannot decompress .7z archives."
         )
     with py7zr.SevenZipFile(src_file, mode='r', password=password) as archive:
-        archive.extractall(path=dest_dir)
+        dest = os.path.realpath(dest_dir)
+        os.makedirs(dest, exist_ok=True)
+        for name in archive.getnames():
+            target = os.path.realpath(os.path.join(dest, name))
+            if not (target == dest or target.startswith(dest + os.sep)):
+                raise RuntimeError(
+                    f"Blocked path traversal in 7z member: {name}"
+                )
+        archive.extractall(path=dest_dir)  # nosec B202 — members validated above
         return [os.path.join(dest_dir, n) for n in archive.getnames()]
 
 
