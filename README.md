@@ -8,7 +8,7 @@
 
 <p align="center">
   <em>"One who knows" — in Nahuatl.</em><br/>
-  A local-first AI developer assistant that turns your laptop into a workshop where 74 agents collaborate to actually <strong>get things done</strong>.
+  A self-hosted AI developer assistant that turns your PC into a workshop where 74 agents collaborate to actually <strong>get things done</strong>.
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
 > *"Spin up Claude Code, give it the refactor task, then hand the output to Cursor for testing."*  
 > *"Design a flow that runs every morning, scrapes our competitors' pricing, and posts the diff to Slack."*
 
-She can do all of that. Locally. With your own model. While your code stays on your machine.
+She can do all of that — self-hosted on your own machine, powered by the model you choose: a local Ollama model, Ollama Cloud (the shipped default), or a cloud API like Anthropic Claude.
 
 ---
 
@@ -54,7 +54,7 @@ She can do all of that. Locally. With your own model. While your code stays on y
 | 🤝 **ACPX** | Delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen — and relay output between them. One conductor, an orchestra of agents. |
 | 🎨 **Visual workflow designer** | Drag and drop 74 agent types, wire them together, run flows unattended. No code required to compose a pipeline. |
 | 🪞 **Self-aware** | Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify **herself**. |
-| 🔒 **Local-first** | Everything runs on your machine with [Ollama](https://ollama.com/). Cloud is opt-in, never default. Your code never leaves the box. |
+| 🔒 **Self-hosted** | The app, hybrid RAG, and all 74 agents run on your machine. The LLM is your choice — fully-local [Ollama](https://ollama.com/) models, Ollama Cloud (the shipped default), or cloud APIs like Anthropic Claude. With a cloud model, your prompts and code context are sent to that provider. |
 
 ### 💡 The thesis behind Tlamatini
 
@@ -238,7 +238,7 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 
 ### 1.1. What Tlamatini is
 
-**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 74 agent types — into one local install. Backends: **Ollama** (local), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
+**Tlamatini** (Nahuatl for *"one who knows"*) is a Django/Channels app you run on your own machine. It packages a hybrid RAG pipeline, a Multi-Turn tool-calling LLM loop, an ACPX runtime that spawns external coding-agent CLIs as child processes, an **Unreal MCP** client that drives Unreal Engine 5 from chat or canvas, and a drag-and-drop workflow designer with 74 agent types — into one self-hosted install. The app and RAG run locally; the LLM backend is configurable: **Ollama** (local models *or* Ollama Cloud — the shipped default uses Ollama Cloud `:cloud` tags), **Anthropic Claude** (cloud), **Qwen vision** (Ollama).
 
 License: **GPL-3.0** · Repo: <https://github.com/XAIHT/Tlamatini.git> · Platform tested: Windows 11 (cross-platform for source mode).
 
@@ -1561,7 +1561,7 @@ Self-modification is a **second, independent capability axis**. The optional dir
 
 ## 10. Embedding-Memory Pre-Flight Guard (GPU hosts)
 
-When you click **Set directory as context** in the Context menu, Tlamatini walks the directory, splits each file into chunks, and pushes every chunk through Ollama's embedding API to build a FAISS index. On a laptop / consumer GPU a heavy embedding model can occupy 75–95% of total VRAM by itself — and once a chat model is also resident the combined footprint exceeds available memory and the daemon thrashes RAM↔VRAM swap on every embed batch. A 30-second context-load turns into a multi-hour stall.
+When you click **Set directory as context** in the Context menu, Tlamatini walks the directory, splits each file into chunks, and pushes every chunk through Ollama's embedding API to build a FAISS index. On a PC / consumer GPU a heavy embedding model can occupy 75–95% of total VRAM by itself — and once a chat model is also resident the combined footprint exceeds available memory and the daemon thrashes RAM↔VRAM swap on every embed batch. A 30-second context-load turns into a multi-hour stall.
 
 The **embedding-memory pre-flight guard** (`Tlamatini/agent/embedding_memory_guard.py`) catches this before the embed burst starts. It runs only when an NVIDIA GPU is detected; on CPU-only / AMD / Apple Silicon hosts it is a silent no-op and the legacy load path is unchanged.
 

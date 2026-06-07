@@ -2,7 +2,7 @@
 
 Why this exists
 ---------------
-On laptop / consumer GPUs (e.g. RTX 4070 Laptop, 8 GB VRAM) a heavy
+On PC / consumer GPUs (e.g. RTX 4070 Laptop, 8 GB VRAM) a heavy
 embedding model like ``qwen3-embedding:8b`` occupies ~6.2 GB resident
 (~77% of total VRAM). Combined with a chat model that may already be
 loaded by Ollama, the daemon thrashes RAM<->VRAM swap on every batch

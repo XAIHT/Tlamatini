@@ -41,7 +41,7 @@ class AgentConfig(AppConfig):
             # daemon thread so a slow nvidia-smi or cold-loading model
             # never delays Daphne. See agent/gpu_perf.py for the full
             # contract and the reason this fixes the "context loading
-            # sometimes takes hours" laptop-GPU thermal-throttle +
+            # sometimes takes hours" PC-GPU thermal-throttle +
             # model-eviction symptom.
             try:
                 from .gpu_perf import start_in_background as _start_gpu_perf

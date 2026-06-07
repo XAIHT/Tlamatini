@@ -117,7 +117,7 @@
     "cache_embeddings": true,
     "parallel_processing": true,
     "max_workers": 6,
-    "_max_workers_comment": "REDUCED to 6 (was 12) - 12 concurrent embed requests triggered thermal spikes on the laptop GPU; 6 keeps the GPU saturated without forcing throttle"
+    "_max_workers_comment": "REDUCED to 6 (was 12) - 12 concurrent embed requests triggered thermal spikes on the PC GPU; 6 keeps the GPU saturated without forcing throttle"
   },
   "_section_logging": "Logging Configuration",
   "logging": {

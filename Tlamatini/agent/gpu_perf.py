@@ -2,7 +2,7 @@
 
 Why this exists
 ---------------
-On laptop GPUs (RTX 4070 Laptop, 8 GB VRAM) the qwen3-embedding:8b model
+On PC GPUs (RTX 4070 Laptop, 8 GB VRAM) the qwen3-embedding:8b model
 sits at ~7.5 GB VRAM — 91% of total. Two failure modes then make context
 loading wildly inconsistent (seconds vs. hours):
 
@@ -13,7 +13,7 @@ loading wildly inconsistent (seconds vs. hours):
    a context-load it amplifies to hours of stall.
 2. Windows defaults to the "Balanced" power plan. Under embedding bursts
    the CPU clocks down between batches, starving the GPU of work and
-   triggering the laptop's thermal/power-cap counters.
+   triggering the PC's thermal/power-cap counters.
 
 This module applies the survivable subset of GPU-max-performance levers
 that work without admin rights on Windows + consumer GeForce, and pins

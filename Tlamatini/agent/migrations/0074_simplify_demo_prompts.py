@@ -184,7 +184,7 @@ P31_GEMINI_LIVE = (
     "Otherwise proceed. "
     "Step 2 (TURN 1): call acp_spawn with agent_id 'gemini', cwd "
     "'C:/Development/Tlamatini', and task 'You are advising a solo "
-    "developer building a local-first AI developer assistant. List, "
+    "developer building a self-hosted AI developer assistant. List, "
     "in one short paragraph, the three most underrated architectural "
     "pillars of such a system - pillars whose importance only becomes "
     "obvious after 12+ months of usage. Be concrete; cite specific "
