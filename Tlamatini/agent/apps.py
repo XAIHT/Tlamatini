@@ -54,6 +54,22 @@ class AgentConfig(AppConfig):
             except Exception:
                 logging.exception("Failed to launch gpu_perf boot")
 
+            # Autonomous command watchdog. An independent daemon thread that
+            # kills hung console children (a malformed/interactive shell stuck
+            # waiting on stdin) on its own, so a blocked tool call can never
+            # freeze the whole chat. Runs off the worker thread, so it stays
+            # alive even while a Multi-Turn tool is wedged. Fail-open.
+            # See agent/command_watchdog.py for the full contract.
+            try:
+                from .command_watchdog import start_in_background as _start_cmd_watchdog
+                try:
+                    _wd_cfg = _load_config_for_perf()
+                except Exception:
+                    _wd_cfg = None
+                _start_cmd_watchdog(_wd_cfg)
+            except Exception:
+                logging.exception("Failed to launch command watchdog boot")
+
             # Cleanup AgentProcess records on startup
             try:
                 AgentProcess.objects.all().delete()
