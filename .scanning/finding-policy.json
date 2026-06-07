@@ -1,0 +1,100 @@
+{
+  "bandit": {
+    "accepted_findings": [
+      {
+        "rule_id": "B602",
+        "path_regex": "Tlamatini/agent/acpx/runtime\\.py",
+        "message_regex": "subprocess call with shell=True",
+        "reason": "shell is gated by resolve_command(); use_shell is True only for Windows .cmd/.bat shims. argv is a list for .exe spawns."
+      },
+      {
+        "rule_id": "B605",
+        "path_regex": "Tlamatini/cat_art\\.py",
+        "message_regex": "Starting a process with a shell",
+        "reason": "clear_screen() runs a fixed CLEAR_CMD constant for terminal animation; no user-controlled input."
+      },
+      {
+        "rule_id": "B602",
+        "path_regex": "Tlamatini/agent/tools\\.py",
+        "message_regex": "subprocess call with shell=True",
+        "reason": "Windows-only fallback to launch a visible console via start/cmd; bounded developer UX path, not generic remote input."
+      },
+      {
+        "rule_id": "B602",
+        "path_regex": "Tlamatini/agent/agents/executer/executer\\.py",
+        "message_regex": "subprocess call with shell=True",
+        "reason": "Executer agent intentionally runs LLM/user-authored scripts; shell=True is part of the documented execution surface (mitigate via deployment trust model)."
+      },
+      {
+        "rule_id": "B602",
+        "path_regex": "Tlamatini/agent/tools\\.py",
+        "message_regex": "subprocess call with shell=True",
+        "reason": "execute_command / decompile_java / open-image helpers intentionally invoke shell commands on operator-requested paths; core Multi-Turn tool behavior."
+      }
+    ]
+  },
+  "semgrep": {
+    "accepted_findings": [
+      {
+        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
+        "path_regex": "(BookOfTlamatini\\.md|CLAUDE\\.md)",
+        "message_regex": "Insecure WebSocket",
+        "reason": "Documentation examples describing local ws:// architecture; not executable client code."
+      },
+      {
+        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
+        "path_regex": "Tlamatini/agent/agents/teletlamatini/teletlamatini\\.py",
+        "message_regex": "Insecure WebSocket",
+        "reason": "Defaults ws_url from localhost http base (127.0.0.1:8000); local bridge deployment. Production TLS should set explicit wss:// in config."
+      },
+      {
+        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
+        "path_regex": "Tlamatini/agent/agents/whatstlamatini/whatstlamatini\\.py",
+        "message_regex": "Insecure WebSocket",
+        "reason": "Same localhost-derived ws:// default as TeleTlamatini bridge; not exposed as generic WSS endpoint."
+      },
+      {
+        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
+        "path_regex": "Tlamatini/agent/mcp_system_server\\.py",
+        "message_regex": "Insecure WebSocket",
+        "reason": "MCP system metrics server binds 127.0.0.1 by default; ws:// log line reflects local-only service."
+      },
+      {
+        "rule_id": "python.lang.compatibility.python36.python36-compatibility-Popen1",
+        "path_regex": "Tlamatini/agent/.*\\.py",
+        "message_regex": "errors.*argument to Popen",
+        "reason": "Project requires Python 3.12+ (see requirements/CLAUDE.md); Popen errors= is supported."
+      },
+      {
+        "rule_id": "python.lang.compatibility.python36.python36-compatibility-Popen2",
+        "path_regex": "Tlamatini/agent/.*\\.py",
+        "message_regex": "encoding.*argument to Popen",
+        "reason": "Project requires Python 3.12+; Popen encoding= is supported."
+      },
+      {
+        "rule_id": "python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args",
+        "path_regex": "build(_installer|_uninstaller)?\\.py",
+        "message_regex": "subprocess.*user controlled",
+        "reason": "Developer-only PyInstaller build scripts; not shipped runtime attack surface."
+      },
+      {
+        "rule_id": "scanner.plugins.semgrep.rules.prompt-injection-detect",
+        "path_regex": "Tlamatini/agent/rag/config\\.py",
+        "message_regex": "prompt injection",
+        "reason": "_resolve_rule_block edits static prompt.pmt sentinel markers (ACPX/Templates gates); does not concatenate raw chat user input into prompts."
+      },
+      {
+        "rule_id": "python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args",
+        "path_regex": "Tlamatini/agent/agents/executer/executer\\.py",
+        "message_regex": "subprocess.*user controlled",
+        "reason": "Executer is designed to run operator/LLM-directed scripts; taint is intentional product behavior."
+      },
+      {
+        "rule_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+        "path_regex": "Tlamatini/agent/(agents/executer/executer|tools)\\.py",
+        "message_regex": "shell=True",
+        "reason": "Intentional shell invocation for script execution, jd-cli .bat on Windows, and desktop UX helpers."
+      }
+    ]
+  }
+}

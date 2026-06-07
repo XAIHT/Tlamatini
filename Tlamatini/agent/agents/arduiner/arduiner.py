@@ -579,6 +579,26 @@ def _download_archive(env: dict) -> tuple:
         return "", str(e)
 
 
+def _safe_tar_extractall(tar, dest_dir: str) -> None:
+    """Extract tar members without path traversal (requires Python 3.12+)."""
+    os.makedirs(dest_dir, exist_ok=True)
+    tar.extractall(path=dest_dir, filter='data')
+
+
+def _safe_zip_extractall(zf, dest_dir: str) -> None:
+    """Extract zip members, rejecting path-traversal entries."""
+    import zipfile as _zipfile
+    dest = os.path.realpath(dest_dir)
+    os.makedirs(dest, exist_ok=True)
+    for info in zf.infolist():
+        target = os.path.realpath(os.path.join(dest, info.filename))
+        if not (target == dest or target.startswith(dest + os.sep)):
+            raise _zipfile.BadZipFile(
+                f"Blocked path traversal in zip member: {info.filename}"
+            )
+    zf.extractall(dest_dir)
+
+
 def _extract_cli(archive_path: str, install_dir: str) -> tuple:
     """Extract the arduino-cli binary from the downloaded archive into install_dir.
     Returns (binary_path, error)."""
@@ -589,10 +609,10 @@ def _extract_cli(archive_path: str, install_dir: str) -> tuple:
         os.makedirs(install_dir, exist_ok=True)
         if archive_path.endswith(".zip"):
             with zipfile.ZipFile(archive_path) as zf:
-                zf.extractall(install_dir)
+                _safe_zip_extractall(zf, install_dir)
         else:
             with tarfile.open(archive_path, "r:gz") as tf:
-                tf.extractall(install_dir)
+                _safe_tar_extractall(tf, install_dir)
         # Locate the extracted binary (archives put it at the root, but be defensive).
         target = os.path.join(install_dir, binary)
         if not os.path.exists(target):
