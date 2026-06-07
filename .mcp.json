@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tlamatini": {
+      "command": "C:\\Program Files\\Python312\\python.exe",
+      "args": ["C:\\Development\\Tlamatini\\tlamatini_mcp_server.py"]
+    }
+  }
+}
