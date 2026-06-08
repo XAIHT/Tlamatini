@@ -1050,6 +1050,7 @@ system_prompt: |
 - **Starts other agents**: YES (after all crawling and LLM processing completes)
 - **Config parameters**:
   - `url`: "" (URL to crawl)
+  - `urls`: [] (OPTIONAL additional seed URLs crawled with the same settings — a YAML list or a comma/space-separated string. Lets a Googler dork hit-list, `content_mode: links_only`, flow straight in via the Parametrizer)
   - `system_prompt`: "" (multi-line prompt to send to the LLM along with the crawled content)
   - `content_mode`: "raw" (one of: raw, text — raw sends full HTML/JS/CSS source; text sends only visible text)
   - `include_headers`: true (include HTTP response headers in the LLM context, only applies to raw mode)
@@ -1058,6 +1059,11 @@ system_prompt: |
     - medium-range: follows ALL links on the page regardless of domain (not recursively) and processes each with the LLM
     - large-range: follows ALL links on the page regardless of domain RECURSIVELY up to `depth` levels and processes each with the LLM
   - `depth`: 1 (recursive depth, only used when crawl_type is "large-range". depth=1 behaves like medium-range; depth=2 also processes links found in those linked pages, etc.)
+  - Safety / politeness bounds (all OPTIONAL):
+    - `max_pages`: 0 (hard cap on TOTAL pages processed across all seeds/depth; 0 = unlimited — set this to bound a `large-range` crawl)
+    - `request_delay_seconds`: 0 (delay between fetches — rate-limit / politeness)
+    - `respect_robots`: false (honor each host's `robots.txt`, skipping Disallowed paths; per-host cached, fails OPEN if robots.txt can't be fetched)
+  - `extract_recon`: false (scan each page's RAW source for emails, HTML comments, source-map references, and likely secrets / API keys; findings are saved to a `*_recon.txt` file AND prepended to the LLM context — the natural follow-through to a Googler dork sweep)
   - `llm.host`: "http://localhost:11434" (Ollama server URL)
   - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
@@ -1421,12 +1427,21 @@ system_prompt: |
 - **Pool name pattern**: `googler_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
-  - `query`: "" (the search query to enter in Google)
-  - `number_of_results`: 5 (number of top results to fetch, max 10)
-  - `content_mode`: "text" (extraction mode: "text" for readable text only, "raw" for full HTML)
+  - `query`: "" (the search query to enter in Google; Google dork operators work here verbatim, e.g. `intitle:"index of" site:example.com`)
+  - Structured Google-dork builder (all OPTIONAL — APPENDED to `query`, which is preserved):
+    - `site`: "" (→ `site:example.com` — restrict to one host)
+    - `filetype`: "" (→ `filetype:pdf`; accepts `pdf`, `filetype:pdf`, or `ext:pdf`)
+    - `intitle`: "" / `inurl`: "" / `intext`: "" (multi-word `intitle`/`intext` values are auto-quoted)
+    - `exact`: "" (→ `"exact phrase"`)
+    - `before`: "" / `after`: "" (→ `before:YYYY-MM-DD` / `after:YYYY-MM-DD`)
+    - `exclude`: [] (each term becomes `-term`; accepts a list or a comma/space-separated string)
+  - `allow_same_domain`: false (de-dup results by full URL instead of by domain so a single-site dork returns many URLs per host; auto-enabled when the query contains a `site:` operator)
+  - `number_of_results`: 5 (top results; max 10 in `text`/`raw` mode, max 50 in `links_only`)
+  - `content_mode`: "text" ("text" = readable text per page, "raw" = full HTML per page, "links_only" = just the SERP hit list `url`+`title` WITHOUT fetching the pages — fast; ideal for dork enumeration/recon feeding a downstream Crawler/Kalier via Parametrizer)
   - `output_file`: "googler_results.txt" (file path to save search results)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after search completes)
+- **Output fields** (Parametrizer-addressable): `url`, `title`, `status`, `content_length`, `response_body`
 
 ### 58. TeleTlamatini
 - **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — Telegramer / TelegramRX exist for the user-account direction; do not give TeleTlamatini a `listen_chat` field.

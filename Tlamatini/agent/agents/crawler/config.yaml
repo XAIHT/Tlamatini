@@ -1,9 +1,28 @@
+# Crawler Agent Configuration
 url: https://example.com
+
+# Optional ADDITIONAL seed URLs crawled with the same settings (in addition to `url`).
+# Accepts a YAML list or a comma/space-separated string. Lets a Googler dork hit-list
+# (content_mode: links_only) flow straight in via the Parametrizer.
+urls: []
+
 system_prompt: Extract all visible text content from this page
 content_mode: raw
 include_headers: true
 crawl_type: small-range
 depth: 1
+
+# --- Safety / politeness bounds ---------------------------------------------
+max_pages: 0              # hard cap on total pages processed (0 = unlimited)
+request_delay_seconds: 0  # delay between fetches (politeness / rate-limit)
+respect_robots: false     # honor robots.txt (skip Disallowed paths; fails open)
+
+# --- Recon extraction --------------------------------------------------------
+# When true, scan each page's RAW source for emails, HTML comments, source-map
+# references, and likely secrets / API keys; the findings are saved to a
+# *_recon.txt file AND prepended to the content sent to the LLM.
+extract_recon: false
+
 llm:
   host: http://localhost:11434
   model: gpt-oss:120b-cloud
