@@ -62,6 +62,15 @@ soundfile==0.12.1
 # already-bundled OpenCV (opencv-python, above) draws the window. If ffpyplayer
 # is ever unavailable the agent degrades to silent OpenCV-only video playback.
 ffpyplayer==4.5.3
+# Talker agent (agent/agents/talker/talker.py) is TEXT-TO-SPEECH: it drives an
+# Ollama Orpheus model that emits <custom_token_N> audio tokens, then decodes
+# them to a 24 kHz waveform with the SNAC neural codec before saving/playing the
+# WAV. SNAC is the vocoder; it runs on torch (above) and pulls its weights
+# (hubertsiuzdak/snac_24khz) from the HF Hub on first use. Imported inside the
+# agent so a missing install degrades to status `tokens_only` (tokens saved, no
+# audio) rather than a crash, but it MUST be bundled for the frozen build to
+# render audible speech.
+snac==1.2.1
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
 psutil==7.2.2

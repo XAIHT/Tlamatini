@@ -391,29 +391,31 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 270. Confirm the wrapped tool returns JSON with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`.
 271. Confirm launching creates a runtime copy under `agents/pools/_chat_runs_/<lower>_<N>_<id>/`.
 272. If the agent runs a desktop/visible GUI when launched from chat, recall the dogfooding rule: foreground + `dangerouslyDisableSandbox` (Phase 25), but the wrapped tool itself runs headless/background by default in Multi-Turn.
-273. Confirm the agent is NOT added to the `Tool` table twice or to MCP rows (wrapped agents are always-on when the unified agent runs; the Tool row only gates the dynamic UI toggle).
+273. **DUAL ENABLE-GATE (2026-06-07 — do NOT bypass):** `get_mcp_tools()` binds your `chat_agent_<lower>` for the LLM ONLY when BOTH (a) the wrapper Tool row `Chat-Agent-<Display>` is enabled (Configure Mcps/Tools, the migration from step 263) AND (b) the Agent row `<Display>` is enabled (Configure Agents). Disabling EITHER makes the agent INVISIBLE to the LLM (reported as unknown). Both gates fail OPEN (no row → defaults enabled). This is exactly why step 255's `display_name` MUST equal the DB `agentDescription` — the agent gate is keyed on `agent_<display>_status`. VERIFY: uncheck the agent in Configure Agents (or the wrapper in Configure Mcps), ask the LLM to use it, confirm it is reported unavailable. Do NOT add the agent to the `Tool` table twice or to MCP context rows.
 274. Confirm the `_infer_execution_shell(tool_name, args)` in `mcp_agent.py` returns a sensible shell for the Ask-Execs dialog; add a branch if the agent runs through an unusual interpreter.
 275. Confirm capability scoring will surface the tool — the `security_hints` + `purpose` feed `capability_registry.py`; add an `_EXTRA_HINTS_BY_TOOL_NAME` entry only if scoring under-selects it.
 
 ---
 
-# PHASE 15 — Exec Report (state-changing agents only)
+# PHASE 15 — Exec Report (MANDATORY for EVERY Multi-Turn agent)
 
-276. If the agent is OBSERVATIONAL/read-only, SKIP this entire phase (do not add it to `_EXEC_REPORT_TOOLS`).
-277. If state-changing, open `Tlamatini/agent/mcp_agent.py`.
-278. Add `"chat_agent_<lower>": ("<css>", "<Display>"),` to `_EXEC_REPORT_TOOLS`.
-279. If the agent also has a direct `@tool` (rare), add that tool name with the SAME `agent_key` so rows merge into one table.
-280. Confirm the `agent_key` (`<css>`) matches the canvas CSS class root so the table feels native.
-281. Open `Tlamatini/agent/static/agent/css/agent_page.css`.
-282. Add `.exec-report-caption-<css> { background: linear-gradient(135deg, #c1 0%, #c2 100%); color: #ffffff; }` mirroring the canvas gradient's primary colors.
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07):** EVERY agent that can run in Multi-Turn (anything wired with a wrapped `chat_agent_<lower>` tool in Phase 14) **MUST be captured and shown in the Exec Report** — **observational/output agents** (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer) and **read-only LLM agents** (Crawler, Prompter, Summarizer, File/Image interpreters, Monitor-*, Recmailer, …) **INCLUDED**, and every newly-created agent. A Multi-Turn agent that produces NO Exec-report row (Exec report ON) is a defect — that was the Talker bug. The old "state-changing only / SKIP if observational" rule is **REVOKED**.
+
+276. **Capture is AUTOMATIC** — `mcp_agent.py::_resolve_exec_report_spec` captures ANY wrapped `chat_agent_*` (except `_MANAGEMENT_TOOLS` helpers) by deriving `agent_key`/display from the registry. If you did Phase 14, your agent is ALREADY captured with **no** Exec-report code. Do NOT skip the agent just because it is observational.
+277. **(MANDATORY) VERIFY** capture: run the agent in Multi-Turn with **Exec report ON** and confirm a `List of <Display> Operations` table appears; and ensure `agent.tests.ExecReportCaptureTests.test_every_multiturn_agent_is_capturable_including_observational` stays green (it fails if any wrapped agent resolves to no row).
+278. **OPTIONAL refinement (nicer styling / shared keys only):** open `Tlamatini/agent/mcp_agent.py` and add `"chat_agent_<lower>": ("<css>", "<Display>"),` to `_EXEC_REPORT_TOOLS` — do this to merge a direct `@tool` with its wrapped launch under one `agent_key`, or to fix the display casing the generic fallback derives. Otherwise skip it; the registry display name + default caption are used.
+279. If you add the entry and the agent also has a direct `@tool`, give both the SAME `agent_key` so rows merge into one table.
+280. Confirm the `agent_key` (`<css>`) matches the canvas CSS class root so a per-agent gradient feels native.
+281. (Optional CSS) Open `Tlamatini/agent/static/agent/css/agent_page.css`.
+282. Add `.exec-report-caption-<css> { background: linear-gradient(135deg, #c1 0%, #c2 100%); color: #ffffff; }` mirroring the canvas gradient — purely cosmetic; without it the readable default `.exec-report-caption` background applies.
 283. Add `.exec-report-<css> .exec-report-cmd { border-left: 3px solid #c1; }` accent.
 284. If the caption background is DARK, add `<css>` to the dark-header `thead th { color:#f5f5f5; background:rgba(0,0,0,0.55) }` selector list.
-285. Confirm capture is unconditional in `_invoke_tool` (it ignores the per-request flag) — you add nothing there; the map entry is enough.
+285. Confirm capture is unconditional in `_invoke_tool` (it ignores the per-request flag) — you add nothing there.
 286. Confirm `_extract_exec_report_command(tool_input, tool_name)` produces a sensible command string for the agent; add a tool-name-aware branch only if the default is unhelpful.
 287. Confirm the row verdict uses the existing `call_success` logic — do NOT add a separate classifier.
 288. Confirm the Exec-Report table caption will read `List of <Display> Operations`.
 289. Confirm the `EXEC_REPORT_BOUNDARY` sentinel stays byte-identical in `response_parser.py` and `agent_page_chat.js` (you are not editing it — just don't).
-290. Run `python Tlamatini/manage.py test agent.tests.ExecReportCaptureTests` later (Phase 24) — it is generic; no per-agent exec-report test needed.
+290. Run `python Tlamatini/manage.py test agent.tests.ExecReportCaptureTests` later (Phase 24) — it is generic (incl. the all-agents audit); no per-agent exec-report test needed.
 
 ---
 
@@ -483,7 +485,9 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # PHASE 19 — Demo "Prompts example" creation (the prompts catalog)
 
-340. Decide how many demo prompts to seed (1 simple is the minimum; tiered basic/medium/hard like STM32er #63/#64/#65 is the gold standard).
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07):** if the agent is **Multi-Turn-capable** (it has a wrapped `chat_agent_<lower>` tool from Phase 14), you **MUST** create **at least ONE** example prompt for it in the **Catalog of Prompts** (the `#prompts-catalog`, seeded via a `Prompt`-model migration). This is a hard completion gate, NOT optional: a Multi-Turn agent shipped **without** at least one catalog prompt is an **INCOMPLETE** agent and the task is **not done**. (Canvas-only agents with no Multi-Turn tool are exempt — but every Multi-Turn agent needs its catalog prompt.) Do NOT skip this phase for a Multi-Turn agent under any circumstance.
+
+340. **(MANDATORY for Multi-Turn agents)** Seed **at least one** demo prompt (1 simple is the REQUIRED minimum; tiered basic/medium/hard like STM32er #63/#64/#65 is the gold standard). Skipping this for a Multi-Turn-capable agent is a defect — the agent is not considered finished until it has a catalog prompt.
 341. Read the prompts-catalog CONTIGUITY contract: the dropdown breaks at the first gap, order = `promptName` suffix, `idPrompt` must be contiguous.
 342. Find the current highest `idPrompt` and the next free slot (read the latest prompt-seeding migration).
 343. Create a migration `Tlamatini/agent/migrations/<NNNN+k>_add_<lower>_demo_prompts.py` that seeds rows into the prompts model.

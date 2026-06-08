@@ -71,7 +71,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, Arduiner,
-  Camcorder, Recorder
+  Camcorder, Recorder, Talker
   (NOTE: STM32er / ESP32er / Arduiner are short-lived in steady state, but their
    FIRST build/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -361,6 +361,32 @@ CAMCORDER / RECORDER SPECIAL NOTES (observational capture agents):
     block body — that is routable content for a downstream Forker, not a flow
     crash.
 
+TALKER SPECIAL NOTES (text-to-speech via Ollama):
+  - Talker SYNTHESISES speech: it sends `input_text` to an OLLAMA neural TTS
+    model (default Orpheus-3b-FT), decodes the returned audio tokens to a WAV
+    with the SNAC codec, plays it on the speakers, then ALWAYS triggers
+    `target_agents`. It is the voice-synthesis sibling of AudioPlayer (which
+    plays an existing file). Observational/output — NOT in the Exec Report.
+  - It is SHORT-LIVED and ACTIVE, BUT the Ollama generation step can take a
+    while: a long `input_text`, a large/quantised model, or a cloud Ollama
+    endpoint can keep the agent busy for tens of seconds to a few minutes with
+    no new log lines while it waits for the model. Do NOT flag a Talker that is
+    waiting on its Ollama response as stuck unless it has been silent well
+    beyond the CHECK-3 window AND there is no "Talker agent finished" line.
+  - It ALWAYS emits an `INI_SECTION_TALKER<<<` block (the saved WAV path, voice,
+    language, status). NEVER flag that block as an error. A `status: tokens_only`
+    line means the audio was fetched but `snac`+`torch` are not installed to
+    render sound — that is a documented degraded mode, NOT a flow error. A
+    `status: error` body (e.g. "Cannot reach Ollama", "returned no audio tokens")
+    is routable content for a downstream Forker, not a flow crash.
+  - Talker is FEMALE-ONLY by design (Tlamatini is female). If a male / non-female
+    voice was requested, Talker INTENTIONALLY closes its execution: you will see
+    "⛔ MALE VOICE IS FORBIDDEN BY DESIGN", "⛔ NOW CLOSING.. BYE", and a
+    `status: error` body of "FORBIDDEN BY DESIGN: a male voice is not permitted".
+    This is the agent working EXACTLY as designed — do NOT flag it as a crash,
+    a stuck agent, or a broken chain. It is a deliberate, immediate self-shutdown
+    in response to a forbidden request, not a fault.
+
 ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
   Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
@@ -384,6 +410,7 @@ TYPICAL TIMING:
   - Counter/File-Creator: < 5 seconds
   - Recorder: records for ~its configured `record_seconds` (default 5 s), then writes the WAV and exits — observational (read-only audio capture, NOT in the Exec Report). The audio sibling of Shoter/Camcorder. Flag only if it runs well beyond `record_seconds` with no "Recorder agent finished" completion.
   - Camcorder: `photo` mode is < 5 s (one webcam shot); `video` mode runs for ~its `video_duration_seconds` then writes the `.mp4` and exits — observational (read-only camera capture, NOT in the Exec Report). The camera sibling of Shoter/Recorder. Flag only if it runs well beyond `video_duration_seconds` with no "Camcorder agent finished" completion.
+  - Talker: text-to-speech via an Ollama model — the synthesis (Ollama generation) can run from a few seconds up to a few MINUTES for a long text, a large/quantised model, or a cloud Ollama endpoint, then it plays the audio (~the speech length) and exits — observational/output (NOT in the Exec Report). Don't flag a Talker still waiting on its Ollama response before ~5 min; flag only if it is silent well beyond that with no "Talker agent finished" completion.
   - Keyboarder/Mouser/Windower/Shoter: < 5 seconds per invocation (desktop UI primitives). Windower
     `matched: false` / `state: no_match` is NOT a flow error — it is routable content (the window was not
     open yet); only flag `state: win32_unavailable` (a real platform/environment problem) or a Windower
@@ -421,6 +448,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "📸 CAMCORDER AGENT STARTED" — Camcorder began capturing a photo / video from a webcam (observational; writes the file, then triggers downstream)
   "⚡ ESP32er AGENT STARTED (PlatformIO Core / pio CLI bridge)" — ESP32er began driving the `pio` CLI (scaffold / build / upload / monitor ESP32 firmware)
   "🔌 Arduiner AGENT STARTED (Arduino CLI / arduino-cli bridge)" — Arduiner began driving `arduino-cli` (scaffold / build / upload / monitor Arduino firmware)
+  "🗣️ TALKER AGENT STARTED (Ollama TTS)" — Talker began synthesising speech from text via an Ollama TTS model (observational/output; saves + plays a WAV, then triggers downstream)
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -434,7 +462,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  Shoter, Camcorder, Recorder, Mouser, Windower, Playwrighter, De-Compresser, Unrealer,
+  Shoter, Camcorder, Recorder, Talker, Mouser, Windower, Playwrighter, De-Compresser, Unrealer,
   Reviewer, Analyzer, Kalier, STM32er, ESP32er, Arduiner).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
@@ -529,6 +557,7 @@ DO NOT report these as problems:
   - ESP32er INI_SECTION_ESP32ER<<< ... >>>END_SECTION_ESP32ER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a sketch that fails to compile or an upload that reports "no serial port" is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run PlatformIO install) or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
   - Arduiner INI_SECTION_ARDUINER<<< ... >>>END_SECTION_ARDUINER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a compile/upload failure is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run arduino-cli download), a `stage: core_install` (auto board-core install), or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
   - Camcorder / Recorder INI_SECTION_CAMCORDER / INI_SECTION_RECORDER blocks — observational capture agents (webcam / microphone) that ALWAYS emit their block and trigger target_agents; never a flow error (read-only camera / mic capture, NOT in the Exec Report). A device-not-found message in the block body is routable content for a downstream Forker.
+  - Talker INI_SECTION_TALKER blocks with any `status` — including `status: tokens_only` (audio fetched but snac+torch not installed to render sound — a documented degraded mode) or `status: error` (e.g. "Cannot reach Ollama", "returned no audio tokens"). Talker is observational/output (TTS via Ollama; NOT in the Exec Report) that ALWAYS emits its block and triggers target_agents; the block is routable content for a downstream Forker, never a flow error. Do NOT flag a Talker that is merely WAITING on a slow Ollama generation (see TALKER SPECIAL NOTES).
   - Long FIRST firmware build/flash on STM32er / ESP32er / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet

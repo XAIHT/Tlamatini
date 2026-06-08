@@ -433,19 +433,29 @@ ChatWrappedAgentSpec(
 
 The unified agent picks it up via `WRAPPED_CHAT_AGENT_BY_TOOL_NAME` — no edits in `mcp_agent.py` or `tools.py`. The tool returns JSON: `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`.
 
+**Seed the wrapper `Tool` row (so it is toggleable in Configure Mcps/Tools).** Add a tiny migration mirroring `migrations/0121_add_chat_agent_talker_tool.py` that creates a `Tool` row with `toolDescription="Chat-Agent-MyAgent"` (the same `tool_description` as the spec). Without it the wrapper still defaults ON (fail-open) but the user has no checkbox to disable it.
+
+**Dual enable-gate (do NOT bypass).** `get_mcp_tools()` binds your `chat_agent_<name>` for the LLM ONLY when BOTH (a) the wrapper Tool row `Chat-Agent-<Name>` is enabled (Configure Mcps/Tools) AND (b) the Agent row `<Name>` is enabled (Configure Agents). Disabling EITHER makes the agent invisible to the LLM (reported as unknown). This is exactly why `display_name` MUST equal the DB `agentDescription` — the Agent-row gate is keyed on `agent_<display>_status`. Verify: uncheck the agent in Configure Agents (or the wrapper in Configure Mcps), ask the LLM to use it, and confirm it reports the agent as unavailable.
+
 ---
 
-## Step 7.6 · REQUIRED for state-changing agents: Exec Report
+## Step 7.6 · MANDATORY for EVERY Multi-Turn agent: Exec Report capture
 
-If the agent mutates anything (commands, files, DB, containers, clusters, external messages), it MUST appear in the per-agent Exec Report tables. Skip for read-only/monitoring agents (Crawler, Summarizer, Prompter, File-Interpreter/Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer, FlowHypervisor, TelegramRX).
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07):** EVERY agent that can run in Multi-Turn (anything with a wrapped `chat_agent_<name>` tool from Step 7.5) **MUST be captured and shown in the Exec Report** — **observational/output agents** (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer) and **read-only LLM agents** (Crawler, Prompter, Summarizer, File/Image interpreters, Monitor-*, Recmailer, …) **INCLUDED**, plus every newly-created agent. A Multi-Turn agent that produces **no** Exec-report row when Exec report is ON is a **defect** (this was the Talker bug: a run showed zero tables). The "state-changing only" rule is **gone**.
 
-**1. `agent/mcp_agent.py`** — one line in `_EXEC_REPORT_TOOLS`:
+**Good news — capture is AUTOMATIC.** `agent/mcp_agent.py::_resolve_exec_report_spec` captures ANY wrapped `chat_agent_*` (except the management/polling helpers in `_MANAGEMENT_TOOLS`) by deriving `agent_key`/display from the wrapped chat-agent registry. **So if you did Step 7.5, your agent is already captured — you write NO Exec-report code.** The mandatory work is just to VERIFY it.
+
+**0. (MANDATORY) Verify capture.** Run the agent in Multi-Turn with **Exec report ON** and confirm a "List of <Display> Operations" table appears. The audit test `agent.tests.ExecReportCaptureTests.test_every_multiturn_agent_is_capturable_including_observational` fails if ANY wrapped chat-agent resolves to no row — run `python manage.py test agent.tests.ExecReportCaptureTests` and keep it green.
+
+**OPTIONAL refinement** — only for a native caption gradient or to merge a direct @tool with its wrapped launch (otherwise the readable default `.exec-report-caption` background is used and the display comes from the registry `display_name`):
+
+**1. `agent/mcp_agent.py`** — one line in `_EXEC_REPORT_TOOLS` (to share an `agent_key` between a direct @tool and its wrapped launch, or to fix display casing):
 ```python
 "chat_agent_myagent": ("myagent", "MyAgent"),
 ```
-`agent_key` (lowercase, no spaces) MUST match the canvas-item CSS class root. If the agent has both a direct @tool AND a wrapped launch, list both names with the same `agent_key` so rows merge.
+`agent_key` (lowercase, no spaces) SHOULD match the canvas-item CSS class root.
 
-**2. `agent/static/agent/css/agent_page.css`** — two rules mirroring the canvas gradient:
+**2. `agent/static/agent/css/agent_page.css`** — two rules mirroring the canvas gradient (purely cosmetic; skip and the default caption applies):
 ```css
 .exec-report-caption-<agent_key> {
     background: linear-gradient(135deg, #<c1> 0%, #<c2> 100%);
@@ -456,7 +466,7 @@ If the agent mutates anything (commands, files, DB, containers, clusters, extern
 
 **3.** Dark caption → add `agent_key` to the dark-header `thead th` selector list (sets `color: #f5f5f5; background: rgba(0,0,0,0.55)`).
 
-Verification: `python manage.py test agent.tests.ExecReportCaptureTests` is generic; no per-agent test needed.
+Verification: `python manage.py test agent.tests.ExecReportCaptureTests` is generic (incl. the all-agents audit); no per-agent test needed.
 
 > **Ask Execs (automatic — no wiring needed).** If your wrapped tool is state-changing, it is **automatically** gated by the "Ask Execs" toggle: when the user enables it, the Multi-Turn executor prompts Proceed/Deny before your `chat_agent_<key>` runs. `MultiTurnToolAgentExecutor._requires_exec_permission` prompts for **every** tool except those in `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT`. So: a state-changing or action tool needs **no** Ask-Execs code. A **read-only / polling** tool (status/log/inspection that should NOT be prompted) must be added to `_MANAGEMENT_TOOLS` and/or `_TOOL_QUOTA_EXEMPT` in `mcp_agent.py` (and is likely already absent from `_EXEC_REPORT_TOOLS` anyway). The permission dialog's "shell" line comes from `_infer_execution_shell(tool_name, args)` — add a branch there if your tool runs through an unusual shell/interpreter (else it falls back to the platform shell). See `docs/claude/multi-turn.md` → *Ask Execs*.
 
@@ -482,6 +492,48 @@ Rules:
 - Never set `config.target_agents` / `config.source_agents` here — `_generateAndDownloadFlow` does that with cardinal-suffixed pool names.
 
 Test by dragging the agent into the ACP once and noting the dialog field names verbatim.
+
+---
+
+## Step 7.8 · MANDATORY for Multi-Turn agents: a Catalog-of-Prompts example
+
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07).** If you did Step 7.5 (the agent is **Multi-Turn-capable** via a wrapped `chat_agent_<name>` tool), you **MUST** seed **at least ONE** example prompt for it into the **Catalog of Prompts**. This is a hard completion gate: a Multi-Turn agent shipped **without** a catalog prompt is **INCOMPLETE** and the task is **not done**. (A canvas-only agent with NO wrapped tool is exempt.) Do NOT skip this.
+
+Add a migration `agent/migrations/<NNNN>_add_<agent_name>_demo_prompts.py` that seeds rows into the **`Prompt`** model (`idPrompt`, `promptName='prompt-<N>'`, `promptContent`):
+
+```python
+from django.db import migrations
+
+# At least ONE demo prompt for a Multi-Turn agent (1 minimum; tiered basic/medium/hard is the gold standard).
+DEMO = (
+    "Tlamatini, run the **<AGENTNAME> DEMO**, please — <one realistic, SAFE task that drives "
+    "chat_agent_<agent_name> end to end>. Tick ONLY the Multi-Turn checkbox; use ONLY "
+    "chat_agent_<agent_name>. ... End with END-RESPONSE."
+)
+_NEW_PROMPTS = ((<next_free_slot>, DEMO),)   # e.g. (76, DEMO)
+
+def add_demo_prompts(apps, schema_editor):
+    Prompt = apps.get_model('agent', 'Prompt')
+    for pid, content in _NEW_PROMPTS:
+        Prompt.objects.update_or_create(
+            idPrompt=pid,
+            defaults={'promptName': f'prompt-{pid}', 'promptContent': content},
+        )
+
+def remove_demo_prompts(apps, schema_editor):
+    Prompt = apps.get_model('agent', 'Prompt')
+    Prompt.objects.filter(idPrompt__in=[pid for pid, _ in _NEW_PROMPTS]).delete()
+
+class Migration(migrations.Migration):
+    dependencies = [('agent', '<previous_migration_name>')]
+    operations = [migrations.RunPython(add_demo_prompts, remove_demo_prompts)]
+```
+
+Rules (do not break the catalog):
+- **CONTIGUITY contract** — the `#prompts-catalog` dropdown (`static/agent/js/tools_dialog.js`) enumerates `prompt-1, prompt-2, …` and **BREAKS at the first missing slot**, so `idPrompt` / `promptName` suffixes MUST stay a contiguous, gap-free `prompt-1..N`. **Find the current highest `idPrompt`** (read the latest `*_demo_prompts.py` migration) and **APPEND** at the next free slot with no renumber. `MAX_PROMPTS=100`.
+- The prompt must drive the new agent via `chat_agent_<agent_name>`, with a **realistic, SAFE** task (the daily chat test may run it — no destructive ops).
+- Phrase it so the prompt-catalog **mode badges** infer the right toggles (Multi-Turn ON for operator prompts); style the HTML banner to mirror the agent's CSS gradient (copy a recent sibling's prompt migration).
+- Implement the reverse migration (delete the seeded rows) and set `dependencies` on the previous migration. Then `python manage.py migrate` and confirm the prompt shows in the `#prompts-catalog` modal.
 
 ---
 
@@ -522,10 +574,16 @@ npm run lint                   # fix errors only (ignore warnings)
        Description menu + sidebar tooltip text), Glossary, Changelog, API endpoint
 [ ] 7.5 (OPTIONAL) ChatWrappedAgentSpec in chat_agent_registry.py
        (tool_name starts with chat_agent_, display_name matches DB agentDescription)
-[ ] 7.6 (REQUIRED if state-changing) _EXEC_REPORT_TOOLS entry + matching CSS
-       caption + .exec-report-cmd accent + dark-header list if dark caption
-       (SKIP for read-only/monitoring agents)
+[ ] 7.6 (MANDATORY for EVERY Multi-Turn agent) Exec-report capture is AUTOMATIC
+       (no code if Step 7.5 done — observational agents INCLUDED) — VERIFY a
+       "List of <Agent> Operations" table appears with Exec report ON, and keep
+       ExecReportCaptureTests (incl. the all-agents audit) green. Optional:
+       _EXEC_REPORT_TOOLS entry + CSS caption gradient for native styling.
 [ ] 7.7 (REQUIRED if 7.5) Flow-Generator branch in _mapToolArgsToAgentConfig
        (set() helper, no empty strings, no target/source_agents)
+[ ] 7.8 (MANDATORY if 7.5 — Multi-Turn agent) ≥1 Catalog-of-Prompts example seeded
+       via a Prompt-model migration (contiguous idPrompt/prompt-N, SAFE task driving
+       chat_agent_<name>) → migrate → appears in #prompts-catalog. A Multi-Turn agent
+       WITHOUT a catalog prompt is INCOMPLETE.
 [ ] 8. ruff check (fix all) + npm run lint (fix errors); manual sidebar/canvas color parity
 ```

@@ -1179,6 +1179,13 @@ body.resizing-vertical {
     text-align: left;
     letter-spacing: 0.02em;
     color: #1b1b1b;
+    /* DEFAULT background — every agent captured in the Exec report renders a
+     * readable caption even with no per-agent gradient rule below. This is what
+     * keeps observational/output agents (Talker, Shoter, the media family, the
+     * read-only LLM agents) and any NEWLY-CREATED agent looking clean the moment
+     * they are auto-captured (see mcp_agent.py::_resolve_exec_report_spec). A
+     * per-agent gradient rule below simply overrides this for a native look. */
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
 }

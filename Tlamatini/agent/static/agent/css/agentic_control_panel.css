@@ -1894,6 +1894,24 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #0a0a1a 0%, #1f3a93 33%, #e94560 66%, #f5d76e 100%);
 }
 
+/* Talker Agent - Text-to-speech via Ollama (Vocal warmth: deep wine -> terracotta -> apricot -> cream) */
+.canvas-item.talker-agent {
+    background-color: #c1462e;
+    background: linear-gradient(135deg, #5b1d2e 0%, #c1462e 33%, #f2a35e 66%, #ffe3a3 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.talker-agent:hover {
+    background: linear-gradient(135deg, #74283c 0%, #d85a3f 33%, #ffb877 66%, #fff0c9 100%);
+    box-shadow: 0 6px 15px rgba(193, 70, 46, 0.5);
+}
+
+/* Talker agent icon in sidebar */
+.agent-tool-item[data-content="Talker"] .agent-tool-icon {
+    background: linear-gradient(135deg, #5b1d2e 0%, #c1462e 33%, #f2a35e 66%, #ffe3a3 100%);
+}
+
 /* Ssher Agent Styles - SSH remote execution (Dark Blue to Red gradient) */
 .canvas-item.ssher-agent {
     background-color: #1a237e;

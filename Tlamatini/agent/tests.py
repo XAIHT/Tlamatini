@@ -864,9 +864,12 @@ class ExecReportCaptureTests(TestCase):
         self.assertTrue(any("ssh admin@10.0.0.1" in c for c in commands))
         self.assertIn('SELECT 1 FROM users', commands)
 
-    def test_read_only_tool_calls_are_not_captured(self):
-        """``chat_agent_crawler`` / ``chat_agent_run_status`` / ``googler``
-        must NOT appear in exec_report_entries — they don't change state."""
+    def test_observational_agent_captured_but_management_and_direct_readonly_not(self):
+        """Completeness contract (2026-06-07): an observational chat-agent like
+        ``chat_agent_crawler`` IS now captured — EVERY agent that runs in
+        Multi-Turn must appear in the Exec report. Management/polling helpers
+        (``chat_agent_run_status``) and direct read-only @tools (``googler``)
+        are still NEVER captured."""
         from langchain.tools import Tool
 
         def _make_stub(name):
@@ -878,6 +881,7 @@ class ExecReportCaptureTests(TestCase):
         tools = [
             _make_stub('chat_agent_crawler'),
             _make_stub('chat_agent_run_status'),
+            _make_stub('googler'),
         ]
         exe = self._build_executor(
             tools=tools,
@@ -885,12 +889,57 @@ class ExecReportCaptureTests(TestCase):
                 [
                     ('chat_agent_crawler', {'__arg1': 'crawl example.com'}),
                     ('chat_agent_run_status', {'__arg1': 'status'}),
+                    ('googler', {'__arg1': 'python tutorials'}),
                 ],
             ],
         )
-        result = exe.invoke({'input': 'read only', 'exec_report_enabled': True})
+        result = exe.invoke({'input': 'mixed', 'exec_report_enabled': True})
 
-        self.assertEqual(result['exec_report_entries'], [])
+        # crawler captured; run_status (management) + googler (direct read-only) excluded.
+        keys = [e['agent_key'] for e in result['exec_report_entries']]
+        self.assertEqual(keys, ['crawler'])
+        self.assertEqual(result['exec_report_entries'][0]['agent_display'], 'Crawler')
+
+    def test_every_multiturn_agent_is_capturable_including_observational(self):
+        """AUDIT: ``_resolve_exec_report_spec`` returns a (key, display) for
+        EVERY wrapped chat-agent that can run in Multi-Turn — observational
+        agents (Talker/Shoter/Camcorder/Recorder/AudioPlayer/VideoPlayer) and
+        read-only LLM agents (Crawler/Prompter/Summarizer/...) included — so the
+        Exec report shows them all. Only management/polling helpers and direct
+        read-only @tools resolve to None."""
+        from agent.mcp_agent import _resolve_exec_report_spec, _MANAGEMENT_TOOLS
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+
+        missing = []
+        for tool_name in WRAPPED_CHAT_AGENT_BY_TOOL_NAME:
+            spec = _resolve_exec_report_spec(tool_name)
+            if tool_name in _MANAGEMENT_TOOLS:
+                self.assertIsNone(spec, f"{tool_name} is management — must NOT capture")
+            elif spec is None:
+                missing.append(tool_name)
+            else:
+                self.assertTrue(spec[0] and spec[1], f"{tool_name} bad spec {spec}")
+        self.assertEqual(missing, [], f"Multi-Turn agents NOT captured: {missing}")
+
+        # The agents that USED to be excluded are now captured with nice names.
+        for tn, disp in (
+            ('chat_agent_talker', 'Talker'),
+            ('chat_agent_shoter', 'Shoter'),
+            ('chat_agent_camcorder', 'Camcorder'),
+            ('chat_agent_recorder', 'Recorder'),
+            ('chat_agent_audioplayer', 'AudioPlayer'),
+            ('chat_agent_videoplayer', 'VideoPlayer'),
+            ('chat_agent_crawler', 'Crawler'),
+            ('chat_agent_prompter', 'Prompter'),
+        ):
+            spec = _resolve_exec_report_spec(tn)
+            self.assertIsNotNone(spec, f"{tn} must be captured")
+            self.assertEqual(spec[1], disp)
+
+        # Management + a direct read-only @tool are never captured.
+        self.assertIsNone(_resolve_exec_report_spec('chat_agent_run_status'))
+        self.assertIsNone(_resolve_exec_report_spec('googler'))
+        self.assertIsNone(_resolve_exec_report_spec('get_current_time'))
 
     def test_failing_tool_is_captured_with_success_false(self):
         """Executer returning an ``Error:`` string must mark the entry as
@@ -6581,3 +6630,98 @@ class ConditionalRuleBlockTests(TestCase):
                            "TEMPLATES_RULES_BEGIN", "TEMPLATES_RULES_END"):
                 self.assertNotIn(marker, prompt,
                                  f"sentinel {marker} leaked with tools {tool_names}")
+
+
+class WrappedAgentVisibilityGatingTests(TestCase):
+    """Disabling an agent in **Configure Agents** (its ``Agent`` row) OR its
+    wrapper Tool row (**Chat-Agent-<Name>** in Configure Mcps/Tools) MUST make
+    the wrapped ``chat_agent_*`` tool invisible to the LLM — i.e. absent from
+    ``get_mcp_tools()`` — so the LLM reports the agent as unknown/nonexistent.
+
+    Uses Talker as the worked example (``agent_talker_status`` /
+    ``tool_chat-agent-talker_status``) but the gate is generic across every
+    wrapped chat-agent.
+    """
+
+    # global_state is a process-wide singleton; restore the two flags to the
+    # fail-open default after each test so the rest of the suite is unaffected.
+    def setUp(self):
+        self._keys = ('tool_chat-agent-talker_status', 'agent_talker_status')
+        self._saved = {k: global_state.get_state(k, 'enabled') for k in self._keys}
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            global_state.set_state(k, v)
+
+    def _talker_visible(self):
+        from agent.tools import get_mcp_tools
+        return any(getattr(t, 'name', '') == 'chat_agent_talker' for t in get_mcp_tools())
+
+    def _set(self, tool_flag, agent_flag):
+        global_state.set_state('tool_chat-agent-talker_status', tool_flag)
+        global_state.set_state('agent_talker_status', agent_flag)
+
+    def test_visible_when_both_agent_and_wrapper_enabled(self):
+        self._set('enabled', 'enabled')
+        self.assertTrue(self._talker_visible(),
+                        "Talker should be bound when both its Agent row and "
+                        "wrapper Tool row are enabled")
+
+    def test_hidden_when_agent_disabled_in_configure_agents(self):
+        # Uncheck "Talker" in Configure Agents -> agent_talker_status disabled.
+        self._set('enabled', 'disabled')
+        self.assertFalse(self._talker_visible(),
+                         "Disabling the Talker Agent row must hide chat_agent_talker")
+
+    def test_hidden_when_wrapper_tool_disabled_in_configure_mcps(self):
+        # Uncheck "Chat-Agent-Talker" in Configure Mcps/Tools -> tool flag disabled.
+        self._set('disabled', 'enabled')
+        self.assertFalse(self._talker_visible(),
+                         "Disabling the Chat-Agent-Talker wrapper must hide chat_agent_talker")
+
+    def test_hidden_when_both_disabled(self):
+        self._set('disabled', 'disabled')
+        self.assertFalse(self._talker_visible())
+
+    def test_gate_is_generic_across_wrapped_agents(self):
+        # Spot-check a second agent (Shoter) to prove the gate is not Talker-specific.
+        saved = {k: global_state.get_state(k, 'enabled')
+                 for k in ('tool_chat-agent-shoter_status', 'agent_shoter_status')}
+        try:
+            from agent.tools import get_mcp_tools
+
+            def shoter_visible():
+                return any(getattr(t, 'name', '') == 'chat_agent_shoter'
+                           for t in get_mcp_tools())
+
+            global_state.set_state('tool_chat-agent-shoter_status', 'enabled')
+            global_state.set_state('agent_shoter_status', 'enabled')
+            self.assertTrue(shoter_visible())
+            global_state.set_state('agent_shoter_status', 'disabled')
+            self.assertFalse(shoter_visible())
+        finally:
+            for k, v in saved.items():
+                global_state.set_state(k, v)
+
+    def test_direct_tool_agent_also_gated_by_agent_row(self):
+        # The direct @tool agents (Executer/execute_command, Pythonxer/execute_file,
+        # Googler/googler) hide when their Agent row is disabled — consistent with
+        # the wrapped gate, so disabling the canvas agent hides BOTH surfaces.
+        saved = {k: global_state.get_state(k, 'enabled')
+                 for k in ('tool_execute-command_status', 'agent_executer_status')}
+        try:
+            from agent.tools import get_mcp_tools
+
+            def execute_command_visible():
+                return any(getattr(t, 'name', '') == 'execute_command'
+                           for t in get_mcp_tools())
+
+            global_state.set_state('tool_execute-command_status', 'enabled')
+            global_state.set_state('agent_executer_status', 'enabled')
+            self.assertTrue(execute_command_visible())
+            global_state.set_state('agent_executer_status', 'disabled')
+            self.assertFalse(execute_command_visible(),
+                             "Disabling the Executer Agent row must hide execute_command")
+        finally:
+            for k, v in saved.items():
+                global_state.set_state(k, v)

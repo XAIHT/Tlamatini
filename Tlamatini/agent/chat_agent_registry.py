@@ -404,6 +404,50 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=8,
     ),
     ChatWrappedAgentSpec(
+        key="talker",
+        template_dir="talker",
+        tool_name="chat_agent_talker",
+        tool_description="Chat-Agent-Talker",
+        display_name="Talker",
+        purpose=(
+            "TEXT-TO-SPEECH (TTS): SPEAK text aloud through the speakers using an OLLAMA "
+            "connection that runs a neural TTS model (default Orpheus-3b-FT). Use it for 'say "
+            "this out loud', 'read this aloud', 'speak <text>', 'pronounce <word>', 'voice this "
+            "in Spanish', 'read it back with a laugh'. The synthesis sibling of the media family "
+            "— chat_agent_audioplayer plays an existing FILE, Talker GENERATES speech from text. "
+            "REQUIRED: input_text = the words to pronounce. FEMALE VOICE ONLY (Tlamatini is "
+            "female): voice picks one of the permitted FEMALE Orpheus voices — tara [default], "
+            "leah, jess, mia, zoe (gender='female' is the only accepted gender). A MALE / "
+            "non-female voice is FORBIDDEN BY DESIGN with NO override — if a male voice is asked "
+            "for, the agent does NOT substitute a female voice; it CLOSES ITS EXECUTION ENTIRELY "
+            "and reports 'male voice is forbidden by design — NOW CLOSING.. BYE'. NEVER request a "
+            "male voice. language passes a language hint to the model (the base model is "
+            "English-only; a multilingual fine-tune can speak es/fr/de/...). emotion weaves a "
+            "paralinguistic tag into the speech (laugh, chuckle, sigh, cough, sniffle, groan, yawn, "
+            "gasp) — or inline <laugh> etc. directly in input_text. model selects the Ollama TTS "
+            "model; ollama_url / ollama_token configure the connection. Generation knobs: "
+            "temperature, top_p, top_k, min_p, repetition_penalty (keep >= 1.1), max_tokens, seed. "
+            "Playback: device_index / device_name pick the speakers, volume_percent is a software "
+            "gain, sample_rate=0 keeps the model's native 24 kHz; the WAV is always saved "
+            "(output_dir) and play_audio=false saves without playing. The wrapped result includes "
+            "a top-level 'output_path'. NOTE: hearing the audio needs 'snac' + 'torch' (a neural "
+            "vocoder) installed; without them the agent still fetches + saves the audio tokens and "
+            "reports status 'tokens_only'."
+        ),
+        example_request=(
+            "Speak 'Hello, welcome to Tlamatini' out loud, OR speak with "
+            "input_text='Bienvenue', voice='leah', language='fr', emotion='laugh', "
+            "volume_percent=120 and model='Orpheus-3b-FT' (FEMALE voices only — a male "
+            "voice is forbidden by design)"
+        ),
+        aliases=("talker", "speak", "say", "text to speech", "tts", "read aloud", "pronounce", "voice"),
+        security_hints=(
+            "speak", "say out loud", "read aloud", "text to speech", "tts", "pronounce",
+            "voice this", "say it", "read it back", "synthesize speech", "talk",
+        ),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
         key="mouser",
         template_dir="mouser",
         tool_name="chat_agent_mouser",

@@ -669,11 +669,14 @@ class VideoPlayerRegistryTests(SimpleTestCase):
         self.assertEqual(cfg['keep_aspect'], True)
         self.assertIn('target_agents', cfg)
 
-    def test_not_in_exec_report(self):
-        mcp_path = os.path.join(_REPO_AGENT_DIR, 'mcp_agent.py')
-        with open(mcp_path, 'r', encoding='utf-8') as handle:
-            text = handle.read()
-        self.assertNotIn('chat_agent_videoplayer', text)
+    def test_captured_in_exec_report(self):
+        # Completeness contract (2026-06-07): EVERY agent that runs in Multi-Turn
+        # — observational/output ones like VideoPlayer INCLUDED — is captured in
+        # the Exec report (auto-resolved from the wrapped chat-agent registry).
+        from agent.mcp_agent import _resolve_exec_report_spec
+        spec = _resolve_exec_report_spec('chat_agent_videoplayer')
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec[1], 'VideoPlayer')
 
     def test_parametrizer_section_type_registered(self):
         param_path = os.path.join(_REPO_AGENT_DIR, 'agents', 'parametrizer', 'parametrizer.py')

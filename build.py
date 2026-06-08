@@ -406,18 +406,20 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
     # from the FROZEN _internal — NOT from here. A developer's PYTHON_HOME
     # accumulates the *CUDA* build of torch (~4 GB on its own), and the old
     # wholesale copytree dragged all of it in, ballooning the release to ~4 GB.
-    # No pool agent imports any of these (audited: only cv2/ffpyplayer are used,
-    # and those are KEPT), so we drop them at the site-packages level. This is
-    # the single change that brings the release back to the lean ~1.3 GB shape.
+    # The Talker pool agent (agent/agents/talker/talker.py) DOES import torch +
+    # snac to decode Orpheus audio tokens into a 24 kHz waveform, so the carried
+    # Python MUST keep torch (the CPU wheel from requirements.txt, ~250 MB — well
+    # under GitHub's 2 GB release-asset limit). We still drop the heavy stuff
+    # Talker does NOT need: the CUDA runtime (nvidia* prefix), torchvision /
+    # torchaudio, triton, transformers, mxnet. KEEP: torch (Talker/snac), cv2,
+    # ffpyplayer, numpy, pillow, yaml, langchain, langgraph, requests, scipy.
     # Override with TLAMATINI_BUNDLE_FULL_PYTHON=1 to carry the interpreter
-    # verbatim (e.g. if a future agent genuinely needs torch).
+    # verbatim (no ML prune at all).
     prune_full = os.environ.get("TLAMATINI_BUNDLE_FULL_PYTHON", "").strip() in ("1", "true", "True")
     # Exact site-packages directory names (and their <stem>-<ver>.dist-info /
-    # .egg-info / <stem>.libs siblings) to drop. KEEP: cv2, ffpyplayer, numpy,
-    # pillow, yaml, langchain, langgraph, requests, scipy — agents need or may
-    # transitively need them.
+    # .egg-info / <stem>.libs siblings) to drop.
     _PRUNE_PKG_STEMS = (
-        "torch", "torchvision", "torchaudio", "torchgen", "functorch",
+        "torchvision", "torchaudio",
         "triton", "transformers", "mxnet",
     )
     # Namespace-package prefixes to drop wholesale (NVIDIA CUDA runtime wheels).
@@ -750,6 +752,7 @@ def main():
             "sounddevice",                          # microphone capture (Recorder) — native PortAudio
             "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
             "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
+            "torch", "snac",                        # text-to-speech (Talker) — Orpheus token -> 24 kHz audio vocoder
         ]
         verify_src = "\n".join([
             "import importlib",

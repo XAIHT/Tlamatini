@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateRecorderConnection, updateAudioPlayerConnection, updateVideoPlayerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateRecorderConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -191,6 +191,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'recorder': 'recorder-agent',
     'audioplayer': 'audioplayer-agent',
     'videoplayer': 'videoplayer-agent',
+    'talker': 'talker-agent',
     'keyboarder': 'keyboarder-agent',
     'recmailer': 'recmailer-agent',
     'notifier': 'notifier-agent',
@@ -889,6 +890,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'recorder') updateRecorderConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'audioplayer') updateAudioPlayerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'videoplayer') updateVideoPlayerConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'talker') updateTalkerConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'mover') updateMoverConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'mover') updateMoverConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'deleter') updateDeleterConnection(targetId, sourceId, 'remove', 'source');
@@ -1015,6 +1017,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'recorder' && !sourceBeingDeleted) updateRecorderConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'audioplayer' && !sourceBeingDeleted) updateAudioPlayerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'videoplayer' && !sourceBeingDeleted) updateVideoPlayerConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'talker' && !sourceBeingDeleted) updateTalkerConnection(sourceId, targetId, 'remove');
         if (targetAgentName.toLowerCase() === 'mover' && !targetBeingDeleted) updateMoverConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'mover' && !sourceBeingDeleted) updateMoverConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'deleter' && !targetBeingDeleted) updateDeleterConnection(targetId, sourceId, 'remove', 'source');
@@ -1488,6 +1491,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'recorder') updateRecorderConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'audioplayer') updateAudioPlayerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'videoplayer') updateVideoPlayerConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'talker') updateTalkerConnection(sourceId, targetId, 'add');
                     if (targetAgentName.toLowerCase() === 'deleter') updateDeleterConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'deleter') updateDeleterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'executer') updateExecuterConnection(targetId, sourceId, 'add', 'source');

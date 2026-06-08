@@ -249,8 +249,7 @@ Usually must not touch:
 Must usually touch:
 
 - `agent/chat_agent_registry.py` → append `ChatWrappedAgentSpec`
-- `agent/mcp_agent.py` → `_EXEC_REPORT_TOOLS` (only if state-changing)
-- `agent/static/agent/css/agent_page.css` → exec-report CSS rules (only if state-changing)
+- Exec Report → **AUTOMATIC** for every wrapped chat-agent (no code); just VERIFY it appears (mandatory). `_EXEC_REPORT_TOOLS` + exec-report CSS in `agent_page.css` are OPTIONAL refinements (shared keys / native caption gradient only)
 - `agent/static/agent/js/agent_page_chat.js` → Flow-Generator mapping branch
 
 May need to touch:
@@ -422,9 +421,15 @@ Run MyAgent with param1='value1', nested.param='value2'
 
 `_launch_wrapped_chat_agent()` in `tools.py` parses that string into `config.yaml` overrides using the same Parametrizer grammar. Your template agent's `config.yaml` must have top-level (or dotted-nested) keys matching the names you advertise in the `example_request`, or the overrides silently fall through.
 
-### Step 4: Register in the Exec Report if state-changing
+### Step 4: Exec Report — MANDATORY for EVERY wrapped chat-agent (automatic capture)
 
-If the action changes system state (filesystem, DB, remote host, container, cluster, repo, GUI, external messages), add a one-line entry to `_EXEC_REPORT_TOOLS` in `agent/mcp_agent.py`:
+> ⚠️ **MANDATORY DIRECTIVE (Angela, 2026-06-07):** EVERY wrapped `chat_agent_*` that can run in Multi-Turn **MUST appear in the Exec Report** — observational/output and read-only agents **INCLUDED**, plus every newly-created one. A Multi-Turn agent that shows no Exec-report row is a defect (the Talker bug). The old "skip for read-only/observational" rule is **REVOKED**.
+
+**Capture is AUTOMATIC — you write no Exec-report code.** `agent/mcp_agent.py::_resolve_exec_report_spec` captures ANY wrapped `chat_agent_*` (except the `_MANAGEMENT_TOOLS` polling helpers) by deriving `agent_key`/display from the wrapped chat-agent registry. So once Step 2 (the `ChatWrappedAgentSpec`) is done, your agent is already captured and rendered (with the default caption).
+
+**(MANDATORY) Verify**: run it in Multi-Turn with **Exec report ON** and confirm a `List of <Display> Operations` table appears; keep `agent.tests.ExecReportCaptureTests` green (its all-agents audit fails if any wrapped agent resolves to no row).
+
+**OPTIONAL refinement** (native styling / shared keys only): add a one-line entry to `_EXEC_REPORT_TOOLS` to merge a direct `@tool` with its wrapped launch or fix the display casing, plus the two matching CSS rules in `agent_page.css` (caption gradient + command-cell accent) — otherwise the readable default `.exec-report-caption` is used:
 
 ```python
 _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
@@ -432,10 +437,6 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_myagent":  ("myagent",  "MyAgent"),
 }
 ```
-
-Plus the two matching CSS rules in `agent/static/agent/css/agent_page.css` (caption gradient + command-cell accent). See the "Exec Report" section in `CLAUDE.md` for the full pattern.
-
-**Skip** this step for read-only / monitoring agents (Crawler, Summarizer, Prompter, File-Interpreter, File-Extractor, Image-Interpreter, Shoter, Monitor-Log, Monitor-Netstat, Recmailer).
 
 ### Step 5: Register in the Flow-Generator mapping
 
@@ -457,7 +458,7 @@ The set `_MANAGEMENT_TOOLS` in `agent/mcp_agent.py` excludes specific tools from
 - `get_mcp_tools()` includes a tool with `name == "chat_agent_myagent"`
 - Launching produces a new runtime copy under `agents/pools/_chat_runs_/<key>_<N>_<id>/`
 - The tool returns a JSON string with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`
-- If state-changing: the agent appears in the Exec Report table when Multi-Turn + Exec Report are both on
+- (MANDATORY) The agent appears in the Exec Report table when Multi-Turn + Exec Report are both on — automatic for EVERY wrapped chat-agent, observational ones included
 - The "Create Flow" button produces a `.flw` in which your node carries the expected `config.yaml` overrides (not empty defaults)
 
 ---
@@ -601,9 +602,9 @@ Use those patterns when building tools that touch bundled assets or template-age
 9. `mcp_files_search_server.py` currently hardcodes gRPC port and worker count instead of reading the config keys already present.
 10. Tool status keys are handwritten and can drift from seeded DB descriptions.
 11. `mcpContent` is stored as string text, not a boolean.
-12. **Wrapped chat-agent tools are NOT in the `Tool` DB table.** They are always-on whenever the unified agent is active. The `Tool` table and its toggle UI only gate direct @tool functions defined in `tools.py`.
+12. **Wrapped chat-agent tools ARE gated by TWO enable flags (2026-06-07 — supersedes the old "always-on" note).** A `chat_agent_*` tool is bound for the LLM by `get_mcp_tools()` ONLY when BOTH (a) its wrapper `Tool` row `Chat-Agent-<Name>` is enabled (`tool_<desc>_status`, toggled in Configure Mcps/Tools — seed it with a `Tool`-row migration like `0121_add_chat_agent_talker_tool.py`) AND (b) its `Agent` row `<Name>` is enabled (`agent_<display>_status`, toggled in Configure Agents). Disabling EITHER hides the agent from the LLM (reported as unknown). Both gates fail OPEN — a spec whose `display_name` maps to no Agent row, or that has no Tool row, defaults to enabled, so only an explicit disable hides it. (The `display_name` MUST equal the `agentDescription` for the Agent-row gate to match — naming convention.)
 13. **`UnifiedAgentChain.invoke()` rebuilds the payload with a hardcoded key whitelist** (around line 138 of `rag/chains/unified.py`). Any new payload key (`multi_turn_enabled`, `exec_report_enabled`, future flags) MUST be added to that whitelist or it is silently dropped at the chain boundary. This has already caused one production bug — see the Exec Report section in `CLAUDE.md`.
-14. **The Exec Report capture point in `mcp_agent.py` is `_invoke_tool()`, not the chain layer.** Capture is unconditional (ignores the per-request flag). The flag only gates rendering. This separation is deliberate to prevent whitelist-style bugs from silently hiding data again.
+14. **The Exec Report capture point in `mcp_agent.py` is `_invoke_tool()`, not the chain layer.** Capture is unconditional (ignores the per-request flag). The flag only gates rendering. This separation is deliberate to prevent whitelist-style bugs from silently hiding data again. **(2026-06-07) Capture covers EVERY wrapped `chat_agent_*` automatically** via `_resolve_exec_report_spec` (the curated `_EXEC_REPORT_TOOLS` map is only an optional styling/merge refinement now) — observational/output and read-only agents included, plus newly-created ones. Only `_MANAGEMENT_TOOLS` polling helpers and direct read-only @tools (`googler`) are excluded.
 15. **Flow-Generator emits cardinal-suffixed pool names** (`executer_1`, `executer_2`, …) in `target_agents` / `source_agents` lists. A wrapped chat-agent tool whose Flow-Generator branch emits bare names like `"executer"` will produce a `.flw` whose Starter cannot find the agent and the chain dies on the first hop.
 16. **"Ask Execs" gates EVERY tool by default — exempt only read-only/polling tools.** When the user ticks the **Ask Execs** toolbar checkbox, the Multi-Turn executor BLOCKS on a browser Proceed/Deny prompt before running each tool — and `MultiTurnToolAgentExecutor._requires_exec_permission` prompts for **every** tool that is NOT in `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT` (in `mcp_agent.py`). So any new direct `@tool`, wrapped `chat_agent_*`, `acp_*` tool, or Skill is **automatically** prompted with no extra wiring. If your new tool is **read-only / inspection / polling** and should NOT interrupt the user with a prompt (the same role as `chat_agent_run_status` / `get_current_time` / `window_present`), add its name to `_MANAGEMENT_TOOLS` and/or `_TOOL_QUOTA_EXEMPT`. The dialog's "shell" line comes from `_infer_execution_shell(tool_name, args)` — extend it if your tool runs through an unusual shell/interpreter. See `docs/claude/multi-turn.md` → *Ask Execs* and `docs/claude/recent-fixes.md` (2026-05-29).
 
@@ -629,7 +630,7 @@ If you added a wrapped chat-agent tool, verify:
 - launching creates a runtime copy under `agents/pools/_chat_runs_/<key>_<N>_<id>/`
 - the tool returns a JSON string with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`
 - the underlying `agent/agents/<name>/` template exists and accepts the advertised `example_request` fields
-- if state-changing: entry in `_EXEC_REPORT_TOOLS` + matching CSS rules
+- (MANDATORY) it appears in the Exec Report (Multi-Turn + Exec Report ON) — automatic for every wrapped chat-agent; `_EXEC_REPORT_TOOLS` entry + CSS are OPTIONAL styling refinements only
 - branch in `_mapToolArgsToAgentConfig` so `.flw` generation produces populated config fields
 - NO new `Tool` DB row (wrapped chat-agents are always-on, not in the `Tool` toggle UI)
 
