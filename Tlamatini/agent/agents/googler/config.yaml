@@ -1,6 +1,36 @@
+# Googler Agent Configuration
+#
+# Freeform query — Google dork operators work here verbatim, e.g.:
+#   query: 'intitle:"index of" site:example.com'
 query: "example search topic"
+
+# --- Structured Google-dork builder (all OPTIONAL) ---------------------------
+# These are APPENDED to `query` (which is preserved as-is), so you can mix a
+# freeform query with structured operators. Leave empty to ignore.
+site: ""            # -> site:example.com   (restrict to one host)
+filetype: ""        # -> filetype:pdf       (accepts "pdf", "filetype:pdf" or "ext:pdf")
+intitle: ""         # -> intitle:...        (multi-word values are auto-quoted)
+inurl: ""           # -> inurl:...
+intext: ""          # -> intext:...         (multi-word values are auto-quoted)
+exact: ""           # -> "exact phrase"
+before: ""          # -> before:YYYY-MM-DD
+after: ""           # -> after:YYYY-MM-DD
+exclude: []         # -> -term for each (list, or comma/space-separated string)
+
+# When true, de-duplicate results by full URL instead of by domain, so a
+# single-site dork can return many URLs from the same host. Auto-enabled when
+# the effective query contains a `site:` operator.
+allow_same_domain: false
+
 number_of_results: 5
+
+# text | raw | links_only
+#   text        : fetch each result page, extract visible text
+#   raw         : fetch each result page, return raw HTML
+#   links_only  : DON'T fetch pages — just return the SERP hit list (url + title).
+#                 Fast; ideal for dork enumeration / recon feeding a downstream agent.
 content_mode: text
+
 output_file: "googler_results.txt"
 target_agents: []
 source_agents: []

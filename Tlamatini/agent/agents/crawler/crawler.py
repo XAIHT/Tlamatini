@@ -45,6 +45,7 @@ import urllib.request
 import urllib.error
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
+from urllib.robotparser import RobotFileParser
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
@@ -590,6 +591,223 @@ def extract_api_endpoints(html_content: str) -> List[str]:
 
 
 # ============================================================
+# Recon / Safety helpers (seed list, page budget, robots,
+# binary guard, recon extraction)
+# ============================================================
+
+_CRAWLER_UA = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/131.0.0.0 Safari/537.36'
+)
+
+# Content-Types / extensions that must NOT be decoded-as-text and fed to the LLM.
+_BINARY_CONTENT_TYPES = {
+    'application/pdf', 'application/octet-stream',
+    'application/zip', 'application/gzip',
+    'application/msword', 'application/vnd.ms-excel',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument',
+}
+_BINARY_EXTENSIONS = {
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.zip', '.gz', '.tar', '.rar', '.7z', '.exe', '.dmg',
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp',
+    '.mp3', '.mp4', '.avi', '.mov', '.wav',
+}
+
+
+def _is_binary_for_llm(content_type: str, url: str) -> bool:
+    """True when the response is binary (image/pdf/archive/...) and should be skipped
+    rather than decoded-as-text and shoved into the LLM context."""
+    ct = (content_type or '').lower().split(';')[0].strip()
+    if ct in _BINARY_CONTENT_TYPES or 'officedocument' in ct:
+        return True
+    if ct.startswith(('image/', 'audio/', 'video/')):
+        return True
+    path = urlparse(url or '').path.lower().split('?')[0]
+    return any(path.endswith(ext) for ext in _BINARY_EXTENSIONS)
+
+
+def _collect_seed_urls(config: Dict) -> List[str]:
+    """Merge the single ``url`` plus an optional ``urls`` list (or comma/space-separated
+    string) into an ordered, de-duplicated list of http(s) seeds. Lets a Googler dork
+    hit-list flow straight into the Crawler via the Parametrizer."""
+    seeds: List[str] = []
+    seen = set()
+
+    def _add(value):
+        u = str(value or '').strip()
+        if not u or not u.lower().startswith(('http://', 'https://')):
+            return
+        if u in seen:
+            return
+        seen.add(u)
+        seeds.append(u)
+
+    _add(config.get('url', ''))
+    extra = config.get('urls', [])
+    if isinstance(extra, str):
+        extra = [t for t in re.split(r'[,\s]+', extra) if t]
+    if isinstance(extra, (list, tuple)):
+        for value in extra:
+            _add(value)
+    return seeds
+
+
+def _fetch_robots_txt(base_url: str, timeout: int = 10) -> Optional[str]:
+    """Fetch ``<scheme>://<host>/robots.txt``. Returns its text, or None on any failure
+    (caller fails OPEN: no robots == allowed)."""
+    robots_url = base_url.rstrip('/') + '/robots.txt'
+    try:
+        req = urllib.request.Request(robots_url, headers={'User-Agent': _CRAWLER_UA})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.getcode() != 200:
+                return None
+            return resp.read().decode('utf-8', errors='replace')
+    except Exception:
+        return None
+
+
+class CrawlBudget:
+    """Bounds and politeness for a crawl run: a hard ``max_pages`` cap (0 = unlimited),
+    an inter-request ``delay_seconds``, and optional ``robots.txt`` enforcement
+    (per-host, cached, fail-open). Without these, ``large-range`` crawling is unbounded."""
+
+    def __init__(self, max_pages=0, delay_seconds=0, respect_robots=False,
+                 user_agent: str = _CRAWLER_UA):
+        try:
+            self.max_pages = max(0, int(max_pages or 0))
+        except (TypeError, ValueError):
+            self.max_pages = 0
+        try:
+            self.delay_seconds = max(0.0, float(delay_seconds or 0))
+        except (TypeError, ValueError):
+            self.delay_seconds = 0.0
+        self.respect_robots = bool(respect_robots)
+        self.user_agent = user_agent or _CRAWLER_UA
+        self.processed = 0
+        self._robots_cache: Dict[str, Optional[RobotFileParser]] = {}
+
+    def remaining(self) -> Optional[int]:
+        if self.max_pages == 0:
+            return None  # unlimited
+        return max(0, self.max_pages - self.processed)
+
+    def exhausted(self) -> bool:
+        return self.max_pages != 0 and self.processed >= self.max_pages
+
+    def note_processed(self) -> None:
+        self.processed += 1
+
+    def wait(self) -> None:
+        if self.delay_seconds > 0:
+            time.sleep(self.delay_seconds)
+
+    def robots_allowed(self, url: str) -> bool:
+        if not self.respect_robots:
+            return True
+        parsed = urlparse(url)
+        netloc = parsed.netloc.lower()
+        if not netloc:
+            return True
+        if netloc not in self._robots_cache:
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            text = _fetch_robots_txt(base)
+            parser = None
+            if text is not None:
+                parser = RobotFileParser()
+                parser.parse(text.splitlines())
+            self._robots_cache[netloc] = parser
+        parser = self._robots_cache[netloc]
+        if parser is None:
+            return True  # fail-open: couldn't fetch robots.txt
+        try:
+            return parser.can_fetch(self.user_agent, url)
+        except Exception:
+            return True
+
+
+# --- Recon extraction (emails, HTML comments, secrets, source-map refs) ------
+
+_EMAIL_RE = re.compile(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}')
+_COMMENT_RE = re.compile(r'<!--(.*?)-->', re.DOTALL)
+_SOURCEMAP_RE = re.compile(
+    r'(?://[#@]\s*sourceMappingURL=\s*(\S+))|(\S+\.js\.map)', re.IGNORECASE
+)
+_SECRET_PATTERNS = (
+    ('aws_access_key_id', re.compile(r'AKIA[0-9A-Z]{16}')),
+    ('google_api_key', re.compile(r'AIza[0-9A-Za-z_\-]{35}')),
+    ('slack_token', re.compile(r'xox[baprs]-[0-9A-Za-z\-]{10,}')),
+    ('github_token', re.compile(r'gh[pousr]_[0-9A-Za-z]{20,}')),
+    ('private_key', re.compile(r'-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----')),
+    ('bearer_token', re.compile(r'(?i)bearer\s+[A-Za-z0-9._\-]{20,}')),
+    ('generic_secret_assignment', re.compile(
+        r'(?i)(?:api[_-]?key|secret|passwd|password|token)["\']?\s*[:=]\s*["\']([^"\']{8,})["\']'
+    )),
+)
+
+
+def extract_recon_findings(content: str) -> Dict[str, List[str]]:
+    """Scan raw page/JS source for recon-relevant artifacts: email addresses, HTML
+    comments, source-map references, and likely secrets / API keys. Each category is
+    de-duplicated and capped. Pure function — no I/O — so it is trivially testable."""
+    content = content or ''
+
+    emails = sorted(set(_EMAIL_RE.findall(content)))
+
+    comments: List[str] = []
+    seen_comments = set()
+    for match in _COMMENT_RE.findall(content):
+        normalized = ' '.join(match.split()).strip()
+        if normalized and normalized not in seen_comments:
+            seen_comments.add(normalized)
+            comments.append(normalized)
+
+    source_maps = sorted({
+        (g1 or g2) for g1, g2 in _SOURCEMAP_RE.findall(content) if (g1 or g2)
+    })
+
+    secrets: List[str] = []
+    seen_secrets = set()
+    for name, pattern in _SECRET_PATTERNS:
+        for match in pattern.finditer(content):
+            value = match.group(0)
+            key = f"{name}|{value}"
+            if key in seen_secrets:
+                continue
+            seen_secrets.add(key)
+            secrets.append(f"{name}: {value}")
+
+    return {
+        'emails': emails[:100],
+        'comments': comments[:50],
+        'source_maps': source_maps[:50],
+        'secrets': secrets[:50],
+    }
+
+
+def format_recon_summary(findings: Dict[str, List[str]]) -> str:
+    """Render recon findings as a labeled text block (empty categories omitted).
+    Returns '' when nothing was found."""
+    sections = []
+    order = (
+        ('secrets', 'POTENTIAL SECRETS / API KEYS'),
+        ('emails', 'EMAIL ADDRESSES'),
+        ('source_maps', 'SOURCE MAP REFERENCES'),
+        ('comments', 'HTML COMMENTS'),
+    )
+    for key, title in order:
+        items = findings.get(key) or []
+        if not items:
+            continue
+        lines = [f"=== RECON: {title} ({len(items)}) ==="]
+        lines.extend(f"  {item}" for item in items)
+        sections.append('\n'.join(lines))
+    return '\n\n'.join(sections)
+
+
+# ============================================================
 # URL Fetching - Enhanced with full HTTP response capture
 # ============================================================
 
@@ -606,11 +824,7 @@ def fetch_page_raw(url: str, include_headers: bool = True,
     req = urllib.request.Request(
         url,
         headers={
-            'User-Agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/131.0.0.0 Safari/537.36'
-            ),
+            'User-Agent': _CRAWLER_UA,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,'
                       'application/json,text/javascript,text/css,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
@@ -1010,7 +1224,8 @@ def query_ollama_chunked(host: str, model: str, system_prompt: str,
 def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: str,
                          crawl_type: str, timestamp: str,
                          content_mode: str = "raw",
-                         include_headers: bool = True) -> None:
+                         include_headers: bool = True,
+                         extract_recon: bool = False) -> None:
     """
     Fetch a URL, capture content, save it, query LLM with automatic chunking.
 
@@ -1040,6 +1255,25 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
         logging.warning(f"Empty response body from {page_url}, skipping LLM query.")
         return
 
+    # Binary guard: never decode-as-text + feed a PDF/image/archive to the LLM.
+    if _is_binary_for_llm(content_type, page_url):
+        logging.info(f"Skipping binary content for LLM ({content_type}) at {page_url}")
+        return
+
+    # Recon pass (runs on the RAW source in both modes; saved + injected into context).
+    recon_block = ''
+    if extract_recon:
+        findings = extract_recon_findings(raw_html)
+        recon_block = format_recon_summary(findings)
+        if recon_block:
+            save_crawled_content(recon_block, crawl_type, timestamp, "recon")
+            logging.info(
+                f"Recon for {page_url}: {len(findings['secrets'])} secret(s), "
+                f"{len(findings['emails'])} email(s), "
+                f"{len(findings['source_maps'])} source-map(s), "
+                f"{len(findings['comments'])} comment(s)"
+            )
+
     if content_mode == "raw":
         # --- RAW MODE: Full developer context ---
         extractor = ResourceExtractor(page_url)
@@ -1055,6 +1289,9 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
             page_url, raw_html, headers, status_code,
             resource_summary, api_endpoints
         )
+
+        if recon_block:
+            full_content = f"{recon_block}\n\n{full_content}"
 
         # User's prompt goes FIRST — it is THE task. Dev preamble is secondary context.
         full_system_prompt = (
@@ -1090,6 +1327,9 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
             logging.warning(f"No text content found at {page_url}, skipping LLM query.")
             return
 
+        if recon_block:
+            plain_text = f"{recon_block}\n\n{plain_text}"
+
         filepath = save_crawled_content(plain_text, crawl_type, timestamp)
         logging.info(f"Saved crawled content to: {filepath}")
 
@@ -1116,6 +1356,130 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
         f"{response_text}\n"
         f">>>END_SECTION_CRAWLER"
     )
+
+
+# ============================================================
+# Crawl orchestration (multi-seed, bounded, polite)
+# ============================================================
+
+
+def _process_link_list(links, label, budget, visited, host, model, system_prompt, proc_kwargs):
+    """Process a flat list of links with the page budget, visited-set de-dup, optional
+    robots.txt check, and inter-request delay."""
+    total = len(links)
+    for i, link in enumerate(links):
+        if budget.exhausted():
+            logging.info(f"Page budget reached ({budget.processed}/{budget.max_pages}); stopping.")
+            break
+        if link in visited:
+            continue
+        if not budget.robots_allowed(link):
+            logging.info(f"robots.txt disallows {link}; skipping.")
+            continue
+        visited.add(link)
+        budget.wait()
+        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        logging.info(f"Processing link {i + 1}/{total}: {link}")
+        process_url_with_llm(link, host, model, system_prompt, label, link_ts, **proc_kwargs)
+        budget.note_processed()
+
+
+def _crawl_recursive(urls_to_process, current_depth, max_depth, budget, visited,
+                     host, model, system_prompt, proc_kwargs):
+    """large-range: process links at the current depth, then recurse into the links they
+    contain, up to max_depth — bounded by the shared budget and visited set."""
+    if current_depth > max_depth:
+        return
+    total = len(urls_to_process)
+    next_level = []
+    for i, link in enumerate(urls_to_process):
+        if budget.exhausted():
+            logging.info(f"Page budget reached ({budget.processed}/{budget.max_pages}); stopping.")
+            return
+        if link in visited:
+            continue
+        if not budget.robots_allowed(link):
+            logging.info(f"robots.txt disallows {link}; skipping.")
+            continue
+        visited.add(link)
+        budget.wait()
+        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        logging.info(f"[depth={current_depth}/{max_depth}] Processing link {i + 1}/{total}: {link}")
+        process_url_with_llm(link, host, model, system_prompt, 'large', link_ts, **proc_kwargs)
+        budget.note_processed()
+
+        if current_depth < max_depth:
+            try:
+                link_html = fetch_page(link)
+                next_level.extend(extract_links(link_html, link))
+            except Exception as e:
+                logging.error(f"Failed to fetch {link} for deeper crawl: {e}")
+
+    if next_level and current_depth < max_depth and not budget.exhausted():
+        logging.info(f"Recursing to depth {current_depth + 1}: {len(next_level)} candidate links")
+        _crawl_recursive(next_level, current_depth + 1, max_depth, budget, visited,
+                         host, model, system_prompt, proc_kwargs)
+
+
+def crawl(config: Dict, host: str, model: str, system_prompt: str) -> int:
+    """Drive the crawl across ALL seed URLs with a shared page budget + visited set.
+    Returns the number of pages processed. With a single ``url`` and default flags the
+    behavior is identical to the legacy single-seed crawl."""
+    seeds = _collect_seed_urls(config)
+    if not seeds:
+        logging.error("No URL configured. Set the 'url' or 'urls' field in config.yaml.")
+        return 0
+
+    crawl_type = config.get('crawl_type', 'small-range')
+    if crawl_type not in ('small-range', 'medium-range', 'large-range'):
+        logging.error(f"Unknown crawl_type: {crawl_type}. Use small-range, medium-range, or large-range.")
+        return 0
+
+    budget = CrawlBudget(
+        max_pages=config.get('max_pages', 0),
+        delay_seconds=config.get('request_delay_seconds', 0),
+        respect_robots=bool(config.get('respect_robots', False)),
+    )
+    proc_kwargs = {
+        'content_mode': config.get('content_mode', 'raw'),
+        'include_headers': config.get('include_headers', True),
+        'extract_recon': bool(config.get('extract_recon', False)),
+    }
+
+    depth = config.get('depth', 1)
+    if crawl_type == 'large-range' and (not isinstance(depth, int) or depth < 1):
+        logging.warning(f"Invalid depth value: {depth}. Defaulting to 1.")
+        depth = 1
+
+    visited = set()
+
+    for seed in seeds:
+        if budget.exhausted():
+            logging.info(f"Page budget ({budget.max_pages}) reached; stopping before seed {seed}.")
+            break
+
+        logging.info(f"=== Crawling seed: {seed} (type={crawl_type}) ===")
+        try:
+            main_html = fetch_page(seed)
+        except Exception as e:
+            logging.error(f"Failed to fetch seed {seed}: {e}")
+            continue
+
+        all_links = extract_links(main_html, seed)
+
+        if crawl_type == 'small-range':
+            links = filter_same_domain(all_links, seed)
+            logging.info(f"Found {len(links)} same-domain links")
+            _process_link_list(links, 'small', budget, visited, host, model, system_prompt, proc_kwargs)
+        elif crawl_type == 'medium-range':
+            logging.info(f"Found {len(all_links)} total links (cross-domain)")
+            _process_link_list(all_links, 'medium', budget, visited, host, model, system_prompt, proc_kwargs)
+        else:  # large-range
+            visited.add(seed)  # don't revisit the seed itself
+            logging.info(f"Found {len(all_links)} links from seed (recursive depth={depth})")
+            _crawl_recursive(all_links, 1, depth, budget, visited, host, model, system_prompt, proc_kwargs)
+
+    return budget.processed
 
 
 def main():
@@ -1146,6 +1510,11 @@ def main():
             logging.info(f"Recursive depth: {depth}")
         logging.info(f"Content mode: {content_mode}")
         logging.info(f"Include headers: {include_headers}")
+        logging.info(f"Seed URLs: {len(_collect_seed_urls(config))}")
+        logging.info(f"Max pages: {config.get('max_pages', 0)} (0 = unlimited)")
+        logging.info(f"Request delay (s): {config.get('request_delay_seconds', 0)}")
+        logging.info(f"Respect robots.txt: {bool(config.get('respect_robots', False))}")
+        logging.info(f"Extract recon: {bool(config.get('extract_recon', False))}")
         logging.info(f"Model: {model} @ {host}")
         logging.info(f"Targets: {target_agents}")
 
@@ -1154,126 +1523,17 @@ def main():
         logging.info(f"Model context window: {ctx_tokens} tokens (~{tokens_to_chars(ctx_tokens)} chars)")
         logging.info("=" * 60)
 
-        _skip_processing = False
+        seeds = _collect_seed_urls(config)
 
         if content_mode not in ('raw', 'text'):
             logging.error(f"Invalid content_mode: {content_mode}. Use 'raw' or 'text'.")
-            _skip_processing = True
-
-        if not _skip_processing and not url.strip():
-            logging.error("No URL configured. Set the 'url' field in config.yaml.")
-            _skip_processing = True
-
-        if not _skip_processing and not system_prompt.strip():
+        elif not seeds:
+            logging.error("No URL configured. Set the 'url' (or 'urls') field in config.yaml.")
+        elif not system_prompt.strip():
             logging.error("No system_prompt configured. Set the 'system_prompt' field in config.yaml.")
-            _skip_processing = True
-
-        if not _skip_processing:
-            proc_kwargs = {
-                'content_mode': content_mode,
-                'include_headers': include_headers,
-            }
-
-            if crawl_type == 'small-range':
-                # Small-range: access every link within the same domain (not recursively)
-                logging.info("Small-range crawl: fetching same-domain links...")
-                try:
-                    main_html = fetch_page(url)
-                except Exception as e:
-                    logging.error(f"Failed to fetch main page {url}: {e}")
-                    main_html = None
-
-                if main_html is not None:
-                    all_links = extract_links(main_html, url)
-                    same_domain_links = filter_same_domain(all_links, url)
-                    logging.info(f"Found {len(same_domain_links)} same-domain links")
-
-                    for i, link in enumerate(same_domain_links):
-                        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                        logging.info(f"Processing link {i + 1}/{len(same_domain_links)}: {link}")
-                        process_url_with_llm(link, host, model, system_prompt, 'small', link_ts,
-                                             **proc_kwargs)
-
-            elif crawl_type == 'medium-range':
-                # Medium-range: access every link regardless of domain (not recursively)
-                logging.info("Medium-range crawl: fetching ALL links (cross-domain)...")
-                try:
-                    main_html = fetch_page(url)
-                except Exception as e:
-                    logging.error(f"Failed to fetch main page {url}: {e}")
-                    main_html = None
-
-                if main_html is not None:
-                    all_links = extract_links(main_html, url)
-                    logging.info(f"Found {len(all_links)} total links (cross-domain)")
-
-                    for i, link in enumerate(all_links):
-                        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                        logging.info(f"Processing link {i + 1}/{len(all_links)}: {link}")
-                        process_url_with_llm(link, host, model, system_prompt, 'medium', link_ts,
-                                             **proc_kwargs)
-
-            elif crawl_type == 'large-range':
-                # Large-range: access every link regardless of domain, RECURSIVELY up to depth
-                depth = config.get('depth', 1)
-                if not isinstance(depth, int) or depth < 1:
-                    logging.warning(f"Invalid depth value: {depth}. Defaulting to 1.")
-                    depth = 1
-                logging.info(f"Large-range crawl: fetching ALL links recursively (depth={depth})...")
-
-                visited = set()
-                visited.add(url)  # Don't revisit the starting URL
-
-                def _crawl_level(urls_to_process, current_depth):
-                    """Process URLs at the current depth level and recurse if needed."""
-                    if current_depth > depth:
-                        return
-
-                    next_level_urls = []
-
-                    for i, link in enumerate(urls_to_process):
-                        if link in visited:
-                            continue
-                        visited.add(link)
-
-                        link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                        logging.info(
-                            f"[depth={current_depth}/{depth}] Processing link "
-                            f"{i + 1}/{len(urls_to_process)}: {link}"
-                        )
-                        process_url_with_llm(link, host, model, system_prompt, 'large', link_ts,
-                                             **proc_kwargs)
-
-                        # If we need to go deeper, fetch and extract links for next level
-                        if current_depth < depth:
-                            try:
-                                link_html = fetch_page(link)
-                                nested_links = extract_links(link_html, link)
-                                next_level_urls.extend(nested_links)
-                            except Exception as e:
-                                logging.error(f"Failed to fetch {link} for deeper crawl: {e}")
-
-                    if next_level_urls and current_depth < depth:
-                        logging.info(
-                            f"Recursing to depth {current_depth + 1}: "
-                            f"{len(next_level_urls)} candidate links"
-                        )
-                        _crawl_level(next_level_urls, current_depth + 1)
-
-                try:
-                    main_html = fetch_page(url)
-                except Exception as e:
-                    logging.error(f"Failed to fetch main page {url}: {e}")
-                    main_html = None
-
-                if main_html is not None:
-                    all_links = extract_links(main_html, url)
-                    logging.info(f"Found {len(all_links)} links from starting page")
-
-                    _crawl_level(all_links, 1)
-
-            else:
-                logging.error(f"Unknown crawl_type: {crawl_type}. Use small-range, medium-range, or large-range.")
+        else:
+            pages = crawl(config, host, model, system_prompt)
+            logging.info(f"Crawl processed {pages} page(s).")
 
         logging.info("Crawl processing complete.")
 

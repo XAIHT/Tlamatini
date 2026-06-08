@@ -8,6 +8,7 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+import re
 import time
 import yaml
 import logging
@@ -393,13 +394,72 @@ def _dismiss_google_consent(page) -> None:
             continue
 
 
-def _extract_links_with_selectors(page, selectors, skip_domains=None) -> List[str]:
-    """Try each selector in order; return first non-empty list of unique URLs."""
+_DEFAULT_SKIP_DOMAINS = {'google.com', 'google.co', 'accounts.google', 'support.google',
+                         'maps.google', 'policies.google'}
+
+
+def _dedup_links(links: List[Dict], skip_domains=None,
+                 allow_same_domain: bool = False) -> List[Dict]:
+    """Filter junk / skip-domain links and de-duplicate a list of {url, title} dicts.
+
+    De-dup key:
+      - allow_same_domain=False (legacy): de-dup by DOMAIN -> at most one result per host.
+      - allow_same_domain=True:           de-dup by full URL -> keep many results per host.
+
+    The second mode is what makes ``site:`` / ``filetype:`` dork enumeration usable: a
+    single-site dork legitimately returns dozens of distinct URLs on ONE domain, and the
+    legacy by-domain collapse would discard all but the first (Blocker #1).
+    """
     if skip_domains is None:
-        skip_domains = {'google.com', 'google.co', 'accounts.google', 'support.google',
-                        'maps.google', 'policies.google'}
+        skip_domains = set(_DEFAULT_SKIP_DOMAINS)
     from urllib.parse import urlparse
 
+    out: List[Dict] = []
+    seen = set()
+    for item in links:
+        href = (item.get('url') or '').strip()
+        if not href or not href.startswith('http'):
+            continue
+        try:
+            domain = urlparse(href).netloc.lower()
+        except Exception:
+            continue
+        if not domain:
+            continue
+        if any(sd in domain for sd in skip_domains):
+            continue
+        key = href if allow_same_domain else domain
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({'url': href, 'title': (item.get('title') or '').strip()})
+    return out
+
+
+def _extract_link_title(elem) -> str:
+    """Best-effort title for a result anchor: prefer an inner <h3>, else the anchor's
+    first visible text line. Never raises."""
+    try:
+        h3 = elem.query_selector('h3')
+        if h3:
+            text = (h3.inner_text() or '').strip()
+            if text:
+                return text
+    except Exception:
+        pass
+    try:
+        text = (elem.inner_text() or '').strip()
+        if text:
+            return text.splitlines()[0].strip()
+    except Exception:
+        pass
+    return ''
+
+
+def _extract_links_with_selectors(page, selectors, skip_domains=None,
+                                  allow_same_domain: bool = False) -> List[Dict]:
+    """Try each selector in order; return the first non-empty list of result dicts
+    ({url, title}), filtered + de-duplicated by ``_dedup_links``."""
     for selector in selectors:
         try:
             elements = page.query_selector_all(selector)
@@ -408,26 +468,17 @@ def _extract_links_with_selectors(page, selectors, skip_domains=None) -> List[st
         if not elements:
             continue
 
-        urls = []
-        seen = set()
+        raw: List[Dict] = []
         for elem in elements:
             href = elem.get_attribute("href")
-            if not href or not href.startswith("http"):
+            if not href:
                 continue
-            try:
-                domain = urlparse(href).netloc.lower()
-            except Exception:
-                continue
-            if any(sd in domain for sd in skip_domains):
-                continue
-            if domain in seen:
-                continue
-            seen.add(domain)
-            urls.append(href)
+            raw.append({'url': href, 'title': _extract_link_title(elem)})
 
-        if urls:
-            logging.info(f"Selector '{selector}' matched {len(urls)} link(s).")
-            return urls
+        deduped = _dedup_links(raw, skip_domains, allow_same_domain)
+        if deduped:
+            logging.info(f"Selector '{selector}' matched {len(deduped)} link(s).")
+            return deduped
 
     return []
 
@@ -517,8 +568,9 @@ def _fetch_page_text(page, url: str) -> Dict:
     }
 
 
-def _search_google_playwright(page, query: str, number_of_results: int) -> List[str]:
-    """Perform a Google search using Playwright and return result URLs."""
+def _search_google_playwright(page, query: str, number_of_results: int,
+                              allow_same_domain: bool = False) -> List[Dict]:
+    """Perform a Google search using Playwright and return result dicts ({url, title})."""
     page.goto("https://www.google.com", wait_until="domcontentloaded", timeout=30000)
     _dismiss_google_consent(page)
 
@@ -535,12 +587,19 @@ def _search_google_playwright(page, query: str, number_of_results: int) -> List[
 
     page.wait_for_timeout(2000)
 
-    urls = _extract_links_with_selectors(page, _GOOGLE_RESULT_SELECTORS)
-    return urls[:number_of_results]
+    hits = _extract_links_with_selectors(
+        page, _GOOGLE_RESULT_SELECTORS, allow_same_domain=allow_same_domain
+    )
+    return hits[:number_of_results]
 
 
-def _search_ddg_playwright(page, query: str, number_of_results: int) -> List[str]:
-    """Fallback: perform a DuckDuckGo search using Playwright and return result URLs."""
+def _search_ddg_playwright(page, query: str, number_of_results: int,
+                           allow_same_domain: bool = False) -> List[Dict]:
+    """Fallback: perform a DuckDuckGo search using Playwright and return result dicts.
+
+    NOTE: DuckDuckGo honors only a SUBSET of Google dork operators (site:, filetype:,
+    intitle:, inurl:); operators like before:/after:/numrange: are ignored there, so a
+    dork that falls back to DDG may return broader results than the same Google dork."""
     logging.info("Falling back to DuckDuckGo search...")
     page.goto(f"https://duckduckgo.com/?q={query.replace(' ', '+')}&t=h_&ia=web",
               wait_until="domcontentloaded", timeout=30000)
@@ -552,28 +611,130 @@ def _search_ddg_playwright(page, query: str, number_of_results: int) -> List[str
 
     page.wait_for_timeout(2000)
 
-    urls = _extract_links_with_selectors(page, _DDG_RESULT_SELECTORS, skip_domains={'duckduckgo.com'})
-    return urls[:number_of_results]
+    hits = _extract_links_with_selectors(
+        page, _DDG_RESULT_SELECTORS, skip_domains={'duckduckgo.com'},
+        allow_same_domain=allow_same_domain,
+    )
+    return hits[:number_of_results]
 
 
 # ============================================================
 # Core Googler Logic
 # ============================================================
 
-def googler_search(query: str, number_of_results: int = 5,
-                   content_mode: str = "text") -> List[Dict]:
+def _query_has_site_operator(query: str) -> bool:
+    """True if the query already contains a ``site:`` operator (case-insensitive)."""
+    return bool(re.search(r'(?:^|\s)site:\S', query or '', re.IGNORECASE))
+
+
+def _resolve_allow_same_domain(config: Dict, effective_query: str) -> bool:
+    """Same-domain de-dup is ON when explicitly configured (``allow_same_domain: true``)
+    OR when the effective query carries a ``site:`` operator (single-site dork)."""
+    return bool(config.get('allow_same_domain', False)) or \
+        _query_has_site_operator(effective_query)
+
+
+def build_dork_query(config: Dict) -> str:
+    """Compose a final Google search string from a freeform ``query`` PLUS optional
+    structured Google-dork operator fields.
+
+    The raw ``query`` is preserved verbatim (so an existing freeform dork keeps working
+    unchanged); the structured fields are APPENDED. Supported fields:
+
+        exact     -> "phrase"          intitle  -> intitle:...
+        query     -> <as-is>           inurl    -> inurl:...
+        site      -> site:...          intext   -> intext:...
+        filetype  -> filetype:...      before   -> before:YYYY-MM-DD
+        exclude   -> -term (each)      after    -> after:YYYY-MM-DD
+
+    ``filetype`` accepts ``pdf``, ``filetype:pdf`` or ``ext:pdf`` interchangeably.
+    ``exclude`` accepts a list OR a comma/space-separated string.
+    An operator value already carrying its own prefix (e.g. ``site:example.com``) is
+    normalized so the prefix is never doubled.
     """
-    Search Google for the query, fetch the top N result pages using Playwright
-    (handles JS-rendered sites), and extract readable text from each.
+    parts: List[str] = []
+
+    exact = str(config.get('exact', '') or '').strip().strip('"')
+    if exact:
+        parts.append(f'"{exact}"')
+
+    raw = str(config.get('query', '') or '').strip()
+    if raw:
+        parts.append(raw)
+
+    def _operator(value, operator: str, quote_if_spaces: bool = False):
+        v = str(value or '').strip()
+        if not v:
+            return None
+        if v.lower().startswith(operator.lower() + ':'):
+            v = v[len(operator) + 1:].strip()
+        if not v:
+            return None
+        if quote_if_spaces and ' ' in v:
+            v = '"{}"'.format(v.strip('"'))
+        return f'{operator}:{v}'
+
+    for field_name, operator, quote in (
+        ('intitle', 'intitle', True),
+        ('inurl', 'inurl', False),
+        ('intext', 'intext', True),
+        ('site', 'site', False),
+        ('before', 'before', False),
+        ('after', 'after', False),
+    ):
+        built = _operator(config.get(field_name), operator, quote)
+        if built:
+            parts.append(built)
+
+    # filetype accepts bare ``pdf``, ``filetype:pdf`` or ``ext:pdf``
+    filetype = str(config.get('filetype', '') or '').strip()
+    if filetype:
+        low = filetype.lower()
+        for prefix in ('filetype:', 'ext:'):
+            if low.startswith(prefix):
+                filetype = filetype[len(prefix):].strip()
+                break
+        if filetype:
+            parts.append(f'filetype:{filetype}')
+
+    # exclusions: list OR comma/space-separated string -> each becomes -term
+    exclude = config.get('exclude', [])
+    if isinstance(exclude, str):
+        exclude = [t for t in re.split(r'[,\s]+', exclude) if t]
+    if isinstance(exclude, (list, tuple)):
+        for term in exclude:
+            t = str(term or '').strip()
+            if not t:
+                continue
+            parts.append(t if t.startswith('-') else f'-{t}')
+
+    return ' '.join(parts).strip()
+
+
+def googler_search(query: str, number_of_results: int = 5,
+                   content_mode: str = "text",
+                   allow_same_domain: bool = False) -> List[Dict]:
+    """
+    Search Google for the query, then either (a) list the result links, or (b) fetch the
+    top N result pages with Playwright (JS-rendered) and extract their content.
 
     Falls back to DuckDuckGo if Google returns no results.
-    Automatically skips binary content (PDFs, images, etc.).
+    Automatically skips binary content (PDFs, images, etc.) in the fetch modes.
 
     content_mode:
-      - "text": Extract rendered visible text (default)
-      - "raw":  Return raw page HTML
+      - "text":        Extract rendered visible text from each result page (default)
+      - "raw":         Return raw page HTML from each result page
+      - "links_only":  Do NOT fetch result pages — return just the SERP hit list
+                       (url + title). Ideal for dork enumeration / recon and far faster;
+                       the URLs flow straight into a downstream Crawler / Kalier via the
+                       Parametrizer.
 
-    Returns a list of result dicts with url, status_code, and content.
+    allow_same_domain:
+      When True (auto-enabled by main() when the query contains a ``site:`` operator),
+      result de-duplication is by full URL instead of by domain, so a single-site dork
+      can return many distinct URLs from the same host (Blocker #1 fix).
+
+    Returns a list of result dicts.
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -581,10 +742,14 @@ def googler_search(query: str, number_of_results: int = 5,
         logging.error("Playwright is not installed. Install with: pip install playwright && playwright install chromium")
         return []
 
-    if number_of_results > 10:
-        number_of_results = 10
+    # links_only is cheap (no page fetch) so it may enumerate more hits per run.
+    max_cap = 50 if content_mode == "links_only" else 10
+    if number_of_results > max_cap:
+        number_of_results = max_cap
+    if number_of_results < 1:
+        number_of_results = 1
 
-    results = []
+    results: List[Dict] = []
 
     try:
         with sync_playwright() as p:
@@ -599,13 +764,17 @@ def googler_search(query: str, number_of_results: int = 5,
 
             try:
                 # --- Search phase ---
-                urls = _search_google_playwright(page, query, number_of_results)
+                hits = _search_google_playwright(
+                    page, query, number_of_results, allow_same_domain
+                )
 
-                if not urls:
+                if not hits:
                     logging.warning(f"Google returned 0 results for '{query}'; trying DuckDuckGo.")
-                    urls = _search_ddg_playwright(page, query, number_of_results)
+                    hits = _search_ddg_playwright(
+                        page, query, number_of_results, allow_same_domain
+                    )
 
-                if not urls:
+                if not hits:
                     try:
                         debug_path = os.path.join(script_dir, "debug_no_results.png")
                         page.screenshot(path=debug_path, full_page=True)
@@ -613,11 +782,29 @@ def googler_search(query: str, number_of_results: int = 5,
                     except Exception as ss_err:
                         logging.warning(f"Could not save debug screenshot: {ss_err}")
 
-                logging.info(f"Found {len(urls)} top links for '{query}'")
+                logging.info(f"Found {len(hits)} top links for '{query}'")
+
+                # --- links_only: emit the hit list, do NOT fetch the pages ---
+                if content_mode == "links_only":
+                    for i, hit in enumerate(hits, 1):
+                        results.append({
+                            "index": i,
+                            "url": hit.get("url", ""),
+                            "title": hit.get("title", ""),
+                            "status_code": "listed",
+                            "content_length": 0,
+                        })
+                        logging.info(
+                            f"Listed result {i}: {hit.get('url', '')} "
+                            f"(title: {hit.get('title', '')!r})"
+                        )
+                    return results
 
                 # --- Fetch phase: reuse the same browser for JS rendering ---
-                for i, url in enumerate(urls, 1):
-                    logging.info(f"Fetching result {i}/{len(urls)}: {url}")
+                for i, hit in enumerate(hits, 1):
+                    url = hit.get("url", "")
+                    title = hit.get("title", "")
+                    logging.info(f"Fetching result {i}/{len(hits)}: {url}")
 
                     if content_mode == "raw":
                         try:
@@ -625,25 +812,28 @@ def googler_search(query: str, number_of_results: int = 5,
                             status = resp.status if resp else 0
                             html = page.content()[:500000]
                             results.append({
-                                "index": i, "url": url,
+                                "index": i, "url": url, "title": title,
                                 "status_code": status,
                                 "content_length": len(html),
                                 "content": html,
                             })
                         except Exception as e:
-                            results.append({"index": i, "url": url, "error": str(e)})
+                            results.append({"index": i, "url": url, "title": title, "error": str(e)})
                     else:
                         result = _fetch_page_text(page, url)
                         result["index"] = i
+                        result["title"] = title
                         results.append(result)
 
-                    logging.info(
-                        f"Fetched result {i}: {url} "
-                        f"({result.get('status_code', 'N/A')}, "
-                        f"{result.get('content_length', 0)} chars)"
-                        if 'error' not in results[-1]
-                        else f"Result {i}: {url} -> {results[-1].get('error', 'unknown error')}"
-                    )
+                    last = results[-1]
+                    if 'error' not in last:
+                        logging.info(
+                            f"Fetched result {i}: {url} "
+                            f"({last.get('status_code', 'N/A')}, "
+                            f"{last.get('content_length', 0)} chars)"
+                        )
+                    else:
+                        logging.info(f"Result {i}: {url} -> {last.get('error', 'unknown error')}")
 
             except Exception as e:
                 logging.error(f"Search failed: {e}")
@@ -674,12 +864,14 @@ def save_results(results: List[Dict], output_file: str, query: str) -> str:
         for result in results:
             f.write(f"=== HTTP RESPONSE METADATA (Result {result.get('index', '?')}) ===\n")
             f.write(f"URL: {result.get('url', 'N/A')}\n")
+            if result.get('title'):
+                f.write(f"Title: {result.get('title')}\n")
             f.write(f"Status: {result.get('status_code', 'N/A')}\n")
             f.write(f"Content Length: {result.get('content_length', 0)} chars\n")
 
             if 'error' in result:
                 f.write(f"ERROR: {result['error']}\n")
-            else:
+            elif result.get('content'):
                 f.write(f"\n{result.get('content', '')}\n")
 
             f.write("\n" + "=" * 60 + "\n\n")
@@ -697,53 +889,62 @@ def main():
         logging.info("=" * 60)
 
     try:
-        query = config.get('query', '')
+        raw_query = config.get('query', '')
+        effective_query = build_dork_query(config)
         number_of_results = config.get('number_of_results', 5)
         content_mode = config.get('content_mode', 'text')
         output_file = config.get('output_file', 'googler_results.txt')
         target_agents = config.get('target_agents', [])
 
+        # A ``site:`` dork needs same-domain de-dup OFF (keep many URLs per host).
+        allow_same_domain = _resolve_allow_same_domain(config, effective_query)
+
         logging.info("GOOGLER AGENT STARTED")
-        logging.info(f"Query: {query}")
+        logging.info(f"Raw query: {raw_query}")
+        logging.info(f"Effective query (with dork operators): {effective_query}")
         logging.info(f"Number of results: {number_of_results}")
         logging.info(f"Content mode: {content_mode}")
+        logging.info(f"Allow same domain: {allow_same_domain}")
         logging.info(f"Output file: {output_file}")
         logging.info(f"Targets: {target_agents}")
         logging.info("=" * 60)
 
-        if not query.strip():
-            logging.error("No query configured. Set the 'query' field in config.yaml.")
+        if not effective_query.strip():
+            logging.error("No query configured. Set the 'query' field (or a dork operator "
+                          "such as 'site' / 'filetype' / 'intitle') in config.yaml.")
+        elif content_mode not in ('text', 'raw', 'links_only'):
+            logging.error(f"Invalid content_mode: {content_mode}. Use 'text', 'raw', or 'links_only'.")
         else:
-            if content_mode not in ('text', 'raw'):
-                logging.error(f"Invalid content_mode: {content_mode}. Use 'text' or 'raw'.")
+            # Perform Google search (+ optional content fetch)
+            results = googler_search(effective_query, number_of_results,
+                                     content_mode, allow_same_domain)
+
+            if results:
+                saved_path = save_results(results, output_file, effective_query)
+                logging.info(f"Results saved to: {saved_path}")
+
+                # Emit structured sections to the log for Parametrizer consumption
+                for result in results:
+                    r_url = result.get('url', 'N/A')
+                    r_title = result.get('title', '')
+                    r_status = result.get('status_code', 'N/A')
+                    r_length = result.get('content_length', 0)
+                    if 'error' in result:
+                        r_body = f"ERROR: {result['error']}"
+                    else:
+                        r_body = result.get('content', '') or r_title
+                    logging.info(
+                        f"INI_SECTION_GOOGLER<<<\n"
+                        f"url: {r_url}\n"
+                        f"title: {r_title}\n"
+                        f"status: {r_status}\n"
+                        f"content_length: {r_length}\n"
+                        f"\n"
+                        f"{r_body}\n"
+                        f">>>END_SECTION_GOOGLER"
+                    )
             else:
-                # Perform Google search and fetch results
-                results = googler_search(query, number_of_results, content_mode)
-
-                if results:
-                    saved_path = save_results(results, output_file, query)
-                    logging.info(f"Results saved to: {saved_path}")
-
-                    # Emit structured sections to the log for Parametrizer consumption
-                    for result in results:
-                        r_url = result.get('url', 'N/A')
-                        r_status = result.get('status_code', 'N/A')
-                        r_length = result.get('content_length', 0)
-                        if 'error' in result:
-                            r_body = f"ERROR: {result['error']}"
-                        else:
-                            r_body = result.get('content', '')
-                        logging.info(
-                            f"INI_SECTION_GOOGLER<<<\n"
-                            f"url: {r_url}\n"
-                            f"status: {r_status}\n"
-                            f"content_length: {r_length}\n"
-                            f"\n"
-                            f"{r_body}\n"
-                            f">>>END_SECTION_GOOGLER"
-                        )
-                else:
-                    logging.warning("No results obtained from Google search.")
+                logging.warning("No results obtained from Google search.")
 
         # Trigger downstream agents
         total_triggered = 0
