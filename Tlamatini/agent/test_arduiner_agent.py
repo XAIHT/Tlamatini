@@ -38,13 +38,17 @@ Covers:
 """
 
 import importlib.util
+import io
 import json
 import logging
 import os
+import shutil
 import sys
+import tarfile
 import tempfile
 import textwrap
 import unittest
+import zipfile
 from functools import lru_cache
 from unittest.mock import patch
 
@@ -614,6 +618,71 @@ class ArduinerIntegrationTests(SimpleTestCase):
         mig_dir = os.path.join(os.path.dirname(__file__), "migrations")
         self.assertTrue(os.path.exists(os.path.join(mig_dir, "0109_add_arduiner.py")))
         self.assertTrue(os.path.exists(os.path.join(mig_dir, "0110_add_chat_agent_arduiner_tool.py")))
+
+
+# ---------------------------------------------------------------------------
+# PR #1 archive-extraction hardening gate (Zip-Slip / tar path-traversal)
+# ---------------------------------------------------------------------------
+# Self-activating: while main still calls plain ``extractall`` (in _extract_cli)
+# the hardened ``_safe_*_extractall`` helpers do not exist, so these skip. Once
+# PR #1 adds them, the probes push a real malicious ``../escape`` archive
+# through the helper and assert the traversal is BLOCKED.
+_PR1_EXTRACT_PENDING = (
+    "PR #1 extraction hardening (_safe_*_extractall) not merged yet — "
+    "this Zip-Slip gate auto-activates once the safe extractors are in source."
+)
+
+
+class ArduinerExtractionHardeningTests(SimpleTestCase):
+    """Zip-Slip / tar-traversal gate for the Arduiner PR #1 hardening
+    (the arduino-cli archive extractor ``_extract_cli``)."""
+
+    def test_zip_slip_member_is_rejected(self):
+        m = _load_arduiner_module()
+        if not hasattr(m, "_safe_zip_extractall"):
+            self.skipTest(_PR1_EXTRACT_PENDING)
+        tmp = tempfile.mkdtemp(prefix="ard_zipslip_")
+        try:
+            dest = os.path.join(tmp, "dest")
+            os.makedirs(dest)
+            evil = os.path.join(tmp, "evil.zip")
+            with zipfile.ZipFile(evil, "w") as zf:
+                zf.writestr("../escape.txt", "pwned")
+            with zipfile.ZipFile(evil, "r") as zf:
+                with self.assertRaises(zipfile.BadZipFile):
+                    m._safe_zip_extractall(zf, dest)
+            self.assertFalse(
+                os.path.exists(os.path.join(tmp, "escape.txt")),
+                "zip-slip member escaped the destination",
+            )
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_tar_traversal_is_contained(self):
+        m = _load_arduiner_module()
+        if not hasattr(m, "_safe_tar_extractall"):
+            self.skipTest(_PR1_EXTRACT_PENDING)
+        tmp = tempfile.mkdtemp(prefix="ard_tartrav_")
+        try:
+            dest = os.path.join(tmp, "dest")
+            os.makedirs(dest)
+            evil = os.path.join(tmp, "evil.tar")
+            payload = b"pwned"
+            with tarfile.open(evil, "w") as tf:
+                info = tarfile.TarInfo("../escape.txt")
+                info.size = len(payload)
+                tf.addfile(info, io.BytesIO(payload))
+            with tarfile.open(evil, "r") as tf:
+                try:
+                    m._safe_tar_extractall(tf, dest)
+                except Exception:
+                    pass  # raising is fine; the security property is no escape
+            self.assertFalse(
+                os.path.exists(os.path.join(tmp, "escape.txt")),
+                "tar traversal member escaped the destination",
+            )
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":
