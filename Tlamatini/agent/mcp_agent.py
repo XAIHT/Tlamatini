@@ -77,18 +77,29 @@ _MANAGEMENT_TOOLS: set[str] = {
 }
 
 
-# Tools whose invocation changes system / external state and therefore belongs
-# in the Exec report. Maps ``tool_name`` -> ``(agent_key, agent_display)``.
-# ``agent_key`` is the lowercase token used to scope the per-agent CSS class
-# (``.exec-report-<agent_key>`` / ``.exec-report-caption-<agent_key>``) and MUST
-# match a canvas-item CSS class defined in ``agentic_control_panel.css`` so the
-# appended table inherits the agent's canvas gradient. ``agent_display`` is the
-# human-facing caption. Direct @tool calls and wrapped chat-agent launches that
-# correspond to the SAME agent share an ``agent_key`` on purpose — their rows
-# merge into a single "List of <Agent> Operations" table. Read-only tools
-# (Crawler, Googler, monitor_*, summarizer, prompter, file_interpreter,
-# file_extractor, image_interpreter, shoter, recmailer, and everything in
-# ``_MANAGEMENT_TOOLS``) are intentionally absent.
+# Curated Exec-report map: ``tool_name`` -> ``(agent_key, agent_display)``.
+# ``agent_key`` is the lowercase, separator-free token used to scope the
+# per-agent CSS class (``.exec-report-<agent_key>`` /
+# ``.exec-report-caption-<agent_key>``) and SHOULD match a canvas-item CSS class
+# in ``agentic_control_panel.css`` so the appended table inherits the agent's
+# canvas gradient. ``agent_display`` is the human-facing caption. Direct @tool
+# calls and wrapped chat-agent launches that correspond to the SAME agent share
+# an ``agent_key`` on purpose — their rows merge into a single
+# "List of <Agent> Operations" table.
+#
+# IMPORTANT (2026-06-07 completeness contract): this map is NO LONGER the gate
+# for *whether* an agent is captured. The Exec report must show EVERY agent that
+# actually runs during a Multi-Turn request — observational/output agents
+# (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer, ...), read-only
+# LLM agents (Crawler, Prompter, Summarizer, File/Image interpreters, ...) and
+# any NEWLY-CREATED agent included. That auto-capture is implemented by
+# ``_resolve_exec_report_spec`` below, which falls back to the wrapped chat-agent
+# registry for any ``chat_agent_*`` not listed here (only the management/polling
+# helpers in ``_MANAGEMENT_TOOLS`` and direct read-only @tools like ``googler``
+# are excluded). Entries here are therefore an OPTIONAL refinement — add one only
+# to merge a shared agent_key (a direct @tool + its wrapped launch), fix the
+# display casing, or pin a CSS-matched caption gradient. A new Multi-Turn agent
+# is captured even with NO entry here.
 _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # direct @tool calls
     "execute_command":           ("executer",       "Executer"),
@@ -195,6 +206,41 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # files, hit external APIs, or delegate to ACPX itself.
     "invoke_skill":              ("skill",          "Skill"),
 }
+
+
+def _resolve_exec_report_spec(tool_name: str) -> Tuple[str, str] | None:
+    """Resolve the ``(agent_key, agent_display)`` for an Exec-report row, or None.
+
+    MANDATORY COMPLETENESS CONTRACT (2026-06-07): the Exec report must show
+    EVERY agent that actually runs during a Multi-Turn request — including
+    observational/output agents (Talker, Shoter, Camcorder, Recorder,
+    AudioPlayer, VideoPlayer, ...), read-only LLM agents (Crawler, Prompter,
+    Summarizer, File/Image interpreters, ...), AND any newly-created agent —
+    automatically, with no per-agent wiring.
+
+    Resolution order:
+      1. The curated ``_EXEC_REPORT_TOOLS`` map wins (shared agent_keys that
+         merge a direct @tool with its wrapped launch, nicer display casing, a
+         CSS-matched caption gradient).
+      2. Otherwise ANY wrapped ``chat_agent_*`` tool that is NOT a
+         management/polling helper is captured generically: ``agent_key`` is the
+         registry spec key with separators stripped (to match the canvas-item
+         CSS convention) and ``agent_display`` is the spec's display name. This
+         is what makes a brand-new agent appear in the report the instant it is
+         wired as a Multi-Turn tool.
+      3. Everything else — the management/polling helpers in
+         ``_MANAGEMENT_TOOLS`` and direct read-only @tools such as ``googler`` —
+         returns None (never captured).
+    """
+    spec = _EXEC_REPORT_TOOLS.get(tool_name)
+    if spec is not None:
+        return spec
+    if tool_name.startswith("chat_agent_") and tool_name not in _MANAGEMENT_TOOLS:
+        wrapped = WRAPPED_CHAT_AGENT_BY_TOOL_NAME.get(tool_name)
+        if wrapped is not None:
+            agent_key = wrapped.key.replace("_", "").replace("-", "")
+            return (agent_key, wrapped.display_name)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -551,7 +597,7 @@ class MultiTurnToolAgentExecutor:
         tool_name = tool_call.get("name", "")
         raw_args = tool_call.get("args", {}) or {}
         agent_display = (
-            (_EXEC_REPORT_TOOLS.get(tool_name) or (None, None))[1]
+            (_resolve_exec_report_spec(tool_name) or (None, None))[1]
             or _tool_name_to_agent_display(tool_name)
             or tool_name
         )
@@ -685,7 +731,7 @@ class MultiTurnToolAgentExecutor:
             # would silently drop ACPX/Skill rows whenever the child CLI is
             # missing on PATH, the harness raised, or the tool args were
             # malformed — exactly the cases the user most needs to see.
-            exec_report_spec = _EXEC_REPORT_TOOLS.get(tool_name)
+            exec_report_spec = _resolve_exec_report_spec(tool_name)
             if exec_report_spec is not None:
                 agent_key, agent_display = exec_report_spec
                 self._exec_report_entries.append({
@@ -735,7 +781,7 @@ class MultiTurnToolAgentExecutor:
         # from rendering means a future layer that drops the flag (as the
         # UnifiedAgentChain payload whitelist once did) cannot silently hide
         # the data. The flag only gates whether the tables reach the user.
-        exec_report_spec = _EXEC_REPORT_TOOLS.get(tool_name)
+        exec_report_spec = _resolve_exec_report_spec(tool_name)
         if exec_report_spec is not None:
             agent_key, agent_display = exec_report_spec
             self._exec_report_entries.append({

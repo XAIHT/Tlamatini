@@ -71,7 +71,15 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
 }
 ```
 
-Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the same agent share an `agent_key` on purpose — their rows merge into one "List of <Agent> Operations" table. Read-only / observational tools (Crawler, Googler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Monitor-*, Recmailer, Sleeper, `chat_agent_run_*`, `window_present`) and everything in `_MANAGEMENT_TOOLS` are intentionally absent. The media-I/O family is observational/output and mutates no persistent state — Shoter (screen), Camcorder (camera-in), Recorder (mic-in), AudioPlayer (speakers-out), VideoPlayer (screen-out, with audio) — so none of them produce Exec-Report rows. **Keyboarder and Mouser are state-changing** — keystrokes target the focused window and pointer events fire at whichever window sits at the target coordinates — so `chat_agent_keyboarder` and `chat_agent_mouser` ARE captured under `agent_key="keyboarder"` and `agent_key="mouser"` respectively. Shoter is the only desktop-UI agent that stays out of the report (taking a screenshot is purely observational).
+Direct @tool calls and wrapped `chat_agent_*` launches that correspond to the same agent share an `agent_key` on purpose — their rows merge into one "List of <Agent> Operations" table.
+
+### ⚠️ Completeness contract (2026-06-07): EVERY Multi-Turn agent is captured — `_EXEC_REPORT_TOOLS` is no longer the gate
+
+The map above is **no longer the gate for *whether* an agent is captured.** The Exec report must show **every agent that actually runs during a Multi-Turn request** — observational/output agents (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer), read-only LLM agents (Crawler, Prompter, Summarizer, File-Interpreter/Extractor, Image-Interpreter, Monitor-*, Recmailer, Asker, Sleeper), AND any **newly-created** agent — all of them. (Previously the observational/read-only agents were intentionally absent; that produced the bug where a Talker run with Exec-report ON generated **no tables at all**.)
+
+Capture is now driven by **`mcp_agent.py::_resolve_exec_report_spec(tool_name)`**, which resolves in order: (1) the curated `_EXEC_REPORT_TOOLS` map (still wins — for shared agent_keys that merge a direct @tool with its wrapped launch, nicer display casing, and a CSS-matched caption gradient); (2) a **generic fallback** that captures ANY wrapped `chat_agent_*` not in `_MANAGEMENT_TOOLS`, deriving `agent_key` from the registry spec key (separators stripped) and `agent_display` from `spec.display_name`. So a brand-new Multi-Turn agent is captured the instant it is wired as a `chat_agent_*` tool, with **zero** changes to `_EXEC_REPORT_TOOLS`.
+
+The ONLY tools never captured: the management/polling helpers in `_MANAGEMENT_TOOLS` (`chat_agent_run_*`, `window_present`, `agent_stat_getter`, `get_current_time`) and direct read-only @tools (`googler`, `launch_view_image`). The visual canvas ACPXer node is not an LLM tool so it still contributes no rows. Entries in `_EXEC_REPORT_TOOLS` are therefore an **optional refinement**, not a requirement — a Multi-Turn agent with no entry there is still captured via the generic fallback and rendered with the default caption background (`.exec-report-caption` in `agent_page.css`).
 
 **Note on the visual ACPXer agent**: ACPXer is a *canvas* workflow node, not an LLM-invoked tool, so it does NOT contribute rows to `_EXEC_REPORT_TOOLS`. The Exec Report only covers tools the LLM calls in Multi-Turn mode. When the LLM drives ACPX via `acp_spawn` / `acp_send` / `acp_send_and_wait` / `acp_kill` / `acp_relay`, those calls already merge into the "List of ACPx Operations" table under `agent_key="acpx"`. If a future wrapped chat-agent (`chat_agent_acpxer`) is added so the LLM can launch the visual ACPXer node from chat, register it as `("chat_agent_acpxer", ("acpxer", "ACPXer"))` so it gets its own table — distinct from the existing `acpx` rows, since the visual surface is a different operational concept (one canvas node = one full lifecycle, vs. the 12 tools' fine-grained primitives).
 
@@ -102,15 +110,19 @@ The verdict on each row comes from the existing `call_success` variable computed
 
 Each `agent_key` needs a matching `.exec-report-caption-<agent_key>` CSS rule in `agent/static/agent/css/agent_page.css`. The gradient must **mirror the `.canvas-item.<agent_key>-agent` rule in `agentic_control_panel.css`** so the table feels native to the agentic UI. Also add a `.exec-report-<agent_key> .exec-report-cmd { border-left: 3px solid <primary>; }` accent. Dark-captioned tables additionally need an entry in the selector list of the `thead th` dark-tinted override rule.
 
-## Adding a state-changing agent to the report
+## Adding an agent to the report (MANDATORY: every Multi-Turn agent must appear)
 
-Three edits (no JS, no backend plumbing, no tests to re-wire):
+**Capture is now automatic.** Any agent you make Multi-Turn-callable (a wrapped `chat_agent_<name>` tool — see `create_new_agent.md` Step 7.5) is captured by `_resolve_exec_report_spec` with **no Exec-report code at all**, and rendered with the default caption background. So the baseline requirement is simply:
 
-1. `agent/mcp_agent.py` → add one entry to `_EXEC_REPORT_TOOLS` — `("<tool_name>": ("<agent_key>", "<Display Name>"))`.
-2. `agent/static/agent/css/agent_page.css` → add `.exec-report-caption-<agent_key>` + `.exec-report-<agent_key> .exec-report-cmd` rules using the canvas-item gradient.
+0. **(MANDATORY) Verify** your new Multi-Turn agent shows up: run it in Multi-Turn with **Exec report ON** and confirm a "List of <Agent> Operations" table appears. A Multi-Turn agent that produces no Exec-report row is a defect (this was the Talker bug). `python manage.py test agent.tests.ExecReportCaptureTests` includes an AUDIT test (`test_every_multiturn_agent_is_capturable_including_observational`) that fails if ANY wrapped chat-agent resolves to no row — so a regression is caught automatically.
+
+**Optional refinement** (nicer styling / shared keys) — only if you want a native caption gradient or to merge a direct @tool with its wrapped launch:
+
+1. `agent/mcp_agent.py` → add one entry to `_EXEC_REPORT_TOOLS` — `"<tool_name>": ("<agent_key>", "<Display Name>")` (use this to share an `agent_key` between a direct @tool and its `chat_agent_*` launch, or to fix the display casing the generic fallback derives).
+2. `agent/static/agent/css/agent_page.css` → add `.exec-report-caption-<agent_key>` + `.exec-report-<agent_key> .exec-report-cmd` rules using the canvas-item gradient (otherwise the readable default `.exec-report-caption` background is used).
 3. If the caption background is dark, also add `.exec-report-<agent_key> thead th` to the `color: #f5f5f5; background: rgba(0, 0, 0, 0.55)` selector list.
 
-Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the existing test set exercises capture + grouping + render-order + flag-gating generically, so no per-agent test is needed.
+Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the set exercises capture + grouping + render-order + flag-gating + the all-agents audit generically, so no per-agent test is needed.
 
 ## Files involved
 

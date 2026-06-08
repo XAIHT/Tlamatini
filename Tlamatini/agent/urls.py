@@ -101,6 +101,7 @@ urlpatterns = [
     path('update_recorder_connection/<str:agent_name>/', secure_post(views.update_recorder_connection_view), name='update_recorder_connection'),
     path('update_audioplayer_connection/<str:agent_name>/', secure_post(views.update_audioplayer_connection_view), name='update_audioplayer_connection'),
     path('update_videoplayer_connection/<str:agent_name>/', secure_post(views.update_videoplayer_connection_view), name='update_videoplayer_connection'),
+    path('update_talker_connection/<str:agent_name>/', secure_post(views.update_talker_connection_view), name='update_talker_connection'),
     path('update_ssher_connection/<str:agent_name>/', secure_post(views.update_ssher_connection_view), name='update_ssher_connection'),
     path('update_scper_connection/<str:agent_name>/', secure_post(views.update_scper_connection_view), name='update_scper_connection'),
     path('update_teletlamatini_connection/<str:agent_name>/', secure_post(views.update_teletlamatini_connection_view), name='update_teletlamatini_connection'),

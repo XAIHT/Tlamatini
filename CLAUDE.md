@@ -52,6 +52,14 @@ When the user asks to **"use Tlamatini's agents"** — or names any pool agent (
 
 ---
 
+## ⚠️ Every Multi-Turn Agent MUST Ship a Catalog-of-Prompts Example (MANDATORY)
+
+When you **create (or make Multi-Turn-capable) any agent** — i.e. it has a wrapped `chat_agent_<name>` tool so the LLM can run it in Multi-Turn — you **MUST** also seed **at least ONE** example prompt for it into the **Catalog of Prompts** (the `#prompts-catalog` modal). This is a **hard completion gate, NON-NEGOTIABLE**: a Multi-Turn agent shipped **without** at least one catalog prompt is **INCOMPLETE** and the task is **not done**. (Canvas-only agents with no wrapped tool are exempt.)
+
+Mechanics: add a migration `agent/migrations/<NNNN>_add_<name>_demo_prompts.py` that seeds the **`Prompt`** model (`idPrompt`, `promptName='prompt-<N>'`, `promptContent`) via `update_or_create`. **CONTIGUITY contract:** the catalog dropdown (`static/agent/js/tools_dialog.js`) enumerates `prompt-1, prompt-2, …` and **breaks at the first gap**, so `idPrompt`/`promptName` must stay contiguous — find the current highest slot (read the latest `*_demo_prompts.py`) and **append** with no renumber (`MAX_PROMPTS=100`). The prompt must drive `chat_agent_<name>` with a realistic, **SAFE** task (the daily chat test may run it). Full step-by-step: `create_new_agent.md` Step 7.8 and the `tlamatini-agent-creation` skill Phase 19.
+
+---
+
 ## Quick Orientation
 
 ```
@@ -162,7 +170,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── recorder/           # Microphone / audio-input capture (sounddevice) — WAV; native-sample-rate-by-default (sample_rate:0); default mic with optional device_index/device_name; saves to Music/TlamatiniRecords; observational audio sibling of Camcorder/Shoter (canvas + chat_agent_recorder)
 │   │   │   ├── audioplayer/        # Audio-file PLAYBACK to speakers (soundfile decode + sounddevice stream) — volume_percent, time_played truncate/loop via streaming callback, sample_rate:0=file-native; playback counterpart of Recorder; observational/output → not in Exec Report (canvas + chat_agent_audioplayer)
 │   │   │   ├── videoplayer/        # Video-file PLAYBACK WITH audio on a chosen display (ffpyplayer [bundles ffmpeg+SDL via pip] + OpenCV window; silent-cv2 fallback) — display_index, volume_percent, time_played truncate/loop, window size/fullscreen/keep_aspect; on-screen sibling of AudioPlayer; observational/output → not in Exec Report (canvas + chat_agent_videoplayer)
-│   │   │   └── ... (74 total agent directories)
+│   │   │   ├── talker/            # TEXT-TO-SPEECH (TTS): speaks input_text via an OLLAMA model (default Orpheus-3b-FT) — FEMALE VOICE ONLY by design (Tlamatini is female; a male voice is FORBIDDEN — resolve_voice raises MaleVoiceForbiddenError and main() hard-exits "NOW CLOSING.. BYE", never substitutes); voice(tara/leah/jess/mia/zoe)/emotion/language, SNAC-decoded 24 kHz WAV saved + played; voice-synthesis sibling of AudioPlayer; observational/output → not in Exec Report; snac+torch optional for audio (canvas + chat_agent_talker)
+│   │   │   └── ... (75 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py

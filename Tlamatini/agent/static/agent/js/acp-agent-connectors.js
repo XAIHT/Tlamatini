@@ -426,6 +426,25 @@ async function updateAudioPlayerConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateTalkerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_talker_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Talker ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Talker ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Talker ${agentId}:`, error);
+    }
+}
+
 async function updateVideoPlayerConnection(agentId, targetAgentId, action) {
     try {
         const response = await fetch(`/agent/update_videoplayer_connection/${agentId}/`, {

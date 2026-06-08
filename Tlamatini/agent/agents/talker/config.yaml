@@ -1,0 +1,135 @@
+# Talker Agent Configuration
+# ---------------------------------------------------------------------------
+# TEXT-TO-SPEECH (TTS): speaks `input_text` aloud through a system audio OUTPUT
+# device (speakers) by driving an OLLAMA connection that runs a neural TTS model
+# (default `Orpheus-3b-FT`). The model emits audio *tokens*; Talker decodes them
+# to a 24 kHz waveform with the SNAC neural codec, saves a WAV, and plays it.
+#
+# The "voice" sibling of the media-I/O family: Shoter = screen, Camcorder =
+# camera, Recorder = microphone-IN, AudioPlayer = speakers-OUT (plays a FILE),
+# Talker = speakers-OUT (SYNTHESISES speech from text). Observational/output
+# (mutates no persistent state), so — like AudioPlayer/VideoPlayer — it is NOT
+# in the Exec Report.
+#
+# NOTE on dependencies: fetching the tokens needs only stdlib (urllib). DECODING
+# the tokens into audible audio needs `snac` + `torch` (a neural vocoder).
+#   pip install snac torch
+# When they are absent Talker still runs: it fetches + saves the raw audio
+# tokens and reports status `tokens_only` (no sound). `sounddevice` is needed to
+# play the audio on the speakers (already shipped with Tlamatini).
+
+# REQUIRED: the text to pronounce / speak aloud.
+input_text: ""
+
+# ── Ollama connection (the TTS model server) ──────────────────────────────
+# Base URL of the Ollama server that hosts the TTS model.
+ollama_url: "http://localhost:11434"
+
+# OPTIONAL bearer token for an authenticated Ollama gateway / cloud endpoint.
+# Empty ("") sends no Authorization header (a plain local Ollama needs none).
+ollama_token: ""
+
+# The TTS model to run in Ollama. DEFAULT `Orpheus-3b-FT`. The canonical
+# Ollama registry tags for this model (legraphista/Orpheus) are:
+#   legraphista/Orpheus:latest        (~2.4 GB, q4_k_m)
+#   legraphista/Orpheus:3b-ft-q8      (~4.0 GB, highest quality)
+#   legraphista/Orpheus:3b-ft-q4_k_m  (~2.4 GB, balanced)
+#   legraphista/Orpheus:3b-ft-q2_k    (~1.6 GB, smallest)
+# Set `model` to whatever name you pulled it under (`ollama pull <tag>`).
+model: "legraphista/Orpheus:3b-ft-q8"
+
+# Language of the speech. Passed through to the model so a multilingual model
+# can use it ("en", "es", "fr", "de", "it", "pt", "hi", "zh", ...). The base
+# Orpheus-3b-FT is ENGLISH-ONLY; multilingual fine-tunes accept other values. A
+# non-English value is woven into the prompt only when `include_language_in_prompt`
+# is true (below), so a model that does NOT accept a language simply ignores it.
+language: "en"
+
+# ── Voice & speaker character (FEMALE-ONLY by design) ──────────────────────
+# ===========================================================================
+# HARD RULE — TLAMATINI IS FEMALE. TALKER SPEAKS ONLY WITH A FEMALE VOICE.
+# A male / non-female voice is FORBIDDEN BY DESIGN. There is NO override — not
+# even an explicit request. If a male voice is asked for, Talker does NOT
+# substitute a female voice and does NOT degrade gracefully: it CLOSES THE WHOLE
+# EXECUTION immediately and reports that a male voice is forbidden by design,
+# "NOW CLOSING.. BYE". Better to crash than to ever sound male. NEVER. (Enforced
+# in talker.py::resolve_voice -> MaleVoiceForbiddenError -> hard process exit.)
+# ===========================================================================
+# Speaker VOICE — choose ONE of the permitted FEMALE Orpheus voices:
+#   tara  — conversational, clear  (the reference voice / DEFAULT — preferred)
+#   leah  — warm, gentle
+#   jess  — energetic, youthful
+#   mia   — professional, articulate
+#   zoe   — calm, soothing
+# Any other value (a male voice, or any voice that cannot be verified female) is
+# REFUSED fatally — by design Tlamatini does not carry a "male" voice at all.
+voice: "tara"
+
+# OPTIONAL GENDER selector — FEMALE ONLY. Only consulted when `voice` is empty
+# or "auto"; accepts "female" (-> tara). Any non-female value is FORBIDDEN BY
+# DESIGN and aborts the agent. Leave "" to let `voice` decide.
+gender: ""
+
+# OPTIONAL emotive / paralinguistic tag woven into the speech. Orpheus
+# understands these expressive tags: laugh, chuckle, sigh, cough, sniffle,
+# groan, yawn, gasp. Setting e.g. `emotion: laugh` APPENDS "<laugh>" to the
+# spoken text. For PRECISE placement, instead inline the tag directly in
+# input_text, e.g. "That's hilarious <laugh> I can't believe it".
+emotion: ""
+
+# When true AND `language` is a non-English / non-empty / non-"auto" value, the
+# language tag is woven into the model prompt (e.g. "tara <es>: ...") so a
+# language-aware model can act on it. Harmless for models that ignore it.
+include_language_in_prompt: true
+
+# ── Generation parameters (mapped to Ollama `options`) ─────────────────────
+# Orpheus is sensitive to these — the reference defaults below are recommended.
+temperature: 0.6              # Orpheus reference default (0.4–0.8 typical)
+top_p: 0.9                    # nucleus sampling
+top_k: 40                     # 0 = disabled
+min_p: 0.0                    # 0 = disabled
+repetition_penalty: 1.1       # -> Ollama repeat_penalty; KEEP >= 1.1 (Orpheus needs it for stable audio)
+max_tokens: 4096              # -> Ollama num_predict (caps audio length; ~1200 tokens ≈ 14 s of speech)
+seed: -1                      # -1 = random; a fixed value makes the synthesis reproducible
+request_timeout: 300          # seconds to wait for the Ollama response
+
+# ── Playback / output ─────────────────────────────────────────────────────
+# Play the synthesised speech on the speakers after decoding it.
+play_audio: true
+
+# Which OUTPUT device (speakers) to play through.
+#   -1 -> the SYSTEM DEFAULT output device (THE DEFAULT — recommended).
+#    0,1,2 ... -> a specific PortAudio output-device index (logged at startup).
+device_index: -1
+
+# OPTIONAL: pick the output device by a case-insensitive substring of its name
+# (e.g. "Speakers" / "Headphones"). Only consulted when device_index is -1.
+device_name: ""
+
+# Software (digital) playback VOLUME as a percent: 100 = unity (default),
+# 200 = +6 dB, 50 = -6 dB, 0 = silence. NOT the Windows OS volume slider.
+volume_percent: 100
+
+# Peak-normalise the decoded speech so it is reliably AUDIBLE. Orpheus/SNAC
+# output is often quiet (peaks ~0.2-0.3 of full scale); when true the waveform
+# is scaled so its loudest sample reaches `normalize_peak` before playback —
+# making the voice clearly audible without clipping. Set false to keep the
+# model's raw (quiet) level.
+normalize_audio: true
+normalize_peak: 0.95
+
+# Output sample rate (Hz). 0 = the model's native rate (Orpheus = 24000,
+# RECOMMENDED — correct pitch). A non-zero value forces the stream rate and
+# alters pitch/tempo (the audio is not resampled).
+sample_rate: 0
+
+# Where to save the synthesised WAV. Empty ("") = the user's Music folder under
+# `TlamatiniTalker`. An absolute path is honoured; a relative path resolves
+# against the agent's runtime directory. The file is always saved (so the
+# spoken audio is reusable) even when play_audio is false.
+output_dir: ""
+
+# Downstream agents to start after speaking finishes (canvas connection
+# tracking). Talker ALWAYS triggers these once synthesis completes (or on a
+# handled error), so a Forker/Parametrizer can react to {status}.
+target_agents: []

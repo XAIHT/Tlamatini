@@ -114,6 +114,7 @@ SECTION_AGENT_TYPES = [
     'recorder',
     'audioplayer',
     'videoplayer',
+    'talker',
     'mouser',
     'windower',
     'unrealer',

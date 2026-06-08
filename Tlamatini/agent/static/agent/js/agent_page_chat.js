@@ -996,6 +996,58 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             }
         }
 
+    // ── Talker (TTS via Ollama) ──────────────────────────────────────
+    // Template fields: input_text, ollama_url, ollama_token, model, language,
+    //                  voice, gender, emotion, include_language_in_prompt,
+    //                  temperature, top_p, top_k, min_p, repetition_penalty,
+    //                  max_tokens, seed, request_timeout, play_audio,
+    //                  device_index, device_name, volume_percent, sample_rate,
+    //                  output_dir
+    } else if (lower === 'talker') {
+        set('input_text', pairs.input_text || pairs.text);
+        set('ollama_url', pairs.ollama_url || pairs.url || pairs.host);
+        set('ollama_token', pairs.ollama_token || pairs.token);
+        set('model', pairs.model);
+        set('language', pairs.language || pairs.lang);
+        // FEMALE VOICE ONLY by design — Tlamatini is female and NEVER speaks with
+        // a male voice (the Talker agent refuses a male voice at runtime by closing
+        // its execution entirely; see talker.py::resolve_voice). As defence in
+        // depth, only let a permitted FEMALE voice / gender='female' into the
+        // generated .flw; silently drop a male or unverifiable voice/gender so no
+        // male voice can ever be written into a flow artifact.
+        const TALKER_FEMALE_VOICES = ['tara', 'leah', 'jess', 'mia', 'zoe'];
+        const reqVoice = (pairs.voice || '').toString().trim().toLowerCase();
+        if (reqVoice && TALKER_FEMALE_VOICES.includes(reqVoice)) {
+            set('voice', pairs.voice);
+        }
+        if ((pairs.gender || '').toString().trim().toLowerCase() === 'female') {
+            set('gender', pairs.gender);
+        }
+        set('emotion', pairs.emotion);
+        set('device_name', pairs.device_name);
+        set('output_dir', pairs.output_dir);
+        for (const k of ['include_language_in_prompt', 'play_audio']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = String(pairs[k]).toLowerCase() === 'true';
+            }
+        }
+        if (pairs.device_index !== undefined && pairs.device_index !== '') {
+            const di = parseInt(pairs.device_index, 10);
+            if (!Number.isNaN(di)) config.device_index = di;
+        }
+        for (const k of ['top_k', 'max_tokens', 'seed', 'volume_percent', 'sample_rate', 'request_timeout']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        for (const k of ['temperature', 'top_p', 'min_p', 'repetition_penalty']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = Number(pairs[k]);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+
     // ── Windower ─────────────────────────────────────────────────────
     // Template fields: action, window_title, match_mode, match_index,
     //                  pos_x, pos_y, width, height, arrange_mode,

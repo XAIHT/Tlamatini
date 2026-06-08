@@ -1765,14 +1765,41 @@ system_prompt: |
   - `keep_aspect`: true (true = letterbox/pillarbox so the picture is never distorted; false = stretch to fill)
   - `target_agents`: [] (downstream agents to start after playback)
 
-### 74. FlowCreator
+### 74. Talker
+- **Purpose**: TEXT-TO-SPEECH (TTS): SPEAKS `input_text` aloud through a system audio OUTPUT device (speakers) by driving an OLLAMA connection that runs a neural TTS model (default `Orpheus-3b-FT`). On trigger it builds an Orpheus prompt (`<voice>: <text>`, with an optional emotive tag and language hint), streams the model's audio TOKENS over the Ollama HTTP API, decodes them to a 24 kHz waveform with the SNAC neural codec, saves a WAV, plays it, emits an `INI_SECTION_TALKER` block (`output_path`, `output_dir`, `filename`, `model`, `language`, `voice`, `gender`, `emotion`, `sample_rate`, `audio_seconds`, `char_count`, `played`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The voice-synthesis sibling of the media family — AudioPlayer plays an existing FILE, Talker GENERATES speech from text; observational/output, so it does NOT appear in the Exec Report. NOTE: hearing audio needs `snac` + `torch` installed; without them Talker saves the audio tokens and reports `status: tokens_only`.
+- **Used for**: Speaking a generated/known string as an unattended flow step — an audible spoken alert, a voice prompt or announcement, reading back an LLM-generated message (from Prompter/Summarizer via Parametrizer), or pronouncing a word/phrase. Distinct from AudioPlayer (plays an existing file) and Notifier (in-browser popup); Talker SYNTHESISES speech.
+- **Aimed at**: TTS steps. **FEMALE VOICE ONLY (Tlamatini is female — a male voice is FORBIDDEN BY DESIGN).** `voice` selects one of the permitted FEMALE Orpheus voices: tara [default], leah, jess, mia, zoe (the only accepted `gender` is `female`). NEVER set `voice` to a male voice (leo/dan/zac) or `gender: male` — the agent refuses such a request by closing its execution entirely ("male voice is forbidden by design — NOW CLOSING.. BYE"), so the flow step produces no audio. `language` passes a hint to the model (base model is English-only; a multilingual fine-tune speaks others). `emotion` weaves a paralinguistic tag (laugh/chuckle/sigh/cough/sniffle/groan/yawn/gasp) into the speech. `model`/`ollama_url`/`ollama_token` configure the Ollama connection; generation knobs are `temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`max_tokens`/`seed`. Playback uses `device_index`/`device_name`/`volume_percent`/`sample_rate`; the WAV is always saved to `output_dir`. Pair with Parametrizer to carry a `{response_body}` from a Prompter/Summarizer into Talker's `input_text`, or a Forker to branch on `{status}`.
+- **Application example**: Starter → Prompter (ask the LLM for a one-line greeting) → Parametrizer (map Prompter's `{response_body}` into Talker's `input_text`) → Talker (`voice: leah`, `emotion: chuckle`) → Ender (have the LLM write a line and speak it aloud). Or a spoken alert: Starter → Monitor-Log → Raiser (on `FATAL`) → Talker (`input_text: "A fatal error was detected"`, `voice: tara`) → Ender. (Always a female voice — leah/tara above.)
+- **Pool name pattern**: `talker_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `input_text`: "" (REQUIRED — the text to pronounce / speak aloud)
+  - `ollama_url`: "http://localhost:11434" (Ollama server hosting the TTS model)
+  - `ollama_token`: "" (optional bearer token for an authenticated Ollama gateway)
+  - `model`: "Orpheus-3b-FT" (the Ollama TTS model; e.g. legraphista/Orpheus:3b-ft-q8)
+  - `language`: "en" (language hint; base model is English-only, multilingual fine-tunes accept others)
+  - `voice`: "tara" (FEMALE voices ONLY: tara/leah/jess/mia/zoe — a male voice is FORBIDDEN BY DESIGN and aborts the agent)
+  - `gender`: "" (optional; only `female` accepted, only used when `voice` is empty/"auto"; a non-female value aborts the agent)
+  - `emotion`: "" (optional emotive tag: laugh/chuckle/sigh/cough/sniffle/groan/yawn/gasp)
+  - `include_language_in_prompt`: true (weave a non-English language tag into the prompt)
+  - `temperature`: 0.6, `top_p`: 0.9, `top_k`: 40, `min_p`: 0.0, `repetition_penalty`: 1.1 (keep >= 1.1), `max_tokens`: 4096, `seed`: -1 (-1 = random)
+  - `request_timeout`: 300 (seconds to wait for the Ollama response)
+  - `play_audio`: true (play on the speakers after decoding; false = save only)
+  - `device_index`: -1 (-1 = system default output; 0/1/2/... = a specific output device)
+  - `device_name`: "" (optional case-insensitive substring to pick the output device by name)
+  - `volume_percent`: 100 (software gain %, 100 = unity)
+  - `sample_rate`: 0 (0 = the model's native 24 kHz, recommended)
+  - `output_dir`: "" ("" = the user's Music folder under TlamatiniTalker)
+  - `target_agents`: [] (downstream agents to start after speaking)
+
+### 75. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (73). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (74). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

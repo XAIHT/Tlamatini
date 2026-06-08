@@ -1237,6 +1237,11 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "backend", "has_audio", "file_duration_seconds", "played_seconds",
         "play_mode", "loops", "format", "status",
     ),
+    "talker": (
+        "output_path", "output_dir", "filename",
+        "model", "language", "voice", "gender", "emotion",
+        "sample_rate", "audio_seconds", "char_count", "played", "status",
+    ),
     "mouser": (
         "movement_type", "end_posx", "end_posy",
         "button_click", "clicked", "located_via",
@@ -1510,6 +1515,16 @@ def delete_agent_process_by_description(description):
 
 def _tool_status_key(tool_description):
     return f"tool_{str(tool_description).lower()}_status"
+
+
+def _agent_status_key(agent_description):
+    """global_state key for an Agent row's enable flag (Configure Agents).
+
+    Mirrors ``factory.setup_llm``'s ``'agent_'+descr.lower()+'_status'`` exactly,
+    where ``descr`` is the Agent row ``agentDescription`` (== the wrapped spec's
+    ``display_name`` by the naming convention). e.g. Talker -> agent_talker_status.
+    """
+    return f"agent_{str(agent_description).lower()}_status"
 
 
 def _tool_output(payload):
@@ -3755,9 +3770,15 @@ def get_mcp_tools():
     tools = []
     if global_state.get_state('tool_current-time_status', 'enabled') == 'enabled': 
         tools.append(get_current_time)
-    if global_state.get_state('tool_execute-file_status', 'enabled') == 'enabled': 
+    # Direct @tool agents are gated by BOTH their Tool flag AND their Agent row
+    # (Configure Agents) — disabling the canvas agent (Pythonxer / Executer /
+    # Googler) hides its direct tool too, consistent with the wrapped-agent gate.
+    # Fail-open: an agent with no matching row defaults to enabled.
+    if (global_state.get_state('tool_execute-file_status', 'enabled') == 'enabled'
+            and global_state.get_state(_agent_status_key('Pythonxer'), 'enabled') == 'enabled'):
         tools.append(execute_file)
-    if global_state.get_state('tool_execute-command_status', 'enabled') == 'enabled': 
+    if (global_state.get_state('tool_execute-command_status', 'enabled') == 'enabled'
+            and global_state.get_state(_agent_status_key('Executer'), 'enabled') == 'enabled'):
         tools.append(execute_command)
     if global_state.get_state('tool_view-image_status', 'enabled') == 'enabled': 
         tools.append(launch_view_image)
@@ -3791,10 +3812,26 @@ def get_mcp_tools():
         tools.append(chat_agent_run_wait)
     if global_state.get_state('tool_window-present_status', 'enabled') == 'enabled':
         tools.append(window_present)
-    if global_state.get_state('tool_googler_status', 'enabled') == 'enabled':
+    if (global_state.get_state('tool_googler_status', 'enabled') == 'enabled'
+            and global_state.get_state(_agent_status_key('Googler'), 'enabled') == 'enabled'):
         tools.append(googler)
     for spec in WRAPPED_CHAT_AGENT_SPECS:
-        if global_state.get_state(_tool_status_key(spec.tool_description), 'enabled') == 'enabled':
+        # A wrapped chat-agent is bound for the LLM ONLY when BOTH gates are
+        # enabled:
+        #   1. its wrapper Tool row  — "Chat-Agent-<Name>" in Configure Mcps/Tools
+        #      (tool_<desc>_status), and
+        #   2. its Agent row         — "<Name>" in Configure Agents
+        #      (agent_<display>_status).
+        # Disabling EITHER makes the agent INVISIBLE to the LLM (it will report
+        # the agent as unknown / nonexistent). Both gates FAIL OPEN — a missing
+        # row defaults to 'enabled' (get_state default) — so a spec whose
+        # display_name maps to no Agent row, or that has no Tool row, is only
+        # hidden by an EXPLICIT disable, never by accident.
+        tool_enabled = global_state.get_state(
+            _tool_status_key(spec.tool_description), 'enabled') == 'enabled'
+        agent_enabled = global_state.get_state(
+            _agent_status_key(spec.display_name), 'enabled') == 'enabled'
+        if tool_enabled and agent_enabled:
             tools.append(_build_wrapped_chat_agent_tool(spec))
 
     # ── ACPX runtime tools ───────────────────────────────────────────
