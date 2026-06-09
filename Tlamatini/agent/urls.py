@@ -99,6 +99,7 @@ urlpatterns = [
     path('update_shoter_connection/<str:agent_name>/', secure_post(views.update_shoter_connection_view), name='update_shoter_connection'),
     path('update_camcorder_connection/<str:agent_name>/', secure_post(views.update_camcorder_connection_view), name='update_camcorder_connection'),
     path('update_recorder_connection/<str:agent_name>/', secure_post(views.update_recorder_connection_view), name='update_recorder_connection'),
+    path('update_whisperer_connection/<str:agent_name>/', secure_post(views.update_whisperer_connection_view), name='update_whisperer_connection'),
     path('update_audioplayer_connection/<str:agent_name>/', secure_post(views.update_audioplayer_connection_view), name='update_audioplayer_connection'),
     path('update_videoplayer_connection/<str:agent_name>/', secure_post(views.update_videoplayer_connection_view), name='update_videoplayer_connection'),
     path('update_talker_connection/<str:agent_name>/', secure_post(views.update_talker_connection_view), name='update_talker_connection'),

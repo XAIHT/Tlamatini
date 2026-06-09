@@ -955,6 +955,43 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         }
         set('output_dir', pairs.output_dir);
 
+    // ── Whisperer (speech-to-text) ───────────────────────────────────
+    // Template fields: input_source, audio_file, record_seconds,
+    //                  device_index, device_name, sample_rate, channels,
+    //                  input_gain_percent, engine, model, device,
+    //                  compute_type, language, task, beam_size, vad_filter,
+    //                  cloud_api_key, cloud_base_url, cloud_model,
+    //                  ollama_cleanup, cleanup_model, output_dir
+    } else if (lower === 'whisperer') {
+        set('input_source', pairs.input_source);
+        set('audio_file', pairs.audio_file || pairs.file || pairs.path);
+        if (pairs.device_index !== undefined && pairs.device_index !== '') {
+            const di = parseInt(pairs.device_index, 10);
+            if (!Number.isNaN(di)) config.device_index = di;
+        }
+        set('device_name', pairs.device_name);
+        for (const k of ['record_seconds', 'sample_rate', 'channels', 'input_gain_percent', 'beam_size']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        set('engine', pairs.engine);
+        set('model', pairs.model);
+        set('device', pairs.device);
+        set('compute_type', pairs.compute_type);
+        set('language', pairs.language);
+        set('task', pairs.task);
+        if (pairs.vad_filter !== undefined && pairs.vad_filter !== '') {
+            config.vad_filter = String(pairs.vad_filter).toLowerCase() === 'true';
+        }
+        if (pairs.ollama_cleanup !== undefined && pairs.ollama_cleanup !== '') {
+            config.ollama_cleanup = String(pairs.ollama_cleanup).toLowerCase() === 'true';
+        }
+        set('cloud_model', pairs.cloud_model);
+        set('cleanup_model', pairs.cleanup_model);
+        set('output_dir', pairs.output_dir);
+
     // ── AudioPlayer ──────────────────────────────────────────────────
     // Template fields: audio_file, device_index, device_name,
     //                  volume_percent, time_played, sample_rate

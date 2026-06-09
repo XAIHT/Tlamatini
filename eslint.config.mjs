@@ -364,6 +364,7 @@ export default [
                 updateShoterConnection: "readonly",
                 updateCamcorderConnection: "readonly",
                 updateRecorderConnection: "readonly",
+                updateWhispererConnection: "readonly",
                 updateTalkerConnection: "readonly",
                 updateDeleterConnection: "readonly",
                 updateExecuterConnection: "readonly",

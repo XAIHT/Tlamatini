@@ -8,7 +8,7 @@
 
 <p align="center">
   <em>"One who knows" — in Nahuatl.</em><br/>
-  A self-hosted AI developer assistant that turns your PC into a workshop where 74 agents collaborate to actually <strong>get things done</strong>.
+  A self-hosted AI developer assistant that turns your PC into a workshop where 75 agents collaborate to actually <strong>get things done</strong>.
 </p>
 
 <p align="center">
@@ -52,9 +52,9 @@ She can do all of that — self-hosted on your own machine, powered by the model
 | 🧠 **Real RAG over your code** | FAISS + BM25 hybrid retrieval with context budgeting. The model sees the *right* code, not random chunks. |
 | 🛠️ **Multi-Turn mode** | The LLM becomes an **operator**: shell, Python, APIs, browser automation, screenshots, keyboard/mouse — all chained in one conversation. |
 | 🤝 **ACPX** | Delegate sub-tasks to Claude Code, Cursor, Codex, Gemini CLI, Qwen — and relay output between them. One conductor, an orchestra of agents. |
-| 🎨 **Visual workflow designer** | Drag and drop 75 agent types, wire them together, run flows unattended. No code required to compose a pipeline. |
+| 🎨 **Visual workflow designer** | Drag and drop 76 agent types, wire them together, run flows unattended. No code required to compose a pipeline. |
 | 🪞 **Self-aware** | Tlamatini carries a knowledge map of her own architecture. `--self-modify` builds ship her source so she can inspect and modify **herself**. |
-| 🔒 **Self-hosted** | The app, hybrid RAG, and all 74 agents run on your machine. The LLM is your choice — fully-local [Ollama](https://ollama.com/) models, Ollama Cloud (the shipped default), or cloud APIs like Anthropic Claude. With a cloud model, your prompts and code context are sent to that provider. |
+| 🔒 **Self-hosted** | The app, hybrid RAG, and all 75 agents run on your machine. The LLM is your choice — fully-local [Ollama](https://ollama.com/) models, Ollama Cloud (the shipped default), or cloud APIs like Anthropic Claude. With a cloud model, your prompts and code context are sent to that provider. |
 
 ### 💡 The thesis behind Tlamatini
 
@@ -104,6 +104,8 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 <summary><strong>📦 What's new in v1.17.0 (2026-06-05) — click to expand</strong></summary>
 
 > **Bullet-proof installation — the installer now carries its own Python.** v1.17.0 re-engineers the install process so it can't be tripped by the host machine's Python: the installer ships a **self-contained Python 3.12.10** (with every pool-agent dependency already installed) into `<install_dir>\python\`, and **all** pool agents now run on that carried interpreter unconditionally — immune to a missing, wrong-version, or PATH-shadowed system Python and to a stale `PYTHON_HOME`. An end user installs **only Ollama + the models**; there is no separate Python install. `build.py` bundles and version-pins the carried interpreter (`bundle_carried_python` + a hard `CARRIED_PYTHON_VERSION = 3.12.10` preflight), and every agent's Python resolver now prefers `<install_dir>\python` first. This release also lands an **improvement to the prompting chain** plus assorted install-flow and README fixes.
+>
+> **NEW (v1.18.0, 2026-06-08) — Whisperer, speech-to-text / voice recognition (76th agent type).** **Whisperer** turns SPOKEN AUDIO into a STRING of text — the speech-to-text sibling of **Talker** (text-to-speech). It is **100% self-sufficient for the microphone**: it opens, configures (channels/sample-rate/gain) and records the mic ITSELF (no Recorder needed), or transcribes a given audio FILE. Transcription runs **faster-whisper LOCALLY by default** — it **auto-detects an NVIDIA GPU (CUDA) and ALWAYS falls back to CPU** on a machine without one (and auto-retries on CPU if the GPU path fails) — or a **cloud Whisper API** (Groq/OpenAI). NOTE: **Ollama cannot do speech-to-text** (it has no audio input), so recognition is always done by the ASR engine; an optional Ollama pass only tidies the FINISHED transcript's punctuation. Observational, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_whisperer`, and emits an `INI_SECTION_WHISPERER` block (the transcript text is the body) for Parametrizer. Local transcription needs `faster-whisper` (absent + no cloud key → `status: engine_unavailable`, not a crash).
 >
 > **Recently (v1.17.2, 2026-06-07) — Talker, text-to-speech via Ollama (75th agent type).** **Talker** SPEAKS `input_text` aloud through the speakers by driving an **Ollama** connection that runs a neural TTS model (default **`Orpheus-3b-FT`**) — the voice-synthesis sibling of the media family (AudioPlayer plays an existing file; Talker GENERATES speech from text). It is **FEMALE-ONLY by design** (Tlamatini is female; a male voice is FORBIDDEN BY DESIGN, with no override — asking for one makes Talker close its execution entirely and report "male voice is forbidden by design — NOW CLOSING.. BYE", never substituting). It exposes the model's **full parameter surface**: the permitted FEMALE **voices** (tara [default]/leah/jess/mia/zoe), a `female`-only `gender` shortcut, 8 **emotive tags** (`<laugh>`/`<sigh>`/…), a `language` hint, the Ollama connection (`ollama_url`/`ollama_token`/`model`), and generation knobs (`temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`max_tokens`/`seed`). The model streams audio TOKENS that are decoded to a 24 kHz WAV by the **SNAC** codec, saved and played (`device_index`/`volume_percent`/`sample_rate`). Observational/output, so it stays out of the Exec Report; ships on both the canvas and as the wrapped Multi-Turn tool `chat_agent_talker`, and emits an `INI_SECTION_TALKER` block for Parametrizer. NOTE: rendering audible audio needs `snac` + `torch` installed (`pip install snac torch`); without them Talker saves the audio tokens and reports `status: tokens_only`.
 >
@@ -961,7 +963,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-34 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, **De-Compresser**, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, **Talker**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
+35 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, **De-Compresser**, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **Whisperer**, **AudioPlayer**, **VideoPlayer**, **Talker**, Mouser, **Windower**, **Unrealer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
 
 Canonical example:
 
@@ -1317,7 +1319,7 @@ pkg.zip          Uninstaller.exe        dist/Tlamatini_Release/
 python build.py
 ```
 
-Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 74 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
+Installs deps, runs `collectstatic`, executes PyInstaller, copies required payloads (including `README.md`, the self-knowledge map `Tlamatini.md`, and bundled `jd-cli/`), runs migrations, creates the default user (`user`/`changeme`), renames the exe to `Tlamatini.exe`, copies all 75 agent templates, bundles support scripts (`register_flw.ps1`, `CreateShortcut.ps1`, `Tlamatini.ps1`, `Tlamatini.ico`), and zips it all into **`pkg.zip`**.
 
 `build.py` is strict: missing `README.md`, missing `jd-cli/`, or missing `jd-cli.bat` causes a non-zero exit.
 

@@ -112,6 +112,7 @@ SECTION_AGENT_TYPES = [
     'shoter',
     'camcorder',
     'recorder',
+    'whisperer',
     'audioplayer',
     'videoplayer',
     'talker',

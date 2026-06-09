@@ -15,6 +15,7 @@ os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
 import re
 import time
+import threading
 import wave
 import yaml
 import logging
@@ -515,11 +516,181 @@ def resolve_input_device(config: Dict):
     return None, default_idx, str(info.get('name', '')), info
 
 
+class MicRecIndicator:
+    """Zero-latency, ALWAYS-VISIBLE console REC light driven by the LIVE mic.
+
+    Ported verbatim from the Whisperer agent (pool subprocesses cannot import
+    each other, so the ~120 lines are duplicated by design -- see acpxer.py for
+    the same inline-mirror pattern). Honesty contract: ``on()`` fires from the
+    FIRST audio callback (light ON within one ~20 ms block of real samples --
+    inside the 50 ms budget), ``level(peak)`` feeds the true per-block peak so
+    the VU bar dances with your voice, and ``off()`` paints the stopped state
+    SYNCHRONOUSLY the instant the stream is torn down. Because the pool launcher
+    spawns this agent DETACHED with stdio to DEVNULL (no console at all), ``on()``
+    AllocConsole()s its own window (or reuses an existing one), reveals it, and
+    paints to CONOUT$ directly. Fail-safe: nothing here can raise into capture.
+    """
+
+    _BAR_W = 22
+    _LINGER_SECONDS = 1.4
+
+    def __init__(self, total_seconds: float):
+        self._out = sys.stderr
+        self._total = max(0.001, float(total_seconds))
+        self._color = False
+        self._allocated = False
+        self._active = False
+        self._peak = 0.0
+        self._t0 = 0.0
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread = None
+
+    def _acquire_console(self):
+        if os.name != 'nt':
+            self._out = sys.stderr
+            self._color = bool(getattr(sys.stderr, 'isatty', lambda: False)())
+            return
+        try:
+            import ctypes
+            import msvcrt
+            k32 = ctypes.windll.kernel32
+            u32 = ctypes.windll.user32
+            hwnd = k32.GetConsoleWindow()
+            if not hwnd:
+                if k32.AllocConsole():
+                    self._allocated = True
+                hwnd = k32.GetConsoleWindow()
+            if hwnd:
+                u32.ShowWindow(hwnd, 1)            # SW_SHOWNORMAL -> reveal it
+                try:
+                    u32.SetForegroundWindow(hwnd)
+                except Exception:
+                    pass
+            try:
+                k32.SetConsoleTitleW("\U0001f399  Tlamatini Recorder  --  RECORDING")
+            except Exception:
+                pass
+            writer = open('CONOUT$', 'w', encoding='utf-8', buffering=1)
+            self._out = writer
+            try:
+                h = msvcrt.get_osfhandle(writer.fileno())
+                mode = ctypes.c_uint32()
+                if k32.GetConsoleMode(h, ctypes.byref(mode)):
+                    if k32.SetConsoleMode(h, mode.value | 0x0004):  # ENABLE_VT
+                        self._color = True
+            except Exception:
+                self._color = False
+        except Exception:
+            self._out = sys.stderr
+            self._color = False
+
+    def _release_console(self):
+        try:
+            if self._out not in (sys.stderr, sys.stdout):
+                try:
+                    self._out.flush()
+                    self._out.close()
+                except Exception:
+                    pass
+            if self._allocated and os.name == 'nt':
+                import ctypes
+                ctypes.windll.kernel32.FreeConsole()
+        except Exception:
+            pass
+
+    def on(self):
+        try:
+            with self._lock:
+                if self._active:
+                    return
+                self._active = True
+                self._t0 = time.perf_counter()
+            self._acquire_console()
+            self._paint(blink_on=True)
+            self._thread = threading.Thread(target=self._animate, daemon=True)
+            self._thread.start()
+        except Exception:
+            pass
+
+    def level(self, peak: float):
+        try:
+            self._peak = 0.0 if peak < 0 else (1.0 if peak > 1 else float(peak))
+        except Exception:
+            pass
+
+    def off(self, captured_seconds: float = 0.0):
+        try:
+            with self._lock:
+                if not self._active:
+                    return
+                self._active = False
+            self._stop.set()
+            if self._thread is not None:
+                self._thread.join(timeout=0.25)
+            self._paint_stopped(captured_seconds)
+            if self._allocated:
+                time.sleep(self._LINGER_SECONDS)
+            self._release_console()
+        except Exception:
+            pass
+
+    def _animate(self):
+        blink = True
+        while not self._stop.wait(0.45):
+            blink = not blink
+            self._paint(blink_on=blink)
+
+    def _elapsed(self) -> float:
+        return max(0.0, time.perf_counter() - self._t0)
+
+    def _vu_bar(self) -> str:
+        filled = int(round(self._peak * self._BAR_W))
+        if not self._color:
+            return '[' + '#' * filled + '-' * (self._BAR_W - filled) + ']'
+        cells = []
+        for i in range(self._BAR_W):
+            if i < filled:
+                frac = i / max(1, self._BAR_W - 1)
+                col = '\x1b[92m' if frac < 0.6 else ('\x1b[93m' if frac < 0.85 else '\x1b[91m')
+                cells.append(col + '█')
+            else:
+                cells.append('\x1b[90m─')
+        return '[' + ''.join(cells) + '\x1b[0m]'
+
+    def _paint(self, blink_on: bool):
+        try:
+            el = self._elapsed()
+            if self._color:
+                dot = '\x1b[1;91m●\x1b[0m' if blink_on else '\x1b[2;31m●\x1b[0m'
+                label = '\x1b[1;91m REC \x1b[0m'
+            else:
+                dot = '(*)' if blink_on else '( )'
+                label = ' REC '
+            line = f"\r\x1b[2K {dot}{label}{self._vu_bar()} {el:5.1f}s / {self._total:.0f}s "
+            self._out.write(line)
+            self._out.flush()
+        except Exception:
+            pass
+
+    def _paint_stopped(self, captured_seconds: float):
+        try:
+            if self._color:
+                tag = '\x1b[1;92m■ REC STOPPED ✓\x1b[0m'
+            else:
+                tag = '[#] REC STOPPED OK'
+            self._out.write(f"\r\x1b[2K {tag}  captured {captured_seconds:.1f}s\n")
+            self._out.flush()
+        except Exception:
+            pass
+
+
 def record_audio(config: Dict, output_dir: str):
     """
     Record record_seconds of audio from the resolved input device and save a
     WAV file. Returns a dict describing the saved file and capture settings.
     """
+    import numpy as np
     import sounddevice as sd
 
     device_arg, device_index, device_name, info = resolve_input_device(config)
@@ -559,14 +730,56 @@ def record_audio(config: Dict, output_dir: str):
 
     frames = int(round(sample_rate * record_seconds))
     # int16 PCM == 2 bytes/sample, directly writable by the stdlib wave module.
-    recording = sd.rec(
-        frames,
-        samplerate=sample_rate,
-        channels=channels,
-        dtype='int16',
-        device=device_arg,
-    )
-    sd.wait()  # block until the full record_seconds has elapsed
+    # Capture via a callback InputStream (NOT sd.rec) so the console REC light is
+    # lit from the FIRST real audio block -- the indicator edge tracks the actual
+    # mic edge to within one ~20 ms block, not a log line.
+    blocksize = max(1, int(round(sample_rate * 0.02)))
+    indicator = MicRecIndicator(record_seconds)
+    chunks: List = []
+    collected = {"n": 0}
+    done = threading.Event()
+
+    def _on_audio(indata, n_frames, time_info, status):  # noqa: ARG001 (sd contract)
+        if not indicator._active:
+            indicator.on()                 # ON edge == first samples in hand
+        block = np.array(indata, dtype='int16', copy=True)
+        chunks.append(block)
+        collected["n"] += n_frames
+        try:
+            # int16 peak -> 0..1 for the VU bar.
+            indicator.level((float(np.max(np.abs(block))) / 32768.0) if block.size else 0.0)
+        except Exception:
+            pass
+        if collected["n"] >= frames:
+            done.set()
+            raise sd.CallbackStop
+
+    recording = None
+    try:
+        with sd.InputStream(
+            samplerate=sample_rate,
+            channels=channels,
+            dtype='int16',
+            device=device_arg,
+            blocksize=blocksize,
+            latency='low',
+            callback=_on_audio,
+        ):
+            done.wait(timeout=record_seconds + 5.0)
+        captured = collected["n"] / float(sample_rate) if sample_rate else 0.0
+        indicator.off(captured)            # OFF edge == stream torn down
+        if chunks:
+            recording = np.concatenate(chunks, axis=0)[:frames]
+    except Exception as stream_err:
+        # Fall back to the simple blocking capture if the streaming path is
+        # unsupported on this host/driver -- recording must still succeed.
+        indicator.off(collected["n"] / float(sample_rate) if sample_rate else 0.0)
+        logging.warning(f"⚠️ Live-stream capture unavailable ({stream_err}); using blocking capture.")
+        recording = sd.rec(
+            frames, samplerate=sample_rate, channels=channels,
+            dtype='int16', device=device_arg,
+        )
+        sd.wait()  # block until the full record_seconds has elapsed
 
     if recording is None or len(recording) == 0:
         raise RuntimeError("Audio device opened but returned no samples.")

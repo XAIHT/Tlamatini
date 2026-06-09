@@ -1,0 +1,148 @@
+# Whisperer Agent Configuration
+# ---------------------------------------------------------------------------
+# SPEECH-TO-TEXT (STT / voice recognition). Whisperer is 100% SELF-SUFFICIENT
+# for microphone input: it OPENS, CONFIGURES (channels, sample rate, input gain)
+# and RECORDS the mic ENTIRELY ON ITS OWN, then runs a neural speech-recognition
+# model and OUTPUTS the recognized speech as a STRING of text. It does NOT depend
+# on the Recorder agent. Speech-to-text sibling of Talker (text-to-speech).
+#
+# It can also transcribe a given audio FILE instead of the mic (set audio_file).
+#
+# IMPORTANT — OLLAMA CANNOT TRANSCRIBE: Ollama (local or cloud) has no audio
+# input, so the actual transcription is done by a REAL ASR engine
+# (faster-whisper locally by default, or a cloud Whisper API). Ollama is used
+# here ONLY as an OPTIONAL post-processor that tidies the finished transcript.
+#
+# DEPENDENCIES:
+#   - microphone input needs `sounddevice` + `numpy` (already shipped).
+#   - local transcription needs `faster-whisper` (pip install faster-whisper).
+#     With an NVIDIA GPU it auto-uses CUDA (fast); WITHOUT a GPU it ALWAYS falls
+#     back to CPU (slower but works). If faster-whisper is absent AND a cloud key
+#     is set, Whisperer uses the cloud automatically.
+#   - cloud transcription needs only stdlib (urllib) + an API key.
+
+# ── Input source ────────────────────────────────────────────────────────────
+# Where the audio comes from:
+#   "mic"   -> RECORD the microphone (THE DEFAULT — Whisperer opens it itself).
+#   "file"  -> transcribe the file at `audio_file`.
+#   ""      -> AUTO: use `audio_file` if it is set, otherwise record the mic.
+input_source: "mic"
+
+# Path to an audio file to transcribe (WAV/MP3/M4A/FLAC/OGG...). Only used when
+# input_source is "file" (or "" with this set). Leave "" to record the mic.
+audio_file: ""
+
+# ── Microphone capture (used when recording the mic) ─────────────────────────
+# How many seconds to record from the mic.
+record_seconds: 30
+
+# Which microphone / input device to use:
+#   -1  -> the SYSTEM DEFAULT input device (THE DEFAULT — recommended).
+#    0,1,2 ...  -> a specific PortAudio input-device index (the agent logs the
+#                  full numbered device list at startup so you can read it).
+device_index: -1
+
+# OPTIONAL: pick the input device by a case-insensitive substring of its name
+# (e.g. "USB", "Microphone Array"). Only consulted when device_index is -1.
+device_name: ""
+
+# Capture sample rate (Hz). 0 = capture directly at 16 kHz (the rate the neural
+# model expects — recommended). A non-zero value records at that rate and the
+# audio is resampled to 16 kHz before recognition.
+sample_rate: 0
+
+# Number of input channels to OPEN. 1 = mono (recommended; Whisper needs mono).
+# Clamped DOWN to the device's reported MAXIMUM input channels so an over-request
+# can never crash the capture. Multi-channel input is downmixed to mono.
+channels: 1
+
+# Software (digital) input gain as a PERCENT applied to the captured samples.
+#   100 -> unity (default). 200 -> +6 dB louder. 50 -> -6 dB. 0 -> silence.
+input_gain_percent: 100
+
+# Save the captured mic audio as a WAV alongside the transcript (so the source
+# is reusable / auditable). true by default.
+save_source_audio: true
+
+# ── Recognition engine ───────────────────────────────────────────────────────
+# Which speech-recognition engine to use:
+#   "faster-whisper" -> LOCAL neural STT (THE DEFAULT — free, offline, private).
+#                       Auto-uses the GPU when present; ALWAYS falls back to CPU.
+#   "cloud-groq"     -> Groq cloud Whisper API (very cheap/fast; needs a key).
+#   "cloud-openai"   -> OpenAI Whisper / gpt-4o-transcribe API (needs a key).
+engine: "faster-whisper"
+
+# faster-whisper model size. Bigger = more accurate but heavier/slower and a
+# larger first-run download:
+#   tiny / base (DEFAULT — small, fast, fine on CPU) / small / medium /
+#   large-v3 (most accurate) / large-v3-turbo (near large-v3, much faster).
+# On an 8 GB GPU, large-v3-turbo is an excellent quality/speed pick.
+model: "base"
+
+# Compute device for the LOCAL engine:
+#   "auto" -> use the GPU (CUDA) if one is detected, else CPU (THE DEFAULT).
+#   "cuda" -> force GPU.   "cpu" -> force CPU.
+# NOTE: on "auto"/"cuda", if the GPU path fails for ANY reason (no driver,
+# missing cuDNN, out of VRAM) Whisperer AUTOMATICALLY retries on the CPU — so a
+# PC without a usable GPU ALWAYS still gets a transcript.
+device: "auto"
+
+# Numeric precision for the local engine:
+#   "auto" -> float16 on GPU, int8 on CPU (8 GB-friendly) — recommended.
+#   "int8" / "int8_float16" / "float16" / "float32" to force one.
+compute_type: "auto"
+
+# Spoken language hint (ISO code like "en", "es", "fr"). "" = AUTO-DETECT.
+language: ""
+
+# "transcribe" = keep the original language. "translate" = translate to English.
+task: "transcribe"
+
+# Decoder beam size (higher = more accurate, a little slower).
+beam_size: 5
+
+# Voice-activity detection: skip silence so only speech is recognized.
+vad_filter: true
+
+# Emit per-word timestamps (heavier). Off by default.
+word_timestamps: false
+
+# ── Cloud STT (only used when engine is cloud-*) ─────────────────────────────
+# API key for the cloud engine. Leave "" to read it from the environment
+# (GROQ_API_KEY for cloud-groq, OPENAI_API_KEY for cloud-openai).
+cloud_api_key: ""
+
+# Override the cloud base URL (defaults: Groq https://api.groq.com/openai/v1,
+# OpenAI https://api.openai.com/v1). Point this at an OWhisper server to use a
+# self-hosted "Ollama-style" STT endpoint.
+cloud_base_url: ""
+
+# Cloud model name (defaults: whisper-large-v3 for Groq, whisper-1 for OpenAI).
+cloud_model: ""
+
+# Seconds to wait for a cloud / Ollama HTTP response.
+request_timeout: 300
+
+# ── OPTIONAL Ollama transcript cleanup (post-processing only) ────────────────
+# Ollama CANNOT transcribe. When true, the FINISHED transcript is passed to an
+# Ollama LLM that fixes punctuation/casing/obvious errors. Failure here never
+# breaks the run (it keeps the raw transcript).
+ollama_cleanup: false
+ollama_url: "http://localhost:11434"
+ollama_token: ""
+cleanup_model: "llama3.2"
+cleanup_instruction: "Add proper punctuation and capitalization and fix obvious transcription errors. Do NOT add, remove, summarize or translate any content. Return ONLY the corrected text."
+
+# ── Output ───────────────────────────────────────────────────────────────────
+# Save the transcript to a .txt file.
+save_transcript: true
+
+# Where to save the transcript (and the captured WAV). "" = the user's Documents
+# folder under TlamatiniTranscripts. Absolute path honored; relative resolves
+# against the agent's runtime directory.
+output_dir: ""
+
+# Downstream agents to start after transcription (canvas connection tracking).
+# Whisperer ALWAYS triggers these once done (even on error) so a Forker can
+# branch on {status}.
+target_agents: []

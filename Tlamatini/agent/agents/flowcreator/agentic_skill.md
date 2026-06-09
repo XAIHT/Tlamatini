@@ -1807,14 +1807,42 @@ system_prompt: |
   - `output_dir`: "" ("" = the user's Music folder under TlamatiniTalker)
   - `target_agents`: [] (downstream agents to start after speaking)
 
-### 75. FlowCreator
+### 75. Whisperer
+- **Purpose**: SPEECH-TO-TEXT (STT / voice recognition): turns SPOKEN AUDIO into a STRING of text. 100% self-sufficient for the microphone — it OPENS, CONFIGURES (channels, sample rate, gain) and RECORDS the mic ITSELF (does NOT depend on Recorder), or transcribes a given audio FILE. Runs faster-whisper LOCALLY by default (auto-detects an NVIDIA GPU and ALWAYS falls back to CPU), or a cloud Whisper API (Groq/OpenAI); optionally tidies the transcript with an Ollama LLM (Ollama CANNOT transcribe — post-processing only). Emits an `INI_SECTION_WHISPERER` block (`transcript_path`, `audio_path`, `input_source`, `engine`, `model`, `device`, `language`, `duration_seconds`, `segments`, `word_count`, `status`, plus the transcript text as `response_body`) and ALWAYS triggers `target_agents`. The speech-to-text sibling of Talker (text-to-speech); observational, so it does NOT appear in the Exec Report.
+- **Used for**: Transcribing speech as an unattended flow step — dictation, voice commands, turning a recorded clip or an audio file into text for a downstream Prompter/Summarizer/File-Creator. The inverse of Talker (which speaks text); Whisperer listens and writes it down.
+- **Aimed at**: STT steps. `input_source` mic (DEFAULT — records the mic itself) or file (set `audio_file`). `engine` faster-whisper (default; `model` tiny/base/small/medium/large-v3/large-v3-turbo, `device` auto/cuda/cpu with guaranteed CPU fallback) or cloud-groq/cloud-openai (needs an API key). `language` "" auto-detects; `task: translate` outputs English. Pair with Parametrizer to carry the `{response_body}` transcript into a downstream agent, or a Forker to branch on `{status}` (transcribed/empty/engine_unavailable/error).
+- **Application example**: Starter → Whisperer (record 8 s of the mic, `model: base`) → Parametrizer (map Whisperer's `{response_body}` into a Prompter `{question}`) → Prompter → Ender. Or a full voice loop: Starter → Whisperer → Prompter → Talker → Ender (listen → think → speak).
+- **Pool name pattern**: `whisperer_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `input_source`: "mic" (mic = record the microphone itself; file = transcribe `audio_file`; "" = auto)
+  - `audio_file`: "" (path to an audio file to transcribe when input_source is file)
+  - `record_seconds`: 5 (microphone recording duration)
+  - `device_index`: -1 (-1 = system default mic; 0/1/2/... = a specific input device)
+  - `device_name`: "" (optional case-insensitive substring to pick the mic by name)
+  - `sample_rate`: 0 (0 = capture at 16 kHz, the model rate; a non-zero rate is resampled)
+  - `channels`: 1 (mono; clamped to the device max, multi-channel is downmixed to mono)
+  - `input_gain_percent`: 100 (software input gain %, 100 = unity)
+  - `engine`: "faster-whisper" (local; or cloud-groq / cloud-openai)
+  - `model`: "base" (tiny/base/small/medium/large-v3/large-v3-turbo)
+  - `device`: "auto" (auto = GPU if present else CPU; cuda/cpu force; auto-falls-back to CPU on any GPU failure)
+  - `compute_type`: "auto" (float16 on GPU, int8 on CPU)
+  - `language`: "" ("" = auto-detect; else an ISO code like "en")
+  - `task`: "transcribe" (or translate → English)
+  - `beam_size`: 5, `vad_filter`: true, `word_timestamps`: false
+  - `cloud_api_key` / `cloud_base_url` / `cloud_model`: "" (cloud engines; key falls back to env GROQ_API_KEY/OPENAI_API_KEY)
+  - `ollama_cleanup`: false, plus `ollama_url` / `ollama_token` / `cleanup_model` / `cleanup_instruction` (OPTIONAL transcript cleanup — Ollama does NOT transcribe)
+  - `save_transcript`: true, `output_dir`: "" ("" = the user's Documents folder under TlamatiniTranscripts)
+  - `target_agents`: [] (downstream agents to start after transcription)
+
+### 76. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
 - **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (74). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (75). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
 
 ---
 

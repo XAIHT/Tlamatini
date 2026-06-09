@@ -329,6 +329,50 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=8,
     ),
     ChatWrappedAgentSpec(
+        key="whisperer",
+        template_dir="whisperer",
+        tool_name="chat_agent_whisperer",
+        tool_description="Chat-Agent-Whisperer",
+        display_name="Whisperer",
+        purpose=(
+            "SPEECH-TO-TEXT (voice recognition / transcription): turn SPOKEN AUDIO into a STRING of "
+            "text. The speech-to-text sibling of chat_agent_talker (text-to-speech) — use Whisperer "
+            "for 'transcribe this', 'what did I say', 'listen to the mic and write it down', "
+            "'recognize my speech', 'convert <file>.mp3 to text', 'take dictation'. Whisperer is "
+            "100% SELF-SUFFICIENT for the microphone: it OPENS, CONFIGURES and RECORDS the mic ITSELF "
+            "(it does NOT use the Recorder agent). By DEFAULT (input_source='mic') it records "
+            "record_seconds (default 30) of the default microphone; pass device_index=N or "
+            "device_name='USB' to pick another mic. To transcribe an existing audio FILE instead, "
+            "pass audio_file='C:\\\\path\\\\clip.mp3' (input_source auto-switches to 'file'). "
+            "Transcription uses faster-whisper LOCALLY by default (engine='faster-whisper'): it "
+            "auto-detects an NVIDIA GPU and ALWAYS falls back to CPU on a machine without one, so it "
+            "works everywhere — set model to tiny/base/small/medium/large-v3/large-v3-turbo "
+            "(default 'base'). For cloud STT pass engine='cloud-groq' or 'cloud-openai' (needs an API "
+            "key in config or GROQ_API_KEY/OPENAI_API_KEY). language='' auto-detects; task='translate' "
+            "translates to English. NOTE: Ollama CANNOT transcribe (no audio input) — set "
+            "ollama_cleanup=true only to tidy the FINISHED transcript's punctuation. The result "
+            "surfaces transcript_path + status; the recognized text is the INI_SECTION_WHISPERER body. "
+            "If faster-whisper is not installed and no cloud key is set, it returns "
+            "status='engine_unavailable' (install with: pip install faster-whisper)."
+        ),
+        example_request=(
+            "Transcribe 5 seconds from the default microphone with engine='faster-whisper' and "
+            "model='base', OR transcribe with input_source='file' and "
+            "audio_file='C:\\\\Audio\\\\meeting.mp3' and model='large-v3-turbo' and language='en'"
+        ),
+        aliases=(
+            "whisperer", "speech to text", "speech-to-text", "stt", "transcribe", "transcription",
+            "voice recognition", "recognize speech", "dictation", "whisper",
+        ),
+        security_hints=(
+            "speech to text", "speech-to-text", "transcribe", "transcription", "voice recognition",
+            "recognize speech", "dictation", "stt", "whisper", "what did i say",
+            "listen to the mic", "convert audio to text", "subtitles",
+        ),
+        poll_window_seconds=8,
+        long_running=True,
+    ),
+    ChatWrappedAgentSpec(
         key="audioplayer",
         template_dir="audioplayer",
         tool_name="chat_agent_audioplayer",
