@@ -1,5 +1,5 @@
 anthropic==0.74.1
-beautifulsoup4==4.13.4
+beautifulsoup4==4.15.0
 asgiref==3.8.1
 certifi==2024.7.4
 channels==4.1.0
@@ -82,7 +82,7 @@ py7zr==0.22.0
 pywin32==311
 pyyaml==6.0.3
 rank-bm25==0.2.2
-requests==2.32.3
+requests==2.34.2
 # ruff: REQUIRED (not just a dev tool). Pythonxer's STRICT correctness gate shells
 # out to `python -m ruff check <script>` before it runs ANY script; build.py verifies
 # `-m ruff` actually works in BOTH the build Python and the PYTHON_HOME (frozen) Python
