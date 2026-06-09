@@ -646,26 +646,105 @@ def apply_emotion(text: str, config: Dict) -> str:
     return f"{text} {tag}".strip()
 
 
-def build_orpheus_prompt(config: Dict) -> str:
+def build_orpheus_prompt(config: Dict, text: str) -> str:
     """
     Build the prompt for the Orpheus TTS model: ``<voice>: <text>``.
 
     - The voice is resolved from `voice` (+ optional `gender`).
-    - An optional `emotion` tag is woven into the text.
+    - ``text`` is the exact words to speak (already chunked + emotion-tagged by
+      the caller — see ``synthesize``).
     - When ``include_language_in_prompt`` is true AND ``language`` is a
       non-English, non-empty, non-"auto" value, the language tag is woven in
       (``<voice> <es>: <text>``) so a multilingual model can act on it; a model
       that does not understand the tag simply ignores it.
     """
     voice = resolve_voice(config)
-    text = apply_emotion(str(config.get('input_text') or '').strip(), config)
     language = str(config.get('language') or '').strip()
     include_lang = _coerce_bool(config.get('include_language_in_prompt', True), True)
 
     speaker = voice
     if include_lang and language and language.lower() not in ('en', 'eng', 'english', 'auto', ''):
         speaker = f"{voice} <{language}>"
-    return f"{speaker}: {text}"
+    return f"{speaker}: {str(text).strip()}"
+
+
+# Sentence-boundary splitter (keeps the terminating . ! ? attached) used to chunk
+# long text so each Orpheus generation stays well under the num_predict cap.
+_SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?…])\s+|\n+')
+_CLAUSE_SPLIT_RE = re.compile(r'(?<=[,;:])\s+')
+
+
+def _split_long_segment(segment: str, max_chars: int) -> List[str]:
+    """Break a single over-long sentence on clause punctuation, then on spaces —
+    NEVER mid-word — so no piece exceeds ``max_chars``."""
+    out: List[str] = []
+    current = ""
+    for piece in _CLAUSE_SPLIT_RE.split(segment):
+        piece = piece.strip()
+        if not piece:
+            continue
+        # A clause that is still too long: hard-split on the last space in budget.
+        while len(piece) > max_chars:
+            cut = piece.rfind(' ', 0, max_chars)
+            if cut <= 0:
+                cut = max_chars  # one giant word — split it rather than overflow
+            head = piece[:cut].strip()
+            if head:
+                out.append(head)
+            piece = piece[cut:].strip()
+        if not piece:
+            continue
+        if not current:
+            current = piece
+        elif len(current) + 1 + len(piece) <= max_chars:
+            current = f"{current} {piece}"
+        else:
+            out.append(current)
+            current = piece
+    if current:
+        out.append(current)
+    return out
+
+
+def _split_text_into_chunks(text: str, max_chars: int) -> List[str]:
+    """
+    Split ``text`` into <= ``max_chars`` chunks at sentence boundaries (falling
+    back to clause/space boundaries for an over-long sentence), never cutting a
+    word in half.
+
+    This is the FIX for long-text truncation: a single Orpheus generation is
+    hard-capped by Ollama's num_predict (max_tokens), so passing the whole text
+    in one call silently cuts the speech off (~50 s). Synthesising each chunk
+    separately and concatenating the audio reproduces the COMPLETE text.
+    """
+    text = (text or '').strip()
+    if not text:
+        return []
+    if max_chars <= 0 or len(text) <= max_chars:
+        return [text]
+
+    chunks: List[str] = []
+    current = ""
+    for sentence in _SENTENCE_SPLIT_RE.split(text):
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        if len(sentence) > max_chars:
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.extend(_split_long_segment(sentence, max_chars))
+            continue
+        if not current:
+            current = sentence
+        elif len(current) + 1 + len(sentence) <= max_chars:
+            current = f"{current} {sentence}"
+        else:
+            chunks.append(current)
+            current = sentence
+    if current:
+        chunks.append(current)
+    return chunks
 
 
 def query_ollama_tts(config: Dict, prompt: str) -> Tuple[str, int]:
@@ -764,6 +843,34 @@ def parse_audio_codes(raw_text: str) -> List[int]:
     return codes
 
 
+# The SNAC 24 kHz vocoder is loaded ONCE and reused across every chunk of a
+# long synthesis (avoids a per-chunk HuggingFace round-trip + model reload, which
+# would otherwise dominate the wall-clock when speaking for minutes/hours).
+_SNAC_MODEL = None
+
+
+def _vocoder_available() -> bool:
+    """True when ``snac`` + ``torch`` can be imported (the neural vocoder needed
+    to turn audio tokens into sound). Probed UP FRONT so a vocoder-less host can
+    short-circuit to ``tokens_only`` without first running every (expensive) chunk
+    generation pointlessly."""
+    try:
+        import torch  # noqa: F401
+        from snac import SNAC  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def _get_snac_model():
+    """Load (once) and return the shared SNAC 24 kHz decoder."""
+    global _SNAC_MODEL
+    if _SNAC_MODEL is None:
+        from snac import SNAC
+        _SNAC_MODEL = SNAC.from_pretrained("hubertsiuzdak/snac_24khz").eval()
+    return _SNAC_MODEL
+
+
 def decode_codes_to_pcm(codes: List[int]):
     """
     Decode SNAC audio codes to a mono float32 waveform at 24 kHz.
@@ -774,7 +881,7 @@ def decode_codes_to_pcm(codes: List[int]):
     """
     try:
         import torch
-        from snac import SNAC
+        from snac import SNAC  # noqa: F401
     except Exception as imp_err:  # ImportError or a broken native dep
         raise RuntimeError(
             "Neural audio decoding requires 'snac' + 'torch' (a vocoder), which "
@@ -805,7 +912,7 @@ def decode_codes_to_pcm(codes: List[int]):
         layer_3.append(b[5])
         layer_3.append(b[6])
 
-    snac_model = SNAC.from_pretrained("hubertsiuzdak/snac_24khz").eval()
+    snac_model = _get_snac_model()
     codes_t = [
         torch.tensor(layer_1, dtype=torch.long).unsqueeze(0),
         torch.tensor(layer_2, dtype=torch.long).unsqueeze(0),
@@ -895,22 +1002,15 @@ def synthesize(config: Dict) -> Dict:
     emotion = str(config.get('emotion') or '').strip().lower().strip('<>')
     base = str(config.get('ollama_url') or 'http://localhost:11434').rstrip('/')
 
-    prompt = build_orpheus_prompt(config)
+    max_chars = _coerce_int(config.get('max_chars_per_chunk', 350), 350)
+    if max_chars < 40:
+        max_chars = 40  # never split so tightly we would cut individual clauses/words
+    chunks = _split_text_into_chunks(text, max_chars) or [text]
     logging.info(
-        f"🗣️ Synthesising {len(text)} chars with model '{model}' "
+        f"🗣️ Synthesising {len(text)} chars with model '{model}' in {len(chunks)} chunk(s) "
         f"(voice={voice}, gender={gender or 'n/a'}, lang={language}"
         f"{', emotion=' + emotion if emotion else ''}) @ {base}"
     )
-
-    raw_text, _status = query_ollama_tts(config, prompt)
-    codes = parse_audio_codes(raw_text)
-    logging.info(f"🎚️ Model returned {len(raw_text)} chars -> {len(codes)} SNAC audio codes")
-    if not codes:
-        raise RuntimeError(
-            f"The model '{model}' returned no <custom_token_*> audio tokens. "
-            f"Confirm it is an Orpheus-style neural TTS model served by Ollama "
-            f"(a plain text LLM will not produce audio tokens)."
-        )
 
     output_dir = resolve_output_dir(config)
     out_sample_rate = _coerce_int(config.get('sample_rate', 0), 0)
@@ -931,13 +1031,71 @@ def synthesize(config: Dict) -> Dict:
         "status": "error",
     }
 
-    try:
-        pcm, native_sr = decode_codes_to_pcm(codes)
-    except RuntimeError as dec_err:
-        # No vocoder -> persist the tokens so the work is not lost.
-        logging.warning(f"⚠️ Could not decode audio: {dec_err}")
+    # === LONG-TEXT PARTITIONING (talk for hours) ===========================
+    # A single Orpheus generation is hard-capped by Ollama's num_predict
+    # (max_tokens) — ~1200 tokens ≈ 14 s — so a one-shot call SILENTLY TRUNCATES
+    # long speech (the reported bug: a 3567-char analysis spoke only ~50 s).
+    # We synthesise each sentence-chunk separately (each well under the cap) and
+    # concatenate the decoded audio, so the COMPLETE text is spoken no matter how
+    # long it is. The SNAC vocoder is loaded once and reused across all chunks.
+    vocoder_ok = _vocoder_available()
+    if not vocoder_ok:
+        logging.warning(
+            "⚠️ snac+torch unavailable — fetching audio tokens but cannot render "
+            "sound (status tokens_only). Install: python -m pip install snac torch"
+        )
+
+    pcm_parts: List = []
+    raw_parts: List[str] = []
+    all_codes: List[int] = []
+    silence = None
+    native_sr = _ORPHEUS_SAMPLE_RATE
+
+    for i, chunk_text in enumerate(chunks):
+        is_last = (i == len(chunks) - 1)
+        # Emotion tags are inline events (a laugh, a sigh) — weave the configured
+        # one into the LAST chunk only, never after every sentence.
+        prompt_text = apply_emotion(chunk_text, config) if (is_last and emotion) else chunk_text
+        prompt = build_orpheus_prompt(config, prompt_text)
+        raw_text, _status = query_ollama_tts(config, prompt)
+        codes = parse_audio_codes(raw_text)
+        logging.info(
+            f"🎚️ Chunk {i + 1}/{len(chunks)} ({len(chunk_text)} chars): model returned "
+            f"{len(raw_text)} chars -> {len(codes)} SNAC audio codes"
+        )
+        raw_parts.append(raw_text)
+        all_codes.extend(codes)
+
+        if vocoder_ok and codes:
+            try:
+                pcm_chunk, native_sr = decode_codes_to_pcm(codes)
+            except RuntimeError as dec_err:
+                logging.warning(
+                    f"⚠️ Chunk {i + 1} could not be decoded ({dec_err}); "
+                    f"falling back to tokens_only."
+                )
+                vocoder_ok = False
+                pcm_parts = []
+                continue
+            import numpy as np
+            if silence is None:
+                sil_ms = max(0, min(_coerce_int(config.get('inter_chunk_silence_ms', 120), 120), 2000))
+                silence = np.zeros(int(native_sr * sil_ms / 1000.0), dtype=np.float32)
+            if pcm_parts and silence.size:
+                pcm_parts.append(silence)  # brief gap between sentences
+            pcm_parts.append(pcm_chunk)
+
+    if not all_codes:
+        raise RuntimeError(
+            f"The model '{model}' returned no <custom_token_*> audio tokens. "
+            f"Confirm it is an Orpheus-style neural TTS model served by Ollama "
+            f"(a plain text LLM will not produce audio tokens)."
+        )
+
+    # No vocoder (or nothing decoded) -> persist the tokens so the work is not lost.
+    if not vocoder_ok or not pcm_parts:
         tokens_path = _unique_output_path(output_dir)[:-4] + ".tokens.txt"
-        save_tokens(tokens_path, raw_text, codes)
+        save_tokens(tokens_path, "\n\n".join(raw_parts), all_codes)
         result.update({
             "output_path": tokens_path,
             "filename": os.path.basename(tokens_path),
@@ -946,10 +1104,13 @@ def synthesize(config: Dict) -> Dict:
             "status": "tokens_only",
         })
         result["_message"] = (
-            f"Fetched {len(codes)} audio codes but could not render sound "
-            f"(install snac+torch). Tokens saved to {tokens_path}."
+            f"Fetched {len(all_codes)} audio codes across {len(chunks)} chunk(s) but could "
+            f"not render sound (install snac+torch). Tokens saved to {tokens_path}."
         )
         return result
+
+    import numpy as np
+    pcm = np.concatenate(pcm_parts) if len(pcm_parts) > 1 else pcm_parts[0]
 
     # Peak-normalise so the speech is reliably audible (Orpheus output is quiet).
     pcm = _normalize_peak(pcm, config)
@@ -961,7 +1122,10 @@ def synthesize(config: Dict) -> Dict:
 
     wav_path = _unique_output_path(output_dir)
     save_wav(wav_path, pcm, native_sr)
-    logging.info(f"✅ Speech saved: {wav_path} ({audio_seconds:g}s, {native_sr} Hz mono)")
+    logging.info(
+        f"✅ Speech saved: {wav_path} ({audio_seconds:g}s, {native_sr} Hz mono) "
+        f"from {len(chunks)} chunk(s)"
+    )
 
     played = False
     if _coerce_bool(config.get('play_audio', True), True):
@@ -984,7 +1148,7 @@ def synthesize(config: Dict) -> Dict:
         "status": "spoken" if played else "saved",
     })
     result["_message"] = (
-        f"Spoke {len(text)} chars as {audio_seconds:g}s of audio "
+        f"Spoke {len(text)} chars as {audio_seconds:g}s of audio across {len(chunks)} chunk(s) "
         f"(voice={voice}, lang={language}, model={model}); saved to {wav_path}"
         + ("" if played else " (not played)")
     )

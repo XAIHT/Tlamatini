@@ -91,7 +91,21 @@ min_p: 0.0                    # 0 = disabled
 repetition_penalty: 1.1       # -> Ollama repeat_penalty; KEEP >= 1.1 (Orpheus needs it for stable audio)
 max_tokens: 4096              # -> Ollama num_predict (caps audio length; ~1200 tokens ≈ 14 s of speech)
 seed: -1                      # -1 = random; a fixed value makes the synthesis reproducible
-request_timeout: 300          # seconds to wait for the Ollama response
+request_timeout: 300          # seconds to wait for the Ollama response (PER CHUNK)
+
+# ── Long-text partitioning (speak for hours, never truncate) ───────────────
+# A SINGLE Orpheus generation is hard-capped by `max_tokens` (num_predict) —
+# ~1200 tokens ≈ 14 s of speech — so passing very long text in one call SILENTLY
+# CUTS THE SPEECH OFF. Talker therefore splits `input_text` into sentence chunks
+# of at most `max_chars_per_chunk` characters, synthesises EACH chunk separately
+# (well under the cap), and concatenates the audio — so the COMPLETE text is
+# always spoken, no matter how long (minutes, hours). Set higher for fewer/longer
+# generations (risk: a chunk nearing the cap can still truncate); lower for more,
+# safer chunks. 0 disables chunking (one-shot — only for short text).
+max_chars_per_chunk: 350
+# Silence inserted between concatenated chunks so sentences don't run together
+# (milliseconds, clamped 0–2000). 0 = seamless concatenation.
+inter_chunk_silence_ms: 120
 
 # ── Playback / output ─────────────────────────────────────────────────────
 # Play the synthesised speech on the speakers after decoding it.
