@@ -1223,6 +1223,11 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "device_index", "device_name", "sample_rate", "channels",
         "duration_seconds", "gain_percent", "clipped_samples", "format",
     ),
+    "whisperer": (
+        "transcript_path", "audio_path", "input_source",
+        "engine", "model", "device", "language",
+        "duration_seconds", "segments", "word_count", "status",
+    ),
     "audioplayer": (
         "input_path", "input_dir", "filename",
         "device_index", "device_name", "file_sample_rate", "play_sample_rate",

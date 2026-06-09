@@ -1858,6 +1858,24 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #001219 0%, #005f73 33%, #0a9396 66%, #94d2bd 100%);
 }
 
+/* Whisperer Agent - Speech-to-text / voice recognition (Deep indigo -> royal blue -> sonar cyan -> ice mint) */
+.canvas-item.whisperer-agent {
+    background-color: #1747c4;
+    background: linear-gradient(135deg, #0a1a3f 0%, #1747c4 33%, #18b6c9 66%, #aef0e6 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.whisperer-agent:hover {
+    background: linear-gradient(135deg, #14275a 0%, #2a63e0 33%, #3fcfe0 66%, #c9f5ee 100%);
+    box-shadow: 0 6px 15px rgba(23, 71, 196, 0.5);
+}
+
+/* Whisperer agent icon in sidebar */
+.agent-tool-item[data-content="Whisperer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #0a1a3f 0%, #1747c4 33%, #18b6c9 66%, #aef0e6 100%);
+}
+
 /* AudioPlayer Agent - Audio playback to speakers (Deep indigo -> violet -> magenta -> amber sound-pulse) */
 .canvas-item.audioplayer-agent {
     background-color: #6411ad;

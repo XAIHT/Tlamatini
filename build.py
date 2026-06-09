@@ -753,6 +753,7 @@ def main():
             "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
             "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
             "torch", "snac",                        # text-to-speech (Talker) — Orpheus token -> 24 kHz audio vocoder
+            "faster_whisper", "ctranslate2",        # speech-to-text (Whisperer) — local Whisper (GPU auto / CPU fallback)
         ]
         verify_src = "\n".join([
             "import importlib",

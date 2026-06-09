@@ -91,6 +91,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "shoter": ("output_path", "output_dir", "filename", "response_body"),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "camera_index", "duration_seconds", "resolution", "fps", "response_body"),
     "recorder": ("output_path", "output_dir", "filename", "device_index", "device_name", "sample_rate", "channels", "duration_seconds", "gain_percent", "clipped_samples", "format", "response_body"),
+    "whisperer": ("transcript_path", "audio_path", "input_source", "engine", "model", "device", "language", "duration_seconds", "segments", "word_count", "status", "response_body"),
     "audioplayer": ("input_path", "input_dir", "filename", "device_index", "device_name", "file_sample_rate", "play_sample_rate", "channels", "volume_percent", "clipped_samples", "file_duration_seconds", "time_played_requested", "played_seconds", "play_mode", "loops", "partial_segment", "format", "status", "response_body"),
     "videoplayer": ("input_path", "input_dir", "filename", "display_index", "display_geometry", "video_width", "video_height", "window_width", "window_height", "fullscreen", "volume_percent", "backend", "has_audio", "file_duration_seconds", "time_played_requested", "played_seconds", "play_mode", "loops", "partial_segment", "format", "status", "response_body"),
     "talker": ("output_path", "output_dir", "filename", "model", "language", "voice", "gender", "emotion", "sample_rate", "audio_seconds", "char_count", "played", "status", "response_body"),

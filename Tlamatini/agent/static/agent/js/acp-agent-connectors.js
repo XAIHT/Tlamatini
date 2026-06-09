@@ -407,6 +407,25 @@ async function updateRecorderConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateWhispererConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_whisperer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Whisperer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Whisperer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Whisperer ${agentId}:`, error);
+    }
+}
+
 async function updateAudioPlayerConnection(agentId, targetAgentId, action) {
     try {
         const response = await fetch(`/agent/update_audioplayer_connection/${agentId}/`, {

@@ -71,6 +71,15 @@ ffpyplayer==4.5.3
 # audio) rather than a crash, but it MUST be bundled for the frozen build to
 # render audible speech.
 snac==1.2.1
+# Whisperer agent (agent/agents/whisperer/whisperer.py) is SPEECH-TO-TEXT: it
+# records the microphone itself (sounddevice + numpy, above) or reads an audio
+# file, then transcribes with faster-whisper (CTranslate2 backend). It
+# auto-detects an NVIDIA GPU (via ctranslate2.get_cuda_device_count) and ALWAYS
+# falls back to CPU (int8) on machines without one. Model weights download from
+# the HF Hub on first use. Imported inside the agent so a missing install
+# degrades to status `engine_unavailable` (or a cloud STT engine when a key is
+# set) rather than a crash, but it MUST be bundled for the local engine to work.
+faster-whisper==1.1.1
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
 psutil==7.2.2

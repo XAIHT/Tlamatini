@@ -101,6 +101,14 @@ def _verify_required_imports():
 
 def _print_banner(claude, tl, import_status):
     print('=' * 72)
+    print('=== HOW TO TALK TO ANGELA -- MANDATORY, NEVER FORGET ===')
+    print('  Answer SHORT and in PLAIN language. Lead with the ONE key fact (bold).')
+    print('  A few short numbered points at most. Everyday words, NO jargon, NO giant')
+    print('  multi-section walls of text, NO long source lists. Cut anything that does')
+    print('  not change her decision. End with ONE direct question or next step.')
+    print('  Dense/rambling reports read as useless and make her feel talked-down-to.')
+    print('  (memory: feedback_plain_short_answers)')
+    print('=' * 72)
     print('=== MANDATORY OPERATING RULE -- TLAMATINI AGENTS (read first) ===')
     print('  When the user asks to USE TLAMATINI\'S AGENTS -- or names any pool agent')
     print('  (Executer, Pythonxer, Playwrighter, Shoter, Mouser, Keyboarder, Kalier,')
