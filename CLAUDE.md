@@ -10,7 +10,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 - An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode)
 - A request-scoped **Multi-Turn orchestration layer** with dynamic tool binding and global execution planning
-- A **Visual Agentic Workflow Designer** (ACP) with 74 drag-and-drop agent types
+- A **Visual Agentic Workflow Designer** (ACP) with 76 drag-and-drop agent types
 - A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **Skills system** — markdown-defined `SKILL.md` packages run by `SkillHarness`. The LLM invokes them through `list_skills` / `invoke_skill`. Built-in skills include `acp-router`, `summarize`, `setup-new-acpx-key`, `skill-creator`, `flow-making` (turn a plain objective into a canvas-loadable `.flw` by wrapping the FlowCreator engine — ships `scripts/make_flow.py` + `scripts/result_to_flw.py`; supersedes the legacy `tlamatini-flow-from-objective`), `code-review`, `security-audit`, `kali-pentest` (authorized Kali Linux / MCP-Kali-Server assessment runbook driving the Kalier agent), `tlamatini_*` (audit / lint / refactor helpers), and integration stubs (gmail, slack, github, jira, notion, todoist, trello, weather). Administered through the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — 2026-05-17): Browse and Diagnostics are HTTP-backed read-only inspection; Configure mirrors the existing Mcps/Agents/Tools WebSocket toggle pattern (`set-skills` → `Skill.enabled`); Reload re-runs `boot_skills()` so disk edits show up without a server restart. The DB stays at "enumeration + enable/disable" only — permissions/budgets/body live in SKILL.md on disk
@@ -148,7 +148,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 74 workflow agent templates
+│   │   ├── agents/                 # 76 workflow agent templates
 │   │   │   ├── flowcreator/
 │   │   │   │   └── agentic_skill.md  # ** SKILL: FlowCreator AI reference **
 │   │   │   ├── flowhypervisor/
@@ -301,7 +301,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Architecture & core systems** — config, system prompt & identity, the Five Layers, application log, doc generation, database models: @docs/claude/architecture.md
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
-- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 74 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 76 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
 - **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, ACPX toolbar toggle, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, Skills system (SKILL.md packages), key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md

@@ -798,6 +798,7 @@ WHAT_IT_DOES = [
     "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
     "Can play media on the operator's machine: an audio file to the speakers through AudioPlayer (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), or a video file with audio on a chosen display through VideoPlayer (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen); both are observational/output and ship on the canvas and as wrapped chat tools.",
+    "Can SPEAK and LISTEN: Talker (text-to-speech) renders input_text to a 24 kHz WAV through an Ollama neural TTS model (default Orpheus-3b-FT) and is female-voice-only by design, while Whisperer (speech-to-text) records the microphone itself or transcribes a file via faster-whisper locally (NVIDIA-GPU auto-detect with an always-present CPU fallback) or a cloud Whisper API; both light a zero-latency console REC indicator driven by the live audio stream and are observational/output, on the canvas and as wrapped chat tools.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
@@ -877,8 +878,8 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The live operator surface now stands at 69 workflow agents, 76 Multi-Turn tools, 12 ACPX tools, and 26 skills.",
-    "Source inspection confirms the newer total: 44 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 76 Multi-Turn tools overall.",
+    "The live operator surface now stands at 76 workflow agents, 83 Multi-Turn tools, 12 ACPX tools, and 27 skills.",
+    "Source inspection confirms the newer total: 51 wrapped chat-agent tools in `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 83 Multi-Turn tools overall.",
     "The workflow-agent and wrapped-tool totals align cleanly with the handbooks, while the skill total is validated from the on-disk `agent/skills_pkg/` catalog so the dossier stays honest even when a simplified markdown summary lags behind the live tree.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
@@ -886,7 +887,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.17.2` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.19.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -908,7 +909,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.17.2` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.19.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -926,7 +927,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.17.2` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.19.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -2177,7 +2178,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.17.2", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.19.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2191,7 +2192,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.17.2", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.19.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2489,13 +2490,13 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Newest Additions", "the media-I/O family completes, plus skill, directory policy, and monitoring coverage", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "New agents — the media-I/O family + firmware", [
-        "Camcorder + Recorder (capture): webcam photo/video via OpenCV and microphone WAV via sounddevice — read-only siblings of Shoter (screen), saved to Pictures/Music.",
-        "AudioPlayer (playback): plays an audio file to the speakers via soundfile + sounddevice — volume in percent, and a time-played budget that TRUNCATES a longer file or LOOPS a shorter one; sample-rate read from the file (correct pitch).",
-        "VideoPlayer (playback): plays a video file WITH audio on a chosen display via ffpyplayer (its wheel bundles ffmpeg + SDL — no external ffmpeg) plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen; silent-OpenCV fallback.",
-        "The whole family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool (screen / camera-in / mic-in / speakers-out / screen-out).",
-        "Arduiner: the third microcontroller agent — a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight.",
+    slide, audit = add_slide(prs, "Newest Additions", "the media-I/O family completes, voice in/out arrives, plus skill, directory policy, and monitoring coverage", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "New agents — media-I/O, voice (Talker/Whisperer) + firmware", [
+        "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
+        "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
+        "Both audio agents now light a zero-latency console REC indicator (blinking dot + live VU bar) driven by the audio-stream callback — ON within ~20 ms of real samples, OFF the instant the stream stops; the agent reveals its own console even when spawned headless.",
+        "Camcorder + Recorder (capture): webcam photo/video via OpenCV and microphone WAV via sounddevice; AudioPlayer + VideoPlayer (playback): file to speakers / to a chosen display — the media-I/O family (screen / camera-in / mic-in / speakers-out / screen-out).",
+        "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge with zero-config bootstrap and a serial preflight.",
     ], THEME["copper"], "monday-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "New skill, policy & monitoring", [
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
