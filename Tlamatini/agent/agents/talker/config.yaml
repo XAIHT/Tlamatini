@@ -137,9 +137,10 @@ normalize_peak: 0.95
 # alters pitch/tempo (the audio is not resampled).
 sample_rate: 0
 
-# Where to save the synthesised WAV. Empty ("") = the user's Music folder under
-# `TlamatiniTalker`. An absolute path is honoured; a relative path resolves
-# against the agent's runtime directory. The file is always saved (so the
+# Where to save the synthesised WAV. Empty ("") = `<where-Tlamatini-lives>/Temp`
+# (frozen/installed: next to the .exe; source: the Tlamatini app dir; honours the
+# inherited TLAMATINI_TEMP). An absolute path is honoured; a relative path
+# resolves against the agent's runtime directory. The file is always saved (so the
 # spoken audio is reusable) even when play_audio is false.
 output_dir: ""
 
