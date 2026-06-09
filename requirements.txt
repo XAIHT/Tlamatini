@@ -80,6 +80,12 @@ snac==1.2.1
 # degrades to status `engine_unavailable` (or a cloud STT engine when a key is
 # set) rather than a crash, but it MUST be bundled for the local engine to work.
 faster-whisper==1.1.1
+# CTranslate2 is faster-whisper's inference backend AND is imported directly by
+# whisperer.py (`detect_cuda` -> `ctranslate2.get_cuda_device_count`). It is a
+# transitive dependency of faster-whisper, but pin it EXPLICITLY so the build's
+# `_agent_libs` verification and the agent-import-coverage test see it — the CPU
+# wheel runs GPU-free (the no-GPU CPU fallback path) and ships with no CUDA libs.
+ctranslate2==4.8.0
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
 psutil==7.2.2
