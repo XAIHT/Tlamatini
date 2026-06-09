@@ -477,5 +477,66 @@ class CarriedPythonContractTests(SimpleTestCase):
         self.assertIn("if not defined JAVA_HOME", bat)
 
 
+class NoGpuCudaFreeContractTests(SimpleTestCase):
+    """The build MUST produce a CPU-only, CUDA-free package and the audio agents
+    (Talker = torch/snac, Whisperer = faster-whisper/ctranslate2) MUST run on a
+    machine with no GPU. Guards the contract documented in CLAUDE.md / agents.md:
+    no NVIDIA CUDA wheels ship, torch is the CPU build, and every local-inference
+    path falls back to CPU instead of hard-requiring a GPU.
+    """
+
+    def setUp(self):
+        self.build_src = _read(BUILD_PY)
+
+    # -- build (compilation) is CPU-only --------------------------------------
+    def test_torch_installed_cpu_only(self):
+        # torch must come from the PyTorch CPU wheel index, never the CUDA build.
+        self.assertIn("https://download.pytorch.org/whl/cpu", self.build_src,
+                      "build.py must install the CPU-only torch wheel")
+
+    def test_nvidia_cuda_wheels_pruned(self):
+        # The NVIDIA CUDA runtime wheels (nvidia-*) must be pruned from the build.
+        self.assertIn('_PRUNE_PKG_PREFIXES = ("nvidia",)', self.build_src,
+                      "build.py must prune the nvidia* CUDA runtime wheels")
+        for mod in ("torchvision", "torchaudio"):
+            self.assertIn(mod, self.build_src,
+                          f"build.py should drop {mod} (GPU-heavy, unused)")
+
+    def test_requirements_torch_is_not_a_cuda_variant(self):
+        # The torch pin must not request a +cuXXX (CUDA) local-version build.
+        torch_lines = [ln.strip() for ln in _read(REQUIREMENTS).splitlines()
+                       if re.match(r"^torch\b", ln.strip())]
+        self.assertTrue(torch_lines, "torch must be pinned in requirements.txt")
+        for ln in torch_lines:
+            self.assertNotIn("+cu", ln,
+                             f"torch must not pin a CUDA build, got: {ln!r}")
+
+    def test_ctranslate2_engine_is_kept_not_pruned(self):
+        # faster-whisper (Whisperer's local engine) rides on ctranslate2; both
+        # must be collected so CPU inference works in the frozen build.
+        for mod in ("faster_whisper", "ctranslate2"):
+            self.assertIn(mod, self.build_src,
+                          f"build.py must keep {mod} for CPU speech-to-text")
+
+    # -- runtime falls back to CPU (no forced GPU) ----------------------------
+    def test_whisperer_autodetects_and_falls_back_to_cpu(self):
+        src = _read(AGENTS_DIR / "whisperer" / "whisperer.py")
+        # auto -> cpu when no CUDA device; and an explicit GPU->CPU retry.
+        self.assertIn("get_cuda_device_count", src)
+        self.assertIn("else 'cpu'", src)
+        self.assertIn("falling back to CPU", src)
+        # missing engine must degrade, not crash.
+        self.assertIn("engine_unavailable", src)
+
+    def test_talker_decodes_on_cpu_no_forced_cuda(self):
+        src = _read(AGENTS_DIR / "talker" / "talker.py")
+        # snac/torch decode must not force the GPU.
+        self.assertNotIn(".cuda(", src)
+        self.assertNotIn("to('cuda')", src)
+        self.assertNotIn('to("cuda")', src)
+        # absent vocoder degrades to tokens_only instead of crashing.
+        self.assertIn("tokens_only", src)
+
+
 if __name__ == "__main__":
     unittest.main()
