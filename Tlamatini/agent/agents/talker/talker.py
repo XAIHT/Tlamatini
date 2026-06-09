@@ -407,13 +407,46 @@ def _coerce_bool(value, default: bool) -> bool:
     return default
 
 
+def _default_temp_output_dir() -> str:
+    """Resolve the DEFAULT save location: ``<where-Tlamatini-lives>/Temp`` —
+    robust across frozen / source / installed builds.
+
+    Order: (1) the ``TLAMATINI_TEMP`` env var the Django process pins to
+    ``<app>/Temp`` and every pool agent inherits; (2) walk up from this script
+    to the Tlamatini app dir (the one holding ``manage.py``) and use its
+    ``Temp``; (3) the executable's directory ``Temp`` when frozen; (4) a final
+    fallback under the user's home so a save is always possible. Never raises.
+    """
+    env = (os.environ.get('TLAMATINI_TEMP') or '').strip().strip('"').strip("'")
+    if env:
+        return env
+
+    # Frozen / installed: Temp sits next to the executable.
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), 'Temp')
+
+    # Source: climb until we hit the Django app dir (marked by manage.py).
+    probe = script_dir
+    for _ in range(10):
+        if os.path.exists(os.path.join(probe, 'manage.py')):
+            return os.path.join(probe, 'Temp')
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+
+    # Last resort — never leave the user without a writable target.
+    return os.path.join(os.path.expanduser("~"), "Tlamatini", "Temp")
+
+
 def resolve_output_dir(config: Dict) -> str:
     """
     Resolve where to save the synthesised WAV.
 
-    Empty -> the user's Music known-folder under ``TlamatiniTalker`` (the
-    speech counterpart of Recorder's ``TlamatiniRecords``). An absolute path is
-    honoured as-is; a relative path resolves against the agent's runtime dir.
+    Empty -> ``<where-Tlamatini-lives>/Temp`` (frozen: next to the .exe; source:
+    the Tlamatini app dir; honours the inherited ``TLAMATINI_TEMP``). An absolute
+    path is honoured as-is; a relative path resolves against the agent's runtime
+    dir.
     """
     raw = str(config.get('output_dir') or '').strip().strip('"').strip("'")
     if raw:
@@ -422,9 +455,8 @@ def resolve_output_dir(config: Dict) -> str:
             expanded = os.path.join(script_dir, expanded)
         return os.path.abspath(expanded)
 
-    # Default: <Music>/TlamatiniTalker
-    music_dir = os.path.join(os.path.expanduser("~"), "Music")
-    return os.path.join(music_dir, "TlamatiniTalker")
+    # Default: <app>/Temp  (per Angela, 2026-06-09)
+    return os.path.abspath(_default_temp_output_dir())
 
 
 def _unique_output_path(output_dir: str) -> str:
