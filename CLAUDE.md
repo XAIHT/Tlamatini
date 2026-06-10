@@ -70,7 +70,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 72-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 76-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── gotchas.md                  # Claude API client, build/lint, versioning, hardcoded assumptions, roadmap, work-style
@@ -187,7 +187,7 @@ Tlamatini/                          # Git root
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 27 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 5 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js)
+│   │   │   ├── js/                 # 28 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 6 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations (latest: 0103_add_stm32er_demo_prompts; 0101/0102 add the STM32er agent + chat_agent_stm32er tool)
