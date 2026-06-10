@@ -137,9 +137,9 @@ cleanup_instruction: "Add proper punctuation and capitalization and fix obvious 
 # Save the transcript to a .txt file.
 save_transcript: true
 
-# Where to save the transcript (and the captured WAV). "" = the user's Documents
-# folder under TlamatiniTranscripts. Absolute path honored; relative resolves
-# against the agent's runtime directory.
+# Where to save the transcript. "" = <Tlamatini app>/Temp (transcripts + the
+# captured WAV are TEMPORARY assets, per Angela 2026-06-09). Absolute path
+# honored; relative resolves against the agent's runtime directory.
 output_dir: ""
 
 # Downstream agents to start after transcription (canvas connection tracking).

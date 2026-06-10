@@ -349,47 +349,35 @@ def _apply_gain(recording, gain_percent: float):
     return widened.astype(np.int16), clipped_samples
 
 
-def get_music_dir() -> str:
+def _default_temp_output_dir() -> str:
+    """Resolve the DEFAULT save location: ``<where-Tlamatini-lives>/Temp`` —
+    robust across frozen / source / installed builds.
+
+    Temp/Templates policy (Angela, 2026-06-09): every asset this agent writes is
+    a TEMPORARY asset and must live under ``<app>/Temp``, never the user's Music
+    folder. Order: (1) the ``TLAMATINI_TEMP`` env var the Django process pins to
+    ``<app>/Temp`` and every pool agent inherits; (2) walk up from this script to
+    the Tlamatini app dir (the one holding ``manage.py``) and use its ``Temp``;
+    (3) the executable's directory ``Temp`` when frozen; (4) a final fallback
+    under the user's home so a save is always possible. Never raises.
     """
-    Resolve the current user's *Music* known-folder as a real absolute path.
+    env = (os.environ.get('TLAMATINI_TEMP') or '').strip().strip('"').strip("'")
+    if env:
+        return env
 
-    On a localized Windows the folder is *displayed* as e.g. "Música" /
-    "Musik", but the on-disk path is what we must write to. The Win32
-    known-folder API (SHGetKnownFolderPath, FOLDERID_Music) returns the true
-    path regardless of the display name. We fall back to ~/Music on any
-    failure or non-Windows host.
-    """
-    if os.name == 'nt':
-        try:
-            import ctypes
-            from ctypes import wintypes
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), 'Temp')
 
-            class _GUID(ctypes.Structure):
-                _fields_ = [
-                    ("Data1", wintypes.DWORD),
-                    ("Data2", wintypes.WORD),
-                    ("Data3", wintypes.WORD),
-                    ("Data4", ctypes.c_byte * 8),
-                ]
+    probe = script_dir
+    for _ in range(10):
+        if os.path.exists(os.path.join(probe, 'manage.py')):
+            return os.path.join(probe, 'Temp')
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
 
-            # FOLDERID_Music = {4BD8D571-6D19-48D3-BE97-422220080E43}
-            folderid_music = _GUID(
-                0x4BD8D571, 0x6D19, 0x48D3,
-                (ctypes.c_byte * 8)(0xBE, 0x97, 0x42, 0x22, 0x20, 0x08, 0x0E, 0x43),
-            )
-
-            path_ptr = ctypes.c_wchar_p()
-            res = ctypes.windll.shell32.SHGetKnownFolderPath(
-                ctypes.byref(folderid_music), 0, None, ctypes.byref(path_ptr)
-            )
-            if res == 0 and path_ptr.value:
-                resolved = path_ptr.value
-                ctypes.windll.ole32.CoTaskMemFree(path_ptr)
-                return resolved
-        except Exception as e:
-            logging.warning(f"⚠️ Could not resolve Music known-folder via Win32 API: {e}")
-
-    return os.path.join(os.path.expanduser('~'), 'Music')
+    return os.path.join(os.path.expanduser("~"), "Tlamatini", "Temp")
 
 
 def resolve_output_dir(config: Dict) -> str:
@@ -398,14 +386,14 @@ def resolve_output_dir(config: Dict) -> str:
 
     - If config.output_dir is set, honor it (resolved relative to the agent
       directory when not absolute).
-    - Otherwise default to <Music>/TlamatiniRecords.
+    - Otherwise default to ``<app>/Temp`` (TEMPORARY asset, per Angela 2026-06-09).
     """
     configured = str(config.get('output_dir') or '').strip()
     if configured:
         if not os.path.isabs(configured):
             configured = os.path.join(script_dir, configured)
         return configured
-    return os.path.join(get_music_dir(), 'TlamatiniRecords')
+    return os.path.abspath(_default_temp_output_dir())
 
 
 def build_unique_path(output_dir: str, device_tag: str, ext: str) -> str:

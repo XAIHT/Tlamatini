@@ -357,13 +357,40 @@ def get_documents_dir() -> str:
 
 
 def resolve_output_dir(config: Dict) -> str:
-    """Decide where to save the transcript. Default <Documents>/TlamatiniTranscripts."""
+    """Decide where to save the transcript.
+
+    Default ``<app>/Temp`` (TEMPORARY asset, per Angela 2026-06-09) — never the
+    user's Documents folder. An explicit ``output_dir`` is still honoured.
+    """
     configured = str(config.get('output_dir') or '').strip()
     if configured:
         if not os.path.isabs(configured):
             configured = os.path.join(script_dir, configured)
         return configured
-    return os.path.join(get_documents_dir(), 'TlamatiniTranscripts')
+    return os.path.abspath(resolve_temp_dir())
+
+
+def resolve_temp_dir() -> str:
+    """Resolve the ONE allowed scratch directory: ``<Tlamatini-app>/Temp``.
+
+    Temp/Templates policy (2026-06-02): every TEMPORARY file Whisperer writes
+    (the captured-microphone intermediate WAV) must live under ``<app>/Temp``,
+    never Documents/Music/%TEMP%/C:\\Temp. The parent process exports
+    ``TLAMATINI_TEMP`` (the absolute ``<app>/Temp`` path) and every pool agent
+    inherits it via ``get_agent_env``'s ``os.environ.copy()`` -- so trust that
+    handle first. Falls back to ``tempfile.gettempdir()`` (the module-top guard
+    already pinned it to ``TLAMATINI_TEMP`` when present) so a standalone run
+    still avoids the system temp. Created on demand; never raises.
+    """
+    candidate = (os.environ.get('TLAMATINI_TEMP') or '').strip()
+    if not candidate:
+        import tempfile as _tf
+        candidate = _tf.gettempdir()
+    try:
+        os.makedirs(candidate, exist_ok=True)
+    except Exception:
+        pass
+    return candidate
 
 
 def build_unique_path(output_dir: str, ext: str) -> str:
@@ -787,11 +814,16 @@ def _resample_linear(audio, src_rate: int, dst_rate: int):
     return resampled.astype(np.float32)
 
 
-def save_capture_wav(audio, output_dir: str):
-    """Persist the captured 16 kHz mono audio as a WAV (so the source is reusable)."""
+def save_capture_wav(audio, temp_dir: str):
+    """Persist the captured 16 kHz mono audio as a TEMPORARY WAV under ``<app>/Temp``.
+
+    This WAV is a throwaway intermediate (the bytes faster-whisper / the cloud
+    API consume), NOT a deliverable -- so per the Temp policy it goes to the app
+    Temp directory, never Documents/Music. Callers pass ``resolve_temp_dir()``.
+    """
     import numpy as np
     pcm16 = np.clip(np.round(np.asarray(audio, dtype=np.float32) * 32767.0), -32768, 32767).astype(np.int16)
-    path = build_unique_path(output_dir, "wav")
+    path = build_unique_path(temp_dir, "wav")
     with wave.open(path, 'wb') as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
@@ -1072,6 +1104,8 @@ def run_whisperer(config: Dict, output_dir: str) -> Dict:
 
     engine = str(config.get('engine', 'faster-whisper') or 'faster-whisper').strip().lower()
     save_source = _coerce_bool(config.get('save_source_audio', True), True)
+    # Captured-microphone audio is a throwaway intermediate -> ALWAYS <app>/Temp.
+    temp_dir = resolve_temp_dir()
 
     result: Dict = {
         "text": "",
@@ -1101,8 +1135,8 @@ def run_whisperer(config: Dict, output_dir: str) -> Dict:
         result["duration_seconds"] = float(meta.get("duration_seconds", 0) or 0)
         if save_source:
             try:
-                result["audio_path"] = save_capture_wav(audio_array, output_dir)
-                logging.info(f"💾 Saved captured audio: {result['audio_path']}")
+                result["audio_path"] = save_capture_wav(audio_array, temp_dir)
+                logging.info(f"💾 Saved captured audio (temp): {result['audio_path']}")
             except Exception as e:
                 logging.warning(f"⚠️ Could not save captured audio: {e}")
 
@@ -1111,7 +1145,7 @@ def run_whisperer(config: Dict, output_dir: str) -> Dict:
         # Cloud needs a file on disk; if we recorded, we just saved one above.
         cloud_path = result["audio_path"]
         if not cloud_path:
-            cloud_path = save_capture_wav(audio_array, output_dir)
+            cloud_path = save_capture_wav(audio_array, temp_dir)
             result["audio_path"] = cloud_path
         tr = transcribe_cloud(cloud_path, config)
     else:
@@ -1126,7 +1160,7 @@ def run_whisperer(config: Dict, output_dir: str) -> Dict:
                 config = dict(config)
                 config['engine'] = 'cloud-groq' if (os.environ.get('GROQ_API_KEY')
                                                     or str(config.get('cloud_api_key') or '').strip()) else 'cloud-openai'
-                cloud_path = result["audio_path"] or save_capture_wav(audio_array, output_dir)
+                cloud_path = result["audio_path"] or save_capture_wav(audio_array, temp_dir)
                 result["audio_path"] = cloud_path
                 tr = transcribe_cloud(cloud_path, config)
                 result["engine"] = config['engine']
