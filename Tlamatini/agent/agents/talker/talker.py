@@ -740,43 +740,43 @@ def _split_long_segment(segment: str, max_chars: int) -> List[str]:
 
 def _split_text_into_chunks(text: str, max_chars: int) -> List[str]:
     """
-    Split ``text`` into <= ``max_chars`` chunks at sentence boundaries (falling
-    back to clause/space boundaries for an over-long sentence), never cutting a
-    word in half.
+    Split ``text`` into ONE-SENTENCE chunks (an over-long sentence is further
+    broken on clause/space boundaries, never cutting a word in half).
 
-    This is the FIX for long-text truncation: a single Orpheus generation is
-    hard-capped by Ollama's num_predict (max_tokens), so passing the whole text
-    in one call silently cuts the speech off (~50 s). Synthesising each chunk
-    separately and concatenating the audio reproduces the COMPLETE text.
+    Two problems are solved at once:
+
+    1. LONG-TEXT TRUNCATION — a single Orpheus generation is hard-capped by
+       Ollama's num_predict (max_tokens), so passing the whole text in one call
+       silently cuts the speech off (~50 s). Synthesising each piece separately
+       and concatenating the audio reproduces the COMPLETE text.
+
+    2. OUT-OF-ORDER SEGMENTS (Angela, 2026-06-09) — when MULTIPLE sentences were
+       packed into one Orpheus generation, the neural model could speak those
+       sentences in the WRONG ORDER inside that single generation, so the
+       concatenated audio sounded scrambled. The concat code is deterministic
+       and in-order; the reordering happened INSIDE the model. The fix is to
+       never put more than one sentence in a generation: each chunk is a single
+       sentence (or a clause-piece of an over-long one), so the model can no
+       longer reorder anything and the in-order concat guarantees the full text
+       is spoken in sequence. ``max_chars`` now only bounds an over-long
+       sentence — short sentences are NOT packed together anymore.
     """
     text = (text or '').strip()
     if not text:
         return []
-    if max_chars <= 0 or len(text) <= max_chars:
-        return [text]
 
     chunks: List[str] = []
-    current = ""
     for sentence in _SENTENCE_SPLIT_RE.split(text):
         sentence = sentence.strip()
         if not sentence:
             continue
-        if len(sentence) > max_chars:
-            if current:
-                chunks.append(current)
-                current = ""
+        if max_chars > 0 and len(sentence) > max_chars:
+            # Over-long single sentence: clause/space split (still one-utterance
+            # pieces, still in source order) so we stay under the token cap.
             chunks.extend(_split_long_segment(sentence, max_chars))
-            continue
-        if not current:
-            current = sentence
-        elif len(current) + 1 + len(sentence) <= max_chars:
-            current = f"{current} {sentence}"
         else:
-            chunks.append(current)
-            current = sentence
-    if current:
-        chunks.append(current)
-    return chunks
+            chunks.append(sentence)
+    return chunks or [text]
 
 
 def query_ollama_tts(config: Dict, prompt: str) -> Tuple[str, int]:
