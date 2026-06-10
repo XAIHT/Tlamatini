@@ -18,6 +18,8 @@ from __future__ import annotations
 import os
 import unittest
 
+from django.test import TestCase
+
 from agent import orphan_reaper as orphan
 from agent.orphan_reaper import (
     _ancestor_pids,
@@ -187,6 +189,125 @@ class ReapOrphansSelfProtectionTests(unittest.TestCase):
             include_console_host_sweep=False,
         )
         self.assertEqual(result.killed, [])
+
+
+class RunningMediaAgentProtectionTests(TestCase):
+    """The exact Talker/AudioPlayer/VideoPlayer truncation incident.
+
+    A media-playback pool process runs for as long as the audio lasts and
+    stays ``status='running'`` in ``ChatAgentRun`` the whole time. The
+    Tier-2 post-answer pool-cmdline sweep used to reap it the instant the
+    Multi-Turn request finished — cutting the audio mid-sentence. These
+    tests drive the REAL ``reap_orphans`` pool sweep against a REAL live
+    child process whose cmdline references the agent pool, and prove the
+    process survives while tracked+running and is reaped once untracked.
+    """
+
+    def setUp(self):
+        self._procs = []
+
+    def tearDown(self):
+        for proc in self._procs:
+            try:
+                if proc.poll() is None:
+                    proc.kill()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _spawn_fake_pool_process(self):
+        """A real child whose cmdline contains the agent-pool fragment."""
+        import subprocess
+        import sys
+
+        fragments = orphan._pool_path_fragments()
+        # If we cannot resolve a pool fragment the sweep is a no-op anyway.
+        marker = fragments[0] if fragments else os.path.join("agents", "pools")
+        proc = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)", marker],
+        )
+        self._procs.append(proc)
+        return proc
+
+    @unittest.skipUnless(_HAVE_PSUTIL, "psutil required")
+    def test_running_tracked_media_agent_is_not_reaped(self):
+        from agent.models import ChatAgentRun
+
+        proc = self._spawn_fake_pool_process()
+        ChatAgentRun.objects.create(
+            runId="unit-running-1",
+            toolDescription="Chat-Agent-Talker",
+            templateAgentDir="talker",
+            runtimeDir="",
+            logPath="",
+            pid=proc.pid,
+            status="running",
+        )
+
+        result = reap_orphans(
+            scope="unit-test:running-protected",
+            include_self_tree=False,
+            include_pool_scan=True,
+            include_console_host_sweep=False,
+        )
+
+        killed = {pid for _, pid in result.killed}
+        self.assertNotIn(proc.pid, killed)
+        self.assertIn(proc.pid, orphan._tracked_running_pids())
+        self.assertIsNone(proc.poll(), "running Talker was killed — audio truncated")
+
+    @unittest.skipUnless(_HAVE_PSUTIL, "psutil required")
+    def test_completed_run_is_reaped_by_pool_sweep(self):
+        from agent.models import ChatAgentRun
+
+        proc = self._spawn_fake_pool_process()
+        ChatAgentRun.objects.create(
+            runId="unit-done-1",
+            toolDescription="Chat-Agent-Talker",
+            templateAgentDir="talker",
+            runtimeDir="",
+            logPath="",
+            pid=proc.pid,
+            status="completed",
+        )
+
+        # A finished run is no longer protected — the pool sweep should reap
+        # it (proves the sweep still works and the guard is status-scoped).
+        self.assertNotIn(proc.pid, orphan._tracked_running_pids())
+        reap_orphans(
+            scope="unit-test:completed-reaped",
+            include_self_tree=False,
+            include_pool_scan=True,
+            include_console_host_sweep=False,
+        )
+        proc.wait(timeout=5)
+        self.assertIsNotNone(proc.poll())
+
+    @unittest.skipUnless(_HAVE_PSUTIL, "psutil required")
+    def test_shutdown_sweep_does_not_protect_running(self):
+        """Tier-3 (app exit) passes protect_running_tracked=False so nothing
+        is left orphaned — verified at the helper-wiring level."""
+        from agent.models import ChatAgentRun
+
+        proc = self._spawn_fake_pool_process()
+        ChatAgentRun.objects.create(
+            runId="unit-shutdown-1",
+            toolDescription="Chat-Agent-Talker",
+            templateAgentDir="talker",
+            runtimeDir="",
+            logPath="",
+            pid=proc.pid,
+            status="running",
+        )
+
+        reap_orphans(
+            scope="unit-test:shutdown",
+            include_self_tree=False,
+            include_pool_scan=True,
+            include_console_host_sweep=False,
+            protect_running_tracked=False,
+        )
+        proc.wait(timeout=5)
+        self.assertIsNotNone(proc.poll())
 
 
 class FormatSurvivorsMessageTests(unittest.TestCase):

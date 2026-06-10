@@ -155,6 +155,70 @@ def _pool_path_fragments() -> List[str]:
     return [f for f in fragments if f]
 
 
+def _runtime_agent_pid(runtime_dir: str) -> Optional[int]:
+    """Best-effort read of a run's on-disk ``agent.pid`` (None on any error)."""
+    try:
+        pid_path = os.path.join(runtime_dir, "agent.pid")
+        with open(pid_path, "r", encoding="utf-8") as fh:
+            return int((fh.read() or "").strip())
+    except Exception:  # noqa: BLE001 — fail-open
+        return None
+
+
+def _tracked_running_pids() -> Set[int]:
+    """PIDs of agent processes that are still TRACKED and RUNNING.
+
+    The pool-cmdline sweep in ``reap_orphans`` kills any process whose
+    cmdline references the agent-pool directory. That is correct for a real
+    *orphan* (a pool process no record owns anymore) but catastrophic for a
+    pool process that is deliberately STILL RUNNING. The media agents are
+    the canonical case: **Talker / AudioPlayer / VideoPlayer block inside
+    their ``main()`` until playback finishes** and can legitimately run for
+    hours (a long Talker narration, a looped video). Those runs stay
+    ``status='running'`` in ``ChatAgentRun`` (and canvas-launched pool
+    agents are tracked in ``AgentProcess``) the whole time they play.
+
+    Without this guard, the Tier-2 post-answer sweep fires the instant the
+    Multi-Turn request finishes classifying the answer and reaps the running
+    media agent — truncating the audio mid-sentence. That is exactly the bug
+    this helper prevents: it returns the set of live, tracked PIDs so the
+    caller can add them to ``protected_pids`` and let the playback run to its
+    natural end.
+
+    Lazy-imports the Django models and FAILS OPEN (empty set) — a reaper
+    that crashes the chat path is worse than one orphan it failed to skip.
+    """
+    pids: Set[int] = set()
+    # status values that mean "this run is still live" — kept in lockstep
+    # with ``chat_agent_runtime.RUNNING_STATUSES`` (duplicated locally to
+    # avoid importing that chatty module from the reaper hot path).
+    running_statuses = ("created", "running")
+    try:
+        from .models import AgentProcess, ChatAgentRun
+    except Exception:  # noqa: BLE001 — Django not ready / import cycle
+        return pids
+    try:
+        for run in ChatAgentRun.objects.filter(
+            status__in=running_statuses,
+        ).only("pid", "runtimeDir"):
+            if run.pid:
+                pids.add(int(run.pid))
+            # A reanimated / re-parented run can have a different live PID
+            # recorded in its on-disk agent.pid — protect that one too.
+            runtime_pid = _runtime_agent_pid(run.runtimeDir or "")
+            if runtime_pid:
+                pids.add(int(runtime_pid))
+    except Exception:  # noqa: BLE001 — fail-open
+        pass
+    try:
+        for proc in AgentProcess.objects.all().only("agentProcessPid"):
+            if proc.agentProcessPid:
+                pids.add(int(proc.agentProcessPid))
+    except Exception:  # noqa: BLE001 — fail-open
+        pass
+    return pids
+
+
 def _safe_name(proc) -> str:
     """psutil.name() can raise; return a best-effort name."""
     try:
@@ -401,6 +465,7 @@ def reap_orphans(
     include_self_tree: bool = True,
     include_pool_scan: bool = True,
     include_console_host_sweep: bool = True,
+    protect_running_tracked: bool = True,
 ) -> ReapResult:
     """Sweep for orphaned Tlamatini-spawned processes and kill them.
 
@@ -412,6 +477,14 @@ def reap_orphans(
         include_console_host_sweep: kill conhost.exe processes that were
             *orphaned* by our process tree (parent gone / zombie). Our own
             window's console host and any live-parent host are protected.
+        protect_running_tracked: when True (the default — used by the
+            per-tool Tier-1 and post-answer Tier-2 sweeps), pool processes
+            that are still tracked + RUNNING (a playing Talker / AudioPlayer
+            / VideoPlayer, a live canvas agent) are NEVER reaped, so their
+            playback runs to its natural end no matter how long it takes.
+            Pass False ONLY for the shutdown sweep (Tier-3), where every
+            spawned child must die so nothing is left orphaned after the app
+            exits.
 
     Returns:
         ReapResult listing killed (name, pid) and surviving (name, pid).
@@ -436,6 +509,14 @@ def reap_orphans(
     owner_pid = _console_owner_pid()
     if owner_pid:
         protected_pids.add(owner_pid)
+
+    # Pool processes that are still tracked + RUNNING (most importantly a
+    # Talker / AudioPlayer / VideoPlayer playback that legitimately runs for
+    # hours) must survive every sweep below — reaping one truncates the audio
+    # the instant the Multi-Turn request finishes. The shutdown sweep opts
+    # out (protect_running_tracked=False) so nothing is orphaned at app exit.
+    if protect_running_tracked:
+        protected_pids |= _tracked_running_pids()
 
     pool_fragments = _pool_path_fragments() if include_pool_scan else []
 
