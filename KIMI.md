@@ -20,7 +20,7 @@
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **71** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **76** drag-and-drop agent types
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -113,7 +113,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 71-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 76-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -202,7 +202,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 74 workflow agent templates
+│   │   ├── agents/                 # 76 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator

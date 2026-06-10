@@ -33,12 +33,12 @@ She can do all of that — self-hosted on your own machine, powered by the model
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.0"><img src="https://img.shields.io/badge/VERSION-v1.19.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.19.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.3"><img src="https://img.shields.io/badge/VERSION-v1.19.3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.19.3" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
   <a href="#95-agent-catalog-the-76-types-by-family"><img src="https://img.shields.io/badge/AGENTS-76-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="76 Agents" /></a>
-  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-79-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="79 Multi-Turn Tools" /></a>
+  <a href="#35-tutorial-the-multi-turn-toggle"><img src="https://img.shields.io/badge/TOOLS-83-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="83 Multi-Turn Tools" /></a>
   <a href="#5-acpx--external-coding-agent-clis-as-tools"><img src="https://img.shields.io/badge/ACPX-12%20TOOLS-FF8C00?style=for-the-badge&labelColor=2D2D2D" alt="ACPX 12 Tools" /></a>
   <a href="#312-the-acpx-skills-menu--browse-configure-diagnostics-reload"><img src="https://img.shields.io/badge/SKILLS-27-DB2777?style=for-the-badge&labelColor=2D2D2D" alt="27 Skills" /></a>
   <a href="#10-embedding-memory-pre-flight-guard-gpu-hosts"><img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20BM25-009688?style=for-the-badge&labelColor=2D2D2D" alt="Hybrid RAG" /></a>
@@ -85,7 +85,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.19.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.0)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.19.3](https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.3)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
@@ -101,9 +101,13 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 ---
 
 <details>
-<summary><strong>📦 What's new in v1.19.0 (2026-06-08) — click to expand</strong></summary>
+<summary><strong>📦 What's new in v1.19.3 (2026-06-10) — click to expand</strong></summary>
 
-> **Zero-latency microphone "REC" indicator for the audio agents.** Whisperer's self-contained mic path **and** the **Recorder** agent now pop a live on-screen **REC light** the instant recording begins — a blinking red dot plus a real-time VU bar driven by the actual microphone samples — so you can *see* that the mic is open and capturing. The indicator is fed by a callback `InputStream`: it turns **ON at the first audio block** (~20 ms after the stream opens, comfortably under a 50 ms latency budget) and turns **OFF the moment the stream stops**, with no polling. Because pool agents run detached with no console of their own, the agent `AllocConsole()`s / reveals its own window and paints the REC light to `CONOUT$`, so the indicator shows up even for a headless wrapped run.
+> **Patch releases v1.19.1 → v1.19.3 (2026-06-09 → 2026-06-10)** are stability fixes on top of the v1.19.0 audio/voice wave below: **Talker** now chunks long input by sentence so it can speak for hours instead of cutting off near the single-generation token cap, and the media agents (**Recorder / Camcorder / Whisperer / Shoter**) now default their output to the application **`Temp`** directory rather than the user's Music/Pictures/Documents folders (an explicit `output_dir` is still honored).
+>
+> ---
+>
+> **Zero-latency microphone "REC" indicator for the audio agents (v1.19.0).** Whisperer's self-contained mic path **and** the **Recorder** agent now pop a live on-screen **REC light** the instant recording begins — a blinking red dot plus a real-time VU bar driven by the actual microphone samples — so you can *see* that the mic is open and capturing. The indicator is fed by a callback `InputStream`: it turns **ON at the first audio block** (~20 ms after the stream opens, comfortably under a 50 ms latency budget) and turns **OFF the moment the stream stops**, with no polling. Because pool agents run detached with no console of their own, the agent `AllocConsole()`s / reveals its own window and paints the REC light to `CONOUT$`, so the indicator shows up even for a headless wrapped run.
 >
 > **Whisperer default `record_seconds` 5 → 30.** The mic-capture default is longer so a quick "transcribe what I say" run actually gives you time to speak a sentence before it stops.
 >
@@ -1863,22 +1867,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.17.0 -m "Release 1.17.0: <one-line summary>"
-git push origin v1.17.0
+git tag -a v1.19.3 -m "Release 1.19.3: <one-line summary>"
+git push origin v1.19.3
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.17.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.19.3/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.17.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.17.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.17.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.19.3` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.19.3` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.19.3","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1902,8 +1906,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.17.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.17.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.19.3"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.19.3 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
