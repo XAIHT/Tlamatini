@@ -48,8 +48,8 @@ channels: 1
 input_gain_percent: 100
 
 # Output directory for the saved WAV. Leave empty ("") to use the default:
-#   <User Music folder>/TlamatiniRecords
-# (On a localized Windows the Music known-folder may display as "Música".)
+#   <Tlamatini app>/Temp   (recordings are TEMPORARY assets, per Angela 2026-06-09)
+# An absolute path is honored as-is; a relative path resolves against the agent dir.
 output_dir: ""
 
 # Downstream agents to start after the recording is saved (canvas connection

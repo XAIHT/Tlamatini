@@ -77,6 +77,11 @@ body.resizing {
     border: 0px;
     margin: 0px;
     min-height: 360px;
+    min-width: 0;
+    /* Hard containment: when the divider (or the top-toolbar one-row fit
+       logic) squeezes this column narrow, its header buttons and editor
+       must NEVER paint outside the column into the chat panel. */
+    overflow: hidden;
     background-color: #2d2d2d;
     border: ridge;
 }
@@ -389,6 +394,9 @@ body.resizing {
     margin-left: 0px;
     height: 25px !important;
     flex-shrink: 0;
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow: hidden;
     background-color: black;
     color: white;
     text-align: center;
@@ -407,6 +415,16 @@ body.resizing {
 #filename-div-left {
     text-align: left;
     padding-left: 25px !important;
+    /* Break the Bootstrap .col-6 50% cap: the filename takes the leftover
+       room and truncates with an ellipsis instead of forcing the buttons
+       to overflow when the canvas column is narrow. */
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 #filename-div-right {
@@ -418,6 +436,13 @@ body.resizing {
     margin-top: 1px !important;
     margin-bottom: 2px !important;
     padding-top: 4px;
+    /* Only as wide as the buttons need (not the .col-6 50% cap). Combined
+       with #canvas-container overflow:hidden, a too-narrow canvas clips the
+       buttons at the column edge rather than spilling over the chat. */
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .dropdown-entry {

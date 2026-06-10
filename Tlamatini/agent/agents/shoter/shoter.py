@@ -292,6 +292,31 @@ def start_agent(agent_name: str) -> bool:
         return False
 
 
+def _default_temp_output_dir() -> str:
+    """Resolve the DEFAULT save location: ``<where-Tlamatini-lives>/Temp``.
+
+    Temp/Templates policy (Angela, 2026-06-09): screenshots are TEMPORARY assets
+    and live under ``<app>/Temp``. Order: (1) the ``TLAMATINI_TEMP`` env var the
+    Django process pins and every pool agent inherits; (2) walk up to the app dir
+    (holding ``manage.py``); (3) the executable's ``Temp`` when frozen; (4) a home
+    fallback. Never raises.
+    """
+    env = (os.environ.get('TLAMATINI_TEMP') or '').strip().strip('"').strip("'")
+    if env:
+        return env
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), 'Temp')
+    probe = script_dir
+    for _ in range(10):
+        if os.path.exists(os.path.join(probe, 'manage.py')):
+            return os.path.join(probe, 'Temp')
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+    return os.path.join(os.path.expanduser("~"), "Tlamatini", "Temp")
+
+
 def get_next_shoter_dir(base_output_dir: str) -> str:
     """
     Find the next available shoter_<n> subdirectory.
@@ -371,7 +396,7 @@ def main():
         logging.info("=" * 60)
 
     try:
-        output_dir = config.get('output_dir', 'screenshots')
+        output_dir = str(config.get('output_dir') or '').strip() or _default_temp_output_dir()
         target_agents = config.get('target_agents', [])
 
         logging.info("📸 SHOTER AGENT STARTED")
