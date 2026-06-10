@@ -355,6 +355,13 @@ class AgentConfig(AppConfig):
                             include_self_tree=True,
                             include_pool_scan=True,
                             include_console_host_sweep=True,
+                            # At app exit EVERY spawned child must die so no
+                            # Tlamatini-icon process is left orphaned — so the
+                            # running-media protection is intentionally OFF here
+                            # (it is ON for the Tier-1/Tier-2 in-session sweeps,
+                            # where a Talker/AudioPlayer/VideoPlayer must keep
+                            # playing to its natural end).
+                            protect_running_tracked=False,
                         )
                         print(
                             f"--- [Tier-3 reaper] killed={result.killed_count} "
