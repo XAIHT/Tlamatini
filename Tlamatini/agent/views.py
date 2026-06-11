@@ -9041,6 +9041,53 @@ def save_config_urls_view(request):
     return JsonResponse({"success": True, "path": path_written, "updated_keys": list(updates.keys())})
 
 
+@login_required
+def access_keys_wizard_view(request):
+    """
+    Masked status payload for Config -> Access Keys Wizard.
+
+    The response intentionally does not include secret values. It only tells
+    the browser which fields are configured, which files are involved, and
+    whether each ACPX CLI command resolves on the current PATH.
+    """
+    try:
+        from .access_key_wizard import get_access_key_wizard_status
+        return JsonResponse(get_access_key_wizard_status())
+    except Exception as exc:
+        print(f"[ACCESS-KEYS] Error loading wizard status: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_access_keys_wizard_view(request):
+    """
+    Persist Config -> Access Keys Wizard changes.
+
+    Blank fields are interpreted by the helper as "keep existing value" so the
+    user can update one key without retyping every configured secret.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"success": False, "error": f"invalid JSON: {exc}"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"success": False, "error": "payload must be a JSON object"}, status=400)
+
+    try:
+        from .access_key_wizard import save_access_key_wizard_settings
+        return JsonResponse(save_access_key_wizard_settings(payload))
+    except ValueError as exc:
+        return JsonResponse({"success": False, "error": str(exc)}, status=400)
+    except Exception as exc:
+        print(f"[ACCESS-KEYS] Error saving wizard values: {exc}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(exc)}, status=500)
+
+
 def _resolve_db_sqlite_path() -> str:
     """
     Return the absolute path of the live SQLite database, valid in both

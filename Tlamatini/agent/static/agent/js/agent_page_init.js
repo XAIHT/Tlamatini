@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, dismissExecPermissionDialogForRuntimeProceed */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, dismissExecPermissionDialogForRuntimeProceed, openAccessKeysWizardDialog */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -952,6 +952,19 @@ function OpenConfigUrlsDialog(e) { // eslint-disable-line no-unused-vars
             console.error('Failed to load URLs config:', err);
             alert('Could not load the current configuration from the server. Please try again.');
         });
+}
+
+function OpenAccessKeysWizard(e) { // eslint-disable-line no-unused-vars
+    e.preventDefault();
+    if (inLongOperation === true) {
+        console.log("Access Keys Wizard can't be opened during a long operation...");
+        return;
+    }
+    if (typeof openAccessKeysWizardDialog !== 'function') {
+        alert('Access Keys Wizard is not available in this build.');
+        return;
+    }
+    openAccessKeysWizardDialog();
 }
 
 /**
