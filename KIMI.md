@@ -1218,12 +1218,12 @@ Resolution mirrors `prompt.pmt` / `config.json`: it is read from the **applicati
 
 ### 30.2 Runtime / Build Self-Modification (`TlamatiniSourceCode/`)
 
-A new **OPTIONAL** directory, `Tlamatini/agent/TlamatiniSourceCode/`, holds a copy of Tlamatini's own source so she can read and modify herself. This is the **second capability axis**, fully independent of the frozen/source distinction:
+An **OPTIONAL** directory, `TlamatiniSourceCode/` at the install root, holds a complete copy of Tlamatini's own source so she can read, modify, and **rebuild** herself. This is the **second capability axis**, fully independent of the frozen/source distinction:
 
 - Directory **present** = a **"self-able-modify"** build.
 - Directory **absent** = a **"not-self-able-modify"** build.
 
-It is bundled **only** when you build with `build.py --self-modify`, which copies the source tree to the install root next to the exe. The default build **omits** it. The build script prints `Self-modify build : YES/no` so you can confirm which kind of artifact you produced.
+It is bundled **only** when you build with `build.py --self-modify`, which (since 2026-06-12) calls the auxiliary **`copy_source_assets.py`** (repo root) to **generate the snapshot fresh from the live repo**: the full source surface (every `.py`/`.js`/`.css`/`.html`/`.yaml`/`.pmt`, all `.ps1` helpers, the complete build pipeline, docs, skills, tests) plus the small build-required binaries (`.ico`/`.wav`/`.svg`), while omitting heavy media (`.pdf`/`.pptx`/images/videos), `jd-cli.jar`, regenerable state, and all secrets (config keys redacted to `<KEY goes here>`). The snapshot ships `_SOURCE_SNAPSHOT_MANIFEST.json` + `_REBUILD_INSTRUCTIONS.md` — the runbook to restore the omitted binaries/keys from the install root and regenerate `Tlamatini.exe` with `python build.py --self-modify`. The default build **omits** it. The build script prints `Self-modify build : YES/no` so you can confirm which kind of artifact you produced.
 
 `prompt.pmt` instructs the LLM to **verify the directory exists before claiming she can read or edit her own code**; if it is absent she falls back to the injected `<self_knowledge>` map (Section 30.1) for self-description rather than asserting a capability she lacks.
 
@@ -1235,8 +1235,9 @@ It is bundled **only** when you build with `build.py --self-modify`, which copie
 | `Tlamatini/agent/rag/config.py` | `SELF_KNOWLEDGE_FILENAME` / `SELF_KNOWLEDGE_PLACEHOLDER` / `_load_self_knowledge_block()` (brace-escape + fail-open); `load_config_and_prompt()` does the single-site replace |
 | `Tlamatini/agent/prompt.pmt` | `<self_knowledge>{self_knowledge}</self_knowledge>` block + CRITICAL SCOPE clause; the verify-directory-exists instruction for self-modification |
 | `Tlamatini/agent/rag/utils.py` | `prepend_loaded_context_scope()` — deterministic scope header applied in all four chains so loaded `<context>` wins over `<self_knowledge>` for generic-summary requests |
-| `Tlamatini/agent/TlamatiniSourceCode/` | OPTIONAL bundled source tree; present only with `build.py --self-modify` |
-| `build.py` | Ships `Tlamatini.md` (`--add-data` + install-root copy); `--self-modify` flag copies `TlamatiniSourceCode/`; prints `Self-modify build : YES/no` |
+| `<install_root>/TlamatiniSourceCode/` | OPTIONAL bundled source snapshot; present only with `build.py --self-modify`; carries `_SOURCE_SNAPSHOT_MANIFEST.json` + `_REBUILD_INSTRUCTIONS.md` |
+| `copy_source_assets.py` (repo root) | Generates the snapshot: full source + build scripts; media/`jd-cli.jar`/secrets omitted, config secrets redacted to `<KEY goes here>` |
+| `build.py` | Ships `Tlamatini.md` (`--add-data` + install-root copy); `--self-modify` flag generates `TlamatiniSourceCode/` via `copy_source_assets.py` (legacy static-copy fallback); prints `Self-modify build : YES/no` |
 
 ---
 

@@ -1020,16 +1020,34 @@ def main():
         # Tlamatini.md, and it flows into pkg.zip via the os.walk(dist_manage)
         # archive step. Omitting it produces a "not-self-able-modify" build.
         if self_modify:
-            self_src = Path("Tlamatini") / "agent" / "TlamatiniSourceCode"
             self_dst = dist_manage / "TlamatiniSourceCode"
-            if self_src.exists():
-                if self_dst.exists():
-                    shutil.rmtree(self_dst)
-                shutil.copytree(self_src, self_dst)
-                file_total = sum(1 for p in self_dst.rglob("*") if p.is_file())
-                print(f"Copied self-modify source tree: {self_src} -> {self_dst} ({file_total} files)")
-            else:
-                print(f"WARNING: --self-modify set but source tree not found: {self_src}; skipping.")
+            try:
+                # Generate the snapshot FRESH from the live repo via the
+                # auxiliary copy_source_assets.py (full source surface; media,
+                # secrets and install-duplicated binaries omitted; restore
+                # manifest + rebuild instructions written into the snapshot).
+                import copy_source_assets
+                stats = copy_source_assets.copy_source_assets(
+                    Path(__file__).resolve().parent, self_dst)
+                print(
+                    f"Generated self-modify source tree: {self_dst} "
+                    f"({stats['files_copied']} files, "
+                    f"{stats['megabytes_copied']} MB, "
+                    f"{stats['files_redacted']} secret-redacted files)"
+                )
+            except Exception as exc:
+                # Fallback: legacy behavior — copy a pre-existing static tree.
+                print(f"WARNING: copy_source_assets failed ({exc}); "
+                      f"falling back to the static source tree.")
+                self_src = Path("Tlamatini") / "agent" / "TlamatiniSourceCode"
+                if self_src.exists():
+                    if self_dst.exists():
+                        shutil.rmtree(self_dst)
+                    shutil.copytree(self_src, self_dst)
+                    file_total = sum(1 for p in self_dst.rglob("*") if p.is_file())
+                    print(f"Copied self-modify source tree: {self_src} -> {self_dst} ({file_total} files)")
+                else:
+                    print(f"WARNING: --self-modify set but source tree not found: {self_src}; skipping.")
         else:
             print("Self-modify source tree omitted (not-self-able-modify build).")
 

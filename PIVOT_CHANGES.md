@@ -240,3 +240,100 @@ Revert `tools.py`: drop `force_foreground` from `launch_in_new_terminal` (restor
 plain `if _suppress_visible_console_launches():`), and restore `execute_file(command)`
 (remove the `foreground` param + parse-gate + honest messages; restore the unconditional
 `launch_in_new_terminal(script_path, arguments)` + the old success strings).
+
+---
+
+## 2026-06-12 — `copy_source_assets.py`: generated self-modify source snapshot (build.py --self-modify)
+
+### Verbatim user request
+- "make a deep analysis of all of the assets to be neccessary to be included into the source code
+  directory of Tlamatini 'C:<installed-dir usually 'Tlamatini'>\TlamatiniSourceCode' when it is
+  build throgh build.py script option --self-modify, once finished then create an auxiliary script
+  named 'copy_source_assets.py' to be run from build.py, the main goal is to provide the runtime
+  with **all the source code assets neccesary** including from the bulding script, all of the
+  .pss1 files, etc. to the last .py, .css, .js, (all of the source Tlamaitni may need to modify),
+  and omiting the .pdf, .pptx, and all of the images, video files from images directory (ommit the
+  files that may be repeated and allready in the Tlamatini's installed directory tree), this
+  source is aimed to be the codebase to be taken->modified->integrate->regenerate-the-building-
+  Tlamatini.exe: to be executed completely by Tlamatini if the prompt of the user may instruct
+  Tlamatini to be modified in any funcionality and regenerate itself."
+
+### Change
+- NEW `copy_source_assets.py` (repo root): walks the repo and builds a complete, rebuildable
+  source snapshot. Denylist approach (unknown future text types are included by default):
+  EXCLUDES media (.pdf/.pptx/.png/.jpg/.gif/.mp4/...), jd-cli.jar, archives/exes, secrets
+  (data.keys, db.sqlite3, settings.local.json, key/cookie/crumb), generated state (_version.py,
+  *.version.txt, .build.lock, *.log/.pos/.session), derived trees (.git, __pycache__,
+  node_modules, venv, build/, dist/, staticfiles/, agents/pools/, Temp/, Templates/,
+  TlamatiniSourceCode itself). KEEPS build-required small binaries: *.ico, *.wav, *.svg.
+  Secret REDACTION (regen_secrets "<KEY goes here>" style) for agent/config.json (JSON deep-walk)
+  + agents/*/config.yaml (line regex; never touches max_tokens/sample_rate-style keys).
+  Writes `_SOURCE_SNAPSHOT_MANIFEST.json` + `_REBUILD_INSTRUCTIONS.md` (restore jd-cli.jar +
+  XAIHT-Tlamatini.mp4 + live config.json from the install root, collectstatic, then
+  `python build.py --self-modify`).
+- `build.py` (self_modify branch, ~line 1022): BEFORE = copytree of the static placeholder tree
+  `Tlamatini/agent/TlamatiniSourceCode` (README-only) into dist/manage. AFTER = imports
+  copy_source_assets and GENERATES the snapshot fresh into `dist/manage/TlamatiniSourceCode`;
+  on any exception falls back to the legacy static-tree copy verbatim.
+
+### Rollback
+- Delete `copy_source_assets.py`; in build.py restore the old 11-line `if self_modify:` block
+  (the fallback branch inside the new block IS that old code, verbatim).
+
+### Verification
+- Live run to Temp scratch: 685 files / 9.84 MB / 0 errors; build assets present (build.py,
+  all 5 .ps1, .ico, .wav, prompt.pmt, jd-cli.bat, pyinstaller_hooks); zero
+  .png/.jpg/.mp4/.pdf/.pptx/.jar/db.sqlite3/data.keys in output; config.json placeholders intact.
+- Unit checks: JSON+YAML redactors scrub live-style keys, leave max_tokens/sample_rate alone.
+- `ruff check` + `py_compile` clean on both files.
+
+---
+
+## 2026-06-12 — Documentation sweep for copy_source_assets.py (incl. prompt.pmt + Tlamatini.md)
+
+### Verbatim user request
+- "please update all of the markdown documentation to include the last improvement about a new
+  script to include all of the source code into the location TlamatiniSourceCode, make sure all of
+  your skills and assets (Claude) in general contains the description or indications to include
+  the new feature, go!"
+
+### Files updated (besides the four already updated in the prior entry: CLAUDE.md,
+### docs/claude/architecture.md, docs/claude/gotchas.md, PIVOT_CHANGES.md)
+- `README.md` — 4 spots: features table (L56), §1 "Self-aware" bullet (L270), §7.2 self-modify
+  build paragraph (full rewrite describing generation + contents + omissions + rebuild runbook),
+  §9.6 self-modification paragraph (generation + take→modify→integrate→regenerate runbook).
+- `BookOfTlamatini.md` — new top "Recent Updates" entry: "The Self-Modify Snapshot Grows Teeth —
+  copy_source_assets.py Generates a Complete, Rebuildable Source Tree — 2026-06-12".
+- `KIMI.md` §30.2 + §30.3 table — generation via copy_source_assets.py + new table row.
+- `docs/claude/INDEX.md` — architecture.md line now mentions the generated snapshot.
+- `docs/claude/recent-fixes.md` — NEW top entry "2026-06-12 — build.py --self-modify now GENERATES
+  the TlamatiniSourceCode snapshot via copy_source_assets.py — do NOT revert to the static
+  copytree" (denylist contract, kept binaries, RESTORE_FROM_INSTALL, redaction suffix-match,
+  recursion guard).
+- `.claude/skills/tlamatini-agent-creation/SKILL.md` — new Phase-21 step **382b** (when a new
+  agent must touch EXCLUDED_EXTENSIONS / RESTORE_FROM_INSTALL / _SECRET_KEY_RE).
+- `Tlamatini/agent/Tlamatini.md` — §2 second-capability-axis bullet AND §9 first bullet extended
+  (snapshot contents); NEW §9 bullet "You can REBUILD yourself from that snapshot" (follow
+  _REBUILD_INSTRUCTIONS.md: restore jd-cli.jar + demo video + live keys from install root,
+  pip install, collectstatic, `python build.py --self-modify`; ~18 min; .build.lock guard).
+
+### prompt.pmt change (identity rules, the TlamatiniSourceCode bullet)
+- BEFORE (single sentence in the middle of the bullet): "If it exists, you are a
+  **self-able-modify** version — you may read it to inspect your own implementation and to plan
+  or apply changes to yourself." ... and the closing clause read "...before claiming you can read
+  or edit your own code".
+- AFTER: same bullet, with the middle expanded to: "If it exists, you are a **self-able-modify**
+  version — it is a COMPLETE, rebuildable source snapshot (generated by `copy_source_assets.py`
+  at build time: all source + build scripts; heavy media and secrets omitted, config keys shown
+  as `<KEY goes here>` placeholders). You may read it to inspect your own implementation, apply
+  changes to yourself, and — when the user asks you to modify your own functionality and
+  regenerate yourself — **rebuild your own `Tlamatini.exe`** by following
+  `TlamatiniSourceCode/_REBUILD_INSTRUCTIONS.md` exactly (restore the omitted binaries and live
+  keys from your install root per `_SOURCE_SNAPSHOT_MANIFEST.json`, then run
+  `python build.py --self-modify`)." — and the closing clause now reads "...before claiming you
+  can read, edit, or rebuild your own code". Everything else in the bullet is byte-identical.
+
+### Rollback
+- prompt.pmt: restore the BEFORE sentence + closing clause above (single bullet, line ~12).
+- All other files: remove the quoted additions; they are additive (no existing text deleted
+  except the sentences quoted as BEFORE in this and the prior entry).
