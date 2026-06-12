@@ -10,6 +10,18 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-12 — `build.py --self-modify` now GENERATES the TlamatiniSourceCode snapshot via `copy_source_assets.py` — do NOT revert to the static copytree
+
+**Directive (Angela):** the self-modify source tree must carry **ALL the source assets** needed to take → modify → integrate → regenerate `Tlamatini.exe` (build scripts, every `.ps1`, every `.py`/`.css`/`.js`, ...), omitting `.pdf`/`.pptx`/images/videos and files already duplicated in the installed tree, so Tlamatini can rebuild herself end-to-end.
+
+- **`copy_source_assets.py` (repo root)** is the single generator. `build.py`'s `if self_modify:` branch imports it and generates `dist/manage/TlamatiniSourceCode` FRESH from the live repo on every `--self-modify` build; the old static copy of `Tlamatini/agent/TlamatiniSourceCode/` (a README-only placeholder) survives only as the exception fallback inside that branch. Do **not** restore the placeholder copytree as the primary path, and do **not** start populating `Tlamatini/agent/TlamatiniSourceCode/` by hand — it would drift from the repo instantly.
+- **Denylist, not allowlist.** Unknown future TEXT file types must flow into the snapshot by default. New heavy/secret/generated artifact types are excluded by ADDING to `EXCLUDED_EXTENSIONS` / `EXCLUDED_DIR_NAMES` / `EXCLUDED_FILE_NAMES` in `copy_source_assets.py` — never by switching to an include-list.
+- **Build-required binaries are KEPT on purpose:** `.ico` (build.py `--icon` + console icon), `.wav` (shipped UI sounds), `.svg`. Removing them breaks or degrades a rebuild.
+- **Omitted-but-required binaries live in `RESTORE_FROM_INSTALL`** (currently `jd-cli/jd-cli.jar` and `agent/static/agent/video/XAIHT-Tlamatini.mp4`) and are written into the snapshot's `_REBUILD_INSTRUCTIONS.md` + `_SOURCE_SNAPSHOT_MANIFEST.json`. If build.py grows a new required binary input, add it to that map — otherwise a self-rebuild dies at the `FileNotFoundError` guards.
+- **Secret redaction is a safety net, keep it:** `agent/config.json` (JSON deep-walk) and `agents/*/config.yaml` (line regex) are scrubbed to regen_secrets-style `<KEY goes here>` placeholders. The key matcher is SUFFIX-based on the last underscore segment precisely so `max_tokens` / `sample_rate` / `request_timeout` are never touched — don't loosen it to a substring match.
+- **Recursion guard:** `TlamatiniSourceCode` is in `EXCLUDED_DIR_NAMES` so a snapshot never snapshots itself (and a rebuild FROM a snapshot regenerates a clean next-generation snapshot). Keep it there.
+- Verified live 2026-06-12: 685 files / 9.84 MB / 0 errors / 0 leaked keys. Full before/after + rollback in `PIVOT_CHANGES.md` (2026-06-12).
+
 ### 2026-06-07 — A wrapped chat-agent is now gated by BOTH its Agent row AND its wrapper Tool row — do NOT drop the agent-row gate
 
 **Directive (Angela):** disabling an agent in **Configure Agents** (its `Agent` row) OR disabling its wrapper in **Configure Mcps/Tools** (the `Chat-Agent-<Name>` `Tool` row) must make that agent **invisible to the LLM** — asked to use it, the LLM should report it as unknown/nonexistent. Example: unchecking **Talker** in Configure Agents, or **Chat-Agent-Talker** in Configure Mcps, must hide `chat_agent_talker`.
