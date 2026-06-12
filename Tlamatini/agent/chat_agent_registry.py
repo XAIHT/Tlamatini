@@ -438,7 +438,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         example_request=(
             "Play the video file 'C:\\Videos\\demo.mp4', OR play with "
             "video_file='C:\\Videos\\clip.mp4' and time_played=30 and volume_percent=80 and "
-            "display_index=1 and fullscreen=true, OR window_width=1280 and window_height=720"
+            "display_index=1 and fullscreen=true, OR with window_width=1280 and window_height=720"
         ),
         aliases=("videoplayer", "video player", "play video", "play movie", "play clip", "screen", "monitor"),
         security_hints=(

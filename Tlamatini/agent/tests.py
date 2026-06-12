@@ -2889,6 +2889,58 @@ class AssignmentParserRobustnessTests(TestCase):
         self.assertIn('drone_knap.h', str(values['content']))
         self.assertIn('*/', str(values['content']))
 
+    def test_same_line_multiline_content_with_quote_semicolon_not_truncated(self):
+        # Regression for the SuperDemoPage SecurityHeadersFilter.java
+        # truncation (2026-06-12): the LLM opened the content quote on the
+        # SAME line as the payload (``content='package com…`` — no newline
+        # right after the quote), so _is_multiline_quote_open() left the
+        # value in single-line mode, where ANY internal quote followed by
+        # ``;``/``,`` closes it. Java CSP literals contain exactly that
+        # sequence (``'self';``), so the file was cut mid-line at
+        # ``"default-src 'self`` while the Exec Report (which renders the
+        # raw pre-parse request) looked complete. The fix upgrades the
+        # value to multi-line mode the moment a newline is consumed inside
+        # it. This test reproduces the incident content byte-faithfully.
+        java = (
+            "package com.superdemo.filter;\n"
+            "\n"
+            "/**\n"
+            " * The CSP is strict but compatible with the demo page (Google\n"
+            " * Fonts + inline styles permitted for the theme switcher; no\n"
+            " * inline scripts, no eval, no remote frames).\n"
+            " */\n"
+            "public class SecurityHeadersFilter implements Filter {\n"
+            "\n"
+            "    private static final String HSTS =\n"
+            "            \"max-age=31536000; includeSubDomains; preload\";\n"
+            "\n"
+            "    private static final String CSP =\n"
+            "            \"default-src 'self'; \"\n"
+            "          + \"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \"\n"
+            "          + \"object-src 'none'\";\n"
+            "}\n"
+        )
+        request = (
+            "filepath='C:\\Development\\SuperDemoPage\\src\\main\\java\\com\\"
+            "superdemo\\filter\\SecurityHeadersFilter.java' "
+            "and content='" + java.rstrip() + "'"
+        )
+        parsed, err = self._parse_assignments(request)
+        self.assertIsNone(err, f"parse error: {err}")
+        values = {a['requested_key']: a['value'] for a in parsed['assignments']}
+        self.assertIn('filepath', values)
+        self.assertIn('content', values)
+        content = str(values['content'])
+        # The old bug cut the value at the first ``'self';`` — everything
+        # after ``"default-src 'self`` vanished. The full payload must
+        # survive, all the way to the closing brace.
+        self.assertIn("\"default-src 'self'; \"", content)
+        self.assertIn("'unsafe-inline'", content)
+        self.assertIn("object-src 'none'", content)
+        self.assertTrue(content.rstrip().endswith('}'),
+                        f"content truncated; tail = {content[-60:]!r}")
+        self.assertEqual(content, java.rstrip())
+
     def test_with_conjunction_also_splits(self):
         # ``with`` is the alternate conjunction used by several
         # example_request strings (e.g. the crawler's sample).
