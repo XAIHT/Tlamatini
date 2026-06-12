@@ -558,6 +558,18 @@ def _split_assignment_segments(assignments_text):
                 escape_next = False
             elif char == '\\':
                 escape_next = True
+            elif char == '\n':
+                # Dynamic multi-line upgrade: the opening-quote heuristic
+                # (_is_multiline_quote_open) only catches values whose quote
+                # is IMMEDIATELY followed by a newline. LLMs routinely start
+                # the payload on the same line (``content='package com…``),
+                # which left the value in single-line mode where any internal
+                # quote followed by ``,``/``;`` closes it — truncating Java/
+                # CSS/JS payloads at sequences like ``'self';`` (the
+                # SecurityHeadersFilter.java bug). Once a newline is consumed
+                # INSIDE the value, it is by definition multi-line, so switch
+                # to the strict closer rule (EOF or ``and|with KEY=`` only).
+                quote_multiline = True
             elif (
                 char == quote_char
                 and _closes_outer_quote(assignments_text, i, quote_char, quote_multiline)
@@ -681,6 +693,11 @@ def _split_assignment_segment(segment):
                 escape_next = False
             elif char == '\\':
                 escape_next = True
+            elif char == '\n':
+                # Same dynamic multi-line upgrade as _split_assignment_segments
+                # (see comment there): a newline consumed inside the value
+                # flips it to the strict multi-line closer rule.
+                quote_multiline = True
             elif (
                 char == quote_char
                 and _closes_outer_quote(segment, i, quote_char, quote_multiline)

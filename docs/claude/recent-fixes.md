@@ -10,6 +10,14 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-12 — Wrapped chat-agent parser: dynamic multi-line upgrade on interior newline — do NOT revert (truncated-file bug)
+
+**Incident:** `chat_agent_file_creator` wrote `SecurityHeadersFilter.java` (SuperDemoPage) truncated at `"default-src 'self` — exactly at the first `';` sequence — while the Exec Report showed the complete file (the report renders the RAW pre-parse request via `_extract_exec_report_command`, so it can never reveal a parse truncation).
+
+**Root cause (core, NOT FileCreator):** in `agent/tools.py`, `_is_multiline_quote_open()` marks a quoted value multi-line only when a newline IMMEDIATELY follows the opening quote. LLMs routinely start the payload on the same line (`content='package com…`), leaving the value in single-line mode — where `_closes_outer_quote()` treats any interior quote followed by `,`/`;` as the closer. Java/CSS/JS payloads containing `'self';` (CSP literals) hit this every time.
+
+**Fix (keep):** both `_split_assignment_segments` and `_split_assignment_segment` now have an `elif char == '\n': quote_multiline = True` branch inside their `if quote_char:` state — the moment a newline is consumed INSIDE a quoted value it upgrades to the strict multi-line closer rule (EOF or `and|with KEY=` only). Values without interior newlines behave byte-identically to before. Regression test: `AssignmentParserRobustnessTests.test_same_line_multiline_content_with_quote_semicolon_not_truncated` (byte-faithful incident repro). Also fixed the pre-existing `, OR window_width=` → `, OR with window_width=` drift in VideoPlayer's `example_request` (`chat_agent_registry.py`) that broke `test_every_registry_example_resolves_against_its_template`. Frozen builds need `python build.py` to pick this up (tools.py is in the PYZ).
+
 ### 2026-06-12 — `build.py --self-modify` now GENERATES the TlamatiniSourceCode snapshot via `copy_source_assets.py` — do NOT revert to the static copytree
 
 **Directive (Angela):** the self-modify source tree must carry **ALL the source assets** needed to take → modify → integrate → regenerate `Tlamatini.exe` (build scripts, every `.ps1`, every `.py`/`.css`/`.js`, ...), omitting `.pdf`/`.pptx`/images/videos and files already duplicated in the installed tree, so Tlamatini can rebuild herself end-to-end.

@@ -337,3 +337,61 @@ plain `if _suppress_visible_console_launches():`), and restore `execute_file(com
 - prompt.pmt: restore the BEFORE sentence + closing clause above (single bullet, line ~12).
 - All other files: remove the quoted additions; they are additive (no existing text deleted
   except the sentences quoted as BEFORE in this and the prior entry).
+
+---
+
+## 2026-06-12 — Wrapped chat-agent parser truncated multi-line `content` at `';` (SecurityHeadersFilter.java bug)
+
+### Verbatim user request
+- "check why Tlamatini generated truncated files like SecurityHeadersFilter.java, in the project
+  located at: C:\Development\SuperDemoPage, is it a problem of FileCreator or the core of
+  Tlamatini?, 'cause I've seen that the file aparently is complete in the execution report! (…)
+  and it is exactly where the **';** begins (…) so please deeply check the way the entire flow of
+  creating/writing the file and special charaters are taken to write the files by Tlamatini
+  (FileCreator, core, etc...), GO!."
+
+### Diagnosis (proven by byte-faithful repro against the real parser)
+- FileCreator (`agents/file_creator/file_creator.py`) is INNOCENT — it writes `config['content']`
+  verbatim.
+- Root cause is the CORE wrapped chat-agent request parser in `agent/tools.py`:
+  `_is_multiline_quote_open()` flags a quoted value as multi-line ONLY when a newline immediately
+  follows the opening quote. The LLM wrote `content='package com…` (payload starts on the same
+  line), so the value stayed in SINGLE-LINE mode, where `_closes_outer_quote()` treats any internal
+  quote followed by `,`/`;` as the closer. Java CSP literals contain exactly `'self';` → the quote
+  "closed" there and the file was cut at `"default-src 'self` (line 39).
+- The Exec Report looked complete because `_extract_exec_report_command()` renders the RAW
+  pre-parse request string, not the parsed value.
+
+### Change 1 (`agent/tools.py` — `_split_assignment_segments` + `_split_assignment_segment`)
+- BEFORE (both functions, inside the `if quote_char:` branch):
+  `if escape_next: … elif char == '\': … elif (char == quote_char and _closes_outer_quote(…)):`
+- AFTER: inserted one branch between the backslash and closer checks:
+  `elif char == '\n': quote_multiline = True`  (with explanatory comment)
+- Effect: the moment a newline is consumed INSIDE a quoted value, the value upgrades to multi-line
+  mode (closer = EOF or `and|with KEY=` conjunction only). Values without interior newlines behave
+  byte-identically to before.
+
+### Change 2 (`agent/chat_agent_registry.py` line 441 — pre-existing, unrelated test failure)
+- BEFORE: `"display_index=1 and fullscreen=true, OR window_width=1280 and window_height=720"`
+- AFTER:  `"display_index=1 and fullscreen=true, OR with window_width=1280 and window_height=720"`
+- The bare `, OR window_width=` made the parser read key `OR window_width`;
+  `test_every_registry_example_resolves_against_its_template` was failing BEFORE this session
+  (verified via git stash).
+
+### Change 3 (`agent/tests.py` — AssignmentParserRobustnessTests)
+- Added `test_same_line_multiline_content_with_quote_semicolon_not_truncated`: reproduces the
+  SecurityHeadersFilter.java incident (same-line opening quote + `'self';` CSP content) and
+  asserts the full payload round-trips to the closing `}`.
+
+### Verification
+- Repro script (real `_parse_requested_assignments`): BEFORE = 842/1017 chars, cut at
+  `"default-src 'self` (byte-identical to the broken file on disk); AFTER = 1017/1017 COMPLETE.
+- `python manage.py test agent.tests.AssignmentParserRobustnessTests` → 15/15 OK (includes the
+  all-registry-examples parse audits). `ruff check` clean on all three files.
+- NOTE: the live frozen install (C:\Tlamatini) still has the bug until `python build.py` is run —
+  `tools.py` lives in the PYZ inside Tlamatini.exe and cannot be hot-patched.
+
+### Rollback
+- tools.py: delete the two inserted `elif char == '\n': quote_multiline = True` branches (+ comments).
+- chat_agent_registry.py: revert `OR with window_width` → `OR window_width`.
+- tests.py: delete the new test method.
