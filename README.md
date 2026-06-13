@@ -33,7 +33,7 @@ She can do all of that — self-hosted on your own machine, powered by the model
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.4"><img src="https://img.shields.io/badge/VERSION-v1.19.4-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.19.4" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.5"><img src="https://img.shields.io/badge/VERSION-v1.19.5-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.19.5" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -85,7 +85,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.19.4](https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.4)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.19.5](https://github.com/XAIHT/Tlamatini/releases/tag/v1.19.5)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
@@ -101,9 +101,9 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 ---
 
 <details>
-<summary><strong>📦 What's new in v1.19.4 (2026-06-12) — click to expand</strong></summary>
+<summary><strong>📦 What's new in v1.19.5 (2026-06-12) — click to expand</strong></summary>
 
-> **v1.19.4 (2026-06-12)** rounds out the self-modification story and hardens file creation: the **File-Creator** bulk-write path no longer truncates files (long content with quotes/semicolons now lands byte-complete), `build.py --self-modify` now **generates a complete, rebuildable source snapshot** of Tlamatini's own codebase (`TlamatiniSourceCode/`, media/secrets omitted and redacted, with rebuild instructions) so a self-able-modify build carries everything she needs to read and rebuild herself, and the **Config menu gains an API-Keys Wizard dialog** for entering provider keys without touching `config.json` by hand.
+> **v1.19.5 (2026-06-12)** rounds out the self-modification story and hardens file creation: the **File-Creator** bulk-write path no longer truncates files (long content with quotes/semicolons now lands byte-complete), `build.py --self-modify` now **generates a complete, rebuildable source snapshot** of Tlamatini's own codebase (`TlamatiniSourceCode/`, media/secrets omitted and redacted, with rebuild instructions) so a self-able-modify build carries everything she needs to read and rebuild herself, and the **Config menu gains an API-Keys Wizard dialog** for entering provider keys without touching `config.json` by hand.
 >
 > **Patch releases v1.19.1 → v1.19.3 (2026-06-09 → 2026-06-10)** are stability fixes on top of the v1.19.0 audio/voice wave below: **Talker** now chunks long input by sentence so it can speak for hours instead of cutting off near the single-generation token cap, and the media agents (**Recorder / Camcorder / Whisperer / Shoter**) now default their output to the application **`Temp`** directory rather than the user's Music/Pictures/Documents folders (an explicit `output_dir` is still honored).
 >
@@ -1869,22 +1869,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.19.4 -m "Release 1.19.4: <one-line summary>"
-git push origin v1.19.4
+git tag -a v1.19.5 -m "Release 1.19.5: <one-line summary>"
+git push origin v1.19.5
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.19.4/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.19.5/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.19.4` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.19.4` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.19.4","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.19.5` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.19.5` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.19.5","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1908,8 +1908,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.19.4"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.19.4 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.19.5"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.19.5 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
