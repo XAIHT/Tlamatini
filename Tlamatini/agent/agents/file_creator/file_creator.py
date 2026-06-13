@@ -326,6 +326,7 @@ def main():
     try:
         file_path = config.get('file_path', '')
         content = config.get('content', '')
+        content_b64 = config.get('content_b64', '')
         target_agents = config.get('target_agents', [])
 
         logging.info("📝 FILE-CREATOR AGENT STARTED")
@@ -343,11 +344,36 @@ def main():
                 if parent_dir:
                     os.makedirs(parent_dir, exist_ok=True)
 
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
+                # ── BINARY-EXACT CHANNEL (invulnerable) ────────────────────
+                # If content_b64 is provided, decode it to RAW BYTES and write
+                # the file in BINARY mode — byte-for-byte identical to what the
+                # model encoded, immune to ANY quote/backslash/escape mangling
+                # in transit (base64's alphabet is A-Za-z0-9+/= only). This is
+                # the channel for source code, JSON, anything with backslash
+                # escapes, or genuinely binary payloads.
+                if isinstance(content_b64, str) and content_b64.strip():
+                    import base64
+                    # Tolerate whitespace/newlines the model may have wrapped
+                    # the base64 in, and missing padding.
+                    cleaned = ''.join(content_b64.split())
+                    pad = (-len(cleaned)) % 4
+                    raw = base64.b64decode(cleaned + ('=' * pad))
+                    with open(file_path, 'wb') as f:
+                        f.write(raw)
+                    logging.info(
+                        f"✅ File created (binary/base64, {len(raw)} bytes): {file_path}"
+                    )
+                else:
+                    # TEXT CHANNEL — write the content VERBATIM. newline='' stops
+                    # Python's universal-newline translation (\n -> \r\n on
+                    # Windows) so the file bytes match exactly what the model
+                    # sent; the parser already hands us the content unescaped.
+                    text = content if isinstance(content, str) else str(content)
+                    with open(file_path, 'w', encoding='utf-8', newline='') as f:
+                        f.write(text)
+                    logging.info(f"✅ File created successfully ({len(text)} chars): {file_path}")
 
                 file_created = True
-                logging.info(f"✅ File created successfully: {file_path}")
         except Exception as e:
             logging.error(f"❌ File creation failed: {e}")
 

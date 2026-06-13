@@ -3,8 +3,14 @@
 # File to create (path + filename + extension)
 file_path: ""
 
-# Raw content to write into the file
+# Raw content to write into the file (written VERBATIM, byte-for-byte)
 content: ""
+
+# Optional BINARY-EXACT channel: base64 of the file bytes. When set, it is
+# decoded to raw bytes and written in binary mode (immune to any quote/
+# backslash mangling) — use it for source code or any payload heavy with
+# backslash escapes. Takes precedence over `content`.
+content_b64: ""
 
 # Connection fields
 source_agents: []

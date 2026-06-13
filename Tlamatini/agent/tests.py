@@ -2757,6 +2757,7 @@ class AssignmentParserRobustnessTests(TestCase):
     def setUp(self):
         from agent.tools import (
             _coerce_assignment_value,
+            _extract_verbatim_assignment,
             _parse_requested_assignments,
             _split_assignment_segment,
             _split_assignment_segments,
@@ -2765,6 +2766,7 @@ class AssignmentParserRobustnessTests(TestCase):
         self._split_segment = _split_assignment_segment
         self._coerce_value = _coerce_assignment_value
         self._parse_assignments = _parse_requested_assignments
+        self._extract_verbatim = _extract_verbatim_assignment
 
     def test_multi_line_script_with_embedded_apostrophes_parses(self):
         failing = (
@@ -2940,6 +2942,62 @@ class AssignmentParserRobustnessTests(TestCase):
         self.assertTrue(content.rstrip().endswith('}'),
                         f"content truncated; tail = {content[-60:]!r}")
         self.assertEqual(content, java.rstrip())
+
+    def test_verbatim_keeps_java_regex_backslashes(self):
+        # Regression for the FormValidatorGeneratingClass.java corruption
+        # (Eclipse: "illegal escape character" / "unclosed string literal"):
+        # the generic value coercion collapses ``\\`` -> ``\`` (shell/SQL
+        # escaping), so a Java regex source ``Pattern.compile("\\.")`` (whose
+        # ON-DISK bytes are two backslashes + dot) came out as ``"\."`` — an
+        # illegal Java escape. The verbatim extractor must return the content
+        # BYTE-FOR-BYTE, backslashes intact.
+        java = (
+            "package com.example.validation;\n"
+            "\n"
+            "import java.util.regex.Pattern;\n"
+            "\n"
+            "public class FormValidatorGeneratingClass {\n"
+            "    private static final Pattern EMAIL =\n"
+            "        Pattern.compile(\"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\\\.[A-Za-z]{2,}$\");\n"
+            "    private static final Pattern DIGITS = Pattern.compile(\"\\\\d+\");\n"
+            "    private static final String TAB = \"\\t\";\n"
+            "}\n"
+        )
+        request = (
+            "filepath='C:\\Dev\\App\\FormValidatorGeneratingClass.java' "
+            "and content='" + java.rstrip() + "'"
+        )
+        verbatim = self._extract_verbatim(request, "content")
+        self.assertIsNotNone(verbatim)
+        # Byte-exact: the double-backslash regex escapes survive untouched.
+        self.assertEqual(verbatim, java.rstrip())
+        self.assertIn('\\\\.[A-Za-z]', verbatim)   # ``\\.`` still two backslashes
+        self.assertIn('\\\\d+', verbatim)            # ``\\d`` still two backslashes
+        self.assertIn('\\t', verbatim)               # literal backslash-t survives
+        # The CURRENT generic coercion would have collapsed these — prove the
+        # verbatim path diverges from it exactly where it must.
+        values = {a['requested_key']: a['value']
+                  for a in self._parse_assignments(request)[0]['assignments']}
+        self.assertNotEqual(
+            values['content'], verbatim,
+            "generic coercion unexpectedly already byte-exact — test is moot",
+        )
+
+    def test_verbatim_handles_content_first_then_filepath(self):
+        # content may be sent BEFORE filepath; the verbatim extractor must
+        # still find it and stop at the ``and filepath=`` boundary.
+        request = (
+            "content='line1 with a \\\\ backslash\nline2' "
+            "and filepath='C:\\Dev\\out.txt'"
+        )
+        verbatim = self._extract_verbatim(request, "content")
+        self.assertEqual(verbatim, "line1 with a \\\\ backslash\nline2")
+        self.assertNotIn('filepath', verbatim)
+
+    def test_verbatim_returns_none_for_unquoted_or_missing(self):
+        self.assertIsNone(self._extract_verbatim("filepath='x'", "content"))
+        self.assertIsNone(
+            self._extract_verbatim("content=bare unquoted value", "content"))
 
     def test_with_conjunction_also_splits(self):
         # ``with`` is the alternate conjunction used by several
