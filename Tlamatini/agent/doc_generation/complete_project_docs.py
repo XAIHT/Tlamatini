@@ -103,11 +103,11 @@ THEME = {
 
 SLIDE_W = 13.333
 SLIDE_H = 7.5
-RECENT_GIT_WINDOW_DAYS = 1
-RECENT_GIT_WINDOW_LABEL = "today"
-RECENT_GIT_WINDOW_TITLE = "Today In Git"
-RECENT_GIT_HIGHLIGHT_TITLE = "today's highlights"
-RECENT_GIT_APPENDIX_SUBTITLE = "all commits from today according to git"
+RECENT_GIT_WINDOW_DAYS = 3
+RECENT_GIT_WINDOW_LABEL = "last 3 days"
+RECENT_GIT_WINDOW_TITLE = "Recent Git Window"
+RECENT_GIT_HIGHLIGHT_TITLE = "recent highlights"
+RECENT_GIT_APPENDIX_SUBTITLE = "all commits from the last 3 days according to git"
 
 
 @dataclass
@@ -419,7 +419,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
-            "Today’s headline hardening pass is `v1.19.5` file integrity: File-Creator’s bulk-write path no longer truncates long content with quotes or semicolons, so code and docs land byte-complete instead of arriving clipped at the exact moment a generated file becomes interesting."
+            "The `v1.19.5` File-Creator hardening pass now writes content byte-for-byte: plain `content` is re-extracted verbatim, and heavy escape/binary payloads can travel through `content_b64`, eliminating the wrong-symbol corruption that broke backslash-dense Java, JSON, and regex files."
         )
     if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
         highlights.append(
@@ -483,15 +483,15 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("kalier" in subject or "kali" in subject or "pentest" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the `v1.7.1` Kalier refinement: Tlamatini keeps its 67-agent catalog but now behaves as the embedded MCP-Kali-Server client, so the Kali box URL is configured once in `Config -> URLs` and auto-injected into `chat_agent_kalier` runs."
+            "A still-relevant platform branch remains the Kali Linux bridge: Kalier behaves as the embedded MCP-Kali-Server client, so the Kali box URL is configured once in `Config -> URLs` and auto-injected into `chat_agent_kalier` runs."
         )
     if any("windower" in subject or "window manager" in subject or "window" in subject and "multi-turn" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the new Windower agent: Tlamatini now reaches 66 workflow agents and adds a deterministic Win32 window-manager surface for focusing, tiling, resizing, listing, and closing windows from both Multi-Turn chat and the visual canvas."
+            "Another still-visible platform branch is Windower: a deterministic Win32 window-manager surface for focusing, tiling, resizing, listing, and closing windows from both Multi-Turn chat and the visual canvas."
         )
     if any("playwrighter" in subject or "playwright" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the new Playwrighter agent in `v1.5.0`: Tlamatini now adds its 65th workflow agent and a real-browser automation surface for scripted Playwright flows from both Multi-Turn chat and the visual canvas."
+            "Playwrighter remains part of the broader platform story too: a real-browser automation surface for scripted Playwright flows from both Multi-Turn chat and the visual canvas."
         )
     if any("tkinter" in subject or "unstable" in subject or "native dialog" in subject for subject in subjects):
         highlights.append(
@@ -503,35 +503,35 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any(("reviewer" in subject and "state" in subject) or ("reviewer" in subject and "handling" in subject) for subject in subjects):
         highlights.append(
-            "Today’s reviewer follow-up is a behavioral-accuracy patch: the review prompt now distinguishes uncommitted working-tree diffs from committed history and teaches the model Tlamatini’s managed-secret scrub convention, reducing false positives around local credentials in config files."
+            "A still-relevant reviewer follow-up is the behavioral-accuracy patch: the review prompt distinguishes uncommitted working-tree diffs from committed history and teaches the model Tlamatini’s managed-secret scrub convention, reducing false positives around local credentials in config files."
         )
     if any("reviewer" in subject or "analyzer" in subject or "security audit" in subject or "code review" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the new Reviewer and Analyzer surfaces: the workflow-agent catalog now reaches 64 templates, the seed-skill catalog reaches 23 packages, and code review plus deterministic security scanning are now available from both the canvas and the skill layer."
+            "A still-visible platform branch is Reviewer and Analyzer: code review plus deterministic security scanning are available from both the canvas and the skill layer."
         )
     if any("number and descriptions of agents" in subject or "markdowns" in subject or "agentic_skill" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is agent-catalog consistency: the live count, the markdown bestiaries, the flow-creator skill catalog, and the sidebar-description source were brought back into alignment around one shared workflow-agent inventory."
+            "Agent-catalog consistency work also remains visible: the live count, the markdown bestiaries, the flow-creator skill catalog, and the sidebar-description source were brought back into alignment around one shared workflow-agent inventory."
         )
     if any("unreal" in subject or "unreal-engine mcp" in subject or "unreal engine enabled" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is Unreal MCP support: the new Unrealer agent, a chat-wrapped `chat_agent_unrealer` tool, canvas wiring, a seeded end-to-end demo prompt, and a direct TCP bridge into a live Unreal Engine 5 editor."
+            "Unreal MCP support remains part of the broader platform story: the Unrealer agent, its chat-wrapped tool, canvas wiring, seeded prompts, and the direct TCP bridge into a live Unreal Engine 5 editor."
         )
     if any("orphan" in subject or "cleanup" in subject or "sec/perf" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is orphan-process cleanup on Windows: a three-tier reaper, hardened detached spawn sites, ACPX process-tree termination, and user-visible survivor reporting when anything truly refuses to die."
+            "Windows process hygiene also remains visible in recent history: a three-tier reaper, hardened detached spawn sites, ACPX process-tree termination, and user-visible survivor reporting when anything truly refuses to die."
         )
     if any("de-compresser" in subject or "de compresser" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the new De-Compresser agent: deterministic archive compression/decompression, Multi-Turn exposure, ACP canvas wiring, and a requirements patch that adds the `py7zr` fallback path."
+            "The archive-automation branch remains visible too: De-Compresser adds deterministic archive compression/decompression, Multi-Turn exposure, ACP canvas wiring, and the `py7zr` fallback path."
         )
     if any("version" in subject or "worldwide system" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is the new versioning system: SemVer policy, git-tag sourcing, runtime version surfaces, and build-time embedding across the Windows artefacts."
+            "Release-identity work also remains relevant: the SemVer policy, git-tag sourcing, runtime version surfaces, and build-time embedding across the Windows artefacts now define how Tlamatini reports her version."
         )
     if any("menu db" in subject or "database" in subject or "browse buttons" in subject for subject in subjects):
         highlights.append(
-            "Today’s operator-facing work is dominated by the new DB dropdown: backup, Set DB staging for the next start-up, startup swap-in/rollback mechanics, and native Browse buttons on both dialogs."
+            "Another still-relevant operator-facing branch is the DB dropdown: backup, Set DB staging for the next start-up, startup swap-in/rollback mechanics, and native Browse buttons on both dialogs."
         )
     if any("gpu" in subject or "autoload" in subject or "spining" in subject for subject in subjects):
         highlights.append(
@@ -583,12 +583,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("document" in subject or "docs" in subject or "framing" in subject for subject in subjects):
         highlights.append(
-            "Documentation itself changed today, so the regenerated dossier is part of the tracked operator surface rather than an external afterthought."
+            "Documentation itself changed during the recent window, so the regenerated dossier is part of the tracked operator surface rather than an external afterthought."
         )
     if highlights:
         return highlights
-    if RECENT_GIT_WINDOW_LABEL == "today":
-        return ["Git history today shows focused maintenance across the operator surface, release mechanics, and runtime behavior."]
     return [f"Git history shows focused maintenance across the operator surface, release mechanics, and runtime behavior during {RECENT_GIT_WINDOW_LABEL}."]
 
 
@@ -597,7 +595,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.19.5` hardened File-Creator’s bulk-write path so long generated content with quotes or semicolons no longer lands truncated. The document set should now describe file generation as byte-complete rather than merely convenient."
+            "Since the last committed PDF/PPTX refresh, `v1.19.5` hardened File-Creator with a byte-exact write path: verbatim `content` plus a `content_b64` channel now preserve backslash-heavy and binary payloads without wrong-symbol corruption."
         )
     if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
         highlights.append(
@@ -928,7 +926,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 
 CURRENT_RELEASE_GUIDE = [
     "The current documented release is `v1.19.5`, and the README now frames it as a hardening-and-self-modify release rather than another simple count bump.",
-    "Three visible user-facing points define this version: File-Creator no longer truncates long generated content, self-modify builds now carry a rebuildable generated source snapshot, and Config now exposes an API-Keys Wizard dialog.",
+    "Three visible user-facing points define this version: File-Creator now preserves source files byte-for-byte, self-modify builds now carry a rebuildable generated source snapshot, and Config now exposes an API-Keys Wizard dialog.",
     "The same release window also carries forward the recent voice/media wave from `v1.17.2` through `v1.19.3`, so the current dossier must present Talker, Whisperer, Recorder, Camcorder, AudioPlayer, and VideoPlayer as first-class parts of the product.",
 ]
 
@@ -941,11 +939,13 @@ SOURCE_SNAPSHOT_GUIDE = [
 API_KEYS_WIZARD_GUIDE = [
     "Config now includes an Access Keys Wizard / API-Keys Wizard path so operators can manage provider credentials from the browser instead of editing `config.json` directly.",
     "The backend exposes masked status plus explicit save endpoints, which keeps the operator flow convenient without echoing raw secrets back into the page.",
+    "That feature arrives as a real asset wave, not just a hidden helper: `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the updated `templates/agent/agent_page.html` now form a dedicated setup surface.",
     "This matters operationally because ACPX agents, cloud LLM providers, and adjacent integrations often fail for simple missing-key reasons; the wizard turns that setup into a first-class UI workflow.",
 ]
 
 FILE_CREATOR_HARDENING_GUIDE = [
-    "The `v1.19.5` File-Creator hardening pass fixes the bulk-write path that could previously truncate long generated content when quote-heavy or semicolon-rich payloads crossed the write pipeline.",
+    "The `v1.19.5` File-Creator hardening pass fixes the wrong-symbol / wrong-escape corruption path that hit backslash-dense Java, JSON, CSS, and regex files during wrapped chat-agent execution.",
+    "Two byte-exact channels now exist: plain `content` is re-extracted verbatim from the raw request, and `content_b64` can carry source or binary bytes through a parser-immune base64 path when exact escaping matters most.",
     "For operators, the consequence is straightforward: code generation and document generation can now be described as byte-complete file writes rather than best-effort convenience output.",
     "This belongs in the dossier because File-Creator is one of Tlamatini’s central deterministic execution surfaces and one of the safest alternatives to GUI typing or editor-driving automation.",
 ]
@@ -960,6 +960,12 @@ COMMAND_WATCHDOG_GUIDE = [
     "A boot-time autonomous command watchdog now protects the chat against shell wrappers that stay alive while making zero CPU or I/O progress, the classic signature of a mangled prompt waiting forever on stdin.",
     "It never kills on elapsed time alone: the subtree must outlive the grace window and remain idle for a configured streak, so long builds, downloads, and compiles are preserved while only genuinely wedged interpreters are reaped.",
     "This watchdog complements rather than replaces the orphan reaper: the watchdog rescues blocked synchronous tool calls before they return, while the orphan reaper still handles post-return survivors and stale console companions.",
+]
+
+NEW_ASSETS_GUIDE = [
+    "Recent tracked assets worth calling out explicitly include `copy_source_assets.py` for self-modify snapshot generation, `agent/access_key_wizard.py` for backend secret handling, and the new `access_keys_wizard.js` / `access_keys_wizard.css` frontend pair wired into `agent_page.html`.",
+    "The same recent window also updated key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, and the File-Creator agent template, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
+    "Because the dossier already includes the full tracked tree and line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
 ]
 
 PROMPT_CATALOG_GUIDE = [
@@ -1567,6 +1573,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("API-Keys Wizard", styles["h2"]))
     for item in API_KEYS_WIZARD_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("New assets in the current release wave", styles["h2"]))
+    for item in NEW_ASSETS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("File-Creator hardening", styles["h2"]))
     for item in FILE_CREATOR_HARDENING_GUIDE:
@@ -2309,12 +2318,21 @@ def build_ppt(context: dict) -> None:
 
     slide, audit = add_slide(prs, "Self-Modify Source Snapshot", "generated `TlamatiniSourceCode/` and rebuild contract", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Snapshot contract", SOURCE_SNAPSHOT_GUIDE, THEME["jade"], "snap-a", 12)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Access Keys and File Writes", API_KEYS_WIZARD_GUIDE + FILE_CREATOR_HARDENING_GUIDE[:2], THEME["amber"], "snap-b", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Access Keys, Assets, And File Writes", API_KEYS_WIZARD_GUIDE[:2] + NEW_ASSETS_GUIDE[:1] + FILE_CREATOR_HARDENING_GUIDE[:1], THEME["amber"], "snap-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Media, Voice, And Runtime Resilience", "Talker / Whisperer family plus watchdog hardening", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Media and voice", MEDIA_VOICE_GUIDE, THEME["copper"], "media-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Autonomous watchdog", COMMAND_WATCHDOG_GUIDE, THEME["jade"], "media-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Newest Assets And Surfaces", "backend, frontend, and build files added or upgraded recently", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE, THEME["jade"], "assets-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why they matter", [
+        "These files are the concrete proof behind the release narrative: build-time self-snapshotting, a graphical credentials setup surface, and a safer File-Creator transport are all implemented in tracked source, not merely described in markdown.",
+        "They also increase the line inventory in JavaScript, CSS, HTML, and Python, which the dossier’s language tables and complete tracked tree now pick up automatically.",
+        "For operators and maintainers, this makes the PDF/PPTX useful as both a product overview and a change-orientation map after a busy sprint.",
+    ], THEME["amber"], "assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Agentic Control Panel", "visual workflow temple", THEME["jade"])
@@ -2466,12 +2484,12 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prompt catalog and readability", PROMPT_CATALOG_GUIDE, THEME["jade"], "skills-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "DB Menu And Startup Swap", "today's new operator surface", THEME["copper"])
+    slide, audit = add_slide(prs, "DB Menu And Startup Swap", "operator-facing database maintenance surface", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Backup and Set DB", DB_MENU_GUIDE, THEME["copper"], "db-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "What happens on next start-up", DB_SWAP_GUIDE, THEME["jade"], "db-b", 14)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Versioning System", "today's release-identity work", THEME["amber"])
+    slide, audit = add_slide(prs, "Versioning System", "release-identity work across runtime and builds", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.58, "SemVer and resolver", VERSIONING_GUIDE, THEME["amber"], "ver-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.58, "Where version appears", VERSION_SURFACES_GUIDE, THEME["jade"], "ver-b", 14)
     add_text(
@@ -2490,12 +2508,12 @@ def build_ppt(context: dict) -> None:
     )
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "De-Compresser Agent", "today's new archive worker", THEME["copper"])
+    slide, audit = add_slide(prs, "De-Compresser Agent", "archive compression and decompression worker", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", DE_COMPRESSER_GUIDE, THEME["copper"], "decomp-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Integration and fallbacks", DE_COMPRESSER_INTEGRATION_GUIDE, THEME["jade"], "decomp-b", 14)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Unreal MCP And Unrealer", "today's UE5 bridge", THEME["jade"])
+    slide, audit = add_slide(prs, "Unreal MCP And Unrealer", "UE5 editor bridge for chat and canvas", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", UNREAL_MCP_GUIDE, THEME["jade"], "unreal-a", 14)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Install and runtime path", UNREAL_INSTALL_GUIDE + UNREAL_RUNTIME_GUIDE[:1], THEME["copper"], "unreal-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2505,7 +2523,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime consequences", UNREAL_RUNTIME_GUIDE[1:] + ["The seeded Unreal demo prompts now cover screenshots, scene-building, and in-editor Python/introspection paths on top of the original blueprint flow."], THEME["jade"], "unreal-d", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Orphan-Process Cleanup", "today's Windows process-hygiene work", THEME["amber"])
+    slide, audit = add_slide(prs, "Orphan-Process Cleanup", "Windows process-hygiene and survivor reporting", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Three-tier reaper", ORPHAN_REAPER_GUIDE, THEME["amber"], "reaper-a", 14)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prevention and survivor reporting", ORPHAN_PREVENTION_GUIDE, THEME["jade"], "reaper-b", 14)
     audit_layout(audit, len(prs.slides))
