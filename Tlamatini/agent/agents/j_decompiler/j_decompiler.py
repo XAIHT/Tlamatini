@@ -339,12 +339,12 @@ def decompile_file(filepath: str, jd_cli_dir: str) -> bool:
 
     os.makedirs(dest_dir, exist_ok=True)
 
-    cmd = [jd_cli_bat, filepath, dest_dir]
+    cmd = ['cmd', '/c', jd_cli_bat, filepath, dest_dir]
 
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True,
-            cwd=jd_cli_dir, shell=True, timeout=300
+            cwd=jd_cli_dir, shell=False, timeout=300
         )
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout

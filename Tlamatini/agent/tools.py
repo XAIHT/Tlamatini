@@ -2955,16 +2955,12 @@ def decompile_java(path_filename: str) -> str:
         # Create destination directory if it doesn't exist
         os.makedirs(dest_dir, exist_ok=True)
         
-        # Run jd-cli.bat to decompile
-        # Command: jd-cli.bat <input_file> <output_dir>
-        # Note: We use shell=True to execute the batch file properly on Windows
-        cmd = [
-            jd_cli_bat,
-            path_filename,
-            dest_dir
-        ]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=jd_cli_dir, shell=True)
+        # Run jd-cli.bat to decompile (cmd /c avoids shell=True on Windows)
+        cmd = ['cmd', '/c', jd_cli_bat, path_filename, dest_dir]
+
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=jd_cli_dir, shell=False
+        )
         
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout

@@ -40,7 +40,9 @@ def _approx_tokens(s: str) -> int:
     return max(1, len(s) // 4)
 
 def _sha1(s: str) -> str:
-    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()
+    return hashlib.sha1(
+        s.encode("utf-8", errors="ignore"), usedforsecurity=False
+    ).hexdigest()
 
 def _normalize_text(s: str) -> str:
     return " ".join(s.split())

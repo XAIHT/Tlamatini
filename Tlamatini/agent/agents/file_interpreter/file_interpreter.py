@@ -423,7 +423,9 @@ def unique_image_name(images_dir: str, original_name: str, file_path: str, img_i
         ext = '.png'
     # Hash: source file + original name + index for uniqueness
     hash_input = f"{file_path}:{original_name}:{img_index}"
-    short_hash = hashlib.md5(hash_input.encode()).hexdigest()[:8]
+    short_hash = hashlib.md5(
+        hash_input.encode(), usedforsecurity=False
+    ).hexdigest()[:8]
     candidate = f"{base}_{short_hash}{ext}"
     return candidate
 
@@ -653,7 +655,7 @@ def extract_html(file_path: str):
 
 def extract_xml(file_path: str):
     """Extract text from XML files."""
-    import xml.etree.ElementTree as ET
+    import defusedxml.ElementTree as ET
     try:
         tree = ET.parse(file_path)
         root = tree.getroot()

@@ -39,7 +39,7 @@ if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
         return _chg_orig_init(self, *args, **kwargs)
     subprocess.Popen.__init__ = _chg_guarded_init
     subprocess._conhost_guard_applied = True
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 
 # Set working directory to script location
 try:
