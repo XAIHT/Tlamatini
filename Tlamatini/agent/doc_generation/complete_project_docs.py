@@ -417,6 +417,26 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
+        highlights.append(
+            "Today’s headline hardening pass is `v1.19.4` file integrity: File-Creator’s bulk-write path no longer truncates long content with quotes or semicolons, so code and docs land byte-complete instead of arriving clipped at the exact moment a generated file becomes interesting."
+        )
+    if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
+        highlights.append(
+            "The same release completes the self-modify story: `build.py --self-modify` now generates a rebuildable `TlamatiniSourceCode/` snapshot through `copy_source_assets.py`, so a self-able-modify build carries her own source tree, rebuild instructions, and redacted secrets in one honest package."
+        )
+    if any("api-keys wizard" in subject or "api keys wizard" in subject or ("api" in subject and "wizard" in subject) for subject in subjects):
+        highlights.append(
+            "Operator ergonomics improved too: the Config menu now includes an API-Keys Wizard dialog, giving the user a browser-side way to enter and persist provider credentials without hand-editing `config.json`."
+        )
+    if any("talker" in subject or "whisperer" in subject or "recorder" in subject or "camcorder" in subject or "audio" in subject for subject in subjects):
+        highlights.append(
+            "The recent media-and-voice wave is still visible in Git: Talker and Whisperer extend Tlamatini from text-only operation into female-voice text-to-speech plus speech-to-text, while Recorder/Camcorder/Shoter/AudioPlayer/VideoPlayer complete the broader media I/O family."
+        )
+    if any("watchdog" in subject or "hung command" in subject or "hanged" in subject for subject in subjects):
+        highlights.append(
+            "Runtime resilience advanced as well: the autonomous command watchdog can now detect shell wrappers that are alive but making no CPU or I/O progress, then reap only the wedged console-interpreter subtree without touching healthy long-running work."
+        )
     if any("audioplayer" in subject or "videoplayer" in subject or ("playback" in subject and ("audio" in subject or "video" in subject)) for subject in subjects):
         highlights.append(
             "New media-playback pair completes the media-I/O family: AudioPlayer plays an audio file to the speakers (soundfile + sounddevice, volume and a truncate/loop time budget) and VideoPlayer plays a video file with audio on a chosen display (ffpyplayer — its wheel bundles ffmpeg + SDL — plus an OpenCV window, with display/volume/time-budget/window/fullscreen). Both are observational/output, on the canvas and as wrapped chat_agent_audioplayer / chat_agent_videoplayer tools."
@@ -439,19 +459,19 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.12.0` ESP32er: Tlamatini now reaches 69 workflow agents and adds a direct PlatformIO Core bridge, so she can scaffold, author, build, upload, and monitor ESP32-class firmware from chat or canvas without an external MCP server."
+            "The embedded-firmware surface remains broad in the current tree: ESP32er keeps the direct PlatformIO Core path for scaffold/build/upload/monitor work, while STM32er and Arduiner cover the other hardware lanes from the same chat-and-canvas operating model."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "The newer ESP32 release still carries forward the Ask Execs safety surface introduced earlier: Tlamatini can pause before every state-changing Multi-Turn Tool, MCP, or wrapped agent, block on a Proceed or Deny dialog in the browser, and fail safe with a red `Execution interrupted` banner when the operator refuses a step."
+            "Human approval remains part of the modern safety story too: Ask Execs can still stop Multi-Turn before the next state-changing step, wait for a Proceed or Deny decision, and surface denial through the explicit red interruption banner."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.9.0` STM32er: Tlamatini now reaches 68 workflow agents and adds a zero-config bridge into the `STM32 Template Project MCP`, so she can scaffold, build, flash, observe, and reset STM32F4 firmware from chat or canvas while a critical-mission safety preflight refuses the wrong toolchain, probe, or device family."
+            "The firmware-control branch remains active in the current codebase: STM32er still bridges the STM32 Template Project MCP for scaffold/build/flash/observe/reset flows, guarded by a fail-safe hardware preflight before unsafe mutations."
         )
     if any("herself" in subject or "self" in subject and "modify" in subject or "self knowledge" in subject for subject in subjects):
         highlights.append(
-            "Today’s headline change is `v1.8.0` self-awareness: Tlamatini now carries a first-person self-knowledge map, can explain her own architecture and runtime surfaces more accurately, and can optionally inspect or modify her own shipped source tree in self-modify builds."
+            "Self-awareness is now part of the steady baseline rather than a one-off milestone: Tlamatini carries a first-person self-knowledge map and, in self-modify builds, can inspect the bundled source snapshot that describes how she actually works."
         )
     if any("4096" in subject or "degrees of liberty" in subject or "turn" in subject and "freedom" in subject for subject in subjects):
         highlights.append(
@@ -575,6 +595,22 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.19.4` hardened File-Creator’s bulk-write path so long generated content with quotes or semicolons no longer lands truncated. The document set should now describe file generation as byte-complete rather than merely convenient."
+        )
+    if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
+        highlights.append(
+            "The same release also completes the self-modify packaging story: `build.py --self-modify` now uses `copy_source_assets.py` to generate a rebuildable `TlamatiniSourceCode/` snapshot with redacted secrets, omitted heavy media, and rebuild instructions carried beside the application."
+        )
+    if any("api-keys wizard" in subject or "api keys wizard" in subject or ("api" in subject and "wizard" in subject) for subject in subjects):
+        highlights.append(
+            "A new operator-facing convenience layer landed too: Config now exposes an API-Keys Wizard dialog so cloud-provider credentials can be entered and updated from the browser instead of by manually editing `config.json`."
+        )
+    if any("watchdog" in subject or "hung command" in subject or "hanged" in subject for subject in subjects):
+        highlights.append(
+            "Recent runtime hardening added the autonomous command watchdog: a boot-time daemon thread that samples CPU and I/O progress across shell-interpreter subtrees and reaps only the genuinely wedged ones, closing the gap left by timeouts and post-return orphan cleanup."
+        )
     if any("audioplayer" in subject or "videoplayer" in subject or ("playback" in subject and ("audio" in subject or "video" in subject)) for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, the media-PLAYBACK pair landed and completed the media-I/O family: AudioPlayer plays an audio file to the speakers (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), and VideoPlayer plays a video file with audio on a chosen display (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same time budget, window size, and fullscreen). Both are observational/output and ship on the canvas and as wrapped chat_agent_audioplayer / chat_agent_videoplayer tools."
@@ -597,19 +633,19 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.12.0` added ESP32er as the 69th workflow agent and `chat_agent_esp32er` as the new embedded-firmware surface: she now drives PlatformIO Core directly to scaffold, build, upload, and monitor ESP32-class firmware with zero-config bootstrap and a serial-aware safety preflight."
+            "The embedded-firmware branch remains part of the current product story too: ESP32er keeps the PlatformIO path for scaffold/build/upload/monitor work, while the broader handbook now needs to present it as one of three microcontroller-control surfaces rather than a one-off novelty."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
-            "Earlier in the same post-baseline window, the Ask Execs checkbox added the human-in-the-loop gate: she can block before each state-changing Multi-Turn execution, wait for a browser Proceed or Deny decision through `ExecPermissionBroker`, and stop the whole chain safely with a persisted red denial banner."
+            "The human-in-the-loop gate remains current: Ask Execs can still pause before each state-changing Multi-Turn step, wait for Proceed or Deny through `ExecPermissionBroker`, and halt the chain safely with the explicit red interruption banner."
         )
     if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.9.0` added STM32er as the 68th workflow agent and `chat_agent_stm32er` as the new firmware-control surface: she now bridges the `STM32 Template Project MCP` to scaffold, build, flash, observe, and reset STM32F4 projects with a fail-safe hardware preflight."
+            "The STM32 branch is still active in the same modern operator surface: STM32er remains the bridge into the STM32 Template Project MCP for scaffold/build/flash/observe/reset workflows guarded by a critical preflight."
         )
     if any("self" in subject and ("herself" in subject or "modify" in subject or "source code" in subject) for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.8.0` introduced Tlamatini’s self-knowledge and optional self-modification surface: she can now describe her own runtime more accurately and, in self-modify builds, inspect or change her own bundled source tree."
+            "The self-knowledge and optional self-modification surface has matured into the current baseline: she can describe her runtime honestly and, when `TlamatiniSourceCode/` is present, inspect the bundled rebuildable source tree that explains how she works."
         )
     if any("4096" in subject or "degrees of liberty" in subject or "turn" in subject and "freedom" in subject for subject in subjects):
         highlights.append(
@@ -788,9 +824,11 @@ WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
+    "Lets operators manage provider secrets from the browser through the Config -> Access Keys Wizard instead of hand-editing `config.json`.",
     "Can pause before every state-changing Multi-Turn execution and ask the operator to approve or deny that exact step through the Ask Execs checkbox.",
     "Can raise a Windows attention signal when the browser needs the operator: Ask Execs prompts and Notifier events can flash Tlamatini’s own taskbar presence and leave an uppercase banner in `tlamatini.log`.",
     "Registers packaged installs in Windows `Installed apps` / `Programs and Features` with a real uninstall entry, so the release behaves like a normal installed application instead of only a shortcut bundle.",
+    "Hardens generated files: File-Creator’s bulk-write path now preserves long content byte-complete even when it contains heavy quoting or semicolon-rich source text.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
@@ -803,6 +841,7 @@ WHAT_IT_DOES = [
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
     "Can drive a live Unreal Engine 5 editor through the Unreal MCP plugin, from either Multi-Turn chat or the visual workflow canvas.",
     "Actively reaps orphaned Windows console-host and pool-child processes so long Multi-Turn or ACPX sessions do not leave misleading Tlamatini-icon ghosts in Task Manager.",
+    "Can autonomously kill only genuinely hung shell-wrapper subtrees through a boot-time command watchdog that measures CPU and I/O progress instead of guessing from elapsed time.",
     "Runs checked Multi-Turn requests through request-scoped planning, capability selection, tool calls, observations, monitoring, and final synthesis.",
     "Can optionally inspect and modify her own bundled source tree in self-modify builds after verifying that `TlamatiniSourceCode/` is actually present.",
     "Launches wrapped copies of selected workflow agents in isolated runtime folders without mutating templates.",
@@ -815,6 +854,7 @@ HOW_IT_WORKS = [
     "Browser UI sends chat and workflow requests through Django views and Channels WebSockets.",
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
+    "Config -> Access Keys Wizard reads masked provider-key status from the backend and persists only the edited secrets, keeping the browser flow honest without dumping live values back to the page.",
     "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
     "When the browser surfaces an Ask Execs prompt or a Notifier event, JavaScript can POST to `/agent/flash_window/`; the backend then best-effort flashes the `Tlamatini.exe` console/taskbar window through `window_flash.py` and prints an uppercase attention banner for the log.",
     "Installer-time registration writes a per-user HKCU Add/Remove Programs entry pointing at `Uninstaller.exe`, and frozen startup re-checks that entry through `windows_app_registration.self_heal_for_frozen()` so older installs retroactively appear in Windows' uninstall surfaces.",
@@ -822,7 +862,7 @@ HOW_IT_WORKS = [
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "A first-person self-knowledge file (`Tlamatini.md`) is injected into prompt construction for all chains, but loaded user context still outranks that self-reference when the request is a generic summary of the provided project.",
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
-    "Optional self-modify builds bundle `TlamatiniSourceCode/`; prompt rules require her to verify that directory exists before claiming she can inspect or change her own code.",
+    "Optional self-modify builds bundle `TlamatiniSourceCode/`; `copy_source_assets.py` generates that snapshot with rebuild instructions and redacted secrets, and prompt rules require her to verify that directory exists before claiming she can inspect or change her own code.",
     "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, auto-seeding the default box from `kali_server_url` in Config -> URLs before any one-off per-call override is applied, and captures one atomic `INI_SECTION_KALIER` block per run.",
     "The STM32er path spawns the STM32 Template Project MCP stdio server, performs the MCP initialize handshake, runs exactly one requested tool or composite action, and emits one atomic `INI_SECTION_STM32ER` block with the result, project directory, and stage metadata.",
     "Before any flash-capable STM32er action, a critical-mission preflight validates the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK presence, and STM32F-family match; compile-only steps can run boardless, but unsafe hardware mutations are refused fail-safe.",
@@ -830,17 +870,19 @@ HOW_IT_WORKS = [
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
+    "A boot-time command watchdog samples CPU time and I/O bytes across shell-interpreter subtrees and reaps only the ones that stay idle past the grace-and-streak window, protecting healthy long-running commands while rescuing wedged prompt waits.",
     "After spawn-capable tool calls and again after the final answer, the orphan reaper can sweep dead descendants, orphaned `conhost.exe` companions, and stale pool-linked processes without ever raising into the chat path.",
     "Tool calls execute in the backend, append observations, and may create wrapped runtime copies under `agent/agents/pools/_chat_runs_/`.",
     "On the next full start-up, `manage.py` can swap a staged database into place before Django imports, while archiving the previous live database under `DB/Older/<timestamp>/`.",
     "ACP flows deploy session-scoped pool instances, wire config values, validate NxN graph rules, and execute through Starter-driven flow semantics.",
-    "Build scripts collect static assets, bundle Django/Python resources, add agent templates, and assemble `pkg.zip`, `Uninstaller.exe`, and `dist/Tlamatini_Release/`.",
+    "Build scripts collect static assets, bundle Django/Python resources, add agent templates, and assemble `pkg.zip`, `Uninstaller.exe`, and `dist/Tlamatini_Release/`; `build.py --self-modify` additionally injects the generated source snapshot for self-rebuildable releases.",
 ]
 
 HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "Use Config -> Access Keys Wizard when you need to wire or update provider credentials without editing `config.json` manually.",
     "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
     "When you are using a packaged install on Windows 10 or Windows 11, uninstall it through Settings -> Apps -> Installed apps or the legacy Programs and Features entry, not by manually deleting the folder.",
     "If an Ask Execs approval dialog or a Notifier event needs you while the browser is buried, watch for Tlamatini’s taskbar-attention flash and the matching uppercase banner in `tlamatini.log`.",
@@ -884,10 +926,46 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
 
+CURRENT_RELEASE_GUIDE = [
+    "The current documented release is `v1.19.4`, and the README now frames it as a hardening-and-self-modify release rather than another simple count bump.",
+    "Three visible user-facing points define this version: File-Creator no longer truncates long generated content, self-modify builds now carry a rebuildable generated source snapshot, and Config now exposes an API-Keys Wizard dialog.",
+    "The same release window also carries forward the recent voice/media wave from `v1.17.2` through `v1.19.3`, so the current dossier must present Talker, Whisperer, Recorder, Camcorder, AudioPlayer, and VideoPlayer as first-class parts of the product.",
+]
+
+SOURCE_SNAPSHOT_GUIDE = [
+    "Self-modify builds now rely on `copy_source_assets.py` to generate `TlamatiniSourceCode/` as a fresh rebuild-oriented snapshot of the repository.",
+    "That snapshot includes source, build scripts, docs, skills, and small required binaries while deliberately omitting or redacting heavy media and secrets; `_REBUILD_INSTRUCTIONS.md` plus `_SOURCE_SNAPSHOT_MANIFEST.json` explain how to restore the missing payloads.",
+    "Because the snapshot is optional, the runtime contract remains strict: Tlamatini must verify that `TlamatiniSourceCode/` exists before claiming she can inspect, modify, or rebuild herself.",
+]
+
+API_KEYS_WIZARD_GUIDE = [
+    "Config now includes an Access Keys Wizard / API-Keys Wizard path so operators can manage provider credentials from the browser instead of editing `config.json` directly.",
+    "The backend exposes masked status plus explicit save endpoints, which keeps the operator flow convenient without echoing raw secrets back into the page.",
+    "This matters operationally because ACPX agents, cloud LLM providers, and adjacent integrations often fail for simple missing-key reasons; the wizard turns that setup into a first-class UI workflow.",
+]
+
+FILE_CREATOR_HARDENING_GUIDE = [
+    "The `v1.19.4` File-Creator hardening pass fixes the bulk-write path that could previously truncate long generated content when quote-heavy or semicolon-rich payloads crossed the write pipeline.",
+    "For operators, the consequence is straightforward: code generation and document generation can now be described as byte-complete file writes rather than best-effort convenience output.",
+    "This belongs in the dossier because File-Creator is one of Tlamatini’s central deterministic execution surfaces and one of the safest alternatives to GUI typing or editor-driving automation.",
+]
+
+MEDIA_VOICE_GUIDE = [
+    "The current media family spans capture, playback, and speech: Shoter (screen), Camcorder (camera-in), Recorder (mic-in), AudioPlayer (speakers-out), VideoPlayer (screen-out with audio), Talker (text-to-speech), and Whisperer (speech-to-text).",
+    "Talker remains female-only by design and uses an Ollama neural TTS model with SNAC decoding, while Whisperer records the microphone itself or transcribes a file through faster-whisper locally or cloud Whisper APIs.",
+    "Recent stability work matters here too: Talker now chunks long input by sentence for long-form speech, and media-output defaults were moved into the application `Temp` directory rather than user content folders.",
+]
+
+COMMAND_WATCHDOG_GUIDE = [
+    "A boot-time autonomous command watchdog now protects the chat against shell wrappers that stay alive while making zero CPU or I/O progress, the classic signature of a mangled prompt waiting forever on stdin.",
+    "It never kills on elapsed time alone: the subtree must outlive the grace window and remain idle for a configured streak, so long builds, downloads, and compiles are preserved while only genuinely wedged interpreters are reaped.",
+    "This watchdog complements rather than replaces the orphan reaper: the watchdog rescues blocked synchronous tool calls before they return, while the orphan reaper still handles post-return survivors and stale console companions.",
+]
+
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.19.3` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.19.4` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -909,7 +987,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.19.3` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.19.4` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -927,7 +1005,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.19.3` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.19.4` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -987,7 +1065,7 @@ WINDOWER_SURFACES_GUIDE = [
 ]
 
 KALIER_GUIDE = [
-    "Kalier remains the 67th workflow agent in `v1.7.1`, but its newest upgrade is usability: Tlamatini now acts as the embedded MCP-Kali-Server client for chat-side runs.",
+    "Kalier is Tlamatini’s current Kali Linux bridge: a direct client for MCP-Kali-Server that lets her drive authorized recon, enumeration, web scanning, and offensive-security workflows from chat or canvas.",
     "It can issue one capability per run, including `nmap`, `gobuster`, `dirb`, `nikto`, `sqlmap`, `metasploit`, `hydra`, `john`, `wpscan`, `enum4linux`, arbitrary `command`, or a safe `health` probe of the remote server.",
     "The agent emits `INI_SECTION_KALIER` with `action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, and `server_url`, so downstream Forker or Parametrizer logic can branch on results without scraping prose.",
     "The practical operator result is simpler prompts: after the Kali box URL is configured once, normal Multi-Turn requests no longer repeat `server_url` unless you intentionally override it for a one-off target.",
@@ -1000,7 +1078,7 @@ KALIER_SURFACES_GUIDE = [
 ]
 
 STM32ER_GUIDE = [
-    "STM32er is the new 68th workflow agent in `v1.9.0`: Tlamatini’s bridge to the `STM32 Template Project MCP`, built so she can scaffold, author, build, flash, reset, and observe STM32F4 firmware without driving the STM32CubeIDE GUI.",
+    "STM32er is Tlamatini’s current STM32 bridge: she talks to the `STM32 Template Project MCP` so she can scaffold, author, build, flash, reset, and observe STM32F4 firmware without driving STM32CubeIDE manually.",
     "The operator promise is zero-config bootstrap: leave `server_script` blank and STM32er downloads or zip-falls-back to the MCP server on first use, installs `mcp` and `pyserial` if needed, validates, and caches the result so the user only installs STM32CubeIDE plus Tlamatini.",
     "Before any compile-or-hardware action, STM32er runs a critical-mission fail-safe preflight over the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK probe, and target family; compile-only steps can run boardless, but flash, erase, reset, serial, and SWD/live-memory operations are refused when the environment or device is wrong.",
 ]
@@ -1012,7 +1090,7 @@ STM32ER_SURFACES_GUIDE = [
 ]
 
 ESP32ER_GUIDE = [
-    "ESP32er is the new 69th workflow agent in `v1.12.0`: Tlamatini’s direct bridge to PlatformIO Core, built so she can scaffold, author, build, upload, and monitor ESP32-class firmware without relying on an external MCP server or IDE.",
+    "ESP32er is Tlamatini’s current PlatformIO Core bridge: she can scaffold, author, build, upload, and monitor ESP32-class firmware without relying on an external MCP server or IDE.",
     "The operator promise is zero-config bootstrap: leave `pio_executable` blank and ESP32er downloads or pip-falls-back to PlatformIO Core on first use, validates it, and caches it under a per-user directory so the user installs only the board USB driver plus Tlamatini.",
     "Before any build-or-upload action, ESP32er runs a serial-aware preflight over `pio` resolution, project shape, and connected ports; upload and monitor require a real serial device, while non-espressif32 targets are warned about rather than hard-refused because PlatformIO is intentionally multi-target.",
 ]
@@ -1051,6 +1129,7 @@ CONFIGURATION_GUIDE = [
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
     "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `kimi-k2.6:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
     "URL configuration now also includes `kali_server_url`, the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, plus ESP32er’s `pio_executable` and `pio_core_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
+    "Credential configuration is no longer hand-edit-only: Config -> Access Keys Wizard provides a browser-side path for ACPX and provider secrets while preserving masked status in the UI.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096, and Ask Execs only becomes available when Multi-Turn itself is on.",
@@ -2178,7 +2257,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.19.3", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.19.4", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2192,7 +2271,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.19.3", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.19.4", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
