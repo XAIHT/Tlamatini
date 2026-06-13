@@ -2000,6 +2000,7 @@ _PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES = frozenset({
     'crawler', 'summarizer', 'prompter', 'file_interpreter', 'file_extractor',
     'image_interpreter', 'shoter', 'monitor_log', 'monitor_netstat',
     'recmailer', 'sleeper', 'pser',
+    'camcorder', 'recorder', 'whisperer', 'audioplayer', 'videoplayer', 'talker',
 })
 
 

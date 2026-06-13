@@ -245,9 +245,11 @@ class WhispererHelperTests(unittest.TestCase):
         self.assertTrue(path)
         self.assertIsInstance(path, str)
 
-    def test_resolve_output_dir_default_is_transcripts(self):
+    def test_resolve_output_dir_default_is_temp(self):
+        # Transcripts default to <app>/Temp (Angela 2026-06-09), not Documents.
         out = self.mod.resolve_output_dir({})
-        self.assertTrue(out.endswith('TlamatiniTranscripts'))
+        self.assertTrue(os.path.isabs(out))
+        self.assertEqual(os.path.basename(os.path.normpath(out)), 'Temp')
 
     def test_resolve_output_dir_honors_configured_absolute(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -593,7 +595,7 @@ class WhispererRegistryTests(SimpleTestCase):
             cfg = yaml.safe_load(handle)
         self.assertEqual(cfg['input_source'], 'mic')
         self.assertEqual(cfg['audio_file'], '')
-        self.assertEqual(cfg['record_seconds'], 5)
+        self.assertEqual(cfg['record_seconds'], 30)
         self.assertEqual(cfg['device_index'], -1)
         self.assertEqual(cfg['engine'], 'faster-whisper')
         self.assertEqual(cfg['model'], 'base')
