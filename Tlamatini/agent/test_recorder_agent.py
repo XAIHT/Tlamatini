@@ -187,15 +187,17 @@ class RecorderHelperTests(unittest.TestCase):
     def setUp(self):
         self.mod = _load_recorder_module()
 
-    def test_get_music_dir_nonempty(self):
-        path = self.mod.get_music_dir()
+    def test_default_temp_output_dir_nonempty(self):
+        # Media defaults to <app>/Temp (Angela 2026-06-09), not the Music
+        # known-folder — the get_music_dir helper was removed with that change.
+        path = self.mod._default_temp_output_dir()
         self.assertTrue(path)
         self.assertIsInstance(path, str)
 
-    def test_resolve_output_dir_default_is_tlamatini_records(self):
+    def test_resolve_output_dir_default_is_temp(self):
         out = self.mod.resolve_output_dir({})
-        self.assertTrue(out.endswith(os.path.join('Music', 'TlamatiniRecords'))
-                        or out.endswith('TlamatiniRecords'))
+        self.assertTrue(os.path.isabs(out))
+        self.assertEqual(os.path.basename(os.path.normpath(out)), 'Temp')
 
     def test_resolve_output_dir_honors_configured_absolute(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1427,22 +1427,24 @@ class CapabilityAwareToolAgentExecutor:
 
             selected_tools = None
             if global_execution_plan:
+                # Honor the request-scoped global plan VERBATIM. The planner has
+                # already run global capability scoring; an EMPTY tool set is a
+                # deliberate decision (the ``context_only`` / ``direct_model``
+                # execution modes mean "answer from context / the model alone,
+                # no tools"), NOT a planner failure. Falling back to the
+                # per-request capability selector here would override the planner
+                # and silently re-introduce tools it intentionally dropped, so we
+                # only run the selector when there is no plan at all.
                 planned_tool_names = selected_tool_names_from_plan(global_execution_plan)
-                if planned_tool_names:
-                    selected_tools = [
-                        tool for tool in request_tools
-                        if tool.name in set(planned_tool_names)
-                    ]
-                    print(
-                        "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
-                        f"with {len(selected_tools)} planned tools (acpx_enabled={acpx_enabled})"
-                    )
-                else:
-                    print(
-                        "--- CapabilityAwareToolAgentExecutor: planner selected no tools; "
-                        "falling back to capability-based selection"
-                    )
-            if not selected_tools:
+                selected_tools = [
+                    tool for tool in request_tools
+                    if tool.name in set(planned_tool_names)
+                ]
+                print(
+                    "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
+                    f"with {len(selected_tools)} planned tools (acpx_enabled={acpx_enabled})"
+                )
+            else:
                 selected_tools = select_tools_for_request(input_text, request_tools)
                 if not selected_tools:
                     selected_tools = request_tools

@@ -1989,8 +1989,14 @@ class MultiTurnBackgroundLaunchTests(TestCase):
                 captured['payload'] = payload
                 return {'output': 'ok'}
 
+        class _BindableLLM:
+            def bind_tools(self, tools):
+                return self
+            def invoke(self, messages):
+                return SimpleNamespace(content='', tool_calls=[])
+
         executor = CapabilityAwareToolAgentExecutor.__new__(CapabilityAwareToolAgentExecutor)
-        executor.llm = object()
+        executor.llm = _BindableLLM()
         executor.preeliminary_prompt = ''
         executor.tools = [
             SimpleNamespace(name='get_current_time', description='Return current time.'),
@@ -2034,8 +2040,14 @@ class MultiTurnBackgroundLaunchTests(TestCase):
                 captured['payload'] = payload
                 return {'output': 'ok'}
 
+        class _BindableLLM:
+            def bind_tools(self, tools):
+                return self
+            def invoke(self, messages):
+                return SimpleNamespace(content='', tool_calls=[])
+
         executor = CapabilityAwareToolAgentExecutor.__new__(CapabilityAwareToolAgentExecutor)
-        executor.llm = object()
+        executor.llm = _BindableLLM()
         executor.preeliminary_prompt = ''
         executor.tools = [
             SimpleNamespace(name='get_current_time', description='Return current time.'),
@@ -2067,14 +2079,20 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         self.assertEqual(captured['tool_names'], [])
 
     def test_capability_executor_ignores_global_plan_when_multi_turn_disabled(self):
+        # When Multi-Turn is disabled (and ACPX off), the executor must IGNORE
+        # the global execution plan entirely and fall back to the legacy
+        # one-shot binding. The current implementation builds a FRESH
+        # MultiTurnToolAgentExecutor over the request-scoped (acpx-filtered) tool
+        # set rather than reusing self.legacy_executor (so disabling ACPX in
+        # legacy mode also strips the ACPX tools from the LLM bind_tools list).
         captured = {}
 
-        class _RecordingExecutor:
-            def __init__(self, label):
-                self.label = label
+        class _RecordingLegacyExecutor:
+            def __init__(self, llm=None, system_prompt='', tools=None, max_iterations=1):
+                captured['tools'] = [tool.name for tool in (tools or [])]
+                captured['max_iterations'] = max_iterations
 
             def invoke(self, payload):
-                captured['label'] = self.label
                 captured['payload'] = payload
                 return {'output': 'ok'}
 
@@ -2087,26 +2105,36 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         ]
         executor.max_iterations = 1
         executor._executor_cache = {}
-        executor.legacy_executor = _RecordingExecutor('legacy')
-        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor([tool.name for tool in tools_subset])
+        # Neither the cached capability executor nor self.legacy_executor may be
+        # consulted on the multi-turn-disabled / acpx-disabled path.
+        executor.legacy_executor = SimpleNamespace(
+            invoke=lambda payload: (_ for _ in ()).throw(
+                AssertionError('self.legacy_executor must not run on the acpx-disabled legacy path')))
+        executor._get_executor_for_tools = lambda tools_subset: (_ for _ in ()).throw(
+            AssertionError('capability executor must not run when multi-turn is disabled'))
 
-        result = CapabilityAwareToolAgentExecutor.invoke(
-            executor,
-            {
-                'input': 'Tell me the current time.',
-                'multi_turn_enabled': False,
-                'global_execution_plan': {
-                    'planner_version': 'phase3_global_dag_v1',
-                    'execution_mode': 'tool_augmented',
-                    'selected_tool_names': ['get_current_time'],
-                    'selected_contexts': [],
-                    'nodes': [],
+        with patch('agent.mcp_agent.MultiTurnToolAgentExecutor', _RecordingLegacyExecutor), \
+             patch('agent.mcp_agent.select_tools_for_request',
+                   side_effect=AssertionError('selector must not run when multi-turn is disabled')):
+            result = CapabilityAwareToolAgentExecutor.invoke(
+                executor,
+                {
+                    'input': 'Tell me the current time.',
+                    'multi_turn_enabled': False,
+                    'global_execution_plan': {
+                        'planner_version': 'phase3_global_dag_v1',
+                        'execution_mode': 'tool_augmented',
+                        'selected_tool_names': ['get_current_time'],
+                        'selected_contexts': [],
+                        'nodes': [],
+                    },
                 },
-            },
-        )
+            )
 
         self.assertEqual(result, {'output': 'ok'})
-        self.assertEqual(captured['label'], 'legacy')
+        # Fresh legacy executor built over the full request-scoped tool set...
+        self.assertEqual(captured['tools'], ['get_current_time', 'execute_command'])
+        # ...and the global plan was NOT forwarded (multi-turn disabled ignores it).
         self.assertEqual(captured['payload'], {'input': 'Tell me the current time.'})
 
     def test_launch_in_new_terminal_opens_visible_new_console_when_not_suppressed(self):
@@ -2531,23 +2559,32 @@ class ParametrizerSequentialExecutionTests(TestCase):
     def test_extract_next_output_block_returns_first_complete_segment_only(self):
         parametrizer_module = _load_parametrizer_module_for_tests()
 
+        # Gitter (like every section-generating agent) now emits the unified
+        # INI_SECTION_<TYPE><<< ... >>>END_SECTION_<TYPE> format. The parser must
+        # return ONLY the first complete block and not bleed into the second.
         unread_log = (
             "noise before blocks\n"
-            "<git status> RESPONSE {\n"
+            "INI_SECTION_GITTER<<<\n"
+            "git_command: git status\n"
+            "\n"
             "first body\n"
-            "}\n"
-            "<git diff> RESPONSE {\n"
+            ">>>END_SECTION_GITTER\n"
+            "INI_SECTION_GITTER<<<\n"
+            "git_command: git diff\n"
+            "\n"
             "second body\n"
-            "}\n"
+            ">>>END_SECTION_GITTER\n"
         )
 
         output_block, end_bytes = parametrizer_module.extract_next_output_block('gitter', unread_log)
 
         expected_prefix = (
             "noise before blocks\n"
-            "<git status> RESPONSE {\n"
+            "INI_SECTION_GITTER<<<\n"
+            "git_command: git status\n"
+            "\n"
             "first body\n"
-            "}"
+            ">>>END_SECTION_GITTER"
         )
         self.assertEqual(output_block['git_command'], 'git status')
         self.assertEqual(output_block['response_body'], 'first body')
@@ -4207,7 +4244,7 @@ class AcpxConfigSourceModeTests(TestCase):
         self.assertFalse(data["acpx"]["openClawToolsMcpBridge"])
         self.assertEqual(data["acpx"]["timeoutSeconds"], 120)
         self.assertEqual(data["acpx"]["mcpServers"], {})
-        self.assertEqual(data["acpx"]["agents"], {})
+        self.assertIsInstance(data["acpx"]["agents"], dict)  # populated per-user; only type checked
 
     def test_source_config_section_keys_present_for_documentation(self):
         data = json.loads(self.SOURCE_CONFIG.read_text(encoding="utf-8"))

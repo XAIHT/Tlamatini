@@ -165,7 +165,7 @@ _ALLOWED_SYNONYMS = re.compile(
 )
 
 _CONTEXT_REFS = re.compile(
-    r'\b(?:provided|loaded|given|attached|uploaded|current|above|this)\b'
+    r'\b(?:provided|loaded|given|attached|uploaded|current|present|above|this)\b'
     r'[\s\-]*'
     r'\b(?:context|document|documents|content|code|source\s*code|codebase|project|files|data|information|text)\b',
     re.IGNORECASE
