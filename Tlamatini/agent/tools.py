@@ -901,6 +901,62 @@ def _parse_requested_assignments(request_text):
     return {'assignments': parsed, 'ignored': ignored}, None
 
 
+def _extract_verbatim_assignment(request_text, target_key):
+    """Re-extract ONE assignment's value from the RAW request with NO escape
+    decoding — the bytes between the value's outer quotes are returned EXACTLY
+    as the model sent them.
+
+    The generic value coercion (``_coerce_assignment_value`` /
+    ``_unquote_preserving_backslashes``) is tuned for shell / SQL / Python-literal
+    payloads: it collapses ``\\\\`` -> ``\\``, ``\\<quote>`` -> ``<quote>`` and a
+    doubled outer quote -> a single quote. That is exactly WRONG for a verbatim
+    source FILE: a Java regex ``Pattern.compile("\\\\.")`` (whose on-disk bytes
+    are ``"\\\\."``) gets rewritten to ``"\\."`` — an "illegal escape character"
+    — which is the FileCreator corruption Angela hit (Java/CSS/JS/JSON files
+    full of backslash escapes came out broken).
+
+    This helper reuses the SAME segment-boundary detection as the normal parse
+    (so it stops at ``and OTHER_KEY=``, and survives interior quotes/newlines via
+    the multi-line upgrade in ``_split_assignment_segments``), but strips ONLY the
+    one surrounding quote pair and returns the inner text byte-for-byte. Returns
+    ``None`` when the key is absent, its value is unquoted, or the closing quote
+    was lost (truncated) — in those cases the caller keeps the normally-coerced
+    value rather than guessing.
+    """
+    start_index = _find_first_assignment_index(request_text)
+    if start_index < 0:
+        return None
+    assignments_text = request_text[start_index:]
+    norm_target = _normalize_identifier(target_key)
+    for raw_segment in _split_assignment_segments(assignments_text):
+        segment = re.sub(r'^(and|with)\s+', '', raw_segment.strip(), flags=re.IGNORECASE)
+        key, value = _split_assignment_segment(segment)
+        if not key:
+            continue
+        clean_key = key.strip().strip('"').strip("'")
+        if not clean_key or _normalize_identifier(clean_key) != norm_target:
+            continue
+        value_text = value.strip() if isinstance(value, str) else ''
+        # Triple-quoted block: strip the triple delimiters, keep the body verbatim
+        # (NO ast.literal_eval — that would expand \n/\t and corrupt source code).
+        for triple in ('"""', "'''"):
+            if (
+                value_text.startswith(triple)
+                and value_text.endswith(triple)
+                and len(value_text) >= 2 * len(triple)
+            ):
+                return value_text[len(triple):-len(triple)]
+        # Single/double-quoted: strip exactly one outer pair, decode NOTHING.
+        if (
+            len(value_text) >= 2
+            and value_text[0] == value_text[-1]
+            and value_text[0] in ('"', "'")
+        ):
+            return value_text[1:-1]
+        return None
+    return None
+
+
 def _collect_config_paths(node, prefix=()):
     all_paths = {}
     leaf_paths = {}
@@ -2168,6 +2224,36 @@ def _launch_wrapped_chat_agent(spec, request):
             "runtime_dir": runtime_dir,
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
+
+    # File-Creator must write the model's content BYTE-FOR-BYTE (Angela
+    # 2026-06-12). The generic value coercion that every wrapped agent shares
+    # (_unquote_preserving_backslashes) collapses ``\\`` -> ``\`` and doubled
+    # quotes for shell/SQL payloads — which CORRUPTS verbatim source files
+    # (Java ``Pattern.compile("\\.")`` -> ``"\."`` = "illegal escape character",
+    # the exact failure in the Eclipse build log). Two byte-exact channels:
+    #   1) content_b64 — a fully parser-immune base64 channel (the agent
+    #      decodes it to raw bytes); base64's alphabet has no quotes/backslashes
+    #      so it survives ANY transport mangling. Leave `content` untouched.
+    #   2) plain `content` — re-extract it from the RAW request with NO escape
+    #      decoding so backslash/quote runs in source code land verbatim.
+    # `file_path` keeps the normal coercion (a Windows path DOES want
+    # ``C:\\Temp`` -> ``C:\Temp``); only `content` is forced verbatim.
+    if spec.template_dir == "file_creator":
+        try:
+            b64_value = runtime_config.get("content_b64")
+            has_b64 = isinstance(b64_value, str) and b64_value.strip() != ""
+            if not has_b64:
+                verbatim_content = _extract_verbatim_assignment(str(request), "content")
+                if verbatim_content is not None and verbatim_content != runtime_config.get("content"):
+                    runtime_config["content"] = verbatim_content
+                    logger.info(
+                        "[tools._launch_wrapped_chat_agent] file_creator content re-extracted "
+                        "VERBATIM (%d chars, no escape decoding)", len(verbatim_content),
+                    )
+        except Exception as exc:  # never let the verbatim path break a launch
+            logger.warning(
+                "[tools._launch_wrapped_chat_agent] file_creator verbatim re-extract failed: %s", exc
+            )
 
     # Pre-flight syntax check for Pythonxer scripts. The agent itself invokes
     # Ruff via ``python -m ruff`` (works in both source and frozen modes

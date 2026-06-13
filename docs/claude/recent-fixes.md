@@ -10,6 +10,18 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-12 — FileCreator writes content BYTE-FOR-BYTE (verbatim + base64 channel) — do NOT re-route content through the generic value coercion
+
+**Incident (Angela, screenshot):** `chat_agent_file_creator` wrote `FormValidatorGeneratingClass.java` and Eclipse/Maven lit up with dozens of `illegal escape character`, `unclosed string literal`, `unclosed character literal` errors. Root cause: every wrapped agent shares `agent/tools.py::_coerce_assignment_value` → `_unquote_preserving_backslashes`, which collapses `\\` → `\`, `\<quote>` → `<quote>` and a doubled outer quote → one quote (correct for shell/SQL/Python-literal payloads). For a **verbatim source file** that is exactly wrong: a Java regex `Pattern.compile("\\.")` — whose on-disk bytes are `"\\."` — got rewritten to `"\."`, an illegal Java escape. Backslash-dense files (Java/JSON/regex/JS) came out broken even though the Exec Report (raw pre-parse request) looked correct.
+
+**Fix (keep all of it):**
+- **tools.py `_extract_verbatim_assignment(request_text, key)`** — re-extracts one value from the RAW request reusing the SAME segment-boundary detection (`_split_assignment_segments` / `_split_assignment_segment`, so the multi-line upgrade + `and KEY=` splitting still apply) but strips ONLY the outer quote pair and decodes **nothing**. Returns `None` for unquoted/missing/truncated values (caller keeps the coerced value).
+- **`_launch_wrapped_chat_agent`** — for `spec.template_dir == "file_creator"` only: if `content_b64` is empty, overwrite `runtime_config["content"]` with the verbatim re-extraction. **`file_path` deliberately keeps the normal coercion** (a Windows path genuinely wants `C:\\Temp` → `C:\Temp`); only `content` is forced verbatim. Wrapped in try/except — the verbatim path must never break a launch.
+- **`agents/file_creator/file_creator.py` + `config.yaml`** — new `content_b64` field: a fully parser-immune base64 channel (alphabet `A-Za-z0-9+/=` has no quotes/backslashes), decoded to raw bytes and written in **binary** mode; takes precedence over `content`. The text path now writes with `newline=''` so `\n` is NOT translated to `\r\n` (byte-exact).
+- **registry + prompt.pmt** — file_creator `purpose`/`example_request` now say content is written VERBATIM (do NOT escape backslashes/quotes; real newlines, not `\n`), and document `content_b64` for backslash-heavy/binary files. The old `content='server:\\n …'` example (which taught misleading double-escaping) is now real newlines.
+
+**Scope guard:** this is FileCreator-only. Do NOT make `_coerce_assignment_value` verbatim globally — pythonxer/keyboarder/sqler rely on the shell/SQL decode. Regression: `AssignmentParserRobustnessTests.test_verbatim_keeps_java_regex_backslashes` (+ content-first / unquoted cases). Proven end-to-end byte-exact (generic coercion = corrupt, verbatim + both channels = exact). Frozen builds need `python build.py` (tools.py is in the PYZ); a source instance just needs a server restart (`runserver --noreload`).
+
 ### 2026-06-12 — Wrapped chat-agent parser: dynamic multi-line upgrade on interior newline — do NOT revert (truncated-file bug)
 
 **Incident:** `chat_agent_file_creator` wrote `SecurityHeadersFilter.java` (SuperDemoPage) truncated at `"default-src 'self` — exactly at the first `';` sequence — while the Exec Report showed the complete file (the report renders the RAW pre-parse request via `_extract_exec_report_command`, so it can never reveal a parse truncation).
