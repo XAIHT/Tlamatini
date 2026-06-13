@@ -419,7 +419,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
-            "Today’s headline hardening pass is `v1.19.4` file integrity: File-Creator’s bulk-write path no longer truncates long content with quotes or semicolons, so code and docs land byte-complete instead of arriving clipped at the exact moment a generated file becomes interesting."
+            "Today’s headline hardening pass is `v1.19.5` file integrity: File-Creator’s bulk-write path no longer truncates long content with quotes or semicolons, so code and docs land byte-complete instead of arriving clipped at the exact moment a generated file becomes interesting."
         )
     if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
         highlights.append(
@@ -597,7 +597,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.19.4` hardened File-Creator’s bulk-write path so long generated content with quotes or semicolons no longer lands truncated. The document set should now describe file generation as byte-complete rather than merely convenient."
+            "Since the last committed PDF/PPTX refresh, `v1.19.5` hardened File-Creator’s bulk-write path so long generated content with quotes or semicolons no longer lands truncated. The document set should now describe file generation as byte-complete rather than merely convenient."
         )
     if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
         highlights.append(
@@ -927,7 +927,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The current documented release is `v1.19.4`, and the README now frames it as a hardening-and-self-modify release rather than another simple count bump.",
+    "The current documented release is `v1.19.5`, and the README now frames it as a hardening-and-self-modify release rather than another simple count bump.",
     "Three visible user-facing points define this version: File-Creator no longer truncates long generated content, self-modify builds now carry a rebuildable generated source snapshot, and Config now exposes an API-Keys Wizard dialog.",
     "The same release window also carries forward the recent voice/media wave from `v1.17.2` through `v1.19.3`, so the current dossier must present Talker, Whisperer, Recorder, Camcorder, AudioPlayer, and VideoPlayer as first-class parts of the product.",
 ]
@@ -945,7 +945,7 @@ API_KEYS_WIZARD_GUIDE = [
 ]
 
 FILE_CREATOR_HARDENING_GUIDE = [
-    "The `v1.19.4` File-Creator hardening pass fixes the bulk-write path that could previously truncate long generated content when quote-heavy or semicolon-rich payloads crossed the write pipeline.",
+    "The `v1.19.5` File-Creator hardening pass fixes the bulk-write path that could previously truncate long generated content when quote-heavy or semicolon-rich payloads crossed the write pipeline.",
     "For operators, the consequence is straightforward: code generation and document generation can now be described as byte-complete file writes rather than best-effort convenience output.",
     "This belongs in the dossier because File-Creator is one of Tlamatini’s central deterministic execution surfaces and one of the safest alternatives to GUI typing or editor-driving automation.",
 ]
@@ -965,7 +965,7 @@ COMMAND_WATCHDOG_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.19.4` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.19.5` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -987,7 +987,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.19.4` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.19.5` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -1005,7 +1005,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.19.4` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.19.5` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -1559,7 +1559,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Current release focus in v1.19.4", styles["h2"]))
+    story.append(p("Current release focus in v1.19.5", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Self-modify source snapshot", styles["h2"]))
@@ -2275,7 +2275,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.19.4", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.19.5", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2289,7 +2289,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.19.4", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.19.5", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2298,7 +2298,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.19.4 hardening and self-modify completeness", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.19.5 hardening and self-modify completeness", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
         "This release is about trust: generated files should land intact, self-modify builds should actually carry a rebuildable self-image, and credential setup should not require hand-editing JSON.",
