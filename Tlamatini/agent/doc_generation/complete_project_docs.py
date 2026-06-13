@@ -1559,7 +1559,19 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Self-knowledge in v1.8.0", styles["h2"]))
+    story.append(p("Current release focus in v1.19.4", styles["h2"]))
+    for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Self-modify source snapshot", styles["h2"]))
+    for item in SOURCE_SNAPSHOT_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("API-Keys Wizard", styles["h2"]))
+    for item in API_KEYS_WIZARD_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("File-Creator hardening", styles["h2"]))
+    for item in FILE_CREATOR_HARDENING_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Self-knowledge and identity contract", styles["h2"]))
     for item in SELF_KNOWLEDGE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Self-modify builds", styles["h2"]))
@@ -1615,17 +1627,17 @@ def build_pdf(context: dict) -> None:
     story.append(p("Operator surface counts", styles["h2"]))
     for item in OPERATOR_SURFACE_COUNTS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Kalier in v1.7.1", styles["h2"]))
+    story.append(p("Kalier current role", styles["h2"]))
     for item in KALIER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in KALIER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("STM32er in v1.9.0", styles["h2"]))
+    story.append(p("STM32er current role", styles["h2"]))
     for item in STM32ER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in STM32ER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("ESP32er in v1.12.0", styles["h2"]))
+    story.append(p("ESP32er current role", styles["h2"]))
     for item in ESP32ER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in ESP32ER_SURFACES_GUIDE:
@@ -1638,7 +1650,7 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     for item in WINDOWER_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Playwrighter in v1.5.0", styles["h2"]))
+    story.append(p("Playwrighter current role", styles["h2"]))
     for item in PLAYWRIGHTER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     for item in PLAYWRIGHTER_SURFACES_GUIDE:
@@ -1687,6 +1699,12 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Reconnect and restart safeguards", styles["h2"]))
     for item in RECENT_RUNTIME_SAFEGUARDS:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Media and voice family", styles["h2"]))
+    for item in MEDIA_VOICE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Autonomous command watchdog", styles["h2"]))
+    for item in COMMAND_WATCHDOG_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Prompt catalog and answer readability discipline", styles["h2"]))
     for item in PROMPT_CATALOG_GUIDE:
@@ -2280,6 +2298,25 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.19.4 hardening and self-modify completeness", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
+        "This release is about trust: generated files should land intact, self-modify builds should actually carry a rebuildable self-image, and credential setup should not require hand-editing JSON.",
+        "Because those are operator-facing quality-of-life features rather than hidden internals, they belong high in the deck instead of being buried in an appendix.",
+        "The resulting narrative matches the current README and Book much more honestly than the older milestone-only framing.",
+    ], THEME["jade"], "rel-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Self-Modify Source Snapshot", "generated `TlamatiniSourceCode/` and rebuild contract", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Snapshot contract", SOURCE_SNAPSHOT_GUIDE, THEME["jade"], "snap-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Access Keys and File Writes", API_KEYS_WIZARD_GUIDE + FILE_CREATOR_HARDENING_GUIDE[:2], THEME["amber"], "snap-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Media, Voice, And Runtime Resilience", "Talker / Whisperer family plus watchdog hardening", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Media and voice", MEDIA_VOICE_GUIDE, THEME["copper"], "media-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Autonomous watchdog", COMMAND_WATCHDOG_GUIDE, THEME["jade"], "media-b", 12)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "Agentic Control Panel", "visual workflow temple", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "ACP workflow", [
         "Drag prebuilt agents onto the canvas and connect them visually.",
@@ -2324,17 +2361,17 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "surface-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Kalier In v1.7.1", "embedded-client Kali Linux control for chat and canvas", THEME["jade"])
+    slide, audit = add_slide(prs, "Kalier", "embedded-client Kali Linux control for chat and canvas", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", KALIER_GUIDE, THEME["jade"], "kalier-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", KALIER_SURFACES_GUIDE, THEME["amber"], "kalier-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "STM32er In v1.9.0", "critical-mission STM32F4 firmware control", THEME["copper"])
+    slide, audit = add_slide(prs, "STM32er", "critical-mission STM32F4 firmware control", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", STM32ER_GUIDE, THEME["copper"], "stm32-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", STM32ER_SURFACES_GUIDE, THEME["jade"], "stm32-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "ESP32er In v1.12.0", "PlatformIO-driven ESP32 firmware control", THEME["jade"])
+    slide, audit = add_slide(prs, "ESP32er", "PlatformIO-driven ESP32 firmware control", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", ESP32ER_GUIDE, THEME["jade"], "esp32-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", ESP32ER_SURFACES_GUIDE, THEME["amber"], "esp32-b", 12)
     audit_layout(audit, len(prs.slides))
@@ -2348,7 +2385,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "esp32-d", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Self-Knowledge In v1.8.0", "who she is and how she can improve herself", THEME["amber"])
+    slide, audit = add_slide(prs, "Self-Knowledge And Self-Modify", "who she is and how she can improve herself", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", SELF_KNOWLEDGE_GUIDE, THEME["amber"], "self-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Self-modify and autonomy", SELF_MODIFY_GUIDE + MULTITURN_4096_GUIDE[:2], THEME["jade"], "self-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2358,7 +2395,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", WINDOWER_SURFACES_GUIDE, THEME["jade"], "window-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Playwrighter In v1.5.0", "real-browser automation for chat and canvas", THEME["jade"])
+    slide, audit = add_slide(prs, "Playwrighter", "real-browser automation for chat and canvas", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", PLAYWRIGHTER_GUIDE, THEME["jade"], "play-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", PLAYWRIGHTER_SURFACES_GUIDE, THEME["amber"], "play-b", 13)
     audit_layout(audit, len(prs.slides))

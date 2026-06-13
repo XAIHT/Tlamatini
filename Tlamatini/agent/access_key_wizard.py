@@ -9,10 +9,9 @@ The wizard is intentionally conservative with secrets:
 """
 from __future__ import annotations
 
-import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -38,7 +37,7 @@ class WizardField:
 class WizardGroup:
     key: str
     title: str
-    fields: Tuple[WizardField, ...] = field(default_factory=tuple)
+    fields: Tuple[WizardField, ...] = dataclass_field(default_factory=tuple)
 
 
 WIZARD_GROUPS: Tuple[WizardGroup, ...] = (
