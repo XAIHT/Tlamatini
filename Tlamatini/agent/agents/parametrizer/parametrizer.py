@@ -119,6 +119,7 @@ SECTION_AGENT_TYPES = [
     'mouser',
     'windower',
     'unrealer',
+    'blenderer',
     'reviewer',
     'analyzer',
     'playwrighter',

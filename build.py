@@ -1182,6 +1182,10 @@ def main():
                 "CreateShortcut.ps1",
                 "RemoveShortcut.ps1",
                 "CreateShortcut.json",
+                # External self-updater (About ▸ Check for updates). Must ship
+                # next to Tlamatini.exe so agent/self_update.py can copy it out
+                # to %LOCALAPPDATA%\\Tlamatini\\updater and run the file swap.
+                "apply_update.ps1",
                 "Tlamatini/cat_art.py"
             ]
             for fname in support_files:

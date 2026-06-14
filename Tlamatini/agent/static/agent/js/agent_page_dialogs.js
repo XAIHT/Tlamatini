@@ -1067,3 +1067,154 @@ function CloseAboutDialog(event) {
     overlay.style.display = 'none';
     video.pause();
 }
+
+// ============================================================
+// Check for updates dialog (About ▸ Check for updates)
+// ============================================================
+
+let _updatePollTimer = null;
+
+function _humanBytes(num) {
+    let value = Number(num) || 0;
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    for (let i = 0; i < units.length; i++) {
+        if (value < 1024 || i === units.length - 1) {
+            return (i === 0 ? Math.round(value) : value.toFixed(1)) + ' ' + units[i];
+        }
+        value /= 1024;
+    }
+    return value.toFixed(1) + ' TB';
+}
+
+function _setUpdateProgress(percent, message) {
+    const wrap = document.getElementById('update-progress-wrap');
+    const bar = document.getElementById('update-progress-bar');
+    const content = document.getElementById('update-content');
+    if (wrap) wrap.style.display = 'block';
+    if (bar) bar.style.width = Math.max(0, Math.min(100, Number(percent) || 0)) + '%';
+    if (content && message) content.textContent = message;
+}
+
+function OpenCheckUpdatesDialog(event) {
+    if (event) event.preventDefault();
+    const overlay = document.getElementById('update-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    // Reset UI
+    document.getElementById('update-content').textContent = 'Checking for updates…';
+    document.getElementById('update-notes').style.display = 'none';
+    document.getElementById('update-progress-wrap').style.display = 'none';
+    document.getElementById('update-action-btn').style.display = 'none';
+    document.getElementById('update-releases-link').style.display = 'none';
+    _checkForUpdates();
+}
+
+function CloseUpdateDialog(event) {
+    if (event) event.preventDefault();
+    const overlay = document.getElementById('update-overlay');
+    if (overlay) overlay.style.display = 'none';
+    if (_updatePollTimer) { clearInterval(_updatePollTimer); _updatePollTimer = null; }
+}
+
+async function _checkForUpdates() {
+    const content = document.getElementById('update-content');
+    const actionBtn = document.getElementById('update-action-btn');
+    const notes = document.getElementById('update-notes');
+    const releasesLink = document.getElementById('update-releases-link');
+    try {
+        const resp = await fetch('/agent/check_update/', { credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!data.ok) {
+            content.innerHTML = '⚠️ ' + (data.error || 'Could not check for updates.');
+            releasesLink.style.display = 'inline-block';
+            return;
+        }
+        if (data.notes) {
+            notes.textContent = data.notes;
+            notes.style.display = 'block';
+        }
+        if (!data.update_available) {
+            content.innerHTML = '✅ You are on the latest version (<strong>v' + data.current + '</strong>).';
+            return;
+        }
+        // An update is available.
+        let html = '🎉 A new version is available: <strong>v' + data.latest + '</strong>'
+            + ' (you have v' + data.current + ').';
+        if (data.asset_size) html += '<br><span class="update-size">Download size: ' + _humanBytes(data.asset_size) + '</span>';
+        content.innerHTML = html;
+        releasesLink.href = data.release_url || releasesLink.href;
+        releasesLink.style.display = 'inline-block';
+        if (data.frozen) {
+            actionBtn.textContent = 'Update now';
+            actionBtn.disabled = false;
+            actionBtn.style.display = 'inline-block';
+        } else {
+            content.innerHTML += '<br><span class="update-size">Auto-update runs only in the installed build — '
+                + 'download the new version from GitHub.</span>';
+        }
+    } catch (err) {
+        content.innerHTML = '⚠️ Could not check for updates: ' + err;
+        releasesLink.style.display = 'inline-block';
+    }
+}
+
+async function StartTlamatiniUpdate(event) {
+    if (event) event.preventDefault();
+    const actionBtn = document.getElementById('update-action-btn');
+    const content = document.getElementById('update-content');
+    if (!window.confirm('Download and install the new version now?\n\n'
+        + 'Tlamatini will close and reopen automatically when the update finishes. '
+        + 'Your current "agents" folder is renamed to "agents_backup" first.')) {
+        return;
+    }
+    actionBtn.disabled = true;
+    actionBtn.style.display = 'none';
+    _setUpdateProgress(0, 'Starting update…');
+    try {
+        const resp = await fetch('/agent/start_update/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': typeof getCsrfToken === 'function' ? getCsrfToken() : ''
+            },
+            body: JSON.stringify({})
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+            content.innerHTML = '⚠️ ' + (data.error || 'Could not start the update.');
+            return;
+        }
+        if (_updatePollTimer) clearInterval(_updatePollTimer);
+        _updatePollTimer = setInterval(_pollUpdateStatus, 1000);
+    } catch (err) {
+        content.innerHTML = '⚠️ Could not start the update: ' + err;
+    }
+}
+
+async function _pollUpdateStatus() {
+    const content = document.getElementById('update-content');
+    try {
+        const resp = await fetch('/agent/update_status/', { credentials: 'same-origin' });
+        const s = await resp.json();
+        _setUpdateProgress(s.percent, s.message || s.phase);
+        if (s.phase === 'error') {
+            clearInterval(_updatePollTimer); _updatePollTimer = null;
+            document.getElementById('update-progress-wrap').style.display = 'none';
+            content.innerHTML = '⚠️ ' + (s.error || 'Update failed.');
+        } else if (s.phase === 'handoff' || s.phase === 'done') {
+            clearInterval(_updatePollTimer); _updatePollTimer = null;
+            if (s.phase === 'handoff') {
+                content.innerHTML = '🔄 Update staged. <strong>Tlamatini is now closing</strong> and will '
+                    + 'reopen on the new version in about a minute. You can close this window.';
+                document.getElementById('update-progress-bar').style.width = '100%';
+            } else {
+                document.getElementById('update-progress-wrap').style.display = 'none';
+                content.textContent = s.message || 'Nothing to update.';
+            }
+        }
+    } catch (err) {
+        // The server is being shut down by the updater — that's expected at hand-off.
+        clearInterval(_updatePollTimer); _updatePollTimer = null;
+    }
+}

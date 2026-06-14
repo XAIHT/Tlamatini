@@ -744,6 +744,51 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             if (!Number.isNaN(n)) config.read_timeout = n;
         }
 
+    // ── Blenderer ────────────────────────────────────────────────────
+    // Template fields: host, port, command, strict_json (bool), params
+    // (object), connect_timeout, read_timeout. The Blender MCP wire format is
+    // {"type":"execute","code":...} — the LLM emits dotted ``params.<name>``
+    // keys (params.code, params.object_name, params.type, params.location,
+    // params.color, params.output_path) which we gather via collectDotted into
+    // the nested ``params`` map the agent forwards.
+    } else if (lower === 'blenderer') {
+        set('host', pairs.host);
+        if (pairs.port !== undefined && pairs.port !== '') {
+            const portNum = parseInt(pairs.port, 10);
+            if (!Number.isNaN(portNum)) config.port = portNum;
+        }
+        set('command', pairs.command);
+        if (pairs.strict_json !== undefined && pairs.strict_json !== '') {
+            config.strict_json = (pairs.strict_json === true || String(pairs.strict_json).toLowerCase() === 'true');
+        }
+        const blenderParams = collectDotted('params');
+        // Allow a bare ``params={...}`` form too (some LLMs embed full JSON).
+        if (pairs.params && Object.keys(blenderParams).length === 0) {
+            try {
+                const parsed = JSON.parse(pairs.params);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    Object.assign(blenderParams, parsed);
+                }
+            } catch (_e) { /* leave blenderParams as-is */ }
+        }
+        // Coerce list-shaped params (location/color) from string into array
+        for (const k of Object.keys(blenderParams)) {
+            const v = blenderParams[k];
+            if (typeof v === 'string' && v.startsWith('[') && v.endsWith(']')) {
+                try { blenderParams[k] = JSON.parse(v); }
+                catch (_e) { /* keep string */ }
+            }
+        }
+        if (Object.keys(blenderParams).length > 0) config.params = blenderParams;
+        if (pairs.connect_timeout !== undefined && pairs.connect_timeout !== '') {
+            const n = parseFloat(pairs.connect_timeout);
+            if (!Number.isNaN(n)) config.connect_timeout = n;
+        }
+        if (pairs.read_timeout !== undefined && pairs.read_timeout !== '') {
+            const n = parseFloat(pairs.read_timeout);
+            if (!Number.isNaN(n)) config.read_timeout = n;
+        }
+
     // ── Playwrighter ─────────────────────────────────────────────────
     // Template fields: start_url, browser, headless (bool), timeout_ms (int),
     // nav_wait_until, user_agent, storage_state_in/out, output_file, and the

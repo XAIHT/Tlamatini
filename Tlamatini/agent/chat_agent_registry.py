@@ -924,6 +924,58 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         ),
     ),
     ChatWrappedAgentSpec(
+        key="blenderer",
+        template_dir="blenderer",
+        tool_name="chat_agent_blenderer",
+        tool_description="Chat-Agent-Blenderer",
+        display_name="Blenderer",
+        purpose=(
+            "Drive Blender via the OFFICIAL Blender MCP add-on's TCP socket protocol "
+            "(localhost:9876 by default — https://www.blender.org/lab/mcp-server/; the "
+            "add-on must already be running inside Blender with 'Online access' enabled "
+            "and the MCP server started; this agent does NOT launch Blender). The Blender "
+            "MCP wire protocol is a CODE-EXECUTION protocol — every call runs Python inside "
+            "Blender and returns its result — so this agent exposes a RICH ACTION CATALOG "
+            "selected by `command`: "
+            "PASSTHROUGH — execute_code (run params.code verbatim inside Blender; the "
+            "universal escape hatch for ANY bpy operation, set a `result` dict to return "
+            "data); READ-ONLY — ping (Blender version + active scene), scene_info (scene "
+            "name, frame range, render engine, object list), get_objects (full "
+            "object/collection/mesh/material tree), get_object_detail (one object via "
+            "params.object_name: transform, materials, vertex count), blendfile_summary "
+            "(datablock counts for the open .blend); MUTATING/OUTPUT — create_object "
+            "(params.type cube/sphere/cylinder/cone/plane/monkey/torus, params.name, "
+            "params.location [x,y,z]), delete_object (params.object_name), set_material "
+            "(params.object_name, params.color [r,g,b(,a)], params.material), screenshot "
+            "(params.output_path .png — defaults under the Temp dir), render "
+            "(params.output_path .png — a full still render). Use when the user asks to "
+            "inspect or manipulate a Blender scene — add/remove/colour objects, render or "
+            "screenshot the viewport, summarize the .blend, or run a bpy Python snippet. "
+            "For multi-step modelling call this tool once per step (e.g. create_object → "
+            "set_material → render). The wrapped agent emits an INI_SECTION_BLENDERER block "
+            "so the full Blender response JSON is captured and consumable by Parametrizer "
+            "downstream. Override host/port with host='10.0.0.5' and port=9876 for a remote "
+            "Blender. PROJECT LOCATION: when you save a new .blend or render/export to disk, "
+            "default it under Tlamatini's Templates directory unless the user dictates "
+            "otherwise — see the system-prompt 'Template / project directory location rule'."
+        ),
+        example_request=(
+            "Run Blender command with command='create_object' and params.type='monkey' "
+            "and params.name='Suzanne' and params.location=[0,0,2]"
+        ),
+        aliases=(
+            "blenderer", "blender", "blender mcp", "blender_mcp", "bpy",
+            "blender editor", "3d", "blender scene",
+        ),
+        security_hints=(
+            "blender", "blender mcp", "bpy", "3d", "scene", "render",
+            "viewport", "mesh", "material", "create object", "delete object",
+            "spawn object", "scene info", "blend file", "blendfile",
+            "execute python", "python in blender", "screenshot", "suzanne",
+            "cube", "sphere", "monkey", "primitive", "modelling", "modeling",
+        ),
+    ),
+    ChatWrappedAgentSpec(
         key="sleeper",
         template_dir="sleeper",
         tool_name="chat_agent_sleeper",

@@ -1965,6 +1965,16 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                                   'params.source_file', 'params.destination_path',
                                   'connect_timeout', 'read_timeout')},
 
+    # --- 3d / blender ---------------------------------------------------
+    'blenderer':      {'title': 'BLENDERER COMMAND TO SEND TO BLENDER',
+                       'body': ('params.code', 'python code (execute_code)'),
+                       'params': ('host', 'port', 'command', 'strict_json',
+                                  'params.object_name', 'params.name',
+                                  'params.type', 'params.location',
+                                  'params.color', 'params.material',
+                                  'params.output_path',
+                                  'connect_timeout', 'read_timeout')},
+
     # --- post-quantum crypto --------------------------------------------
     'kyber_keygen':   {'title': 'KYBER-KEYGEN KEY PAIR TO GENERATE',
                        'params': ('kyber_variant',)},

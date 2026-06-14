@@ -225,6 +225,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'kuberneter': 'kuberneter-agent',
     'apirer': 'apirer-agent',
     'unrealer': 'unrealer-agent',
+    'blenderer': 'blenderer-agent',
     'playwrighter': 'playwrighter-agent',
     'reviewer': 'reviewer-agent',
     'analyzer': 'analyzer-agent',
@@ -928,6 +929,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'blenderer') updateBlendererConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'blenderer') updateBlendererConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(targetId, sourceId, 'remove', 'source');
@@ -1058,6 +1061,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'apirer' && !sourceBeingDeleted) updateApirerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'unrealer' && !targetBeingDeleted) updateUnrealerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'unrealer' && !sourceBeingDeleted) updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'blenderer' && !targetBeingDeleted) updateBlendererConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'blenderer' && !sourceBeingDeleted) updateBlendererConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'playwrighter' && !targetBeingDeleted) updatePlaywrighterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'playwrighter' && !sourceBeingDeleted) updatePlaywrighterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'reviewer' && !targetBeingDeleted) updateReviewerConnection(targetId, sourceId, 'remove', 'source');
@@ -1520,6 +1525,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'apirer') updateApirerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'unrealer') updateUnrealerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'blenderer') updateBlendererConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'blenderer') updateBlendererConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'playwrighter') updatePlaywrighterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'reviewer') updateReviewerConnection(targetId, sourceId, 'add', 'source');

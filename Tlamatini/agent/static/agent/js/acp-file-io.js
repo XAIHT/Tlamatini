@@ -470,6 +470,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kuberneter': await updateKuberneterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'apirer': await updateApirerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'unrealer': await updateUnrealerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'blenderer': await updateBlendererConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'playwrighter': await updatePlaywrighterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'reviewer': await updateReviewerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'analyzer': await updateAnalyzerConnection(sourceId, targetId, 'add', 'target'); break;
@@ -550,6 +551,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'kuberneter': await updateKuberneterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'apirer': await updateApirerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'unrealer': await updateUnrealerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'blenderer': await updateBlendererConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'playwrighter': await updatePlaywrighterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'reviewer': await updateReviewerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'analyzer': await updateAnalyzerConnection(targetId, sourceId, 'add', 'source'); break;

@@ -347,6 +347,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **whatstlamatini** | Long-running WhatsApp Cloud API bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
 | **acpxer** | Drives ONE external coding-agent CLI session (Claude / Codex / Gemini / Cursor / Qwen / etc.) from the canvas; emits `INI_SECTION_ACPXER` for multi-CLI relay | YES | Action |
 | **unrealer** | Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (53-command surface: actors+screenshot, Blueprints, node graph, UMG widgets, input mappings, in-editor Python/console, level I/O, asset import, materials) | YES | Action |
+| **blenderer** | Drives Blender via the official Blender MCP add-on socket (code-execution protocol; rich action catalog: execute_code, scene_info, get_objects, get_object_detail, blendfile_summary, create_object, delete_object, set_material, screenshot, render) | YES | Action |
 | **stm32er** | Bridges the STM32 Template Project MCP server (stdio) to scaffold / author / build / flash / observe STM32F4 firmware — no STM32CubeIDE GUI. ZERO-CONFIG (auto-downloads + installs the MCP itself; user installs only STM32CubeIDE) with a fail-safe PREFLIGHT (validates compiler / CubeIDE / programmer / ST-LINK / device family and refuses rather than mis-build/flash — compile needs no board, flash needs a connected ST-LINK). ONE of 23 MCP tools per run via `action`, plus `serial_session` / `live_monitor` composites and the `bootstrap` / `validate` meta-actions; emits `INI_SECTION_STM32ER` | YES | Action |
 
 ## Decision Guide: Common Objectives → Recommended Patterns
@@ -1842,7 +1843,25 @@ system_prompt: |
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
 - **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count (75). When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count. When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+
+### 77. Blenderer
+- **Purpose**: Drives a Blender instance via the OFFICIAL Blender MCP add-on's TCP socket (default localhost:9876 — the add-on must already be running inside Blender with "Online access" enabled and the server started). Unlike Unreal's verb dispatch, the Blender MCP wire format is a CODE-EXECUTION protocol — each run sends `{"type":"execute","code":<python>,"strict_json":<bool>}` and Blender runs that Python (which assigns a `result` dict). To avoid forcing hand-written Python for every task, Blenderer exposes a RICH ACTION CATALOG via its `command` field and captures the full Blender response into an `INI_SECTION_BLENDERER` block. Triggers `target_agents` on success OR error so the flow can branch on the section's `status` / `error`.
+- **Used for**: Unattended inspection and manipulation of a Blender scene. The `command` is one of: PASSTHROUGH — `execute_code` (run arbitrary `bpy` Python via `params.code`, the universal escape hatch); READ-ONLY — `ping`, `scene_info`, `get_objects`, `get_object_detail` (`params.object_name`), `blendfile_summary`; MUTATING/OUTPUT — `create_object` (`params.type` cube/sphere/cylinder/cone/plane/monkey/torus, `params.name`, `params.location`), `delete_object` (`params.object_name`), `set_material` (`params.object_name`, `params.color` [r,g,b(,a)], `params.material`), `screenshot` (`params.output_path`), `render` (`params.output_path`). File outputs default under Tlamatini's Temp directory when `params.output_path` is omitted.
+- **Aimed at**: Building visual 3D / game-asset workflows in Tlamatini that talk to a running Blender — procedural scene assembly, batch object creation + material assignment, render pipelines, "summarize this .blend", or "watch a log → build/colour something in Blender → render the result" loops via Raiser. Because Tlamatini speaks the add-on socket DIRECTLY (no `blmcp` bridge, no external LLM client), this is a far more integrated alternative to the bare chat client blender.org recommends. The visual-canvas counterpart of the wrapped `chat_agent_blenderer` Multi-Turn tool.
+- **Application example**: A Starter triggers a Blenderer running `create_object` (`type='monkey'`, `name='Hero'`). A Parametrizer copies the created name into a second Blenderer running `set_material` with `color=[0.9,0.4,0.0]`. A third Blenderer runs `render` (output defaults under Temp). A final Notifier signals completion with the render path.
+- **Pool name pattern**: `blenderer_<n>`
+- **Starts other agents**: YES (always, regardless of Blender command status)
+- **Config parameters**:
+  - `host`: "localhost" (Blender MCP add-on host)
+  - `port`: 9876 (Blender MCP add-on TCP port)
+  - `command`: "scene_info" (one of the catalog commands: execute_code / ping / scene_info / get_objects / get_object_detail / blendfile_summary / create_object / delete_object / set_material / screenshot / render)
+  - `strict_json`: false (when true Blender's `result` must be JSON-serializable or it errors)
+  - `params`: {} (command-specific parameters — e.g. `{"type": "monkey", "name": "Hero", "location": [0,0,2]}` for create_object, or `{"code": "import bpy\nresult={'n':len(bpy.data.objects)}"}` for execute_code)
+  - `connect_timeout`: 10 (TCP connect timeout in seconds)
+  - `read_timeout`: 120 (response read timeout in seconds; raised to a per-command floor for render/execute_code/screenshot)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
 
 ---
 

@@ -98,6 +98,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
     "windower": ("action", "window_title", "matched", "match_count", "state", "left", "top", "width", "height", "response_body"),
     "unrealer": ("host", "port", "command", "status", "error", "response_body"),
+    "blenderer": ("host", "port", "command", "status", "error", "response_body"),
     "reviewer": ("repo_path", "diff_ref", "verdict", "model", "status", "response_body"),
     "analyzer": ("target_path", "tools_run", "tools_skipped", "total_findings", "status", "response_body"),
     "playwrighter": ("start_url", "final_url", "status", "steps_run", "assert_result", "response_body"),

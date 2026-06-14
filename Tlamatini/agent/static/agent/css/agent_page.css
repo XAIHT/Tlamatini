@@ -1046,6 +1046,110 @@ body.resizing-vertical {
     font-size: 13px;
     font-weight: 700;
 }
+
+/* ── Check-for-updates dialog (reuses .about-overlay) ───────────────── */
+.update-window {
+    width: 560px;
+    max-width: 92vw;
+}
+
+.update-body {
+    padding: 22px 26px 24px;
+    color: #e0e0e0;
+}
+
+.update-title {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.update-current {
+    margin: 0 0 14px;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.update-content {
+    font-size: 14px;
+    line-height: 1.55;
+    min-height: 22px;
+}
+
+.update-size {
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.update-notes {
+    margin: 12px 0 0;
+    max-height: 160px;
+    overflow: auto;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #cfd2e0;
+}
+
+.update-progress-wrap {
+    margin-top: 16px;
+    width: 100%;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.update-progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #5A1FB8 0%, #EC4899 50%, #22D3EE 100%);
+    transition: width 0.3s ease;
+}
+
+.update-actions {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+}
+
+.update-link {
+    font-size: 13px;
+    color: #8fb7ff;
+    text-decoration: none;
+}
+
+.update-link:hover {
+    text-decoration: underline;
+}
+
+.update-btn {
+    background: linear-gradient(135deg, #5A1FB8 0%, #EC4899 100%);
+    border: none;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.update-btn:hover {
+    filter: brightness(1.1);
+}
+
+.update-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 /* Open in... dropdown (inline next to context path) */
 #open-in-dropdown-item {
     flex-shrink: 0;
@@ -1314,6 +1418,11 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+.exec-report-caption-blenderer {
+    background: linear-gradient(135deg, #15334F 0%, #2A6FB3 33%, #EA7600 66%, #F7B733 100%);
+    color: #ffffff;
+}
+
 .exec-report-caption-playwrighter {
     background: linear-gradient(135deg, #3D1766 0%, #D90368 33%, #0FA3B1 66%, #6EE7B7 100%);
     color: #ffffff;
@@ -1454,6 +1563,7 @@ body.resizing-vertical {
 .exec-report-deleter thead th,
 .exec-report-apirer thead th,
 .exec-report-unrealer thead th,
+.exec-report-blenderer thead th,
 .exec-report-playwrighter thead th,
 .exec-report-emailer thead th,
 .exec-report-telegramer thead th,
@@ -1547,6 +1657,7 @@ body.resizing-vertical {
 .exec-report-deleter .exec-report-cmd        { border-left: 3px solid #B91C1C; }
 .exec-report-apirer .exec-report-cmd         { border-left: 3px solid #3B0764; }
 .exec-report-unrealer .exec-report-cmd       { border-left: 3px solid #1F3A8A; }
+.exec-report-blenderer .exec-report-cmd      { border-left: 3px solid #EA7600; }
 .exec-report-playwrighter .exec-report-cmd   { border-left: 3px solid #D90368; }
 .exec-report-emailer .exec-report-cmd        { border-left: 3px solid #5C6BC0; }
 .exec-report-telegramer .exec-report-cmd     { border-left: 3px solid #1a237e; }
