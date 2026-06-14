@@ -173,7 +173,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── audioplayer/        # Audio-file PLAYBACK to speakers (soundfile decode + sounddevice stream) — volume_percent, time_played truncate/loop via streaming callback, sample_rate:0=file-native; playback counterpart of Recorder; observational/output → not in Exec Report (canvas + chat_agent_audioplayer)
 │   │   │   ├── videoplayer/        # Video-file PLAYBACK WITH audio on a chosen display (ffpyplayer [bundles ffmpeg+SDL via pip] + OpenCV window; silent-cv2 fallback) — display_index, volume_percent, time_played truncate/loop, window size/fullscreen/keep_aspect; on-screen sibling of AudioPlayer; observational/output → not in Exec Report (canvas + chat_agent_videoplayer)
 │   │   │   ├── talker/            # TEXT-TO-SPEECH (TTS): speaks input_text via an OLLAMA model (default Orpheus-3b-FT) — FEMALE VOICE ONLY by design (Tlamatini is female; a male voice is FORBIDDEN — resolve_voice raises MaleVoiceForbiddenError and main() hard-exits "NOW CLOSING.. BYE", never substitutes); voice(tara/leah/jess/mia/zoe)/emotion/language, SNAC-decoded 24 kHz WAV saved + played; voice-synthesis sibling of AudioPlayer; observational/output → not in Exec Report; snac+torch optional for audio (canvas + chat_agent_talker)
-│   │   │   └── ... (76 total agent directories)
+│   │   │   ├── blenderer/          # Blender bridge — official Blender MCP add-on socket (localhost:9876, code-execution protocol); rich action catalog (execute_code + scene/object/render verbs); direct socket, no blmcp bridge (canvas + chat_agent_blenderer)
+│   │   │   └── ... (77 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py

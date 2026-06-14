@@ -318,6 +318,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'unrealer') {
                 await updateUnrealerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'blenderer') {
+                await updateBlendererConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'blenderer') {
+                await updateBlendererConnection(sourceId, targetId, 'remove', 'target');
+            }
             if (targetAgentName.toLowerCase() === 'playwrighter') {
                 await updatePlaywrighterConnection(targetId, sourceId, 'remove', 'source');
             }
@@ -688,6 +694,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'unrealer') {
         await updateUnrealerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'blenderer') {
+        await updateBlendererConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'blenderer') {
+        await updateBlendererConnection(sourceId, targetId, 'add', 'target');
     }
     if (targetAgentName === 'playwrighter') {
         await updatePlaywrighterConnection(targetId, sourceId, 'add', 'source');

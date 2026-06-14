@@ -1,0 +1,63 @@
+# Blenderer Agent Configuration
+#
+# Drives Blender via the OFFICIAL Blender MCP add-on's TCP socket protocol
+# (localhost:9876 by default — https://www.blender.org/lab/mcp-server/). The
+# add-on must already be running inside Blender (enable the add-on, turn on
+# "Online access" in System Preferences, and start the server in the add-on
+# preferences) — Blenderer only speaks to it; it does not start Blender.
+#
+# The Blender MCP wire protocol is a CODE-EXECUTION protocol: every request is
+#   {"type": "execute", "code": "<python>", "strict_json": <bool>}  (NUL-framed)
+# and Blender runs that Python and returns its `result` dict. Blenderer exposes
+# a RICH ACTION CATALOG so the LLM/canvas does not have to hand-write Python for
+# common tasks — pick a `command` and fill the matching `params`:
+#
+#   PASSTHROUGH (universal escape hatch):
+#     execute_code   -> runs params.code verbatim inside Blender (set `result`)
+#   READ-ONLY:
+#     ping               -> Blender version + active scene
+#     scene_info         -> scene name, frame range, render engine, object list
+#     get_objects        -> full object/collection/mesh/material tree
+#     get_object_detail  -> one object (params.object_name): transform, mats, verts
+#     blendfile_summary  -> datablock counts for the open .blend
+#   MUTATING / OUTPUT:
+#     create_object  -> params.type (cube/sphere/cylinder/cone/plane/monkey/torus),
+#                       params.name, params.location [x,y,z]
+#     delete_object  -> params.object_name
+#     set_material   -> params.object_name, params.color [r,g,b(,a)], params.material
+#     screenshot     -> params.output_path (.png; defaults under <app>/Temp)
+#     render         -> params.output_path (.png; defaults under <app>/Temp)
+
+host: localhost
+port: 9876
+
+# `command` selects the action. Default is the safe read-only scene_info.
+command: scene_info
+
+# `strict_json`: when true the executed code's `result` MUST be JSON-serializable
+# or Blender returns an error. False (default) is robust — non-serializable
+# values are repr()'d instead of failing.
+strict_json: false
+
+# `params` is a free-form dict consumed per-command (see the catalog above). The
+# entries below are placeholders so the Flow-Generator's dotted overrides
+# (params.code / params.object_name / params.type / params.location / ...) resolve
+# into existing YAML keys instead of being dropped by the deep-merge.
+params:
+  code: ''
+  object_name: ''
+  name: ''
+  type: ''
+  location: []
+  color: []
+  material: ''
+  output_path: ''
+
+# Timeouts (seconds). read_timeout is tuned for fast read/inspection commands;
+# the agent raises it to a per-command floor for slow operations (render 600s,
+# execute_code 300s, screenshot 60s) so a valid-but-slow run is not aborted.
+connect_timeout: 10
+read_timeout: 120
+
+source_agents: []
+target_agents: []

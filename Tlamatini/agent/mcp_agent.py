@@ -128,6 +128,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # share this agent_key on purpose so a mixed read-and-mutate flow
     # renders as one cohesive "List of Unrealer Operations" table.
     "chat_agent_unrealer":       ("unrealer",       "Unrealer"),
+    # Blenderer mutates the Blender scene (creates/deletes objects, assigns
+    # materials, renders, runs arbitrary editor Python) via the official
+    # Blender MCP add-on socket. Read verbs (scene_info / get_objects /
+    # blendfile_summary) share this agent_key so a mixed read-and-mutate flow
+    # renders as one cohesive "List of Blenderer Operations" table.
+    "chat_agent_blenderer":      ("blenderer",      "Blenderer"),
     # Playwrighter drives a real browser through a scripted flow: it submits
     # forms, clicks, logs into sites, downloads files, and otherwise changes
     # remote/web state. Read-only steps (extract_text / screenshot) share the
@@ -1180,6 +1186,7 @@ _FIRMWARE_TEMPLATE_TOOL_NAMES = frozenset({
     "chat_agent_esp32er",
     "chat_agent_arduiner",
     "chat_agent_unrealer",
+    "chat_agent_blenderer",
 })
 
 

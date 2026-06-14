@@ -1038,6 +1038,26 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #0B1220 0%, #1F3A8A 33%, #10B981 66%, #22D3EE 100%);
 }
 
+/* Blenderer Agent — drives Blender via the official Blender MCP add-on socket.
+   "Blender Forge" gradient: deep blue → Blender blue → Blender orange → warm
+   amber. Distinct from Unrealer (cobalt→cyan) so the two engine agents read
+   cleanly apart in the sidebar / canvas / Exec Report. */
+.canvas-item.blenderer-agent {
+    background-color: #15334F;
+    color: white;
+    background: linear-gradient(135deg, #15334F 0%, #2A6FB3 33%, #EA7600 66%, #F7B733 100%);
+}
+
+.canvas-item.blenderer-agent:hover {
+    box-shadow: 0 6px 15px rgba(247, 183, 51, 0.55);
+    background: linear-gradient(135deg, #1D4A72 0%, #3A86D4 33%, #FF8C1A 66%, #FFD166 100%);
+}
+
+/* Blenderer agent icon in sidebar */
+.agent-tool-item[data-content="Blenderer"] .agent-tool-icon {
+    background: linear-gradient(135deg, #15334F 0%, #2A6FB3 33%, #EA7600 66%, #F7B733 100%);
+}
+
 /* Reviewer Agent Styles - LLM code review (cool teal -> blue -> indigo -> violet) */
 .canvas-item.reviewer-agent {
     background-color: #0E7490;

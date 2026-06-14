@@ -152,8 +152,16 @@
           {% endif %}
           <li class="nav-item"><a class="nav-link" href="#" id="re-connect-button"
               onclick="Reconnect(event);">Reconnect</a></li>
-          <li class="nav-item"><a class="nav-link" href="#" id="about-button"
-              onclick="OpenAboutDialog(event);">About</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="about-menu-button" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">About</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="about-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="about-button"
+                  onclick="OpenAboutDialog(event);">About</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="check-updates-button"
+                  onclick="OpenCheckUpdatesDialog(event);">Check for updates</a></li>
+            </ul>
+          </li>
           <li class="nav-item"><a id="logout-button" class="nav-link" href="#" param="{% url 'logout' %}"
               onclick="CancelAllAndLogout(event);">Logout</a></li>
           <li class="nav-item d-lg-none">
@@ -509,6 +517,26 @@
         <p class="about-company-name">XAIHT: eXtended Artificial Intelligence Humanly Tempered (a Mexican company)</p>
         <p class="about-version">Tlamatini v{{ version }}</p>
         <p class="about-owner">A&amp;A's company.</p>
+      </div>
+    </div>
+  </div>
+  <div id="update-overlay" class="about-overlay" style="display: none;" onclick="CloseUpdateDialog(event);">
+    <div class="about-window update-window" onclick="event.stopPropagation();">
+      <button class="about-close-btn" onclick="CloseUpdateDialog(event);">&times;</button>
+      <div class="update-body">
+        <h3 class="update-title">Check for updates</h3>
+        <p class="update-current">Installed version: <strong>v{{ version }}</strong></p>
+        <div id="update-content" class="update-content">Checking for updates…</div>
+        <pre id="update-notes" class="update-notes" style="display: none;"></pre>
+        <div id="update-progress-wrap" class="update-progress-wrap" style="display: none;">
+          <div id="update-progress-bar" class="update-progress-bar"></div>
+        </div>
+        <div class="update-actions">
+          <a id="update-releases-link" class="update-link" href="https://github.com/XAIHT/Tlamatini/releases"
+            target="_blank" rel="noopener" style="display: none;">View releases on GitHub</a>
+          <button id="update-action-btn" class="update-btn" type="button" style="display: none;"
+            onclick="StartTlamatiniUpdate(event);">Update now</button>
+        </div>
       </div>
     </div>
   </div>

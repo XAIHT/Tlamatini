@@ -70,7 +70,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, Arduiner,
+  ACPXer, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, Arduiner,
   Camcorder, Recorder, Whisperer, Talker
   (NOTE: STM32er / ESP32er / Arduiner are short-lived in steady state, but their
    FIRST build/flash can run for MANY minutes while a large toolchain downloads —
@@ -179,6 +179,37 @@ UNREALER SPECIAL NOTES:
         or unreachable.
       * "Unknown command" in the engine response — the user wired a verb
         that the connected Unreal MCP plugin build does not expose.
+
+BLENDERER SPECIAL NOTES:
+  - Blenderer drives a Blender instance via the OFFICIAL Blender MCP add-on's
+    TCP socket (default localhost:9876). Unlike Unreal's verb dispatch, the
+    Blender MCP wire format is a CODE-EXECUTION protocol — each run sends ONE
+    `{"type":"execute","code":<python>,"strict_json":<bool>}` (NUL-framed) and
+    captures Blender's JSON response into an `INI_SECTION_BLENDERER<<<` block
+    for downstream Parametrizer / Forker consumption.
+  - It is SHORT-LIVED and ACTIVE — it always triggers `target_agents` after the
+    command resolves, regardless of success or failure (so a downstream Forker /
+    Raiser can branch on the section's `status` / `error` fields).
+  - Typical duration: sub-second to a few seconds for read/inspection verbs
+    (`scene_info`, `get_objects`, `ping`) and small mutations; tens of seconds
+    to minutes for `render` (a full still render) or a heavy `execute_code`
+    script. Do NOT flag a long `render` / `execute_code` as stuck — the agent
+    raises the socket read-timeout to a per-command floor (render 600 s,
+    execute_code 300 s) for exactly this reason. Flag a read/inspection verb
+    only if it runs > 60 s with no completion marker.
+  - The `INI_SECTION_BLENDERER<<<` block is structured Parametrizer output; its
+    body contains Blender's verbatim JSON response. NEVER flag this as an error
+    even when the body's `status` is `"error"` — that is content for the
+    downstream Forker / Raiser to act on.
+  - Legitimate Blenderer errors to flag:
+      * "Cannot connect to Blender" / "ConnectionRefusedError" — Blender is not
+        running, the MCP add-on is not enabled, "Online access" is off, or the
+        add-on server was not started.
+      * "did not reply within" on a fast read/inspection verb — the configured
+        `host` / `port` is wrong, or Blender's main thread is parked on a modal
+        dialog / blocking operator.
+      * "Unknown command" — the user wired a `command` that is not in the
+        Blenderer action catalog (use `execute_code` for anything uncovered).
 
 REVIEWER SPECIAL NOTES:
   - Reviewer is SHORT-LIVED and ACTIVE: it resolves a `git diff` for its
@@ -423,6 +454,7 @@ TYPICAL TIMING:
   - Parametrizer: usually short-lived, but it may remain alive while its source agent is still generating segments or while it is draining several queued source segments sequentially
   - ACPXer: sub-second to 180 s on `oneshot-prompt` transport (matches the hard cap for long LLM answers); < 45 s on `json-acp`; < 8 s on `tui-repl`. See ACPXER SPECIAL NOTES above for the per-transport drain rules.
   - Unrealer: sub-second to a few seconds for actor / transform / property commands; seconds to tens of seconds for `compile_blueprint` on large Blueprints. Flag if > 60 s with no completion.
+  - Blenderer: sub-second to a few seconds for read/inspection verbs and small mutations; tens of seconds to minutes for `render` or a heavy `execute_code` (the agent raises the socket read-timeout to a per-command floor for these). Flag a read/inspection verb only if > 60 s with no completion.
   - Reviewer: one LLM call over a git diff — sub-second to ~2 min depending on diff size and model (local vs cloud). Flag only if > 5 min with no completion.
   - Analyzer: runs installed scanners (bandit/semgrep/ruff/eslint/gitleaks/pip-audit); seconds for small trees to a few minutes for `semgrep --config auto` on a large repo. Flag only if > 5 min with no completion.
   - Kalier: tracks the Kali tool it dispatches — sub-second for `health` / a tiny `nmap`, up to the MCP-Kali-Server's ~180 s per-run cap for `gobuster` / `nikto` / `hydra` / `sqlmap` / `john`. Flag only if > 5 min with no completion (or on a "Cannot reach MCP-Kali-Server" error).
@@ -441,6 +473,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
   "📦 DE-COMPRESSER AGENT STARTED" — De-Compresser began a compression or decompression run
   "🎮 UNREALER AGENT STARTED" — Unrealer began dispatching a JSON command to the Unreal MCP plugin
+  "🎨 BLENDERER AGENT STARTED" — Blenderer began dispatching code to the Blender MCP add-on socket
   "🔍 REVIEWER AGENT STARTED" — Reviewer began resolving a git diff for LLM review
   "🛡️ ANALYZER AGENT STARTED" — Analyzer began running static-analysis / security scanners
   "🐉 KALIER AGENT STARTED (MCP-Kali-Server bridge)" — Kalier began dispatching a request to the MCP-Kali-Server API
@@ -464,7 +497,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  Shoter, Camcorder, Recorder, Talker, Mouser, Windower, Playwrighter, De-Compresser, Unrealer,
+  Shoter, Camcorder, Recorder, Talker, Mouser, Windower, Playwrighter, De-Compresser, Unrealer, Blenderer,
   Reviewer, Analyzer, Kalier, STM32er, ESP32er, Arduiner).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
@@ -552,6 +585,7 @@ DO NOT report these as problems:
   - De-Compresser INI_SECTION_DE_COMPRESSER<<< ... >>>END_SECTION_DE_COMPRESSER blocks even when success=false (the agent ALWAYS emits the block so downstream Parametrizers / Raisers can branch on success/failure)
   - Unrealer logging "🎮 UNREALER AGENT STARTED" / "🔌 Connecting to ..." / "📤 Sent command" / "📥 Received response"
   - Unrealer INI_SECTION_UNREALER<<< ... >>>END_SECTION_UNREALER blocks even when the engine response carries `status: "error"` (Unrealer ALWAYS emits the block and ALWAYS triggers `target_agents` so downstream Forkers / Raisers can branch on success/failure)
+  - Blenderer INI_SECTION_BLENDERER<<< ... >>>END_SECTION_BLENDERER blocks even when the Blender response carries `status: "error"` (Blenderer ALWAYS emits the block and ALWAYS triggers `target_agents` so downstream Forkers / Raisers can branch on success/failure)
   - Reviewer INI_SECTION_REVIEWER<<< ... >>>END_SECTION_REVIEWER blocks with any `verdict` — including `verdict: REQUEST_CHANGES` and critical/high findings in the body (the verdict is routable content for a downstream Forker, NOT a flow error)
   - Analyzer INI_SECTION_ANALYZER<<< ... >>>END_SECTION_ANALYZER blocks with any `status` — including `status: findings` and a non-zero `total_findings` (scanners finding issues is the agent working as intended; a scanner exiting non-zero because it found issues is also normal — the count is routable content for a downstream Forker, NOT a flow error)
   - Kalier INI_SECTION_KALIER<<< ... >>>END_SECTION_KALIER blocks with any `success` / `return_code` / `timed_out` — including `success: false`, a non-zero `return_code`, or `timed_out: true` (a scan finding nothing, a failed brute-force, or a tool hitting the server's run cap is the agent working as intended; the result is routable content for a downstream Forker, NOT a flow error)
