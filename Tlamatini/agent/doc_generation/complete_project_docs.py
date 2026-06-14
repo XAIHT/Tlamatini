@@ -417,6 +417,18 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("blenderer" in subject or "blender" in subject for subject in subjects):
+        highlights.append(
+            "The current Git window includes the `v1.20.0` Blenderer release: Tlamatini now reaches a live Blender session through the official Blender MCP add-on socket (`localhost:9876`), both as the wrapped `chat_agent_blenderer` tool and as a visual workflow node."
+        )
+    if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
+        highlights.append(
+            "The same `v1.20.0` wave also adds in-app self-update: packaged installs can check GitHub releases, stage a download, and hand the locked-file replacement to `apply_update.ps1` while preserving `config.json`, the database, content, and one `agents_backup` generation."
+        )
+    if any("1.20.0" in subject or ("documentation" in subject and "1.20.0" in subject) for subject in subjects):
+        highlights.append(
+            "The latest documentation pass aligns the handbook and source with `v1.20.0`, which matters here because some older badges or prose lines still lag behind the live 77-agent / 84-tool inventory."
+        )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
             "The `v1.19.5` File-Creator hardening pass now writes content byte-for-byte: plain `content` is re-extracted verbatim, and heavy escape/binary payloads can travel through `content_b64`, eliminating the wrong-symbol corruption that broke backslash-dense Java, JSON, and regex files."
@@ -593,6 +605,18 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("blenderer" in subject or "blender" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.20.0` introduced Blenderer: the 77th workflow agent and wrapped `chat_agent_blenderer` tool, bridging Tlamatini into a live Blender session over the official Blender MCP add-on socket."
+        )
+    if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
+        highlights.append(
+            "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
+        )
+    if any("1.20.0" in subject or ("documentation" in subject and "1.20.0" in subject) for subject in subjects):
+        highlights.append(
+            "The latest versioning/documentation commits move the source-of-truth product story to `v1.20.0`, which is why this dossier refresh reconciles the visible docs with the live 77-agent / 84-tool runtime surface."
+        )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, `v1.19.5` hardened File-Creator with a byte-exact write path: verbatim `content` plus a `content_b64` channel now preserve backslash-heavy and binary payloads without wrong-symbol corruption."
@@ -823,9 +847,11 @@ WHAT_IT_DOES = [
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Lets operators manage provider secrets from the browser through the Config -> Access Keys Wizard instead of hand-editing `config.json`.",
+    "Can drive Blender through the Blenderer agent, using the official Blender MCP add-on socket to inspect scenes, mutate objects and materials, run raw code, and automate renders from chat or the workflow canvas.",
     "Can pause before every state-changing Multi-Turn execution and ask the operator to approve or deny that exact step through the Ask Execs checkbox.",
     "Can raise a Windows attention signal when the browser needs the operator: Ask Execs prompts and Notifier events can flash Tlamatini’s own taskbar presence and leave an uppercase banner in `tlamatini.log`.",
     "Registers packaged installs in Windows `Installed apps` / `Programs and Features` with a real uninstall entry, so the release behaves like a normal installed application instead of only a shortcut bundle.",
+    "Can update packaged installs in place through About -> Check for updates: she checks the latest GitHub release, stages the download, swaps locked files externally, and preserves operator state such as `config.json`, the database, and content.",
     "Hardens generated files: File-Creator’s bulk-write path now preserves long content byte-complete even when it contains heavy quoting or semicolon-rich source text.",
     "Warns GPU-host operators before a directory-context load is likely to saturate VRAM and degrade embedding throughput.",
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
@@ -853,9 +879,11 @@ HOW_IT_WORKS = [
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Config -> Access Keys Wizard reads masked provider-key status from the backend and persists only the edited secrets, keeping the browser flow honest without dumping live values back to the page.",
+    "Blenderer opens the official Blender MCP add-on TCP socket (default `localhost:9876`), sends one action payload or raw code-execution request, and returns the structured result through the same wrapped-tool / canvas contract used by the rest of the agent catalog.",
     "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
     "When the browser surfaces an Ask Execs prompt or a Notifier event, JavaScript can POST to `/agent/flash_window/`; the backend then best-effort flashes the `Tlamatini.exe` console/taskbar window through `window_flash.py` and prints an uppercase attention banner for the log.",
     "Installer-time registration writes a per-user HKCU Add/Remove Programs entry pointing at `Uninstaller.exe`, and frozen startup re-checks that entry through `windows_app_registration.self_heal_for_frozen()` so older installs retroactively appear in Windows' uninstall surfaces.",
+    "In-app self-update uses Django views plus `self_update.py` to check GitHub releases, download and stage the selected package, then hand off the locked-file swap to the external `apply_update.ps1` helper before relaunch.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "A first-person self-knowledge file (`Tlamatini.md`) is injected into prompt construction for all chains, but loaded user context still outranks that self-reference when the request is a generic summary of the provided project.",
@@ -881,6 +909,7 @@ HOW_TO_USE = [
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Use Config -> Access Keys Wizard when you need to wire or update provider credentials without editing `config.json` manually.",
+    "Use About -> Check for updates on packaged installs when you want Tlamatini to fetch and stage the latest release without manually replacing the install folder.",
     "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
     "When you are using a packaged install on Windows 10 or Windows 11, uninstall it through Settings -> Apps -> Installed apps or the legacy Programs and Features entry, not by manually deleting the folder.",
     "If an Ask Execs approval dialog or a Notifier event needs you while the browser is buried, watch for Tlamatini’s taskbar-attention flash and the matching uppercase banner in `tlamatini.log`.",
@@ -890,6 +919,7 @@ HOW_TO_USE = [
     "For ESP32 firmware work, leave `Config -> URLs -> pio_executable` blank for zero-config PlatformIO bootstrap, then call `chat_agent_esp32er` from Multi-Turn with actions like `bootstrap`, `validate`, `create_project`, `write_source`, `build`, `upload`, `build_and_upload`, `monitor`, or `monitor_session`.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
+    "For Blender work, enable the official Blender MCP add-on in Blender, make sure its TCP listener is reachable (default `localhost:9876`), then call `chat_agent_blenderer` from Multi-Turn or use the Blenderer node on the canvas.",
     "For Unreal Engine work, enable the Unreal MCP plugin inside a live UE5 project first, then call `chat_agent_unrealer` from Multi-Turn or use the visual Unrealer node on the canvas.",
     "Archive jobs can now be described directly in Multi-Turn or modeled visually in ACP: De-Compresser infers compress vs decompress from the `input` or `output` extension.",
     "If a second post-answer warning bubble ever lists surviving `name + PID` entries, treat it as an honest cleanup report and end the listed processes manually from Task Manager if needed.",
@@ -908,7 +938,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Kalier drives a remote or tunneled Kali Linux tool server, STM32er drives a zero-config STM32 firmware MCP bridge, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Kalier drives a remote or tunneled Kali Linux tool server, STM32er drives a zero-config STM32 firmware MCP bridge, Blenderer drives a live Blender editor over the official MCP add-on socket, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -918,9 +948,9 @@ ACPX_SKILLS_GUIDE = [
 ]
 
 OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The live operator surface now stands at 76 workflow agents, 83 Multi-Turn tools, 12 ACPX tools, and 27 skills.",
-    "Source inspection confirms the total: 51 distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 83 Multi-Turn tools overall.",
-    "The workflow-agent and wrapped-tool totals align cleanly with the handbooks, while the skill total is validated from the on-disk `agent/skills_pkg/` catalog so the dossier stays honest even when a simplified markdown summary lags behind the live tree.",
+    "The live operator surface now stands at 77 workflow agents, 84 Multi-Turn tools, 12 ACPX tools, and 27 skills.",
+    "Source inspection confirms the total: 52 distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 84 Multi-Turn tools overall.",
+    "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
     "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
 ]
 
@@ -928,6 +958,18 @@ CURRENT_RELEASE_GUIDE = [
     "The current documented release is `v1.20.0`, which adds the Blenderer agent (the 77th agent type, a Blender bridge over the official Blender MCP add-on socket) and an in-app self-update capability (About > Check for updates), on top of the v1.19.5 hardening-and-self-modify work.",
     "Three visible user-facing points define this version: the new Blenderer agent reachable on the canvas and as the wrapped Multi-Turn tool chat_agent_blenderer, the self-update flow that downloads/stages a new release and swaps it via an external apply_update.ps1, and the carried-forward v1.19.5 hardening (byte-for-byte File-Creator writes, a rebuildable generated source snapshot, and the Config API-Keys Wizard dialog).",
     "The same release window also carries forward the recent voice/media wave from `v1.17.2` through `v1.19.3`, so the current dossier must present Talker, Whisperer, Recorder, Camcorder, AudioPlayer, and VideoPlayer as first-class parts of the product.",
+]
+
+BLENDERER_GUIDE = [
+    "Blenderer is the 77th workflow agent and a direct bridge to the official Blender MCP add-on, letting Tlamatini operate a live Blender session from either Multi-Turn chat or the visual workflow canvas.",
+    "The bridge talks over a TCP socket (default `localhost:9876`) and supports both raw `execute_code` requests and higher-level scene/object/material/render actions, so operators can mix deterministic verbs with precise Python-driven 3D automation.",
+    "This extends Tlamatini beyond code and firmware orchestration into DCC / 3D-production work: asset inspection, scene mutation, material changes, camera setup, and render-triggering now live inside the same operator surface as the rest of the system.",
+]
+
+SELF_UPDATE_GUIDE = [
+    "The packaged application now includes an in-app self-update flow exposed from About -> Check for updates, so operators can refresh a frozen install without manually unpacking and replacing the entire release folder.",
+    "The backend checks the latest GitHub release, downloads and stages the package, then hands off the locked-file swap to `apply_update.ps1`, which performs the replacement after the running executable exits and relaunches the updated app.",
+    "The update path is state-preserving by design: it keeps `config.json`, the database, user content, and one `agents_backup` generation so an update behaves like a product upgrade rather than a destructive reinstall.",
 ]
 
 SOURCE_SNAPSHOT_GUIDE = [
@@ -963,8 +1005,8 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent tracked assets worth calling out explicitly include `copy_source_assets.py` for self-modify snapshot generation, `agent/access_key_wizard.py` for backend secret handling, and the new `access_keys_wizard.js` / `access_keys_wizard.css` frontend pair wired into `agent_page.html`.",
-    "The same recent window also updated key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, and the File-Creator agent template, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
+    "Recent tracked assets worth calling out explicitly now span two release waves: `copy_source_assets.py` for self-modify snapshot generation, `agent/access_key_wizard.py` plus `static/agent/js/access_keys_wizard.js` / `static/agent/css/access_keys_wizard.css` for browser-side key setup, `agent/self_update.py` plus `apply_update.ps1` for the in-app updater, and `agent/agents/blenderer/blenderer.py` with `agent/agents/blenderer/config.yaml` for the new Blender control surface.",
+    "The same recent window also updated key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `copy_source_assets.py`, and the File-Creator agent template, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
     "Because the dossier already includes the full tracked tree and line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
 ]
 
@@ -1272,12 +1314,12 @@ OLLAMA_COMMANDS = "\n".join(
         "ollama --version",
         "ollama serve",
         "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
-        "ollama pull qwen3-embedding:8b",
+        "ollama pull Nomic-Embed-Text:latest",
         "ollama pull kimi-k2.6:cloud",
         "ollama pull qwen3.5:cloud",
         "ollama pull gpt-oss:120b-cloud",
         "ollama pull qwen3.5:397b-cloud",
-        "ollama pull llama3.2-vision:11b",
+        "ollama pull glm-5.1:cloud",
     ]
 )
 
@@ -1568,6 +1610,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("Current release focus in v1.20.0", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Blenderer", styles["h2"]))
+    for item in BLENDERER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("In-app self-update", styles["h2"]))
+    for item in SELF_UPDATE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Self-modify source snapshot", styles["h2"]))
     for item in SOURCE_SNAPSHOT_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -1756,6 +1804,12 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("How agent runtimes are shaped", styles["h2"]))
     for item in AGENT_RUNTIME_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Blenderer spotlight", styles["h2"]))
+    for item in BLENDERER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Self-update spotlight", styles["h2"]))
+    for item in SELF_UPDATE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Reviewer and Analyzer spotlight", styles["h2"]))
     for item in REVIEWER_ANALYZER_GUIDE + REVIEWER_ANALYZER_SURFACES:
