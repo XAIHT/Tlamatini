@@ -33,7 +33,7 @@ She can do all of that — self-hosted on your own machine, powered by the model
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.20.0"><img src="https://img.shields.io/badge/VERSION-v1.20.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.20.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.20.1"><img src="https://img.shields.io/badge/VERSION-v1.20.1-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.20.1" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -85,7 +85,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.20.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.20.0)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.20.1](https://github.com/XAIHT/Tlamatini/releases/tag/v1.20.1)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
@@ -101,6 +101,13 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 ---
 
 <details open>
+<summary><strong>📦 What's new in v1.20.1 (2026-06-14) — click to expand</strong></summary>
+
+> **v1.20.1 (2026-06-14)** fixes the in-app **self-update** flow shipped in v1.20.1: the external `apply_update.ps1` updater used to terminate *itself* when it closed the running app — it is launched inside Tlamatini's own process tree, so the old `taskkill /T` swept it away before it could swap the files, leaving the install stuck on the previous version. The updater now closes the app's process tree while sparing its own process, then completes the file swap and relaunch. It also **preserves `Uninstaller.exe`** across updates (the staged build does not carry it).
+
+</details>
+
+<details>
 <summary><strong>📦 What's new in v1.20.0 (2026-06-14) — click to expand</strong></summary>
 
 > **v1.20.0 (2026-06-14)** adds the **Blenderer** agent (the 77th agent type) — a bridge to **Blender** over the official Blender MCP add-on's TCP socket (`localhost:9876`), driving a rich action catalog (raw `execute_code` plus scene/object/material/render verbs) on both the canvas and as the wrapped Multi-Turn tool `chat_agent_blenderer`. It also ships a **self-update capability** ("About ▸ Check for updates"): Tlamatini checks her latest GitHub release, downloads and stages the new build, then hands off to an external `apply_update.ps1` that swaps the locked files and relaunches — preserving your `config.json`, database, and content while keeping one generation of `agents_backup`.
@@ -1908,22 +1915,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.20.0 -m "Release 1.20.0: <one-line summary>"
-git push origin v1.20.0
+git tag -a v1.20.1 -m "Release 1.20.1: <one-line summary>"
+git push origin v1.20.1
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.20.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.20.1/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.20.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.20.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.20.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.20.1` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.20.1` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.20.1","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1947,8 +1954,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.20.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.20.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.20.1"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.20.1 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.

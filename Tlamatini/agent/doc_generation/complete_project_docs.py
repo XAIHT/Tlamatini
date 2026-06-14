@@ -419,15 +419,15 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("blenderer" in subject or "blender" in subject for subject in subjects):
         highlights.append(
-            "The current Git window includes the `v1.20.0` Blenderer release: Tlamatini now reaches a live Blender session through the official Blender MCP add-on socket (`localhost:9876`), both as the wrapped `chat_agent_blenderer` tool and as a visual workflow node."
+            "The current Git window includes the `v1.20.1` Blenderer release: Tlamatini now reaches a live Blender session through the official Blender MCP add-on socket (`localhost:9876`), both as the wrapped `chat_agent_blenderer` tool and as a visual workflow node."
         )
     if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
         highlights.append(
-            "The same `v1.20.0` wave also adds in-app self-update: packaged installs can check GitHub releases, stage a download, and hand the locked-file replacement to `apply_update.ps1` while preserving `config.json`, the database, content, and one `agents_backup` generation."
+            "The same `v1.20.1` wave also adds in-app self-update: packaged installs can check GitHub releases, stage a download, and hand the locked-file replacement to `apply_update.ps1` while preserving `config.json`, the database, content, and one `agents_backup` generation."
         )
-    if any("1.20.0" in subject or ("documentation" in subject and "1.20.0" in subject) for subject in subjects):
+    if any("1.20.1" in subject or ("documentation" in subject and "1.20.1" in subject) for subject in subjects):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.20.0`, which matters here because some older badges or prose lines still lag behind the live 77-agent / 84-tool inventory."
+            "The latest documentation pass aligns the handbook and source with `v1.20.1`, which matters here because some older badges or prose lines still lag behind the live 77-agent / 84-tool inventory."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -607,15 +607,15 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     if any("blenderer" in subject or "blender" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.20.0` introduced Blenderer: the 77th workflow agent and wrapped `chat_agent_blenderer` tool, bridging Tlamatini into a live Blender session over the official Blender MCP add-on socket."
+            "Since the last committed PDF/PPTX refresh, `v1.20.1` introduced Blenderer: the 77th workflow agent and wrapped `chat_agent_blenderer` tool, bridging Tlamatini into a live Blender session over the official Blender MCP add-on socket."
         )
     if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
         highlights.append(
             "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
         )
-    if any("1.20.0" in subject or ("documentation" in subject and "1.20.0" in subject) for subject in subjects):
+    if any("1.20.1" in subject or ("documentation" in subject and "1.20.1" in subject) for subject in subjects):
         highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to `v1.20.0`, which is why this dossier refresh reconciles the visible docs with the live 77-agent / 84-tool runtime surface."
+            "The latest versioning/documentation commits move the source-of-truth product story to `v1.20.1`, which is why this dossier refresh reconciles the visible docs with the live 77-agent / 84-tool runtime surface."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -955,7 +955,7 @@ OPERATOR_SURFACE_COUNTS_GUIDE = [
 ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The current documented release is `v1.20.0`, which adds the Blenderer agent (the 77th agent type, a Blender bridge over the official Blender MCP add-on socket) and an in-app self-update capability (About > Check for updates), on top of the v1.19.5 hardening-and-self-modify work.",
+    "The current documented release is `v1.20.1`, which adds the Blenderer agent (the 77th agent type, a Blender bridge over the official Blender MCP add-on socket) and an in-app self-update capability (About > Check for updates), on top of the v1.19.5 hardening-and-self-modify work.",
     "Three visible user-facing points define this version: the new Blenderer agent reachable on the canvas and as the wrapped Multi-Turn tool chat_agent_blenderer, the self-update flow that downloads/stages a new release and swaps it via an external apply_update.ps1, and the carried-forward v1.19.5 hardening (byte-for-byte File-Creator writes, a rebuildable generated source snapshot, and the Config API-Keys Wizard dialog).",
     "The same release window also carries forward the recent voice/media wave from `v1.17.2` through `v1.19.3`, so the current dossier must present Talker, Whisperer, Recorder, Camcorder, AudioPlayer, and VideoPlayer as first-class parts of the product.",
 ]
@@ -1013,7 +1013,7 @@ NEW_ASSETS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.20.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.20.1` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1035,7 +1035,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.20.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.20.1` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -1053,7 +1053,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.20.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.20.1` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -1607,7 +1607,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Current release focus in v1.20.0", styles["h2"]))
+    story.append(p("Current release focus in v1.20.1", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Blenderer", styles["h2"]))
@@ -2338,7 +2338,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.20.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.20.1", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2352,7 +2352,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.20.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.20.1", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2361,7 +2361,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.20.0 Blenderer agent and in-app self-update", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.20.1 Blenderer agent and in-app self-update", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
         "This release grows Tlamatini in two directions at once: a new live-editor bridge for Blender production work and a better lifecycle story for packaged installs.",
@@ -2683,9 +2683,9 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.20.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.20.1", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
-        "Blenderer (v1.20.0): the 77th workflow agent, bridging the official Blender MCP add-on socket so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
+        "Blenderer (v1.20.1): the 77th workflow agent, bridging the official Blender MCP add-on socket so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
         "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
         "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
         "Both audio agents now light a zero-latency console REC indicator (blinking dot + live VU bar) driven by the audio-stream callback — ON within ~20 ms of real samples, OFF the instant the stream stops; the agent reveals its own console even when spawned headless.",
@@ -2693,7 +2693,7 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge with zero-config bootstrap and a serial preflight.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Self-update (v1.20.0): packaged installs can check GitHub releases, stage the download, and let `apply_update.ps1` swap locked files while preserving `config.json`, the database, content, and one `agents_backup` generation.",
+        "Self-update (v1.20.1): packaged installs can check GitHub releases, stage the download, and let `apply_update.ps1` swap locked files while preserving `config.json`, the database, content, and one `agents_backup` generation.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with a first-build-downloads-a-large-toolchain caveat.",

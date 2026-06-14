@@ -33,7 +33,11 @@ try { $Host.UI.RawUI.WindowTitle = "Tlamatini Updater" } catch {}
 # 'agents_backup' (step 3) and then replaced by the new version (step 5).
 $Preserve = @(
     'config.json', 'DB', 'application', 'applications', 'content_generated',
-    'Temp', 'context_files', 'doc_generated', 'documentation', 'Templates'
+    'Temp', 'context_files', 'doc_generated', 'documentation', 'Templates',
+    # Uninstaller.exe is built separately and is NOT carried inside pkg.zip,
+    # so the staged build never contains it. Without preserving it, every
+    # self-update would delete the user's uninstaller. Keep the existing one.
+    'Uninstaller.exe'
 )
 
 function Write-Log {
@@ -83,10 +87,48 @@ try {
     }
     Write-Log "Staged build validated (Tlamatini.exe present)." "Green"
 
-    # 2) Close the running Tlamatini and its whole process tree.
+    # 2) Close the running Tlamatini and its whole process tree -- but NEVER
+    #    this updater process. The updater is launched by self_update.py as a
+    #    child of $ParentPid (the Tlamatini.exe). A blind
+    #    `taskkill /T /PID $ParentPid` walks the recorded parent/child tree --
+    #    which CREATE_BREAKAWAY_FROM_JOB does NOT change -- so it would also
+    #    kill US, and the update would abort right here after "Closing
+    #    Tlamatini..." (the exact symptom of the 1.19.5 -> 1.20.0 failure).
+    #    So we enumerate the descendant tree ourselves and skip our own $PID.
     Write-Log "Closing Tlamatini (PID $ParentPid) and its child processes..."
     Start-Sleep -Seconds 2
-    try { & taskkill.exe /PID $ParentPid /T /F 2>&1 | Out-Null } catch {}
+    try {
+        $procs   = Get-CimInstance Win32_Process -ErrorAction Stop
+        $toKill  = New-Object System.Collections.Generic.List[int]
+        $queue   = New-Object System.Collections.Generic.Queue[int]
+        $seen    = New-Object System.Collections.Generic.HashSet[int]
+        [void]$queue.Enqueue([int]$ParentPid)
+        [void]$seen.Add([int]$ParentPid)
+        while ($queue.Count -gt 0) {
+            $cur = $queue.Dequeue()
+            foreach ($p in $procs) {
+                if ([int]$p.ParentProcessId -eq $cur) {
+                    $cid = [int]$p.ProcessId
+                    if ($cid -eq $PID) { continue }          # never our own updater
+                    if ($seen.Add($cid)) {
+                        [void]$queue.Enqueue($cid)
+                        $toKill.Add($cid)                    # children, collected first
+                    }
+                }
+            }
+        }
+        foreach ($k in $toKill) {
+            try { & taskkill.exe /PID $k /F 2>&1 | Out-Null } catch {}
+        }
+        try { & taskkill.exe /PID $ParentPid /F 2>&1 | Out-Null } catch {}
+        Write-Log ("Killed parent + {0} descendant process(es), kept updater (PID {1})." -f $toKill.Count, $PID)
+    }
+    catch {
+        # CIM unavailable -- fall back to the blunt tree kill. Risks the old
+        # self-kill, but better than leaving the parent holding file locks.
+        Write-Log "CIM enumeration failed; falling back to taskkill /T (may self-kill)." "Yellow"
+        try { & taskkill.exe /PID $ParentPid /T /F 2>&1 | Out-Null } catch {}
+    }
     # Let Windows release the file handles (python\, git\, jre\, exe).
     Start-Sleep -Seconds 3
     Write-Log "Tlamatini closed." "Green"
