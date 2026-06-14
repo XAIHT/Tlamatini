@@ -2364,15 +2364,20 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Current Release Focus", "v1.20.0 Blenderer agent and in-app self-update", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "This release is about trust: generated files should land intact, self-modify builds should actually carry a rebuildable self-image, and credential setup should not require hand-editing JSON.",
-        "Because those are operator-facing quality-of-life features rather than hidden internals, they belong high in the deck instead of being buried in an appendix.",
-        "The resulting narrative matches the current README and Book much more honestly than the older milestone-only framing.",
-    ], THEME["jade"], "rel-b", 12)
+        "This release grows Tlamatini in two directions at once: a new live-editor bridge for Blender production work and a better lifecycle story for packaged installs.",
+        "Operators no longer need manual reinstall choreography just to pick up a new release, while the Blender surface adds another serious production domain to the same chat-and-canvas runtime.",
+        "The resulting narrative matches the current README, Book, Git history, and source tree more honestly than the older milestone-only framing.",
+    ], THEME["jade"], "rel-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Blenderer And Self-Update", "how to use the newest release surfaces", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Blenderer", BLENDERER_GUIDE, THEME["jade"], "blend-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Self-update", SELF_UPDATE_GUIDE, THEME["amber"], "blend-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Self-Modify Source Snapshot", "generated `TlamatiniSourceCode/` and rebuild contract", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Snapshot contract", SOURCE_SNAPSHOT_GUIDE, THEME["jade"], "snap-a", 12)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Access Keys, Assets, And File Writes", API_KEYS_WIZARD_GUIDE[:2] + NEW_ASSETS_GUIDE[:1] + FILE_CREATOR_HARDENING_GUIDE[:1], THEME["amber"], "snap-b", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Access Keys, Updates, And File Writes", API_KEYS_WIZARD_GUIDE[:2] + SELF_UPDATE_GUIDE[:1] + FILE_CREATOR_HARDENING_GUIDE[:1], THEME["amber"], "snap-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Media, Voice, And Runtime Resilience", "Talker / Whisperer family plus watchdog hardening", THEME["copper"])
@@ -2414,7 +2419,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Count alignment", [
         f"Templates on disk with config.yaml: {context['workflow_agent_count']}",
         f"Description rows in `agents_descriptions.md`: {context['agent_description_rows']}",
-        f"README and Book bestiary sections align with the same {context['workflow_agent_count']}-agent inventory.",
+        f"This dossier reconciles README and Book wording back to the same {context['workflow_agent_count']}-agent inventory when older badges or legacy prose lines lag behind the live tree.",
     ], THEME["jade"], "agent-proof-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Description source", AGENT_DESCRIPTION_GUIDE, THEME["copper"], "agent-proof-b", 14)
     audit_layout(audit, len(prs.slides))
@@ -2590,12 +2595,12 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Ollama Readiness", "service, API, and model pulls", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Service and API", OLLAMA_GUIDE[2:], THEME["jade"], "ollama-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Default pull set", [
-        "qwen3-embedding:8b",
+        "Nomic-Embed-Text:latest",
         "kimi-k2.6:cloud",
         "qwen3.5:cloud",
         "gpt-oss:120b-cloud",
         "qwen3.5:397b-cloud",
-        "llama3.2-vision:11b",
+        "glm-5.1:cloud",
     ], THEME["copper"], "ollama-b", 15)
     audit_layout(audit, len(prs.slides))
 
@@ -2678,20 +2683,22 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Newest Additions", "the media-I/O family completes, voice in/out arrives, plus skill, directory policy, and monitoring coverage", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "New agents — media-I/O, voice (Talker/Whisperer) + firmware", [
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.20.0", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
+        "Blenderer (v1.20.0): the 77th workflow agent, bridging the official Blender MCP add-on socket so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
         "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
         "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
         "Both audio agents now light a zero-latency console REC indicator (blinking dot + live VU bar) driven by the audio-stream callback — ON within ~20 ms of real samples, OFF the instant the stream stops; the agent reveals its own console even when spawned headless.",
         "Camcorder + Recorder (capture): webcam photo/video via OpenCV and microphone WAV via sounddevice; AudioPlayer + VideoPlayer (playback): file to speakers / to a chosen display — the media-I/O family (screen / camera-in / mic-in / speakers-out / screen-out).",
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge with zero-config bootstrap and a serial preflight.",
-    ], THEME["copper"], "monday-a", 12)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "New skill, policy & monitoring", [
+    ], THEME["copper"], "monday-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
+        "Self-update (v1.20.0): packaged installs can check GitHub releases, stage the download, and let `apply_update.ps1` swap locked files while preserving `config.json`, the database, content, and one `agents_backup` generation.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with a first-build-downloads-a-large-toolchain caveat.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
-    ], THEME["jade"], "monday-b", 13)
+    ], THEME["jade"], "monday-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Effective Lines By Language", "no comments, no blanks", THEME["copper"])
