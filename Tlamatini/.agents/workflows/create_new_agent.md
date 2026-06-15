@@ -546,6 +546,49 @@ npm run lint                   # fix errors only (ignore warnings)
 
 ---
 
+## Step 9 · Self-Update & Self-Modify Carriage (ship the agent to users + Tlamatini's own source)
+
+A new agent must reach (a) existing users via **self-update**, and (b) Tlamatini's own
+rebuildable source tree via **self-modify**. The good news: an agent built exactly as above
+is carried **AUTOMATICALLY** by both — but you MUST verify, and a new *dependency* is the one
+manual case.
+
+**Automatic — no action needed:**
+- **Self-update release** — `build.py` ships the whole `agent/agents/` tree via
+  `optional_dir_copies` (carrier mechanism 3) plus the PyInstaller import graph, so
+  `agents/<agent_name>/` auto-ships. On update, `apply_update.ps1` does `agents -> agents_backup`
+  then drops the new version in, so your agent lands.
+- **Self-modify snapshot** — `copy_source_assets.py`'s generic walk carries every new `.py` /
+  `config.yaml` (the `config.yaml` is auto-**redacted**). Nothing to add.
+- **Your migration's rows reach EXISTING users** — the new `Agent` row, the
+  `Chat-Agent-<Name>` `Tool` row (Step 7.5), and the demo `Prompt` rows (Step 7.8) are applied
+  to the user's existing database by the self-update's **post-update migrate**: the updater
+  stages the user's DB through `DB/ToLoad` and `manage.py::_run_post_update_migrate_if_flagged`
+  runs `migrate` on the next launch (see `apply_update.ps1` step 3b + `manage.py`). So just ship
+  the migration normally — the user keeps their chat history + toggles AND gets your new agent.
+
+**MANUAL — only if your agent imports a NEW third-party library** (the numpy/opencv-class case;
+a pool agent runs under the **carried Python**, NOT the frozen exe, so its libs must be present
+there): it must be
+1. pinned in `requirements.txt`,
+2. asserted in `build.py` — add the import name to `_CARRIED_PYTHON_REQUIRED_IMPORTS` (carried-
+   Python probe) AND the frozen-asset `_agent_libs` verify list, so the build ABORTS LOUDLY if
+   the lib is missing instead of shipping a pool agent that crashes at runtime, and
+3. if PyInstaller's import graph can't see it (it's only imported by the out-of-process pool
+   agent), add a `--collect-all <pkg>` / `--hidden-import` to the PyInstaller command in
+   `build.py` so it is embedded in the frozen `_internal` too.
+
+**(MANDATORY) Verify carriage with the two inclusion sweeps — both must exit CLEAN:**
+```bash
+python .claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py
+python .claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
+```
+They confirm the new agent source ships, secrets are redacted, every `build.py` input survives,
+the updater preserve lists stay coherent, and new migrations reach users. Full runbooks: the
+**`tlamatini-self-modify-inclusion`** and **`tlamatini-self-update-inclusion`** skills.
+
+---
+
 ## Summary Checklist
 
 ```
@@ -586,4 +629,10 @@ npm run lint                   # fix errors only (ignore warnings)
        chat_agent_<name>) → migrate → appears in #prompts-catalog. A Multi-Turn agent
        WITHOUT a catalog prompt is INCOMPLETE.
 [ ] 8. ruff check (fix all) + npm run lint (fix errors); manual sidebar/canvas color parity
+[ ] 9. Self-update/self-modify carriage: agent source + migration rows auto-ship AND reach
+       EXISTING users via the post-update migrate (DB/ToLoad + manage.py). A NEW third-party
+       dependency is the only manual case: add it to requirements.txt + build.py
+       (_CARRIED_PYTHON_REQUIRED_IMPORTS, _agent_libs verify list, and a --collect-all/hidden-import
+       if PyInstaller can't see it). VERIFY both inclusion sweeps exit CLEAN:
+       sweep_self_modify.py + sweep_self_update.py
 ```

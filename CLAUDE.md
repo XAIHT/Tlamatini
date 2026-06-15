@@ -324,3 +324,28 @@ The rest of the onboarding material is split into topic files under `docs/claude
 ## MANDATORY DIRECTIVE - Angela 2026-06-14 - USE ONLY TLAMATINI'S SKILLS/TOOLS/AGENTS, NOT CLAUDE CODE'S BUILT-IN TOOLS
 
 Every session, from the very start, Claude MUST perform the work with Tlamatini's OWN agents, tools and skills - Executer, Pythonxer, File-Creator, Mover, Deleter, Playwrighter, Blenderer, the mcp__tlamatini__ wrapped tools, and the SKILL.md skills - and MUST NOT use Claude Code's built-in tools - Bash, Read, Write, Edit, Grep, Glob, the built-in Playwright - to do the task. Claude's shell is ONLY a launcher of last resort. The purpose is to DOGFOOD Tlamatini's tools: exercise them on real work, surface their errors, and keep fixing them. If a Tlamatini tool lacks a capability, fix or extend that tool instead of falling back to a Claude tool.
+
+### Tool correspondence — Claude built-in → the Tlamatini tool to use INSTEAD
+
+The Tlamatini tools are exposed over MCP as `mcp__tlamatini__<name>` (their schemas are deferred — load them on demand with `ToolSearch`, e.g. `ToolSearch "globber grepper editor"`; `mcp__tlamatini__tlamatini_list_agents` enumerates every one). **Before reaching for ANY Claude built-in, map the action to its Tlamatini tool here and use that:**
+
+| Claude built-in | Use INSTEAD | Key params / notes |
+|---|---|---|
+| **Write** (create a file) | `mcp__tlamatini__file_creator` (File-Creator) | `file_path`, `content` (or `content_b64` for binary); creates parent dirs |
+| **Edit** (find/replace) | `mcp__tlamatini__editor` (Editor) | exact-unique `old_string`→`new_string`; `replace_all`; `old_string_b64`/`new_string_b64` for byte-exact edits |
+| **Grep** (content search) | `mcp__tlamatini__grepper` (Grepper) | `pattern` (regex), `path`, `glob`, `case_insensitive`, `output_mode` |
+| **Glob** (find files) | `mcp__tlamatini__globber` (Globber) | `pattern`, `path`, `sort_by`, `max_results` |
+| **Bash** (shell command) | `mcp__tlamatini__executer` (Executer) | `script`; `non_blocking:true` to detach a long-running server; `execute_forked_window:true` for a visible console window |
+| **Bash** (run Python) | `mcp__tlamatini__pythonxer` (Pythonxer) | inline Python behind a compile()/ruff gate |
+| **Playwright** / browse a site | `mcp__tlamatini__playwrighter` (Playwrighter) | `start_url` + `steps_json` (goto/click/fill/extract/screenshot) |
+| move / copy a file | `mcp__tlamatini__mover` (Mover) | glob-capable |
+| delete a file | `mcp__tlamatini__deleter` (Deleter) | glob-capable |
+| git commands | `mcp__tlamatini__gitter` (Gitter) | use `command='custom'` to pass a raw git subcommand |
+| web search | `mcp__tlamatini__googler` (Googler) | Google search + extract |
+| audio / video / camera / mic, TTS / STT, firmware, 3D | the matching agent — `talker`, `whisperer`, `recorder`, `camcorder`, `audioplayer`, `videoplayer`, `stm32er`, `esp32er`, `arduiner`, `blenderer`, `kalier`, `windower`, `mouser`, `keyboarder`, `shoter`, … | **no Claude equivalent exists — always the agent** |
+
+**Reading files:** there is no raw-`cat` Tlamatini agent (File-Interpreter / File-Extractor read-and-interpret via the LLM or extract from PDF/DOCX; Grepper / Globber are for search). So prefer Grepper/Globber to locate code and File-Interpreter to summarize a file; Claude's **Read** is the narrow last-resort exception **only** when you need the exact bytes of a region to author an Editor `old_string` and no Tlamatini tool yields them.
+
+**Transient-outage fallback (allowed, must be stated):** if a `mcp__tlamatini__*` tool is briefly blocked (e.g. the safety classifier is temporarily unavailable) and you have already retried, you MAY fall back to the matching Claude built-in to avoid stalling — but say so explicitly in your reply and treat it as an outage workaround, not a substitution. The instant the Tlamatini tool is reachable again, switch back.
+
+**Desktop/visible agents** (a headed Playwrighter, an Executer/Pythonxer forked console, Shoter/Mouser/Keyboarder/Camcorder/VideoPlayer windows) launched via your own shell must run FOREGROUND with `dangerouslyDisableSandbox: true` so the window renders on the user's real desktop — but when driven through `mcp__tlamatini__*` (the Django server spawns them) they already render, so just call the MCP tool.
