@@ -2490,6 +2490,12 @@ def execute_file(command: str, foreground: bool = False) -> str:
     chat_agent_pythonxer. Keyboarder and Mouser are reserved for explicit desktop-UI automation
     requests, not for running scripts.
 
+    FILE-WORK ORDER — execute_file RUNS a script; it is the LAST step. Author the .py first with
+    chat_agent_file_creator (new file) or change it in place with chat_agent_editor (existing file —
+    surgical, never overwrite the whole file for a few lines). To find/read code first use
+    chat_agent_globber / chat_agent_grepper / chat_agent_file_extractor, not a shell dir/findstr/type.
+    For inline Python with no file, use chat_agent_pythonxer.
+
     WINDOW vs BACKGROUND — this choice is the USER'S, never yours:
     - Set `foreground=True` ONLY when the user explicitly asks to run it in a
       VISIBLE / FOREGROUND / FORKED / "in a window I can see" terminal. That opens
@@ -2664,6 +2670,13 @@ def execute_command(command: str) -> str:
     For creating a source file first, use file_creator / chat_agent_file_creator, then execute it
     here. Keyboarder and Mouser are reserved for explicit desktop-UI automation requests, not for
     running commands.
+
+    FILE-WORK ORDER — do NOT use shell commands to search, read, or edit files; use the dedicated
+    Claude-equivalent tools: find files with chat_agent_globber (not `dir`/`ls`), search contents
+    with chat_agent_grepper (not `findstr`/`grep`), read exact bytes with chat_agent_file_extractor
+    (not `type`/`cat`), MODIFY an existing file with chat_agent_editor (surgical — never overwrite a
+    whole file to change a few lines), and CREATE a new file with chat_agent_file_creator. Reserve
+    execute_command for actually RUNNING / building / installing — the step AFTER the file is written.
 
     CRITICAL: Pass the COMPLETE command exactly as the user specified, including all arguments.
 
