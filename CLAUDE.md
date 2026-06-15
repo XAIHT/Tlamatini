@@ -315,3 +315,9 @@ The rest of the onboarding material is split into topic files under `docs/claude
 
 - **Recent Fixes / fix log** — `docs/claude/recent-fixes.md`. The dated chronological log of surgical fixes and "do NOT revert this / keep these surfaces aligned" contracts (ACPX, Flow Compiler, planner, Exec Report, ACP canvas, wrapped chat-agent parsing, desktop-UI agents, the STM32er zero-config bootstrap + fail-safe hardware preflight, `prompt.pmt`, `regen_secrets.py`, logging filters). **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there rather than to `gotchas.md`.
 - **Creating a new Skill (SKILL.md package)** — `Tlamatini/.skills/create_new_skill.md`. The dedicated authoring guide for a `SKILL.md` (the two runtimes — `in-process` vs `acpx`; the frontmatter contract + schema ranges; discovery / 30 s staleness cache; lint + `quick_validate`; ACPX-surface gotchas). NOT auto-imported — read it when adding or editing a skill. The `flow-making` skill (`agent/skills_pkg/flow_making/`) is the canonical worked example of an in-process skill that shells out to a shipped `scripts/*.py`.
+
+---
+
+## MANDATORY DIRECTIVE - Angela 2026-06-14 - USE ONLY TLAMATINI'S SKILLS/TOOLS/AGENTS, NOT CLAUDE CODE'S BUILT-IN TOOLS
+
+Every session, from the very start, Claude MUST perform the work with Tlamatini's OWN agents, tools and skills - Executer, Pythonxer, File-Creator, Mover, Deleter, Playwrighter, Blenderer, the mcp__tlamatini__ wrapped tools, and the SKILL.md skills - and MUST NOT use Claude Code's built-in tools - Bash, Read, Write, Edit, Grep, Glob, the built-in Playwright - to do the task. Claude's shell is ONLY a launcher of last resort. The purpose is to DOGFOOD Tlamatini's tools: exercise them on real work, surface their errors, and keep fixing them. If a Tlamatini tool lacks a capability, fix or extend that tool instead of falling back to a Claude tool.
