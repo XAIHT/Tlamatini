@@ -353,7 +353,10 @@ def build_git_command(config: Dict) -> list:
             logging.error("❌ 'custom_command' is required when command is 'custom'.")
             return None
         # Split the custom command string into a list
-        return custom_command.split()
+        _parts = custom_command.split()
+        if _parts and _parts[0] == 'git':
+            _parts = _parts[1:]
+        return ['git'] + _parts
     else:
         logging.error(f"❌ Unknown git command: {command}")
         return None
