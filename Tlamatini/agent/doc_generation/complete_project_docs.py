@@ -429,9 +429,17 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("1.24.0" in subject or "esphomer" in subject for subject in subjects):
+        highlights.append(
+            "The current Git window establishes the new `v1.24.0` baseline: the latest tag `v1.24.0` sits at commit `eb92877` on June 15, 2026, and the current HEAD `c0c633c` later that same day layers the ESPHomer implementation on top of that version line."
+        )
     if has_esphomer_assets():
         highlights.append(
             "The live working tree is already beyond the tagged `v1.24.0` release: ESPHomer is present as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
+        )
+    if any("image about" in subject or "video" in subject or "kyber" in subject for subject in subjects):
+        highlights.append(
+            "The same window refreshes the visible about/presentation media too: `TlamatiniAbout.png` replaces the old JPEG asset, and `TlamatiniAndKyber.mp4` joins the repository as a new shipped visual asset that the dossier inventory now counts."
         )
     if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
         highlights.append(
@@ -453,7 +461,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
-    if any("1.23.0" in subject or ("documentation" in subject and "1.23.0" in subject) for subject in subjects):
+    if any("1.24.0" in subject or ("documentation" in subject and "1.24.0" in subject) for subject in subjects):
         highlights.append(
             "The latest documentation pass aligns the handbook and source with `v1.24.0`, which matters here because some older badges or prose lines still lag behind the live 81-agent / 88-tool inventory."
         )
@@ -633,9 +641,17 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("1.24.0" in subject or "esphomer" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, the repository moved onto the `v1.24.0` version line: tag `eb92877` establishes the new release identity, and HEAD `c0c633c` adds the ESPHomer implementation on top of it."
+        )
     if has_esphomer_assets():
         highlights.append(
             "The live workspace now includes the untagged ESPHomer wave: a new ESPHome firmware agent, wrapped `chat_agent_esphomer` tool, sample YAML project, migrations, tests, and handbook chapters that extend Tlamatini into smart-home device provisioning."
+        )
+    if any("image about" in subject or "video" in subject or "kyber" in subject for subject in subjects):
+        highlights.append(
+            "The same span also refreshes the shipped visual media: the old `TlamatiniAbout.jpg` gives way to `TlamatiniAbout.png`, and `TlamatiniAndKyber.mp4` is now part of the repository asset tree and line/inventory context."
         )
     if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
         highlights.append(
@@ -657,7 +673,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
         )
-    if any("1.23.0" in subject or ("documentation" in subject and "1.23.0" in subject) for subject in subjects):
+    if any("1.24.0" in subject or ("documentation" in subject and "1.24.0" in subject) for subject in subjects):
         highlights.append(
             "The latest versioning/documentation commits move the source-of-truth product story to `v1.24.0`, and this refresh layers the live ESPHomer working-tree additions on top of that tag so the dossier matches the current 81-agent / 88-tool runtime surface."
         )
@@ -1014,10 +1030,10 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The current tagged release is `v1.24.0`; the prior `v1.23.0` brought operational robustness: the in-app self-update became data-preserving, and numpy plus OpenCV are embedded in both bundled Pythons so the media agents work in a frozen install. The live working tree documented here already builds on top of the tag with the new ESPHomer smart-home firmware surface.",
+    "The repository currently resolves to `v1.24.0` from the latest tag `eb92877` dated June 15, 2026; the current HEAD `c0c633c` later the same day keeps that version line and layers the ESPHomer smart-home firmware surface on top of it.",
     "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
     "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
-    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor now give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, and the working tree extends the firmware stack further with ESPHomer for ESPHome-based smart-home devices.",
+    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, and the current HEAD extends the firmware stack further with ESPHomer for ESPHome-based smart-home devices.",
 ]
 
 BLENDERER_GUIDE = [
@@ -1066,6 +1082,7 @@ COMMAND_WATCHDOG_GUIDE = [
 
 NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater, `build.py` for numpy/OpenCV embedding checks, the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery, and the new `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
+    "The current `v1.24.0` window also refreshes shipped visual assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is now part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
     "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
     "Because the dossier already includes the full repository inventory (git-tracked files plus git-unignored working-tree additions) and the full line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
@@ -2452,12 +2469,12 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.24.0 current release; v1.23.0 brought data-preserving self-update and numpy/OpenCV embedding", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.24.0 tag plus same-day HEAD updates", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "This release is about trust in the update path: a packaged install can now refresh itself without losing the user's chat history or custom toggles, so an update behaves like a real product upgrade rather than a reset.",
-        "It also closes a frozen-build gap by shipping the numpy/OpenCV native libraries the media agents depend on inside the carried Python, so screen, camera, microphone, and playback agents behave the same in an installed build as from source.",
-        "The resulting narrative matches the current README, Book, Git history, and source tree more honestly than the older milestone-only framing.",
+        "The version story is now explicit: the repo resolves to `v1.24.0` from the latest tag, while the current HEAD one commit later adds ESPHomer without changing that version baseline.",
+        "Operators still inherit the two major foundations from the immediately prior release line: self-update preserves the user's database and custom toggles, and frozen builds ship the numpy/OpenCV native libraries the media agents need.",
+        "The resulting narrative matches the current README, Book, Git history, new media assets, and source tree more honestly than the older milestone-only framing.",
     ], THEME["jade"], "rel-b", 13)
     audit_layout(audit, len(prs.slides))
 
@@ -2801,8 +2818,10 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Self-update (v1.23.0): packaged installs now preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build, so chat history and custom toggles survive the upgrade.",
-        "Frozen-build hardening (v1.23.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
+        "Version identity (v1.24.0): the latest tag now resolves the product to `1.24.0` across VERSIONING.md, release-folder naming, the About dialog story, startup banner wording, and `/agent/version/` expectations.",
+        "Visual/media asset refresh (v1.24.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
+        "Self-update foundation (v1.23.0 carried into v1.24.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
+        "Frozen-build hardening (v1.23.0 carried into v1.24.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, ESPHomer, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with first-build-downloads-a-large-toolchain caveats where needed.",
