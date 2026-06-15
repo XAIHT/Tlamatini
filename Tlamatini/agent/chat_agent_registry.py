@@ -168,7 +168,15 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_file_extractor",
         tool_description="Chat-Agent-File-Extractor",
         display_name="File Extractor",
-        purpose="Extract readable text from any document (PDF, DOCX, XLSX, TXT, CSV, HTML, etc.). Use when the user asks to read or extract content from a document file.",
+        purpose=(
+            "Extract readable text from any document or code file (PDF, DOCX, XLSX, TXT, CSV, HTML, "
+            ".py/.js/etc.). Use when the user asks to read or extract content from a file. Claude-Read-style "
+            "VIEW options (all optional, default to the full text so nothing changes if you omit them): "
+            "line_numbers=true prefixes each returned line with its 1-based file line number; offset "
+            "(1-based start line) and limit (max lines) return just a SLICE - e.g. read lines 200-260 of a "
+            "big file without dumping the whole thing. Pass them like path_filenames='C:/x/app.py', "
+            "line_numbers=true, offset=200, limit=60."
+        ),
         example_request="Extract text with path_filenames='E:\\Documents\\report.pdf'",
         aliases=("file_extractor", "extract file"),
         security_hints=("extract file", "read document", "parse file"),
@@ -1349,6 +1357,84 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         # drain inside the wrapped runtime rather than poll round-trips, like ESP32er.
         poll_window_seconds=180,
         long_running=True,
+    ),
+    ChatWrappedAgentSpec(
+        key="editor",
+        template_dir="editor",
+        tool_name="chat_agent_editor",
+        tool_description="Chat-Agent-Editor",
+        display_name="Editor",
+        purpose=(
+            "Make a SURGICAL in-place edit to a single EXISTING text file by replacing an "
+            "EXACT string with another (the Claude-Edit equivalent). Pass file_path (the file "
+            "to edit), old_string (the exact text to find) and new_string (the replacement). By "
+            "default old_string MUST be UNIQUE in the file: include enough surrounding context "
+            "to match exactly one place, or set replace_all=true to replace every occurrence. "
+            "For source code or any text containing backslashes or quotes, pass old_string_b64 "
+            "and new_string_b64 (base64) instead so the bytes survive transit unmangled. The "
+            "edit is byte-exact (line endings preserved) and emits INI_SECTION_EDITOR with a "
+            "status field (edited / not_found / not_unique / noop / error) and the replacements "
+            "count. Use this to change code, config or text WITHOUT rewriting the whole file - "
+            "prefer it over File-Creator when modifying an existing file."
+        ),
+        example_request=(
+            "Run Editor with file_path='C:/proj/app/config.yaml', "
+            "old_string='debug: false', new_string='debug: true', replace_all=false"
+        ),
+        aliases=("editor", "edit", "edit file", "find and replace", "replace in file", "patch file"),
+        security_hints=("editor", "edit", "replace", "patch", "find and replace", "modify file"),
+        poll_window_seconds=3,
+    ),
+    ChatWrappedAgentSpec(
+        key="grepper",
+        template_dir="grepper",
+        tool_name="chat_agent_grepper",
+        tool_description="Chat-Agent-Grepper",
+        display_name="Grepper",
+        purpose=(
+            "Search file CONTENTS with a regular expression across a single file or a whole "
+            "directory tree (the Claude-Grep equivalent) and get back the matching lines as "
+            "file:line:match. Pass pattern (a Python regex), path (the file or directory to "
+            "search), and optionally glob (a filename filter like '*.py' applied to each file's "
+            "basename), case_insensitive (true/false), output_mode ('content' = file:line:match "
+            "lines [default], 'files' = matching paths only, 'count' = per-file match counts), and "
+            "max_results (cap, default 200). Read-only: it never changes any file. Noise dirs "
+            "(.git, node_modules, venv, __pycache__, dist, build, ...) are pruned and binary or "
+            "unreadable files are skipped automatically. Emits INI_SECTION_GREPPER (pattern, path, "
+            "glob, matches, files_searched, truncated, status matches/no_matches/not_found/error) "
+            "with the results as the body. Use this to FIND where something appears in code or text "
+            "before reading or editing it - prefer it over an execute_command findstr/grep."
+        ),
+        example_request=(
+            "Run Grepper with pattern='TODO', path='C:/proj/app', glob='*.py', output_mode='content'"
+        ),
+        aliases=("grepper", "grep", "search", "content search", "find in files", "ripgrep"),
+        security_hints=("grepper", "grep", "search", "find in files", "regex search"),
+        poll_window_seconds=3,
+    ),
+    ChatWrappedAgentSpec(
+        key="globber",
+        template_dir="globber",
+        tool_name="chat_agent_globber",
+        tool_description="Chat-Agent-Globber",
+        display_name="Globber",
+        purpose=(
+            "Find FILES by a glob/filename pattern under a directory (the Claude-Glob equivalent) "
+            "and get back the matching paths, newest-first by default. Pass pattern (a glob like "
+            "'*.py' or '**/*.md' - use ** for a recursive search) and path (the base directory). "
+            "Optionally sort_by ('mtime' = newest modified first [default], 'name' = alphabetical, "
+            "'none'), and max_results (cap, default 500). Read-only: it never changes anything and "
+            "returns files only (not directories). Emits INI_SECTION_GLOBBER (pattern, path, "
+            "matches, truncated, status matches/no_matches/not_found/error) with the file list as "
+            "the body. Use this to DISCOVER which files exist or were recently changed before "
+            "reading, grepping, or editing them - prefer it over an execute_command dir/ls."
+        ),
+        example_request=(
+            "Run Globber with pattern='**/*.py', path='C:/proj/app', sort_by='mtime'"
+        ),
+        aliases=("globber", "glob", "find files", "list files", "file search", "ls"),
+        security_hints=("globber", "glob", "find files", "list files", "file pattern"),
+        poll_window_seconds=3,
     ),
 )
 

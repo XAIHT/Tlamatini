@@ -1327,6 +1327,33 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #FDE047 0%, #EAB308 100%);
 }
 
+.exec-report-caption-editor {
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    color: #ffffff;
+}
+
+.exec-report-editor .exec-report-cmd {
+    border-left: 3px solid #10b981;
+}
+
+.exec-report-caption-grepper {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    color: #ffffff;
+}
+
+.exec-report-grepper .exec-report-cmd {
+    border-left: 3px solid #3b82f6;
+}
+
+.exec-report-caption-globber {
+    background: linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%);
+    color: #ffffff;
+}
+
+.exec-report-globber .exec-report-cmd {
+    border-left: 3px solid #8b5cf6;
+}
+
 .exec-report-caption-pythonxer {
     background: linear-gradient(135deg, #306998 0%, #FFD43B 100%);
     color: #ffffff;

@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -188,6 +188,9 @@ const AGENT_TYPE_CLASS_MAP = {
     'sleeper': 'sleeper-agent',
     'shoter': 'shoter-agent',
     'camcorder': 'camcorder-agent',
+    'globber': 'globber-agent',
+    'grepper': 'grepper-agent',
+    'editor': 'editor-agent',
     'recorder': 'recorder-agent',
     'whisperer': 'whisperer-agent',
     'audioplayer': 'audioplayer-agent',
@@ -889,6 +892,9 @@ function removeConnection(conn) {
         if (targetAgentName.toLowerCase() === 'cleaner') updateCleanerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'cleaner') updateCleanerConnection(sourceId, 'target', targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'camcorder') updateCamcorderConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'globber') updateGlobberConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'grepper') updateGrepperConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'editor') updateEditorConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'recorder') updateRecorderConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'whisperer') updateWhispererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'audioplayer') updateAudioPlayerConnection(sourceId, targetId, 'remove');
@@ -1019,6 +1025,9 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (targetAgentName.toLowerCase() === 'cleaner' && !targetBeingDeleted) updateCleanerConnection(targetId, 'source', sourceId, 'remove');
         if (sourceAgentName.toLowerCase() === 'cleaner' && !sourceBeingDeleted) updateCleanerConnection(sourceId, 'target', targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'camcorder' && !sourceBeingDeleted) updateCamcorderConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'globber' && !sourceBeingDeleted) updateGlobberConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'grepper' && !sourceBeingDeleted) updateGrepperConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'editor' && !sourceBeingDeleted) updateEditorConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'recorder' && !sourceBeingDeleted) updateRecorderConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'whisperer' && !sourceBeingDeleted) updateWhispererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'audioplayer' && !sourceBeingDeleted) updateAudioPlayerConnection(sourceId, targetId, 'remove');
@@ -1496,6 +1505,9 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'sleeper') updateSleeperConnection(sourceId, targetId, 'add', 'target');
                     if (sourceAgentName.toLowerCase() === 'shoter') updateShoterConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'camcorder') updateCamcorderConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'globber') updateGlobberConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'grepper') updateGrepperConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'editor') updateEditorConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'recorder') updateRecorderConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'whisperer') updateWhispererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'audioplayer') updateAudioPlayerConnection(sourceId, targetId, 'add');

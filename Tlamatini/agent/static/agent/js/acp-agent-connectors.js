@@ -369,6 +369,63 @@ async function updateShoterConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateEditorConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_editor_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Editor ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Editor ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Editor ${agentId}:`, error);
+    }
+}
+
+async function updateGrepperConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_grepper_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Grepper ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Grepper ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Grepper ${agentId}:`, error);
+    }
+}
+
+async function updateGlobberConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_globber_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Globber ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Globber ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Globber ${agentId}:`, error);
+    }
+}
+
 async function updateCamcorderConnection(agentId, targetAgentId, action) {
     try {
         const response = await fetch(`/agent/update_camcorder_connection/${agentId}/`, {

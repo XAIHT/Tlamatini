@@ -1863,6 +1863,58 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+
+### 78. Editor
+- **Purpose**: Makes a SURGICAL in-place edit to a single existing text file by replacing an EXACT string (`old_string`) with another (`new_string`) - the find-and-replace equivalent that changes a file WITHOUT rewriting it. By default `old_string` must be UNIQUE in the file (refuses on >1 match unless `replace_all: true`). Byte-exact (preserves line endings). Emits an `INI_SECTION_EDITOR` block (status edited/not_found/not_unique/noop/error + replacements) and ALWAYS triggers `target_agents` so a downstream Forker can branch on the outcome.
+- **Used for**: Patching code/config/text located earlier in a flow - flip a flag, bump a value, rename a symbol in one place - without regenerating an entire file.
+- **Aimed at**: Surgical, reviewable mutations of an existing file inside an unattended flow. Prefer Editor over File-Creator when the file already exists and only part of it should change. For binary-exact code edits pass `old_string_b64` / `new_string_b64` (base64).
+- **Application example**: A File-Extractor locates a config file; a Parametrizer copies its path into an Editor running `old_string='debug: false'`, `new_string='debug: true'`; a downstream Forker branches on the section `status`.
+- **Pool name pattern**: `editor_<n>`
+- **Starts other agents**: YES (always, regardless of edit status)
+- **Config parameters**:
+  - `file_path`: "" (the file to edit)
+  - `old_string`: "" (exact text to find; must be unique unless replace_all)
+  - `new_string`: "" (replacement text)
+  - `old_string_b64`: "" (base64 of old_string - overrides old_string; for code/backslashes)
+  - `new_string_b64`: "" (base64 of new_string - overrides new_string)
+  - `replace_all`: false (false = require a unique match; true = replace every occurrence)
+  - `source_agents`: [] (upstream agents - for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
+
+### 79. Grepper
+- **Purpose**: Read-only regex CONTENT search across a single file or a whole directory tree (the Claude-Grep equivalent). Returns matching lines as `file:line:match`. Pass `pattern` (a Python regex), `path` (file or dir), optionally `glob` (a basename filter like `*.py`), `case_insensitive`, `output_mode` (`content`/`files`/`count`), and `max_results`. Prunes noise dirs (.git, node_modules, venv, __pycache__, dist, build) and skips binary/unreadable files. Emits an `INI_SECTION_GREPPER` block (pattern, path, glob, matches, files_searched, truncated, status matches/no_matches/not_found/error) and ALWAYS triggers `target_agents`.
+- **Used for**: Locating where a symbol / string / pattern appears in a codebase or text tree before reading or editing it - the discovery step ahead of an Editor or File-Interpreter.
+- **Aimed at**: Fast, dependency-free content discovery inside an unattended flow. Read-only, so safe to chain anywhere; prefer it over an Executer findstr/grep node.
+- **Application example**: A Starter triggers a Grepper (`pattern='TODO'`, `path='C:/proj'`, `glob='*.py'`); a Parametrizer copies a matched file path into an Editor or File-Interpreter for follow-up.
+- **Pool name pattern**: `grepper_<n>`
+- **Starts other agents**: YES (always, regardless of match status)
+- **Config parameters**:
+  - `pattern`: "" (Python regular expression to search for)
+  - `path`: "" (file or directory to search)
+  - `glob`: "" (optional basename filter, e.g. *.py)
+  - `case_insensitive`: false
+  - `output_mode`: "content" (content = file:line:match | files = paths only | count = per-file counts)
+  - `max_results`: 200 (cap on total matches)
+  - `source_agents`: [] (upstream agents - for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
+
+### 80. Globber
+- **Purpose**: Read-only FILE discovery by glob/filename pattern under a directory (the Claude-Glob equivalent). Returns matching file paths, newest-first by default. Pass `pattern` (a glob like `*.py` or `**/*.md` - `**` searches recursively) and `path` (the base dir); optionally `sort_by` (`mtime`/`name`/`none`) and `max_results`. Returns files only (not directories). Emits an `INI_SECTION_GLOBBER` block (pattern, path, matches, truncated, status matches/no_matches/not_found/error) and ALWAYS triggers `target_agents`.
+- **Used for**: Discovering which files exist or were recently changed before reading, grepping, or editing them - the enumeration step at the head of a file-processing flow.
+- **Aimed at**: Fast, dependency-free file enumeration inside an unattended flow. Read-only; prefer it over an Executer dir/ls node.
+- **Application example**: A Starter triggers a Globber (`pattern='**/*.log'`, `path='C:/logs'`, `sort_by='mtime'`); a Parametrizer copies the newest matched path into a File-Interpreter or Grepper for follow-up.
+- **Pool name pattern**: `globber_<n>`
+- **Starts other agents**: YES (always, regardless of match status)
+- **Config parameters**:
+  - `pattern`: "" (glob pattern, e.g. *.py or **/*.md; ** = recursive)
+  - `path`: "" (base directory to search)
+  - `sort_by`: "mtime" (mtime = newest first | name = alphabetical | none)
+  - `max_results`: 500 (cap on returned files)
+  - `source_agents`: [] (upstream agents - for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
 ---
 
 ## Output Format

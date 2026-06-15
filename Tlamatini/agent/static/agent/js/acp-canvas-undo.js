@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateArduinerConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -215,6 +215,15 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             }
             if (sourceAgentName.toLowerCase() === 'camcorder') {
                 await updateCamcorderConnection(sourceId, targetId, 'remove');
+            }
+            if (sourceAgentName.toLowerCase() === 'globber') {
+                await updateGlobberConnection(sourceId, targetId, 'remove');
+            }
+            if (sourceAgentName.toLowerCase() === 'grepper') {
+                await updateGrepperConnection(sourceId, targetId, 'remove');
+            }
+            if (sourceAgentName.toLowerCase() === 'editor') {
+                await updateEditorConnection(sourceId, targetId, 'remove');
             }
             if (sourceAgentName.toLowerCase() === 'recorder') {
                 await updateRecorderConnection(sourceId, targetId, 'remove');
@@ -575,6 +584,15 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'camcorder') {
         await updateCamcorderConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'globber') {
+        await updateGlobberConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'grepper') {
+        await updateGrepperConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'editor') {
+        await updateEditorConnection(sourceId, targetId, 'add');
     }
     if (sourceAgentName === 'recorder') {
         await updateRecorderConnection(sourceId, targetId, 'add');

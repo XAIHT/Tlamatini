@@ -134,6 +134,9 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # blendfile_summary) share this agent_key so a mixed read-and-mutate flow
     # renders as one cohesive "List of Blenderer Operations" table.
     "chat_agent_blenderer":      ("blenderer",      "Blenderer"),
+    "chat_agent_globber":        ("globber",        "Globber"),
+    "chat_agent_grepper":        ("grepper",        "Grepper"),
+    "chat_agent_editor":         ("editor",         "Editor"),
     # Playwrighter drives a real browser through a scripted flow: it submits
     # forms, clicks, logs into sites, downloads files, and otherwise changes
     # remote/web state. Read-only steps (extract_text / screenshot) share the

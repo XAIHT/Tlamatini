@@ -892,6 +892,15 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // Template field: path_filenames
     } else if (lower === 'file extractor') {
         set('path_filenames', pairs.path || pairs.path_filenames);
+        if (pairs.line_numbers !== undefined && pairs.line_numbers !== '') {
+            config.line_numbers = (String(pairs.line_numbers).toLowerCase() === 'true');
+        }
+        for (const k of ['offset', 'limit']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
 
     // ── File Interpreter ─────────────────────────────────────────────
     // Template fields: path_filenames, reading_type, llm.prompt
@@ -957,6 +966,38 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // Template fields: camera_index, capture_mode, video_duration_seconds,
     //                  video_fps, resolution_width, resolution_height,
     //                  warmup_seconds, output_dir
+    // -- Editor (surgical in-place edit) --
+    } else if (lower === 'editor') {
+        set('file_path', pairs.file_path);
+        set('old_string', pairs.old_string);
+        set('new_string', pairs.new_string);
+        set('old_string_b64', pairs.old_string_b64);
+        set('new_string_b64', pairs.new_string_b64);
+        if (pairs.replace_all !== undefined && pairs.replace_all !== '') {
+            config.replace_all = (String(pairs.replace_all).toLowerCase() === 'true');
+        }
+    // -- Grepper (regex content search) --
+    } else if (lower === 'grepper') {
+        set('pattern', pairs.pattern);
+        set('path', pairs.path);
+        set('glob', pairs.glob);
+        set('output_mode', pairs.output_mode);
+        if (pairs.case_insensitive !== undefined && pairs.case_insensitive !== '') {
+            config.case_insensitive = (String(pairs.case_insensitive).toLowerCase() === 'true');
+        }
+        if (pairs.max_results !== undefined && pairs.max_results !== '') {
+            const mr = parseInt(pairs.max_results, 10);
+            if (!Number.isNaN(mr)) config.max_results = mr;
+        }
+    // -- Globber (file pattern search) --
+    } else if (lower === 'globber') {
+        set('pattern', pairs.pattern);
+        set('path', pairs.path);
+        set('sort_by', pairs.sort_by);
+        if (pairs.max_results !== undefined && pairs.max_results !== '') {
+            const mr = parseInt(pairs.max_results, 10);
+            if (!Number.isNaN(mr)) config.max_results = mr;
+        }
     } else if (lower === 'camcorder') {
         if (pairs.camera_index !== undefined && pairs.camera_index !== '') {
             const ci = parseInt(pairs.camera_index, 10);
