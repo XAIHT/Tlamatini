@@ -681,8 +681,8 @@ def main():
             logging.error(f"❌ {err_msg}")
             emit_parametrizer_section(host, port, command, "error", err_msg, err_msg)
         else:
-            code, eff_params = build_code(command, params)
-            if not code.strip():
+            generated_code, eff_params = build_code(command, params)
+            if not generated_code.strip():
                 err_msg = (
                     f"Command '{command}' produced no code to run "
                     "(execute_code requires a non-empty params.code)."
@@ -696,11 +696,11 @@ def main():
                         f"   ↳ '{command}' is a known slow operation; raising read_timeout "
                         f"{read_timeout:g}s → {effective_read_timeout:g}s for this run."
                     )
-                logging.info(f"📤 Sending {len(code)} chars of code (strict_json={strict_json})")
+                logging.info(f"📤 Sending {len(generated_code)} chars of code (strict_json={strict_json})")
                 conn = BlenderConnection(host=host, port=port,
                                          connect_timeout=connect_timeout,
                                          read_timeout=effective_read_timeout)
-                response = conn.send(code, strict_json)
+                response = conn.send(generated_code, strict_json)
                 status = "error" if response.get("status") == "error" else "ok"
                 error_msg = response.get("error", "") if status == "error" else ""
                 body = _format_response_for_section(response)
