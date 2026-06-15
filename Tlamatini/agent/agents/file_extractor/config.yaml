@@ -2,5 +2,9 @@ path_filenames: C:\Development\Tlamatini\Tlamatini\agent\agents\pools\_chat_runs
   and filetype_exclusions='
 recursive: false
 filetype_exclusions: none
+# READER view (Claude-Read parity) - all default to a no-op so existing behaviour is unchanged.
+line_numbers: false   # true = prefix each line with its 1-based file line number
+offset: 0             # 1-based line to start at (0/1 = from the top)
+limit: 0              # max lines to return (0 = all)
 source_agents: []
 target_agents: []

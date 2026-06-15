@@ -1860,6 +1860,57 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #1a1a2e 0%, #c1121f 33%, #f08700 66%, #ffd60a 100%);
 }
 
+.canvas-item.editor-agent {
+    background-color: #10b981;
+    background: linear-gradient(135deg, #022c22 0%, #064e3b 33%, #10b981 66%, #6ee7b7 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.editor-agent:hover {
+    background: linear-gradient(135deg, #053b2f 0%, #0a6e52 33%, #14d49b 66%, #9af3c8 100%);
+    box-shadow: 0 6px 15px rgba(16, 185, 129, 0.5);
+}
+
+/* Editor agent icon in sidebar */
+.agent-tool-item[data-content="Editor"] .agent-tool-icon {
+    background: linear-gradient(135deg, #022c22 0%, #064e3b 33%, #10b981 66%, #6ee7b7 100%);
+}
+
+.canvas-item.grepper-agent {
+    background-color: #3b82f6;
+    background: linear-gradient(135deg, #0b1d3a 0%, #1e3a8a 33%, #3b82f6 66%, #93c5fd 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.grepper-agent:hover {
+    background: linear-gradient(135deg, #11264a 0%, #2547a8 33%, #5a9bff 66%, #bcd9ff 100%);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.5);
+}
+
+/* Grepper agent icon in sidebar */
+.agent-tool-item[data-content="Grepper"] .agent-tool-icon {
+    background: linear-gradient(135deg, #0b1d3a 0%, #1e3a8a 33%, #3b82f6 66%, #93c5fd 100%);
+}
+
+.canvas-item.globber-agent {
+    background-color: #8b5cf6;
+    background: linear-gradient(135deg, #1e0a3c 0%, #4c1d95 33%, #8b5cf6 66%, #c4b5fd 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.globber-agent:hover {
+    background: linear-gradient(135deg, #2a1152 0%, #5d28b3 33%, #a47bf8 66%, #d8ccfd 100%);
+    box-shadow: 0 6px 15px rgba(139, 92, 246, 0.5);
+}
+
+/* Globber agent icon in sidebar */
+.agent-tool-item[data-content="Globber"] .agent-tool-icon {
+    background: linear-gradient(135deg, #1e0a3c 0%, #4c1d95 33%, #8b5cf6 66%, #c4b5fd 100%);
+}
+
 /* Recorder Agent - Microphone / audio capture (Deep-ocean abyss -> teal -> seafoam soundwave) */
 .canvas-item.recorder-agent {
     background-color: #0a9396;

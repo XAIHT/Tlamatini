@@ -1,0 +1,14 @@
+# Grepper Agent Configuration
+# Read-only regex content search across a file or directory tree (Claude-Grep equivalent).
+pattern: ""
+path: ""
+# Optional filename filter applied to each file's basename (fnmatch, e.g. "*.py").
+glob: ""
+case_insensitive: false
+# content = file:line:match lines | files = matching paths only | count = per-file match counts
+output_mode: "content"
+max_results: 200
+
+# Connection fields
+source_agents: []
+target_agents: []

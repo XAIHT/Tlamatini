@@ -6228,6 +6228,153 @@ def update_shoter_connection_view(request, agent_name):
 
 @csrf_exempt
 @require_POST
+def update_editor_connection_view(request, agent_name):
+    """Update an Editor agent's config.yaml on canvas connect/disconnect."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        target_agent = data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target')
+        if not target_agent:
+            return HttpResponse(json.dumps({"success": False, "message": "Missing target_agent"}),
+                                content_type='application/json', status=400)
+
+        parts = agent_name.split('-')
+        cardinal = parts.pop() if parts[-1].isdigit() else None
+        base_name = "_".join(parts)
+        pool_name = f"{base_name}_{cardinal}" if cardinal else base_name
+        if '..' in pool_name or '/' in pool_name or '\\' in pool_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        config_path = os.path.join(get_pool_path(request), pool_name, 'config.yaml')
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({"success": False, "message": f"Editor config not found: {config_path}"}),
+                                content_type='application/json', status=404)
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        tparts = target_agent.split('-')
+        tcard = tparts.pop() if tparts[-1].isdigit() else None
+        tbase = "_".join(tparts)
+        target_pool = f"{tbase}_{tcard}" if tcard else tbase
+
+        list_name = 'source_agents' if connection_type == 'source' else 'target_agents'
+        if not isinstance(config.get(list_name), list):
+            config[list_name] = []
+        if action == 'add' and target_pool not in config[list_name]:
+            config[list_name].append(target_pool)
+        elif action == 'remove' and target_pool in config[list_name]:
+            config[list_name].remove(target_pool)
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        return HttpResponse(json.dumps({"success": True, "message": f"{action} {target_pool} in {list_name}"}),
+                            content_type='application/json')
+    except Exception as e:
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
+def update_grepper_connection_view(request, agent_name):
+    """Update a Grepper agent's config.yaml on canvas connect/disconnect."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        target_agent = data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target')
+        if not target_agent:
+            return HttpResponse(json.dumps({"success": False, "message": "Missing target_agent"}),
+                                content_type='application/json', status=400)
+
+        parts = agent_name.split('-')
+        cardinal = parts.pop() if parts[-1].isdigit() else None
+        base_name = "_".join(parts)
+        pool_name = f"{base_name}_{cardinal}" if cardinal else base_name
+        if '..' in pool_name or '/' in pool_name or '\\' in pool_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        config_path = os.path.join(get_pool_path(request), pool_name, 'config.yaml')
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({"success": False, "message": f"Grepper config not found: {config_path}"}),
+                                content_type='application/json', status=404)
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        tparts = target_agent.split('-')
+        tcard = tparts.pop() if tparts[-1].isdigit() else None
+        tbase = "_".join(tparts)
+        target_pool = f"{tbase}_{tcard}" if tcard else tbase
+
+        list_name = 'source_agents' if connection_type == 'source' else 'target_agents'
+        if not isinstance(config.get(list_name), list):
+            config[list_name] = []
+        if action == 'add' and target_pool not in config[list_name]:
+            config[list_name].append(target_pool)
+        elif action == 'remove' and target_pool in config[list_name]:
+            config[list_name].remove(target_pool)
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        return HttpResponse(json.dumps({"success": True, "message": f"{action} {target_pool} in {list_name}"}),
+                            content_type='application/json')
+    except Exception as e:
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
+def update_globber_connection_view(request, agent_name):
+    """Update a Globber agent's config.yaml on canvas connect/disconnect."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        target_agent = data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target')
+        if not target_agent:
+            return HttpResponse(json.dumps({"success": False, "message": "Missing target_agent"}),
+                                content_type='application/json', status=400)
+
+        parts = agent_name.split('-')
+        cardinal = parts.pop() if parts[-1].isdigit() else None
+        base_name = "_".join(parts)
+        pool_name = f"{base_name}_{cardinal}" if cardinal else base_name
+        if '..' in pool_name or '/' in pool_name or '\\' in pool_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        config_path = os.path.join(get_pool_path(request), pool_name, 'config.yaml')
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({"success": False, "message": f"Globber config not found: {config_path}"}),
+                                content_type='application/json', status=404)
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        tparts = target_agent.split('-')
+        tcard = tparts.pop() if tparts[-1].isdigit() else None
+        tbase = "_".join(tparts)
+        target_pool = f"{tbase}_{tcard}" if tcard else tbase
+
+        list_name = 'source_agents' if connection_type == 'source' else 'target_agents'
+        if not isinstance(config.get(list_name), list):
+            config[list_name] = []
+        if action == 'add' and target_pool not in config[list_name]:
+            config[list_name].append(target_pool)
+        elif action == 'remove' and target_pool in config[list_name]:
+            config[list_name].remove(target_pool)
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        return HttpResponse(json.dumps({"success": True, "message": f"{action} {target_pool} in {list_name}"}),
+                            content_type='application/json')
+    except Exception as e:
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
+@csrf_exempt
+@require_POST
 def update_camcorder_connection_view(request, agent_name):
     """
     Update a Camcorder agent's config.yaml when connections are made/removed.

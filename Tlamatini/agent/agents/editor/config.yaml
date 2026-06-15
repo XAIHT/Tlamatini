@@ -1,0 +1,16 @@
+# Editor Agent Configuration
+# Surgical in-place find-and-replace on a single text file (Claude-Edit equivalent).
+file_path: ""
+old_string: ""
+new_string: ""
+# Binary-exact channels (base64). When set, they OVERRIDE the plain string above
+# and are immune to any quote/backslash/escape mangling in transit — use these
+# for source code or anything with backslash escapes.
+old_string_b64: ""
+new_string_b64: ""
+# false = require old_string to be UNIQUE (refuse on >1 match); true = replace every occurrence.
+replace_all: false
+
+# Connection fields
+source_agents: []
+target_agents: []

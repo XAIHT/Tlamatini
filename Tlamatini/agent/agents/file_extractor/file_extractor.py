@@ -738,6 +738,45 @@ def extract_file(file_path: str) -> str:
     return extract_strings(file_path)
 
 
+def _reader_int(value, default):
+    """Coerce a yaml int OR a wrapped-parser string to int (never raises)."""
+    try:
+        return int(str(value).strip().split()[0])
+    except (ValueError, IndexError, AttributeError, TypeError):
+        return default
+
+
+def _reader_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    s = str(value).strip().lower()
+    if s in ('true', '1', 'yes', 'y', 'on'):
+        return True
+    if s in ('false', '0', 'no', 'n', 'off', ''):
+        return False
+    return default
+
+
+def apply_reader_view(text, line_numbers=False, offset=0, limit=0):
+    """Optional Claude-Read-style view of extracted text: slice [offset, offset+limit)
+    of LINES (offset is 1-based; <=1 means from the top; limit<=0 means to end) and/or
+    prefix each returned line with its real 1-based file line number. A full no-op when
+    all args are at their defaults, so File-Extractor's legacy behaviour is unchanged."""
+    if not line_numbers and (offset or 0) <= 1 and (limit or 0) <= 0:
+        return text
+    lines = text.splitlines()
+    start = max(0, offset - 1) if offset and offset > 0 else 0
+    end = len(lines) if (limit or 0) <= 0 else start + limit
+    selected = lines[start:end]
+    if line_numbers:
+        last = start + len(selected)
+        width = len(str(last)) if last else 1
+        return "\n".join(f"{start + i + 1:>{width}}\t{ln}" for i, ln in enumerate(selected))
+    return "\n".join(selected)
+
+
 def main():
     config = load_config()
 
@@ -752,6 +791,9 @@ def main():
         recursive = config.get('recursive', False)
         filetype_exclusions = config.get('filetype_exclusions', '')
         target_agents = config.get('target_agents', [])
+        line_numbers = _reader_bool(config.get('line_numbers', False))
+        offset = _reader_int(config.get('offset', 0), 0)
+        limit = _reader_int(config.get('limit', 0), 0)
 
         logging.info("📦 FILE-EXTRACTOR AGENT STARTED")
         logging.info(f"📄 Path/pattern: {path_filenames}")
@@ -771,6 +813,7 @@ def main():
             try:
                 logging.info(f"📖 Extracting: {file_path}")
                 raw_text = extract_file(file_path)
+                raw_text = apply_reader_view(raw_text, line_numbers, offset, limit)
                 logging.info(
                     f"INI_SECTION_FILE_EXTRACTOR<<<\n"
                     f"file_path: {file_path}\n"

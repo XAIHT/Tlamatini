@@ -71,7 +71,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber
   (NOTE: STM32er / ESP32er / Arduiner are short-lived in steady state, but their
    FIRST build/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -484,6 +484,9 @@ STARTUP markers (each agent logs one of these when it starts):
   "⚡ ESP32er AGENT STARTED (PlatformIO Core / pio CLI bridge)" — ESP32er began driving the `pio` CLI (scaffold / build / upload / monitor ESP32 firmware)
   "🔌 Arduiner AGENT STARTED (Arduino CLI / arduino-cli bridge)" — Arduiner began driving `arduino-cli` (scaffold / build / upload / monitor Arduino firmware)
   "🗣️ TALKER AGENT STARTED (Ollama TTS)" — Talker began synthesising speech from text via an Ollama TTS model (observational/output; saves + plays a WAV, then triggers downstream)
+  "✏️ EDITOR AGENT STARTED" — Editor began a surgical in-place find-and-replace on one file (state-changing; edits the file, emits INI_SECTION_EDITOR, then triggers downstream)
+  "🔍 GREPPER AGENT STARTED" — Grepper began a read-only regex content search across a file/dir tree (writes file:line:match results, emits INI_SECTION_GREPPER, then triggers downstream)
+  "🗂️ GLOBBER AGENT STARTED" — Globber began a read-only filename glob search under a directory (writes matching file paths, emits INI_SECTION_GLOBBER, then triggers downstream)
 
 COMPLETION markers (agent is done):
   "finished" or "exiting" — agent completed its work
@@ -498,7 +501,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
   Shoter, Camcorder, Recorder, Talker, Mouser, Windower, Playwrighter, De-Compresser, Unrealer, Blenderer,
-  Reviewer, Analyzer, Kalier, STM32er, ESP32er, Arduiner).
+  Reviewer, Analyzer, Kalier, STM32er, ESP32er, Arduiner, Editor, Grepper, Globber).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 

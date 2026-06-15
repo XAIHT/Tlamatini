@@ -1,0 +1,11 @@
+# Globber Agent Configuration
+# Read-only filename pattern search (Claude-Glob equivalent) - find files by glob.
+pattern: ""
+path: ""
+# Result ordering: mtime (newest first, default) | name (alphabetical) | none
+sort_by: "mtime"
+max_results: 500
+
+# Connection fields
+source_agents: []
+target_agents: []

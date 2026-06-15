@@ -155,12 +155,65 @@ def is_excluded(file_path: str, excluded_extensions: set, excluded_filenames: se
     return ext in excluded_extensions or basename in excluded_filenames
 
 
+def _expand_source_files(sources_list, recursive, excluded_extensions, excluded_filenames):
+    """Flatten all source glob patterns into a de-duplicated list of existing,
+    non-excluded paths (mirrors the expansion the main loop performs)."""
+    found = []
+    seen = set()
+    for original_pattern in sources_list:
+        patterns_to_check = [original_pattern]
+        if original_pattern.endswith('*.*'):
+            patterns_to_check.append(original_pattern[:-3] + '*')
+        for pattern in patterns_to_check:
+            if recursive and '**' not in pattern and any(c in pattern for c in ['*', '?']):
+                parent = os.path.dirname(pattern)
+                filename_part = os.path.basename(pattern)
+                pattern = os.path.join(parent, '**', filename_part) if parent else os.path.join('**', filename_part)
+            for found_path in glob.glob(pattern, recursive=recursive):
+                if found_path in seen:
+                    continue
+                seen.add(found_path)
+                if is_excluded(found_path, excluded_extensions, excluded_filenames):
+                    continue
+                found.append(found_path)
+    return found
+
+
+def _resolve_rename_target(sources_list, destination, recursive, excluded_extensions, excluded_filenames):
+    """Return the full destination FILE path when this call is a single-file
+    rename (destination is not an existing dir, has no trailing separator, and
+    exactly ONE source FILE resolves); otherwise None (folder mode)."""
+    if not destination or os.path.isdir(destination):
+        return None
+    if destination[-1] in ('/', os.sep):
+        return None
+    matches = _expand_source_files(sources_list, recursive, excluded_extensions, excluded_filenames)
+    if len(matches) == 1 and os.path.isfile(matches[0]):
+        return destination
+    return None
+
+
 def perform_file_operations(operation: str, sources_list: List[str], destination_folder: str, recursive: bool = False, excluded_extensions: set = None, excluded_filenames: set = None):
     """
     Executes the move/copy operation for the given list of source patterns.
     When recursive=True, injects **/ to scan subdirectories.
+
+    RENAME MODE: when destination_folder is NOT an existing directory, has no
+    trailing path separator, and exactly ONE source FILE resolves, it is treated
+    as the FULL target file path (move/copy + rename in one step). Otherwise it
+    is treated as a folder (created if missing) and each item keeps its basename.
     """
-    if not os.path.exists(destination_folder):
+    rename_target = _resolve_rename_target(
+        sources_list, destination_folder, recursive,
+        excluded_extensions or set(), excluded_filenames or set(),
+    )
+    if rename_target is not None:
+        parent_dir = os.path.dirname(rename_target)
+        if parent_dir and not os.path.exists(parent_dir):
+            os.makedirs(parent_dir, exist_ok=True)
+        logging.info(f"Rename mode: destination treated as file path '{rename_target}'")
+
+    if rename_target is None and not os.path.exists(destination_folder):
         try:
             os.makedirs(destination_folder)
             logging.info(f"📁 Created destination folder: {destination_folder}")
@@ -203,7 +256,7 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
                     continue
 
                 filename = os.path.basename(file_path)
-                dest_path = os.path.join(destination_folder, filename)
+                dest_path = rename_target if rename_target else os.path.join(destination_folder, filename)
                 
                 try:
                     if os.path.isdir(file_path):
