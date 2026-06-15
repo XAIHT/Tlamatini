@@ -70,6 +70,14 @@ Because `{self_knowledge}` is **always** present and authoritative, a generic pr
 
 ---
 
+## Self-Update (in-app) & Post-Update DB Migration
+
+Tlamatini updates herself from **About ▸ Check for updates** (`agent/self_update.py`): she checks the latest `XAIHT/Tlamatini` GitHub release, downloads + stages it, and hands off to the external `apply_update.ps1` (run from OUTSIDE the install so it can replace locked files — `Tlamatini.exe`, `python\`, `jre\`, `git\`). The swapper kills the running app's process tree (sparing its own PID), renames `agents → agents_backup` (one generation kept), deletes the old install except the preserved set, moves the new build in except the preserved set, and relaunches. **Preserved across the swap:** `config.json`, `DB`, `Temp`, `Templates`, `application(s)`, the `*_generated` / `context_files` dirs, and `Uninstaller.exe` (built separately, never inside `pkg.zip`).
+
+**Post-update DB migration (2026-06-15, v1.23.0).** The live `db.sqlite3` sits inside `_internal/` (PyInstaller `_MEIPASS`), which is replaced wholesale on update — so it cannot be protected by the top-level preserve set. To keep the user's chat history + custom toggles AND still deliver new migrations (new agent / tool / prompt rows), `apply_update.ps1` (step 3b) copies the user's DB into the preserved `DB/ToLoad/` and drops `DB/post_update_migrate.flag`. On the next launch `manage.py::_apply_pending_db_swap()` swaps that DB back over the freshly-shipped one and `_run_post_update_migrate_if_flagged()` runs `migrate` in a **child process** — safe because `agent/apps.py::AgentConfig.ready()` only starts the MCP servers for `runserver`/`startserver`/`daphne`/`asgi`, so a child `migrate` neither starts a second server nor recurses. The two preserve lists (`apply_update.ps1 $Preserve` and the `self_update.py` docstring) must stay byte-coherent; the `tlamatini-self-update-inclusion` sweep enforces it. See `docs/claude/recent-fixes.md` (2026-06-15).
+
+---
+
 ## The Five Layers of the System
 
 ### Layer 1: Persisted Toggles (Database)

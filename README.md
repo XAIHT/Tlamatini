@@ -33,7 +33,7 @@ She can do all of that — self-hosted on your own machine, powered by the model
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.20.2"><img src="https://img.shields.io/badge/VERSION-v1.20.2-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.20.2" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.23.0"><img src="https://img.shields.io/badge/VERSION-v1.23.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.23.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -85,7 +85,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.20.2](https://github.com/XAIHT/Tlamatini/releases/tag/v1.20.2)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.23.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.23.0)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
@@ -101,6 +101,13 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 ---
 
 <details open>
+<summary><strong>&#128230; What's new in v1.23.0 (2026-06-15) &mdash; click to expand</strong></summary>
+
+> **v1.23.0 (2026-06-15)** makes the in-app **self-update keep your data**: an update now PRESERVES your `db.sqlite3` and **migrates it in place** &mdash; your chat history and custom Tool/Mcp/Agent toggles survive the update, while the new version's agents, tools and demo prompts are still added to your database (previously the DB was replaced, resetting both). It also hardens packaging so the media agents always work in a frozen install: **numpy and OpenCV are now embedded in BOTH the bundled "carried" Python and the frozen build** (and the build now fails loudly if either is missing), fixing Recorder / Camcorder / AudioPlayer / VideoPlayer / Whisperer crashing on a missing dependency.
+
+</details>
+
+<details>
 <summary><strong>&#128230; What's new in v1.20.2 (2026-06-14) &mdash; click to expand</strong></summary>
 
 > **v1.20.2 (2026-06-14)** makes the **Blenderer** agent work end-to-end from chat: the wrapped `chat_agent_blenderer` tool no longer fails with a false "missing params.code" error (a local variable collided with the config placeholder in the pre-flight validator), so Blender commands now reach Blender and build / render straight from the chat. Blenderer is connect-only like Unrealer &mdash; it never launches or installs Blender. This release also fixes the **Gitter** agent's `custom` command (it silently no-op'd; it now runs `git` correctly) and adds a working directive to use Tlamatini's own tools / agents / skills.

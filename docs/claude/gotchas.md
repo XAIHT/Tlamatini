@@ -38,6 +38,12 @@ The frozen build resolves paths via `os.path.dirname(sys.executable)` vs source 
 
 ---
 
+### numpy / OpenCV must be embedded in BOTH Pythons (2026-06-15)
+
+The media agents (Recorder / Camcorder / AudioPlayer / VideoPlayer / Whisperer) run under the **carried** Python (`<install>/python`), NOT the frozen exe — so their native libs must be installed THERE. `build.py` asserts `numpy` + `cv2` in `_CARRIED_PYTHON_REQUIRED_IMPORTS` (the carried-Python probe → the build ABORTS if either is missing) and in the frozen-asset `_agent_libs` import-verify list, and adds `--collect-all cv2` so OpenCV is also embedded in the frozen `_internal` (numpy is handled by `pyinstaller_hooks/hook-numpy.py`). A dependency that is pinned in `requirements.txt` but NOT installed in the carried Python crashes the pool agent at runtime even though the source is correct — these guards exist to catch exactly that. See `docs/claude/recent-fixes.md` (2026-06-15).
+
+---
+
 ## Linting
 
 ```bash
