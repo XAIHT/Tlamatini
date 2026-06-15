@@ -191,6 +191,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # agent_key so a mixed firmware flow renders as one "List of ESP32er Operations"
     # table.
     "chat_agent_esp32er":        ("esp32er",        "ESP32er"),
+    # ESPHomer is state-changing: it drives the `esphome` CLI to author / validate /
+    # compile / upload (flash) ESPHome smart-home device firmware (YAML, no C++).
+    # Read-only actions (version / read_config / config / list_artifacts / logs) share
+    # the ``esphomer`` agent_key so a mixed device flow renders as one "List of ESPHomer
+    # Operations" table.
+    "chat_agent_esphomer":       ("esphomer",       "ESPHomer"),
     # Arduiner is state-changing: it drives the Arduino CLI (`arduino-cli`) to scaffold /
     # write / build / upload (flash) Arduino firmware. Read-only actions (boards /
     # device_list / read_source / list_sources / core_list / lib_list / monitor) share
@@ -351,6 +357,8 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
         return "STM32 Template Project MCP"
     if name == "chat_agent_esp32er":
         return "PlatformIO Core (pio CLI)"
+    if name == "chat_agent_esphomer":
+        return "ESPHome (esphome CLI)"
     if name == "chat_agent_arduiner":
         return "Arduino CLI (arduino-cli)"
     if name.startswith("acp_"):
@@ -1187,6 +1195,7 @@ class MultiTurnToolAgentExecutor:
 _FIRMWARE_TEMPLATE_TOOL_NAMES = frozenset({
     "chat_agent_stm32er",
     "chat_agent_esp32er",
+    "chat_agent_esphomer",
     "chat_agent_arduiner",
     "chat_agent_unrealer",
     "chat_agent_blenderer",

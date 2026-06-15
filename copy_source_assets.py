@@ -157,9 +157,9 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/prompt.pmt",
     "Tlamatini/agent/Tlamatini.md",
     "CLAUDE.md",
-    # Newest agent (Blenderer) — both the script and its template config
-    "Tlamatini/agent/agents/blenderer/blenderer.py",
-    "Tlamatini/agent/agents/blenderer/config.yaml",
+    # Newest agent (ESPHomer) — both the script and its template config
+    "Tlamatini/agent/agents/esphomer/esphomer.py",
+    "Tlamatini/agent/agents/esphomer/config.yaml",
 )
 
 # ── Restore manifest — binaries the REBUILD needs but the snapshot omits ─────

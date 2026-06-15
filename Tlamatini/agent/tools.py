@@ -1759,6 +1759,26 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                     field, cfg_key, configured.strip(),
                 )
 
+    if template_dir == "esphomer":
+        # ESPHomer is the "embedded client" for ESPHome: the `esphome` executable
+        # path lives once in config.json (Config -> URLs) so device prompts never
+        # repeat it. Only non-empty configured values are seeded, so an explicit
+        # per-call value still wins.
+        for cfg_key, field in (
+            ("esphome_executable", "esphome_executable"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                continue
+            if isinstance(configured, str) and configured.strip():
+                runtime_config[field] = configured.strip()
+                logger.info(
+                    "[tools._seed_global_agent_defaults] ESPHomer %s seeded from config %s: %s",
+                    field, cfg_key, configured.strip(),
+                )
+
     if template_dir == "arduiner":
         # Arduiner is the "embedded client" for the Arduino CLI: the `arduino-cli`
         # binary path and install dir live once in config.json (Config -> URLs) so
@@ -1937,6 +1957,12 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                        'params': ('action', 'project_dir', 'board', 'framework',
                                   'environment', 'rel_path', 'boards_query',
                                   'monitor_seconds', 'pio_executable',
+                                  'auto_bootstrap', 'preflight')},
+    'esphomer':       {'title': 'ESPHOMER DEVICE ACTION TO RUN',
+                       'body': ('content', 'device YAML (write_config)'),
+                       'params': ('action', 'config_path', 'name', 'platform',
+                                  'board', 'led_pin', 'wifi_ssid', 'port',
+                                  'monitor_seconds', 'esphome_executable',
                                   'auto_bootstrap', 'preflight')},
     'arduiner':       {'title': 'ARDUINER FIRMWARE ACTION TO RUN',
                        'body': ('content', 'source content (write_source)'),

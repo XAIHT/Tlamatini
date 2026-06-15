@@ -1543,6 +1543,14 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* ESPHomer — deep forest green -> emerald, mirrors .canvas-item.esphomer-agent in
+   agentic_control_panel.css. State-changing because it authors / validates / compiles
+   / uploads (flashes) ESPHome device firmware through the `esphome` CLI. */
+.exec-report-caption-esphomer {
+    background: linear-gradient(135deg, #06281C 0%, #0E8A4F 100%);
+    color: #ffffff;
+}
+
 /* Arduiner — deep teal -> Arduino teal, mirrors .canvas-item.arduiner-agent in
    agentic_control_panel.css. State-changing because it scaffolds / writes / builds
    / uploads (flashes) Arduino firmware through the `arduino-cli` binary. */
@@ -1607,6 +1615,7 @@ body.resizing-vertical {
 .exec-report-kalier thead th,
 .exec-report-stm32er thead th,
 .exec-report-esp32er thead th,
+.exec-report-esphomer thead th,
 .exec-report-arduiner thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {
@@ -1699,6 +1708,7 @@ body.resizing-vertical {
 .exec-report-kalier .exec-report-cmd         { border-left: 3px solid #00C838; }
 .exec-report-stm32er .exec-report-cmd        { border-left: 3px solid #1E63FF; }
 .exec-report-esp32er .exec-report-cmd        { border-left: 3px solid #E7352C; }
+.exec-report-esphomer .exec-report-cmd       { border-left: 3px solid #0E8A4F; }
 .exec-report-arduiner .exec-report-cmd       { border-left: 3px solid #008184; }
 .exec-report-acpx .exec-report-cmd           { border-left: 3px solid #BF360C; }
 .exec-report-skill .exec-report-cmd          { border-left: 3px solid #4527A0; }

@@ -166,6 +166,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── kalier/             # Kali Linux offensive-security bridge (MCP-Kali-Server HTTP API; canvas + chat_agent_kalier)
 │   │   │   ├── stm32er/            # STM32 firmware bridge — zero-config auto-bootstrap of the STM32 Template Project MCP + fail-safe hardware preflight (canvas + chat_agent_stm32er)
 │   │   │   ├── esp32er/            # ESP32 firmware bridge — direct PlatformIO `pio` CLI (no MCP server), zero-config get-platformio.py auto-bootstrap + fail-safe preflight (canvas + chat_agent_esp32er)
+│   │   │   ├── esphomer/           # ESPHome smart-home device bridge — direct `esphome` CLI (no MCP server), YAML device configs (NO C++), zero-config `pip install esphome` auto-bootstrap + fail-safe preflight + headless new_config generator; ships ESPHomeTemplateProject sample (canvas + chat_agent_esphomer)
 │   │   │   ├── arduiner/           # Arduino firmware bridge — direct `arduino-cli` CLI (no MCP server), zero-config binary auto-bootstrap + auto-core-install + fail-safe preflight; ships ArduinoTemplateProject scaffold (canvas + chat_agent_arduiner)
 │   │   │   ├── camcorder/          # Webcam capture (OpenCV) — photo (default) / video; native-resolution-by-default; saves to Pictures/TlamatiniCamcorder; observational sibling of Shoter (canvas + chat_agent_camcorder)
 │   │   │   ├── recorder/           # Microphone / audio-input capture (sounddevice) — WAV; native-sample-rate-by-default (sample_rate:0); default mic with optional device_index/device_name; saves to Music/TlamatiniRecords; observational audio sibling of Camcorder/Shoter (canvas + chat_agent_recorder)
@@ -174,7 +175,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── videoplayer/        # Video-file PLAYBACK WITH audio on a chosen display (ffpyplayer [bundles ffmpeg+SDL via pip] + OpenCV window; silent-cv2 fallback) — display_index, volume_percent, time_played truncate/loop, window size/fullscreen/keep_aspect; on-screen sibling of AudioPlayer; observational/output → not in Exec Report (canvas + chat_agent_videoplayer)
 │   │   │   ├── talker/            # TEXT-TO-SPEECH (TTS): speaks input_text via an OLLAMA model (default Orpheus-3b-FT) — FEMALE VOICE ONLY by design (Tlamatini is female; a male voice is FORBIDDEN — resolve_voice raises MaleVoiceForbiddenError and main() hard-exits "NOW CLOSING.. BYE", never substitutes); voice(tara/leah/jess/mia/zoe)/emotion/language, SNAC-decoded 24 kHz WAV saved + played; voice-synthesis sibling of AudioPlayer; observational/output → not in Exec Report; snac+torch optional for audio (canvas + chat_agent_talker)
 │   │   │   ├── blenderer/          # Blender bridge — official Blender MCP add-on socket (localhost:9876, code-execution protocol); rich action catalog (execute_code + scene/object/render verbs); direct socket, no blmcp bridge (canvas + chat_agent_blenderer)
-│   │   │   └── ... (77 total agent directories)
+│   │   │   └── ... (78 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py

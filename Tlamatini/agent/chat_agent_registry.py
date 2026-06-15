@@ -1292,6 +1292,75 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         long_running=True,
     ),
     ChatWrappedAgentSpec(
+        key="esphomer",
+        template_dir="esphomer",
+        tool_name="chat_agent_esphomer",
+        tool_description="Chat-Agent-ESPHomer",
+        display_name="ESPHomer",
+        purpose=(
+            "Author, validate, compile, upload (flash), and OBSERVE ESPHome smart-home device "
+            "firmware programmatically through the `esphome` CLI (https://esphome.io) — no IDE, "
+            "and NO C++: an ESPHome device is described in a SIMPLE YAML config. This is the "
+            "canonical tool for ANY ESPHome / smart-home / Home-Assistant-device firmware task on "
+            "ESP32 / ESP8266 / RP2040 / BK72xx: generating a device YAML, validating it, compiling, "
+            "flashing over the board's USB-serial bootloader (first flash) or OTA over WiFi "
+            "afterward, and hardware-in-the-loop (HIL) verification by draining the log stream. Like "
+            "ESP32er (PlatformIO) and Arduiner (arduino-cli), and unlike STM32er (an MCP server), "
+            "ESPHome ships a complete CLI, so ESPHomer runs `esphome` subcommands DIRECTLY (no MCP "
+            "server). Pick ONE capability per call with `action`: bootstrap / validate / version "
+            "(environment); new_config / write_config / read_config / config / clean (device YAML "
+            "lifecycle); compile / upload / run / list_artifacts (build & flash); logs (serial/OTA "
+            "HIL). Use new_config to GENERATE a minimal valid device YAML (the headless replacement "
+            "for the interactive `esphome wizard`) from name / platform / board / wifi_ssid / "
+            "wifi_password / led_pin. ZERO-CONFIG: ESPHomer AUTO-BOOTSTRAPS ESPHome on first use — "
+            "it `pip install esphome` with NO manual setup; the end user installs only the board USB "
+            "driver. Use action='bootstrap' to (re)install/validate ESPHome explicitly. FASTEST "
+            "PATH for a 'make + compile + upload a device' request — make ONE call with "
+            "action='scaffold_compile_upload' (config_path=<path>, plus name/platform/board OR "
+            "content=<full YAML>, plus port=<COMx|device-ip> and/or monitor_seconds=N to also "
+            "observe): it runs author -> config -> compile -> upload -> logs in a SINGLE agent run "
+            "(it authors the YAML only if needed, and skips just the upload leg with a 'compiled OK' "
+            "result when no board is connected). Prefer this over the slower separate-calls chain; "
+            "use the granular actions only when you need step-by-step control. Because compile/upload "
+            "are long-running, AWAIT completion with ONE chat_agent_run_wait(run_id) call rather than "
+            "repeatedly polling chat_agent_run_status. RESULT — the wrapped tool's JSON return and "
+            "the INI_SECTION_ESPHOMER block both carry: action, tool, ok, returncode, success, "
+            "config_path, name, port, stage, and the `esphome` stdout/stderr as the body — so a "
+            "downstream step or a canvas Forker can branch on {success} / {returncode}. An upload "
+            "that errors 'could not open port' or a config that fails to validate is routable "
+            "evidence, NOT a Tlamatini crash. NOTE: the FIRST compile downloads the platform + "
+            "toolchain (via PlatformIO under the hood) so it is slow. AUTHORIZED hardware only — "
+            "upload mutates a real device. CONFIG LOCATION: unless the user names another path, "
+            "default config_path to a sub-folder of Tlamatini's Templates directory "
+            "(e.g. <Templates>/<device_name>/<device>.yaml) — see the system-prompt 'Template / "
+            "project directory location rule'; do NOT default to C:/ or the current working directory."
+        ),
+        example_request=(
+            "Run ESPHomer with action='scaffold_compile_upload' and "
+            "config_path='<your Templates directory>/light/tlamatini-light.yaml' and "
+            "name='tlamatini-light' and platform='esp32' and board='esp32dev' and led_pin='GPIO2' "
+            "and port='COM9' (one call does author+validate+compile+upload; root config_path under "
+            "your Templates directory unless the user named another path, then await it with "
+            "chat_agent_run_wait — see purpose)."
+        ),
+        aliases=(
+            "esphomer", "esphome", "esp home", "smart home", "home assistant", "hass",
+            "esp32", "esp8266", "firmware", "iot device", "microcontroller",
+        ),
+        security_hints=(
+            "esphome", "esphomer", "esp home", "smart home", "home assistant", "hass",
+            "home automation", "esp32", "esp8266", "rp2040", "bk72xx", "iot", "iot device",
+            "firmware", "microcontroller", "micro controller", "mcu", "embedded",
+            "device yaml", "flash the esp", "flash firmware", "compile device", "upload firmware",
+            "create a device", "smart light", "smart switch", "sensor node", "ota update",
+        ),
+        # A compile (first one downloads the toolchain), an upload, or a bounded
+        # log stream can take tens of seconds to a couple of minutes; drain inside
+        # the wrapped runtime rather than poll round-trips, like ESP32er.
+        poll_window_seconds=180,
+        long_running=True,
+    ),
+    ChatWrappedAgentSpec(
         key="arduiner",
         template_dir="arduiner",
         tool_name="chat_agent_arduiner",

@@ -1,0 +1,47 @@
+# Tlamatini ESPHome sample device — a phone-controlled light.
+#
+# This is the canonical "first device" ESPHome config: a single binary (on/off)
+# light on the board's onboard LED that a smart-home hub (e.g. Home Assistant)
+# discovers over the native API, so you can toggle it from the hub's phone app.
+#
+# Quick start (via ESPHomer, all from chat):
+#   1. Run ESPHomer with action='write_config' and config_path='<a folder>/tlamatini-light.yaml'
+#      and content=<this file>   (or just action='new_config' to generate a fresh one).
+#   2. Edit the wifi: ssid/password below to your network.
+#   3. Run ESPHomer with action='compile' and config_path=<that path>.
+#   4. Connect the ESP32 over USB, then action='upload' (first flash must be USB;
+#      afterwards OTA works by passing port='<device-ip>').
+#   5. Adopt the device into Home Assistant and toggle "Tlamatini Light" from your phone.
+
+esphome:
+  name: tlamatini-light
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+
+# Native API — lets a smart-home hub discover and control this device locally.
+api:
+
+# Over-the-air updates — push new firmware over WiFi after the first USB flash.
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+
+# A switchable light on GPIO2 (the onboard LED on most ESP32 DevKitC boards).
+# Toggle it from your phone via the hub.
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: light_output
+
+light:
+  - platform: binary
+    name: "Tlamatini Light"
+    output: light_output

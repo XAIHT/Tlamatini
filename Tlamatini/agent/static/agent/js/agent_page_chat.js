@@ -1310,6 +1310,30 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             }
         });
 
+    // ── ESPHomer ─────────────────────────────────────────────────────
+    // Template fields: action, esphome_executable, config_path, content,
+    //   name, platform, board, led_pin, wifi_ssid, wifi_password,
+    //   command_timeout, port, monitor_seconds
+    } else if (lower === 'esphomer') {
+        set('action', pairs.action);
+        set('esphome_executable', pairs.esphome_executable);
+        set('config_path', pairs.config_path);
+        set('content', pairs.content);
+        set('name', pairs.name);
+        set('platform', pairs.platform);
+        set('board', pairs.board);
+        set('led_pin', pairs.led_pin);
+        set('wifi_ssid', pairs.wifi_ssid);
+        set('wifi_password', pairs.wifi_password);
+        set('port', pairs.port);
+        // integer fields
+        ['command_timeout', 'monitor_seconds'].forEach((k) => {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
+
     // ── Arduiner ─────────────────────────────────────────────────────
     // Template fields: action, arduino_cli_executable, arduino_cli_install_dir,
     //   fqbn, sketch_path, auto_core_install, additional_urls, rel_path, content,

@@ -1248,6 +1248,25 @@ async function updateEsp32erConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateEsphomerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_esphomer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- ESPHomer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update ESPHomer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating ESPHomer ${agentId}:`, error);
+    }
+}
+
 async function updateArduinerConnection(agentId, targetAgentId, action) {
     try {
         const response = await fetch(`/agent/update_arduiner_connection/${agentId}/`, {

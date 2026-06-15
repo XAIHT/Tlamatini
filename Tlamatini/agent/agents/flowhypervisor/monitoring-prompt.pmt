@@ -70,10 +70,10 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, Arduiner,
+  ACPXer, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
   Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber
-  (NOTE: STM32er / ESP32er / Arduiner are short-lived in steady state, but their
-   FIRST build/flash can run for MANY minutes while a large toolchain downloads —
+  (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
+   FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
@@ -339,6 +339,42 @@ ESP32ER SPECIAL NOTES:
     internet on the host) or "pio executable not resolvable". Treat a
     bootstrap / CLI-launch failure like a broken chain hop.
 
+ESPHOMER SPECIAL NOTES:
+  - ESPHomer is SHORT-LIVED and ACTIVE: it invokes ONE `esphome` subcommand
+    (selected by `action` — new_config / write_config / read_config / config /
+    compile / upload / run / logs / clean / list_artifacts, or the
+    scaffold_compile_upload composite, or the `bootstrap` / `validate` /
+    `version` meta-actions), captures the result into an
+    `INI_SECTION_ESPHOMER<<<` block, then ALWAYS triggers `target_agents`
+    regardless of success or failure. It drives the `esphome` CLI DIRECTLY
+    (no MCP server); an ESPHome device is described in a SIMPLE YAML config
+    (no C++) on ESP32 / ESP8266 / RP2040 / BK72xx.
+  - ZERO-CONFIG + PREFLIGHT: on first use ESPHomer INSTALLS ESPHome itself
+    (`pip install esphome` — a `stage: bootstrap` section is NORMAL, NOT an
+    error), and before every compile/upload it runs a safety preflight. A
+    `stage: preflight` section that REFUSES (e.g. "no serial port and no OTA
+    host" for an upload) is the agent working as DESIGNED (fail-safe) —
+    routable content, NOT a flow error; do NOT flag it. The first flash is over
+    USB-serial (a COM/tty port); later updates can go OTA over WiFi by passing
+    an IP/host in `port` — there is NO external probe to look for.
+  - **FIRST-COMPILE CAVEAT (IMPORTANT):** the FIRST `compile` for a given device
+    DOWNLOADS the platform + the full toolchain (ESPHome vendors PlatformIO
+    underneath — hundreds of MB). This can legitimately take MANY minutes while
+    progress is printed. Do NOT flag a long FIRST compile as stuck while NEW log
+    output keeps appearing — only flag if output is COMPLETELY silent for > 10
+    minutes, OR an explicit error line appears. Steady-state compiles afterwards
+    are tens of seconds to a couple of minutes (same "don't flag a silent build
+    before ~5 min" rule as STM32er / ESP32er).
+  - `success: false` or a non-zero `returncode` inside the section is NOT a
+    flow error — a device YAML that fails to validate/compile, or an upload that
+    reports "no serial port found", is routable content for a downstream Forker
+    / Raiser. NEVER flag an `INI_SECTION_ESPHOMER<<<` block as an error even when
+    its body looks like an esphome / platformio error.
+  - Legitimate ESPHomer error to flag: a bootstrap that COULD NOT install
+    ESPHome ("overall : FAILED" with a pip error — usually no internet on the
+    host) or "esphome ... is NOT resolvable". Treat a bootstrap / CLI-launch
+    failure like a broken chain hop.
+
 ARDUINER SPECIAL NOTES:
   - Arduiner is SHORT-LIVED and ACTIVE: it invokes ONE `arduino-cli`
     subcommand (selected by `action` — create_project / write_source / build /
@@ -460,6 +496,7 @@ TYPICAL TIMING:
   - Kalier: tracks the Kali tool it dispatches — sub-second for `health` / a tiny `nmap`, up to the MCP-Kali-Server's ~180 s per-run cap for `gobuster` / `nikto` / `hydra` / `sqlmap` / `john`. Flag only if > 5 min with no completion (or on a "Cannot reach MCP-Kali-Server" error).
   - STM32er: tracks the STM32 MCP tool it calls — sub-second for get_config / read / list / read_memory; tens of seconds to ~2 min for `build` / `build_and_flash` (compiles the full HAL); `live_monitor` is intentionally silent for its `monitor_seconds`. Flag only if > 5 min with no completion (or on an "MCP server script not found" / "MCP server exited before responding" error). (First-use bootstrap of the MCP can add a minute — see STM32ER SPECIAL NOTES.)
   - ESP32er: tracks the `pio` subcommand — sub-second for system_info / boards / list_sources; tens of seconds to a couple of minutes for a steady-state `build` / `upload`. The FIRST build for a board DOWNLOADS the espressif32 platform + toolchain (hundreds of MB) and can take MANY minutes — do NOT flag a long first build while `pio` keeps printing Downloading/Installing progress; flag only on total silence > 10 min, an explicit error, or "PlatformIO Core could not be auto-installed". See ESP32ER SPECIAL NOTES.
+  - ESPHomer: tracks the `esphome` subcommand — sub-second for version / config / new_config / read_config; tens of seconds to a couple of minutes for a steady-state `compile` / `upload`. The FIRST compile for a device DOWNLOADS the platform + toolchain (ESPHome vendors PlatformIO underneath — hundreds of MB) and can take MANY minutes — do NOT flag a long first compile while it keeps printing Downloading/Installing progress; flag only on total silence > 10 min, an explicit error, or an ESPHome bootstrap that "overall : FAILED". See ESPHOMER SPECIAL NOTES.
   - Arduiner: tracks the `arduino-cli` subcommand — sub-second for boards / device_list / list_sources; seconds to a couple of minutes for a steady-state `build` / `upload`. The FIRST core_install + build for a board DOWNLOADS the board toolchain (can be hundreds of MB) and can take MANY minutes — do NOT flag a long first run while it keeps printing Downloading progress; flag only on total silence > 10 min, an explicit error, or "arduino-cli could not be auto-installed". See ARDUINER SPECIAL NOTES.
   - Ender: should complete kill sequence in < 30 seconds
 
@@ -482,6 +519,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "🗣️ WHISPERER AGENT STARTED" — Whisperer began speech-to-text (records the mic or reads a file, then transcribes; observational; writes a transcript, then triggers downstream)
   "📸 CAMCORDER AGENT STARTED" — Camcorder began capturing a photo / video from a webcam (observational; writes the file, then triggers downstream)
   "⚡ ESP32er AGENT STARTED (PlatformIO Core / pio CLI bridge)" — ESP32er began driving the `pio` CLI (scaffold / build / upload / monitor ESP32 firmware)
+  "🏠 ESPHomer AGENT STARTED (ESPHome / esphome CLI bridge)" — ESPHomer began driving the `esphome` CLI (author / validate / compile / upload / observe a smart-home device from YAML)
   "🔌 Arduiner AGENT STARTED (Arduino CLI / arduino-cli bridge)" — Arduiner began driving `arduino-cli` (scaffold / build / upload / monitor Arduino firmware)
   "🗣️ TALKER AGENT STARTED (Ollama TTS)" — Talker began synthesising speech from text via an Ollama TTS model (observational/output; saves + plays a WAV, then triggers downstream)
   "✏️ EDITOR AGENT STARTED" — Editor began a surgical in-place find-and-replace on one file (state-changing; edits the file, emits INI_SECTION_EDITOR, then triggers downstream)
@@ -501,7 +539,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
   Shoter, Camcorder, Recorder, Talker, Mouser, Windower, Playwrighter, De-Compresser, Unrealer, Blenderer,
-  Reviewer, Analyzer, Kalier, STM32er, ESP32er, Arduiner, Editor, Grepper, Globber).
+  Reviewer, Analyzer, Kalier, STM32er, ESP32er, ESPHomer, Arduiner, Editor, Grepper, Globber).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
 
@@ -594,11 +632,12 @@ DO NOT report these as problems:
   - Kalier INI_SECTION_KALIER<<< ... >>>END_SECTION_KALIER blocks with any `success` / `return_code` / `timed_out` — including `success: false`, a non-zero `return_code`, or `timed_out: true` (a scan finding nothing, a failed brute-force, or a tool hitting the server's run cap is the agent working as intended; the result is routable content for a downstream Forker, NOT a flow error)
   - STM32er INI_SECTION_STM32ER<<< ... >>>END_SECTION_STM32ER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a firmware build that fails to compile, a flash that reports "No STLink detected", or a read that found nothing is routable content for a downstream Forker, NOT a flow error)
   - ESP32er INI_SECTION_ESP32ER<<< ... >>>END_SECTION_ESP32ER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a sketch that fails to compile or an upload that reports "no serial port" is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run PlatformIO install) or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
+  - ESPHomer INI_SECTION_ESPHOMER<<< ... >>>END_SECTION_ESPHOMER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a device YAML that fails to validate/compile or an upload that reports "no serial port" is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run `pip install esphome`) or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
   - Arduiner INI_SECTION_ARDUINER<<< ... >>>END_SECTION_ARDUINER blocks with any `success` / `returncode` — including `success: false` or a non-zero `returncode` (a compile/upload failure is routable content for a downstream Forker, NOT a flow error). A `stage: bootstrap` (first-run arduino-cli download), a `stage: core_install` (auto board-core install), or a `stage: preflight` REFUSAL is the agent working as designed, NOT an error.
   - Camcorder / Recorder INI_SECTION_CAMCORDER / INI_SECTION_RECORDER blocks — observational capture agents (webcam / microphone) that ALWAYS emit their block and trigger target_agents; never a flow error (read-only camera / mic capture, NOT in the Exec Report). A device-not-found message in the block body is routable content for a downstream Forker.
   - Whisperer INI_SECTION_WHISPERER blocks with any `status` — including `status: empty` (no speech detected), `status: engine_unavailable` (faster-whisper not installed and no cloud key — a documented degraded mode, with the `pip install faster-whisper` fix), or `status: error`. Whisperer is observational (speech-to-text — records the mic itself or reads a file, then transcribes; NOT in the Exec Report) that ALWAYS emits its block and triggers target_agents; the block (whose body is the transcript) is routable content for a downstream Forker, never a flow error. Do NOT flag a Whisperer merely DOWNLOADING a model on first run or doing a slow CPU transcription (see the Whisperer note in TYPICAL TIMING).
   - Talker INI_SECTION_TALKER blocks with any `status` — including `status: tokens_only` (audio fetched but snac+torch not installed to render sound — a documented degraded mode) or `status: error` (e.g. "Cannot reach Ollama", "returned no audio tokens"). Talker is observational/output (TTS via Ollama; NOT in the Exec Report) that ALWAYS emits its block and triggers target_agents; the block is routable content for a downstream Forker, never a flow error. Do NOT flag a Talker that is merely WAITING on a slow Ollama generation (see TALKER SPECIAL NOTES).
-  - Long FIRST firmware build/flash on STM32er / ESP32er / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
+  - Long FIRST firmware build/flash on STM32er / ESP32er / ESPHomer / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)

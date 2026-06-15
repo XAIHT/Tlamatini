@@ -33,7 +33,7 @@ She can do all of that — self-hosted on your own machine, powered by the model
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.23.0"><img src="https://img.shields.io/badge/VERSION-v1.23.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.23.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.24.0"><img src="https://img.shields.io/badge/VERSION-v1.24.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.24.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -85,7 +85,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.23.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.23.0)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.24.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.24.0)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
@@ -201,6 +201,7 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
   - [3.16. Tutorial: build and flash STM32 firmware from chat (`chat_agent_stm32er`)](#316-tutorial-build-and-flash-stm32-firmware-from-chat-chat_agent_stm32er)
   - [3.17. Tutorial: build and upload ESP32 firmware from chat (`chat_agent_esp32er`)](#317-tutorial-build-and-upload-esp32-firmware-from-chat-chat_agent_esp32er)
   - [3.18. Tutorial: build and upload Arduino firmware from chat (`chat_agent_arduiner`)](#318-tutorial-build-and-upload-arduino-firmware-from-chat-chat_agent_arduiner)
+  - [3.19. Tutorial: build smart-home devices from chat (`chat_agent_esphomer`)](#319-tutorial-build-smart-home-devices-from-chat-chat_agent_esphomer)
 - [4. Visual Workflow Designer (`/agentic_control_panel/`)](#4-visual-workflow-designer-agentic_control_panel)
   - [4.1. Canvas anatomy](#41-canvas-anatomy)
   - [4.2. Tutorial: your first flow (3 agents)](#42-tutorial-your-first-flow-3-agents)
@@ -866,6 +867,52 @@ On the canvas the same capability is the visual **Arduiner** node: chain `Starte
 
 ---
 
+### 3.19. Tutorial: build smart-home devices from chat (`chat_agent_esphomer`)
+
+**ESPHomer** bridges Tlamatini to **[ESPHome](https://esphome.io)** — the system, built by the Open Home Foundation, that turns ESP32, ESP8266, RP2040 and BK72xx boards into smart-home devices. Its defining idea is *Smart Home Made Simple*: instead of hand-writing C++, you **describe what the device should do in a small YAML file**, and ESPHome compiles, flashes, and exposes it to a hub like Home Assistant. ESPHomer is the fourth microcontroller-firmware agent and a direct-CLI sibling of ESP32er and Arduiner: like PlatformIO's `pio` and Arduino's `arduino-cli` (and unlike STM32er's MCP server), the `esphome` command-line tool is itself complete — config validation, compile, upload (over USB **or** OTA), log streaming, clean — so ESPHomer invokes `esphome` subcommands **directly** (no MCP server). It is **state-changing** (it compiles firmware and writes to hardware), so it appears in the Exec Report. The visual canvas counterpart is the **ESPHomer** node (see §4 and §9.5).
+
+> **The foundation: a device is a YAML config, not a program.** Where ESP32er and Arduiner author C/C++ source, ESPHome's source-of-truth is a declarative `*.yaml` describing the platform (`esp32:` / `esp8266:` / …), the WiFi, the native `api:` / `ota:` / `logger:` blocks, and the components — sensors, switches, lights, displays. ESPHome generates and compiles the firmware *for* you (it vendors PlatformIO and the toolchain underneath). Because the interactive `esphome wizard` cannot run unattended, ESPHomer ships a built-in **`new_config`** generator that writes a minimal, valid device YAML from a few parameters — `name`, `platform`, `board`, `wifi_ssid`, `wifi_password`, `led_pin` — so a usable device exists in one call.
+
+> **Zero-config auto-bootstrap — you only install the board USB driver + Tlamatini.** With no on-disk `esphome_executable` configured (the default), ESPHomer **installs ESPHome itself** with `pip install esphome` on first use; a `bootstrap` action does it explicitly, and `auto_bootstrap` (default `true`) does it lazily. The first compile then downloads the platform + toolchain (via PlatformIO) and is slow once.
+
+> ⚠️ **Safety preflight.** Before it compiles or uploads anything, ESPHomer runs a `validate` preflight: `esphome` must be resolvable, a device YAML must exist, and for an **upload / logs / run** a serial port must be connected **or** an OTA host given in `port` (the first flash is over USB-serial; subsequent updates can go over WiFi). If the environment is wrong, ESPHomer **refuses** rather than running a build/upload that cannot succeed.
+
+Tick **only the Multi-Turn** checkbox (ESPHomer is a normal Multi-Turn tool — not behind the ACPX/Skill surface). Then ask, for example:
+
+> *"Make me a phone-controlled light on an ESP32 at `<my Templates dir>/light/tlamatini-light.yaml`, compile it, and flash it to the connected board."*
+
+Tlamatini calls **`chat_agent_esphomer`** — bootstrapping ESPHome if needed, running the safety preflight, then driving `new_config` → `config` → `compile` → `upload` → `logs`. The `action` field selects the capability: environment/meta (`bootstrap`, `validate`, `version`); device YAML lifecycle (`new_config`, `write_config`, `read_config`, `config`, `clean`); build & flash (`compile`, `upload`, `run`, `list_artifacts`); serial/OTA HIL (`logs`). For the fastest path, a single `scaffold_compile_upload` call does *author → validate → compile → upload → logs* in one run — and is fail-safe: with no board connected it still compiles and reports "compiled OK, upload skipped". A generated device looks like this:
+
+```yaml
+esphome:
+  name: tlamatini-light
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+logger:
+api:            # native API → a hub (e.g. Home Assistant) discovers and controls it
+ota:
+  - platform: esphome   # push new firmware over WiFi after the first USB flash
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+output:
+  - platform: gpio
+    pin: GPIO2            # the onboard LED on most ESP32 DevKitC boards
+    id: light_output
+light:
+  - platform: binary
+    name: "Tlamatini Light"   # the entity you toggle from your phone
+    output: light_output
+```
+
+The tool captures an `INI_SECTION_ESPHOMER` block (`action`, `tool`, `ok`, `returncode`, `success`, `config_path`, `name`, `port`, `stage`, plus the `esphome` output) for the Exec Report and Parametrizer.
+
+On the canvas the same capability is the visual **ESPHomer** node: chain `Starter → ESPHomer (new_config) → Parametrizer → ESPHomer (config) → ESPHomer (compile) → Forker (branch on {success}) → ESPHomer (upload) → ESPHomer (logs) → Ender` to build a fully unattended device pipeline. The agent is implemented self-contained with the Python stdlib (`subprocess` + `glob`), ships a sample device under `agent/agents/esphomer/ESPHomeTemplateProject/`, and has automated tests in `agent/test_esphomer_agent.py`.
+
+---
+
 ## 4. Visual Workflow Designer (`/agentic_control_panel/`)
 
 The chat is great for one-off tasks. The designer is for jobs you want **scheduled**, **unattended**, or **identically reproducible**.
@@ -1009,7 +1056,7 @@ multi-line body content (becomes 'response_body')
 >>>END_SECTION_<AGENT_TYPE>
 ```
 
-36 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, **De-Compresser**, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **Whisperer**, **AudioPlayer**, **VideoPlayer**, **Talker**, Mouser, **Windower**, **Unrealer**, **Blenderer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
+37 source agents support this format: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen/Cipher/DeCipher, Gatewayer, Gateway-Relayer, **De-Compresser**, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **Whisperer**, **AudioPlayer**, **VideoPlayer**, **Talker**, Mouser, **Windower**, **Unrealer**, **Blenderer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **ESPHomer**, **Arduiner**.
 
 Canonical example:
 
@@ -1533,6 +1580,7 @@ Key knobs: `chunk_size` (3000), `chunk_overlap` (800), `k_vector` / `k_bm25` (10
 - `stm32_mcp_server_script` (now `""` — empty triggers zero-config auto-bootstrap), `stm32_mcp_repo_url`, `stm32_mcp_install_dir` — the STM32 Template Project MCP for STM32er (see §3.16). Leave `stm32_mcp_server_script` empty and STM32er downloads, installs, and validates the server itself on first use.
 - `pio_executable` (now `""` — empty triggers zero-config auto-bootstrap), `pio_core_dir` — PlatformIO Core for ESP32er (see §3.17). Leave `pio_executable` empty and ESP32er downloads, installs, and validates PlatformIO itself on first use.
 - `arduino_cli_executable` (now `""` — empty triggers zero-config auto-bootstrap), `arduino_cli_install_dir` — the Arduino CLI for Arduiner (see §3.18). Leave `arduino_cli_executable` empty and Arduiner downloads the `arduino-cli` binary, initializes it, and (when `auto_core_install` is on) installs the FQBN's core itself on first use.
+- `esphome_executable` (now `""` — empty triggers zero-config auto-bootstrap) — ESPHome for ESPHomer, Tlamatini's smart-home device agent (ESP32/ESP8266/RP2040/BK72xx from a simple YAML config, no C++). Leave it empty and ESPHomer `pip install esphome` and validates it itself on first use; the wrapped `chat_agent_esphomer` auto-injects it on every run.
 
 You no longer need to hand-edit all of those values. On `/agent/`, open `Config -> Models` or `Config -> URLs` to edit the most common runtime knobs in-place. The browser validates model strings / URLs / hosts / ports, the backend validates again, and `config_loader.save_config_updates()` atomically merges only the changed keys into the active `config.json`. The same loader path is used in source mode and frozen builds, so the chat UI and the executable stop drifting onto different config copies.
 
@@ -1620,7 +1668,7 @@ This is the Pareto improvement: a small shared backend layer makes both major fe
 | **Control** | Starter, Ender, Stopper, Cleaner, Sleeper, Croner |
 | **Routing** | Raiser, Forker, Asker, Counter |
 | **Logic gates** | OR, AND, Barrier |
-| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, **Camcorder**, **Recorder**, **Whisperer**, **AudioPlayer**, **VideoPlayer**, **Talker**, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Blenderer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner** |
+| **Action** | Executer, Pythonxer, Prompter, Summarizer, Crawler, Googler, **Playwrighter**, Apirer, Gitter, Ssher, Scper, Dockerer, Kuberneter, Pser, Jenkinser, Sqler, Mongoxer, Mover, Deleter, Shoter, **Camcorder**, **Recorder**, **Whisperer**, **AudioPlayer**, **VideoPlayer**, **Talker**, Mouser, Keyboarder, **Windower**, File-Creator, File-Interpreter, File-Extractor, Image-Interpreter, J-Decompiler, De-Compresser, Telegramer, TeleTlamatini, WhatsTlamatini, ACPXer, **Unrealer**, **Blenderer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **ESPHomer**, **Arduiner** |
 | **Cryptography** | Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher (CRYSTALS-Kyber post-quantum) |
 | **Utility** | Parametrizer, FlowBacker, Gatewayer, Gateway-Relayer, Node-Manager |
 | **Terminal / monitoring** | Monitor-Log, Monitor-Netstat, Emailer, RecMailer, Notifier, Whatsapper, TelegramRX, FlowHypervisor |
@@ -1929,22 +1977,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.23.0 -m "Release 1.23.0: <one-line summary>"
-git push origin v1.23.0
+git tag -a v1.24.0 -m "Release 1.24.0: <one-line summary>"
+git push origin v1.24.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.23.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.24.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.23.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.23.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.23.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.24.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.24.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.24.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -1968,8 +2016,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.23.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.23.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.24.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.24.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.

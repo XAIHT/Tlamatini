@@ -193,8 +193,20 @@ def extract_reference_media() -> list[Path]:
     return extracted
 
 
-def tracked_paths() -> list[str]:
+def git_tracked_paths() -> list[str]:
     return [line for line in git("ls-files").splitlines() if line.strip()]
+
+
+def git_untracked_paths() -> list[str]:
+    return [line for line in git("ls-files", "--others", "--exclude-standard").splitlines() if line.strip()]
+
+
+def inventory_paths() -> list[str]:
+    return sorted(set(git_tracked_paths()) | set(git_untracked_paths()))
+
+
+def has_esphomer_assets() -> bool:
+    return (PROJECT_DIR / "agent" / "agents" / "esphomer" / "config.yaml").exists()
 
 
 def build_tree(paths: list[str]) -> str:
@@ -417,6 +429,10 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if has_esphomer_assets():
+        highlights.append(
+            "The live working tree is already beyond the tagged `v1.24.0` release: ESPHomer is present as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
+        )
     if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
         highlights.append(
             "The current Git window includes the `v1.23.0` release from June 15, 2026: the in-app updater now preserves the user's database and migrates it back into the new build on first launch, so chat history and custom Tool/Mcp/Agent toggles survive a packaged update."
@@ -439,7 +455,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("1.23.0" in subject or ("documentation" in subject and "1.23.0" in subject) for subject in subjects):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.23.0`, which matters here because some older badges or prose lines still lag behind the live 80-agent / 87-tool inventory."
+            "The latest documentation pass aligns the handbook and source with `v1.24.0`, which matters here because some older badges or prose lines still lag behind the live 81-agent / 88-tool inventory."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -483,7 +499,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
-            "The embedded-firmware surface remains broad in the current tree: ESP32er keeps the direct PlatformIO Core path for scaffold/build/upload/monitor work, while STM32er and Arduiner cover the other hardware lanes from the same chat-and-canvas operating model."
+            "The embedded-firmware surface remains broad in the current tree: ESP32er keeps the direct PlatformIO Core path for scaffold/build/upload/monitor work, STM32er and Arduiner cover the other hardware lanes, and the live working tree now adds ESPHomer as the ESPHome smart-home device bridge."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
@@ -617,6 +633,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if has_esphomer_assets():
+        highlights.append(
+            "The live workspace now includes the untagged ESPHomer wave: a new ESPHome firmware agent, wrapped `chat_agent_esphomer` tool, sample YAML project, migrations, tests, and handbook chapters that extend Tlamatini into smart-home device provisioning."
+        )
     if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, `v1.23.0` made packaged self-update data-preserving: the user's database is staged through `DB/ToLoad/`, restored into the new build, and migrated on next launch so chat history and custom toggles survive the upgrade."
@@ -639,7 +659,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("1.23.0" in subject or ("documentation" in subject and "1.23.0" in subject) for subject in subjects):
         highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to `v1.23.0`, which is why this dossier refresh reconciles the visible docs with the live 80-agent / 87-tool runtime surface."
+            "The latest versioning/documentation commits move the source-of-truth product story to `v1.24.0`, and this refresh layers the live ESPHomer working-tree additions on top of that tag so the dossier matches the current 81-agent / 88-tool runtime surface."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -679,7 +699,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
         highlights.append(
-            "The embedded-firmware branch remains part of the current product story too: ESP32er keeps the PlatformIO path for scaffold/build/upload/monitor work, while the broader handbook now needs to present it as one of three microcontroller-control surfaces rather than a one-off novelty."
+            "The embedded-firmware branch remains part of the current product story too: ESP32er keeps the PlatformIO path for scaffold/build/upload/monitor work, while the broader handbook now needs to present the firmware stack as STM32er + ESP32er + Arduiner + ESPHomer rather than a smaller trio."
         )
     if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
         highlights.append(
@@ -806,7 +826,9 @@ def count_skills() -> int:
 
 
 def collect_context() -> dict:
-    paths = tracked_paths()
+    tracked = git_tracked_paths()
+    untracked = git_untracked_paths()
+    paths = inventory_paths()
     tree_text = build_tree(paths)
     language_rows, file_rows, binary_count, skipped_count = line_stats_for_paths(paths)
     total_effective = sum(row.effective_lines for row in language_rows)
@@ -826,8 +848,12 @@ def collect_context() -> dict:
         "head_full": git("rev-parse", "HEAD"),
         "head_subject": git("show", "-s", "--format=%s", "HEAD"),
         "head_date": git("show", "-s", "--format=%cI", "HEAD"),
-        "tracked_files": len(paths),
-        "tracked_paths": paths,
+        "inventory_files": len(paths),
+        "tracked_files": len(tracked),
+        "untracked_files": len(untracked),
+        "tracked_paths": tracked,
+        "untracked_paths": untracked,
+        "inventory_paths": paths,
         "tree_text": tree_text,
         "language_rows": language_rows,
         "file_rows": file_rows,
@@ -863,7 +889,7 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a self-hosted AI developer assistant (cloud LLMs by default; the app and RAG run locally) built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, deterministic file discovery/search/editing, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for both STM32F4 and ESP32-class boards.",
+    "She is designed for development operations: codebase analysis, file and directory context, deterministic file discovery/search/editing, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for STM32F4, ESP32-class, Arduino-class, and ESPHome smart-home boards.",
 ]
 
 WHAT_IT_DOES = [
@@ -884,6 +910,7 @@ WHAT_IT_DOES = [
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
+    "Can author YAML-based smart-home firmware through ESPHomer and ESPHome, including zero-config bootstrap, device-config generation, validation, compile, USB/OTA upload, and bounded log observation for ESP32 / ESP8266 / RP2040 / BK72xx devices.",
     "Can play media on the operator's machine: an audio file to the speakers through AudioPlayer (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), or a video file with audio on a chosen display through VideoPlayer (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen); both are observational/output and ship on the canvas and as wrapped chat tools.",
     "Can SPEAK and LISTEN: Talker (text-to-speech) renders input_text to a 24 kHz WAV through an Ollama neural TTS model (default Orpheus-3b-FT) and is female-voice-only by design, while Whisperer (speech-to-text) records the microphone itself or transcribes a file via faster-whisper locally (NVIDIA-GPU auto-detect with an always-present CPU fallback) or a cloud Whisper API; both light a zero-latency console REC indicator driven by the live audio stream and are observational/output, on the canvas and as wrapped chat tools.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
@@ -920,6 +947,7 @@ HOW_IT_WORKS = [
     "The STM32er path spawns the STM32 Template Project MCP stdio server, performs the MCP initialize handshake, runs exactly one requested tool or composite action, and emits one atomic `INI_SECTION_STM32ER` block with the result, project directory, and stage metadata.",
     "Before any flash-capable STM32er action, a critical-mission preflight validates the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK presence, and STM32F-family match; compile-only steps can run boardless, but unsafe hardware mutations are refused fail-safe.",
     "The ESP32er path resolves or bootstraps PlatformIO Core, invokes `pio` subcommands directly with Python-stdlib process control, validates project and serial-port readiness, and emits one atomic `INI_SECTION_ESP32ER` block with stage, project, port, and stdout/stderr payloads.",
+    "The ESPHomer path resolves or bootstraps the `esphome` CLI, can generate a minimal valid YAML device config headlessly, validates either a serial board or OTA host before upload/log actions, and emits one atomic `INI_SECTION_ESPHOMER` block with action, config path, stage, and captured CLI output.",
     "The Windower path uses Win32 APIs plus the cross-process `AttachThreadInput` focus-transfer dance to locate windows by title and apply one lifecycle action while still returning structured geometry/state fields.",
     "The Playwrighter path loads a declarative step list, drives Playwright against Chromium/Firefox/WebKit, and emits one atomic `INI_SECTION_PLAYWRIGHTER` block with status, assertions, extracted values, and the final URL.",
     "The Unrealer path opens a TCP socket to the Unreal MCP plugin, sends one `{\"type\": command, \"params\": {...}}` payload, captures the JSON reply, and emits one `INI_SECTION_UNREALER` block for downstream logic.",
@@ -945,6 +973,7 @@ HOW_TO_USE = [
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
     "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
     "For ESP32 firmware work, leave `Config -> URLs -> pio_executable` blank for zero-config PlatformIO bootstrap, then call `chat_agent_esp32er` from Multi-Turn with actions like `bootstrap`, `validate`, `create_project`, `write_source`, `build`, `upload`, `build_and_upload`, `monitor`, or `monitor_session`.",
+    "For ESPHome smart-home firmware work, leave `Config -> URLs -> esphome_executable` blank for zero-config bootstrap, then call `chat_agent_esphomer` from Multi-Turn with actions like `bootstrap`, `validate`, `new_config`, `config`, `compile`, `upload`, `logs`, or the one-shot `scaffold_compile_upload` flow.",
     "For desktop-window control, call `chat_agent_windower` from Multi-Turn to focus, tile, resize, list, or close a window by title, or model the same action in ACP with the Windower node.",
     "For interactive web automation, call `chat_agent_playwrighter` from Multi-Turn with a `steps_json` script, or author the same step list visually with the Playwrighter node on the canvas.",
     "For Blender work, enable the official Blender MCP add-on in Blender, make sure its TCP listener is reachable (default `localhost:9876`), then call `chat_agent_blenderer` from Multi-Turn or use the Blenderer node on the canvas.",
@@ -966,7 +995,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+    "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -979,16 +1008,16 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     return [
         f"The live operator surface now stands at {context['workflow_agent_count']} workflow agents, {context['total_multi_turn_tools']} Multi-Turn tools, {context['acpx_tool_count']} ACPX tools, and {context['skills_count']} skills.",
         f"Source inspection confirms the total: {context['wrapped_chat_agent_count']} distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with {context['core_python_tool_count']} core Python tools and {context['acpx_tool_count']} ACPX/Skill tools for {context['total_multi_turn_tools']} Multi-Turn tools overall.",
-        "The count increase over the older 77/84 story comes from the new deterministic file-navigation/file-edit trio — Globber, Grepper, and Editor — which exists both on the visual canvas and as wrapped chat-agent tools.",
+        "The count increase over the older 77/84 story now comes from two waves together: the deterministic file-navigation/file-edit trio — Globber, Grepper, and Editor — plus ESPHomer, the new ESPHome smart-home firmware lane. All four exist both on the visual canvas and as wrapped chat-agent tools.",
         "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
         "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The current documented release is `v1.23.0`, whose headline is operational robustness: the in-app self-update is now data-preserving, and numpy plus OpenCV are embedded in both bundled Pythons so the media agents work in a frozen install. It builds directly on the `v1.22.0` file-navigation/file-edit wave and the `v1.20.x` Blenderer + self-update foundation.",
+    "The current tagged release is `v1.24.0`; the prior `v1.23.0` brought operational robustness: the in-app self-update became data-preserving, and numpy plus OpenCV are embedded in both bundled Pythons so the media agents work in a frozen install. The live working tree documented here already builds on top of the tag with the new ESPHomer smart-home firmware surface.",
     "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
     "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
-    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor now give Tlamatini deterministic file discovery, regex search, and surgical in-place editing as first-class agents/tools instead of forcing operators back to a shell.",
+    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor now give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, and the working tree extends the firmware stack further with ESPHomer for ESPHome-based smart-home devices.",
 ]
 
 BLENDERER_GUIDE = [
@@ -1036,16 +1065,16 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent tracked assets worth calling out explicitly now span several release waves: `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater, `build.py` for numpy/OpenCV embedding checks, and the new `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery, regex search, and surgical in-place edits.",
+    "Recent assets worth calling out explicitly now span several release waves: `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater, `build.py` for numpy/OpenCV embedding checks, the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery, and the new `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
     "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
-    "Because the dossier already includes the full tracked tree and line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
+    "Because the dossier already includes the full repository inventory (git-tracked files plus git-unignored working-tree additions) and the full line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
 ]
 
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.23.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.24.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1067,7 +1096,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.23.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.24.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -1085,7 +1114,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.23.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.24.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -1185,6 +1214,24 @@ ESP32_TEMPLATE_GUIDE = [
     "The new `ESP32TemplateProject` repository is the known-good baseline documented in BookOfTlamatini’s bonus chapter: a plain PlatformIO project, not a server, meant to prove an ESP32 board and toolchain are healthy before larger firmware work.",
     "It mirrors ESP32er’s grain: `platformio.ini`, `src/`, `include/`, `lib/`, `test/`, a blinking `main.cpp`, serial output at 115200, and GitHub-ready docs/CI so the reference project does not silently rot.",
     "Operationally, ESP32er can either point at a checkout of that template (`project_dir`) or scaffold an equivalent from scratch with `action='create_project'`, then carry the directory through build, upload, and monitor steps.",
+]
+
+ESPHOMER_GUIDE = [
+    "ESPHomer is Tlamatini’s ESPHome bridge: she can author YAML-based smart-home device configs, validate them, compile firmware, upload over USB or OTA, and observe logs without introducing an extra MCP server or IDE.",
+    "The operator promise is zero-config bootstrap: leave `esphome_executable` blank and ESPHomer installs or resolves ESPHome on first use, so the user installs only the board USB driver plus Tlamatini.",
+    "Before any compile-or-upload action, ESPHomer runs a fail-safe preflight over `esphome` resolution, YAML existence, and serial-or-OTA readiness; upload, run, and logs require a real serial board or an OTA host because the first flash is always USB.",
+]
+
+ESPHOMER_SURFACES_GUIDE = [
+    "Two operator surfaces ship in lock-step: the wrapped Multi-Turn tool `chat_agent_esphomer` takes one `action` per call, while the visual ESPHomer canvas node stores the same fields in YAML and triggers downstream agents on both success and failure.",
+    "The tool surface covers environment/meta (`bootstrap`, `validate`, `version`), device-YAML lifecycle (`new_config`, `write_config`, `read_config`, `config`, `clean`), build and flash (`compile`, `upload`, `run`, `list_artifacts`), bounded observation (`logs`), and the one-shot `scaffold_compile_upload` lifecycle.",
+    "Config -> URLs now seeds the chat path with `esphome_executable`, so smart-home firmware prompts usually describe only the device, board, and task while the wrapped tool auto-injects the ESPHome runtime plumbing.",
+]
+
+ESPHOME_TEMPLATE_GUIDE = [
+    "The bundled `ESPHomeTemplateProject` is the known-good ESPHome baseline documented in README and Book: a phone-controllable light with native `api`, `ota`, `wifi`, and a board LED output, shipped as `agent/agents/esphomer/ESPHomeTemplateProject/tlamatini-light.yaml`.",
+    "It matters because ESPHomer’s source-of-truth is a YAML device file, not a C++ project tree: that sample proves the first real workflow of `new_config` -> `config` -> `compile` -> `upload` without forcing users to invent a valid starter config from memory.",
+    "Operationally, the sample closes the gap between the new agent and a practical first build a user can validate, compile, flash, and then control from a smart-home hub such as Home Assistant.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -1373,7 +1420,7 @@ ARCHITECTURE_LAYERS = [
 
 AGENT_CATEGORIES = [
     ("Control", "starter, ender, stopper, cleaner, barrier, flowbacker"),
-    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, esp32er, arduiner, mover, deleter"),
+    ("Execution and files", "executer, pythonxer, pser, file_creator, file_extractor, file_interpreter, de_compresser, playwrighter, windower, unrealer, kalier, stm32er, esp32er, esphomer, arduiner, mover, deleter"),
     ("DevOps and infra", "gitter, dockerer, kuberneter, jenkinser, ssher, scper"),
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
@@ -1572,7 +1619,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("TLAMATINI", styles["title"]))
     story.append(
         p(
-            "Complete Project Dossier: what the system does, how it works, how to use Tlamatini, complete tracked file tree, and effective line inventory",
+            "Complete Project Dossier: what the system does, how it works, how to use Tlamatini, complete repository file tree, and effective line inventory",
             styles["subtitle"],
         )
     )
@@ -1589,7 +1636,9 @@ def build_pdf(context: dict) -> None:
                 ["Generated", context["generated_at"]],
                 ["Current HEAD", f"{context['head_short']} - {context['head_subject']}"],
                 ["Resolved version", f"{context['version_info']['version']} ({context['version_info']['source']})"],
+                ["Repository inventory files", str(context["inventory_files"])],
                 ["Tracked files", str(context["tracked_files"])],
+                ["Git-unignored working-tree additions", str(context["untracked_files"])],
                 ["Workflow agents", str(context["workflow_agent_count"])],
                 ["Multi-Turn tools", str(context["total_multi_turn_tools"])],
                 ["Skills", str(context["skills_count"])],
@@ -1639,7 +1688,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Current release focus in v1.23.0", styles["h2"]))
+    story.append(p("Current release focus in v1.24.0", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Blenderer", styles["h2"]))
@@ -1733,6 +1782,14 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("ESP32 Template Project reference baseline", styles["h2"]))
     for item in ESP32_TEMPLATE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("ESPHomer current role", styles["h2"]))
+    for item in ESPHOMER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    for item in ESPHOMER_SURFACES_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("ESPHome template baseline", styles["h2"]))
+    for item in ESPHOME_TEMPLATE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Windower on Multi-Turn and canvas", styles["h2"]))
     for item in WINDOWER_GUIDE:
@@ -1881,7 +1938,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("7. Repository Facts and Git Changes", styles["h1"]))
     repo_rows = [
         ["Metric", "Value"],
+        ["Repository inventory files", f"{context['inventory_files']}"],
         ["Tracked files in git", f"{context['tracked_files']}"],
+        ["Git-unignored working-tree additions", f"{context['untracked_files']}"],
         ["Workflow agents", f"{context['workflow_agent_count']}"],
         ["Multi-Turn tools", f"{context['total_multi_turn_tools']}"],
         ["Wrapped chat-agent tools", f"{context['wrapped_chat_agent_count']}"],
@@ -1892,7 +1951,7 @@ def build_pdf(context: dict) -> None:
         ["Frontend CSS files", f"{context['css_files']}"],
         ["HTML templates", f"{context['html_templates']}"],
         ["Python requirements", f"{context['requirements_count']}"],
-        ["Binary/asset tracked files skipped from line count", f"{context['binary_count']}"],
+        ["Binary/asset inventory files skipped from line count", f"{context['binary_count']}"],
         ["Resolved version", f"{context['version_info']['version']}"],
         ["Version source", f"{context['version_info']['source']}"],
     ]
@@ -1972,7 +2031,7 @@ def build_pdf(context: dict) -> None:
     story.append(table(largest_rows, widths=[4.0 * inch, 1.2 * inch, 0.75 * inch, 0.75 * inch], font_size=6.7))
     story.append(PageBreak())
 
-    story.append(p("10. Complete Tracked File Tree (Repository Appendix)", styles["h1"]))
+    story.append(p("10. Complete Repository File Tree (Repository Appendix)", styles["h1"]))
     TREE_OUTPUT.write_text(context["tree_text"], encoding="utf-8")
     tree_chunks = split_lines(context["tree_text"], 76)
     for index, chunk in enumerate(tree_chunks, 1):
@@ -2304,7 +2363,7 @@ def build_ppt(context: dict) -> None:
         False,
         name="cover-body",
     )
-    add_metric_card(slide, audit, 0.9, 4.25, 1.75, "Files", str(context["tracked_files"]), THEME["jade"], "cover-m1")
+    add_metric_card(slide, audit, 0.9, 4.25, 1.75, "Files", str(context["inventory_files"]), THEME["jade"], "cover-m1")
     add_metric_card(slide, audit, 2.85, 4.25, 1.75, "Agents", str(context["workflow_agent_count"]), THEME["copper"], "cover-m2")
     add_metric_card(slide, audit, 4.8, 4.25, 1.95, "Effective", f"{context['total_effective_lines']:,}", THEME["amber"], "cover-m3")
     add_text(slide, audit, 0.9, 6.35, 6.2, 0.32, f"Generated {context['generated_at']} at HEAD {context['head_short']}", 9, THEME["muted"], name="cover-foot")
@@ -2370,7 +2429,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.23.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.24.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2384,7 +2443,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.23.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.24.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2393,7 +2452,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.23.0 data-preserving self-update and numpy/OpenCV embedding", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.24.0 current release; v1.23.0 brought data-preserving self-update and numpy/OpenCV embedding", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
         "This release is about trust in the update path: a packaged install can now refresh itself without losing the user's chat history or custom toggles, so an update behaves like a real product upgrade rather than a reset.",
@@ -2421,7 +2480,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE, THEME["jade"], "assets-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why they matter", [
         "These files are the concrete proof behind the release narrative: build-time self-snapshotting, a graphical credentials setup surface, and a safer File-Creator transport are all implemented in tracked source, not merely described in markdown.",
-        "They also increase the line inventory in JavaScript, CSS, HTML, and Python, which the dossier’s language tables and complete tracked tree now pick up automatically.",
+        "They also increase the line inventory in JavaScript, CSS, HTML, Markdown, YAML, and Python, which the dossier’s language tables and complete repository tree now pick up automatically.",
         "For operators and maintainers, this makes the PDF/PPTX useful as both a product overview and a change-orientation map after a busy sprint.",
     ], THEME["amber"], "assets-b", 12)
     audit_layout(audit, len(prs.slides))
@@ -2492,6 +2551,20 @@ def build_ppt(context: dict) -> None:
         "Because it is a plain PlatformIO repo, it matches the exact grain of `chat_agent_esp32er` and the visual ESP32er node instead of introducing another sidecar protocol.",
         "This closes the gap between the new agent and a practical first project a user can build, flash, and watch over serial on real silicon.",
     ], THEME["jade"], "esp32-d", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "ESPHomer", "ESPHome-driven smart-home firmware control", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What it adds", ESPHOMER_GUIDE, THEME["copper"], "esphome-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators reach it", ESPHOMER_SURFACES_GUIDE, THEME["jade"], "esphome-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "ESPHome Template Project", "known-good YAML baseline for ESPHomer", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Why it matters", ESPHOME_TEMPLATE_GUIDE, THEME["jade"], "esphome-c", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Operator result", [
+        "The bundled sample gives Tlamatini a stable validate/compile/upload proving ground before a user asks her to generate a custom ESPHome device.",
+        "Because the source-of-truth is a single YAML file, it matches the exact grain of `chat_agent_esphomer` and the visual ESPHomer node instead of introducing a separate project-server protocol.",
+        "This closes the gap between the new agent and a practical first device a user can build, flash, and then control from a smart-home hub.",
+    ], THEME["amber"], "esphome-d", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Self-Knowledge And Self-Modify", "who she is and how she can improve herself", THEME["amber"])
@@ -2685,7 +2758,7 @@ def build_ppt(context: dict) -> None:
 
     slide, audit = add_slide(prs, "Repository Facts", "current head inventory", THEME["jade"])
     metrics = [
-        ("Tracked", context["tracked_files"]),
+        ("Repo files", context["inventory_files"]),
         ("Agents", context["workflow_agent_count"]),
         ("Migrations", context["migrations"]),
         ("JS", context["js_modules"]),
@@ -2698,9 +2771,10 @@ def build_ppt(context: dict) -> None:
         f"{context['head_short']} - {context['head_subject']}",
         f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",
         f"Generated on {context['generated_at']}",
+        f"Inventory scope: {context['inventory_files']} files = {context['tracked_files']} tracked + {context['untracked_files']} git-unignored working-tree additions",
         f"Multi-Turn tools: {context['total_multi_turn_tools']}; wrapped chat-agent tools: {context['wrapped_chat_agent_count']}; skills: {context['skills_count']}",
         f"Python requirements: {context['requirements_count']}; authoritative agent-description rows: {context['agent_description_rows']}",
-        f"Binary or asset tracked files skipped from line count: {context['binary_count']}",
+        f"Binary or asset inventory files skipped from line count: {context['binary_count']}",
     ], THEME["amber"], "repo-head", 15)
     audit_layout(audit, len(prs.slides))
 
@@ -2715,22 +2789,23 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.23.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.24.0", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
+        "ESPHomer (current working tree): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
         "Blenderer (introduced in v1.20.0): the live Blender bridge over the official MCP add-on socket, so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
         "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
         "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
         "Both audio agents now light a zero-latency console REC indicator (blinking dot + live VU bar) driven by the audio-stream callback — ON within ~20 ms of real samples, OFF the instant the stream stops; the agent reveals its own console even when spawned headless.",
         "Camcorder + Recorder (capture): webcam photo/video via OpenCV and microphone WAV via sounddevice; AudioPlayer + VideoPlayer (playback): file to speakers / to a chosen display — the media-I/O family (screen / camera-in / mic-in / speakers-out / screen-out).",
-        "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge with zero-config bootstrap and a serial preflight.",
+        "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
         "Self-update (v1.23.0): packaged installs now preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build, so chat history and custom toggles survive the upgrade.",
         "Frozen-build hardening (v1.23.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
-        "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with a first-build-downloads-a-large-toolchain caveat.",
+        "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, ESPHomer, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with first-build-downloads-a-large-toolchain caveats where needed.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
     ], THEME["jade"], "monday-b", 12)
     audit_layout(audit, len(prs.slides))
@@ -2782,8 +2857,8 @@ def build_ppt(context: dict) -> None:
     for idx, chunk in enumerate(tree_chunks, 1):
         slide, audit = add_slide(
             prs,
-            f"Tracked File Tree Appendix {idx}/{len(tree_chunks)}",
-            "complete tracked file tree, no tracked file omitted",
+            f"Repository File Tree Appendix {idx}/{len(tree_chunks)}",
+            "complete repository inventory tree, including git-unignored working additions",
             THEME["jade"] if idx % 2 else THEME["copper"],
         )
         add_text(slide, audit, 0.72, 1.56, 11.95, 5.42, chunk, 7, THEME["white"], False, name=f"tree-{idx}", font="Cascadia Mono")
@@ -2807,7 +2882,9 @@ def serialize_context(context: dict) -> dict:
         "head_full": context["head_full"],
         "head_subject": context["head_subject"],
         "head_date": context["head_date"],
+        "inventory_files": context["inventory_files"],
         "tracked_files": context["tracked_files"],
+        "untracked_files": context["untracked_files"],
         "total_effective_lines": context["total_effective_lines"],
         "total_lines": context["total_lines"],
         "workflow_agent_count": context["workflow_agent_count"],

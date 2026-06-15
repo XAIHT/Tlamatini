@@ -1,0 +1,88 @@
+# ESPHomer Agent Configuration
+#
+# ESPHomer is Tlamatini's bridge to **ESPHome** (https://esphome.io) — the system
+# that turns ESP32 / ESP8266 / RP2040 / BK72xx boards into smart-home devices from a
+# SIMPLE YAML config (NO C++). Like ESP32er (PlatformIO) and Arduiner (arduino-cli),
+# and unlike STM32er (which drives a separate MCP server), ESPHome already SHIPS a
+# complete CLI, so ESPHomer invokes `esphome` subcommands DIRECTLY and captures their
+# stdout/stderr into an INI_SECTION_ESPHOMER block, then ALWAYS triggers downstream
+# agents (success OR failure).
+#
+# It is fully self-contained (stdlib only: subprocess + urllib + json + threading +
+# glob) exactly like ESP32er / Kalier, so it runs identically in source and frozen
+# builds and never imports from agent.* — the agent pool runs as standalone subprocesses.
+#
+# ZERO-CONFIG: leave esphome_executable blank with auto_bootstrap: true and ESPHomer
+# INSTALLS ESPHome itself (`pip install esphome`) on first use — the end user installs
+# only the board USB driver + Tlamatini. (ESPHome vendors PlatformIO + the toolchains
+# it needs at first compile.)
+
+# ── action — which ESPHome capability to invoke (one per run):
+#   Environment / meta:
+#     bootstrap        : pip-install ESPHome, validate, report (no compile)
+#     validate         : full environment preflight report (no compile/upload)
+#     version          : esphome version
+#   Device config lifecycle:
+#     new_config       : GENERATE a minimal valid device YAML (headless wizard) from
+#                        name / platform / board / wifi_ssid / wifi_password / led_pin
+#     write_config     : write/overwrite a device YAML  (config_path, content)
+#     read_config      : read a device YAML back  (config_path)
+#     config           : esphome config <config_path>   (validate + expand the YAML)
+#     clean            : esphome clean <config_path>
+#   Build & flash:
+#     compile          : esphome compile <config_path>  (build firmware .bin)
+#     upload           : esphome upload <config_path>    (flash over USB-serial OR OTA)
+#     run              : esphome upload (+ bounded logs when monitor_seconds > 0)
+#     scaffold_compile_upload : ONE-CALL LIFECYCLE COMPOSITE (fastest path) — author the
+#                        YAML (write_config when `content` set, else new_config) ->
+#                        config (validate) -> compile -> upload (only if a board/OTA host
+#                        is present, else compiled-OK/upload-skipped) -> logs (if
+#                        monitor_seconds>0). Replaces the multi-call chain in ONE run.
+#     list_artifacts   : paths to firmware.* under <config_dir>/.esphome/build/<node>/
+#   Observe (HIL):
+#     logs             : bounded `esphome logs <config_path>` for `monitor_seconds`, then stop
+action: "validate"
+
+# ── ESPHome install / resolution ──────────────────────────────────────────
+# esphome_executable — absolute path to an existing `esphome` binary. LEAVE BLANK for
+# the zero-config experience: ESPHomer resolves `esphome` from PATH, then
+# `python -m esphome`, and pip-installs ESPHome when missing. Auto-injected from
+# config.json `esphome_executable` on the chat path when non-empty.
+esphome_executable: ""
+# auto_bootstrap — pip-install ESPHome automatically when `esphome` is not found.
+auto_bootstrap: true
+# pip_install — allow `pip install esphome` (the only install path; ESPHome is a pip pkg).
+pip_install: true
+# auto_update — refresh ESPHome (pip -U esphome) each run when already present.
+auto_update: false
+
+# ── Safety preflight (fail-safe gate) ─────────────────────────────────────
+# preflight — before compiling/uploading, validate the environment and REFUSE when
+# correctness cannot be guaranteed. Compile actions require `esphome` + a device YAML;
+# upload/logs/run actions ALSO require a connected serial port OR an OTA host in `port`.
+# Leave true.
+preflight: true
+
+# ── Device config / build params ──────────────────────────────────────────
+config_path: ""        # path to the ESPHome device .yaml (e.g. "<Templates>/light/tlamatini-light.yaml")
+content: ""            # write_config: full device YAML contents
+
+# new_config (headless wizard) parameters:
+name: "tlamatini-light"  # ESPHome node name (lowercased to a-z0-9- automatically)
+platform: "esp32"      # esp32 | esp8266 | rp2040 | bk72xx
+board: ""              # board id ('' = the platform default: esp32dev / d1_mini / rpipicow / ...)
+led_pin: ""            # GPIO for the generated light ('' = the platform default, e.g. GPIO2 on ESP32)
+wifi_ssid: ""          # WiFi SSID baked into the generated YAML ('' = a YOUR_WIFI_SSID placeholder)
+wifi_password: ""      # WiFi password ('' = a YOUR_WIFI_PASSWORD placeholder)
+
+command_timeout: 1200  # seconds for a single `esphome` run (the FIRST compile downloads
+                       #   the platform + toolchain via PlatformIO — that build can be slow)
+
+# ── Upload / log streaming (HIL) ──────────────────────────────────────────
+port: ""               # upload/logs/run: serial port (e.g. "COM5") OR an OTA host/IP
+                       #   (e.g. "192.168.1.42"); '' = ESPHome auto-detect
+monitor_seconds: 10    # logs / run: how long to drain the log stream before stopping
+
+# ── Connection fields ──────────────────────────────────────────────────────
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the run (ALWAYS triggered)
