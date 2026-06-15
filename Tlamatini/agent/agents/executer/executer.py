@@ -473,6 +473,8 @@ def execute_script(script_content: str, non_blocking: bool = False,
             shell=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=os.getcwd(),
             timeout=300  # 5 minute timeout
         )
