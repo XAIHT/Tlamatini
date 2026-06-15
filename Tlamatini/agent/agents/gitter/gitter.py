@@ -352,8 +352,17 @@ def build_git_command(config: Dict) -> list:
         if not custom_command:
             logging.error("❌ 'custom_command' is required when command is 'custom'.")
             return None
-        # Split the custom command string into a list
-        _parts = custom_command.split()
+        # Tokenize honoring quotes so a quoted multi-word argument (e.g.
+        # `tag -a v1.0 -m "Release notes with spaces"`) stays ONE argument
+        # instead of being naively split on every space — the latter made
+        # git report "fatal: too many arguments". posix=True strips the
+        # surrounding quotes; fall back to a plain split on malformed
+        # (unbalanced-quote) input so tokenization never hard-fails.
+        import shlex
+        try:
+            _parts = shlex.split(custom_command, posix=True)
+        except ValueError:
+            _parts = custom_command.split()
         if _parts and _parts[0] == 'git':
             _parts = _parts[1:]
         return ['git'] + _parts
