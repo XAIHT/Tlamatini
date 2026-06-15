@@ -18,9 +18,21 @@ Preserved across the swap (everything else is replaced)::
 
     config.json  DB  application  applications  content_generated
     Temp  context_files  doc_generated  documentation  Templates
+    Uninstaller.exe
+
+    (Uninstaller.exe is built separately and is never inside pkg.zip, so the
+    update swap keeps the user's existing one instead of deleting it.)
 
 ``agents`` is the one exception: it is renamed to ``agents_backup`` (one
 generation kept) and then replaced by the new version's ``agents``.
+
+The DATABASE is handled specially (not in the preserve list above, because the
+live ``db.sqlite3`` lives inside ``_internal\\`` which IS replaced). Instead
+``apply_update.ps1`` copies the user's DB into the preserved ``DB/ToLoad``
+folder and drops ``DB/post_update_migrate.flag``; on the next launch
+``manage.py`` swaps that DB back into place and runs ``migrate``. So the user's
+chat history and custom Tool/Mcp/Agent toggles are KEPT while new migrations
+(new agents, ``chat_agent_*`` tools, demo prompts) are applied to their data.
 
 The download runs on a background thread; the browser polls
 :func:`get_status` for progress. The module is import-safe (no Django

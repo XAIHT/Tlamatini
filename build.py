@@ -319,7 +319,7 @@ CARRIED_PYTHON_VERSION = (3, 12, 10)
 # A few representative third-party deps the pool agents import. The carried
 # interpreter must be able to import all of them, or the agents would fail at
 # runtime on a clean machine — exactly the bug this whole feature fixes.
-_CARRIED_PYTHON_REQUIRED_IMPORTS = ("yaml", "langgraph", "langchain", "requests")
+_CARRIED_PYTHON_REQUIRED_IMPORTS = ("yaml", "langgraph", "langchain", "requests", "numpy", "cv2")
 
 
 def _probe_carried_python(python_exe):
@@ -743,6 +743,7 @@ def main():
         # them in requirements.txt is not enough on its own; this asserts the install
         # truly took (catches a broken wheel / missing native dep too).
         _agent_libs = [
+            "numpy", "cv2",                         # numeric core (all media agents) + OpenCV (Camcorder / VideoPlayer)
             "mcp", "serial",                       # STM32 MCP server (STM32er)
             "PyPDF2", "pypdf", "fitz", "odf",       # PDF / ODF file backends
             "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
@@ -907,6 +908,12 @@ def main():
         # binaries (PyInstaller's module-graph alone misses the .dll payload),
         # so the frozen build plays video WITH audio and no external ffmpeg.
         '--collect-all', 'ffpyplayer',
+        # Camcorder / VideoPlayer: OpenCV (cv2) ships compiled extensions + native
+        # DLLs that PyInstaller's module graph misses (nothing in the frozen
+        # process imports cv2 directly — the agents run under the carried Python),
+        # so --collect-all embeds cv2 in the frozen _internal too, for parity with
+        # the carried Python. numpy is handled by pyinstaller_hooks/hook-numpy.py.
+        '--collect-all', 'cv2',
         'Tlamatini/manage.py'
     ]
 

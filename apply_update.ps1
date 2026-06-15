@@ -149,6 +149,28 @@ try {
         Write-Log "No existing 'agents' directory to back up." "Yellow"
     }
 
+    # 3b) Preserve the user's DATABASE across the update. The live db.sqlite3
+    #     lives INSIDE _internal\ (PyInstaller _MEIPASS), which step 4 deletes,
+    #     so the top-level $Preserve set cannot protect it. Instead copy it into
+    #     the preserved DB\ToLoad folder and flag a post-update migrate: on the
+    #     next launch manage.py's _apply_pending_db_swap restores it over the
+    #     freshly shipped DB, then _run_post_update_migrate_if_flagged applies
+    #     the new migrations (new agents / tools / demo prompts) to the user's
+    #     data -- so chat history + custom toggles are KEPT, not wiped.
+    $userDb = Join-Path $InstallDir "_internal\db.sqlite3"
+    if (Test-Path -LiteralPath $userDb) {
+        $toLoadDir = Join-Path $InstallDir "DB\ToLoad"
+        if (-not (Test-Path -LiteralPath $toLoadDir)) {
+            Invoke-WithRetry { New-Item -ItemType Directory -Path $toLoadDir -Force | Out-Null }
+        }
+        Invoke-WithRetry { Copy-Item -LiteralPath $userDb -Destination (Join-Path $toLoadDir "db.sqlite3") -Force }
+        Set-Content -LiteralPath (Join-Path $InstallDir "DB\post_update_migrate.flag") -Value (Get-Date -Format o) -Encoding UTF8
+        Write-Log "Preserved your database -> DB\ToLoad and flagged a post-update migrate." "Green"
+    }
+    else {
+        Write-Log "No existing database at _internal\db.sqlite3 (fresh install?) -- skipping DB preserve." "Yellow"
+    }
+
     # 4) Delete the old install -- everything except the preserved set and
     #    the agents_backup we just created.
     Write-Log "Removing old application files (keeping your data)..."

@@ -406,6 +406,60 @@ def _apply_pending_db_swap():
 _apply_pending_db_swap()
 
 
+def _post_update_migrate_flag_path():
+    """Path of the marker the updater drops to request a post-update migrate.
+
+    Lives in the PRESERVED ``DB`` folder so it survives the self-update file
+    swap (``apply_update.ps1`` preserves ``DB``).
+    """
+    return os.path.join(_resolve_db_folder_root(), 'post_update_migrate.flag')
+
+
+def _run_post_update_migrate_if_flagged():
+    """Migrate the user's database after a self-update, preserving their data.
+
+    The updater (``apply_update.ps1``) copies the user's live ``db.sqlite3`` into
+    ``DB/ToLoad`` and drops ``DB/post_update_migrate.flag``. On the next launch
+    ``_apply_pending_db_swap()`` (above) restores that database over the freshly
+    shipped one, then this applies Django ``migrate`` so new migrations -- new
+    agents / ``chat_agent_*`` tools / demo prompts -- are added to the user's
+    data WITHOUT wiping their chat history or custom Tool/Mcp/Agent toggles.
+
+    ``migrate`` runs in a CHILD process: ``agent.apps.AgentConfig.ready()`` only
+    starts the MCP servers for ``runserver``/``startserver``/``daphne``/``asgi``
+    commands, so a child ``migrate`` starts no servers and cannot recurse. It is
+    invoked ONLY from the server-launch path (never from the child), and is
+    fail-safe -- a migrate error is logged but never blocks startup, and the
+    flag is always cleared afterwards so a launch can never loop.
+    """
+    import subprocess
+    try:
+        flag = _post_update_migrate_flag_path()
+        if not os.path.isfile(flag):
+            return
+    except Exception:
+        return
+    print("--- [DB MIGRATE] Post-update migration flagged; bringing your database "
+          "to the current version (your history + toggles are kept)...")
+    try:
+        if getattr(sys, 'frozen', False):
+            cmd = [sys.executable, 'migrate', '--noinput']
+        else:
+            cmd = [sys.executable, os.path.abspath(__file__), 'migrate', '--noinput']
+        result = subprocess.run(cmd)
+        if result.returncode == 0:
+            print("--- [DB MIGRATE] Database migrated to the current version.")
+        else:
+            print(f"--- [DB MIGRATE] migrate exited with code {result.returncode}; continuing startup.")
+    except Exception as exc:
+        print(f"--- [DB MIGRATE] Skipped due to error: {exc}")
+    finally:
+        try:
+            os.remove(_post_update_migrate_flag_path())
+        except OSError:
+            pass
+
+
 def _schedule_browser_open(url: str, delay_seconds: float = 10.0) -> None:
     """Open the default browser at *url* after *delay_seconds*.
 
@@ -480,6 +534,13 @@ def main():
         # double-click and the .flw-association paths above.
         if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
             _schedule_browser_open('http://localhost:8000/', delay_seconds=10.0)
+
+    # Post-update database migration: bring the user's just-restored DB to the
+    # current schema BEFORE the server starts. Gated on the launch command so
+    # the child ``migrate`` it spawns (whose argv is ``migrate``) can never
+    # re-enter this branch and recurse.
+    if len(sys.argv) >= 2 and sys.argv[1] in ('runserver', 'startserver'):
+        _run_post_update_migrate_if_flagged()
 
     try:
         from django.core.management import execute_from_command_line

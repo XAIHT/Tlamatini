@@ -76,7 +76,11 @@ def parse_ps1_preserve(text: str) -> set[str] | None:
     m = re.search(r"\$Preserve\s*=\s*@\((.*?)\)", text, re.DOTALL)
     if not m:
         return None
-    return set(re.findall(r"'([^']+)'", m.group(1)))
+    # Strip PS1 `#` comments first: a comment such as "delete the user's
+    # uninstaller" contains an apostrophe that otherwise breaks the '...'
+    # single-quote token pairing and yields a bogus / missing entry.
+    body = re.sub(r"#[^\n]*", "", m.group(1))
+    return set(re.findall(r"'([^']+)'", body))
 
 
 def parse_self_update_preserve(text: str) -> set[str] | None:
@@ -304,14 +308,18 @@ def main(argv: list[str] | None = None) -> int:
              f"-- their seeded rows reach users only via the shipped db.sqlite3.")
     else:
         note("no new migrations since last release tag")
+    db_capture_migrate = _db_capture_and_migrate(root, ps1_txt)
     if db_preserved and not startup_migrate:
         finding("db.sqlite3 IS preserved but no first-run 'migrate' was found -> new migrations "
                 "will NEVER apply to existing users. Add a startup migrate or stop preserving the DB.")
-    elif not db_preserved:
+    elif db_preserved:
+        ok("db.sqlite3 preserved AND a first-run migrate exists -- new migrations apply, data kept.")
+    elif db_capture_migrate:
+        ok("db.sqlite3 is captured into DB/ToLoad on update and migrated on next launch -- the "
+           "user's chat history + toggles are kept and new migrations are applied.")
+    else:
         note("db.sqlite3 is REPLACED on update (current design): new rows arrive, but the user's "
              "chat history + custom toggles reset each update. Keep the self_update.py docstring honest.")
-    else:
-        ok("db.sqlite3 preserved AND a first-run migrate exists -- new migrations apply, data kept.")
 
     # ── Summary ──────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
@@ -344,6 +352,25 @@ def _has_startup_migrate(root: Path) -> bool:
             if "migrate" in t or "_apply_pending_db_swap" in t:
                 return True
     return False
+
+
+def _db_capture_and_migrate(root: Path, ps1_txt: str) -> bool:
+    """True if the updater captures the user's DB into DB/ToLoad + flags a
+    post-update migrate, AND manage.py consumes that flag to run migrate.
+
+    This is the data-preserving DB delivery path: rather than replacing the
+    user's db.sqlite3 (which would lose their chat history + toggles), the
+    updater stages it through DB/ToLoad and the next launch migrates it to the
+    current schema -- so new migrations apply while user data is kept.
+    """
+    ps1_ok = ("ToLoad" in ps1_txt) and ("post_update_migrate" in ps1_txt)
+    manage = root / "Tlamatini" / "manage.py"
+    try:
+        mtxt = manage.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    manage_ok = ("post_update_migrate" in mtxt) and ("migrate" in mtxt)
+    return ps1_ok and manage_ok
 
 
 def _migrations_since_last_tag(root: Path, mig_dir: Path) -> list[str] | None:
