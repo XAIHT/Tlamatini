@@ -417,17 +417,29 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
+        highlights.append(
+            "The current Git window includes the `v1.23.0` release from June 15, 2026: the in-app updater now preserves the user's database and migrates it back into the new build on first launch, so chat history and custom Tool/Mcp/Agent toggles survive a packaged update."
+        )
+    if any("numpy/opencv" in subject or ("embed" in subject and ("numpy" in subject or "opencv" in subject)) for subject in subjects):
+        highlights.append(
+            "The same `v1.23.0` wave hardens frozen builds for the media family: numpy and OpenCV are now embedded in both the carried Python and the frozen `_internal`, and `build.py` fails loudly if either import is missing instead of shipping a broken Recorder / Camcorder / AudioPlayer / VideoPlayer / Whisperer path."
+        )
+    if any("file-reading" in subject or "file-modification" in subject or "tool-order rule" in subject or "quoted args" in subject for subject in subjects):
+        highlights.append(
+            "The working tree also advances the file-navigation and file-editing operator surface: the new Globber, Grepper, and Editor agents/tools let Tlamatini discover files by pattern, search contents by regex, and make surgical in-place edits without falling back to a shell command."
+        )
     if any("blenderer" in subject or "blender" in subject for subject in subjects):
         highlights.append(
-            "The current Git window includes the `v1.20.2` Blenderer release: Tlamatini now reaches a live Blender session through the official Blender MCP add-on socket (`localhost:9876`), both as the wrapped `chat_agent_blenderer` tool and as a visual workflow node."
+            "The same recent release span still includes the Blenderer foundation: Tlamatini reaches a live Blender session through the official Blender MCP add-on socket (`localhost:9876`), both as the wrapped `chat_agent_blenderer` tool and as a visual workflow node."
         )
     if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
         highlights.append(
-            "The same `v1.20.2` wave also adds in-app self-update: packaged installs can check GitHub releases, stage a download, and hand the locked-file replacement to `apply_update.ps1` while preserving `config.json`, the database, content, and one `agents_backup` generation."
+            "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
-    if any("1.20.2" in subject or ("documentation" in subject and "1.20.2" in subject) for subject in subjects):
+    if any("1.23.0" in subject or ("documentation" in subject and "1.23.0" in subject) for subject in subjects):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.20.2`, which matters here because some older badges or prose lines still lag behind the live 77-agent / 84-tool inventory."
+            "The latest documentation pass aligns the handbook and source with `v1.23.0`, which matters here because some older badges or prose lines still lag behind the live 80-agent / 87-tool inventory."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -605,17 +617,29 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, `v1.23.0` made packaged self-update data-preserving: the user's database is staged through `DB/ToLoad/`, restored into the new build, and migrated on next launch so chat history and custom toggles survive the upgrade."
+        )
+    if any("numpy/opencv" in subject or ("embed" in subject and ("numpy" in subject or "opencv" in subject)) for subject in subjects):
+        highlights.append(
+            "The same window also embedded numpy and OpenCV into both shipped Python runtimes, closing the frozen-build dependency gap for Recorder, Camcorder, AudioPlayer, VideoPlayer, and Whisperer."
+        )
+    if any("file-reading" in subject or "file-modification" in subject or "tool-order rule" in subject or "quoted args" in subject for subject in subjects):
+        highlights.append(
+            "The operator surface also expanded with the file-navigation/file-edit trio: Globber, Grepper, and Editor now exist as workflow agents and wrapped chat tools, giving Tlamatini deterministic file discovery, regex search, and surgical in-place edit steps."
+        )
     if any("blenderer" in subject or "blender" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.20.2` introduced Blenderer: the 77th workflow agent and wrapped `chat_agent_blenderer` tool, bridging Tlamatini into a live Blender session over the official Blender MCP add-on socket."
+            "Since the last committed PDF/PPTX refresh, Blenderer entered the platform: a live Blender bridge over the official MCP add-on socket, available both on the canvas and as `chat_agent_blenderer`."
         )
     if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
         highlights.append(
             "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
         )
-    if any("1.20.2" in subject or ("documentation" in subject and "1.20.2" in subject) for subject in subjects):
+    if any("1.23.0" in subject or ("documentation" in subject and "1.23.0" in subject) for subject in subjects):
         highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to `v1.20.2`, which is why this dossier refresh reconciles the visible docs with the live 77-agent / 84-tool runtime surface."
+            "The latest versioning/documentation commits move the source-of-truth product story to `v1.23.0`, which is why this dossier refresh reconciles the visible docs with the live 80-agent / 87-tool runtime surface."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -839,12 +863,13 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a self-hosted AI developer assistant (cloud LLMs by default; the app and RAG run locally) built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for both STM32F4 and ESP32-class boards.",
+    "She is designed for development operations: codebase analysis, file and directory context, deterministic file discovery/search/editing, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for both STM32F4 and ESP32-class boards.",
 ]
 
 WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
+    "Can discover files by glob pattern, search their contents by regex, and make surgical in-place replacements through the Globber, Grepper, and Editor agent/tool trio.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Lets operators manage provider secrets from the browser through the Config -> Access Keys Wizard instead of hand-editing `config.json`.",
     "Can drive Blender through the Blenderer agent, using the official Blender MCP add-on socket to inspect scenes, mutate objects and materials, run raw code, and automate renders from chat or the workflow canvas.",
@@ -879,11 +904,13 @@ HOW_IT_WORKS = [
     "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Config -> Access Keys Wizard reads masked provider-key status from the backend and persists only the edited secrets, keeping the browser flow honest without dumping live values back to the page.",
+    "The file-navigation and file-edit trio sits above raw shell execution: Globber enumerates matching files, Grepper scans content with regex while pruning noisy/binary trees, and Editor performs byte-exact in-place replacements without rewriting an entire file.",
     "Blenderer opens the official Blender MCP add-on TCP socket (default `localhost:9876`), sends one action payload or raw code-execution request, and returns the structured result through the same wrapped-tool / canvas contract used by the rest of the agent catalog.",
     "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
     "When the browser surfaces an Ask Execs prompt or a Notifier event, JavaScript can POST to `/agent/flash_window/`; the backend then best-effort flashes the `Tlamatini.exe` console/taskbar window through `window_flash.py` and prints an uppercase attention banner for the log.",
     "Installer-time registration writes a per-user HKCU Add/Remove Programs entry pointing at `Uninstaller.exe`, and frozen startup re-checks that entry through `windows_app_registration.self_heal_for_frozen()` so older installs retroactively appear in Windows' uninstall surfaces.",
     "In-app self-update uses Django views plus `self_update.py` to check GitHub releases, download and stage the selected package, then hand off the locked-file swap to the external `apply_update.ps1` helper before relaunch.",
+    "Frozen-build hardening now verifies media dependencies during packaging too: `build.py` embeds numpy and OpenCV in both shipped Python runtimes and refuses to produce a release if those imports are missing.",
     "Before a heavy directory embedding run on supported NVIDIA hosts, a fail-open pre-flight guard can estimate VRAM pressure and surface a non-blocking warning in chat.",
     "Version resolution now flows through git tags, a runtime resolver module, generated build artefacts, and an open `/agent/version/` endpoint.",
     "A first-person self-knowledge file (`Tlamatini.md`) is injected into prompt construction for all chains, but loaded user context still outranks that self-reference when the request is a generic summary of the provided project.",
@@ -908,6 +935,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
+    "Use `chat_agent_globber` to find files by pattern, `chat_agent_grepper` to locate matching content, and `chat_agent_editor` when you need an exact in-place change instead of rewriting a whole file or shelling out to grep/findstr/sed.",
     "Use Config -> Access Keys Wizard when you need to wire or update provider credentials without editing `config.json` manually.",
     "Use About -> Check for updates on packaged installs when you want Tlamatini to fetch and stage the latest release without manually replacing the install folder.",
     "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
@@ -938,7 +966,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: ACPXer drives external coding-agent CLIs, Kalier drives a remote or tunneled Kali Linux tool server, STM32er drives a zero-config STM32 firmware MCP bridge, Blenderer drives a live Blender editor over the official MCP add-on socket, Unrealer drives a live UE5 editor, and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+    "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -947,21 +975,24 @@ ACPX_SKILLS_GUIDE = [
     "The diagnostics view cross-checks skill dependencies against disabled tools, disabled MCPs, missing ACPX agents, and orphan database rows whose SKILL.md disappeared from disk.",
 ]
 
-OPERATOR_SURFACE_COUNTS_GUIDE = [
-    "The live operator surface now stands at 77 workflow agents, 84 Multi-Turn tools, 12 ACPX tools, and 27 skills.",
-    "Source inspection confirms the total: 52 distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with 20 core Python tools and 12 ACPX/Skill tools for 84 Multi-Turn tools overall.",
-    "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
-    "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
-]
+def operator_surface_counts_guide(context: dict) -> list[str]:
+    return [
+        f"The live operator surface now stands at {context['workflow_agent_count']} workflow agents, {context['total_multi_turn_tools']} Multi-Turn tools, {context['acpx_tool_count']} ACPX tools, and {context['skills_count']} skills.",
+        f"Source inspection confirms the total: {context['wrapped_chat_agent_count']} distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with {context['core_python_tool_count']} core Python tools and {context['acpx_tool_count']} ACPX/Skill tools for {context['total_multi_turn_tools']} Multi-Turn tools overall.",
+        "The count increase over the older 77/84 story comes from the new deterministic file-navigation/file-edit trio — Globber, Grepper, and Editor — which exists both on the visual canvas and as wrapped chat-agent tools.",
+        "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
+        "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
+    ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The current documented release is `v1.20.2`, which adds the Blenderer agent (the 77th agent type, a Blender bridge over the official Blender MCP add-on socket) and an in-app self-update capability (About > Check for updates), on top of the v1.19.5 hardening-and-self-modify work.",
-    "Three visible user-facing points define this version: the new Blenderer agent reachable on the canvas and as the wrapped Multi-Turn tool chat_agent_blenderer, the self-update flow that downloads/stages a new release and swaps it via an external apply_update.ps1, and the carried-forward v1.19.5 hardening (byte-for-byte File-Creator writes, a rebuildable generated source snapshot, and the Config API-Keys Wizard dialog).",
-    "The same release window also carries forward the recent voice/media wave from `v1.17.2` through `v1.19.3`, so the current dossier must present Talker, Whisperer, Recorder, Camcorder, AudioPlayer, and VideoPlayer as first-class parts of the product.",
+    "The current documented release is `v1.23.0`, whose headline is operational robustness: the in-app self-update is now data-preserving, and numpy plus OpenCV are embedded in both bundled Pythons so the media agents work in a frozen install. It builds directly on the `v1.22.0` file-navigation/file-edit wave and the `v1.20.x` Blenderer + self-update foundation.",
+    "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
+    "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
+    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor now give Tlamatini deterministic file discovery, regex search, and surgical in-place editing as first-class agents/tools instead of forcing operators back to a shell.",
 ]
 
 BLENDERER_GUIDE = [
-    "Blenderer is the 77th workflow agent and a direct bridge to the official Blender MCP add-on, letting Tlamatini operate a live Blender session from either Multi-Turn chat or the visual workflow canvas.",
+    "Blenderer was introduced in `v1.20.0` as the 77th workflow agent and remains the direct bridge to the official Blender MCP add-on, letting Tlamatini operate a live Blender session from either Multi-Turn chat or the visual workflow canvas.",
     "The bridge talks over a TCP socket (default `localhost:9876`) and supports both raw `execute_code` requests and higher-level scene/object/material/render actions, so operators can mix deterministic verbs with precise Python-driven 3D automation.",
     "This extends Tlamatini beyond code and firmware orchestration into DCC / 3D-production work: asset inspection, scene mutation, material changes, camera setup, and render-triggering now live inside the same operator surface as the rest of the system.",
 ]
@@ -969,7 +1000,7 @@ BLENDERER_GUIDE = [
 SELF_UPDATE_GUIDE = [
     "The packaged application now includes an in-app self-update flow exposed from About -> Check for updates, so operators can refresh a frozen install without manually unpacking and replacing the entire release folder.",
     "The backend checks the latest GitHub release, downloads and stages the package, then hands off the locked-file swap to `apply_update.ps1`, which performs the replacement after the running executable exits and relaunches the updated app.",
-    "The update path is state-preserving by design: it keeps `config.json`, the database, user content, and one `agents_backup` generation so an update behaves like a product upgrade rather than a destructive reinstall.",
+    "The update path is state-preserving by design: it keeps `config.json`, user content, and one `agents_backup` generation, and it stages the user's database through `DB/ToLoad/` plus `post_update_migrate.flag` so the next launch restores and migrates that DB instead of wiping it.",
 ]
 
 SOURCE_SNAPSHOT_GUIDE = [
@@ -1005,15 +1036,16 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent tracked assets worth calling out explicitly now span two release waves: `copy_source_assets.py` for self-modify snapshot generation, `agent/access_key_wizard.py` plus `static/agent/js/access_keys_wizard.js` / `static/agent/css/access_keys_wizard.css` for browser-side key setup, `agent/self_update.py` plus `apply_update.ps1` for the in-app updater, and `agent/agents/blenderer/blenderer.py` with `agent/agents/blenderer/config.yaml` for the new Blender control surface.",
-    "The same recent window also updated key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `copy_source_assets.py`, and the File-Creator agent template, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
+    "Recent tracked assets worth calling out explicitly now span several release waves: `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater, `build.py` for numpy/OpenCV embedding checks, and the new `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery, regex search, and surgical in-place edits.",
+    "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
+    "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
     "Because the dossier already includes the full tracked tree and line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
 ]
 
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.20.2` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.23.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1035,7 +1067,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.20.2` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.23.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -1053,7 +1085,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.20.2` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.23.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -1607,7 +1639,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Current release focus in v1.20.2", styles["h2"]))
+    story.append(p("Current release focus in v1.23.0", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Blenderer", styles["h2"]))
@@ -1682,7 +1714,7 @@ def build_pdf(context: dict) -> None:
     for item in REVIEWER_ANALYZER_SURFACES:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Operator surface counts", styles["h2"]))
-    for item in OPERATOR_SURFACE_COUNTS_GUIDE:
+    for item in operator_surface_counts_guide(context):
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Kalier current role", styles["h2"]))
     for item in KALIER_GUIDE:
@@ -1815,7 +1847,7 @@ def build_pdf(context: dict) -> None:
     for item in REVIEWER_ANALYZER_GUIDE + REVIEWER_ANALYZER_SURFACES:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Operator surface counts", styles["h2"]))
-    for item in OPERATOR_SURFACE_COUNTS_GUIDE:
+    for item in operator_surface_counts_guide(context):
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Kalier spotlight", styles["h2"]))
     for item in KALIER_GUIDE + KALIER_SURFACES_GUIDE:
@@ -2338,7 +2370,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.20.2", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.23.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2352,7 +2384,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.20.2", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.23.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2361,11 +2393,11 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.20.2 Blenderer agent and in-app self-update", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.23.0 data-preserving self-update and numpy/OpenCV embedding", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "This release grows Tlamatini in two directions at once: a new live-editor bridge for Blender production work and a better lifecycle story for packaged installs.",
-        "Operators no longer need manual reinstall choreography just to pick up a new release, while the Blender surface adds another serious production domain to the same chat-and-canvas runtime.",
+        "This release is about trust in the update path: a packaged install can now refresh itself without losing the user's chat history or custom toggles, so an update behaves like a real product upgrade rather than a reset.",
+        "It also closes a frozen-build gap by shipping the numpy/OpenCV native libraries the media agents depend on inside the carried Python, so screen, camera, microphone, and playback agents behave the same in an installed build as from source.",
         "The resulting narrative matches the current README, Book, Git history, and source tree more honestly than the older milestone-only framing.",
     ], THEME["jade"], "rel-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2430,7 +2462,7 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Operator Surface Counts", "README header and planner-facing inventory", THEME["copper"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Current counts", OPERATOR_SURFACE_COUNTS_GUIDE, THEME["copper"], "surface-a", 13)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Current counts", operator_surface_counts_guide(context), THEME["copper"], "surface-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why the counts matter", [
         "The README now surfaces the same operator picture the app exposes in practice: broad capability, selective planner binding, and a capped tool budget per request.",
         f"Those counts complement the {context['workflow_agent_count']}-agent bestiary instead of replacing it: skills, wrapped tools, and ACPX tools are different layers of the same operating surface.",
@@ -2683,9 +2715,10 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.20.2", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.23.0", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
-        "Blenderer (v1.20.2): the 77th workflow agent, bridging the official Blender MCP add-on socket so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
+        "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
+        "Blenderer (introduced in v1.20.0): the live Blender bridge over the official MCP add-on socket, so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
         "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
         "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
         "Both audio agents now light a zero-latency console REC indicator (blinking dot + live VU bar) driven by the audio-stream callback — ON within ~20 ms of real samples, OFF the instant the stream stops; the agent reveals its own console even when spawned headless.",
@@ -2693,7 +2726,8 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge with zero-config bootstrap and a serial preflight.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Self-update (v1.20.2): packaged installs can check GitHub releases, stage the download, and let `apply_update.ps1` swap locked files while preserving `config.json`, the database, content, and one `agents_backup` generation.",
+        "Self-update (v1.23.0): packaged installs now preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build, so chat history and custom toggles survive the upgrade.",
+        "Frozen-build hardening (v1.23.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with a first-build-downloads-a-large-toolchain caveat.",
