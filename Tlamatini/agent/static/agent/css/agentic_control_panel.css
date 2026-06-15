@@ -1265,6 +1265,22 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(231, 53, 44, 0.5);
 }
 
+/* ESPHomer Agent — ESPHome / smart home. 4-color GREEN ramp (no other agent uses
+   green), distinct from STM32er's blue, ESP32er's red/amber and Arduiner's teal/cyan:
+   deep forest green -> emerald -> spring green -> pale mint. The text-shadow keeps
+   the white label legible across the light mint right-hand end. */
+.canvas-item.esphomer-agent {
+    background-color: #06281C;
+    background: linear-gradient(135deg, #06281C 0%, #0E8A4F 33%, #36D399 66%, #D7FBE8 100%);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    font-size: smaller;
+}
+.canvas-item.esphomer-agent:hover {
+    background: linear-gradient(135deg, #0B3A2A 0%, #14A862 33%, #5FE6B5 66%, #FFFFFF 100%);
+    box-shadow: 0 6px 15px rgba(14, 138, 79, 0.5);
+}
+
 /* Arduiner Agent — Arduino CLI. 4-color teal->cyan ramp built around the Arduino
    brand teal (#008184), distinct from STM32er's blue, ESP32er's red/amber, and
    FlowBacker's teal+orange+amber: deep teal -> Arduino teal -> bright cyan -> pale aqua. */

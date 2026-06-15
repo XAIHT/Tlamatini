@@ -226,6 +226,11 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
         self.assertTrue((esp / "esp32er.py").exists(), "esp32er.py missing")
         self.assertTrue((esp / "config.yaml").exists(), "esp32er config.yaml missing")
 
+    def test_esphomer_agent_ships_complete(self):
+        esph = AGENTS_DIR / "esphomer"
+        self.assertTrue((esph / "esphomer.py").exists(), "esphomer.py missing")
+        self.assertTrue((esph / "config.yaml").exists(), "esphomer config.yaml missing")
+
     def test_arduiner_agent_ships_complete(self):
         ard = AGENTS_DIR / "arduiner"
         self.assertTrue((ard / "arduiner.py").exists(), "arduiner.py missing")

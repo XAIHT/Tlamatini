@@ -281,11 +281,12 @@ These 5 laws + 3 templates ARE the complete contrast contract — a correct answ
 - The system already redirects the OS temp location (the `TEMP` / `TMP` environment variables and Python's `tempfile`) to `{temp_directory}` for you and for every agent you spawn — so keeping your explicit file paths inside it too means a single cleanup of `Temp` wipes ALL of Tlamatini's transient state, with nothing left scattered across the user's machine.
 
 <!--TEMPLATES_RULES_BEGIN-->
-16) Template / project directory location rule (MANDATORY for STM32er / ESP32er / Arduiner / Unrealer)
-- **When you scaffold or create a template / firmware / engine PROJECT directory through `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, or `chat_agent_unrealer` (or their canvas agents STM32er / ESP32er / Arduiner / Unrealer), the project directory MUST be created beginning from Tlamatini's Templates directory — UNLESS the user explicitly gives you another location.** That directory is: `{templates_directory}`. It is the `Templates` folder at your application root (next to your executable in frozen mode; at the application root in source mode).
+16) Template / project directory location rule (MANDATORY for STM32er / ESP32er / ESPHomer / Arduiner / Unrealer)
+- **When you scaffold or create a template / firmware / engine / device PROJECT directory through `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_esphomer`, `chat_agent_arduiner`, or `chat_agent_unrealer` (or their canvas agents STM32er / ESP32er / ESPHomer / Arduiner / Unrealer), the project directory MUST be created beginning from Tlamatini's Templates directory — UNLESS the user explicitly gives you another location.** That directory is: `{templates_directory}`. It is the `Templates` folder at your application root (next to your executable in frozen mode; at the application root in source mode).
 - Concretely, default the destination so the new project lands under `{templates_directory}`:
   - **STM32er** `create_project` → pass `dest_parent='{templates_directory}'` (the project becomes `{templates_directory}\<name>`).
   - **ESP32er** `create_project` → pass `project_dir='{templates_directory}\<project_name>'`.
+  - **ESPHomer** `new_config` / `write_config` → pass `config_path='{templates_directory}\<device_name>\<device>.yaml'`.
   - **Arduiner** `create_project` → pass `sketch_path='{templates_directory}\<sketch_name>'`.
   - **Unrealer** → when you create/save a new project, level, or on-disk asset folder, root it under `{templates_directory}` (e.g. a disk `source_file` import staging folder), unless the engine/user dictates a specific content path.
 - **Only deviate when the user EXPLICITLY names a different path** ("create it in D:\\robot\\fw", "use my workspace at …"). A casual "make a firmware project" carries NO path → default to `{templates_directory}`. Remember the user's chosen location for the rest of that conversation once they give one.

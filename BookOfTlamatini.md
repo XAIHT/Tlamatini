@@ -208,7 +208,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.23.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.23.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.24.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.24.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -942,7 +942,7 @@ Rules:
 
 32 agents emit Parametrizer-compatible sections:
 
-Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Mouser, **Windower**, **Unrealer**, **Blenderer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **Arduiner**.
+Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, Googler, **Playwrighter**, **ACPXer**, Shoter, **Camcorder**, **Recorder**, **AudioPlayer**, **VideoPlayer**, Mouser, **Windower**, **Unrealer**, **Blenderer**, **Reviewer**, **Analyzer**, **Kalier**, **STM32er**, **ESP32er**, **ESPHomer**, **Arduiner**.
 
 ### How the visual mapping works
 
@@ -1038,7 +1038,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 77 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57 and **Blenderer** at §59.
+A compact reference for all 78 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57, **Blenderer** at §59, and **ESPHomer** at §60.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -1862,14 +1862,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.23.0 -m "Release 1.23.0: <one-liner>"   # annotated tag
-git push origin v1.23.0
+git tag -a v1.24.0 -m "Release 1.24.0: <one-liner>"   # annotated tag
+git push origin v1.24.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.23.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.24.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -1877,8 +1877,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.23.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.23.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.23.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.24.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.24.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.24.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -2721,6 +2721,188 @@ blender.org's own recommendation is to point a generic MCP client (Claude Deskto
 
 ---
 
+# Bonus Chapter — § 60. The Day Tlamatini Learned to Build a House
+
+> *A bonus chapter, narrative first, reference second. Read this if you want a light you can flick from your phone, a temperature sensor that whispers its readings to a dashboard, or a doorbell that texts you — built not by soldering a weekend away over a C++ compiler, but by describing the thing you want in a few lines of YAML and letting Tlamatini's **ESPHomer** agent do the rest. The dry reference lives in **README §3.19** and in the agent's own `agents_descriptions.md` entry; this chapter is the "why it looks the way it does, and how to make it work on your kitchen table".*
+
+## 60.1. A different kind of firmware
+
+The three firmware agents you have already met in this book — STM32er, ESP32er, Arduiner — all share a quiet assumption: that *firmware is a program*. You scaffold a project, you author a `.c` or a `.cpp` or an `.ino`, you compile it into a binary, you flash that binary onto silicon, and you watch a serial port to prove it lives. It is the honest, low-level craft of embedded engineering, and Tlamatini does it beautifully across three toolchains.
+
+ESPHome refuses that assumption. Its founding idea — *Smart Home Made Simple*, in the words of the Open Home Foundation that stewards it — is that for the overwhelmingly common case of a home-automation device (a light, a switch, a sensor, a display) you should never see a line of C++ at all. You should **describe the device**, in a small, declarative YAML file, and let ESPHome *generate* the firmware for you. Under the hood it still compiles real C++ through PlatformIO and flashes a real binary; but that machinery is hidden the way an engine is hidden under a hood. What you touch is the intent, not the implementation.
+
+So ESPHomer is the fourth firmware agent, and the odd one out — by design. Where its siblings author source code, ESPHomer authors *configuration*. That single difference ripples through everything: the actions it offers, the file it cares about, even the built-in generator it carries in place of an interactive wizard. This chapter is about that difference and how to wield it.
+
+## 60.2. The foundation: ESPHome, in one breath
+
+[ESPHome](https://esphome.io) turns ESP32, ESP8266, RP2040 and BK72xx microcontrollers into smart-home devices from a YAML configuration. Four promises define it, and ESPHomer inherits all four:
+
+- **No coding required** — a device is a YAML file, not a program.
+- **Wireless updates (OTA)** — after the first USB flash, you push new firmware over WiFi.
+- **Modular** — hundreds of supported sensors, switches, lights and displays, composed by listing them.
+- **Local control** — the device runs on your own network and talks to a hub (most famously Home Assistant) over a native API, with no cloud dependency.
+
+ESPHome is a Python package — `pip install esphome` — and ships a complete command-line tool, `esphome`, covering everything ESPHomer needs: validate a config, compile it, upload it over USB or over-the-air, stream its logs, clean its build. That completeness is exactly why ESPHomer, like ESP32er and Arduiner before it, drives the CLI **directly** and needs no MCP server. (STM32er needs a server only because STM32CubeIDE has no unified CLI; ESPHome has the opposite problem — too capable a CLI to bother wrapping.)
+
+## 60.3. The thirty-second conceptual model
+
+Hold one picture in your head and the rest follows: **a device is a `*.yaml` file.** Everything ESPHomer does is in service of that file — generate it, write it, read it back, validate it, compile it into firmware, push that firmware to a board, then listen to the board talk.
+
+```
+ new_config / write_config        config              compile               upload                 logs
+   author the YAML       ──▶  validate the YAML ──▶ build firmware ──▶ flash (USB or OTA) ──▶ watch it run
+```
+
+That is the whole lifecycle. The granular actions walk it one step at a time; the composite `scaffold_compile_upload` walks the whole thing in a single call. There is no "project directory full of source" to reason about, no linker script, no `fqbn` — just a path to one YAML file (`config_path`) that every step shares.
+
+## 60.4. Zero-config: you install only the USB driver
+
+The operator promise that runs through every firmware agent in this book holds here too, and is if anything simpler. With `esphome_executable` left blank (the default), ESPHomer **installs ESPHome itself** — `pip install esphome` — the first time it needs it. There is no separate IDE to download as with STM32CubeIDE, no Go binary to fetch as with arduino-cli, no installer script as with PlatformIO; ESPHome is *just a Python package*, and Tlamatini already carries a Python. You run `action='bootstrap'` to do it explicitly, or trust `auto_bootstrap` (default `true`) to do it lazily on first use.
+
+The only thing the *human* installs is the board's USB-serial driver (so the first flash can find the board) and Tlamatini. The first `compile` afterwards is slow — once — because ESPHome, through PlatformIO underneath, downloads the platform and toolchain. Every compile after that is quick. The FlowHypervisor knows this and will not flag a long *first* compile as stuck while download progress keeps printing (see its **ESPHOMER SPECIAL NOTES**).
+
+## 60.5. The fail-safe preflight
+
+Before ESPHomer compiles or uploads anything, it runs the same kind of safety gate its siblings run — refusing, rather than producing a doomed build. `action='validate'` reports the whole environment without building; every build/upload action runs the gate implicitly. The rules:
+
+- `esphome` must be resolvable (or bootstrappable).
+- For anything that touches the YAML — `config`, `compile`, `upload`, `logs`, `clean`, `list_artifacts` — the device YAML must exist. (Don't have one? `new_config` or `write_config` first.)
+- For anything that touches **hardware** — `upload`, `run`, `logs` — a serial port must be physically connected **or** an OTA host must be supplied in `port`. ESPHome's first flash is always over USB-serial; *after* that, because every generated device carries an `ota:` block, you can update it over WiFi by passing the device's IP as `port`. ESPHomer treats a `port` that looks like a hostname or IP as an OTA target and waives the serial requirement.
+
+A refusal is **not a crash**. A `stage: preflight` section that says "No serial port detected and no OTA host given" is the gate working exactly as designed — routable evidence a downstream Forker can branch on, never an error to flag.
+
+## 60.6. The action catalog, organised the way a builder thinks
+
+| What you want | `action` |
+|---|---|
+| Provision / check ESPHome | `bootstrap`, `validate`, `version` |
+| **Make** a device YAML (headless wizard) | `new_config` |
+| Hand-write / read / validate / clean a YAML | `write_config`, `read_config`, `config`, `clean` |
+| Build & flash | `compile`, `upload`, `run`, `list_artifacts` |
+| Watch it run (serial or OTA) | `logs` |
+| **Do it all in one call** | `scaffold_compile_upload` |
+
+Because the interactive `esphome wizard` cannot run unattended, ESPHomer ships its own **`new_config`** generator — the headless replacement. Give it a `name`, a `platform` (`esp32` / `esp8266` / `rp2040` / `bk72xx`), optionally a `board`, `led_pin`, and WiFi credentials, and it writes a minimal, *valid* device YAML to `config_path`. One call, and a flashable device exists.
+
+## 60.7. The smallest possible device — "hello, light"
+
+Here is the canonical first device, the one this book opened its ESPHomer story with: an on/off light on the board's onboard LED, exposed over the native API so a hub — and therefore your phone — can toggle it. Ask Tlamatini, with only the **Multi-Turn** toggle ticked:
+
+> *"Make me a phone-controlled light on an ESP32 at `<my Templates dir>/light/tlamatini-light.yaml`, compile it, and flash it to the board."*
+
+ESPHomer calls `new_config`, and the file it writes is this:
+
+```yaml
+esphome:
+  name: tlamatini-light
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+logger:
+api:                    # the hub discovers and controls the device over this
+ota:
+  - platform: esphome   # push new firmware over WiFi after the first USB flash
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+output:
+  - platform: gpio
+    pin: GPIO2          # onboard LED on most ESP32 DevKitC boards
+    id: light_output
+light:
+  - platform: binary
+    name: "Tlamatini Light"   # the entity your phone toggles
+    output: light_output
+```
+
+Edit the two WiFi lines, and the rest of the lifecycle — `config`, `compile`, `upload` — needs nothing but that one `config_path`. Adopt the device into Home Assistant, open the app, and the toggle labelled **Tlamatini Light** is the GPIO2 LED. You have built a smart-home device, and you never opened a C++ file. (This exact file ships in the repository at `agent/agents/esphomer/ESPHomeTemplateProject/tlamatini-light.yaml` as a known-good baseline.)
+
+Want a sensor instead of a light? ESPHome's modularity means you just *list* the component — for instance a DHT temperature/humidity sensor becomes:
+
+```yaml
+sensor:
+  - platform: dht
+    pin: GPIO4
+    temperature:
+      name: "Tlamatini Temperature"
+    humidity:
+      name: "Tlamatini Humidity"
+    update_interval: 60s
+```
+
+Hand that to `write_config`, then `compile` and `upload`, and the readings appear on your dashboard. The shape of the work never changes: describe, validate, compile, flash, observe.
+
+## 60.8. The one-call fast path
+
+Most of the time you do not want five round-trips; you want the device built. `scaffold_compile_upload` collapses the whole lifecycle into a single agent run — author (via `new_config`, or `write_config` when you pass `content`), then `config`, then `compile`, then `upload`, then `logs` if you set `monitor_seconds`. It is **fail-safe**: with no board connected it still authors, validates and compiles, and reports *"compiled OK, upload skipped — connect the board and run `upload`"*. One call:
+
+> *"Run ESPHomer with `action='scaffold_compile_upload'`, `config_path='<Templates>/light/tlamatini-light.yaml'`, `name='tlamatini-light'`, `platform='esp32'`, `board='esp32dev'`, `led_pin='GPIO2'`, `port='COM9'`."*
+
+Every run — granular or composite — emits one atomic `INI_SECTION_ESPHOMER` block for the Exec Report and for Parametrizer to mine:
+
+```
+INI_SECTION_ESPHOMER<<<
+action: compile
+tool: compile
+ok: true
+returncode: 0
+success: true
+config_path: C:/.../light/tlamatini-light.yaml
+name: tlamatini-light
+port:
+stage:
+
+INFO Successfully compiled program.
+Linking .esphome/build/tlamatini-light/.pioenvs/.../firmware.bin
+>>>END_SECTION_ESPHOMER
+```
+
+A downstream Forker branches on `{success}`; Parametrizer pipes `{config_path}` into the next node. A `success: false` here — a YAML that fails to validate, an upload that finds no port — is content for the next agent to act on, not a Tlamatini fault.
+
+## 60.9. Chaining ESPHomer on the visual canvas
+
+The chat is for one device; the canvas is for a device *factory*. The same capability is the green **ESPHomer** node, and it wires into a fully unattended pipeline:
+
+```
+Starter
+  → ESPHomer (new_config:  name, platform, board → writes the YAML)
+  → Parametrizer (carry {config_path} forward)
+  → ESPHomer (config:  validate the YAML)
+  → ESPHomer (compile)
+  → Forker (branch on {success})
+        ├─ success → ESPHomer (upload) → ESPHomer (logs, monitor_seconds: 8) → File-Creator (save the boot log)
+        └─ failure → Emailer (send me the compiler diagnostic)
+  → Ender
+```
+
+Drop a **Gatewayer** in front of the Starter and the whole thing becomes a webhook: every push to your device-configs repository re-compiles and re-flashes the bench unit. ESPHomer ALWAYS triggers its `target_agents` — success *or* failure — precisely so the Forker can route both outcomes.
+
+## 60.10. Two demos that ship in the box
+
+Open the **Prompts** catalog and two ESPHomer demos are waiting, each a self-contained, narrated run that drives only `chat_agent_esphomer` with only the Multi-Turn toggle:
+
+- **ESPHOME GENESIS** *(basic)* — the zero-config story end to end: `bootstrap` (ESPHomer pip-installs ESPHome itself) → `validate` → `new_config` (generate a device YAML) → `config` → `compile` → `list_artifacts`. **No board required** — it is pure provision-and-build, perfect for proving the toolchain on a fresh machine, and it closes with a green "ESPHOME PROVISIONED & FIRMWARE BUILT" banner and a build report.
+- **SMART LIGHT** *(medium)* — the phone-controlled light of §60.7, built for real: `validate` → `new_config` → `config` → `compile` → `list_artifacts` → `upload`. The upload is board-*optional*: with no board attached, ESPHomer's preflight refuses it cleanly ("BUILT, NO BOARD"), and with a board attached it flashes and lights up.
+
+Both are deliberately **safe to run repeatedly** — they write only into your Templates directory and never touch anything destructive.
+
+## 60.11. When it goes wrong (and what each failure actually means)
+
+- **`overall : FAILED` in a `stage: bootstrap` section.** ESPHomer could not `pip install esphome` — almost always no internet on the host. This *is* a legitimate error to flag; everything downstream depends on the CLI existing.
+- **A `stage: preflight` section that REFUSES with "No serial port detected and no OTA host given".** Not a crash — the fail-safe gate doing its job. Connect the board over USB, or pass `port='<device-ip>'` for an OTA update.
+- **The first `compile` seems to hang for minutes.** Normal, once. ESPHome is downloading the platform + toolchain through PlatformIO. As long as new progress keeps printing, it is working; only total silence beyond ~10 minutes (or an explicit error) is a real stall.
+- **`config` reports the YAML is invalid.** ESPHome's validator is strict and *helpful* — it names the offending key. This is a `success: false` you should read, not fear: fix the YAML (`write_config`) and re-run.
+- **An OTA `upload` can't reach the device.** The `port` IP is wrong, the device isn't on the network yet, or it has never had its *first* USB flash (OTA only works once the device is already running ESPHome with the `ota:` block). The first flash is always USB.
+
+For the full trail, the pool-agent log is `<pool>/esphomer_<n>/esphomer_<n>.log`; chat-wrapped runs land under `agent/agents/pools/_chat_runs_/esphomer_<seq>_<id>/…log`, and contain the exact `esphome` command and its verbatim output.
+
+## 60.12. Why this matters
+
+The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes her a *home builder*. The distance between "I wish that lamp turned on when I got home" and a working device used to be measured in soldering irons, Arduino sketches, and an evening lost to a serial monitor. ESPHome compressed that distance to a YAML file; ESPHomer compresses it again, to a sentence in chat — and then, because it lives inside Tlamatini, hands the result to the same canvas, Exec Report, Parametrizer chains, FlowHypervisor and 77 sibling agents as everything else. A light you flick from your phone can be the *first* step of a flow that ends in a dashboard, a notification, or a Telegram message. Same simple foundation underneath; the whole of Tlamatini on top. That is the point of ESPHomer.
+
+---
+
 # Appendix B — Glossary
 
 | Term | Definition |
@@ -2792,6 +2974,9 @@ blender.org's own recommendation is to point a generic MCP client (Claude Deskto
 | **STM32er** | Tlamatini agent that scaffolds, builds, flashes, and observes STM32F407VG firmware through the STM32 Template Project MCP (`https://github.com/XAIHT/STM32TemplateProjectMCP`), via a self-contained inline MCP stdio JSON-RPC client. Zero-config auto-bootstrap downloads the MCP itself and a safety preflight refuses to build/flash on a bad toolchain or wrong device family. Available both as the wrapped Multi-Turn tool `chat_agent_stm32er` and as a visual canvas node. Joined as the 68th entry in the agent catalog (now 70 with ESP32er #69 and Arduiner #70); the first of the microcontroller-firmware trio (STM32er drives an MCP server; ESP32er and Arduiner drive a CLI directly). |
 | **STM32 Template Project MCP** | FastMCP stdio server (`https://github.com/XAIHT/STM32TemplateProjectMCP`) exposing 23 tools for STM32F407VG firmware scaffolding, build, flash, and serial observation. STM32er is a client of it — it does not embed it — and auto-downloads it on first use. |
 | **ESP32 Template Project** | A standalone PlatformIO project (`https://github.com/XAIHT/ESP32TemplateProject`) that blinks an ESP32's onboard LED and prints the LED state over serial — the ESP32 counterpart of the STM32 Template Project MCP. Unlike the STM32 one it is a plain PlatformIO project, not a server, because ESP32er drives the `pio` CLI directly. ESP32er can build/flash/monitor a checkout of it (`project_dir`) or scaffold an equivalent with `action: create_project`. See bonus chapter §58. |
+| **ESPHome** | The Open Home Foundation system (`https://esphome.io`) that turns ESP32 / ESP8266 / RP2040 / BK72xx boards into smart-home devices from a **simple YAML config — no C++**. It ships the `esphome` CLI (validate / compile / upload over USB or OTA / logs / clean) and exposes devices to a hub (e.g. Home Assistant) over a native API for local control. The foundation ESPHomer is built on. |
+| **ESPHomer** | Tlamatini agent that authors, validates, compiles, uploads, and observes ESPHome smart-home device firmware by driving the `esphome` CLI directly — no MCP server. A device is a YAML file, not a program; ESPHomer ships a built-in `new_config` generator (the headless replacement for `esphome wizard`) and a zero-config `pip install esphome` bootstrap, and runs a fail-safe preflight (serial OR OTA host) before any flash. The fourth microcontroller-firmware agent and the direct-CLI sibling of ESP32er / Arduiner. Available both as the wrapped Multi-Turn tool `chat_agent_esphomer` and as a visual canvas node. See bonus chapter §60. |
+| **ESPHomeTemplateProject** | The bundled ESPHome sample (`agent/agents/esphomer/ESPHomeTemplateProject/tlamatini-light.yaml`) — a known-good, phone-controllable on/off light on the onboard LED, with the native API / OTA / WiFi blocks — the ESPHome analog of the ESP32 Template Project and the ArduinoTemplateProject. |
 | **Stopper** | Single-threaded pattern-based agent terminator. |
 | **Summarizer** | LLM polls source logs for events. |
 | **Tlamatini** | Nahuatl for "one who knows" — and the name of this assistant. The LLM responds to it as a self-reference. |

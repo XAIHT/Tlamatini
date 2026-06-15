@@ -1915,6 +1915,26 @@ system_prompt: |
   - `source_agents`: [] (upstream agents - for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
+### 81. ESPHomer
+- **Purpose**: Tlamatini's bridge to **ESPHome** (https://esphome.io) — the system that turns ESP32 / ESP8266 / RP2040 / BK72xx boards into smart-home devices from a SIMPLE YAML config (NO C++). On trigger it resolves the `esphome` CLI (auto-installing ESPHome via `pip` when absent), runs ONE capability selected by its `action` field as a direct `esphome` subprocess (or a stdlib op), captures the result into an `INI_SECTION_ESPHOMER` block (`action`, `tool`, `ok`, `returncode`, `success`, `config_path`, `name`, `port`, `stage`, plus a `response_body` carrying the `esphome` stdout/stderr). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
+- **Used for**: Authoring, validating, compiling, uploading (flashing) and OBSERVING ESPHome smart-home device firmware as unattended flow steps — **no IDE, no C++**. Like ESP32er (PlatformIO) and Arduiner (arduino-cli), and unlike STM32er's MCP server, ESPHome ships a complete CLI, so ESPHomer calls `esphome` directly. The `action` field selects ONE capability: environment/meta (`bootstrap`, `validate`, `version`); device YAML lifecycle (`new_config` — GENERATE a minimal valid device YAML, the headless replacement for the interactive `esphome wizard`; `write_config`, `read_config`, `config`, `clean`); build & flash (`compile`, `upload`, `run`, `list_artifacts`); serial/OTA HIL (`logs` — a bounded `esphome logs` drained for `monitor_seconds`); plus the one-call composite `scaffold_compile_upload` (author → config → compile → upload → logs in a SINGLE run).
+- **Aimed at**: Building visual, repeatable smart-home device pipelines. Chain `new_config` (a phone-controlled light) → Parametrizer (carry `{config_path}` forward) → `config` → `compile` → `upload` → `logs` that proves it runs, with a Forker branching on `{success}`. **Zero-config**: leave `esphome_executable` blank and ESPHomer `pip install esphome` itself on first use — `action='bootstrap'` does this explicitly, so the user installs only the board USB driver. Before every compile/upload ESPHomer runs a **safety preflight** (validates `esphome` resolvable + a device YAML, and for upload/logs/run that a serial port is connected OR an OTA host is given in `port`) and REFUSES rather than run a build/upload that cannot succeed; `action='validate'` reports the whole environment without building. NOTE: the FIRST compile downloads the platform + toolchain (via PlatformIO under the hood) so it is slow. The visual-canvas counterpart of the `chat_agent_esphomer` Multi-Turn tool.
+- **Application example**: Starter → ESPHomer (`action: new_config`, `config_path: C:/esphome/light/tlamatini-light.yaml`, `name: tlamatini-light`, `platform: esp32`, `board: esp32dev`) → Parametrizer (map `{config_path}` into the next node) → ESPHomer (`action: compile`) → Forker (branch on `{success}`) → ESPHomer (`action: upload`) → ESPHomer (`action: logs`, `monitor_seconds: 8`) → File-Creator (write the log output) → Ender.
+- **Pool name pattern**: `esphomer_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `action`: "validate" (one of the capabilities listed above)
+  - `esphome_executable`: "" (path to an existing `esphome` binary; **blank = zero-config auto-install**; set ONLY to point at a pre-installed ESPHome)
+  - `auto_bootstrap`: true / `pip_install`: true / `auto_update`: false (zero-config bootstrap — pip-install/refresh ESPHome)
+  - `preflight`: true (safety preflight — validate `esphome`/device YAML/serial port|OTA host and REFUSE a compile/upload that cannot succeed)
+  - `config_path`: "" (path to the device `.yaml` — used by config/compile/upload/logs/clean/list_artifacts)
+  - `content`: "" (write_config: full device YAML contents)
+  - `name`: "tlamatini-light" / `platform`: "esp32" (esp32|esp8266|rp2040|bk72xx) / `board`: "" / `led_pin`: "" / `wifi_ssid`: "" / `wifi_password`: "" (new_config generator params)
+  - `command_timeout`: 1200 (seconds for a single `esphome` run)
+  - `port`: "" / `monitor_seconds`: 10 (upload/logs/run; "" port = esphome auto-detect; an IP/host in `port` = OTA upload)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
 ---
 
 ## Output Format
