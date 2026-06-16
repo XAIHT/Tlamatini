@@ -321,6 +321,26 @@ CARRIED_PYTHON_VERSION = (3, 12, 10)
 # runtime on a clean machine — exactly the bug this whole feature fixes.
 _CARRIED_PYTHON_REQUIRED_IMPORTS = ("yaml", "langgraph", "langchain", "requests", "numpy", "cv2")
 
+# The COMPLETE set of third-party modules the pool agents + the STM32 MCP server
+# import. The carried Python must import EVERY one of these IN ISOLATION (no build-
+# machine user-site, no PYTHON* env) or a frozen agent crashes at runtime. Single
+# source of truth: referenced by the per-interpreter pip-verify (step 1b) AND the
+# isolated carried-tree verify at the end of bundle_carried_python.
+_AGENT_RUNTIME_IMPORTS = (
+    "numpy", "cv2",                         # numeric core (all media agents) + OpenCV (Camcorder / VideoPlayer)
+    "mcp", "serial",                        # STM32 MCP server (STM32er)
+    "PyPDF2", "pypdf", "fitz", "odf",       # PDF / ODF file backends
+    "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
+    "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
+    "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
+    "pymongo", "pyodbc", "win32gui", "win32con",  # db / windows agents (pywin32)
+    "sounddevice",                          # microphone capture (Recorder) — native PortAudio
+    "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
+    "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
+    "torch", "snac",                        # text-to-speech (Talker) — Orpheus token -> 24 kHz audio vocoder
+    "faster_whisper", "ctranslate2",        # speech-to-text (Whisperer) — local Whisper (GPU auto / CPU fallback)
+)
+
 
 def _probe_carried_python(python_exe):
     """Run *python_exe* and return (version_tuple, prefix, is_venv, import_error).
@@ -474,6 +494,51 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
               f"{', '.join(sorted(set(_pruned)))}")
     print(f"  Carried Python {'.'.join(map(str, ver))} bundled: {file_total} files, {size_mb:.0f} MB.")
     print(f"  Pool agents will run via: {carried_exe}")
+
+    # ── HARDEN: verify the carried tree imports every agent lib IN ISOLATION ──
+    # bundle_carried_python copytrees the build interpreter's sys.prefix. But the
+    # dependency install (build_and_freeze step 1b) uses `pip install --user`, which
+    # lands packages in the build machine's USER-SITE (%APPDATA%/Python/...) —
+    # OUTSIDE sys.prefix, so they are NOT copied here. The step-1b verify runs the
+    # *build* python (user-site on its path), so it passes even when the carried
+    # tree is incomplete. Re-verify against the COPIED python in ISOLATED mode
+    # (`-I` == ignore PYTHON* env, no user-site, no cwd on sys.path) so this is an
+    # exact dry-run of a clean target machine: only the carried tree's own
+    # site-packages are visible. Abort LOUDLY if any agent lib is missing — far
+    # better than silently shipping pool agents that crash on import at runtime.
+    verify_src = "\n".join([
+        "import importlib",
+        "mods = " + repr(list(_AGENT_RUNTIME_IMPORTS)),
+        "miss = []",
+        "for _m in mods:",
+        "    try:",
+        "        importlib.import_module(_m)",
+        "    except Exception as _e:",
+        "        miss.append(_m + ' (' + type(_e).__name__ + ': ' + str(_e)[:90] + ')')",
+        "print('MISSING: ' + '; '.join(miss) if miss else 'CARRIED_LIBS_OK')",
+        "raise SystemExit(3 if miss else 0)",
+    ])
+    print(f"  -> Verifying agent libs import in the CARRIED tree (isolated): {carried_exe} ...")
+    try:
+        chk = subprocess.run(
+            [str(carried_exe), "-I", "-c", verify_src],
+            capture_output=True, text=True, timeout=300,
+        )
+    except Exception as e:
+        raise RuntimeError(f"Could not run the isolated carried-Python import verify: {e}")
+    print("     " + ((chk.stdout or "") + (chk.stderr or "")).strip())
+    if chk.returncode != 0:
+        raise RuntimeError(
+            "Carried Python is INCOMPLETE — one or more agent libraries do NOT import "
+            "in isolation (-I), so frozen pool agents would crash at runtime.\n"
+            "  Most common cause: dependencies were pip-installed with `--user` into the "
+            "build machine's user-site (%APPDATA%\\Python\\...), which is OUTSIDE the "
+            "interpreter's sys.prefix and therefore was NOT copied into <dist>/python.\n"
+            "  Fix: install requirements into the standalone PYTHON_HOME interpreter's own "
+            "site-packages (run the build from a writable Python and drop `--user`, or "
+            "`python -m pip install --no-user -r requirements.txt` into PYTHON_HOME), then "
+            "rebuild. Aborting build."
+        )
 
 
 def bundle_playwright_browsers(dist_manage):
@@ -711,22 +776,32 @@ def main():
             target_python,
         )
 
+        # Install into the interpreter's OWN site-packages — NOT --user. The carried
+        # Python is a copytree of sys.prefix (bundle_carried_python), so a frozen pool
+        # agent only sees libs in prefix/Lib/site-packages; a --user install
+        # (%APPDATA%\Python, OUTSIDE prefix) would be silently left behind (the exact
+        # gap the carried-tree verify now catches). PYTHONNOUSERSITE=1 makes pip (a)
+        # ignore any pre-existing user-site copy in its "already satisfied" check and
+        # (b) target prefix — so a previously --user-installed package is (re)installed
+        # into prefix. REQUIRES target_python's site-packages to be WRITABLE (build
+        # from a writable Python / PYTHON_HOME; elevate only if it is under Program Files).
+        _pip_env = dict(os.environ)
+        _pip_env["PYTHONNOUSERSITE"] = "1"
+
         # 1a) Install torch CPU-only FIRST to avoid CUDA DLL issues (WinError 1114)
-        # --user ensures install works without admin privileges
         print(f"  -> Installing torch (CPU-only) for {target_python} ...")
         torch_cmd = [
-            target_python, "-m", "pip", "install", "--user", "torch",
+            target_python, "-m", "pip", "install", "torch",
             "--index-url", "https://download.pytorch.org/whl/cpu",
         ]
-        torch_result = subprocess.run(torch_cmd)
+        torch_result = subprocess.run(torch_cmd, env=_pip_env)
         if torch_result.returncode != 0:
             print(f"WARNING: torch CPU install failed for {target_python}. Continuing anyway.")
 
         # 1b) Install remaining dependencies from requirements.txt
-        # --user ensures install works without admin privileges
         if req_file.exists():
-            pip_cmd = [target_python, "-m", "pip", "install", "--user", "-r", str(req_file)]
-            pip_result = subprocess.run(pip_cmd)
+            pip_cmd = [target_python, "-m", "pip", "install", "-r", str(req_file)]
+            pip_result = subprocess.run(pip_cmd, env=_pip_env)
             if pip_result.returncode != 0:
                 print(f"ERROR: pip install -r requirements.txt failed for {target_python}. Aborting build.")
                 sys.exit(1)
@@ -742,20 +817,7 @@ def main():
         # the frozen assets are incomplete and the agents crash at runtime. Pinning
         # them in requirements.txt is not enough on its own; this asserts the install
         # truly took (catches a broken wheel / missing native dep too).
-        _agent_libs = [
-            "numpy", "cv2",                         # numeric core (all media agents) + OpenCV (Camcorder / VideoPlayer)
-            "mcp", "serial",                       # STM32 MCP server (STM32er)
-            "PyPDF2", "pypdf", "fitz", "odf",       # PDF / ODF file backends
-            "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
-            "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
-            "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
-            "pymongo", "pyodbc", "win32gui",        # db / windows agents
-            "sounddevice",                          # microphone capture (Recorder) — native PortAudio
-            "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
-            "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
-            "torch", "snac",                        # text-to-speech (Talker) — Orpheus token -> 24 kHz audio vocoder
-            "faster_whisper", "ctranslate2",        # speech-to-text (Whisperer) — local Whisper (GPU auto / CPU fallback)
-        ]
+        _agent_libs = list(_AGENT_RUNTIME_IMPORTS)
         verify_src = "\n".join([
             "import importlib",
             "mods = " + repr(_agent_libs),

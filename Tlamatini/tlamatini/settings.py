@@ -45,6 +45,13 @@ def _pin_temp_directory():
         _templates_root = _temp_base / 'Templates'
         _templates_root.mkdir(parents=True, exist_ok=True)
         os.environ['TLAMATINI_TEMPLATES'] = str(_templates_root)
+        # Frozen: pool agents run on the CARRIED Python (<install>/python); force them
+        # to ignore any stray per-user site-packages (%APPDATA%/Python) so they run
+        # COMPLETELY on the carried interpreter's own libs. Inherited by every child.
+        # Per-user lib dirs that use PYTHONPATH (e.g. ESPHomer's esphome-lib) are NOT
+        # affected. Source mode is left alone (dev relies on its environment).
+        if getattr(sys, 'frozen', False):
+            os.environ['PYTHONNOUSERSITE'] = '1'
     except Exception:
         pass
 
