@@ -496,16 +496,13 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
     print(f"  Pool agents will run via: {carried_exe}")
 
     # ── HARDEN: verify the carried tree imports every agent lib IN ISOLATION ──
-    # bundle_carried_python copytrees the build interpreter's sys.prefix. But the
-    # dependency install (build_and_freeze step 1b) uses `pip install --user`, which
-    # lands packages in the build machine's USER-SITE (%APPDATA%/Python/...) —
-    # OUTSIDE sys.prefix, so they are NOT copied here. The step-1b verify runs the
-    # *build* python (user-site on its path), so it passes even when the carried
-    # tree is incomplete. Re-verify against the COPIED python in ISOLATED mode
-    # (`-I` == ignore PYTHON* env, no user-site, no cwd on sys.path) so this is an
-    # exact dry-run of a clean target machine: only the carried tree's own
-    # site-packages are visible. Abort LOUDLY if any agent lib is missing — far
-    # better than silently shipping pool agents that crash on import at runtime.
+    # The carried tree is copytreed from the source-tree build Python (<repo>/python),
+    # whose own prefix has all deps installed (ensure_local_build_python). Re-verify
+    # against the COPIED python in ISOLATED mode (`-I` == ignore PYTHON* env, no
+    # user-site, no cwd on sys.path) — an exact dry-run of a clean target machine, so
+    # ONLY the carried tree's own site-packages are visible. Abort LOUDLY if any agent
+    # lib is missing — far better than silently shipping pool agents that crash on
+    # import at runtime.
     verify_src = "\n".join([
         "import importlib",
         "mods = " + repr(list(_AGENT_RUNTIME_IMPORTS)),
@@ -531,14 +528,82 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
         raise RuntimeError(
             "Carried Python is INCOMPLETE — one or more agent libraries do NOT import "
             "in isolation (-I), so frozen pool agents would crash at runtime.\n"
-            "  Most common cause: dependencies were pip-installed with `--user` into the "
-            "build machine's user-site (%APPDATA%\\Python\\...), which is OUTSIDE the "
-            "interpreter's sys.prefix and therefore was NOT copied into <dist>/python.\n"
-            "  Fix: install requirements into the standalone PYTHON_HOME interpreter's own "
-            "site-packages (run the build from a writable Python and drop `--user`, or "
-            "`python -m pip install --no-user -r requirements.txt` into PYTHON_HOME), then "
-            "rebuild. Aborting build."
+            "  The carried tree is copied from <repo>/python, whose deps are installed by "
+            "ensure_local_build_python(). A failure here means that install did not fully "
+            "succeed (or a native wheel is broken). Fix: check the pip output above, delete "
+            "<repo>/python to force a clean re-provision, correct requirements.txt if needed, "
+            "then rebuild. Aborting build."
         )
+
+
+def ensure_local_build_python():
+    """Provision a standalone, WRITABLE Python kept UNDER the source tree at
+    ``<repo>/python`` and install the agent deps into its OWN prefix (``--no-user``),
+    returning its ``python.exe``.
+
+    This is the CARRIED-Python SOURCE: ``bundle_carried_python`` copytrees it into
+    ``<dist>/python``, so the carried interpreter ships COMPLETE — without the build
+    ever WRITING to a read-only system Python (e.g. ``C:\\Program Files\\Python312``;
+    that one is only READ, once, to seed the copy). Reused across builds (deps are
+    re-checked, not re-downloaded). Gitignored + excluded from the self-modify
+    snapshot. Raises (aborts the build) on any failure — never returns an incomplete
+    interpreter.
+    """
+    local_dir = Path(__file__).resolve().parent / "python"
+    local_exe = local_dir / ("python.exe" if os.name == "nt" else "bin/python3")
+
+    # 1) Seed it ONCE from the current interpreter's standalone install.
+    if not local_exe.exists():
+        probe = _probe_carried_python(sys.executable)
+        if probe is None:
+            raise RuntimeError(
+                f"Cannot probe the build Python '{sys.executable}' to seed <repo>/python.")
+        ver, prefix, is_venv, _imp = probe
+        want = ".".join(map(str, CARRIED_PYTHON_VERSION))
+        if ver != CARRIED_PYTHON_VERSION:
+            raise RuntimeError(
+                f"<repo>/python must be Python {want}, but the build interpreter "
+                f"'{sys.executable}' is {'.'.join(map(str, ver)) or '?'}. Run build.py with a "
+                f"Python {want}, or place a standalone {want} at <repo>/python yourself.")
+        if is_venv:
+            raise RuntimeError(
+                f"The build interpreter '{sys.executable}' is a VIRTUALENV — not portable. "
+                f"Seed <repo>/python from a FULL standalone Python {want} (run build.py with one).")
+        src_prefix = Path(prefix)
+        print(f"\n--- Provisioning source-tree build Python (one-time): {src_prefix} -> {local_dir} ---")
+
+        def _seed_ignore(directory, names):
+            return {n for n in names
+                    if n in ("__pycache__", ".cache") or n.endswith((".pyc", ".pyo"))}
+
+        if local_dir.exists():
+            shutil.rmtree(local_dir)  # remove a partial/corrupt prior seed first
+        shutil.copytree(src_prefix, local_dir, ignore=_seed_ignore, dirs_exist_ok=False)
+
+    # 2) Install the agent deps into <repo>/python's OWN prefix (it is writable).
+    #    PYTHONNOUSERSITE=1 → pip ignores the build user's user-site and targets THIS
+    #    prefix, so the tree is self-contained. requirements.txt pins torch but none of
+    #    the heavy unused ML libs, so a fresh install is lean by construction.
+    req_file = Path(__file__).with_name("requirements.txt")
+    env = dict(os.environ)
+    env["PYTHONNOUSERSITE"] = "1"
+    print(f"--- Installing agent deps into the source-tree build Python: {local_exe} ---")
+    subprocess.run(
+        [str(local_exe), "-m", "pip", "install", "--no-warn-script-location",
+         "torch", "--index-url", "https://download.pytorch.org/whl/cpu"],
+        env=env, check=False,
+    )
+    if req_file.exists():
+        rc = subprocess.run(
+            [str(local_exe), "-m", "pip", "install", "--no-warn-script-location",
+             "-r", str(req_file)],
+            env=env, check=False,
+        )
+        if rc.returncode != 0:
+            raise RuntimeError(
+                f"Failed to install requirements into the source-tree build Python "
+                f"({local_exe}). Delete <repo>/python and rebuild. Aborting build.")
+    return str(local_exe)
 
 
 def bundle_playwright_browsers(dist_manage):
@@ -729,37 +794,25 @@ def main():
         print(f"Removed old: {old_zip}")
 
     # ── 1) Install dependencies ──────────────────────────────────────
-    # Use PYTHON_HOME env var if set (target Python for frozen-mode agents),
-    # otherwise fall back to the Python running this build script.
-    python_path_raw = os.environ.get("PYTHON_HOME", "").strip()
     build_python = sys.executable
 
-    # PYTHON_HOME may point to a directory or directly to python.exe
-    frozen_python = None
-    if python_path_raw:
-        p = Path(python_path_raw)
-        if p.is_file():
-            frozen_python = str(p)
-        elif p.is_dir():
-            # Resolve to python.exe inside the directory
-            exe = p / "python.exe"
-            if exe.is_file():
-                frozen_python = str(exe)
-            else:
-                print(f"WARNING: PYTHON_HOME dir '{p}' has no python.exe inside. Ignoring.")
+    # The CARRIED Python (the interpreter EVERY frozen pool agent runs on) is sourced
+    # from a standalone, WRITABLE Python kept UNDER the source tree at <repo>/python,
+    # auto-provisioned by ensure_local_build_python(). Its deps install into its OWN
+    # prefix (--no-user) so the carried copy is COMPLETE — and the build NEVER writes
+    # to a read-only system Python (e.g. C:\Program Files\Python312). bundle_carried_python
+    # copytrees it into <dist>/python. (PYTHON_HOME is no longer used for this — the
+    # source-tree Python is the single, predictable carried source.)
+    if os.environ.get("PYTHON_HOME", "").strip():
+        print("NOTE: PYTHON_HOME is set but is IGNORED for the carried Python — it now always "
+              "comes from <repo>/python (auto-provisioned, writable).")
+    frozen_python = ensure_local_build_python()
 
-    if frozen_python:
-        print(f"PYTHON_HOME detected: {frozen_python}")
-        print("Dependencies will be installed into BOTH build Python and PYTHON_HOME Python.")
-    else:
-        if python_path_raw:
-            print(f"WARNING: PYTHON_HOME is set to '{python_path_raw}' but could not resolve to a python executable. Ignoring.")
-        print(f"Using build Python only: {build_python}")
-
-    # Collect the list of Python executables to install into
+    # PyInstaller (run by build_python) bundles the FROZEN _internal (the Django side);
+    # its deps go in with --user so a read-only build Python (Program Files) still works.
+    # The carried Python is handled above (its own writable prefix), so it is NOT in
+    # this install loop.
     install_pythons = [build_python]
-    if frozen_python and Path(frozen_python).resolve() != Path(build_python).resolve():
-        install_pythons.append(frozen_python)
 
     req_file = Path(__file__).with_name('requirements.txt')
 
@@ -776,32 +829,27 @@ def main():
             target_python,
         )
 
-        # Install into the interpreter's OWN site-packages — NOT --user. The carried
-        # Python is a copytree of sys.prefix (bundle_carried_python), so a frozen pool
-        # agent only sees libs in prefix/Lib/site-packages; a --user install
-        # (%APPDATA%\Python, OUTSIDE prefix) would be silently left behind (the exact
-        # gap the carried-tree verify now catches). PYTHONNOUSERSITE=1 makes pip (a)
-        # ignore any pre-existing user-site copy in its "already satisfied" check and
-        # (b) target prefix — so a previously --user-installed package is (re)installed
-        # into prefix. REQUIRES target_python's site-packages to be WRITABLE (build
-        # from a writable Python / PYTHON_HOME; elevate only if it is under Program Files).
-        _pip_env = dict(os.environ)
-        _pip_env["PYTHONNOUSERSITE"] = "1"
-
-        # 1a) Install torch CPU-only FIRST to avoid CUDA DLL issues (WinError 1114)
+        # 1a) Install torch CPU-only FIRST to avoid CUDA DLL issues (WinError 1114).
+        # Use --user so this works even when the build Python lives in a READ-ONLY
+        # location (e.g. C:\Program Files\Python312): its deps go to the per-user site
+        # so PyInstaller (run by THIS Python) can still bundle them into the frozen
+        # _internal. NOTHING is written to the build Python's prefix / Program Files.
+        # The CARRIED Python (the one frozen pool agents run on) is populated SEPARATELY
+        # and DIRECTLY inside dist/ — see bundle_carried_python — so its completeness
+        # does NOT depend on this Python's prefix being writable or pre-populated.
         print(f"  -> Installing torch (CPU-only) for {target_python} ...")
         torch_cmd = [
-            target_python, "-m", "pip", "install", "torch",
+            target_python, "-m", "pip", "install", "--user", "torch",
             "--index-url", "https://download.pytorch.org/whl/cpu",
         ]
-        torch_result = subprocess.run(torch_cmd, env=_pip_env)
+        torch_result = subprocess.run(torch_cmd)
         if torch_result.returncode != 0:
             print(f"WARNING: torch CPU install failed for {target_python}. Continuing anyway.")
 
         # 1b) Install remaining dependencies from requirements.txt
         if req_file.exists():
-            pip_cmd = [target_python, "-m", "pip", "install", "-r", str(req_file)]
-            pip_result = subprocess.run(pip_cmd, env=_pip_env)
+            pip_cmd = [target_python, "-m", "pip", "install", "--user", "-r", str(req_file)]
+            pip_result = subprocess.run(pip_cmd)
             if pip_result.returncode != 0:
                 print(f"ERROR: pip install -r requirements.txt failed for {target_python}. Aborting build.")
                 sys.exit(1)

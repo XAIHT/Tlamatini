@@ -107,6 +107,7 @@ EXCLUDED_DIR_NAMES = {
     "agents_backup",                  # self-update one-generation backup of agents/
     "updater",                        # self-update staging/run dir (apply_update.ps1)
     "TlamatiniSourceCode",            # recursion guard — never snapshot a snapshot
+    "python",                         # <repo>/python: source-tree build Python (carried-source artifact, gitignored)
 }
 
 # File EXTENSIONS skipped everywhere (lowercase, with dot).
