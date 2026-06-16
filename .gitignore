@@ -281,6 +281,13 @@ Uninstaller.version.txt
 # Build concurrency lock (build.py)
 .build.lock
 
+# Source-tree build Python — a standalone, writable Python 3.12.10 kept at
+# <repo>/python, auto-provisioned by build.py (ensure_local_build_python) as the
+# CARRIED-Python source: deps install into ITS writable prefix (never Program Files)
+# and bundle_carried_python copytrees it into <dist>/python complete. Large, local,
+# regenerable build artifact — never commit. Delete it to force a clean re-provision.
+/python/
+
 # Tlamatini Temp directory — the SOLE runtime temporary dir (pinned by
 # manage.py / settings.py to <app-root>/Temp). Created on demand at the repo
 # root (source mode) and next to the .exe (frozen). Pure transient state —
