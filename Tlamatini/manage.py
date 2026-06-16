@@ -293,9 +293,27 @@ def _pin_bundled_tools():
         print(f"--- [TOOLS] Could not pin carried Java/Git (non-fatal): {exc}")
 
 
+def _isolate_carried_python():
+    """Frozen only: make every spawned pool agent (which runs on the CARRIED Python
+    at <install>/python) IGNORE any stray per-user site-packages (%APPDATA%/Python),
+    so agents run COMPLETELY on the carried interpreter's own libs — deterministic and
+    immune to a user's --user installs. Exported here (before Django) so every child
+    inherits it via os.environ. The firmware agents' per-user lib dirs (e.g. ESPHomer's
+    esphome-lib) use PYTHONPATH, which PYTHONNOUSERSITE does NOT disable — they keep
+    working. Source mode is left alone (dev relies on its environment). Fail-open.
+    """
+    try:
+        if getattr(sys, 'frozen', False):
+            os.environ['PYTHONNOUSERSITE'] = '1'
+            print("--- [PYTHON] Pool agents pinned to the carried interpreter (user-site disabled)")
+    except Exception as exc:
+        print(f"--- [PYTHON] Could not pin carried-Python isolation (non-fatal): {exc}")
+
+
 _enforce_app_temp_dir()
 _pin_playwright_browsers()
 _pin_bundled_tools()
+_isolate_carried_python()
 
 
 def _print_version_banner():

@@ -17,8 +17,12 @@
 # agent pool runs as standalone Python subprocesses with no path back into Django).
 #
 # ZERO-CONFIG: with no on-disk `esphome_executable` and `auto_bootstrap: true`,
-# ESPHomer INSTALLS ESPHome itself (`pip install esphome`) into the agent's Python —
-# so the end user installs only the board USB driver + Tlamatini and nothing else.
+# ESPHomer INSTALLS ESPHome itself (`pip install --target`) into a per-user library
+# dir OUTSIDE the install tree (%LOCALAPPDATA%/Tlamatini/esphome-lib), run via
+# `python -m esphome` with that dir on PYTHONPATH — the same per-user pattern as
+# ESP32er (PlatformIO core dir) / Arduiner (arduino-cli dir), so it SURVIVES a
+# self-update (which replaces the carried Python) and works even in a read-only
+# install. The end user installs only the board USB driver + Tlamatini.
 # (ESPHome itself vendors PlatformIO + the toolchains it needs at first compile.)
 #
 # ESPHome's `run`/`logs` stream serial/OTA output interactively; the bounded `logs`
@@ -461,6 +465,38 @@ def _esphome_version(esphome_cmd: list, env: dict) -> tuple:
     return rc == 0, text
 
 
+def _esphome_lib_dir() -> str:
+    """Per-user, writable dir that holds the pip-installed ESPHome + its deps.
+
+    Lives OUTSIDE the Tlamatini install tree — exactly like ESP32er's PlatformIO
+    core dir and Arduiner's arduino-cli dir — at %LOCALAPPDATA%/Tlamatini/esphome-lib
+    on Windows. Two reasons this matters in a FROZEN build:
+      * the install tree may be read-only (e.g. Program Files), so pip-installing
+        into the CARRIED Python (<install>/python) would fail — this dir is always
+        user-writable;
+      * self-update replaces <install>/python wholesale, so anything installed INTO
+        the carried Python is wiped on every update — this dir SURVIVES.
+    ESPHome is invoked as `<python> -m esphome` with this dir on PYTHONPATH."""
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.path.join(
+            os.path.expanduser("~"), "AppData", "Local")
+    else:
+        base = os.environ.get("XDG_DATA_HOME") or os.path.join(
+            os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, "Tlamatini", "esphome-lib")
+
+
+def _env_with_esphome_lib(env: dict) -> dict:
+    """Return a copy of *env* with the ESPHome lib dir PREPENDED to PYTHONPATH so
+    `<python> -m esphome` (and the PlatformIO it shells out to) resolves the
+    --target-installed ESPHome + deps ahead of the carried site-packages."""
+    e = dict(env)
+    lib = _esphome_lib_dir()
+    existing = e.get("PYTHONPATH", "")
+    e["PYTHONPATH"] = lib + (os.pathsep + existing if existing else "")
+    return e
+
+
 def _resolve_esphome_cmd(config: dict, env: dict, python_cmd: list) -> list:
     """Best-effort resolution of an invocable `esphome` command WITHOUT installing:
        1. explicit config `esphome_executable` if it exists,
@@ -498,9 +534,17 @@ def _bootstrap_esphome(config: dict, env: dict, python_cmd: list) -> tuple:
 
         # ── Install / upgrade path: pip install esphome ──
         if do_pip:
-            pip_cmd = list(python_cmd) + ["-m", "pip", "install", "--disable-pip-version-check"]
-            pip_cmd += (["-U", "esphome"] if do_update else ["esphome"])
-            logging.info(f"📦 Installing ESPHome via pip: {pip_cmd}")
+            # Install into a per-user lib dir OUTSIDE the install tree (survives
+            # self-update + works in a read-only install) — NOT into the carried
+            # Python. Resolved later via `<python> -m esphome` with that dir on
+            # PYTHONPATH (the env passed in already carries it). See _esphome_lib_dir.
+            lib_dir = _esphome_lib_dir()
+            os.makedirs(lib_dir, exist_ok=True)
+            pip_cmd = list(python_cmd) + ["-m", "pip", "install",
+                                          "--disable-pip-version-check",
+                                          "--target", lib_dir]
+            pip_cmd += (["--upgrade", "esphome"] if do_update else ["esphome"])
+            logging.info(f"📦 Installing ESPHome via pip into {lib_dir}: {pip_cmd}")
             rc, out, err = _run_cmd(pip_cmd, env=env, timeout=1800)
             report["steps"].append(("pip-install",
                                     {"ok": rc == 0, "action": "pip", "returncode": rc,
@@ -776,6 +820,26 @@ def _slug(text: str) -> str:
     return s or "tlamatini-device"
 
 
+def _templates_root() -> str:
+    """Default scaffold parent for a generated device YAML: ``<app>/Templates``.
+
+    Resolved from ``TLAMATINI_TEMPLATES`` — exported by the Tlamatini core and
+    inherited by every spawned agent via ``get_agent_env``'s ``os.environ.copy()``
+    (the same handle ESP32er / Arduiner scaffolds live under). This keeps a
+    generated device — and the ``.esphome/build`` tree ESPHome writes beside it —
+    in the one predictable deliverable location in BOTH source and frozen runs,
+    instead of deep inside the (possibly read-only) install tree at ``os.getcwd()``.
+    Fail-open to the cwd when the handle is unset (agent launched fully standalone)."""
+    root = (os.environ.get("TLAMATINI_TEMPLATES") or "").strip()
+    if root:
+        try:
+            os.makedirs(root, exist_ok=True)
+            return root
+        except Exception:
+            pass
+    return os.getcwd()
+
+
 def _new_config(config: dict) -> dict:
     """Generate a minimal, valid ESPHome device YAML from a few parameters (the
     headless replacement for the interactive `esphome wizard`)."""
@@ -798,7 +862,10 @@ def _new_config(config: dict) -> dict:
     )
 
     if not config_path:
-        config_path = os.path.join(os.getcwd(), f"{name}.yaml")
+        # No explicit path: scaffold under <app>/Templates/<node>/ (the deliverable
+        # location) rather than os.getcwd() — the pool dir, which sits inside the
+        # possibly read-only install tree in a frozen build. See _templates_root().
+        config_path = os.path.join(_templates_root(), name, f"{name}.yaml")
     try:
         os.makedirs(os.path.dirname(os.path.abspath(config_path)), exist_ok=True)
         with open(config_path, "w", encoding="utf-8") as f:
@@ -1133,7 +1200,10 @@ def main():
         logging.info(f"Targets: {target_agents}")
 
         python_cmd = get_python_command()
-        env = get_agent_env()
+        # Put the per-user ESPHome lib dir on PYTHONPATH for EVERY esphome call
+        # (resolve / version / config / compile / upload / logs), so `python -m
+        # esphome` finds the --target-installed package. See _esphome_lib_dir.
+        env = _env_with_esphome_lib(get_agent_env())
         timeout = float(_as_int(_cfg(config, "command_timeout", 1200), 1200))
         auto_bootstrap = _as_bool(_cfg(config, "auto_bootstrap", True), True)
 

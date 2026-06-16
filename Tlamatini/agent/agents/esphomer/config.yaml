@@ -51,7 +51,9 @@ action: "validate"
 esphome_executable: ""
 # auto_bootstrap — pip-install ESPHome automatically when `esphome` is not found.
 auto_bootstrap: true
-# pip_install — allow `pip install esphome` (the only install path; ESPHome is a pip pkg).
+# pip_install — allow ESPHomer to `pip install --target` ESPHome into a per-user lib
+# dir (%LOCALAPPDATA%/Tlamatini/esphome-lib), OUTSIDE the install tree, run via
+# `python -m esphome` — survives self-update + works in a read-only install.
 pip_install: true
 # auto_update — refresh ESPHome (pip -U esphome) each run when already present.
 auto_update: false

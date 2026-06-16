@@ -217,6 +217,59 @@ class ConfigFileOpsTests(unittest.TestCase):
         res = ESP._new_config({'platform': 'bogus'})
         self.assertFalse(res['ok'])
 
+    def test_new_config_defaults_to_templates_root(self):
+        """No config_path -> scaffold under <app>/Templates (TLAMATINI_TEMPLATES),
+        the deliverable location exported by the core (manage.py / settings.py) and
+        inherited by every spawned agent. NEVER os.getcwd() (the pool dir, which in
+        a frozen build lives inside the possibly read-only install tree)."""
+        with tempfile.TemporaryDirectory() as d:
+            templates = os.path.join(d, 'Templates')
+            with patch.dict(os.environ, {'TLAMATINI_TEMPLATES': templates}):
+                res = ESP._new_config({'name': 'Front Lamp', 'platform': 'esp32'})
+            self.assertTrue(res['ok'], res)
+            expected = os.path.join(templates, 'front-lamp', 'front-lamp.yaml')
+            self.assertEqual(os.path.normcase(res['config_path']),
+                             os.path.normcase(expected))
+            self.assertTrue(os.path.exists(expected))
+
+    def test_new_config_failopen_to_cwd_without_templates_env(self):
+        """TLAMATINI_TEMPLATES unset (agent launched fully standalone) -> fail-open
+        to os.getcwd() so a generated device still lands somewhere writable rather
+        than crashing."""
+        saved_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as d:
+            try:
+                os.chdir(d)
+                with patch.dict(os.environ):
+                    os.environ.pop('TLAMATINI_TEMPLATES', None)
+                    res = ESP._new_config({'name': 'standalone-dev', 'platform': 'esp32'})
+                self.assertTrue(res['ok'], res)
+                expected = os.path.join(os.getcwd(), 'standalone-dev', 'standalone-dev.yaml')
+                self.assertEqual(os.path.normcase(res['config_path']),
+                                 os.path.normcase(expected))
+                self.assertTrue(os.path.exists(expected))
+            finally:
+                os.chdir(saved_cwd)
+
+    def test_esphome_lib_dir_is_per_user_localappdata(self):
+        """ESPHome installs to a per-user dir OUTSIDE the install tree (like ESP32er /
+        Arduiner) so it survives self-update + works in a read-only install."""
+        with patch.dict(os.environ, {"LOCALAPPDATA": r"C:\\Users\\x\\AppData\\Local"}):
+            d = ESP._esphome_lib_dir()
+        self.assertTrue(d.replace("\\", "/").endswith("Tlamatini/esphome-lib"), d)
+
+    def test_env_with_esphome_lib_prepends_pythonpath(self):
+        base = {"PYTHONPATH": os.path.join("X", "existing")}
+        e = ESP._env_with_esphome_lib(base)
+        parts = e["PYTHONPATH"].split(os.pathsep)
+        self.assertEqual(parts[0], ESP._esphome_lib_dir())
+        self.assertIn(os.path.join("X", "existing"), parts)
+        self.assertEqual(base["PYTHONPATH"], os.path.join("X", "existing"))
+
+    def test_env_with_esphome_lib_sets_pythonpath_when_absent(self):
+        e = ESP._env_with_esphome_lib({})
+        self.assertEqual(e["PYTHONPATH"], ESP._esphome_lib_dir())
+
     def test_write_then_read_config(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, 'dev.yaml')
