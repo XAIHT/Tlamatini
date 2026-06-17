@@ -429,13 +429,13 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any("1.24.0" in subject or "esphomer" in subject for subject in subjects):
+    if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
-            "The current Git window establishes the new `v1.24.0` baseline: the latest tag `v1.24.0` sits at commit `eb92877` on June 15, 2026, and the current HEAD `c0c633c` later that same day layers the ESPHomer implementation on top of that version line."
+            "The current Git window establishes the new `v1.26.0` baseline: the latest tag `v1.26.0` sits at commit `30a87f3` (June 17, 2026) and carries the External MCPs universal-client work — a config-driven client that connects to any MCP server over four transports (stdio / streamable-HTTP / SSE / WebSocket), the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and the Step-by-Step setup mode — on top of the earlier ESPHomer firmware lane."
         )
     if has_esphomer_assets():
         highlights.append(
-            "The live working tree is already beyond the tagged `v1.24.0` release: ESPHomer is present as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
+            "The tagged `v1.26.0` release now includes ESPHomer as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
         )
     if any("image about" in subject or "video" in subject or "kyber" in subject for subject in subjects):
         highlights.append(
@@ -461,9 +461,9 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
-    if any("1.24.0" in subject or ("documentation" in subject and "1.24.0" in subject) for subject in subjects):
+    if any("1.26.0" in subject or ("documentation" in subject and ("1.26.0" in subject or "external mcp" in subject)) for subject in subjects):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.24.0`, which matters here because some older badges or prose lines still lag behind the live 81-agent / 88-tool inventory."
+            "The latest documentation pass aligns the handbook and source with `v1.26.0`, which matters here because some older badges or prose lines still lag behind the live 82-agent / 89-tool inventory."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -641,9 +641,9 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any("1.24.0" in subject or "esphomer" in subject for subject in subjects):
+    if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository moved onto the `v1.24.0` version line: tag `eb92877` establishes the new release identity, and HEAD `c0c633c` adds the ESPHomer implementation on top of it."
+            "Since the last committed PDF/PPTX refresh, the repository moved onto the `v1.26.0` version line: tag `v1.26.0` at commit `30a87f3` establishes the new release identity, with the External MCPs universal client (four transports, the MCP Doctor agent, full-surface Multi-Turn, Step-by-Step) layered on top of the ESPHomer firmware lane."
         )
     if has_esphomer_assets():
         highlights.append(
@@ -673,9 +673,9 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
         )
-    if any("1.24.0" in subject or ("documentation" in subject and "1.24.0" in subject) for subject in subjects):
+    if any("1.26.0" in subject or "external mcp" in subject or ("documentation" in subject and "1.26.0" in subject) for subject in subjects):
         highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to `v1.24.0`, and this refresh layers the live ESPHomer working-tree additions on top of that tag so the dossier matches the current 81-agent / 88-tool runtime surface."
+            "The latest versioning/documentation commits move the source-of-truth product story to `v1.26.0`, whose headline is the External MCPs universal client (connect to any MCP server over stdio / streamable-HTTP / SSE / WebSocket, plus the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode), with the ESPHomer firmware lane already folded in, so the dossier matches the current 82-agent / 89-tool runtime surface."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -912,6 +912,7 @@ WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Can discover files by glob pattern, search their contents by regex, and make surgical in-place replacements through the Globber, Grepper, and Editor agent/tool trio.",
+    "Can connect to external MCP servers declared in `external_mcps.json`, expose their remote tools to Multi-Turn under the `ext__<server>__<tool>` naming convention, and supervise those connections through status / reconnect / doctor / import / list / call helpers.",
     "Gives operators GUI-first database maintenance through the new DB dropdown for backup and staged database replacement.",
     "Lets operators manage provider secrets from the browser through the Config -> Access Keys Wizard instead of hand-editing `config.json`.",
     "Can drive Blender through the Blenderer agent, using the official Blender MCP add-on socket to inspect scenes, mutate objects and materials, run raw code, and automate renders from chat or the workflow canvas.",
@@ -924,6 +925,7 @@ WHAT_IT_DOES = [
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
+    "Can diagnose an external MCP before the first live connection through the MCP Doctor agent and wrapped `chat_agent_mcp_doctor` tool, checking transport, runtime requirements, PATH availability, placeholder secrets, and the next operator step.",
     "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
     "Can author YAML-based smart-home firmware through ESPHomer and ESPHome, including zero-config bootstrap, device-config generation, validation, compile, USB/OTA upload, and bounded log observation for ESP32 / ESP8266 / RP2040 / BK72xx devices.",
@@ -948,6 +950,8 @@ HOW_IT_WORKS = [
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that either copy the live database out or stage a replacement into `DB/ToLoad/db.sqlite3`.",
     "Config -> Access Keys Wizard reads masked provider-key status from the backend and persists only the edited secrets, keeping the browser flow honest without dumping live values back to the page.",
     "The file-navigation and file-edit trio sits above raw shell execution: Globber enumerates matching files, Grepper scans content with regex while pruning noisy/binary trees, and Editor performs byte-exact in-place replacements without rewriting an entire file.",
+    "External MCP connectivity is catalog-driven: `external_mcps.json` stores Claude-style `mcpServers` entries, `external_mcp_manager.py` negotiates stdio / streamable-HTTP / SSE / WebSocket transports, and wrapped remote tools are surfaced into the planner as `ext__<server>__<tool>` only after the connection is healthy.",
+    "The MCP Doctor path is intentionally safer than a live connect: it reads the configured server entry, validates transport shape, runtime commands, PATH/toolchain presence, placeholder secrets, and docs/source URLs, then returns an onboarding diagnosis without consuming the server's real tool surface.",
     "Blenderer opens the official Blender MCP add-on TCP socket (default `localhost:9876`), sends one action payload or raw code-execution request, and returns the structured result through the same wrapped-tool / canvas contract used by the rest of the agent catalog.",
     "When Ask Execs is enabled, the synchronous Multi-Turn executor stops before each state-changing tool call, emits an `exec_permission_request`, and waits on `ExecPermissionBroker` until the browser sends Proceed or Deny.",
     "When the browser surfaces an Ask Execs prompt or a Notifier event, JavaScript can POST to `/agent/flash_window/`; the backend then best-effort flashes the `Tlamatini.exe` console/taskbar window through `window_flash.py` and prints an uppercase attention banner for the log.",
@@ -980,6 +984,9 @@ HOW_TO_USE = [
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Use `chat_agent_globber` to find files by pattern, `chat_agent_grepper` to locate matching content, and `chat_agent_editor` when you need an exact in-place change instead of rewriting a whole file or shelling out to grep/findstr/sed.",
+    "To use the External MCP capability, open `External -> MCPs`, register or import a server into `external_mcps.json`, choose the transport/runtime fields, and let the dialog connect it before expecting its `ext__<server>__<tool>` tools to appear in Multi-Turn.",
+    "When you are onboarding or debugging an external MCP, call `chat_agent_mcp_doctor` first or use the MCP Doctor workflow node; it can tell you whether the issue is transport selection, a missing runtime on PATH, placeholder secrets, or a bad endpoint before you spend time on a live connect attempt.",
+    "If you want a guided external-MCP onboarding flow, use the Step-by-Step mode in the External MCP dialog so each required field is introduced progressively instead of dumping the whole connection contract at once.",
     "Use Config -> Access Keys Wizard when you need to wire or update provider credentials without editing `config.json` manually.",
     "Use About -> Check for updates on packaged installs when you want Tlamatini to fetch and stage the latest release without manually replacing the install folder.",
     "Tick `Ask Execs` when you want human approval before each state-changing Multi-Turn step; it is disabled until Multi-Turn is on, and a single Deny stops the whole chain with an explicit red interruption banner.",
@@ -1011,7 +1018,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
+    "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; MCP Doctor performs safe external-MCP onboarding diagnosis; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; and TeleTlamatini / WhatsTlamatini bridge full Tlamatini conversations into messaging platforms.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -1024,16 +1031,35 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     return [
         f"The live operator surface now stands at {context['workflow_agent_count']} workflow agents, {context['total_multi_turn_tools']} Multi-Turn tools, {context['acpx_tool_count']} ACPX tools, and {context['skills_count']} skills.",
         f"Source inspection confirms the total: {context['wrapped_chat_agent_count']} distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with {context['core_python_tool_count']} core Python tools and {context['acpx_tool_count']} ACPX/Skill tools for {context['total_multi_turn_tools']} Multi-Turn tools overall.",
-        "The count increase over the older 77/84 story now comes from two waves together: the deterministic file-navigation/file-edit trio — Globber, Grepper, and Editor — plus ESPHomer, the new ESPHome smart-home firmware lane. All four exist both on the visual canvas and as wrapped chat-agent tools.",
+        "The count growth over older public badges now comes from several stacked waves together: the deterministic file-navigation/file-edit trio (Globber, Grepper, Editor), the ESPHomer smart-home firmware lane, and the newer MCP Doctor onboarding specialist that accompanies the External MCP universal client release.",
         "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
         "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to `v1.24.0` from the latest tag `eb92877` dated June 15, 2026; the current HEAD `c0c633c` later the same day keeps that version line and layers the ESPHomer smart-home firmware surface on top of it.",
+    "The repository currently resolves to `v1.26.0` from the latest tag `30a87f3`, the External MCPs release; its defining feature is the External MCPs universal client (connect to any MCP server over stdio / streamable-HTTP / SSE / WebSocket, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode), with the earlier ESPHomer smart-home firmware lane already contained in this version.",
+    "Operators reach that capability from a first-class UI surface: the `External -> MCPs` menu manages the server catalog, imports or exports Claude-style JSON, and can progressively guide setup instead of assuming the user already knows every transport and runtime field.",
     "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
     "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
-    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, and the current HEAD extends the firmware stack further with ESPHomer for ESPHome-based smart-home devices.",
+    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, the firmware stack already includes ESPHomer for ESPHome-based smart-home devices, and v1.26.0 adds the External MCPs universal client so Tlamatini can use the tools of any external MCP server declared in JSON.",
+]
+
+EXTERNAL_MCPS_GUIDE = [
+    "The `v1.26.0` headline feature is the External MCP universal client: Tlamatini can now consume any MCP server declared in `external_mcps.json` instead of depending only on bundled MCP integrations.",
+    "Four transports are supported in the current implementation — stdio, streamable HTTP, legacy SSE, and WebSocket — and the active server set is intentionally bounded so operators can expose high-value remote tools without flooding the planner.",
+    "Once connected, remote MCP tools are wrapped into the same Multi-Turn execution surface under `ext__<server>__<tool>`, so they participate in planning, execution reporting, Ask Execs, and the rest of the operator guardrails instead of becoming a parallel hidden subsystem.",
+]
+
+MCP_DOCTOR_GUIDE = [
+    "MCP Doctor is the new onboarding and triage specialist added with the External MCP release: she inspects a configured server entry and tells the operator what is wrong before a live connection attempt wastes time.",
+    "The diagnostic checks cover transport shape, runtime command availability on PATH, placeholder or missing secrets, endpoint/source/docs links, and the concrete next step the operator should take to make the server connectable.",
+    "Operators can reach the same behavior from both surfaces that matter: the MCP Doctor workflow agent on the canvas and the wrapped `chat_agent_mcp_doctor` tool inside Multi-Turn.",
+]
+
+EXTERNAL_MCP_ASSETS_GUIDE = [
+    "The release is backed by real tracked assets rather than markdown-only claims: `agent/external_mcp_manager.py`, `agent/external_mcps.json`, the `agent/agents/mcp_doctor/` tree, the `0141`-`0143` migrations, `static/agent/js/external_mcps_dialog.js`, and `static/agent/css/external_mcps_dialog.css` are the core implementation wave.",
+    "The current test surface proves this is not a shallow UI feature: `test_external_mcp_universal.py`, `test_external_mcp_transports.py`, `test_external_mcp_e2e.py`, `test_external_mcp_add_flow.py`, and `test_parametrizer_mcp_doctor.py` exercise the universal-client path and the onboarding diagnosis path.",
+    "Handbook and design evidence now exist alongside the code too: `docs/external_mcp_bulletproof_architecture.md`, the new README tutorial, Book sections, capability/planner wiring, and the dialog assets all moved together in the same release wave.",
 ]
 
 BLENDERER_GUIDE = [
@@ -1081,8 +1107,8 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent assets worth calling out explicitly now span several release waves: `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater, `build.py` for numpy/OpenCV embedding checks, the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery, and the new `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
-    "The current `v1.24.0` window also refreshes shipped visual assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is now part of the repository asset set described by the dossier.",
+    "Recent assets worth calling out explicitly now span several release waves: `agent/external_mcp_manager.py`, `agent/external_mcps.json`, the `agent/agents/mcp_doctor/` tree, `static/agent/js/external_mcps_dialog.js`, `static/agent/css/external_mcps_dialog.css`, and the `0141`-`0143` migrations for the External MCP + MCP Doctor release; `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater; `build.py` for numpy/OpenCV embedding checks; the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery; and the `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
+    "The current `v1.26.0` window also refreshes shipped visual assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is now part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
     "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
     "Because the dossier already includes the full repository inventory (git-tracked files plus git-unignored working-tree additions) and the full line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
@@ -1091,7 +1117,7 @@ NEW_ASSETS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.24.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.26.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1113,7 +1139,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.24.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current `v1.26.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -1131,7 +1157,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.24.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current `v1.26.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -1705,8 +1731,17 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Current release focus in v1.24.0", styles["h2"]))
+    story.append(p("Current release focus in v1.26.0", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("External MCP universal client", styles["h2"]))
+    for item in EXTERNAL_MCPS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("MCP Doctor agent and wrapped tool", styles["h2"]))
+    for item in MCP_DOCTOR_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("External MCP implementation assets", styles["h2"]))
+    for item in EXTERNAL_MCP_ASSETS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Blenderer", styles["h2"]))
     for item in BLENDERER_GUIDE:
@@ -1910,6 +1945,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("How agent runtimes are shaped", styles["h2"]))
     for item in AGENT_RUNTIME_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("MCP Doctor spotlight", styles["h2"]))
+    for item in MCP_DOCTOR_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Blenderer spotlight", styles["h2"]))
     for item in BLENDERER_GUIDE:
@@ -2446,7 +2484,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.24.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.26.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2460,7 +2498,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.24.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.26.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2469,13 +2507,27 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.24.0 tag plus same-day HEAD updates", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.26.0 External MCPs universal client", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "The version story is now explicit: the repo resolves to `v1.24.0` from the latest tag, while the current HEAD one commit later adds ESPHomer without changing that version baseline.",
+        "The version story is now explicit: the repo resolves to `v1.26.0` from the latest tag, the External MCPs release, whose defining feature is the universal MCP client (any external MCP server over four transports, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode), with the earlier ESPHomer firmware lane already contained in that baseline.",
         "Operators still inherit the two major foundations from the immediately prior release line: self-update preserves the user's database and custom toggles, and frozen builds ship the numpy/OpenCV native libraries the media agents need.",
         "The resulting narrative matches the current README, Book, Git history, new media assets, and source tree more honestly than the older milestone-only framing.",
     ], THEME["jade"], "rel-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "External MCPs", "how Tlamatini now reaches tools outside her bundled runtime", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator model", EXTERNAL_MCPS_GUIDE, THEME["jade"], "xmcp-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Concrete implementation", EXTERNAL_MCP_ASSETS_GUIDE, THEME["amber"], "xmcp-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "MCP Doctor", "safe onboarding and diagnostics before live external MCP use", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What she does", MCP_DOCTOR_GUIDE, THEME["copper"], "doctor-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "How operators use it", [
+        "Open `External -> MCPs` to add or import a server, then run MCP Doctor before the first real connect if the runtime, endpoint, or secret story is still uncertain.",
+        "In Multi-Turn, call `chat_agent_mcp_doctor` when you want the LLM to triage a server declaratively instead of guessing from prose about PATH, env vars, or transport settings.",
+        "Because the diagnosis path is static and fail-safe, it surfaces onboarding mistakes early without leaking into a half-connected remote-tool session.",
+    ], THEME["jade"], "doctor-b", 11)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Blenderer And Self-Update", "how to use the newest release surfaces", THEME["jade"])
@@ -2806,10 +2858,10 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.24.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.26.0", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
-        "ESPHomer (current working tree): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
+        "ESPHomer (prior firmware lane, now folded into v1.26.0): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
         "Blenderer (introduced in v1.20.0): the live Blender bridge over the official MCP add-on socket, so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
         "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
         "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
@@ -2818,10 +2870,10 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Version identity (v1.24.0): the latest tag now resolves the product to `1.24.0` across VERSIONING.md, release-folder naming, the About dialog story, startup banner wording, and `/agent/version/` expectations.",
-        "Visual/media asset refresh (v1.24.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
-        "Self-update foundation (v1.23.0 carried into v1.24.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
-        "Frozen-build hardening (v1.23.0 carried into v1.24.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
+        "Version identity (v1.26.0): the latest tag now resolves the product to `1.26.0` across VERSIONING.md, release-folder naming, the About dialog story, startup banner wording, and `/agent/version/` expectations; v1.26.0's defining feature is the External MCPs universal client (plus the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
+        "Visual/media asset refresh (v1.26.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
+        "Self-update foundation (v1.23.0 carried into v1.26.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
+        "Frozen-build hardening (v1.23.0 carried into v1.26.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, ESPHomer, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with first-build-downloads-a-large-toolchain caveats where needed.",
