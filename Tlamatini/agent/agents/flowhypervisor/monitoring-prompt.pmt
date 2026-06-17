@@ -70,7 +70,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
+  ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
   Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
@@ -489,6 +489,7 @@ TYPICAL TIMING:
   - Barrier: waits for all source agents to check in (duration depends on source agents; flag if > 10 min with no output)
   - Parametrizer: usually short-lived, but it may remain alive while its source agent is still generating segments or while it is draining several queued source segments sequentially
   - ACPXer: sub-second to 180 s on `oneshot-prompt` transport (matches the hard cap for long LLM answers); < 45 s on `json-acp`; < 8 s on `tui-repl`. See ACPXER SPECIAL NOTES above for the per-transport drain rules.
+  - MCP Doctor: reads `external_mcps.json`, diagnoses External MCP transport/runtime/secrets/status, emits `INI_SECTION_MCP_DOCTOR`, then exits. It should be short-lived (normally seconds); a missing Docker/NPX/Python runtime, placeholder secret, unsupported TCP/raw/named-pipe carrier, or unready remote URL is routable diagnostic content, NOT a flow error. Flag only if the process itself runs > 5 min with no `MCP Doctor agent finished` marker.
   - Unrealer: sub-second to a few seconds for actor / transform / property commands; seconds to tens of seconds for `compile_blueprint` on large Blueprints. Flag if > 60 s with no completion.
   - Blenderer: sub-second to a few seconds for read/inspection verbs and small mutations; tens of seconds to minutes for `render` or a heavy `execute_code` (the agent raises the socket read-timeout to a per-command floor for these). Flag a read/inspection verb only if > 60 s with no completion.
   - Reviewer: one LLM call over a git diff — sub-second to ~2 min depending on diff size and model (local vs cloud). Flag only if > 5 min with no completion.
@@ -509,6 +510,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "REANIMATED (resuming from pause)" — agent resumed after pause (NORMAL)
   "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
   "📦 DE-COMPRESSER AGENT STARTED" — De-Compresser began a compression or decompression run
+  "🩺 MCP DOCTOR AGENT STARTED" — MCP Doctor began diagnosing External MCP catalog/server readiness
   "🎮 UNREALER AGENT STARTED" — Unrealer began dispatching a JSON command to the Unreal MCP plugin
   "🎨 BLENDERER AGENT STARTED" — Blenderer began dispatching code to the Blender MCP add-on socket
   "🔍 REVIEWER AGENT STARTED" — Reviewer began resolving a git diff for LLM review
