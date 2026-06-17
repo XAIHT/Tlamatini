@@ -10,7 +10,7 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
-### 2026-06-16 → 06-17 — External MCPs era: universal MCP client (4 transports) + 8 supervisor tools + `external_mcp_wait` + MCP Doctor + full-surface Multi-Turn + Step-by-Step (v1.24.0, committed `51d3ebd`, pushed to `main`) — do NOT revert
+### 2026-06-16 → 06-17 — External MCPs era: universal MCP client (4 transports) + 8 supervisor tools + `external_mcp_wait` + MCP Doctor + full-surface Multi-Turn + Step-by-Step (v1.26.0, committed `51d3ebd`, pushed to `main`) — do NOT revert
 
 A large Claude + Codex collaboration. Full design contract: `docs/external_mcp_bulletproof_architecture.md`; user/how-to docs: `docs/claude/mcp-tools.md`. The "do NOT revert / keep aligned" contracts:
 

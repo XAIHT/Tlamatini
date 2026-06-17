@@ -33,7 +33,7 @@ She can do all of that — self-hosted on your own machine, powered by the model
 ---
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.24.0"><img src="https://img.shields.io/badge/VERSION-v1.24.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.24.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.0"><img src="https://img.shields.io/badge/VERSION-v1.26.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.26.0" /></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python 3.12.10" /></a>
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/DJANGO-5.2.4-092E20?style=for-the-badge&labelColor=2D2D2D&logo=django&logoColor=white" alt="Django 5.2.4" /></a>
   <a href="#7-building-a-frozen-distribution"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform Windows 10 | 11" /></a>
@@ -86,7 +86,7 @@ ollama pull kimi-k2.6:cloud
 ollama pull Nomic-Embed-Text:latest
 ```
 
-**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.24.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.24.0)**, then:
+**3 · Install Tlamatini from the release ZIP** — download **[Tlamatini v1.26.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.0)**, then:
 
 ```text
 1. Unzip the release archive anywhere (no admin rights needed).
@@ -102,9 +102,9 @@ Prefer running from a cloned repo instead of the ZIP? Use the full [§2 Quicksta
 ---
 
 <details open>
-<summary><strong>&#128230; What's new in v1.24.0 (2026-06-17) &mdash; click to expand</strong></summary>
+<summary><strong>&#128230; What's new in v1.26.0 (2026-06-17) &mdash; click to expand</strong></summary>
 
-> **v1.24.0 (2026-06-17)** turns Tlamatini into a **universal MCP client**. A new **External &#9656; MCPs** menu lets her connect to and use the tools of **any** external Model Context Protocol server declared in a JSON file (the same `mcpServers` shape a Claude-Code `.mcp.json` uses) &mdash; with no hardcoding &mdash; over **four transports** (stdio, streamable-HTTP, legacy SSE, WebSocket), up to **5 servers active at once**. Tick servers in a searchable catalog, or drag a `.json` file onto it to import; once active, the LLM calls each server's tools in Multi-Turn (wrapped as `ext__<server>__<tool>`) and manages them with supervisor tools (status / reconnect / doctor / list_tools / call / import / set_active / wait). Verified live driving 10 different no-key servers (memory, sqlite, redis, fetch, time, everything, sequentialthinking, filesystem, git, puppeteer). The release also adds the **MCP Doctor** agent (canvas + `chat_agent_mcp_doctor`), which diagnoses a catalogued MCP *without connecting* &mdash; transport, runtime prerequisite, command-on-`PATH`, missing/placeholder secrets, and the exact next setup step; a new **Step-by-Step** chat toggle that guides a hands-on setup one confirmed step at a time; and **full-surface Multi-Turn** &mdash; with Multi-Turn on, Tlamatini now binds her *entire* enabled tool/agent/skill surface (ACPX/Skill tools still gated by the ACPX checkbox) instead of a narrowed subset, so she never lacks a needed tool mid-task.
+> **v1.26.0 (2026-06-17)** turns Tlamatini into a **universal MCP client**. A new **External &#9656; MCPs** menu lets her connect to and use the tools of **any** external Model Context Protocol server declared in a JSON file (the same `mcpServers` shape a Claude-Code `.mcp.json` uses) &mdash; with no hardcoding &mdash; over **four transports** (stdio, streamable-HTTP, legacy SSE, WebSocket), up to **5 servers active at once**. Tick servers in a searchable catalog, or drag a `.json` file onto it to import; once active, the LLM calls each server's tools in Multi-Turn (wrapped as `ext__<server>__<tool>`) and manages them with supervisor tools (status / reconnect / doctor / list_tools / call / import / set_active / wait). Verified live driving 10 different no-key servers (memory, sqlite, redis, fetch, time, everything, sequentialthinking, filesystem, git, puppeteer). The release also adds the **MCP Doctor** agent (canvas + `chat_agent_mcp_doctor`), which diagnoses a catalogued MCP *without connecting* &mdash; transport, runtime prerequisite, command-on-`PATH`, missing/placeholder secrets, and the exact next setup step; a new **Step-by-Step** chat toggle that guides a hands-on setup one confirmed step at a time; and **full-surface Multi-Turn** &mdash; with Multi-Turn on, Tlamatini now binds her *entire* enabled tool/agent/skill surface (ACPX/Skill tools still gated by the ACPX checkbox) instead of a narrowed subset, so she never lacks a needed tool mid-task.
 
 </details>
 
@@ -2041,22 +2041,22 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 ### 13.2. Cutting a release
 
 ```powershell
-git tag -a v1.24.0 -m "Release 1.24.0: <one-line summary>"
-git push origin v1.24.0
+git tag -a v1.26.0 -m "Release 1.26.0: <one-line summary>"
+git push origin v1.26.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.24.0/`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The artefact lands in `dist/Tlamatini_Release_v1.26.0/`.
 
 ### 13.3. Where you can see the running version
 
 | Surface | Example |
 |---|---|
-| About dialog | `Tlamatini v1.24.0` |
-| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.24.0` |
-| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.24.0","commit":"abc1234", …}` |
+| About dialog | `Tlamatini v1.26.0` |
+| Startup banner (console + `tlamatini.log`) | `--- [VERSION] Tlamatini 1.26.0` |
+| HTTP endpoint (open, usable as a health-check) | `GET /agent/version/` → `{"version":"1.26.0","commit":"abc1234", …}` |
 | Win32 properties on `Tlamatini.exe` / `Installer.exe` / `Uninstaller.exe` | Right-click → Properties → Details → ProductVersion |
 
 All four are computed from the same `Tlamatini/agent/_version.py` that `build.py` writes (gitignored, regenerated on every build).
@@ -2080,8 +2080,8 @@ No `.devN`, no `+gSHA`, no `.dirty` ever appears in the version string — those
 | # | Source | Use case |
 |---|---|---|
 | 1 (highest) | `python build.py --version 2.0.0-rc.1` | Local RC build before tagging |
-| 2 | `$env:TLAMATINI_VERSION = "1.24.0"; python build.py` | CI pipelines |
-| 3 | `git tag -a v1.24.0 …` (then build) | The normal release path |
+| 2 | `$env:TLAMATINI_VERSION = "1.26.0"; python build.py` | CI pipelines |
+| 3 | `git tag -a v1.26.0 …` (then build) | The normal release path |
 | 4 (lowest) | _(none — sentinel `0.0.0+unknown`)_ | Running from a download zip with no git |
 
 `build.py` exports `$env:TLAMATINI_VERSION` after resolving, so `build_installer.py` and `build_uninstaller.py` in the same shell see the same value — the three artefacts cannot disagree.
