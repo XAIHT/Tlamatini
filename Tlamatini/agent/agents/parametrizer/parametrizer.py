@@ -131,6 +131,7 @@ SECTION_AGENT_TYPES = [
     'esp32er',
     'esphomer',
     'arduiner',
+    'mcp_doctor',
 ]
 
 

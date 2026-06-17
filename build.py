@@ -1024,6 +1024,16 @@ def main():
         # so --collect-all embeds cv2 in the frozen _internal too, for parity with
         # the carried Python. numpy is handled by pyinstaller_hooks/hook-numpy.py.
         '--collect-all', 'cv2',
+        # External MCPs network transports: external_mcp_manager.py (which runs in
+        # THIS frozen Django process, not the carried Python) reaches remote MCP
+        # servers over Streamable HTTP / SSE (httpx) and WebSocket (websockets).
+        # httpx arrives transitively via anthropic, but websockets has no other
+        # importer in the frozen graph, so without these collect-alls a frozen build
+        # would catalogue an http/ws MCP yet fail to connect it. The lazy in-function
+        # imports are made bullet-proof here.
+        '--collect-all', 'httpx',
+        '--collect-all', 'websockets',
+        '--hidden-import=websockets.sync.client',
         'Tlamatini/manage.py'
     ]
 
@@ -1086,6 +1096,12 @@ def main():
             # executable in frozen mode) exactly like prompt.pmt / config.json,
             # so it must land at the install root — not only inside the bundle.
             Path("Tlamatini") / "agent" / "Tlamatini.md": dist_manage / "Tlamatini.md",
+            # external_mcps.json is the External ▸ MCPs catalog + active set.
+            # external_mcp_manager resolves it next to config.json (install root
+            # in frozen mode), so the seed must land at the install root. It is
+            # also PRESERVED across self-update (apply_update.ps1 $Preserve) so a
+            # user's added servers + active selection survive updates, like config.json.
+            Path("Tlamatini") / "agent" / "external_mcps.json": dist_manage / "external_mcps.json",
         }
         for src, dst in optional_file_copies.items():
             if src.exists():

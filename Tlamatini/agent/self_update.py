@@ -16,7 +16,7 @@ for this process to die, swaps the files, and relaunches Tlamatini.
 
 Preserved across the swap (everything else is replaced)::
 
-    config.json  DB  application  applications  content_generated
+    config.json  external_mcps.json  DB  application  applications  content_generated
     Temp  context_files  doc_generated  documentation  Templates
     Uninstaller.exe
 

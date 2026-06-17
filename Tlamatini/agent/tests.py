@@ -1965,9 +1965,11 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         executor.max_iterations = 1
         executor._executor_cache = {}
         executor.legacy_executor = _RecordingExecutor()
-        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor()
+        executor._get_executor_for_tools = (
+            lambda tools_subset, step_by_step_enabled=False: _RecordingExecutor()
+        )
 
-        with patch('agent.mcp_agent.select_tools_for_request', return_value=[]):
+        with patch('agent.external_mcp_manager.get_external_mcp_tools', return_value=[]):
             result = CapabilityAwareToolAgentExecutor.invoke(
                 executor,
                 {'input': 'run something', 'multi_turn_enabled': True},
@@ -1977,7 +1979,10 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         self.assertEqual(observed, [True])
         self.assertFalse(get_request_state('suppress_visible_consoles', False))
 
-    def test_capability_executor_uses_global_plan_tool_subset_before_selector(self):
+    def test_multi_turn_binds_full_surface_even_with_a_narrow_plan(self):
+        # MANDATE (Angela, 2026-06-16): Multi-Turn binds EVERY enabled tool — even
+        # when the planner named only a subset. The operator loop must never be
+        # starved ("I don't have a file-writing or shell tool bound this turn").
         captured = {}
 
         class _RecordingExecutor:
@@ -2005,9 +2010,11 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         executor.max_iterations = 1
         executor._executor_cache = {}
         executor.legacy_executor = _RecordingExecutor(['legacy'])
-        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor([tool.name for tool in tools_subset])
+        executor._get_executor_for_tools = (
+            lambda tools_subset, step_by_step_enabled=False: _RecordingExecutor([tool.name for tool in tools_subset])
+        )
 
-        with patch('agent.mcp_agent.select_tools_for_request', side_effect=AssertionError('selector should not run when a global plan is present')):
+        with patch('agent.external_mcp_manager.get_external_mcp_tools', return_value=[]):
             result = CapabilityAwareToolAgentExecutor.invoke(
                 executor,
                 {
@@ -2025,10 +2032,16 @@ class MultiTurnBackgroundLaunchTests(TestCase):
             )
 
         self.assertEqual(result, {'output': 'ok'})
-        self.assertEqual(captured['tool_names'], ['get_current_time'])
+        # The plan named only get_current_time, but Multi-Turn binds the FULL surface.
+        self.assertEqual(captured['tool_names'], ['get_current_time', 'execute_command'])
+        # The planner summary is still forwarded for the prompt's ordering hint.
         self.assertEqual(captured['payload']['planner_summary'], 'use get_current_time only')
 
-    def test_capability_executor_allows_context_only_global_plan_with_no_tools(self):
+    def test_multi_turn_binds_full_surface_even_for_context_only_plan(self):
+        # MANDATE (Angela, 2026-06-16): even a context_only plan must NOT starve
+        # Multi-Turn — the user may still ask Tlamatini to ACT, so every enabled
+        # tool stays available. (This deliberately reverses the old "context_only
+        # binds zero tools" behavior.)
         captured = {}
 
         class _RecordingExecutor:
@@ -2056,9 +2069,11 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         executor.max_iterations = 1
         executor._executor_cache = {}
         executor.legacy_executor = _RecordingExecutor(['legacy'])
-        executor._get_executor_for_tools = lambda tools_subset: _RecordingExecutor([tool.name for tool in tools_subset])
+        executor._get_executor_for_tools = (
+            lambda tools_subset, step_by_step_enabled=False: _RecordingExecutor([tool.name for tool in tools_subset])
+        )
 
-        with patch('agent.mcp_agent.select_tools_for_request', side_effect=AssertionError('selector should not run when a global plan is present')):
+        with patch('agent.external_mcp_manager.get_external_mcp_tools', return_value=[]):
             result = CapabilityAwareToolAgentExecutor.invoke(
                 executor,
                 {
@@ -2076,7 +2091,8 @@ class MultiTurnBackgroundLaunchTests(TestCase):
             )
 
         self.assertEqual(result, {'output': 'ok'})
-        self.assertEqual(captured['tool_names'], [])
+        # context_only no longer starves Multi-Turn: the full surface stays bound.
+        self.assertEqual(captured['tool_names'], ['get_current_time', 'execute_command'])
 
     def test_capability_executor_ignores_global_plan_when_multi_turn_disabled(self):
         # When Multi-Turn is disabled (and ACPX off), the executor must IGNORE
@@ -2105,17 +2121,16 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         ]
         executor.max_iterations = 1
         executor._executor_cache = {}
-        # Neither the cached capability executor nor self.legacy_executor may be
-        # consulted on the multi-turn-disabled / acpx-disabled path.
+        # self.legacy_executor (the cached full-tool executor) must NOT run on the
+        # acpx-disabled legacy path — it builds a FRESH executor over the
+        # request-scoped tools via the real _get_executor_for_tools (which
+        # constructs the patched MultiTurnToolAgentExecutor below).
         executor.legacy_executor = SimpleNamespace(
             invoke=lambda payload: (_ for _ in ()).throw(
                 AssertionError('self.legacy_executor must not run on the acpx-disabled legacy path')))
-        executor._get_executor_for_tools = lambda tools_subset: (_ for _ in ()).throw(
-            AssertionError('capability executor must not run when multi-turn is disabled'))
 
         with patch('agent.mcp_agent.MultiTurnToolAgentExecutor', _RecordingLegacyExecutor), \
-             patch('agent.mcp_agent.select_tools_for_request',
-                   side_effect=AssertionError('selector must not run when multi-turn is disabled')):
+             patch('agent.external_mcp_manager.get_external_mcp_tools', return_value=[]):
             result = CapabilityAwareToolAgentExecutor.invoke(
                 executor,
                 {

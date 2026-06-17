@@ -1324,6 +1324,9 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "movement_type", "end_posx", "end_posy",
         "button_click", "clicked", "located_via",
     ),
+    "mcp_doctor": (
+        "server_key", "transport", "runtime", "supported", "status", "catalog_path",
+    ),
 }
 
 
@@ -4032,5 +4035,16 @@ def get_mcp_tools():
     except Exception:
         # Never let an ACPX import error block tool initialization. Log only.
         logger.exception("[ACPX] failed to register tools")
+
+    # ── External MCP servers (config-driven catalog, max 5 active) ────
+    # Tools exposed by the user's activated external MCP servers (declared
+    # in external_mcps.json, managed via the External ▸ MCPs menu). Lazy +
+    # cached; only the active ≤5 servers are ever connected. Fully
+    # defensive — get_external_mcp_tools() never raises.
+    try:
+        from .external_mcp_manager import get_external_mcp_tools
+        tools.extend(get_external_mcp_tools())
+    except Exception:
+        logger.exception("[ExternalMCP] failed to register external MCP tools")
 
     return tools

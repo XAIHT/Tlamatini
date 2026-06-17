@@ -1,0 +1,133 @@
+{
+  "mcpServers": {
+    "Roblox_Studio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "%LOCALAPPDATA%\\Roblox\\mcp.bat"
+      ]
+    },
+    "redis": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--network",
+        "redis-mcp-net",
+        "-e",
+        "REDIS_HOST=redis-server",
+        "-e",
+        "REDIS_PORT=6379",
+        "mcp/redis"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "memory": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/memory"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "sqlite": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/sqlite",
+        "--db-path",
+        "/tmp/suite.db"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "fetch": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/fetch"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "time": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/time"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "everything": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/everything"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "sequentialthinking": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/sequentialthinking"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "filesystem": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/filesystem",
+        "/tmp"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "git": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/git"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    },
+    "puppeteer": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/puppeteer"
+      ],
+      "command": "docker",
+      "env": {},
+      "transport": "stdio"
+    }
+  },
+  "active": [
+    "puppeteer"
+  ]
+}

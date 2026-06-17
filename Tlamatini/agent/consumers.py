@@ -618,7 +618,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False):
         broker = None
         broker_key = conversation_user.id
         try:
@@ -674,6 +674,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(acpx_enabled),
                     "ask_execs_enabled": ask_execs_enabled,
+                    "step_by_step_enabled": bool(step_by_step_enabled),
                 },
                 inet_enabled=self.inet_enabled
             )
@@ -850,6 +851,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # Ask-Execs (per-tool permission prompt) is a Multi-Turn-only
             # modifier — gated to multi_turn_enabled like exec_report.
             ask_execs_enabled = bool(text_data_json.get('ask_execs_enabled', False)) and multi_turn_enabled
+            step_by_step_enabled = bool(text_data_json.get('step_by_step_enabled', False))
 
             if 'type' in text_data_json:
                 type = text_data_json['type']
@@ -1421,6 +1423,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 exec_report_enabled=exec_report_enabled,
                 acpx_enabled=acpx_enabled,
                 ask_execs_enabled=ask_execs_enabled,
+                step_by_step_enabled=step_by_step_enabled,
             ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")

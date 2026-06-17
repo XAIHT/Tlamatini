@@ -1,0 +1,10 @@
+# MCP Doctor Agent Configuration
+server_key: ""
+catalog_path: ""
+source_url: ""
+mode: "diagnose"
+include_catalog: true
+
+# Connection fields
+source_agents: []
+target_agents: []

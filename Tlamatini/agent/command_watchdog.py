@@ -173,6 +173,18 @@ def _protected_pids(our_pid: int) -> Set[int]:
     return protected
 
 
+def _external_mcp_protected_pids() -> Set[int]:
+    """PIDs of live External-MCP server launchers — exempt from reaping. A stdio
+    MCP server is long-lived and idle between JSON-RPC messages, so it looks
+    exactly like a hung shell; killing it tore down the Roblox StudioMCP proxy
+    (and its :4932 listener). Fail-safe: empty set on any error."""
+    try:
+        from . import external_mcp_manager as _emm
+        return set(_emm.external_mcp_root_pids())
+    except Exception:
+        return set()
+
+
 def _kill_tree(proc, errors: List[str]) -> int:
     """Kill *proc* and every descendant (descendants first so handle holders
     die before the root). Returns the count actually reaped. Never raises."""
@@ -263,6 +275,24 @@ class CommandWatchdog:
         except Exception:
             return -1
 
+    @staticmethod
+    def _has_protected_ancestor(proc, protected_pids: Set[int]) -> bool:
+        """True if any ancestor PID is in ``protected_pids`` — so a shell that
+        lives INSIDE an exempt External-MCP server subtree is also spared."""
+        if not protected_pids:
+            return False
+        try:
+            cur = proc
+            for _ in range(12):
+                cur = cur.parent()
+                if cur is None:
+                    break
+                if int(cur.pid) in protected_pids:
+                    return True
+        except Exception:
+            pass
+        return False
+
     def _subtree_metrics(self, root) -> Optional[Tuple[float, float]]:
         """Return ``(cumulative_cpu_seconds, cumulative_io_bytes)`` summed over
         ``root`` and every descendant — a monotonically increasing "work done"
@@ -316,12 +346,20 @@ class CommandWatchdog:
             current = []
 
         seen: Set[int] = set()
+        mcp_protected = _external_mcp_protected_pids()
         for proc in current:
             pid = self._proc_pid(proc)
             if pid < 0 or pid in self._protected or pid == self.our_pid:
                 continue
             name = self._proc_name(proc)
             if name not in _SHELL_NAMES:
+                continue
+            if pid in mcp_protected or self._has_protected_ancestor(proc, mcp_protected):
+                # External-MCP server launcher (e.g. ``cmd.exe /c mcp.bat`` →
+                # StudioMCP.exe, or a docker stdio server). A stdio MCP server
+                # sits IDLE between JSON-RPC messages BY DESIGN, so it must never
+                # be reaped as a hung shell — that was killing the Roblox proxy
+                # (and its :4932 bridge) ~181 s after connect.
                 continue
             seen.add(pid)
 

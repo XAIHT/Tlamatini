@@ -128,6 +128,53 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
     "chat_agent_run_status": ("run status", "status", "running"),
     "chat_agent_run_log": ("run log", "logs", "output"),
     "chat_agent_run_stop": ("stop run", "cancel run", "terminate run"),
+    "external_mcp_status": (
+        "mcp", "mcps", "external mcp", "external mcps", "mcp status",
+        "mcp health", "mcp tools", "mcp bridge", "mcp connected",
+        "roblox mcp", "roblox studio mcp", "studio mcp", "studiomcp",
+        "localhost 4932", "tools list", "0 tools", "zero tools",
+    ),
+    "external_mcp_reconnect": (
+        "reconnect mcp", "restart mcp", "recover mcp", "fix mcp",
+        "reconnect external mcp", "restart external mcp",
+        "reconnect roblox", "restart roblox mcp", "fix roblox mcp",
+    ),
+    "external_mcp_doctor": (
+        "mcp doctor", "diagnose mcp", "mcp diagnostics", "new mcp",
+        "unknown mcp", "setup mcp", "mcp setup", "mcp.so",
+        "marketplace mcp", "investigate mcp", "mcp requirements",
+        "mcp transport", "mcp command", "mcp runtime", "docker mcp",
+        "npx mcp", "uvx mcp", "websocket mcp", "socket mcp",
+        "sse mcp", "streamable http mcp", "raw socket mcp",
+        "missing secret", "mcp env",
+    ),
+    "external_mcp_list_tools": (
+        "mcp tools", "list mcp tools", "external mcp tools",
+        "available mcp tools", "what tools", "tool schema", "tool schemas",
+        "redis mcp tools", "roblox mcp tools", "missing mcp tool",
+        "does not have", "not available", "unavailable",
+    ),
+    "external_mcp_call": (
+        "call mcp tool", "use mcp tool", "external mcp call",
+        "invoke mcp", "dispatch mcp", "redis mcp", "roblox mcp",
+        "set key", "get key", "write key", "read key",
+    ),
+    "external_mcp_import": (
+        "add mcp", "add the mcp", "add an mcp", "add redis", "add redis mcp",
+        "import mcp", "install mcp", "install the mcp", "register mcp",
+        "set up mcp", "setup mcp", "new mcp", "add this mcp", "add a new mcp",
+        "paste mcp json", "mcp json", "mcpservers", "configure mcp", "connect mcp",
+    ),
+    "external_mcp_set_active": (
+        "activate mcp", "enable mcp", "turn on mcp", "make mcp active",
+        "activate redis", "enable the mcp", "connect the mcp", "use the mcp",
+        "set up mcp", "setup mcp", "add redis mcp", "add the mcp",
+    ),
+    "external_mcp_wait": (
+        "wait for mcp", "wait for the mcp", "until mcp ready", "mcp connecting",
+        "mcp not ready", "still connecting", "wait until connected", "add mcp",
+        "set up mcp", "setup mcp", "activate mcp", "docker pull", "first run",
+    ),
     # ── ACPX tool surface ────────────────────────────────────────────
     # Hints are tuned so the prompts in agent/migrations/0072 + 0073
     # (and the End-to-End ACPX Pipeline / Multi-CLI ACPX Relay demos)

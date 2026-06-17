@@ -49,7 +49,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer, Unrealer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer, Unrealer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -976,6 +976,22 @@ system_prompt: |
   - `image_tag`: "" (image name/tag for build or pull)
   - `extra_args`: "" (additional arguments to pass to the command)
   - `custom_command`: "" (raw command when command is "custom" — MUST include 'docker' or 'docker-compose' at the beginning, e.g., "docker images" or "docker-compose up -d")
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after execution)
+
+### 32a. MCP Doctor
+- **Purpose**: Diagnoses External MCP catalog entries and produces setup/readiness guidance before a flow or Multi-Turn chat tries to activate or call an unknown server.
+- **Used for**: Inspecting imported MCP JSON, marketplace entries, mcp.so pages, Docker/NPX/UVX command specs, URL transports, placeholder secrets, missing runtimes, and catalog readiness without launching unknown servers.
+- **Aimed at**: Building MCP onboarding flows where the first step is a safe diagnostic report, followed by human-approved setup, activation, and smoke testing.
+- **Application example**: Starter -> MCP Doctor (`server_key: Redis`, `source_url: https://mcp.so/server/redis/modelcontextprotocol`) -> Parametrizer (extract `{status}`, `{transport}`, `{runtime}`) -> Forker (branch ready vs needs setup) -> Notifier.
+- **Pool name pattern**: `mcp_doctor_<n>`
+- **Starts other agents**: YES (after diagnosis, if `target_agents` are configured)
+- **Config parameters**:
+  - `server_key`: "" (optional External MCP server key; empty diagnoses the whole catalog)
+  - `catalog_path`: "" (optional override path to `external_mcps.json`)
+  - `source_url`: "" (optional marketplace/docs URL to include in the report)
+  - `mode`: "diagnose" (diagnostic mode label for generated flows)
+  - `include_catalog`: true (include catalog-level context)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 

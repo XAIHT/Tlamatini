@@ -89,6 +89,108 @@ def _reason_for_tool(capability_kind: str, tool_name: str) -> str:
     return f"Plan tool '{tool_name}' because the request matches its capability hints."
 
 
+# ── Self-source intent (read / explain / modify YOUR OWN code) ───────────────
+# When the user asks about Tlamatini's own source code, the file read+inspect
+# toolset must ALWAYS be bound in Multi-Turn so she can actually open and reason
+# about her code instead of answering only from her injected self-knowledge.
+# These names are force-selected (bypassing scoring, the threshold, and the
+# max_selected cap) whenever the request matches AND the tool is enabled.
+_SELF_SOURCE_PHRASES: tuple[str, ...] = (
+    "your source code", "your own source code", "your own source", "your source",
+    "your code", "your own code", "your codebase", "your code base",
+    "your implementation", "your internals", "your own files", "your files",
+    "read your source", "read your code", "explain your code", "explain your source",
+    "analyze your code", "analyse your code", "summarize your code", "summarise your code",
+    "summary of your code", "summary of your source", "walk through your code",
+    "how are you coded", "how you are coded", "how are you programmed",
+    "how are you built", "how were you built", "how are you architected",
+    "modify your", "modify yourself", "change your code", "change your source",
+    "edit your code", "edit your source", "rewrite your", "tlamatini source code",
+)
+
+_SELF_SOURCE_EXPLORE_TOOLS: tuple[str, ...] = (
+    "chat_agent_globber",
+    "chat_agent_grepper",
+    "chat_agent_file_interpreter",
+    "chat_agent_file_extractor",
+    "chat_agent_editor",
+)
+
+
+def _is_self_source_request(normalized_request: str) -> bool:
+    """True when the user is asking about / to read / modify Tlamatini's OWN code."""
+    return any(phrase in normalized_request for phrase in _SELF_SOURCE_PHRASES)
+
+
+def _self_source_force_names(tools_list: list) -> tuple[str, ...]:
+    """Self-source exploration tools that are actually enabled (registry order)."""
+    available = {getattr(tool, "name", "") for tool in tools_list}
+    return tuple(name for name in _SELF_SOURCE_EXPLORE_TOOLS if name in available)
+
+
+def _external_mcp_force_names(normalized_request: str, tools_list: list) -> tuple[str, ...]:
+    """External-MCP tools (named ``ext__<server>__<tool>`` by external_mcp_manager)
+    to force-bind when the user references them — by naming the server (e.g.
+    "redis mcp") or saying "mcp" / "external". Closes the "connected but not
+    planner-bound" gap: once a server is live its tools are in tools_list, and
+    naming it must reliably select them. Bounded so it can't flood the surface.
+    Only ever forces tools that are actually present (i.e. the server connected).
+    """
+    supervisor = {
+        "external_mcp_status",
+        "external_mcp_reconnect",
+        "external_mcp_doctor",
+        "external_mcp_list_tools",
+        "external_mcp_call",
+        "external_mcp_import",
+        "external_mcp_set_active",
+        "external_mcp_wait",
+    }
+    available = {getattr(t, "name", "") for t in tools_list}
+    ext_names = [
+        getattr(t, "name", "") for t in tools_list
+        if getattr(t, "name", "").startswith("ext__")
+    ]
+    supervisor_names = [name for name in supervisor if name in available]
+    if not ext_names and not supervisor_names:
+        return ()
+    tokens = set(normalized_request.split())
+    generic = bool(tokens & {"mcp", "mcps", "external", "roblox", "studio"})
+    by_server: dict[str, list[str]] = {}
+    for name in ext_names:
+        parts = name.split("__")
+        server = parts[1] if len(parts) > 2 else ""
+        by_server.setdefault(server, []).append(name)
+
+    named_servers: list[str] = []
+    for server in by_server:
+        server_words = server.replace("-", " ").replace("_", " ").lower().strip()
+        named = bool(server_words) and (
+            server.lower() in normalized_request
+            or server_words in normalized_request
+            or any(w in tokens for w in server_words.split())
+        )
+        if named:
+            named_servers.append(server)
+
+    forced: list[str] = []
+    if generic or named_servers:
+        forced.extend(supervisor_names)
+
+    direct_limit_per_server = 128
+    if named_servers:
+        for server in named_servers:
+            forced.extend(by_server.get(server, [])[:direct_limit_per_server])
+    elif generic and len(by_server) == 1:
+        # If there is only one active external MCP server, generic "use the MCP"
+        # means that server. For many active servers, keep the prompt sane and
+        # rely on external_mcp_list_tools + external_mcp_call as the dispatcher.
+        only_server = next(iter(by_server))
+        forced.extend(by_server[only_server][:direct_limit_per_server])
+
+    return tuple(dict.fromkeys(forced))
+
+
 def _select_planner_tool_names(
     request_text: str,
     tools: Iterable,
@@ -126,8 +228,24 @@ def _select_planner_tool_names(
         scored.append((score, index, capability))
         logger.info("[Planner._select] tool=%s kind=%s score=%d", capability.tool_name, capability.kind, score)
 
+    # Self-source intent: when the user asks to read / explain / analyze /
+    # modify YOUR OWN source code, force-bind the file read+inspect toolset so a
+    # Multi-Turn run can ALWAYS go read the real code instead of answering only
+    # from self-knowledge. These bypass scoring + threshold + the max_selected
+    # cap on purpose (same idea as run-control / ACPX-sibling auto-injection);
+    # only tools that are actually enabled (present in tools_list) are forced.
+    forced_self_source_names = (
+        _self_source_force_names(tools_list)
+        if _is_self_source_request(normalized_request) else ()
+    )
+    # External-MCP intent: when the user references an active external MCP server,
+    # force-bind its ext__* tools so naming it ("using redis mcp …") reliably
+    # selects them once it has connected and exposed tools.
+    forced_external_mcp_names = _external_mcp_force_names(normalized_request, tools_list)
+    forced_names = tuple(dict.fromkeys(forced_self_source_names + forced_external_mcp_names))
+
     positive = [item for item in scored if item[0] > 0]
-    if not positive:
+    if not positive and not forced_names:
         notes = (
             "No tool or agent capability crossed the planner threshold; answer should rely on prefetched context and the base model.",
         )
@@ -142,11 +260,15 @@ def _select_planner_tool_names(
         item for item in positive
         if item[2].tool_name not in _RUN_CONTROL_TOOL_NAMES
     ]
-    top_score = non_control_positive[0][0] if non_control_positive else positive[0][0]
+    top_score = (
+        non_control_positive[0][0] if non_control_positive
+        else (positive[0][0] if positive else 0)
+    )
     logger.info("[Planner._select] top_score=%d (excluding run-control)", top_score)
 
     threshold = 6 if selected_contexts else 2
-    if top_score < threshold and not _RUN_ID_RE.search(normalized_request):
+    if (top_score < threshold and not _RUN_ID_RE.search(normalized_request)
+            and not forced_names):
         notes = (
             "Context capabilities are sufficient for this request; the planner intentionally scheduled no tool or agent execution stage.",
         )
@@ -161,6 +283,12 @@ def _select_planner_tool_names(
     logger.info("[Planner._select] threshold=%d, max_selected=%d", threshold, max_selected)
 
     selected_names: list[str] = []
+    # Force-bind the self-source exploration tools FIRST (bypass score + cap).
+    for forced in forced_names:
+        if forced not in selected_names:
+            selected_names.append(forced)
+            logger.info("[Planner._select] FORCE-SELECTED tool=%s reason=self_source_intent", forced)
+
     for score, _index, capability in positive:
         if len(selected_names) >= max_selected:
             break
@@ -169,13 +297,16 @@ def _select_planner_tool_names(
             continue
         if score < threshold:
             continue
+        if capability.tool_name in selected_names:
+            continue
         selected_names.append(capability.tool_name)
         logger.info("[Planner._select] SELECTED tool=%s score=%d", capability.tool_name, score)
 
+    capability_by_name = {capability.tool_name: capability for capability in capabilities}
     selected_wrapped_agent_names = tuple(
-        capability.tool_name
-        for _score, _index, capability in positive
-        if capability.kind == "wrapped_agent" and capability.tool_name in selected_names
+        name for name in selected_names
+        if capability_by_name.get(name) is not None
+        and capability_by_name[name].kind == "wrapped_agent"
     )
     selected_run_control_names: list[str] = []
 

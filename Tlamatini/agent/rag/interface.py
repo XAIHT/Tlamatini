@@ -633,18 +633,21 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         # Ask-Execs is a Multi-Turn-only modifier: it has no effect on the
         # legacy one-shot path, so it is only honoured when multi-turn is on.
         ask_execs_enabled = bool(question.get("ask_execs_enabled", False)) and multi_turn_enabled
+        step_by_step_enabled = bool(question.get("step_by_step_enabled", False))
     elif isinstance(question, str):
         raw_text = question
         multi_turn_enabled = False
         exec_report_enabled = False
         acpx_enabled = False
         ask_execs_enabled = False
+        step_by_step_enabled = False
     else:
         raw_text = str(question)
         multi_turn_enabled = False
         exec_report_enabled = False
         acpx_enabled = False
         ask_execs_enabled = False
+        step_by_step_enabled = False
 
     try:
         with open(os.path.join(application_path, 'config.json'), 'r', encoding='utf-8') as f:
@@ -667,7 +670,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     # than the imperative shape `is_valid_prompt` enforces for the legacy
     # one-shot path. Likewise the access validator can reject any prompt
     # mentioning paths the operator-style flow needs to reference.
-    bypass_prompt_validation = bool(multi_turn_enabled) or bool(acpx_enabled)
+    bypass_prompt_validation = bool(multi_turn_enabled) or bool(acpx_enabled) or bool(step_by_step_enabled)
 
     if not bypass_prompt_validation and not is_valid_prompt(raw_text):
         response = ('Please rephrase your input as a clear question or command. '
@@ -675,7 +678,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         global_state.set_state('rag_chain_ready', True)
         return str(response)
     if bypass_prompt_validation and not is_valid_prompt(raw_text):
-        reason = "multi-turn" if multi_turn_enabled else "ACPX"
+        reason = "multi-turn" if multi_turn_enabled else ("ACPX" if acpx_enabled else "step-by-step")
         print(f"--- ask_rag: {reason} enabled; bypassing prompt-shape validation ---")
 
     # ── Parallel classifier execution with sequential evaluation ──
@@ -698,7 +701,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
 
     # ── BARRIER STEP 1: access validation (security gate, evaluated first) ──
     if bypass_prompt_validation:
-        reason = "multi-turn" if multi_turn_enabled else "ACPX"
+        reason = "multi-turn" if multi_turn_enabled else ("ACPX" if acpx_enabled else "step-by-step")
         print(f"--- ask_rag: {reason} enabled; bypassing prompt access-validation chain ---")
         access_rejection = None
     else:
@@ -727,6 +730,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     # (already forwarded above when present) is what the executor uses to find
     # this request's permission broker.
     payload["ask_execs_enabled"] = ask_execs_enabled
+    payload["step_by_step_enabled"] = step_by_step_enabled
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException

@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
 
 // ========================================
 // SAVE BUTTON
@@ -469,6 +469,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'and': await updateAndAgentConnection(sourceId, 'target', targetId, 'add'); break;
                 case 'gitter': await updateGitterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'dockerer': await updateDockererConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'mcp doctor':
+                case 'mcp-doctor': await updateMcpDoctorConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'pser': await updatePserConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kuberneter': await updateKuberneterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'apirer': await updateApirerConnection(sourceId, targetId, 'add', 'target'); break;
@@ -551,6 +553,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'scper': await updateScperConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gitter': await updateGitterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'dockerer': await updateDockererConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'mcp doctor':
+                case 'mcp-doctor': await updateMcpDoctorConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'pser': await updatePserConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kuberneter': await updateKuberneterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'apirer': await updateApirerConnection(targetId, sourceId, 'add', 'source'); break;

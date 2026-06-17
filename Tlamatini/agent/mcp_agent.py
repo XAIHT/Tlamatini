@@ -7,7 +7,6 @@ from typing import Dict, Any, Optional, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 from .acpx import ACPX_TOOL_NAMES, filter_acpx_tools
-from .capability_registry import select_tools_for_request
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
 from .exec_permission import get_broker
@@ -38,6 +37,23 @@ _PROCESS_SPAWNING_TOOL_NAMES: frozenset = frozenset({
     "agent_stopper",
     "agent_parametrizer",
 })
+
+
+def _is_external_mcp_tool_name(name: str) -> bool:
+    try:
+        from .external_mcp_manager import is_external_mcp_tool_name as _is_external
+        return bool(_is_external(name))
+    except Exception:
+        return str(name or "").startswith("ext__") or str(name or "") in {
+            "external_mcp_status",
+            "external_mcp_reconnect",
+            "external_mcp_doctor",
+            "external_mcp_list_tools",
+            "external_mcp_call",
+            "external_mcp_import",
+            "external_mcp_set_active",
+            "external_mcp_wait",
+        }
 
 
 # ── Tool-name → ACP agent display name mapping ─────────────────────────
@@ -442,6 +458,20 @@ def _ensure_chat_tool_model(llm):
                 val = getattr(llm, attr)
                 if val is not None:
                     chat_kwargs[attr] = val
+
+        # #2 STABLE-PROMPT REUSE: pin the model in memory (keep_alive) so the
+        # byte-stable system-prompt prefix — the executor caches one prompt per
+        # tool-set, with no per-turn variance — keeps its KV cache between turns.
+        # Ollama then reuses the common prefix instead of re-prefilling the whole
+        # (now-trimmed) tool block every turn. Honors the OLLAMA_KEEP_ALIVE
+        # contract from gpu_perf.py (default -1 = never unload). No-op for :cloud
+        # models (they don't live in local VRAM).
+        import os as _os
+        _keep_alive_raw = _os.environ.get("OLLAMA_KEEP_ALIVE", "-1").strip()
+        try:
+            chat_kwargs["keep_alive"] = int(_keep_alive_raw)
+        except (TypeError, ValueError):
+            chat_kwargs["keep_alive"] = _keep_alive_raw or -1
 
         # Pass auth headers if supported
         if client_kwargs:
@@ -1202,14 +1232,42 @@ _FIRMWARE_TEMPLATE_TOOL_NAMES = frozenset({
 })
 
 
-def _build_system_prompt(preeliminary_prompt: str, tools) -> str:
+_STEP_BY_STEP_SYSTEM_GUIDANCE = """
+**STEP-BY-STEP MODE**:
+- The user explicitly asked for paced setup or troubleshooting. Do exactly one concrete step at a time, then stop and wait for the user's READY, screenshot, log, or command output before continuing.
+- Keep each step short enough for a non-expert to perform. Include the exact command, menu path, file path, or click target for that one step.
+- For new or unknown MCP setup, call `external_mcp_doctor` first. If it reports source/docs/repository URLs, investigate those through Crawler/Googler only when the next step is unclear.
+- To ADD an MCP the user names or pastes (e.g. "add the redis MCP"), call `external_mcp_import` with its JSON config, then `external_mcp_set_active` to connect it, then `external_mcp_wait('<key>', 120)` to BLOCK until it is ready (a first-run Docker image pull or npx/uvx download is slow — do NOT poll external_mcp_status in a loop and give up; wait, and if it times out call external_mcp_wait again with a bigger timeout). Do this YOURSELF with these tools — never claim you lack a file-writing/shell tool and never push the user to the dialog.
+- For MCP setup, inspect `external_mcp_status`; if tools are missing or a server is large, use `external_mcp_list_tools` before saying a tool is unavailable.
+- For any External MCP tool not directly selected, use `external_mcp_call` with the raw tool name discovered from `external_mcp_list_tools`.
+- Diagnose in layers: config JSON, required runtime (Docker/node/npx/uvx/python), process spawn, transport, initialize, tools/list, schema, then a small safe read/write test when appropriate.
+- Never dump a whole installation plan at once unless the user asks for the full plan. In normal Step-by-Step mode, end with a clear READY checkpoint.
+"""
+
+
+def _build_system_prompt(preeliminary_prompt: str, tools, step_by_step_enabled: bool = False) -> str:
     import platform
     import sys as _sys
     # Lazy import (avoids any rag<->mcp_agent import-cycle at module load).
     from .rag.config import apply_conditional_rule_blocks
 
+    # Keep the per-tool system-prompt list to ONE short line each. The model
+    # ALREADY receives every tool's full name / description / parameters through
+    # bind_tools() (the API ``tools`` field) — repeating the full multi-line
+    # descriptions here is pure duplication that, with the entire tool surface
+    # bound in Multi-Turn, costs ~5k redundant tokens EVERY turn. One short line
+    # keeps the model oriented while the real schema travels through bind_tools.
+    def _one_line(text: str) -> str:
+        flat = " ".join(str(text or "").split())
+        if not flat:
+            return ""
+        dot = flat.find(". ")
+        if 0 < dot <= 96:
+            return flat[: dot + 1]
+        return (flat[:108].rstrip() + "…") if len(flat) > 110 else flat
+
     tool_descriptions = "\n".join(
-        f"- {tool.name}: {tool.description}" for tool in tools
+        f"- {tool.name}: {_one_line(tool.description)}" for tool in tools
     )
 
     # Inject the feature-gated rule blocks (ACPX mechanics → Rule 12, Templates
@@ -1272,9 +1330,12 @@ def _build_system_prompt(preeliminary_prompt: str, tools) -> str:
             "- Use Unix-native commands: ls, cat, mkdir, rm, cp, mv\n"
         )
 
+    step_by_step_block = _STEP_BY_STEP_SYSTEM_GUIDANCE if step_by_step_enabled else ""
+
     return f"""{escaped_prompt}
 
 {platform_block}
+{step_by_step_block}
 
 You have access to the following tools. Use them proactively whenever the user's request can benefit from them:
 
@@ -1387,24 +1448,69 @@ class CapabilityAwareToolAgentExecutor:
         self._executor_cache: Dict[tuple[str, ...], MultiTurnToolAgentExecutor] = {}
         self.legacy_executor = self._get_executor_for_tools(self.tools)
 
-    def _get_executor_for_tools(self, tools_subset):
-        key = tuple(tool.name for tool in tools_subset)
+    def _get_executor_for_tools(self, tools_subset, step_by_step_enabled: bool = False):
+        key = tuple([f"__step_by_step__={int(bool(step_by_step_enabled))}"] + [tool.name for tool in tools_subset])
         cached = self._executor_cache.get(key)
         if cached is not None:
             return cached
 
         executor = MultiTurnToolAgentExecutor(
             llm=self.llm,
-            system_prompt=_build_system_prompt(self.preeliminary_prompt, tools_subset),
+            system_prompt=_build_system_prompt(
+                self.preeliminary_prompt,
+                tools_subset,
+                step_by_step_enabled=step_by_step_enabled,
+            ),
             tools=tools_subset,
             max_iterations=self.max_iterations,
         )
         self._executor_cache[key] = executor
         return executor
 
+    def _refresh_external_mcp_tool_surface(self) -> None:
+        """Refresh External-MCP tools before each request.
+
+        The unified agent is normally cached for speed, but External MCP tools
+        are live capabilities: they can appear after Roblox Studio, Docker, npx,
+        or another backend finishes connecting. Reconcile just that slice of the
+        tool surface per request so the 88-agent planner sees reality.
+        """
+        try:
+            from .external_mcp_manager import get_external_mcp_tools
+            fresh_external = list(get_external_mcp_tools())
+        except Exception:
+            logger.exception("[ExternalMCP] request-time tool refresh failed")
+            return
+
+        current_external_names = [
+            tool.name for tool in self.tools
+            if _is_external_mcp_tool_name(getattr(tool, "name", ""))
+        ]
+        fresh_external_names = [tool.name for tool in fresh_external]
+        if current_external_names == fresh_external_names:
+            return
+
+        base_tools = [
+            tool for tool in self.tools
+            if not _is_external_mcp_tool_name(getattr(tool, "name", ""))
+        ]
+        self.tools = base_tools + fresh_external
+        self._executor_cache = {
+            key: executor
+            for key, executor in self._executor_cache.items()
+            if not any(_is_external_mcp_tool_name(name) for name in key)
+        }
+        self.legacy_executor = self._get_executor_for_tools(self.tools)
+        print(
+            "--- CapabilityAwareToolAgentExecutor: refreshed External MCP tool surface "
+            f"{current_external_names} -> {fresh_external_names}",
+            flush=True,
+        )
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
+        self._refresh_external_mcp_tool_surface()
         # Exec report is multi-turn-only: outside multi-turn we strip it.
         exec_report_enabled = bool(payload.get("exec_report_enabled", False)) and multi_turn_enabled
         # ACPX defaults to DISABLED. The user must explicitly tick the
@@ -1421,6 +1527,7 @@ class CapabilityAwareToolAgentExecutor:
         # entirely on the legacy one-shot path below.
         ask_execs_enabled = bool(payload.get("ask_execs_enabled", False)) and multi_turn_enabled
         ask_execs_user_id = payload.get("ask_execs_user_id")
+        step_by_step_enabled = bool(payload.get("step_by_step_enabled", False))
 
         with scoped_request_state(
             multi_turn_enabled=multi_turn_enabled,
@@ -1434,47 +1541,38 @@ class CapabilityAwareToolAgentExecutor:
                 # Legacy path: rebuild a one-shot executor over the request-scoped
                 # tool set so disabling ACPX in legacy mode also strips the ACPX
                 # tools from the LLM's bind_tools() list.
-                if not acpx_enabled:
-                    legacy_executor = MultiTurnToolAgentExecutor(
-                        llm=self.llm,
-                        system_prompt=_build_system_prompt(self.preeliminary_prompt, request_tools),
-                        tools=request_tools,
-                        max_iterations=self.max_iterations,
+                if step_by_step_enabled or not acpx_enabled:
+                    legacy_executor = self._get_executor_for_tools(
+                        request_tools,
+                        step_by_step_enabled=step_by_step_enabled,
                     )
                     return legacy_executor.invoke({"input": input_text})
                 return self.legacy_executor.invoke({"input": input_text})
 
-            selected_tools = None
-            if global_execution_plan:
-                # Honor the request-scoped global plan VERBATIM. The planner has
-                # already run global capability scoring; an EMPTY tool set is a
-                # deliberate decision (the ``context_only`` / ``direct_model``
-                # execution modes mean "answer from context / the model alone,
-                # no tools"), NOT a planner failure. Falling back to the
-                # per-request capability selector here would override the planner
-                # and silently re-introduce tools it intentionally dropped, so we
-                # only run the selector when there is no plan at all.
-                planned_tool_names = selected_tool_names_from_plan(global_execution_plan)
-                selected_tools = [
-                    tool for tool in request_tools
-                    if tool.name in set(planned_tool_names)
-                ]
-                print(
-                    "--- CapabilityAwareToolAgentExecutor: using request-scoped global execution plan "
-                    f"with {len(selected_tools)} planned tools (acpx_enabled={acpx_enabled})"
-                )
-            else:
-                selected_tools = select_tools_for_request(input_text, request_tools)
-                if not selected_tools:
-                    selected_tools = request_tools
-
-            selected_names = [tool.name for tool in selected_tools]
+            # === MANDATE (Angela, 2026-06-16): Multi-Turn = the FULL surface ===
+            # When Multi-Turn is ON, Tlamatini MUST see EVERY enabled tool / agent /
+            # skill she may use. Binding only a narrow planner subset starved the
+            # operator loop — she reported "I don't have a file-writing or shell tool
+            # bound this turn" even though 88 agents exist. So in Multi-Turn we bind
+            # the ENTIRE request-scoped surface (ACPX is still filtered per the
+            # toolbar checkbox; External MCP tools were refreshed above). The planner
+            # still runs upstream and is still forwarded to the executor below for the
+            # prompt's planner_summary / ordering hint, but it no longer DROPS a tool
+            # from the bind. The model chooses what to call.
+            _planned_count = (
+                len(selected_tool_names_from_plan(global_execution_plan))
+                if global_execution_plan else 0
+            )
+            selected_tools = list(request_tools)
             print(
                 "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; "
-                f"selected {len(selected_tools)}/{len(request_tools)} tools "
-                f"(acpx_enabled={acpx_enabled}): {selected_names}"
+                f"binding the FULL enabled surface: {len(selected_tools)} tools "
+                f"(planner hinted {_planned_count}; acpx_enabled={acpx_enabled})"
             )
-            executor = self._get_executor_for_tools(selected_tools)
+            executor = self._get_executor_for_tools(
+                selected_tools,
+                step_by_step_enabled=step_by_step_enabled,
+            )
             executor_payload = {"input": input_text}
             if exec_report_enabled:
                 executor_payload["exec_report_enabled"] = True

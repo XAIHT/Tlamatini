@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -224,6 +224,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'flowcreator': 'flowcreator-agent',
     'gitter': 'gitter-agent',
     'dockerer': 'dockerer-agent',
+    'mcp-doctor': 'mcpdoctor-agent',
     'pser': 'pser-agent',
     'kuberneter': 'kuberneter-agent',
     'apirer': 'apirer-agent',
@@ -919,6 +920,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'gitter') updateGitterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'dockerer') updateDockererConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'dockerer') updateDockererConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'telegramrx') updateTelegramrxConnection(targetId, sourceId, 'remove', 'source');
@@ -1055,6 +1058,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'gitter' && !sourceBeingDeleted) updateGitterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'dockerer' && !targetBeingDeleted) updateDockererConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'dockerer' && !sourceBeingDeleted) updateDockererConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'mcp doctor' && !targetBeingDeleted) updateMcpDoctorConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'mcp doctor' && !sourceBeingDeleted) updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'pser' && !targetBeingDeleted) updatePserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'pser' && !sourceBeingDeleted) updatePserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'telegramrx' && !targetBeingDeleted) updateTelegramrxConnection(targetId, sourceId, 'remove', 'source');
@@ -1573,6 +1578,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'gitter') updateGitterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'dockerer') updateDockererConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'dockerer') updateDockererConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(targetId, sourceId, 'add', 'source');

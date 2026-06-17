@@ -1,7 +1,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, dismissExecPermissionDialogForRuntimeProceed, openAccessKeysWizardDialog */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, isStepByStepEnabled, applyStoredStepByStepState, stepByStepCheckbox, persistStepByStepState, dismissExecPermissionDialogForRuntimeProceed, openAccessKeysWizardDialog */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -463,7 +463,8 @@ document.getElementById('chat-form').onsubmit = function (e) {
             'multi_turn_enabled': isMultiTurnEnabled(),
             'exec_report_enabled': isExecReportEnabled(),
             'acpx_enabled': isAcpxEnabled(),
-            'ask_execs_enabled': isAskExecsEnabled()
+            'ask_execs_enabled': isAskExecsEnabled(),
+            'step_by_step_enabled': isStepByStepEnabled()
         }));
         if (!messageSent) {
             return;
@@ -492,6 +493,7 @@ window.onload = () => {
     applyStoredExecReportState();
     applyStoredAcpxState();
     applyStoredAskExecsState();
+    applyStoredStepByStepState();
     syncAskExecsAvailability();
     if (openButton) {
         openButton.addEventListener('click', (e) => {
@@ -724,6 +726,17 @@ window.onload = () => {
                 if (!enabled && typeof dismissExecPermissionDialogForRuntimeProceed === 'function') {
                     dismissExecPermissionDialogForRuntimeProceed();
                 }
+            }
+        });
+    }
+    if (stepByStepCheckbox) {
+        stepByStepCheckbox.addEventListener('change', function () {
+            const enabled = !!this.checked;
+            persistStepByStepState(enabled);
+            if (enabled && multiTurnCheckbox && !multiTurnCheckbox.checked) {
+                multiTurnCheckbox.checked = true;
+                persistMultiTurnState(true);
+                syncAskExecsAvailability();
             }
         });
     }
