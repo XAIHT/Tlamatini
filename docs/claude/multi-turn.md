@@ -6,7 +6,7 @@ When **Multi-Turn is checked** in the toolbar:
 1. Prompt-shape validation is skipped
 2. Request-scoped global execution plan/DAG is built
 3. MCP contexts are prefetched selectively
-4. Only planned tool subset is bound (default cap: **20 tools**, configurable via `max_selected_tools`)
+4. **The FULL enabled surface is bound** (see *Multi-Turn now binds the full surface* below) — every enabled tool/agent/skill, ACPX still filtered by its checkbox. *(Superseded 2026-06: the planner used to bind only a ≤20-tool subset via `max_selected_tools`; that starved the operator. The planner still runs for capability hints/ordering, but no longer DROPS a tool from the bind.)*
 5. Wrapped agents launch in headless/background mode
 6. The MultiTurnToolAgentExecutor **deduplicates wrapped chat-agent calls** with identical arguments (prevents the LLM from launching the same sub-agent twice in a single request)
 7. After the final answer, `services/answer_analizer.py` classifies the answer as SUCCESS/FAILURE and the frontend renders a **"Create Flow"** button on SUCCESS that converts the executed tool-call log into a downloadable `.flw` workflow
@@ -18,6 +18,41 @@ The toggle is per-browser-session, sent as `multi_turn_enabled` with each reques
 ### Short Follow-Up Message Scoring
 
 `global_execution_planner._select_planner_tool_names()` accepts a `chat_history_text` argument. When the current request is a short follow-up (≤4 meaningful tokens, e.g. "continue", "go ahead"), it boosts each capability's score with up to +15 points derived from the last 4 chat messages. This keeps tool context from evaporating on terse follow-ups and is wired in `rag/factory.py::_extract_chat_history_text()`.
+
+---
+
+## Multi-Turn now binds the full surface (2026-06)
+
+When Multi-Turn is on, `CapabilityAwareToolAgentExecutor.invoke` (`mcp_agent.py`) binds **every enabled tool / agent / skill** — the complete request-scoped surface — **not** a narrow planner subset. ACPX is still filtered by its own checkbox (`agent.acpx.filter_acpx_tools`), so the only thing the bind drops is the ACPX/Skill surface when ACPX is unchecked.
+
+This is the **fix for the starved-operator bug**: with 88 agents present, the old ≤20-tool planner subset routinely left the LLM reporting *"I don't have a file-writing or shell tool bound this turn,"* because the keyword-scored selection had crowded out the basics. The planner **still runs** — its capability hints and ordering are still computed and its summary is still forwarded into the prompt — but it **no longer removes a tool from the bind**.
+
+### Cost trims that keep this affordable
+
+Binding everything would balloon the prompt and re-pay the model's KV-cache cost every turn, so two trims offset it:
+
+1. **One short line per tool in the system-prompt tool list.** `bind_tools` already sends the full name / description / parameter schema to the model out-of-band, so the multi-line tool descriptions that used to be repeated inside the system prompt were ~5k redundant tokens/turn. The system-prompt list is now a single short line per tool.
+2. **`ChatOllama keep_alive`** — honours `OLLAMA_KEEP_ALIVE` (default `-1`), so the stable system-prompt prefix's KV cache is reused between turns instead of being recomputed each time.
+
+---
+
+## Step-by-Step Mode — one action at a time (Multi-Turn runtime modifier)
+
+A toolbar checkbox (`#step-by-step-enabled`, sent per-request as `step_by_step_enabled`) that, like **Ask Execs**, is a **Multi-Turn runtime modifier**: with it on, the LLM gives **ONE concrete action at a time** and **waits for the user** to come back with a READY / screenshot / log / output before issuing the next action. It is for hands-on, interactive debugging and setup where each step depends on what the previous one actually produced.
+
+### Plumbing path
+
+The flag rides the same rails as Multi-Turn and is injected into the system prompt:
+
+browser (`step_by_step_enabled`) → `consumers.py` → `rag/interface.py` → `rag/chains/unified.py` → `mcp_agent._build_system_prompt` (which injects the Step-by-Step guidance into the prompt).
+
+### Whitelist contract (critical)
+
+`step_by_step_enabled` **MUST stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist** — the same drop-on-rebuild bug class that once broke `exec_report_enabled` and that the `ask_execs_enabled` contract above guards against. Drop it from the whitelist and the mode silently never engages.
+
+### Bypass-validation interaction
+
+`bypass_prompt_validation` is now computed as `multi_turn_enabled OR acpx_enabled OR step_by_step_enabled`, so a request with only Step-by-Step checked still skips prompt-shape validation (these are operator flows, not Q&A).
 
 ---
 

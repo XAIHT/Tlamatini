@@ -111,6 +111,18 @@ Tlamatini updates herself from **About ▸ Check for updates** (`agent/self_upda
 
 ---
 
+## External MCPs (universal MCP client) — distinct from the `Mcp`-model context providers
+
+`agent/external_mcp_manager.py` is a **config-driven generic MCP CLIENT**: it connects Tlamatini to ANY external MCP server declared in a JSON catalog and exposes that server's tools to the LLM. It is a **separate axis** from the two runtime context providers above — `System-Metrics` / `Files-Search` are servers Tlamatini *hosts* (Layer 2) and toggles via `Mcp`-model rows; the External MCPs are servers Tlamatini *consumes* as a client, with no `Mcp` row, no `factory.py` wiring, and no prompt-context injection.
+
+- **Catalog = user state.** `agent/external_mcps.json` holds the standard `mcpServers` shape (identical to a Claude Desktop / VS Code config) plus an `active` list. It is resolved **next to `config.json`** with the same precedence (`CONFIG_PATH` env > frozen install root > source `agent/`), so it is user state that survives a self-update.
+- **Four connect transports.** The client speaks `stdio`, `streamable-http`, `sse`, and `websocket` (the normalizer also recognizes `tcp` / `named-pipe` labels). A `_NetworkMcpClientBase` (httpx + websockets) duck-types the `_StdioMcpClient`, so the supervisor tools treat every transport uniformly.
+- **LLM surface = 8 supervisor tools + lazily-bound remote tools.** The LLM drives the manager with `external_mcp_status` / `external_mcp_reconnect` / `external_mcp_doctor` / `external_mcp_list_tools` / `external_mcp_call` / `external_mcp_import` / `external_mcp_set_active` / `external_mcp_wait`. Each active server's remote tools are wrapped as `ext__<server>__<tool>` (the catalog can hold hundreds of servers; at most **5** are active at once so the bound surface stays small). The browser surface is the **External ▸ MCPs** navbar dialog (`docs/claude/frontend.md`).
+- **NOT ACPX.** The `external_mcp_*` and `ext__*` tools are **not** part of ACPX — not in `ACPX_TOOL_NAMES`, not gated by the ACPX checkbox — they are gated only by Multi-Turn. See `docs/claude/acpx.md`.
+- **Static triage counterpart.** The **MCP Doctor** workflow agent (`chat_agent_mcp_doctor`) reads the same catalog WITHOUT connecting — the offline, on-paper sibling of the live `external_mcp_doctor` tool (`docs/claude/agents.md`).
+
+---
+
 ## Application Log (tlamatini.log)
 
 `Tlamatini/manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` **before Django initializes**. Every print, every Django logger (they all use `StreamHandler`), and every tool's stdout/stderr lands in both the console and a single file:

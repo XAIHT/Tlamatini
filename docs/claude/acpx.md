@@ -18,6 +18,8 @@ The chat toolbar exposes three checkboxes: **Multi-Turn**, **Exec Report**, and 
 
 The 12 ACPX/Skill tool names live in `agent.acpx.ACPX_TOOL_NAMES` (a `frozenset`) and are also registered in `_EXEC_REPORT_TOOLS` (in `agent/mcp_agent.py`) under `agent_key="acpx"` for the spawn/send/wait/kill family and `agent_key="skill"` for `invoke_skill`, so the Exec Report still merges all spawn/send/wait/kill rows into one "List of ACPx Operations" table when the user re-enables ACPX. Adding a 13th LLM-facing ACPX tool requires updating BOTH `ACPX_TOOL_NAMES` AND the executor whitelist in `unified.py` — the same drop-on-rebuild bug class that bit `exec_report_enabled` once already.
 
+> **Not ACPX — the External MCP supervisor tools.** The 8 External-MCP tools (`external_mcp_status` / `external_mcp_reconnect` / `external_mcp_doctor` / `external_mcp_list_tools` / `external_mcp_call` / `external_mcp_import` / `external_mcp_set_active` / `external_mcp_wait`) and the lazily-bound `ext__<server>__<tool>` remote tools are a **SEPARATE surface** (Tlamatini's universal MCP *client* — see `docs/claude/architecture.md` → *External MCPs*). They are **NOT** part of ACPX: not in `ACPX_TOOL_NAMES`, **not** stripped by `filter_acpx_tools`, and gated **only by Multi-Turn** (the ACPX checkbox has no effect on them). Do not confuse the External MCP client with ACPX's external-CLI spawning — they are unrelated subsystems.
+
 ---
 
 ## Supported external coding agents (the `agent_id` registry)

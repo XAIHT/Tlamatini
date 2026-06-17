@@ -1,9 +1,9 @@
 # Tlamatini Agents — MCP connector
 
-Exposes **every Tlamatini pool agent (all 74)** as MCP tools so an MCP client
-(Claude Code, etc.) can drive them directly — Executer, Pythonxer, Croner,
-ACPXer, STM32er, ESP32er, Arduiner, Shoter, Playwrighter, Kalier, … plus 5
-run-management tools (**79 tools** total).
+Exposes **every wrapped Tlamatini pool agent (all 57)** as MCP tools so an MCP
+client (Claude Code, etc.) can drive them directly — Executer, Pythonxer, Croner,
+ACPXer, STM32er, ESP32er, Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, …
+plus 5 run-management tools (**62 tools** total).
 
 ## Files
 

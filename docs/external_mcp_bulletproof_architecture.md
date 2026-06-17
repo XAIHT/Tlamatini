@@ -193,3 +193,40 @@ Run:
 ```powershell
 python Tlamatini\manage.py test agent.test_external_mcp_universal agent.test_external_mcp_transports agent.test_external_mcp_e2e agent.test_external_mcp_add_flow agent.test_step_by_step_mode agent.test_parametrizer_mcp_doctor --verbosity 1
 ```
+
+Beyond the unit/loopback suite, there is a **visible end-to-end proof** that drives the
+live chat UI:
+
+- `.claude/skills/tlamatini-daily-chat-test/harness/mcp_playwright_suite.py` reuses the
+  daily-chat-test Playwright harness to log into `agent_page.html` (with Multi-Turn and
+  Exec Report toggled ON) and walk Tlamatini through **ten no-key external MCPs** one by
+  one: `memory`, `sqlite`, `redis`, `fetch`, `time`, `everything`, `sequentialthinking`,
+  `filesystem`, `git`, and `puppeteer`. Each case has the model import/activate the server,
+  call one of its real tools, and chain the result into a File-Creator write, so the test
+  exercises the whole pipeline (import → normalize → doctor → activate → bind → call) against
+  a real browser, not a mock. Result: **10/10 PASS**.
+
+## Operational Notes / Gotchas
+
+Lessons learned wiring real marketplace MCPs that the design must keep honoring:
+
+- **Slow first run (Docker image pull) is not a failure — wait, do not poll-and-give-up.**
+  The first activation of a Docker-backed MCP can spend a long time pulling the image before
+  the server ever speaks. The model must use `external_mcp_wait` to block until the active
+  server reports ready (or the timeout fires) rather than calling `external_mcp_status` once,
+  seeing "not ready yet", and declaring the MCP broken. `external_mcp_wait` exists precisely so
+  a slow cold start reads as patience, not breakage.
+
+- **`external_mcp_import` accepts a JSON object OR a JSON string.** Models naturally pass a
+  structured object (the parsed config) rather than a stringified blob, so the import path
+  coerces both: an already-parsed dict/object is used as-is; a string is parsed (BOM-stripped,
+  `utf-8-sig`-tolerant) first. Either form normalizes through the same single-server / wrapper /
+  URL / host-port shapes documented under *Drag And Drop Import Contract*.
+
+- **File-redirected runs on Windows default to cp1252 and crash on non-ASCII glyphs.** When a
+  harness or helper script's stdout is redirected to a file (rather than a console) on Windows,
+  Python picks the legacy `cp1252` code page, and a single Unicode character — e.g. a `→` in a
+  log line — raises `UnicodeEncodeError` and takes the whole run down. Any script that may be
+  file-redirected must force UTF-8 explicitly: reconfigure `sys.stdout`/`sys.stderr` to
+  `encoding="utf-8"` and set `PYTHONUTF8=1`. This bit the MCP test harness and is the standing
+  rule for every redirected run touching this subsystem.
