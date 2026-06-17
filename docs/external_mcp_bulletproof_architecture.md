@@ -28,13 +28,16 @@ The Roblox and Redis debugging exposed several independent failure classes:
 
 ## Implemented Control Plane
 
-External MCPs now have five supervisor tools:
+External MCPs now have eight supervisor tools:
 
 - `external_mcp_status`: health, active state, tool count, stderr tail.
-- `external_mcp_reconnect`: force reconnect one active stdio server.
+- `external_mcp_reconnect`: force reconnect one active server.
 - `external_mcp_doctor`: diagnose catalog entries before/after activation.
 - `external_mcp_list_tools`: inspect exact raw MCP tool names and schemas.
 - `external_mcp_call`: call any raw MCP tool through the generic dispatcher.
+- `external_mcp_import`: add one or more servers to the catalog from JSON.
+- `external_mcp_set_active`: choose the active set, capped at five servers.
+- `external_mcp_wait`: block until an active server becomes ready or times out.
 
 The doctor does not replace normal MCP calls. It is the preflight brain:
 
@@ -114,14 +117,14 @@ MCP is JSON-RPC. The transport is the carrier. Tlamatini now recognizes these
 families:
 
 - `stdio`: implemented live connector.
-- `streamable-http`: detected and diagnosed; adapter still future.
-- `sse`: detected and diagnosed; adapter still future.
-- `websocket`: detected and diagnosed; adapter still future.
+- `streamable-http`: implemented live connector for already-running HTTP MCP endpoints.
+- `sse`: implemented live connector for legacy HTTP+SSE MCP endpoints.
+- `websocket`: implemented live connector for WebSocket JSON-RPC MCP endpoints.
 - `tcp` / raw socket: detected and diagnosed; adapter still future.
 - `named-pipe`: detected and diagnosed; adapter still future.
 
 Unsupported transports must never look like random failure. They are surfaced as
-explicit blockers: "transport adapter missing: X".
+explicit blockers explaining which carrier needs a stdio bridge or future adapter.
 
 ## Universal Onboarding Pipeline
 
@@ -169,15 +172,18 @@ New code must work in both modes:
 
 ## Automated Verification
 
-`agent.test_external_mcp_universal` contains 127 automated tests covering:
+The External MCP verification suite contains loopback and full-pipeline tests:
 
 - transport detection
+- real stdio, Streamable HTTP, legacy SSE, and WebSocket round trips
+- drag/drop import, activate, bind, call, diagnose, reconnect, and watchdog PID protection
+- hosted/auth-header success and failure paths
 - runtime inference
 - import normalization
 - secret placeholder detection
 - schema union/enum/const handling
 - BOM catalog reads
-- supervisor tool exposure
+- supervisor tool exposure, including import/set-active/wait
 - Step-by-Step prompt plumbing
 - MCP Doctor registry/contract/prompt/canvas files
 - frozen/source path literals and self-contained agent import boundaries
@@ -185,5 +191,5 @@ New code must work in both modes:
 Run:
 
 ```powershell
-python Tlamatini\manage.py test agent.test_external_mcp_universal --verbosity 1
+python Tlamatini\manage.py test agent.test_external_mcp_universal agent.test_external_mcp_transports agent.test_external_mcp_e2e agent.test_external_mcp_add_flow agent.test_step_by_step_mode agent.test_parametrizer_mcp_doctor --verbosity 1
 ```

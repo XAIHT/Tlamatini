@@ -203,7 +203,10 @@ STATIC_EXPECTATIONS: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = [
     ("agent/migrations/0142_add_chat_agent_mcp_doctor_tool.py", ("Chat-Agent-MCP-Doctor", "0141_add_mcp_doctor"), ()),
     ("agent/migrations/0143_add_mcp_doctor_demo_prompt.py", ("(81, MCP_DOCTOR_DEMO)", "chat_agent_mcp_doctor", "Multi-Turn"), ()),
     ("agent/agents/flowcreator/agentic_skill.md", ("MCP Doctor", "mcp_doctor_<n>", "External MCP"), ()),
+    ("agent/agents/flowhypervisor/monitoring-prompt.pmt", ("MCP Doctor", "INI_SECTION_MCP_DOCTOR", "MCP DOCTOR AGENT STARTED"), ()),
     ("agents_descriptions.md", ("MCP Doctor", "INI_SECTION_MCP_DOCTOR", "READY-gated"), ()),
+    ("docs/external_mcp_bulletproof_architecture.md", ("eight supervisor tools", "external_mcp_wait", "`streamable-http`: implemented live connector", "`websocket`: implemented live connector"), ("`streamable-http`: detected and diagnosed; adapter still future", "`websocket`: detected and diagnosed; adapter still future")),
+    ("Tlamatini/agent/Tlamatini.md", ("external_mcps.json", "eight always-on tools", "external_mcp_wait"), ("five always-on tools",)),
 ]
 
 
