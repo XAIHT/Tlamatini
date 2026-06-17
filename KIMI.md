@@ -18,9 +18,10 @@
 - Request-scoped Multi-Turn orchestration with dynamic tool binding and global execution planning
 - **Ask Execs** — optional human-in-the-loop gate that BLOCKS before every Multi-Turn tool execution on a browser Proceed/Deny prompt (bridged by `agent/exec_permission.py`); Deny halts the chain and shows a red "Execution interrupted" banner
 - **ACPX** — Agent Communication Protocol eXtension: spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Kimi, etc.) as child processes with permission gating, NDJSON transcripts, and skill invocation
+- **External MCPs** — a config-driven **universal MCP client** (`agent/external_mcp_manager.py`, catalog `agent/external_mcps.json`) that connects to ANY external MCP server declared in a `.mcp.json`-style JSON file over FOUR transports (`stdio` local command / `streamable-http` / legacy `sse` / `websocket`), binds the remote tools to the LLM as `ext__<server>__<tool>`, and exposes eight LLM supervisor tools. Bulletproof: connects run OFF the chat path, a bad/unreachable/unsupported server is catalogued-with-reason (never crashes or hangs), ≤5 active at once. **Distinct** from the two built-in `Mcp`-model context providers (System-Metrics / Files-Search), from ACPX, and from the per-agent inline MCP clients (STM32er / Kalier). See Section 9b
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **76** drag-and-drop agent types
+- Visual Agentic Workflow Designer (ACP) with **78** drag-and-drop agent types (incl. ESPHomer and the MCP Doctor)
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -113,7 +114,7 @@ Tlamatini/                          # Git root
 │   ├── architecture.md             # Config, Five Layers, app log, DB models
 │   ├── multi-turn.md               # Multi-Turn mode, Create Flow, Parametrizer sections
 │   ├── exec-report.md              # Exec Report pipeline + ordering contract
-│   ├── agents.md                   # Agent creation, 76-type catalog, FlowCreator, FlowHypervisor
+│   ├── agents.md                   # Agent creation, 78-type catalog, FlowCreator, FlowHypervisor
 │   ├── mcp-tools.md                # Creating a new MCP or tool
 │   ├── frontend.md                 # Chat + ACP modules, Canvas DOM contract
 │   ├── acpx.md                     # ACPX runtime, skills, transport modes, permissions
@@ -160,6 +161,8 @@ Tlamatini/                          # Git root
 │   │   ├── chat_agent_registry.py  # Wrapped chat-agent tool registry
 │   │   ├── chat_agent_runtime.py   # Wrapped-runtime lifecycle helpers
 │   │   ├── exec_permission.py      # Ask-Execs permission broker (sync executor ↔ async consumer; blocking Proceed/Deny)
+│   │   ├── external_mcp_manager.py  # Universal external-MCP client (4 transports, ≤5 active, lazy connect, 8 LLM supervisor tools)
+│   │   ├── external_mcps.json       # Catalog of importable external MCP servers (mcpServers shape; resolved next to config.json)
 │   │   ├── global_state.py         # Thread-safe singleton (Singleton pattern)
 │   │   ├── constants.py            # Application constants and regex patterns
 │   │   ├── path_guard.py           # Path validation for dangerous operations
@@ -202,7 +205,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 76 workflow agent templates
+│   │   ├── agents/                 # 78 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -271,10 +274,12 @@ Tlamatini/                          # Git root
 │   │   │   ├── stm32er/            # STM32 firmware bridge (STM32 Template Project MCP)
 │   │   │   ├── esp32er/            # ESP32 firmware bridge (PlatformIO pio CLI, no MCP)
 │   │   │   ├── arduiner/           # Arduino firmware bridge (arduino-cli, no MCP)
+│   │   │   ├── esphomer/           # ESPHome smart-home device bridge (direct `esphome` CLI, no MCP) — YAML device configs (NO C++)
 │   │   │   ├── camcorder/          # Webcam capture (OpenCV) — photo/video, Shoter's camera sibling
 │   │   │   ├── recorder/           # Microphone capture (sounddevice) — WAV, the audio sibling of Camcorder/Shoter
 │   │   │   ├── audioplayer/        # Audio-file PLAYBACK to speakers (soundfile + sounddevice) — playback counterpart of Recorder
-│   │   │   └── videoplayer/        # Video-file PLAYBACK with audio on a display (ffpyplayer + OpenCV) — on-screen sibling of AudioPlayer
+│   │   │   ├── videoplayer/        # Video-file PLAYBACK with audio on a display (ffpyplayer + OpenCV) — on-screen sibling of AudioPlayer
+│   │   │   └── mcp_doctor/         # Static external-MCP catalog triage (transport/runtime/PATH/secret blockers; no connect); canvas counterpart of external_mcp_doctor
 │   │   │
 │   │   ├── services/               # Backend services
 │   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
@@ -378,11 +383,19 @@ Chain types in `agent/rag/chains/`:
 1. Prompt-shape validation is skipped
 2. Request-scoped global execution plan/DAG is built (`global_execution_planner.py`)
 3. MCP contexts are prefetched selectively (not indiscriminately)
-4. Only planned tool subset is bound (default cap: **20 tools**, configurable via `max_selected_tools`)
+4. **The FULL enabled tool/agent/skill surface is bound** (2026-06-16) — `CapabilityAwareToolAgentExecutor.invoke` no longer binds only a narrow planner subset; it binds **every enabled** tool, wrapped chat-agent, and skill (the ACPX/Skill tools are still checkbox-filtered by `filter_acpx_tools`). This fixes the "I don't have a file-writing / shell tool bound this turn" failure that appeared once 88 agents were present and the planner's `max_selected_tools` cap (20) silently excluded the one tool the user needed. The planner still scores/orders capabilities, but selection no longer gates what the LLM can call.
 5. Wrapped agents launch in headless/background mode (no console popups)
 6. `MultiTurnToolAgentExecutor` deduplicates wrapped chat-agent calls with identical arguments
 7. After final answer, `services/answer_analizer.py` classifies as SUCCESS/FAILURE
 8. Frontend renders "Create Flow" button on SUCCESS, converts tool-call log into downloadable `.flw`
+
+### Full-Surface Binding — token-cost trims (2026-06-16)
+Binding every enabled tool every turn would balloon the prompt, so two cost trims keep it cheap:
+- **One-line-per-tool system prompt** — `bind_tools(...)` already sends the full JSON schema of every tool to the model, so the long prose tool descriptions that `_build_system_prompt` used to emit were ~5k redundant tokens/turn. The system prompt now lists each tool on a single line.
+- **`ChatOllama keep_alive`** — set from `OLLAMA_KEEP_ALIVE` (default `-1` = keep the model resident indefinitely) so the model + the bound-tool prefix stay loaded between turns and the prefix is reused instead of re-evaluated.
+
+### Step-by-Step Mode (toolbar checkbox — Multi-Turn runtime modifier)
+`#step-by-step-enabled` / `step_by_step_enabled` is a Multi-Turn runtime modifier that makes the LLM perform **one concrete action at a time** and then **wait for the user's READY / output** before the next. It is plumbed browser → `consumers.py` → `interface.py` → `unified.py` (and MUST stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist) → `mcp_agent.py::_build_system_prompt`, which appends the step-by-step instruction block to the system prompt. `bypass_prompt_validation` is now computed as `multi_turn_enabled OR acpx_enabled OR step_by_step_enabled`.
 
 ### When Multi-Turn is UNCHECKED:
 - Legacy one-shot behavior preserved exactly
@@ -454,7 +467,7 @@ Chain types in `agent/rag/chains/`:
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-49 specs in `WRAPPED_CHAT_AGENT_SPECS` (adds `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_camcorder`, `chat_agent_recorder`, `chat_agent_audioplayer`, and `chat_agent_videoplayer`). Key ones:
+`WRAPPED_CHAT_AGENT_SPECS` (recent additions: `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_esphomer`, `chat_agent_camcorder`, `chat_agent_recorder`, `chat_agent_audioplayer`, `chat_agent_videoplayer`, and `chat_agent_mcp_doctor`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -468,7 +481,8 @@ Chain types in `agent/rag/chains/`:
 - `chat_agent_monitor_log`, `chat_agent_monitor_netstat` (long-running)
 - `chat_agent_kyber_keygen`, `chat_agent_kyber_cipher`, `chat_agent_kyber_deciph`
 - `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`
-- `chat_agent_stm32er` (STM32 firmware), `chat_agent_esp32er` (ESP32 firmware via PlatformIO), `chat_agent_arduiner` (Arduino firmware via arduino-cli)
+- `chat_agent_stm32er` (STM32 firmware), `chat_agent_esp32er` (ESP32 firmware via PlatformIO), `chat_agent_arduiner` (Arduino firmware via arduino-cli), `chat_agent_esphomer` (ESPHome YAML smart-home firmware via the `esphome` CLI)
+- `chat_agent_mcp_doctor` (static external-MCP catalog triage — canvas/Multi-Turn counterpart of the live `external_mcp_doctor` tool)
 - `chat_agent_camcorder` (webcam photo/video capture via OpenCV)
 - `chat_agent_recorder` (microphone audio → WAV capture via `sounddevice`)
 - `chat_agent_audioplayer` (audio-file playback to speakers via `soundfile` + `sounddevice`; volume / time_played truncate-loop)
@@ -508,6 +522,57 @@ Wrapped chat-agent tools return JSON string with: `run_id`, `status`, `log_excer
 - `mcp_files_search_client_uri` in config is UNUSED by main chain path
 - `FileSearchRAGChain` falls back to `localhost:50051` for gRPC
 - Adding a new `Mcp` row without extending `factory.py` does NOTHING
+
+---
+
+## 9b. External MCPs — the Universal MCP Client (2026-06-09 → 2026-06-17, the "External MCPs" era)
+
+A **fourth, distinct MCP surface**, unrelated to the two built-in `Mcp`-model context providers above, to ACPX, and to the per-agent inline MCP clients (STM32er → STM32 Template Project MCP, Kalier → MCP-Kali-Server). The universal client connects Tlamatini to **ANY external MCP server** declared in a JSON file and brings its remote tools straight into the LLM's Multi-Turn surface.
+
+### What it is
+- **`agent/external_mcp_manager.py`** — the manager. Reads a catalog of server specs, lazily connects (in a **background thread, OFF the chat path**), and registers each connected server's remote tools for the LLM as **`ext__<server>__<tool>`**.
+- **`agent/external_mcps.json`** — the on-disk catalog (resolved **next to `config.json`**, frozen/source-aware, **BOM-tolerant**). It uses the standard **`mcpServers`** shape — the same object a Claude-Code `.mcp.json` carries — so a user can paste an existing `.mcp.json` straight in.
+- **User state + cap** — at most **5 active servers at once** (`MAX_ACTIVE`); which 5 are active is persisted user state. Connects are **lazy** with a **60 s** connect timeout.
+
+### Four transports
+| Transport | Mechanism | Client |
+|---|---|---|
+| `stdio` | local command — a Docker `mcp/*` image, `npx`, `uvx`, or `python` — driven over stdin/stdout | `_StdioMcpClient` |
+| `streamable-http` | modern HTTP MCP | `httpx` |
+| `sse` | legacy Server-Sent-Events MCP | `httpx` |
+| `websocket` | WS MCP | `websockets` |
+
+`tcp` / `named-pipe` specs are **detected-but-not-connectable** (catalogued with that reason). The network clients (`_NetworkMcpClientBase`) **duck-type** `_StdioMcpClient`, so the rest of the manager treats every transport identically.
+
+### Eight LLM supervisor tools
+The LLM administers the whole surface itself via eight tools (so it can add and activate an MCP mid-conversation):
+- `external_mcp_status` — what's catalogued / active / connected.
+- `external_mcp_reconnect` — re-dial a server.
+- `external_mcp_doctor` — STATIC triage of a server spec (transport / runtime / command-on-PATH / placeholder-secret detection / blockers / next-step) **without connecting**.
+- `external_mcp_list_tools` — enumerate a connected server's remote tools.
+- `external_mcp_call` — invoke one remote tool directly.
+- `external_mcp_import` — add a server to the catalog from a JSON **object OR a string**.
+- `external_mcp_set_active` — choose the ≤5 active servers from a **list OR a comma-separated string**.
+- `external_mcp_wait` — **block until a slow first-run Docker image pull is ready** (the first `docker run mcp/...` pulls the image, which can take minutes).
+
+### Frontend
+A dedicated **"External ▸ MCPs"** navbar dialog (`static/agent/js/external_mcps_dialog.js` + `css/external_mcps_dialog.css`): a searchable catalog, the ≤5-active selector, and **drag-a-`.json`-to-import**. Backed by three `@login_required` endpoints:
+- `GET  /agent/external_mcps/` — catalog + active/connected state
+- `POST /agent/external_mcps/activate/` — set the active set
+- `POST /agent/external_mcps/import/` — add a server from pasted/dropped JSON
+
+### Bulletproof contract (do NOT weaken)
+- Connects run **off the chat path** (background thread) — a slow or hung server never delays a chat reply.
+- A **bad / unreachable / unsupported** server is **catalogued-with-a-reason**, never a crash or a hang.
+- **Auth**: a spec's `headers` (e.g. `Bearer …`) and `env` carry credentials into the connection.
+- The **command watchdog exempts live MCP child PIDs** (`external_mcp_root_pids`) so the idle-kill daemon never reaps a healthy stdio MCP server.
+- Design contract document: **`docs/external_mcp_bulletproof_architecture.md`**.
+
+### Verified
+Driven live against **10 no-key MCPs** — `memory`, `sqlite`, `redis`, `fetch`, `time`, `everything`, `sequentialthinking`, `filesystem`, `git`, `puppeteer` — each chaining External-MCP tools with `chat_agent_file_creator`: **10/10 PASS**.
+
+### MCP Doctor agent (#78)
+See Section 12 (Utility Agents) and Section 23 — the canvas/Multi-Turn agent counterpart of the live `external_mcp_doctor` tool, which performs the same STATIC catalog triage as a workflow node.
 
 ---
 
@@ -602,11 +667,12 @@ Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 - `acp-parametrizer-dialog.js` — Parametrizer mapping UI
 - `chat_page_runtime_poller.js` — Chat runtime status polling
 
-**Shared (4)**:
+**Shared (5)**:
 - `canvas_item_dialog.js` — Agent config dialog on canvas
 - `contextual_menus.js` — Right-click menus
 - `tools_dialog.js` — Tool enable/disable dialog
 - `acp-undo-manager.js` — Undo stack manager
+- `external_mcps_dialog.js` — **"External ▸ MCPs"** navbar dialog: searchable catalog, ≤5-active selector, drag-a-`.json` import (backed by `GET /agent/external_mcps/`, `POST /agent/external_mcps/activate/`, `POST /agent/external_mcps/import/`). See Section 9b
 
 ### ACP Canvas DOM Contract (CRITICAL)
 The canvas is a **two-layer DOM**:
@@ -640,7 +706,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 70 Workflow Agent Types
+## 12. All 78 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -706,6 +772,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **STM32er** — STM32 firmware bridge to the **STM32 Template Project MCP** (`https://github.com/XAIHT/STM32TemplateProjectMCP`); a self-contained inline MCP stdio JSON-RPC client (no `mcp` dep in the pool) that scaffolds/builds/flashes/observes STM32F407VG firmware. `action` ∈ the **23 MCP tools** + 2 composites (`serial_session`, `live_monitor`) + 2 meta (`bootstrap`, `validate`). **Zero-config auto-bootstrap**: with no on-disk `server_script` (the default is now empty) STM32er DOWNLOADS the MCP itself (shallow `git clone`, with a GitHub-zip fallback when git is absent) into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`, pip-installs `mcp`+`pyserial` if missing, and validates — so the user installs **only STM32CubeIDE + Tlamatini** (new `action: bootstrap`; new `config.yaml` keys `auto_bootstrap`/`mcp_repo_url`/`mcp_ref`/`mcp_install_dir`/`auto_update`/`pip_install`; new `config.json` globals `stm32_mcp_server_script` (now `""`)/`stm32_mcp_repo_url`/`stm32_mcp_install_dir`). **Safety preflight** (critical-mission fail-safe): validates compiler / CubeIDE / make / programmer / ST-LINK driver+probe / device-family before any compile or flash and REFUSES rather than mis-build or mis-flash — compile needs NO board, while flash/erase/reset/serial/SWD/`live_*` require a connected ST-LINK, and a cross-STM32F-family device is refused (new `action: validate`; new `config.yaml` keys `preflight` (true) / `device`). The MCP template is still STM32F407VG-specific; STM32er safely REFUSES other families (multi-family fork is future work). Emits `INI_SECTION_STM32ER` and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_stm32er` Multi-Turn tool. Verified zero-config end-to-end (download → build → flash → reset) on a real **STM32F407G-DISC1**
 - **ESP32er** — ESP32 firmware bridge via **PlatformIO Core** (`pio`). Unlike STM32er (which drives a separate MCP server), PlatformIO already ships a complete CLI, so ESP32er invokes `pio` subcommands **directly** (no MCP server) over a stdlib-only pool script (`subprocess` + `urllib`). **Zero-config auto-bootstrap**: with no on-disk `pio_executable` and `auto_bootstrap: true`, ESP32er downloads PlatformIO Core itself (official `get-platformio.py`, `pip install platformio` fallback) into `%LOCALAPPDATA%/Tlamatini/platformio` — the user installs **only the board USB driver + Tlamatini**. **Safety preflight** (fail-safe): validates `pio` is resolvable + a `platformio.ini` exists and, for upload/monitor, that a serial port is connected (ESP32 flashes over its onboard USB-serial bootloader — no external JTAG probe needed), and REFUSES rather than run a build/upload that cannot succeed. One capability per run via `action` ∈ environment/meta (`bootstrap`/`validate`/`system_info`/`boards`); project lifecycle (`create_project`/`write_source`/`read_source`/`list_sources`/`clean`); build & flash (`build`/`upload`/`build_and_upload`/`list_artifacts`/`scaffold_build_upload`); serial HIL (`device_list`/`monitor`/`monitor_session`); packages & QA (`pkg_install`/`pkg_list`/`pkg_update`/`check`/`test`). Emits `INI_SECTION_ESP32ER` (`action`/`tool`/`ok`/`returncode`/`success`/`project_dir`/`port`/`environment`/`stage`) and always triggers `target_agents`. NOTE: the first build downloads the espressif32 platform + toolchain (hundreds of MB). Both a canvas agent and the LLM-callable `chat_agent_esp32er` Multi-Turn tool
 - **Arduiner** — Arduino firmware bridge via the **Arduino CLI** (`arduino-cli`). The direct-CLI sibling of ESP32er: like `pio` (and unlike STM32er's MCP server), `arduino-cli` is itself a complete CLI, so Arduiner invokes `arduino-cli` subcommands **directly** (no MCP server) over a stdlib-only pool script. **The microcontroller is selected by `fqbn`** (Fully Qualified Board Name, e.g. `arduino:avr:uno`, `arduino:avr:mega2560`, `arduino:samd:mkr1000`, `esp32:esp32:esp32`); `port` + `baud` set the upload/monitor link. **Zero-config auto-bootstrap**: with no on-disk `arduino_cli_executable` and `auto_bootstrap: true`, Arduiner downloads the arduino-cli **binary** itself (Go binary from `downloads.arduino.cc`, unzipped into `%LOCALAPPDATA%/Tlamatini/arduino-cli`, then `config init` + `core update-index`) — a binary download, NOT a pip install. **Auto-core-install**: arduino-cli (unlike PlatformIO) does NOT auto-install platforms on compile, so before a build Arduiner derives the FQBN's platform and runs `core install` when missing (`auto_core_install: true`; honors `additional_urls` for third-party ESP32/STM32/RP2040 cores). **Safety preflight** (fail-safe): validates `arduino-cli` resolvable + a sketch (`.ino`) + an FQBN exist and, for upload/monitor, a connected serial port; REFUSES rather than run a build/upload that cannot succeed. Ships the bundled **ArduinoTemplateProject** scaffold (the Arduino analog of STM32er's and ESP32er's templates) — `create_project` copies it, renames the `.ino`, and stamps the FQBN/port into `sketch.yaml`. One capability per run via `action` (bootstrap/validate/boards/device_list, cores & libs, project lifecycle, build/upload/build_and_upload/clean, monitor/monitor_session). Emits `INI_SECTION_ARDUINER` (`action`/`tool`/`ok`/`returncode`/`success`/`fqbn`/`port`/`sketch_path`/`stage`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_arduiner` Multi-Turn tool
+- **ESPHomer** — ESPHome (`https://esphome.io`) smart-home device firmware from a **simple YAML config (NO C++)** on ESP32 / ESP8266 / RP2040 / BK72xx. The fourth microcontroller agent and a direct-CLI sibling of ESP32er/Arduiner: ESPHome ships a complete `esphome` CLI, so ESPHomer invokes `esphome` subcommands **directly** (no MCP server) over a stdlib-only pool script. **Zero-config auto-bootstrap**: with no on-disk `esphome_executable` and `auto_bootstrap: true`, ESPHomer `pip install esphome` into the agent's Python and validates it — the user installs **only the board USB driver + Tlamatini** (ESPHome vendors PlatformIO + toolchains at first compile). **Safety preflight** (fail-safe): validates `esphome` resolvable + a device YAML exists and, for upload/logs/run, that a serial port is connected **or** an OTA host is supplied in `port` (first flash USB, OTA after), and REFUSES rather than run a build/upload that cannot succeed. One capability per run via `action` ∈ environment/meta (`bootstrap`/`validate`/`version`); device YAML lifecycle (**`new_config`** — a built-in headless GENERATOR that writes a minimal valid device YAML from `name`/`platform`/`board`/`wifi_ssid`/`wifi_password`/`led_pin`, replacing the interactive `esphome wizard`; `write_config`/`read_config`/`config`/`clean`); build & flash (`compile`/`upload`/`run`/`list_artifacts`/`scaffold_compile_upload`); serial/OTA HIL (`logs`). Ships an **ESPHomeTemplateProject** sample. Emits `INI_SECTION_ESPHOMER` (`action`/`tool`/`ok`/`returncode`/`success`/`config_path`/`name`/`port`/`stage`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_esphomer` Multi-Turn tool
 
 ### Cryptography Agents
 - **Kyber-KeyGen** — CRYSTALS-Kyber key pair generation (post-quantum)
@@ -718,6 +785,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Gatewayer** — HTTP webhook / folder-drop ingress
 - **Gateway-Relayer** — Bridges provider webhooks into Gatewayer
 - **Node-Manager** — Infrastructure registry and node supervision
+- **MCP Doctor** — STATIC triage of an **external MCP server** catalog entry, with **no connect**: reports transport, runtime (docker / npx / uvx / python / node / …), whether the command is on PATH, placeholder-secret detection, blockers, and a next-step. The canvas / Multi-Turn agent counterpart of the live `external_mcp_doctor` supervisor tool (Section 9b). Emits `INI_SECTION_MCP_DOCTOR` (a Parametrizer source) and triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_mcp_doctor` Multi-Turn tool
 - **FlowCreator** — AI-powered flow designer (system agent, singleton)
 
 ### Terminal/Monitoring Agents (do NOT start downstream)
@@ -1000,6 +1068,7 @@ Guide for creating new skills: YAML frontmatter contract, input/output validatio
 
 ## 23. Recent Fixes to Remember
 
+- **External MCPs era (v1.24.0, 2026-06-09 → 2026-06-17)** — four shipped pieces. (1) **Universal external-MCP client** (`agent/external_mcp_manager.py`, catalog `agent/external_mcps.json` in the `mcpServers` shape next to `config.json`, ≤5 active, lazy background connect, 60 s timeout, BOM-tolerant): connects to ANY external MCP server over `stdio` / `streamable-http` / `sse` / `websocket` and binds its remote tools as `ext__<server>__<tool>`; eight LLM supervisor tools (`external_mcp_status` / `reconnect` / `doctor` / `list_tools` / `call` / `import` / `set_active` / `wait`); "External ▸ MCPs" navbar dialog + `GET /agent/external_mcps/`, `POST .../activate/`, `POST .../import/` (all `@login_required`). Bulletproof: connects run OFF the chat path, bad/unreachable/unsupported = catalogued-with-reason (never crash/hang), command watchdog exempts live MCP child PIDs (`external_mcp_root_pids`). Distinct from the built-in `Mcp` context providers, ACPX, and the inline per-agent MCP clients. Design doc `docs/external_mcp_bulletproof_architecture.md`. Verified live driving 10 no-key MCPs (memory/sqlite/redis/fetch/time/everything/sequentialthinking/filesystem/git/puppeteer) → 10/10. See Section 9b. (2) **MCP Doctor agent (#78)** — canvas + `chat_agent_mcp_doctor`; static catalog triage (transport/runtime/PATH/placeholder-secret/blockers/next-step, no connect); emits `INI_SECTION_MCP_DOCTOR`; migrations 0141 (Agent row) / 0142 (`Chat-Agent-MCP-Doctor` Tool row) / 0143 (demo prompt 81). (3) **Multi-Turn binds the FULL enabled surface** — `CapabilityAwareToolAgentExecutor.invoke` binds every enabled tool/agent/skill (ACPX still checkbox-filtered), fixing "I don't have a file-writing/shell tool bound this turn" with 88 agents present; cost trims = one-line-per-tool system prompt (bind_tools already sends the full schema) + `ChatOllama keep_alive` (`OLLAMA_KEEP_ALIVE`, default `-1`) prefix reuse. (4) **Step-by-Step mode** (`#step-by-step-enabled` / `step_by_step_enabled`) — Multi-Turn runtime modifier: one concrete action at a time, wait for the user's READY; plumbed browser → consumers → interface → unified.py (payload whitelist) → `mcp_agent._build_system_prompt`; `bypass_prompt_validation = multi_turn OR acpx OR step_by_step`. Agent count is now **78** (added ESPHomer + MCP Doctor).
 - **STM32er zero-config bootstrap + fail-safe preflight (v1.9.0)** — STM32er (agent #68; wrapped tool `chat_agent_stm32er`) ships two safety/UX pillars. (1) **Auto-bootstrap**: with `server_script` empty (the new default), the agent downloads the STM32 Template Project MCP itself (shallow `git clone`, GitHub-zip fallback) into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP` and pip-installs `mcp`+`pyserial` — the user installs only STM32CubeIDE + Tlamatini (`action: bootstrap`; config.yaml `auto_bootstrap`/`mcp_repo_url`/`mcp_ref`/`mcp_install_dir`/`auto_update`/`pip_install`; config.json `stm32_mcp_server_script`/`stm32_mcp_repo_url`/`stm32_mcp_install_dir`). (2) **Preflight** validates compiler/CubeIDE/make/programmer/ST-LINK-driver+probe/device-family before compile or flash and REFUSES rather than mis-build/flash — compile needs no board; flash/erase/reset/serial/SWD/`live_*` require a connected ST-LINK; a cross-STM32F-family device is refused (`action: validate`; config.yaml `preflight`/`device`). The MCP template is STM32F407VG-specific; other families are safely refused (multi-family is future work). `requirements.txt` now pins `pyserial==3.5` (`mcp==1.25.0` already present). 122 tests; verified zero-config end-to-end (download → build → flash → reset) on a real STM32F407G-DISC1. Catalog demos via migration 0103 (63 STM32 GENESIS, 64 STM32 BLINKY, 65 STM32 HIL OBSERVATORY — the third a real-hardware HIL run).
 - **Reviewer commit-state + secret precision (v1.4.2)** — `build_review_prompt` now takes `diff_ref` and tells the LLM that uncommitted working-tree/staged diffs are NOT "committed/pushed", plus teaches the `regen_secrets.py` scrub convention so local "keyed" creds in `config.json` / `agents/*/config.yaml` aren't mis-flagged as leaked. Mirror any change in BOTH `reviewer.py` and `code_review/SKILL.md`.
 - **Planner statelessness on short follow-ups** — Solved by passing `chat_history_text` into planner. Preserve this argument.
