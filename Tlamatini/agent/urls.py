@@ -122,6 +122,7 @@ urlpatterns = [
     path('update_prompter_connection/<str:agent_name>/', secure_post(views.update_prompter_connection_view), name='update_prompter_connection'),
     path('update_gitter_connection/<str:agent_name>/', secure_post(views.update_gitter_connection_view), name='update_gitter_connection'),
     path('update_dockerer_connection/<str:agent_name>/', secure_post(views.update_dockerer_connection_view), name='update_dockerer_connection'),
+    path('update_mcp_doctor_connection/<str:agent_name>/', secure_post(views.update_mcp_doctor_connection_view), name='update_mcp_doctor_connection'),
     path('update_pser_connection/<str:agent_name>/', secure_post(views.update_pser_connection_view), name='update_pser_connection'),
     path('execute_flowcreator/<str:agent_name>/', secure_post(views.execute_flowcreator_view), name='execute_flowcreator'),
     path('check_flowcreator_result/<str:agent_name>/', secure_get(views.check_flowcreator_result_view), name='check_flowcreator_result'),
@@ -175,4 +176,7 @@ urlpatterns = [
     path('skills/<str:skill_name>/', secure_get(views.skill_detail_view), name='skill_detail'),
     path('skills/_/reload/', secure_post(views.reload_skills_view), name='reload_skills'),
     path('skills/_/diagnostics/', secure_get(views.skills_diagnostics_view), name='skills_diagnostics'),
+    path('external_mcps/', secure_get(views.external_mcps_list_view), name='external_mcps_list'),
+    path('external_mcps/activate/', secure_post(views.external_mcps_activate_view), name='external_mcps_activate'),
+    path('external_mcps/import/', secure_post(views.external_mcps_import_view), name='external_mcps_import'),
 ]

@@ -187,6 +187,7 @@ const MULTI_TURN_STORAGE_KEY = 'multiTurnEnabled';
 const EXEC_REPORT_STORAGE_KEY = 'execReportEnabled';
 const ACPX_STORAGE_KEY = 'acpxEnabled';
 const ASK_EXECS_STORAGE_KEY = 'askExecsEnabled';
+const STEP_BY_STEP_STORAGE_KEY = 'stepByStepEnabled';
 
 // --- Static DOM references ---
 const textEditorPre = document.querySelector('#text-editor pre');
@@ -210,6 +211,7 @@ const execReportCheckbox = document.getElementById('exec-report-enabled');
 const acpxCheckbox = document.getElementById('acpx-enabled');
 const askExecsCheckbox = document.getElementById('ask-execs-enabled');
 const askExecsToggleLabel = document.getElementById('ask-execs-toggle');
+const stepByStepCheckbox = document.getElementById('step-by-step-enabled');
 const contextMenuButton = document.getElementById('context-menu-button');
 const mcpsMenuButton = document.getElementById('mcps-menu-button');
 const agentsMenuButton = document.getElementById('agents-menu-button');
@@ -404,6 +406,32 @@ function syncAskExecsAvailability() { // eslint-disable-line no-unused-vars
     if (askExecsToggleLabel) {
         askExecsToggleLabel.classList.toggle('toolbar-toggle-disabled', !multiTurnOn);
     }
+}
+
+// --- Step-by-Step (interactive setup / troubleshooting mode) ---
+function isStepByStepEnabled() { // eslint-disable-line no-unused-vars
+    return !!(stepByStepCheckbox && stepByStepCheckbox.checked);
+}
+
+function persistStepByStepState(enabled) { // eslint-disable-line no-unused-vars
+    try {
+        sessionStorage.setItem(STEP_BY_STEP_STORAGE_KEY, enabled ? 'true' : 'false');
+    } catch (err) {
+        console.error('Failed to persist Step-by-Step state:', err);
+    }
+}
+
+function applyStoredStepByStepState() { // eslint-disable-line no-unused-vars
+    if (!stepByStepCheckbox) {
+        return;
+    }
+    let enabled = false;
+    try {
+        enabled = sessionStorage.getItem(STEP_BY_STEP_STORAGE_KEY) === 'true';
+    } catch (err) {
+        console.error('Failed to restore Step-by-Step state:', err);
+    }
+    stepByStepCheckbox.checked = enabled;
 }
 
 // --- Open in... dropdown references ---

@@ -158,6 +158,9 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/prompt.pmt",
     "Tlamatini/agent/Tlamatini.md",
     "CLAUDE.md",
+    # External MCP client layer (config-driven generic MCP catalog + dialog)
+    "Tlamatini/agent/external_mcp_manager.py",
+    "Tlamatini/agent/external_mcps.json",
     # Newest agent (ESPHomer) — both the script and its template config
     "Tlamatini/agent/agents/esphomer/esphomer.py",
     "Tlamatini/agent/agents/esphomer/config.yaml",
@@ -263,6 +266,8 @@ def _wants_redaction(rel_posix: str) -> str:
     """Return 'json' / 'yaml' / '' for files whose secrets must be scrubbed."""
     if rel_posix == "Tlamatini/agent/config.json":
         return "json"
+    if rel_posix == "Tlamatini/agent/external_mcps.json":
+        return "json"  # External MCP catalog — a server's env block may hold keys
     if (rel_posix.startswith("Tlamatini/agent/agents/")
             and rel_posix.endswith("config.yaml")):
         return "yaml"

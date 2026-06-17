@@ -119,6 +119,26 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         security_hints=("docker", "container", "image", "compose"),
     ),
     ChatWrappedAgentSpec(
+        key="mcp_doctor",
+        template_dir="mcp_doctor",
+        tool_name="chat_agent_mcp_doctor",
+        tool_description="Chat-Agent-MCP-Doctor",
+        display_name="MCP Doctor",
+        purpose=(
+            "Diagnose External MCP server catalog entries before setup or activation. "
+            "Use for new/unknown MCPs from marketplaces, mcp.so pages, pasted JSON, "
+            "Docker/NPX/UVX servers, missing tools, transport questions, command/PATH "
+            "checks, placeholder secrets, and step-by-step onboarding reports."
+        ),
+        example_request=(
+            "Run MCP Doctor with server_key='Redis' and "
+            "source_url='https://mcp.so/server/redis/modelcontextprotocol'"
+        ),
+        aliases=("mcp doctor", "external mcp doctor", "mcp setup", "mcp onboarding"),
+        security_hints=("mcp", "external mcp", "mcp.so", "docker mcp", "npx mcp", "uvx mcp"),
+        poll_window_seconds=3,
+    ),
+    ChatWrappedAgentSpec(
         key="kuberneter",
         template_dir="kuberneter",
         tool_name="chat_agent_kuberneter",

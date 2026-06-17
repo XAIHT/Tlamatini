@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="{% static 'agent/css/agent_page.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/skills_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/external_mcps_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/access_keys_wizard.css' %}?v={{ STATIC_VERSION }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,6 +120,14 @@
             </ul>
           </li>
           <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="external-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">External</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="external-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="external-mcps"
+                  onclick="OpenExternalMcpsDialog(event);">MCPs</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="config-menu-button" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">Config</a>
             <ul class="dropdown-menu dropdown-entry" aria-labelledby="config-menu-button">
@@ -201,6 +210,11 @@
                 title="Ask permission before each Multi-Turn tool/agent execution. Enabled only when Multi-Turn is on.">
                 <input id="ask-execs-enabled" type="checkbox" disabled />
                 <span>Ask Execs</span>
+              </label>
+              <label id="step-by-step-toggle" class="toolbar-toggle" for="step-by-step-enabled"
+                title="Guide setup and troubleshooting one user-confirmed step at a time.">
+                <input id="step-by-step-enabled" type="checkbox" />
+                <span>Step-by-Step</span>
               </label>
               <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
                 <input id="internetEnabled" type="checkbox" />
@@ -307,6 +321,21 @@
     <div>
       <ul id="skills-configure-list"></ul>
     </div>
+  </div>
+  <div id="external-mcps-dialog-message" title="" style="display: none;">
+    <p id="external-mcps-legend"></p>
+    <div class="emx-search-row">
+      <input id="external-mcps-search" type="search" placeholder="Search services…" autocomplete="off">
+      <span id="external-mcps-chip" class="emx-chip"></span>
+    </div>
+    <div id="external-mcps-list" class="emx-list"></div>
+    <div id="external-mcps-warn" class="emx-warn"></div>
+    <div class="emx-stitle">Active — sent with your prompt</div>
+    <table class="emx-sum">
+      <thead><tr><th>Service</th><th>Tools</th><th>Transport</th><th>Status</th></tr></thead>
+      <tbody id="external-mcps-sum"></tbody>
+    </table>
+    <p class="emx-drop-hint">Tip: drag an MCP <code>.json</code> file anywhere onto the page to add it to the catalog.</p>
   </div>
   <div id="skills-browse-dialog-message" title="" style="display: none;">
     <div id="skills-browse-toolbar">
@@ -553,6 +582,7 @@
   <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/skills_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/external_mcps_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/access_keys_wizard.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/shared-runtime-dialogs.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/chat_page_runtime_poller.js' %}?v={{ STATIC_VERSION }}"></script>

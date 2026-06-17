@@ -944,6 +944,25 @@ async function updateDockererConnection(agentId, connectedAgentId, action, conne
     }
 }
 
+async function updateMcpDoctorConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_mcp_doctor_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- MCP Doctor ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update MCP Doctor ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating MCP Doctor ${agentId}:`, error);
+    }
+}
+
 async function updatePserConnection(agentId, connectedAgentId, action, connectionType = 'source') { // eslint-disable-line no-unused-vars
     try {
         const response = await fetch(`/agent/update_pser_connection/${agentId}/`, {

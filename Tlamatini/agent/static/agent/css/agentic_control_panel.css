@@ -2097,6 +2097,18 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(36, 150, 237, 0.5);
 }
 
+/* MCP Doctor Agent - External MCP diagnostics and onboarding */
+.canvas-item.mcpdoctor-agent {
+    background-color: #0F3D3E;
+    color: white;
+    background: linear-gradient(135deg, #0F3D3E 0%, #1E7B73 33%, #E0A83A 66%, #FFF2C6 100%);
+}
+
+.canvas-item.mcpdoctor-agent:hover {
+    background: linear-gradient(135deg, #17615F 0%, #2AA39A 33%, #F0BC55 66%, #FFF7DA 100%);
+    box-shadow: 0 6px 15px rgba(30, 123, 115, 0.5);
+}
+
 /* Pser Agent Styles - Process Finder (Pink to Green gradient) */
 .canvas-item.pser-agent {
     background-color: #E91E63;

@@ -238,6 +238,7 @@ class UnifiedAgentChain:
             # or they are silently dropped at the chain boundary (the same
             # drop-on-rebuild bug class that once broke exec_report_enabled).
             "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
+            "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
             "conversation_user_id": payload.get("conversation_user_id"),
             "global_execution_plan": payload.get("global_execution_plan"),
             "planner_summary": payload.get("planner_summary", ""),
@@ -308,6 +309,7 @@ User Question: {enhanced_input}"""
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(payload.get("acpx_enabled", False)),
                     "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
+                    "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
                     "ask_execs_user_id": payload.get("conversation_user_id"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
@@ -791,6 +793,7 @@ User Question: {enhanced_input}"""
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(payload.get("acpx_enabled", False)),
                     "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
+                    "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
                     "ask_execs_user_id": payload.get("conversation_user_id"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),

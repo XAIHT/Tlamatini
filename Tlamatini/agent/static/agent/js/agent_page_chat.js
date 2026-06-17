@@ -856,6 +856,19 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     } else if (lower === 'dockerer') {
         set('command', pairs.command || requestStr);
 
+    // ── MCP Doctor ───────────────────────────────────────────────────
+    // Template fields: server_key, catalog_path, source_url, mode,
+    // include_catalog. This is the canvas/Multi-Turn diagnostic agent for
+    // External MCP onboarding.
+    } else if (lower === 'mcp doctor') {
+        set('server_key', pairs.server_key || pairs.server || pairs.name);
+        set('catalog_path', pairs.catalog_path || pairs.path);
+        set('source_url', pairs.source_url || pairs.url);
+        set('mode', pairs.mode || pairs.action);
+        if (pairs.include_catalog !== undefined && pairs.include_catalog !== '') {
+            config.include_catalog = String(pairs.include_catalog).toLowerCase() === 'true';
+        }
+
     // ── Kuberneter ───────────────────────────────────────────────────
     // Template fields: command, namespace, extra_args, custom_command
     } else if (lower === 'kuberneter') {
