@@ -13,7 +13,7 @@
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.0"><img src="https://img.shields.io/badge/VERSION-v1.26.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENTS-78-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="78 agents"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-78-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="78 agent types"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/TOOLS-75-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="75 tools"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-GPLV3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License"/></a>
 </p>
@@ -26,7 +26,7 @@
 
 ---
 
-> **📹 [ Drop a 15-second GIF here ]** — flashing a board from a prompt, or wiring agents on the canvas and hitting Start. One real GIF up top sells this faster than anything written below.
+> **📹 [ Drop a 15-second GIF here ]** — flashing a board from a prompt, or wiring agent types on the canvas and hitting Start. One real GIF up top sells this faster than anything written below.
 
 ---
 
@@ -42,7 +42,7 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 | 🛠️ | **Modify entire software projects** | Read, grep, refactor, edit, and rebuild whole codebases — not just single files — with hybrid RAG grounding. |
 | 🛡️ | **Security assessments** | Authorized Kali Linux / pentest runbooks + code security-audit skills, driven from chat. |
 | 📟 | **STM32 · ESP32 · Arduino firmware** | Scaffold → build → **flash a real connected board** → read serial, with a safety preflight that refuses mis-targeted firmware. |
-| 🧩 | **A VISUAL WORKFLOW DESIGNER** | **78 drag-and-drop agents** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
+| 🧩 | **A VISUAL WORKFLOW DESIGNER** | **78 drag-and-drop agent types** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
 
 > **The headline no competitor can copy:** Tlamatini is the only local-first AI dev assistant where you *design the agent workflow visually*, then have it flash firmware, drive Unreal/Blender, run security tools, and command any external MCP — all from one machine.
 
@@ -59,7 +59,7 @@ Embeddings and chat run on your local [Ollama](https://ollama.com) install. Clou
 Everything Tlamatini can do, grouped:
 
 **🧩 Orchestration & design**
-- **Visual Workflow Designer (ACP)** — 78 drag-and-drop agents wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
+- **Visual Workflow Designer (ACP)** — 78 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
 - **Multi-Turn orchestration** — a tool-calling loop with **75 tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time.
 - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health.
 - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
