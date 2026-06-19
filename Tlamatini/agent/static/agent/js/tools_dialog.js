@@ -52,6 +52,11 @@ const PROMPT_MODE_META = {
         label: 'ACPX',
         cls: 'prompt-mode-badge-acpx',
         tip: 'Needs ACPX (with Multi-Turn) — selecting it checks the ACPX box.'
+    },
+    execreport: {
+        label: 'Exec-report',
+        cls: 'prompt-mode-badge-execreport',
+        tip: 'Requires the Exec Report (with Multi-Turn) — selecting it checks the Exec Report box.'
     }
 };
 
@@ -65,7 +70,9 @@ const PROMPT_MODE_META = {
 //   • Multi-turn ⇔ ACPX, OR it drives a chat_agent_* wrapped agent, OR it says
 //             "multi-turn".
 //   • One-Shot ⇔ neither (a plain single-shot Q&A / action).
-// Returns an ordered array: ['oneshot'] | ['multiturn'] | ['multiturn','acpx'].
+//   • Exec-report ⇔ ANY Multi-turn prompt (so its run is verified); One-Shot omits it.
+// Returns an ordered array, e.g. ['oneshot'] | ['multiturn','execreport'] |
+//   ['multiturn','acpx','execreport'].
 function classifyPromptModes(content) {
     const c = content || '';
     // Drop "do NOT use <…>" forbidden-tool clauses so a tool the prompt
@@ -78,9 +85,16 @@ function classifyPromptModes(content) {
     const multiturn = acpx
         || /\bchat_agent_\w+/i.test(c)
         || /\bmulti-?turn\b/i.test(c);
-    if (acpx) return ['multiturn', 'acpx'];
-    if (multiturn) return ['multiturn'];
-    return ['oneshot'];
+    let modes;
+    if (acpx) modes = ['multiturn', 'acpx'];
+    else if (multiturn) modes = ['multiturn'];
+    else modes = ['oneshot'];
+    // Every Multi-turn prompt (ACPX implies Multi-turn) ALSO carries the
+    // Exec-report nature so its run is verified; only pure One-Shot prompts skip
+    // it. Clicking the card therefore ticks Exec Report whenever Multi-Turn is
+    // set.
+    if (!modes.includes('oneshot')) modes.push('execreport');
+    return modes;
 }
 
 // Build the badge cluster for a card header from a modes array.
@@ -117,8 +131,11 @@ function setToolbarToggle(checkboxId, desired) {
 function applyPromptModesToToggles(modes) {
     const wantAcpx = modes.includes('acpx');
     const wantMultiTurn = wantAcpx || modes.includes('multiturn');
+    const wantExecReport = modes.includes('execreport');
     setToolbarToggle('multi-turn-enabled', wantMultiTurn);
     setToolbarToggle('acpx-enabled', wantAcpx);
+    // Multi-Turn is set above first, so the Exec Report toggle is meaningful.
+    setToolbarToggle('exec-report-enabled', wantExecReport);
 }
 
 $(function () {

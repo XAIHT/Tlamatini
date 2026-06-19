@@ -127,7 +127,5 @@
       "transport": "stdio"
     }
   },
-  "active": [
-    "puppeteer"
-  ]
+  "active": []
 }
