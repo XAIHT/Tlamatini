@@ -433,6 +433,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The current Git window establishes the new `v1.26.0` baseline: the latest tag `v1.26.0` sits at commit `30a87f3` (June 17, 2026) and carries the External MCPs universal-client work — a config-driven client that connects to any MCP server over four transports (stdio / streamable-HTTP / SSE / WebSocket), the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and the Step-by-Step setup mode — on top of the earlier ESPHomer firmware lane."
         )
+    if any("installation/use steps" in subject or "getting start" in subject or "config images" in subject or "ollama token" in subject for subject in subjects):
+        highlights.append(
+            "The latest handbook pass on June 19, 2026 shifts the emphasis from release bragging to operator onboarding: BookOfTlamatini now opens with an easy-follow five-step setup path (install Tlamatini, install/sign in to Ollama, pull models, configure the app, start using Multi-Turn only when needed), and it adds first-run configuration screenshots plus a clearer local-vs-remote Ollama-token rule."
+        )
     if has_esphomer_assets():
         highlights.append(
             "The tagged `v1.26.0` release now includes ESPHomer as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
@@ -644,6 +648,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
             "Since the last committed PDF/PPTX refresh, the repository moved onto the `v1.26.0` version line: tag `v1.26.0` at commit `30a87f3` establishes the new release identity, with the External MCPs universal client (four transports, the MCP Doctor agent, full-surface Multi-Turn, Step-by-Step) layered on top of the ESPHomer firmware lane."
+        )
+    if any("installation/use steps" in subject or "getting start" in subject or "config images" in subject or "ollama token" in subject for subject in subjects):
+        highlights.append(
+            "The newest post-tag documentation wave is about usability rather than another runtime feature: BookOfTlamatini now begins with a five-step getting-started path, clarifies installer-vs-source choices, adds configuration screenshots, and explains that a localhost Ollama usually needs no token while a remote Ollama may."
         )
     if has_esphomer_assets():
         highlights.append(
@@ -1107,7 +1115,7 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent assets worth calling out explicitly now span several release waves: `agent/external_mcp_manager.py`, `agent/external_mcps.json`, the `agent/agents/mcp_doctor/` tree, `static/agent/js/external_mcps_dialog.js`, `static/agent/css/external_mcps_dialog.css`, and the `0141`-`0143` migrations for the External MCP + MCP Doctor release; `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater; `build.py` for numpy/OpenCV embedding checks; the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery; and the `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
+    "Recent assets worth calling out explicitly now span several release waves: the new onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; `agent/external_mcp_manager.py`, `agent/external_mcps.json`, the `agent/agents/mcp_doctor/` tree, `static/agent/js/external_mcps_dialog.js`, `static/agent/css/external_mcps_dialog.css`, and the `0141`-`0143` migrations for the External MCP + MCP Doctor release; `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater; `build.py` for numpy/OpenCV embedding checks; the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery; and the `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
     "The current `v1.26.0` window also refreshes shipped visual assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is now part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
     "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
@@ -1288,10 +1296,11 @@ DESIGN_PRINCIPLES = [
 ]
 
 INSTALLATION_GUIDE = [
-    "Python 3.12.10 is the strongly recommended source-mode version in the README, and the codebase has been tested most deeply there.",
-    "Source installs require a clone, virtual environment, dependency install from `requirements.txt`, migrations, a superuser, static collection, and then the web server.",
-    "You can run either the checked-in cloud/back-end defaults from `Tlamatini/agent/config.json` or a local Ollama-backed configuration with matching model names.",
-    "Packaged Windows installs create a default `user / changeme` account; manual source installs use your own `createsuperuser` account instead.",
+    "The easiest path for most users is the packaged installer from GitHub Releases: no manual Python install is required because the release already carries Python 3.12.10 and the project dependencies.",
+    "Source mode remains the developer path: clone the repo, create a virtual environment, install `requirements.txt`, run migrations, create a superuser, collect static files, and then launch Django.",
+    "Packaged Windows installs open the browser at `http://127.0.0.1:8000/` and create the default `user / changeme` login; manual source installs use your own `createsuperuser` account instead.",
+    "When a newer packaged release exists, the intended upgrade path is in-app: `About -> Check for updates`, not manual folder replacement.",
+    "You can run either the checked-in cloud/back-end defaults from `Tlamatini/agent/config.json` or a local/remote Ollama-backed configuration with matching model names.",
 ]
 
 CONFIGURATION_GUIDE = [
@@ -1304,6 +1313,21 @@ CONFIGURATION_GUIDE = [
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096, and Ask Execs only becomes available when Multi-Turn itself is on.",
     "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
+]
+
+START_HERE_GUIDE = [
+    "BookOfTlamatini now leads with a five-step onboarding path because the easiest way to succeed with Tlamatini is to treat setup as one guided sequence instead of reading the whole handbook first.",
+    "Recommended path for most operators: install the packaged release from GitHub Releases, launch the Start-menu shortcut, and let the bundled Python 3.12.10 plus dependencies carry the runtime without asking the user to install Python manually.",
+    "Developer path stays available: clone the repo, create a virtual environment, install `requirements.txt`, run migrations, and start Django with `python Tlamatini/manage.py runserver --noreload`.",
+    "After the app opens, the first in-app surfaces that matter are `Config -> Models`, `Config -> URLs`, and `Config -> Access Keys Wizard`; those now form the real beginner path, not manual JSON editing.",
+    "For ordinary question-answering keep Multi-Turn off; turn it on only when you want Tlamatini to execute tools, wrapped agents, or remote MCP capabilities instead of answering directly.",
+]
+
+FIRST_RUN_CONFIG_GUIDE = [
+    "Three new onboarding screenshots now anchor the first-run path: `Tlamatini/agent/images/MenuConfig.jpg`, `ConfigureModels.jpg`, and `ACPXKeysConfigureWizard.jpg`.",
+    "`Config -> Models` is the place where operators map embedding, chat, vision, and auxiliary model names to what Ollama actually exposes on the host machine.",
+    "`Config -> Access Keys Wizard` now carries an especially important rule: a localhost Ollama usually needs no Ollama token, while a remote Ollama endpoint may require one.",
+    "Saved model, URL, or credential changes can invalidate the assumptions of the current session, so reconnecting after major Config edits is now part of the honest operator guidance.",
 ]
 
 RUNNING_GUIDE = [
@@ -1434,6 +1458,7 @@ OLLAMA_COMMANDS = "\n".join(
         '$env:OLLAMA_INSTALL_DIR = "$env:LOCALAPPDATA\\Programs\\Ollama"',
         "irm https://ollama.com/install.ps1 | iex",
         "ollama --version",
+        "ollama signin",
         "ollama serve",
         "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
         "ollama pull Nomic-Embed-Text:latest",
@@ -1448,8 +1473,10 @@ OLLAMA_COMMANDS = "\n".join(
 OLLAMA_GUIDE = [
     "Open a normal PowerShell window, not an elevated one, for the safest no-admin Windows installation path.",
     "Install into `%LOCALAPPDATA%\\Programs\\Ollama` with the official PowerShell installer script and then reopen PowerShell so PATH updates are visible.",
+    "If you plan to use the default `:cloud` models from the shipped config, sign in with `ollama signin` so the host is linked to your Ollama account before you test the app.",
     "Verify the CLI with `ollama --version`, start `ollama serve` if the background service is not already active, and confirm `http://127.0.0.1:11434/api/tags` responds.",
     "Pull the default repository model tags exactly as written if you want the shipped config and agent templates to work unchanged.",
+    "The Book now clarifies the token rule: a localhost Ollama usually needs no Ollama bearer token in Tlamatini, while a remote Ollama endpoint may require one in `Config -> Access Keys Wizard` or the matching config key.",
 ]
 
 ARCHITECTURE_LAYERS = [
@@ -1714,8 +1741,14 @@ def build_pdf(context: dict) -> None:
     story.append(PageBreak())
 
     story.append(p("3. Installation, Configuration, and Everyday Use", styles["h1"]))
+    story.append(p("Start here - the easiest path", styles["h2"]))
+    for item in START_HERE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Installation essentials", styles["h2"]))
     for item in INSTALLATION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("First configuration screens", styles["h2"]))
+    for item in FIRST_RUN_CONFIG_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Configuration essentials", styles["h2"]))
     for item in CONFIGURATION_GUIDE:
@@ -2528,6 +2561,11 @@ def build_ppt(context: dict) -> None:
         "In Multi-Turn, call `chat_agent_mcp_doctor` when you want the LLM to triage a server declaratively instead of guessing from prose about PATH, env vars, or transport settings.",
         "Because the diagnosis path is static and fail-safe, it surfaces onboarding mistakes early without leaking into a half-connected remote-tool session.",
     ], THEME["jade"], "doctor-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Start Here", "the new easy-follow onboarding path", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Five-step path", START_HERE_GUIDE, THEME["amber"], "start-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "First configuration surfaces", FIRST_RUN_CONFIG_GUIDE, THEME["jade"], "start-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Blenderer And Self-Update", "how to use the newest release surfaces", THEME["jade"])
