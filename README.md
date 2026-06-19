@@ -11,7 +11,7 @@
 
 <p align="center">
   <b>💰 About $200 a YEAR — not $200 a MONTH.</b><br/>
-  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. Tlamatini runs on <b>Ollama Pro at ~$200 a <i>year</i></b> and stacks <b>78 agent types and 75+ tools</b> on top — comparable power for about <b>one twelfth</b> the price, all on your own machine.
+  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>78 agent types and 75+ tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 ## 🚀 Get started — 5 steps to a cloud-powered Tlamatini
 
-The whole idea in one line: **don't pay $200 a month for a frontier model.** Pay **Ollama Pro ~$200 a year**, point Tlamatini at it, and drive **78 agent types and 75+ tools** from your own machine. Here's the full setup.
+The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **78 agent types and 75+ tools** from your own machine. Here's the full setup.
 
 ### 1 · Install Tlamatini
 
@@ -101,7 +101,12 @@ In the Tlamatini navbar, open the **Config** menu:
 
 <p align="center"><img src="Tlamatini/agent/images/ConfigureModels.jpg" alt="Configure Models dialog" width="480"/></p>
 
-**b) Config ▸ Access Keys Wizard** — paste your **Ollama token** (plus any cloud-CLI keys you want) so the cloud models authenticate. Blank fields keep what's already configured; click **Save**:
+**b) Config ▸ Access Keys Wizard** — whether you need an **Ollama token** depends on *where* Ollama runs:
+
+> - 🖥️ **Ollama on your own machine (localhost)?** Leave the token **blank** — a local Ollama needs no auth.
+> - ☁️ **Ollama on a remote server (e.g. [Vast.ai](https://vast.ai))?** Paste the **Ollama token** so Tlamatini can reach it.
+
+Add any cloud-CLI keys here too. Blank fields keep what's already configured; click **Save**:
 
 <p align="center"><img src="Tlamatini/agent/images/ACPXKeysConfigureWizard.jpg" alt="Access Keys Wizard" width="640"/></p>
 
