@@ -216,6 +216,12 @@
     color: #eef3ff;
 }
 
+/* Exec-report — green "verification" (rides along with Multi-turn; ticks the Exec Report box). */
+.prompt-mode-badge-execreport {
+    background: linear-gradient(135deg, #15803d 0%, #4ade80 100%);
+    color: #052e16;
+}
+
 .prompt-card-preview {
     margin: 0 0 10px 0;
     font-size: 13px;

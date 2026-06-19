@@ -8,10 +8,81 @@
 
 ---
 
+## ⭐ Start here — five steps to a cloud-powered Tlamatini
+
+Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
+
+There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head: she leans on **Ollama Pro, about $200 a *year***, and wraps that one cloud connection in **78 agent types and 75+ tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
+
+Five steps take you from a bare machine to a Tlamatini that can flash a board, drive an engine, and run a whole workflow unattended.
+
+### Step one — Install Tlamatini
+
+The gentlest path is the prebuilt Windows build: open the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)**, download the latest installer, and run it — it carries its own Python and dependencies into place. When it finishes, Tlamatini is waiting at `http://127.0.0.1:8000/` behind the default login **user / changeme**.
+
+If you would rather run from source — and you will, if you mean to hack on her — six commands suffice:
+
+```bash
+git clone https://github.com/XAIHT/Tlamatini.git
+cd Tlamatini
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+python Tlamatini/manage.py migrate
+python Tlamatini/manage.py runserver --noreload
+```
+
+*(Part I, §3–§7 walks both routes in full; this page is the map, not the territory.)*
+
+### Step two — Install Ollama
+
+Tlamatini never talks to a model directly; she speaks through **[Ollama](https://ollama.com/download)**, the engine that serves every model — the small embedding model that lives on your own GPU, and the large chat models that live in the cloud. Install it once.
+
+### Step three — Subscribe to Ollama Pro (~$200 / year)
+
+This is the step that earns its keep. Sign in at **[ollama.com](https://ollama.com)** and take the **Ollama Pro** plan — roughly **$200 for a year**. Pro is the key that unlocks the **`:cloud` models**: frontier-class minds that run on Ollama's own hardware, billed by the year for about what a single month of a rival plan costs. Then introduce your machine to your account:
+
+```bash
+ollama signin
+```
+
+### Step four — Download the models
+
+Pull the small embedding model onto your own disk, and reach for the cloud chat models you intend to use:
+
+```bash
+# Local — small, runs on your own GPU/CPU
+ollama pull nomic-embed-text
+
+# Cloud — served by Ollama Pro (pull, or simply sign in to use)
+ollama pull kimi-k2.7-code:cloud
+ollama pull qwen3.5:cloud
+```
+
+Any cloud model will do; the two above are the ones pictured in the screenshots that follow.
+
+### Step five — Point Tlamatini at the models
+
+The final step lives inside Tlamatini's own interface. In the navbar, open the **Config** menu — it holds three doors: *Models*, *URLs*, and the *Access Keys Wizard*.
+
+![The Config menu](Tlamatini/agent/images/MenuConfig.jpg)
+
+Behind **Config ▸ Models** is a single dialog where you tell each subsystem which Ollama model to use — embedding, chat, image interpretation, summarization, and the rest. Type the names you pulled in step four (each must already exist in your Ollama catalog) and press **Save**.
+
+![Configure Models](Tlamatini/agent/images/ConfigureModels.jpg)
+
+Behind **Config ▸ Access Keys Wizard** the cloud connection is sealed: paste your **Ollama token** (and any cloud-CLI keys you care to add). Blank fields are left untouched, so you only ever type what you mean to change. **Save**, and the wizard tallies how many of its slots are filled.
+
+![The Access Keys Wizard](Tlamatini/agent/images/ACPXKeysConfigureWizard.jpg)
+
+That is the whole setup. Tick **Multi-Turn** in the chat toolbar and hand Tlamatini her first real task. Everything past this chapter is depth — but you are already running.
+
+---
+
 ## How to read this book
 
 Tlamatini does a lot. This README is organized so you can stop reading at the depth you need.
 
+- **⭐ Start here** (the chapter just above): the entire five-step setup — install, Ollama, Ollama Pro, models, config — on a single page. *If you read nothing else, read this.*
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.

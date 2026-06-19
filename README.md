@@ -10,6 +10,11 @@
 </p>
 
 <p align="center">
+  <b>💰 About $200 a YEAR — not $200 a MONTH.</b><br/>
+  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. Tlamatini runs on <b>Ollama Pro at ~$200 a <i>year</i></b> and stacks <b>78 agent types and 75+ tools</b> on top — comparable power for about <b>one twelfth</b> the price, all on your own machine.
+</p>
+
+<p align="center">
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.0"><img src="https://img.shields.io/badge/VERSION-v1.26.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
@@ -23,6 +28,70 @@
   <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s">▶️ One-minute teaser</a> ·
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamatini.md">📖 Full docs</a>
 </p>
+
+---
+
+## 🚀 Get started — 5 steps to a cloud-powered Tlamatini
+
+The whole idea in one line: **don't pay $200 a month for a frontier model.** Pay **Ollama Pro ~$200 a year**, point Tlamatini at it, and drive **78 agent types and 75+ tools** from your own machine. Here's the full setup.
+
+### 1 · Install Tlamatini
+
+**Easiest — the Windows build:** download the latest installer from the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)**, run it, and launch Tlamatini. It opens at `http://127.0.0.1:8000/` (default login **user / changeme**).
+
+**Or from source:**
+
+```bash
+git clone https://github.com/XAIHT/Tlamatini.git
+cd Tlamatini
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+python Tlamatini/manage.py migrate
+python Tlamatini/manage.py runserver --noreload
+```
+
+### 2 · Install Ollama
+
+Install **[Ollama](https://ollama.com/download)** for Windows. Ollama is the engine that serves every model to Tlamatini — the local embedding model **and** the cloud chat models.
+
+### 3 · Subscribe to Ollama Pro (~$200 / year)
+
+Go to **[ollama.com](https://ollama.com)**, sign in, and take the **Ollama Pro** plan (about **$200 per year**). Pro unlocks the **`:cloud` models** — frontier-class models that run on Ollama's servers — for a *yearly* price close to what one frontier subscription costs in a *single month*. Then connect your machine:
+
+```bash
+ollama signin
+```
+
+### 4 · Download the models
+
+Pull the small local embedding model, plus the cloud chat models Tlamatini will use:
+
+```bash
+# Local embedding model (small, runs on your own GPU/CPU)
+ollama pull nomic-embed-text
+
+# Cloud models (served by Ollama Pro) — pull, or just sign in to use
+ollama pull kimi-k2.7-code:cloud
+ollama pull qwen3.5:cloud
+```
+
+Any cloud model works — these are the exact ones shown in the screenshots below.
+
+### 5 · Point Tlamatini at the models
+
+In the Tlamatini navbar, open the **Config** menu:
+
+<p align="center"><img src="Tlamatini/agent/images/MenuConfig.jpg" alt="Config menu — Models, URLs, Access Keys Wizard" width="420"/></p>
+
+**a) Config ▸ Models** — set the Ollama model for each subsystem (each one must already exist in your Ollama catalog), then click **Save**:
+
+<p align="center"><img src="Tlamatini/agent/images/ConfigureModels.jpg" alt="Configure Models dialog" width="480"/></p>
+
+**b) Config ▸ Access Keys Wizard** — paste your **Ollama token** (plus any cloud-CLI keys you want) so the cloud models authenticate. Blank fields keep what's already configured; click **Save**:
+
+<p align="center"><img src="Tlamatini/agent/images/ACPXKeysConfigureWizard.jpg" alt="Access Keys Wizard" width="640"/></p>
+
+Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
@@ -105,36 +174,6 @@ Everything Tlamatini can do, grouped:
 - **Multi-model** — Ollama (local), Anthropic Claude (cloud), Qwen (vision).
 - **Self-knowledge & self-modification** — can read, modify, and rebuild her own source.
 - **PyInstaller packaging** — ships as a standalone Windows `.exe`.
-
----
-
-## ⚡ Quickstart — flash your first board in 5 minutes
-
-**You need:** Windows 10/11 · Python 3.12 · [Ollama](https://ollama.com) · the toolchain for your target (e.g. [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html); ESP32/Arduino bootstrap themselves).
-
-```bash
-# 1. Get Ollama and a local model
-ollama pull qwen2.5-coder
-
-# 2. Clone and install
-git clone https://github.com/XAIHT/Tlamatini.git
-cd Tlamatini
-python -m venv venv && venv\Scripts\activate
-pip install -r requirements.txt
-python Tlamatini/manage.py migrate
-
-# 3. Run
-python Tlamatini/manage.py runserver --noreload
-#    open http://127.0.0.1:8000/  (default login: user / changeme)
-```
-
-**Then, in the chat box** (Multi-Turn on), plug in your board and type:
-
-```
-Scaffold a blinky for my STM32, build it, and flash the connected board.
-```
-
-Scaffold → build → preflight → flash → read serial. Swap "STM32" for "ESP32" or "Arduino". Or open the **Visual Workflow Designer** at `/agentic_control_panel/` and wire your first flow.
 
 ---
 
