@@ -37,9 +37,22 @@ The whole idea in one line: **don't pay $200 a month for a frontier model.** Pay
 
 ### 1 · Install Tlamatini
 
-**Easiest — the Windows build:** download the latest installer from the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)**, run it, and launch Tlamatini. It opens at `http://127.0.0.1:8000/` (default login **user / changeme**).
+Pick **one** of two paths. **Tlamatini itself is free** — you never pay us; the only cost is Ollama (Step 3).
 
-**Or from source:**
+#### 🟢 Option A — Release installer (recommended · no Python needed)
+
+Best for most people. The installer bundles its own **Python 3.12.10** and every dependency, so you install nothing else.
+
+1. Open the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)** and download the latest installer (`.exe`).
+2. Run it and follow the wizard.
+3. Launch **Tlamatini** from the Start-menu shortcut.
+4. Your browser opens at **`http://127.0.0.1:8000/`** — log in with **user / changeme**.
+
+> 🔄 Updating later is one click: **About ▸ Check for updates** inside the app — it keeps your config, database, and keys.
+
+#### 🔵 Option B — From source (for developers)
+
+Best if you want to read, modify, or contribute to the code. Requires **Python 3.12.10** and **git** already installed.
 
 ```bash
 git clone https://github.com/XAIHT/Tlamatini.git
@@ -48,6 +61,7 @@ python -m venv venv && venv\Scripts\activate
 pip install -r requirements.txt
 python Tlamatini/manage.py migrate
 python Tlamatini/manage.py runserver --noreload
+# then open http://127.0.0.1:8000/   (default login: user / changeme)
 ```
 
 ### 2 · Install Ollama

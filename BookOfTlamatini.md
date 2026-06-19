@@ -18,9 +18,11 @@ Five steps take you from a bare machine to a Tlamatini that can flash a board, d
 
 ### Step one — Install Tlamatini
 
-The gentlest path is the prebuilt Windows build: open the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)**, download the latest installer, and run it — it carries its own Python and dependencies into place. When it finishes, Tlamatini is waiting at `http://127.0.0.1:8000/` behind the default login **user / changeme**.
+There are two ways into Tlamatini, and they suit two different readers. The app itself is **free** — you never pay us a cent; the only bill in this whole chapter is Ollama's, three steps from now. Choose **one** road.
 
-If you would rather run from source — and you will, if you mean to hack on her — six commands suffice:
+**🟢 Option A — the release installer (recommended; no Python required).** This is the gentle path, and the right one for most people. Open the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)**, download the latest installer, and run it. It carries its own Python 3.12.10 and every dependency inside, so there is nothing else to install. Launch Tlamatini from its Start-menu shortcut and your browser opens at `http://127.0.0.1:8000/`, behind the default login **user / changeme**. When a new version lands, you update from inside the app — **About ▸ Check for updates** — and it keeps your config, database, and keys intact.
+
+**🔵 Option B — from source (for developers).** Take this road if you mean to read, modify, or contribute to her code; it asks that **Python 3.12.10** and **git** already be on your machine. Six commands suffice:
 
 ```bash
 git clone https://github.com/XAIHT/Tlamatini.git
@@ -30,6 +32,8 @@ pip install -r requirements.txt
 python Tlamatini/manage.py migrate
 python Tlamatini/manage.py runserver --noreload
 ```
+
+Then open `http://127.0.0.1:8000/` and log in with **user / changeme**.
 
 *(Part I, §3–§7 walks both routes in full; this page is the map, not the territory.)*
 
