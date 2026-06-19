@@ -12,7 +12,7 @@
 
 Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
 
-There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head: she leans on **Ollama Pro, about $200 a *year***, and wraps that one cloud connection in **78 agent types and 75+ tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
+There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **78 agent types and 75+ tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
 
 Five steps take you from a bare machine to a Tlamatini that can flash a board, drive an engine, and run a whole workflow unattended.
 
@@ -74,7 +74,7 @@ Behind **Config ▸ Models** is a single dialog where you tell each subsystem wh
 
 ![Configure Models](Tlamatini/agent/images/ConfigureModels.jpg)
 
-Behind **Config ▸ Access Keys Wizard** the cloud connection is sealed: paste your **Ollama token** (and any cloud-CLI keys you care to add). Blank fields are left untouched, so you only ever type what you mean to change. **Save**, and the wizard tallies how many of its slots are filled.
+Behind **Config ▸ Access Keys Wizard** the cloud connection is sealed — and here a single, important distinction decides whether you type anything at all. **If Ollama runs on your own machine (the usual `localhost`), you need no Ollama token — leave that field blank;** a local Ollama answers without a password. **Only when Ollama lives on a remote server — a rented GPU box on [Vast.ai](https://vast.ai), say — do you paste an Ollama token here,** so Tlamatini can authenticate to it across the network. Add any cloud-CLI keys you care to in the same place; blank fields are left untouched, so you only ever type what you mean to change. **Save**, and the wizard tallies how many of its slots are filled.
 
 ![The Access Keys Wizard](Tlamatini/agent/images/ACPXKeysConfigureWizard.jpg)
 
