@@ -242,6 +242,12 @@
     color: #052e16;
 }
 
+/* Step-by-Step - amber "pacing" (one action at a time; ticks the Step-by-Step box, alongside Multi-Turn). */
+.prompt-mode-badge-stepbystep {
+    background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
+    color: #2b1500;
+}
+
 .prompt-card-preview {
     margin: 0 0 10px 0;
     font-size: 13px;

@@ -1039,12 +1039,16 @@ class KaliPentestSkillTests(SimpleTestCase):
 
 class DemoPromptTests(TestCase):
     def test_three_kali_demo_prompts_seeded(self):
+        # Migration 0099 seeds three KALI demo prompts. Their idPrompt slots are
+        # NOT pinned: catalog inserts (e.g. 0144, 0145) shift every id, so we
+        # identify them by content and re-assert the promptName/idPrompt lock-step.
         from agent.models import Prompt
-        for pid in (57, 58, 59):
-            p = Prompt.objects.filter(idPrompt=pid).first()
-            self.assertIsNotNone(p, f'prompt {pid} must be seeded by migration 0099')
-            self.assertEqual(p.promptName, f'prompt-{pid}')
-            self.assertIn('KALI', p.promptContent)
+        kali = [p for p in Prompt.objects.all() if 'KALI' in (p.promptContent or '')]
+        self.assertGreaterEqual(
+            len(kali), 3, 'migration 0099 must seed at least three KALI demo prompts'
+        )
+        for p in kali:
+            self.assertEqual(p.promptName, f'prompt-{p.idPrompt}')
 
     def test_prompt_catalog_is_contiguous(self):
         from agent.models import Prompt

@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Dict, Any, Optional, Tuple
 
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from .acpx import ACPX_TOOL_NAMES, filter_acpx_tools
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
@@ -929,6 +929,7 @@ class MultiTurnToolAgentExecutor:
         self._pending_denial_detail = None
 
         input_text = payload.get("input", "")
+        chat_history = payload.get("chat_history", []) or []
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
         messages = [
             SystemMessage(content=self.system_prompt),
@@ -942,6 +943,33 @@ class MultiTurnToolAgentExecutor:
                     "Use only the planned tool and monitor stages unless the plan is empty."
                 )
             ))
+
+        def _history_content(msg: Any) -> str:
+            if isinstance(msg, BaseMessage):
+                return str(getattr(msg, "content", "") or "")
+            if isinstance(msg, dict):
+                return str(msg.get("content", "") or "")
+            return str(msg or "")
+
+        history_items = list(chat_history)[-8:] if isinstance(chat_history, (list, tuple)) else []
+        if history_items and _history_content(history_items[-1]).strip() == str(input_text).strip():
+            history_items = history_items[:-1]
+        for hist_msg in history_items:
+            if isinstance(hist_msg, ToolMessage):
+                continue
+            if isinstance(hist_msg, BaseMessage):
+                messages.append(hist_msg)
+                continue
+            if isinstance(hist_msg, dict):
+                role = str(hist_msg.get("type") or hist_msg.get("role") or "").lower()
+                content = _history_content(hist_msg)
+                if not content:
+                    continue
+                messages.append(AIMessage(content=content) if role in {"assistant", "ai"} else HumanMessage(content=content))
+                continue
+            content = _history_content(hist_msg)
+            if content:
+                messages.append(HumanMessage(content=content))
         messages.append(HumanMessage(content=input_text))
 
         if not self.tools:
@@ -1234,7 +1262,8 @@ _FIRMWARE_TEMPLATE_TOOL_NAMES = frozenset({
 
 _STEP_BY_STEP_SYSTEM_GUIDANCE = """
 **STEP-BY-STEP MODE**:
-- The user explicitly asked for paced setup or troubleshooting. Do exactly one concrete step at a time, then stop and wait for the user's READY, screenshot, log, or command output before continuing.
+- The user explicitly asked for paced setup or troubleshooting. Do exactly one concrete step at a time, then stop and wait for the user's requested short reply, READY, screenshot, log, or command output before continuing.
+- Treat the user's next short reply as the answer to your previous Step-by-Step checkpoint. A bare username, DONE, ERROR, NOWINDOW, yes/no, path, or pasted output is continuation state, not a brand-new unrelated request.
 - Keep each step short enough for a non-expert to perform. Include the exact command, menu path, file path, or click target for that one step.
 - For new or unknown MCP setup, call `external_mcp_doctor` first. If it reports source/docs/repository URLs, investigate those through Crawler/Googler only when the next step is unclear.
 - To ADD an MCP the user names or pastes (e.g. "add the redis MCP"), call `external_mcp_import` with its JSON config, then `external_mcp_set_active` to connect it, then `external_mcp_wait('<key>', 120)` to BLOCK until it is ready (a first-run Docker image pull or npx/uvx download is slow — do NOT poll external_mcp_status in a loop and give up; wait, and if it times out call external_mcp_wait again with a bigger timeout). Do this YOURSELF with these tools — never claim you lack a file-writing/shell tool and never push the user to the dialog.
@@ -1509,6 +1538,7 @@ class CapabilityAwareToolAgentExecutor:
 
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
+        chat_history = payload.get("chat_history", []) or []
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
         self._refresh_external_mcp_tool_surface()
         # Exec report is multi-turn-only: outside multi-turn we strip it.
@@ -1546,8 +1576,8 @@ class CapabilityAwareToolAgentExecutor:
                         request_tools,
                         step_by_step_enabled=step_by_step_enabled,
                     )
-                    return legacy_executor.invoke({"input": input_text})
-                return self.legacy_executor.invoke({"input": input_text})
+                    return legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
+                return self.legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
 
             # === MANDATE (Angela, 2026-06-16): Multi-Turn = the FULL surface ===
             # When Multi-Turn is ON, Tlamatini MUST see EVERY enabled tool / agent /
@@ -1573,7 +1603,7 @@ class CapabilityAwareToolAgentExecutor:
                 selected_tools,
                 step_by_step_enabled=step_by_step_enabled,
             )
-            executor_payload = {"input": input_text}
+            executor_payload = {"input": input_text, "chat_history": chat_history}
             if exec_report_enabled:
                 executor_payload["exec_report_enabled"] = True
             if ask_execs_enabled:

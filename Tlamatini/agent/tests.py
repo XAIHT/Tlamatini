@@ -23,6 +23,7 @@ from langchain_core.documents import Document
 import yaml
 
 from agent import views
+from agent.chat_history_loader import DBChatHistoryLoader
 from agent.consumers import AgentConsumer, _sanitize_context_filename
 from agent.global_state import get_request_state, global_state
 from agent.mcp_agent import CapabilityAwareToolAgentExecutor
@@ -156,6 +157,18 @@ class P0HardeningTests(TestCase):
             [message['message'] for message in response.context['initial_messages']],
             ['visible to alice', 'assistant reply']
         )
+
+    def test_chat_history_loader_can_scope_to_current_user(self):
+        bot_user = User.objects.create_user(username='Tlamatini', password='secret123')
+        AgentMessage.objects.create(user=self.user, conversation_user=self.user, message='alice prompt')
+        AgentMessage.objects.create(user=bot_user, conversation_user=self.user, message='alice assistant')
+        AgentMessage.objects.create(user=self.other_user, conversation_user=self.other_user, message='bob prompt')
+        AgentMessage.objects.create(user=bot_user, conversation_user=self.other_user, message='bob assistant')
+
+        messages = DBChatHistoryLoader.load(limit=8, conversation_user=self.user)
+        contents = [getattr(message, 'content', '') for message in messages]
+
+        self.assertEqual(contents, ['alice prompt', 'alice assistant'])
 
     def test_load_canvas_requires_login(self):
         response = self.client.get(reverse('load_canvas', args=['demo.py']))
