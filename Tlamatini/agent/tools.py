@@ -1061,6 +1061,42 @@ def _extract_string_key_from_get_call(node):
     return None
 
 
+# Variable names that denote the agent's loaded configuration mapping. Only a
+# subscript whose base is one of these (``config['key']`` / ``self.config['key']``)
+# is treated as a genuine config read — so an unrelated local ``somedict['text']``
+# is never mistaken for a required config key.
+_CONFIG_BASE_NAMES = frozenset({
+    'config', 'cfg', 'conf', 'configuration', 'runtime_config', 'agent_config',
+})
+
+
+def _extract_string_key_from_subscript(node):
+    """Return the string key of a ``config['key']`` subscript whose base is a
+    known config mapping (see ``_CONFIG_BASE_NAMES``), else ``None``.
+
+    Companion to ``_extract_string_key_from_get_call`` so the requirement
+    analyzer can trace BOTH ``var = config.get('key')`` and
+    ``var = config['key']`` reads back to a config key — and treat everything
+    else (plain local variables) as NOT config-derived.
+    """
+    if not isinstance(node, ast.Subscript):
+        return None
+    base = node.value
+    if isinstance(base, ast.Name):
+        base_name = base.id
+    elif isinstance(base, ast.Attribute):
+        base_name = base.attr
+    else:
+        return None
+    if base_name not in _CONFIG_BASE_NAMES:
+        return None
+    key_node = node.slice
+    # Python 3.9+: ``node.slice`` is the index expression directly.
+    if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str):
+        return key_node.value
+    return None
+
+
 def _extract_default_from_get_call(node):
     """Return ``(has_default, default_value)`` for a ``config.get(key, default)``.
 
@@ -1112,8 +1148,13 @@ class _ConfigRequirementAnalyzer(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         key_name = _extract_string_key_from_get_call(node.value)
+        has_default = False
         if key_name:
             has_default, _default_value = _extract_default_from_get_call(node.value)
+        else:
+            # ``var = config['key']`` — a subscript read of the config mapping.
+            key_name = _extract_string_key_from_subscript(node.value)
+        if key_name:
             if has_default:
                 self.keys_with_explicit_default.add(key_name)
             for target in node.targets:
@@ -1123,8 +1164,12 @@ class _ConfigRequirementAnalyzer(ast.NodeVisitor):
 
     def visit_AnnAssign(self, node):
         key_name = _extract_string_key_from_get_call(node.value)
-        if key_name and isinstance(node.target, ast.Name):
+        has_default = False
+        if key_name:
             has_default, _default_value = _extract_default_from_get_call(node.value)
+        else:
+            key_name = _extract_string_key_from_subscript(node.value)
+        if key_name and isinstance(node.target, ast.Name):
             if has_default:
                 self.keys_with_explicit_default.add(key_name)
             self.variable_to_key[node.target.id] = key_name
@@ -1152,7 +1197,20 @@ class _ConfigRequirementAnalyzer(ast.NodeVisitor):
 
     def _extract_keys_from_reference(self, node):
         if isinstance(node, ast.Name):
-            return {self.variable_to_key.get(node.id, node.id)}
+            # Only a variable actually traced back to a config read
+            # (``var = config.get('k')`` / ``var = config['k']``) counts as a
+            # required CONFIG key. A bare local variable guarded by ``if not x``
+            # (e.g. the ``text`` temp in unrealer's _normalize_content_path, or
+            # Blenderer's ``code``) is NOT a config field — flagging it produced
+            # false "missing mandatory parameter: params.<x>" launch failures.
+            key = self.variable_to_key.get(node.id)
+            return {key} if key else set()
+
+        # ``if not config['key']:`` — a direct config subscript in the guard.
+        if isinstance(node, ast.Subscript):
+            key_name = _extract_string_key_from_subscript(node)
+            if key_name:
+                return {key_name}
 
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name) and node.func.id == 'len' and node.args:
