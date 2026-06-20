@@ -2,6 +2,37 @@
 // agent_page_canvas.js  –  Canvas / code-editor operations
 // ============================================================
 
+// Wide "source code / text" file filter shared by the canvas file pickers.
+// Lists text-based formats only (programming languages, markup, config, docs,
+// Tlamatini .flw/.pmt) and deliberately OMITS binaries (.exe/.dll/.png/.jpg/
+// .mp4/.zip/.pdf/...), since the canvas reads every file as text. The trailing
+// `text/*` also lets the dialog accept extensionless text files (Makefile,
+// Dockerfile, LICENSE, README). The native dialog still offers "All Files" so
+// nothing is permanently hidden — this just defaults the view to source code.
+const SOURCE_CODE_ACCEPT = [
+    '.txt', '.text', '.log', '.md', '.markdown', '.rst', '.adoc', '.asciidoc', '.org', '.tex',
+    '.c', '.h', '.cc', '.cpp', '.cxx', '.c++', '.hh', '.hpp', '.hxx', '.h++', '.ino', '.cu', '.cuh',
+    '.cs', '.java', '.kt', '.kts', '.scala', '.groovy', '.gradle', '.go', '.rs', '.swift', '.m', '.mm',
+    '.py', '.pyw', '.pyi', '.rb', '.rake', '.php', '.phtml', '.pl', '.pm', '.lua', '.tcl', '.r', '.jl',
+    '.dart', '.nim', '.cr', '.zig', '.d', '.v', '.sv', '.svh', '.vhd', '.vhdl',
+    '.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx', '.vue', '.svelte', '.astro', '.coffee',
+    '.html', '.htm', '.xhtml', '.xml', '.xsl', '.xslt', '.svg', '.css', '.scss', '.sass', '.less', '.styl',
+    '.json', '.json5', '.jsonc', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.config',
+    '.properties', '.env', '.editorconfig',
+    '.csv', '.tsv', '.sql', '.graphql', '.gql', '.proto', '.prisma',
+    '.sh', '.bash', '.zsh', '.fish', '.bat', '.cmd', '.ps1', '.psm1', '.psd1', '.awk', '.sed', '.vim',
+    '.asm', '.s', '.f', '.f90', '.f95', '.f03', '.for', '.pas', '.pp', '.ada', '.adb', '.ads',
+    '.cob', '.cbl', '.clj', '.cljs', '.cljc', '.edn', '.ex', '.exs', '.erl', '.hrl', '.hs', '.lhs',
+    '.ml', '.mli', '.fs', '.fsx', '.fsi', '.elm', '.lisp', '.lsp', '.scm', '.rkt',
+    '.cmake', '.mk', '.mak', '.make', '.dockerfile', '.bazel', '.bzl',
+    '.sln', '.csproj', '.vbproj', '.vcxproj', '.fsproj', '.pom', '.sbt',
+    '.gitignore', '.gitattributes', '.dockerignore',
+    '.jinja', '.jinja2', '.j2', '.twig', '.erb', '.ejs', '.hbs', '.handlebars', '.mustache',
+    '.pug', '.haml', '.liquid',
+    '.flw', '.pmt',
+    'text/*',
+].join(',');
+
 /**
  * Map a file extension to a highlight.js language class.
  */
@@ -91,7 +122,7 @@ async function loadCanvasFromFileInContentGenerated(filename) { // eslint-disabl
     try {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.txt,.py,.js,.java,.cpp,.c,.html,.css,.json,.xml,*';
+        input.accept = SOURCE_CODE_ACCEPT;
         input.style.display = 'none';
 
         input.onchange = (e) => {
@@ -260,6 +291,7 @@ if (copyCanvasButton) {
 const loadFileContent = (reOpened = false, callback = null) => {
     const input = document.createElement('input');
     input.type = 'file';
+    input.accept = SOURCE_CODE_ACCEPT;
     input.onchange = e => {
         const file = e.target.files[0];
         if (file == null) {
