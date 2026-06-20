@@ -23,7 +23,8 @@ body.resizing {
 #navbar-container {
     height: 5vh;
     min-height: 40px;
-    min-width: 1220px;
+    width: 100%;
+    min-width: 0;
     padding-top: 0px;
     padding-bottom: 0px;
     padding-left: 0px;
@@ -36,7 +37,7 @@ body.resizing {
 #navbar-content {
     padding: 0px;
     margin-right: 3rem;
-    min-width: 1220px;
+    min-width: 0;
 }
 
 #navbarMenu {
@@ -126,6 +127,8 @@ body.resizing {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 #filename {
@@ -133,6 +136,10 @@ body.resizing {
     font-weight: 600;
     font-style: italic;
     font-size: 0.9em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #monitor-controls {
@@ -259,6 +266,7 @@ body.resizing {
     margin-right: 3rem;
     font-style: italic;
     font-weight: 700;
+    min-width: 0;
 }
 
 .dropdown-entry {
@@ -328,14 +336,104 @@ body.resizing-vertical {
     gap: .25rem;
 }
 
+@media (max-width: 1199.98px) {
+    #navbar-container {
+        height: auto;
+        padding-right: 0.75rem;
+    }
+
+    #navbar-content {
+        flex-wrap: wrap;
+        margin-right: 0;
+        width: 100%;
+    }
+
+    .navbar-margin {
+        max-width: calc(100% - 64px);
+        margin-right: 0.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #navbar-container .navbar-toggler {
+        display: block;
+        margin-left: auto;
+    }
+
+    #navbarMenu.collapse:not(.show) {
+        display: none !important;
+    }
+
+    #navbarMenu.collapse.show,
+    #navbarMenu.collapsing {
+        display: block !important;
+        flex-basis: 100%;
+        width: 100%;
+        max-height: calc(100dvh - 44px);
+        overflow: auto;
+    }
+
+    #menu-editor {
+        align-items: flex-start !important;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        padding: 6px 0;
+    }
+
+    #menu-editor .nav-link {
+        width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+@media (max-width: 700px) {
+    #monitor-header {
+        gap: 6px;
+        padding-left: 6px;
+    }
+
+    #monitor-header-title {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #monitor-controls {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .control-btn {
+        width: 28px;
+        min-width: 28px;
+        justify-content: center;
+        gap: 0;
+        padding: 2px 6px;
+        font-size: 0;
+    }
+
+    .control-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
 .ui-dialog {
     background-color: #4a4f5c;
     border-radius: 12px;
     border: none;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
     padding: 0;
     overflow: hidden;
-    min-width: 600px;
+    min-width: min(600px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
     z-index: 10000;
 }
 
@@ -381,7 +479,7 @@ body.resizing-vertical {
     padding: 30px 50px;
     overflow: auto;
     /* Allow scrolling if content is too long */
-    max-height: 70vh;
+    max-height: min(70vh, calc(100dvh - 160px));
     /* Safety fallback */
 }
 
@@ -426,6 +524,35 @@ body.resizing-vertical {
     font-weight: 700;
     color: #ffffff;
     padding: 10px 24px;
+}
+
+@media (max-width: 640px) {
+    .ui-dialog {
+        border-radius: 8px;
+    }
+
+    .ui-dialog .ui-dialog-titlebar {
+        padding: 10px 42px 10px 14px;
+    }
+
+    .ui-dialog .ui-dialog-content {
+        padding: 18px 16px;
+    }
+
+    .ui-dialog .ui-dialog-buttonpane {
+        padding: 10px 16px 18px;
+    }
+
+    .ui-dialog .ui-dialog-buttonset {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .ui-dialog .ui-button {
+        flex: 1 1 120px;
+        min-width: 0;
+        padding: 9px 14px;
+    }
 }
 
 /* Agents List Toolbar Styles */
@@ -1548,9 +1675,11 @@ body.resizing-vertical {
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     min-width: 180px;
+    max-width: calc(100vw - 16px);
     z-index: 20000;
     padding: 4px 0;
     font-size: 0.9em;
+    overflow: hidden;
 }
 
 .context-menu-item {
@@ -1613,10 +1742,8 @@ body.resizing-vertical {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 70vw;
-    max-width: 900px;
-    height: 60vh;
-    max-height: 600px;
+    width: min(900px, calc(100vw - 24px));
+    height: min(600px, calc(100dvh - 32px));
     background-color: #1e1e1e;
     border: 1px solid #555;
     border-radius: 10px;
@@ -1641,6 +1768,10 @@ body.resizing-vertical {
     color: #fff;
     font-size: 1.1em;
     margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #log-viewer-close {
@@ -1703,6 +1834,7 @@ body.resizing-vertical {
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    gap: 12px;
 }
 
 #log-viewer-status {
@@ -1804,6 +1936,10 @@ body.resizing-vertical {
     color: #fff;
     font-size: 1.05em;
     font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #agent-description-close {

@@ -6,6 +6,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: #343541;
     color: #ececf1;
+    overflow-x: hidden;
 }
 
 body.resizing {
@@ -16,7 +17,8 @@ body.resizing {
 #navbar-container {
     height: 5vh;
     min-height: 40px;
-    min-width: 1220px;
+    width: 100%;
+    min-width: 0;
     padding-top: 0px;
     padding-bottom: 0px;
     padding-left: 0px;
@@ -29,7 +31,7 @@ body.resizing {
 #navbar-content {
     padding: 0px;
     margin-right: 3rem;
-    min-width: 1220px;
+    min-width: 0;
 }
 
 #navbarMenu {
@@ -324,6 +326,7 @@ body.resizing {
     margin-right: 3rem;
     font-style: italic;
     font-weight: 700;
+    min-width: 0;
 }
 
 #main-chat-container {
@@ -685,14 +688,107 @@ body.resizing-vertical {
     gap: .25rem;
 }
 
+@media (max-width: 1199.98px) {
+    #navbar-container {
+        height: auto;
+        padding-right: 0.75rem;
+    }
+
+    #navbar-content {
+        flex-wrap: wrap;
+        margin-right: 0;
+        width: 100%;
+    }
+
+    .navbar-margin {
+        max-width: calc(100% - 64px);
+        margin-right: 0.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #navbar-container .navbar-toggler {
+        display: block;
+        margin-left: auto;
+    }
+
+    #navbarMenu.collapse:not(.show) {
+        display: none !important;
+    }
+
+    #navbarMenu.collapse.show,
+    #navbarMenu.collapsing {
+        display: block !important;
+        flex-basis: 100%;
+        width: 100%;
+        max-height: calc(100dvh - 44px);
+        overflow: auto;
+    }
+
+    #menu-editor {
+        align-items: flex-start !important;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        padding: 6px 0;
+    }
+
+    #menu-editor .nav-link {
+        width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .dropdown-menu.dropdown-entry {
+        max-width: calc(100vw - 24px);
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 640px) {
+    .ui-dialog {
+        border-radius: 8px;
+    }
+
+    .ui-dialog .ui-dialog-titlebar {
+        padding: 10px 42px 10px 14px;
+    }
+
+    .ui-dialog .ui-dialog-content {
+        padding: 18px 16px;
+    }
+
+    .ui-dialog .ui-dialog-buttonpane {
+        padding: 0 16px 18px;
+    }
+
+    .ui-dialog .ui-dialog-buttonset {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .ui-dialog .ui-button {
+        flex: 1 1 120px;
+        min-width: 0;
+        padding: 9px 14px;
+    }
+
+    .config-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .ui-dialog {
     background-color: #4a4f5c;
     border-radius: 12px;
     border: none;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
     padding: 0;
     overflow: hidden;
-    min-width: 600px;
+    min-width: min(600px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
     z-index: 10000;
 }
 
@@ -736,6 +832,8 @@ body.resizing-vertical {
     color: #e0e0e0;
     text-align: center;
     padding: 30px 50px;
+    max-height: calc(100dvh - 160px);
+    overflow: auto;
 }
 
 #dialog-message h1 {
@@ -781,6 +879,11 @@ body.resizing-vertical {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+#fileTypeOmissions {
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 /* Config dialog (Models / URLs) — same chrome as the rest of the
@@ -986,10 +1089,11 @@ body.resizing-vertical {
 
 .about-window {
     position: relative;
-    width: 800px;
+    width: min(800px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
     background: #1a1a2e;
     border-radius: 12px;
-    overflow: hidden;
+    overflow: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
@@ -1019,6 +1123,8 @@ body.resizing-vertical {
 
 .about-video-container video {
     width: 100%;
+    max-height: 62dvh;
+    object-fit: contain;
     display: block;
 }
 

@@ -140,6 +140,12 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 
 Embeddings and chat run on your local [Ollama](https://ollama.com) install. Cloud models (Claude API, Ollama Pro/Max) and delegation to cloud CLIs are **opt-in, per request, never the default.** Your code and firmware never leave the box unless you route them out yourself.
 
+## ⚠️ Agent-directory disclaimer: user jurisdiction and responsibility
+
+The workflow agents in `Tlamatini/agent/agents/` are plain-Python programs on purpose: they are readable, editable, auditable operating code under the user's control. When you enable, configure, modify, chain, or run those agents, their actions fall under **your jurisdiction**. The prompts, config files, secrets, credentials, files, folders, network targets, browsers, shells, APIs, external MCP servers, hardware devices, and downstream systems they touch are selected and authorized by you.
+
+Tlamatini provides orchestration, documentation, and guardrails, but it cannot guarantee that every user-edited agent, workflow, external service, credential scope, target machine, or local environment is safe. **Any security breach, data exposure, unauthorized action, credential leak, unsafe automation, policy violation, device damage, or other harm caused by running agents or agent workflows is the responsibility of the user who runs them.** Audit agents before use, restrict credentials and permissions, and operate them only on systems where you have explicit authorization.
+
 ---
 
 ## 📋 The full capability list
