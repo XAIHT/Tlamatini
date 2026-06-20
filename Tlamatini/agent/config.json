@@ -182,6 +182,19 @@
         "env": {
           "OPENAI_API_KEY": "<OPENAI_API_KEY goes here>"
         }
+      },
+      "claude": {
+        "env": {
+          "ANTHROPIC_API_KEY": "<ANTHROPIC_API_KEY goes here>"
+        },
+        "command": "claude"
+      },
+      "gemini": {
+        "env": {
+          "GOOGLE_API_KEY": "<GOOGLE_API_KEY goes here>",
+          "GEMINI_API_KEY": "<GEMINI_API_KEY goes here>"
+        },
+        "command": "gemini"
       }
     }
   },
