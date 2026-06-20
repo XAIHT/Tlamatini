@@ -289,7 +289,7 @@ def render_pyinstaller_version_file(
     file_description: str = "Tlamatini — Locally-deployed AI developer assistant",
     internal_name: str = "Tlamatini",
     original_filename: str = "Tlamatini.exe",
-    legal_copyright: str = "GPL-3.0",
+    legal_copyright: str = "Copyright (c) 2026 XAIHT. MIT License.",
 ) -> str:
     """Return the contents of a PyInstaller ``--version-file`` for ``.exe``.
 
