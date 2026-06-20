@@ -20,7 +20,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 - A full **PyInstaller packaging pipeline** (build.py -> installer -> standalone .exe; `--self-modify` ships the self-source tree)
 
 **Repository**: `https://github.com/XAIHT/Tlamatini.git`
-**License**: GPL-3.0
+**License**: MIT
 **Primary developer**: angelahack1
 **Platform**: Windows 11 (primary), bash shell in Claude Code
 
