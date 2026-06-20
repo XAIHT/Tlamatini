@@ -3772,6 +3772,33 @@ def googler(query: str, number_of_results: int = 5) -> str:
 
         return results
 
+    def _run_playwright_search_win_safe(search_query, num_results):
+        """Pin a subprocess-capable event-loop policy for the duration of this thread.
+
+        Daphne/Twisted installs a process-wide WindowsSelectorEventLoopPolicy, but a
+        SelectorEventLoop cannot spawn the Playwright node driver subprocess on Windows
+        (asyncio raises NotImplementedError). sync_playwright() builds its own loop via
+        asyncio.new_event_loop(), which honors the global policy, so swap to a Proactor
+        policy in this worker thread and always restore the original afterwards.
+        """
+        import asyncio
+        import sys as _sys
+        _saved_loop_policy = None
+        if _sys.platform == 'win32':
+            try:
+                _saved_loop_policy = asyncio.get_event_loop_policy()
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+            except Exception:
+                _saved_loop_policy = None
+        try:
+            return _run_playwright_search(search_query, num_results)
+        finally:
+            if _saved_loop_policy is not None:
+                try:
+                    asyncio.set_event_loop_policy(_saved_loop_policy)
+                except Exception:
+                    pass
+
     # Run Playwright in a dedicated thread to avoid conflicts with
     # Django Channels' async event loop (sync_playwright cannot be called
     # from inside a running asyncio loop).
@@ -3779,7 +3806,7 @@ def googler(query: str, number_of_results: int = 5) -> str:
     outcomes = []
     try:
         with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_run_playwright_search, query, number_of_results)
+            future = executor.submit(_run_playwright_search_win_safe, query, number_of_results)
             result = future.result(timeout=120)
             if result is None:
                 return f"No search results found for '{query}'."

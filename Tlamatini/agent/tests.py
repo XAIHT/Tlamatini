@@ -26,7 +26,7 @@ from agent import views
 from agent.chat_history_loader import DBChatHistoryLoader
 from agent.consumers import AgentConsumer, _sanitize_context_filename
 from agent.global_state import get_request_state, global_state
-from agent.mcp_agent import CapabilityAwareToolAgentExecutor
+from agent.mcp_agent import CapabilityAwareToolAgentExecutor, _budget_select_tools
 from agent.models import AgentMessage
 from agent import path_guard
 from agent.path_guard import (
@@ -1346,6 +1346,73 @@ class CapabilitySelectionTests(TestCase):
         self.assertEqual([tool.name for tool in selected], [tool.name for tool in tools])
 
 
+class ToolSurfaceBudgetTests(TestCase):
+    def test_exhausted_prompt_budget_keeps_only_core_tools_that_fit(self):
+        tools = [
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+            SimpleNamespace(name='chat_agent_pythonxer', description='Launch Pythonxer.'),
+            SimpleNamespace(name='chat_agent_file_creator', description='Create files.'),
+            SimpleNamespace(name='chat_agent_kalier', description='Kali operations.'),
+            SimpleNamespace(name='chat_agent_esp32er', description='ESP32 operations.'),
+        ]
+
+        with patch('agent.mcp_agent.get_int_config_value', return_value=1000), \
+                patch('agent.mcp_agent._estimate_tool_schema_tokens', return_value=100):
+            selected, used, dropped = _budget_select_tools(
+                tools,
+                system_prompt_text='',
+                input_text='x' * 3600,
+                chat_history=[],
+                global_execution_plan=None,
+            )
+
+        self.assertEqual([tool.name for tool in selected], ['execute_command'])
+        self.assertEqual(used, 100)
+        self.assertEqual(dropped, 4)
+
+    def test_exhausted_prompt_budget_does_not_reopen_fresh_tool_budget(self):
+        tools = [
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+            SimpleNamespace(name='chat_agent_pythonxer', description='Launch Pythonxer.'),
+            SimpleNamespace(name='chat_agent_kalier', description='Kali operations.'),
+        ]
+
+        with patch('agent.mcp_agent.get_int_config_value', return_value=1000), \
+                patch('agent.mcp_agent._estimate_tool_schema_tokens', return_value=100):
+            selected, used, dropped = _budget_select_tools(
+                tools,
+                system_prompt_text='',
+                input_text='x' * 5000,
+                chat_history=[],
+                global_execution_plan=None,
+            )
+
+        self.assertEqual(selected, [])
+        self.assertEqual(used, 0)
+        self.assertEqual(dropped, 3)
+
+    def test_safe_prompt_budget_still_binds_full_surface(self):
+        tools = [
+            SimpleNamespace(name='execute_command', description='Execute a shell command.'),
+            SimpleNamespace(name='get_current_time', description='Return the current date and time.'),
+            SimpleNamespace(name='chat_agent_kalier', description='Kali operations.'),
+        ]
+
+        with patch('agent.mcp_agent.get_int_config_value', return_value=20000), \
+                patch('agent.mcp_agent._estimate_tool_schema_tokens', return_value=100):
+            selected, used, dropped = _budget_select_tools(
+                tools,
+                system_prompt_text='system prompt',
+                input_text='short request',
+                chat_history=[],
+                global_execution_plan=None,
+            )
+
+        self.assertEqual([tool.name for tool in selected], [tool.name for tool in tools])
+        self.assertEqual(used, 300)
+        self.assertEqual(dropped, 0)
+
+
 class ContextCapabilitySelectionTests(TestCase):
     def test_select_context_capabilities_for_system_request(self):
         selected = select_context_capabilities_for_request(
@@ -2163,7 +2230,9 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         # Fresh legacy executor built over the full request-scoped tool set...
         self.assertEqual(captured['tools'], ['get_current_time', 'execute_command'])
         # ...and the global plan was NOT forwarded (multi-turn disabled ignores it).
-        self.assertEqual(captured['payload'], {'input': 'Tell me the current time.'})
+        self.assertEqual(captured['payload']['input'], 'Tell me the current time.')
+        self.assertEqual(captured['payload']['chat_history'], [])
+        self.assertNotIn('global_execution_plan', captured['payload'])
 
     def test_launch_in_new_terminal_opens_visible_new_console_when_not_suppressed(self):
         with patch('agent.tools.subprocess.Popen', return_value=SimpleNamespace(pid=1234)) as mock_popen:
@@ -2212,7 +2281,15 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False, encoding='utf-8') as handle:
             handle.write("print('ok')\n")
             script_path = handle.name
-        self.addCleanup(lambda: os.path.exists(script_path) and os.remove(script_path))
+
+        def _cleanup_script():
+            try:
+                if os.path.exists(script_path):
+                    os.remove(script_path)
+            except PermissionError:
+                pass
+
+        self.addCleanup(_cleanup_script)
         with patch('agent.tools._resolve_script_path', return_value=script_path), \
                 patch('agent.tools.validate_tool_path', return_value=None), \
                 patch('agent.tools.launch_in_new_terminal') as mock_launch, \
