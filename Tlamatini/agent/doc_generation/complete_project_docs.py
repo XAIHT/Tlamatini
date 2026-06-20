@@ -437,6 +437,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The latest handbook pass on June 19, 2026 shifts the emphasis from release bragging to operator onboarding: BookOfTlamatini now opens with an easy-follow five-step setup path (install Tlamatini, install/sign in to Ollama, pull models, configure the app, start using Multi-Turn only when needed), and it adds first-run configuration screenshots plus a clearer local-vs-remote Ollama-token rule."
         )
+    if any("disclaimer" in subject and "agent" in subject for subject in subjects):
+        highlights.append(
+            "The documentation now carries a clear Agent-directory disclaimer: workflow agents under `Tlamatini/agent/agents/` are plain-Python user-jurisdiction code, so the user who enables, edits, configures, chains, or runs them is responsible for their security boundary, credentials, targets, and downstream effects."
+        )
     if has_esphomer_assets():
         highlights.append(
             "The tagged `v1.26.0` release now includes ESPHomer as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
@@ -465,9 +469,14 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
-    if any("1.26.0" in subject or ("documentation" in subject and ("1.26.0" in subject or "external mcp" in subject)) for subject in subjects):
+    if any(
+        "1.26.1" in subject
+        or "disclaimer" in subject
+        or ("documentation" in subject and ("1.26.1" in subject or "external mcp" in subject))
+        for subject in subjects
+    ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.26.0`, which matters here because some older badges or prose lines still lag behind the live 82-agent / 89-tool inventory."
+            "The latest documentation pass aligns the handbook and source with the `v1.26.1` line, which matters here because some older badges or prose lines still lag behind the live 82-agent / 89-tool inventory and the new Agent-directory responsibility boundary."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -653,6 +662,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The newest post-tag documentation wave is about usability rather than another runtime feature: BookOfTlamatini now begins with a five-step getting-started path, clarifies installer-vs-source choices, adds configuration screenshots, and explains that a localhost Ollama usually needs no token while a remote Ollama may."
         )
+    if any("disclaimer" in subject and "agent" in subject for subject in subjects):
+        highlights.append(
+            "The latest Markdown source now explicitly warns that the plain-Python workflow agents are under user jurisdiction: Tlamatini offers orchestration and guardrails, but user-run agents can touch files, shells, APIs, credentials, external MCPs, hardware, and networks selected by the operator, so resulting breaches or unsafe actions remain the operator's responsibility."
+        )
     if has_esphomer_assets():
         highlights.append(
             "The live workspace now includes the untagged ESPHomer wave: a new ESPHome firmware agent, wrapped `chat_agent_esphomer` tool, sample YAML project, migrations, tests, and handbook chapters that extend Tlamatini into smart-home device provisioning."
@@ -681,9 +694,15 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
         )
-    if any("1.26.0" in subject or "external mcp" in subject or ("documentation" in subject and "1.26.0" in subject) for subject in subjects):
+    if any(
+        "1.26.1" in subject
+        or "disclaimer" in subject
+        or "external mcp" in subject
+        or ("documentation" in subject and "1.26.1" in subject)
+        for subject in subjects
+    ):
         highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to `v1.26.0`, whose headline is the External MCPs universal client (connect to any MCP server over stdio / streamable-HTTP / SSE / WebSocket, plus the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode), with the ESPHomer firmware lane already folded in, so the dossier matches the current 82-agent / 89-tool runtime surface."
+            "The latest versioning/documentation commits move the source-of-truth product story to the `v1.26.1` line: the External MCPs universal client remains the headline runtime capability, and the new Agent-directory disclaimer now makes the user-jurisdiction boundary explicit beside the current 82-agent / 89-tool runtime surface."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -916,6 +935,14 @@ SYSTEM_OVERVIEW = [
     "She is designed for development operations: codebase analysis, file and directory context, deterministic file discovery/search/editing, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for STM32F4, ESP32-class, Arduino-class, and ESPHome smart-home boards.",
 ]
 
+AGENT_DIRECTORY_DISCLAIMER = [
+    "The workflow agents in `Tlamatini/agent/agents/` are plain-Python programs on purpose: they are readable, editable, auditable operating code under the user's control.",
+    "When a user enables, configures, modifies, chains, or runs those agents, the actions of those agents fall under that user's jurisdiction. The prompts, config files, secrets, credentials, files, folders, network targets, browsers, shells, APIs, external MCP servers, hardware devices, and downstream systems they touch are selected and authorized by the user.",
+    "Tlamatini provides orchestration, documentation, and guardrails, but she cannot guarantee that every user-edited agent, workflow, external service, credential scope, target machine, or local environment is safe.",
+    "Any security breach, data exposure, unauthorized action, credential leak, unsafe automation, policy violation, device damage, or other harm caused by running agents or agent workflows is the responsibility of the user who runs them.",
+    "Operators should audit agents before use, restrict credentials and permissions, and operate them only on systems where they have explicit authorization.",
+]
+
 WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
@@ -1045,11 +1072,11 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to `v1.26.0` from the latest tag `30a87f3`, the External MCPs release; its defining feature is the External MCPs universal client (connect to any MCP server over stdio / streamable-HTTP / SSE / WebSocket, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode), with the earlier ESPHomer smart-home firmware lane already contained in this version.",
+    "The repository currently resolves to the latest reachable `v1.26.1` tag, carrying forward the `v1.26.0` External MCPs release while adding the later External MCP dialog fixes, onboarding refinements, and Agent-directory disclaimer.",
     "Operators reach that capability from a first-class UI surface: the `External -> MCPs` menu manages the server catalog, imports or exports Claude-style JSON, and can progressively guide setup instead of assuming the user already knows every transport and runtime field.",
     "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
     "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
-    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, the firmware stack already includes ESPHomer for ESPHome-based smart-home devices, and v1.26.0 adds the External MCPs universal client so Tlamatini can use the tools of any external MCP server declared in JSON.",
+    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, the firmware stack already includes ESPHomer for ESPHome-based smart-home devices, and the v1.26.x line adds the External MCPs universal client so Tlamatini can use the tools of any external MCP server declared in JSON.",
 ]
 
 EXTERNAL_MCPS_GUIDE = [
@@ -1724,6 +1751,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("1. What Tlamatini Is", styles["h1"]))
     for item in SYSTEM_OVERVIEW:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Agent-directory disclaimer: user jurisdiction and responsibility", styles["h2"]))
+    for item in AGENT_DIRECTORY_DISCLAIMER:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("What the system does", styles["h2"]))
     for item in WHAT_IT_DOES:
         story.append(bullet(item, styles["bullet"]))
@@ -1764,7 +1794,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("Version surfaces", styles["h2"]))
     for item in VERSION_SURFACES_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Current release focus in v1.26.0", styles["h2"]))
+    story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("External MCP universal client", styles["h2"]))
@@ -1975,6 +2005,9 @@ def build_pdf(context: dict) -> None:
     story.append(p("All workflow agents follow a common deployment pattern: template directory, YAML configuration, session-scoped pool copy, PID/status/log files, target/source wiring, and optional reanimation state.", styles["body"]))
     story.append(p("Agent catalog validation", styles["h2"]))
     for item in AGENT_DESCRIPTION_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("User jurisdiction over plain-Python agents", styles["h2"]))
+    for item in AGENT_DIRECTORY_DISCLAIMER:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("How agent runtimes are shaped", styles["h2"]))
     for item in AGENT_RUNTIME_GUIDE:
@@ -2466,6 +2499,35 @@ def build_ppt(context: dict) -> None:
     ], THEME["copper"], "identity-b", 16)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Agent Directory Disclaimer", "plain-Python agents are user-jurisdiction code", THEME["amber"])
+    add_panel(
+        slide,
+        audit,
+        0.78,
+        1.6,
+        5.9,
+        4.95,
+        "User jurisdiction",
+        AGENT_DIRECTORY_DISCLAIMER[:2],
+        THEME["amber"],
+        "agent-disclaimer-a",
+        12,
+    )
+    add_panel(
+        slide,
+        audit,
+        6.95,
+        1.6,
+        5.55,
+        4.95,
+        "Responsibility boundary",
+        AGENT_DIRECTORY_DISCLAIMER[2:],
+        THEME["copper"],
+        "agent-disclaimer-b",
+        12,
+    )
+    audit_layout(audit, len(prs.slides))
+
     add_themed_column_slides(prs, "What The System Does", "capability map", THEME["copper"], [
         ("Knowledge", THEME["jade"], WHAT_IT_DOES[:6]),
         ("Action", THEME["copper"], WHAT_IT_DOES[6:12]),
@@ -2540,12 +2602,12 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.26.0 External MCPs universal client", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.26.1 docs, disclaimer, and External MCPs", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "The version story is now explicit: the repo resolves to `v1.26.0` from the latest tag, the External MCPs release, whose defining feature is the universal MCP client (any external MCP server over four transports, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode), with the earlier ESPHomer firmware lane already contained in that baseline.",
+        "The version story is now explicit: the repo resolves to the `v1.26.1` line while carrying forward the External MCPs release, whose defining feature is the universal MCP client (any external MCP server over four transports, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
         "Operators still inherit the two major foundations from the immediately prior release line: self-update preserves the user's database and custom toggles, and frozen builds ship the numpy/OpenCV native libraries the media agents need.",
-        "The resulting narrative matches the current README, Book, Git history, new media assets, and source tree more honestly than the older milestone-only framing.",
+        "The resulting narrative now also matches the new Agent-directory disclaimer, making the plain-Python user-responsibility boundary visible in both the PDF and the deck.",
     ], THEME["jade"], "rel-b", 13)
     audit_layout(audit, len(prs.slides))
 
