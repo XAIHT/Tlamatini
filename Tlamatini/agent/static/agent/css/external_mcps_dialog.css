@@ -1,252 +1,515 @@
 /* ============================================================
- * external_mcps_dialog.css — External ▸ MCPs activation dialog
+ * external_mcps_dialog.css - External > MCPs activation dialog
  * ------------------------------------------------------------
- * Sits inside a jQuery-UI .ui-dialog (navy #4a4f5c surface), so only the
- * inner content is themed here. Mirrors the tools/skills dialog identity:
- * navy gradient row-cards, teal (#55BBAA) checkboxes, the signature
- * fire→violet→cyan accent bar on active rows, JetBrains-Mono badges.
+ * Keeps the existing Tlamatini dark dialog identity while making
+ * the shell viewport-bounded. The modal never grows past the
+ * screen; the catalog and summary panes own their scrolling.
  * ============================================================ */
 
-#external-mcps-dialog-message {
-    font-family: 'Nunito', sans-serif;
+body.emx-dialog-open {
+    overflow: hidden;
+}
+
+#external-mcps-dialog-message.emx-modal[hidden] {
+    display: none !important;
+}
+
+#external-mcps-dialog-message.emx-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: 14px;
+    background: rgba(11, 14, 22, 0.62);
     color: #f0f1f7;
+    font-family: 'Nunito', sans-serif;
 }
+
+.emx-panel {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: min(940px, 100%);
+    height: min(760px, 100%);
+    min-height: min(500px, 100%);
+    overflow: hidden;
+    background: #4a4f5c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.62);
+}
+
+.emx-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 16px;
+    background: #444853;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.emx-kicker {
+    color: #55bbaa;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.emx-header h2 {
+    margin: 2px 0 0;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.emx-icon-button {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #c8ccd8;
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.emx-icon-button:hover,
+.emx-icon-button:focus-visible {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    outline: none;
+}
+
+.emx-body {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+    gap: 12px;
+    padding: 12px;
+    overflow: hidden;
+}
+
+.emx-catalog-pane,
+.emx-active-pane {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(27, 30, 44, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px;
+}
+
 #external-mcps-legend {
-    font-size: 0.9em;
-    color: #bbb;
-    margin: 0 0 12px;
-    line-height: 1.5;
+    flex: none;
+    margin: 0 0 10px;
+    color: #c1c5d0;
+    font-size: 0.88rem;
+    line-height: 1.4;
 }
+
 .emx-search-row {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
 }
+
 #external-mcps-search {
+    min-width: 0;
     flex: 1;
-    background: rgba(0, 0, 0, 0.20);
+    padding: 9px 12px;
+    background: rgba(0, 0, 0, 0.22);
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 8px;
     color: #ffffff;
     font-family: 'Nunito', sans-serif;
-    font-size: 0.95em;
-    padding: 9px 12px;
+    font-size: 0.94rem;
 }
+
 #external-mcps-search:focus {
-    outline: none;
-    border-color: #55BBAA;
+    border-color: #55bbaa;
     box-shadow: 0 0 0 2px rgba(85, 187, 170, 0.25);
+    outline: none;
 }
+
 .emx-chip {
-    font-size: 0.8em;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    flex: none;
     padding: 4px 11px;
-    border-radius: 10px;
     background: rgba(85, 187, 170, 0.28);
+    border-radius: 10px;
     color: #9af0de;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
     white-space: nowrap;
 }
+
 .emx-chip.full {
     background: rgba(249, 115, 22, 0.26);
     color: #ffc08a;
 }
+
 .emx-list {
-    max-height: 46vh;
-    overflow-y: auto;
+    min-height: 0;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    overflow: auto;
     padding: 2px 10px 2px 2px;
+    scrollbar-gutter: stable;
 }
+
 .emx-row {
     flex: 0 0 auto;
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
-    min-height: 56px;
+    min-height: 64px;
+    padding: 12px 13px;
+    overflow: hidden;
     background: linear-gradient(135deg, #2c2f44 0%, #353954 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 12px 14px;
+    border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
     cursor: pointer;
-    overflow: hidden;
     transition: border-color 0.18s ease-out, box-shadow 0.18s ease-out;
 }
-.emx-row:hover {
+
+.emx-row:hover,
+.emx-row:focus-visible {
     border-color: rgba(157, 59, 255, 0.55);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    outline: none;
 }
+
 .emx-row.on {
     border-color: rgba(85, 187, 170, 0.5);
 }
+
 .emx-acc {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #ff5f3a 0%, #9d3bff 50%, #13c2e0 100%);
     display: none;
+    background: linear-gradient(90deg, #ff5f3a 0%, #9d3bff 50%, #13c2e0 100%);
 }
+
 .emx-row.on .emx-acc {
     display: block;
 }
+
 .emx-cb {
     width: 18px;
     height: 18px;
-    accent-color: #55BBAA;
     flex: none;
+    accent-color: #55bbaa;
     pointer-events: none;
 }
+
 .emx-info {
-    flex: 1;
     min-width: 0;
 }
+
 .emx-name {
-    font-size: 1em;
-    font-weight: 600;
+    overflow: hidden;
     color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
+
 .emx-desc {
-    font-size: 0.8em;
-    color: #b0b0b0;
+    display: -webkit-box;
+    max-width: 100%;
     margin-top: 2px;
-    word-break: break-all;
+    overflow: hidden;
+    color: #b8bcc8;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
+
 .emx-diag {
+    display: -webkit-box;
     margin-top: 5px;
-    font-size: 0.76em;
+    overflow: hidden;
     color: #ffd08a;
-    line-height: 1.35;
-    word-break: break-word;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
+
 .emx-badges {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 5px;
-    flex: none;
+    min-width: 80px;
 }
+
 .emx-badge {
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 0.7em;
-    font-weight: 700;
-    color: #ffffff;
-    background: linear-gradient(135deg, #6d28d9 0%, #2563eb 100%);
     padding: 3px 8px;
+    background: linear-gradient(135deg, #6d28d9 0%, #2563eb 100%);
     border-radius: 6px;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
     white-space: nowrap;
 }
+
 .emx-trans {
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 0.65em;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: #06222b;
-    background: linear-gradient(135deg, #0e7490 0%, #22d3ee 100%);
+    max-width: 112px;
     padding: 2px 8px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0e7490 0%, #22d3ee 100%);
     border-radius: 6px;
+    color: #06222b;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
+
 .emx-warn {
-    font-size: 0.8em;
+    flex: none;
+    min-height: 18px;
+    margin: 8px 3px 0;
     color: #ff9c9c;
-    min-height: 16px;
-    margin: 8px 4px 0;
+    font-size: 0.8rem;
 }
+
+.emx-empty {
+    flex: none;
+    padding: 14px 12px;
+    color: #c1c5d0;
+    font-size: 0.86rem;
+    line-height: 1.35;
+    text-align: center;
+}
+
 .emx-stitle {
-    font-size: 0.8em;
+    flex: none;
+    margin: 0 0 8px;
     color: #ffe9c4;
-    font-weight: 600;
-    margin: 14px 2px 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
 }
+
+.emx-summary-wrap {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+    border-top: 1px dashed rgba(255, 255, 255, 0.10);
+}
+
 .emx-sum {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85em;
+    font-size: 0.82rem;
 }
+
 .emx-sum th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 7px 8px;
+    background: #414654;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+    color: #9ca2ba;
+    font-weight: 700;
     text-align: left;
-    font-weight: 600;
-    color: #8a8fa8;
-    padding: 6px 8px;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.10);
 }
+
 .emx-sum td {
+    max-width: 180px;
     padding: 8px;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
     color: #e0e0e0;
+    overflow-wrap: anywhere;
 }
+
 .emx-sum td.empty {
-    color: #8a8fa8;
+    color: #9ca2ba;
     font-style: italic;
     text-align: center;
 }
+
 .emx-sum .mono {
+    color: #a8aec6;
     font-family: 'JetBrains Mono', 'Consolas', monospace;
-    color: #9aa0bf;
 }
+
 .emx-status,
 .emx-pill-ok,
 .emx-pill-warn,
 .emx-pill-zero,
 .emx-pill-err,
 .emx-pill-muted {
-    font-size: 0.75em;
-    font-weight: 700;
+    display: inline-block;
     padding: 2px 9px;
     border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
     white-space: nowrap;
 }
+
 .emx-pill-ok {
     background: rgba(85, 187, 170, 0.30);
     color: #7fe6d2;
 }
+
 .emx-pill-warn {
     background: rgba(234, 179, 8, 0.24);
     color: #ffe08a;
 }
+
 .emx-pill-zero {
     background: rgba(249, 115, 22, 0.26);
     color: #ffbd8a;
 }
+
 .emx-pill-err {
     background: rgba(239, 68, 68, 0.26);
     color: #ffaaaa;
 }
+
 .emx-pill-muted {
     background: rgba(148, 163, 184, 0.20);
     color: #bcc5d4;
 }
+
 .emx-sum-diag td {
-    color: #ffd08a;
-    font-size: 0.78em;
-    line-height: 1.35;
     padding-top: 0;
-    word-break: break-word;
+    color: #ffd08a;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
+
 .emx-drop-hint {
-    font-size: 0.78em;
-    color: #8a8fa8;
-    margin: 12px 2px 0;
+    flex: none;
+    margin: 10px 0 0;
+    color: #9ca2ba;
+    font-size: 0.78rem;
+    line-height: 1.35;
 }
+
 .emx-drop-hint code {
-    background: rgba(255, 255, 255, 0.08);
     padding: 1px 5px;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 3px;
     color: #e0e0e0;
 }
-.emx-list::-webkit-scrollbar {
-    width: 9px;
+
+.emx-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #444853;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-.emx-list::-webkit-scrollbar-track {
+
+.emx-footer-note {
+    min-width: 0;
+    color: #b8bcc8;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.emx-actions {
+    display: flex;
+    flex: none;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.emx-button {
+    min-width: 98px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #ffffff;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.emx-button:focus-visible {
+    outline: 2px solid rgba(85, 187, 170, 0.65);
+    outline-offset: 2px;
+}
+
+.emx-button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.emx-button-primary {
+    background: #55bbaa;
+}
+
+.emx-button-primary:hover {
+    background: #469f91;
+}
+
+.emx-button-secondary {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.emx-button-secondary:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.emx-list::-webkit-scrollbar,
+.emx-summary-wrap::-webkit-scrollbar,
+.emx-body::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+
+.emx-list::-webkit-scrollbar-track,
+.emx-summary-wrap::-webkit-scrollbar-track,
+.emx-body::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
-.emx-list::-webkit-scrollbar-thumb {
+
+.emx-list::-webkit-scrollbar-thumb,
+.emx-summary-wrap::-webkit-scrollbar-thumb,
+.emx-body::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #6d28d9 0%, #2563eb 100%);
     border-radius: 4px;
 }
@@ -259,15 +522,82 @@
     display: none;
     align-items: center;
     justify-content: center;
+    padding: 20px;
     background: rgba(13, 16, 28, 0.78);
     color: #ffffff;
     font-family: 'Nunito', sans-serif;
-    font-size: 1.4em;
-    font-weight: 600;
+    font-size: 1.4rem;
+    font-weight: 700;
     pointer-events: none;
     text-align: center;
-    padding: 20px;
 }
+
 .emx-drop-overlay.show {
     display: flex;
+}
+
+@media (max-width: 760px) {
+    #external-mcps-dialog-message.emx-modal {
+        padding: 8px;
+    }
+
+    .emx-panel {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .emx-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+        overflow: hidden;
+        padding: 10px;
+    }
+
+    .emx-catalog-pane,
+    .emx-active-pane {
+        min-height: 0;
+    }
+
+    .emx-active-pane {
+        margin-top: 10px;
+        max-height: 190px;
+    }
+
+    .emx-search-row {
+        flex-wrap: wrap;
+    }
+
+    #external-mcps-search {
+        flex-basis: 100%;
+        order: 2;
+    }
+
+    .emx-chip {
+        order: 1;
+    }
+
+    .emx-row {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .emx-badges {
+        grid-column: 2;
+        align-items: flex-start;
+        min-width: 0;
+    }
+
+    .emx-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .emx-actions {
+        width: 100%;
+    }
+
+    .emx-button {
+        flex: 1;
+        min-width: 0;
+    }
 }

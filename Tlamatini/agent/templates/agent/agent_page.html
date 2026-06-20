@@ -322,20 +322,45 @@
       <ul id="skills-configure-list"></ul>
     </div>
   </div>
-  <div id="external-mcps-dialog-message" title="" style="display: none;">
-    <p id="external-mcps-legend"></p>
-    <div class="emx-search-row">
-      <input id="external-mcps-search" type="search" placeholder="Search services…" autocomplete="off">
-      <span id="external-mcps-chip" class="emx-chip"></span>
-    </div>
-    <div id="external-mcps-list" class="emx-list"></div>
-    <div id="external-mcps-warn" class="emx-warn"></div>
-    <div class="emx-stitle">Active — sent with your prompt</div>
-    <table class="emx-sum">
-      <thead><tr><th>Service</th><th>Tools</th><th>Transport</th><th>Status</th></tr></thead>
-      <tbody id="external-mcps-sum"></tbody>
-    </table>
-    <p class="emx-drop-hint">Tip: drag an MCP <code>.json</code> file anywhere onto the page to add it to the catalog.</p>
+  <div id="external-mcps-dialog-message" class="emx-modal" role="dialog" aria-modal="true"
+    aria-labelledby="external-mcps-title" aria-describedby="external-mcps-legend" hidden>
+    <section class="emx-panel">
+      <header class="emx-header">
+        <div>
+          <div class="emx-kicker">External MCPs</div>
+          <h2 id="external-mcps-title">Activate MCPs</h2>
+        </div>
+        <button id="external-mcps-close" class="emx-icon-button" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="emx-body">
+        <section class="emx-catalog-pane" aria-label="MCP catalog">
+          <p id="external-mcps-legend"></p>
+          <div class="emx-search-row">
+            <input id="external-mcps-search" type="search" placeholder="Search services..." autocomplete="off">
+            <span id="external-mcps-chip" class="emx-chip"></span>
+          </div>
+          <div id="external-mcps-list" class="emx-list" tabindex="0"></div>
+          <div id="external-mcps-warn" class="emx-warn" aria-live="polite"></div>
+        </section>
+        <section class="emx-active-pane" aria-label="Active MCP services">
+          <div class="emx-stitle">Active - sent with your prompt</div>
+          <div class="emx-summary-wrap">
+            <table class="emx-sum">
+              <thead><tr><th>Service</th><th>Tools</th><th>Transport</th><th>Status</th></tr></thead>
+              <tbody id="external-mcps-sum"></tbody>
+            </table>
+          </div>
+          <p class="emx-drop-hint">Drop an MCP <code>.json</code> anywhere on the page to add it.</p>
+        </section>
+      </div>
+      <footer class="emx-footer">
+        <span class="emx-footer-note">Only active services connect; inactive ones stay in the catalog.</span>
+        <div class="emx-actions">
+          <button id="external-mcps-cancel" class="emx-button emx-button-secondary" type="button">Cancel</button>
+          <button id="external-mcps-continue" class="emx-button emx-button-primary" type="button">Continue</button>
+        </div>
+      </footer>
+    </section>
   </div>
   <div id="skills-browse-dialog-message" title="" style="display: none;">
     <div id="skills-browse-toolbar">

@@ -5,8 +5,8 @@
 //   OpenExternalMcpsDialog(event)
 //     -- "Activate MCPs" dialog. Lists the external_mcps.json catalog as a
 //        searchable checkbox grid capped at 5 active. Continue POSTs the
-//        active set to /agent/external_mcps/activate/. Mirrors the dark
-//        tools/skills dialog identity (jQuery-UI .ui-dialog + teal buttons).
+//        active set to /agent/external_mcps/activate/. The modal is viewport
+//        bounded and centered; only the catalog panes scroll.
 //
 //   Drag-to-import (self-attaching IIFE below)
 //     -- Drop an MCP `.json` (mcpServers shape) anywhere on the page to merge
@@ -15,17 +15,27 @@
 //        carries an executable command — never imported silently).
 
 const EXTERNAL_MCPS_MAX_ACTIVE = 5;
+const EXTERNAL_MCPS_RENDER_LIMIT = 700;
+let _externalMcpsKeydownHandler = null;
 
 function _emxCsrf() {
     const m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
 }
 
+function _emxDestroyLegacyJqueryDialog(dlg) {
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.dialog) return;
+    const $dlg = window.jQuery(dlg);
+    if ($dlg.hasClass('ui-dialog-content')) {
+        $dlg.dialog('destroy');
+    }
+}
+
 function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
     if (event && event.preventDefault) event.preventDefault();
     const dlg = document.getElementById('external-mcps-dialog-message');
     if (!dlg) { console.error('external-mcps-dialog: container missing'); return; }
-    dlg.title = 'Activate MCPs';
+    _emxDestroyLegacyJqueryDialog(dlg);
 
     const listEl = document.getElementById('external-mcps-list');
     const sumEl = document.getElementById('external-mcps-sum');
@@ -33,14 +43,22 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
     const warn = document.getElementById('external-mcps-warn');
     const search = document.getElementById('external-mcps-search');
     const legend = document.getElementById('external-mcps-legend');
-    if (!listEl || !sumEl || !chip || !warn || !search || !legend) return;
-
-    legend.textContent = 'Pick up to 5 services. Only active ones connect and ' +
-        'reach the model — the rest stay in the catalog.';
+    const closeBtn = document.getElementById('external-mcps-close');
+    const cancelBtn = document.getElementById('external-mcps-cancel');
+    const saveBtn = document.getElementById('external-mcps-continue');
+    if (!listEl || !sumEl || !chip || !warn || !search || !legend ||
+        !closeBtn || !cancelBtn || !saveBtn) return;
 
     let servers = [];
+    let maxActive = EXTERNAL_MCPS_MAX_ACTIVE;
     let warnTimer = null;
+    let isSaving = false;
     const activeCount = () => servers.filter(s => s.active).length;
+
+    function renderLegend() {
+        legend.textContent = 'Select up to ' + maxActive +
+            ' services. Search filters the catalog; inactive services stay catalog-only.';
+    }
 
     function statusClass(s) {
         const st = s.status || (s.connecting ? 'connecting' :
@@ -73,20 +91,32 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         warnTimer = setTimeout(() => { warn.textContent = ''; }, 2400);
     }
 
+    function listMessage(text) {
+        const node = document.createElement('div');
+        node.className = 'emx-empty';
+        node.textContent = text;
+        return node;
+    }
+
     function renderList() {
         const q = (search.value || '').trim().toLowerCase();
         listEl.innerHTML = '';
         const shown = servers.filter(s =>
-            (s.display + ' ' + s.key).toLowerCase().includes(q));
+            ((s.display || '') + ' ' + (s.key || '') + ' ' +
+                (s.command || '') + ' ' + (s.transport || '')).toLowerCase().includes(q));
         if (!shown.length) {
-            listEl.innerHTML = '<div class="emx-desc" style="padding:14px;' +
-                'text-align:center;">No match.</div>';
+            listEl.appendChild(listMessage('No match.'));
             return;
         }
-        for (const s of shown) {
+        const rendered = shown.slice(0, EXTERNAL_MCPS_RENDER_LIMIT);
+        const fragment = document.createDocumentFragment();
+        for (const s of rendered) {
             const row = document.createElement('div');
             row.className = 'emx-row' + (s.active ? ' on' : '');
             row.dataset.key = s.key;
+            row.setAttribute('role', 'checkbox');
+            row.setAttribute('aria-checked', s.active ? 'true' : 'false');
+            row.tabIndex = 0;
             const tc = (s.tool_count === null || s.tool_count === undefined)
                 ? '' : (s.tool_count + ' tools');
             const diag = diagnosticText(s);
@@ -102,18 +132,24 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
                 '<span class="emx-status"></span>' +
                 '<span class="emx-trans"></span></div>';
             row.querySelector('.emx-name').textContent = s.display;
-            row.querySelector('.emx-desc').textContent = s.command || s.transport;
+            row.querySelector('.emx-desc').textContent =
+                s.command || s.transport || 'configured server';
             const diagEl = row.querySelector('.emx-diag');
             if (diagEl) diagEl.textContent = diag;
             if (tc) row.querySelector('.emx-badge').textContent = tc;
             const statusEl = row.querySelector('.emx-status');
             statusEl.className = 'emx-status ' + statusClass(s);
             statusEl.textContent = statusLabel(s);
-            row.querySelector('.emx-trans').textContent = s.transport;
+            row.querySelector('.emx-trans').textContent = s.transport || 'unknown';
             const cb = row.querySelector('.emx-cb');
             cb.setAttribute('aria-label', s.display);
-            listEl.appendChild(row);
+            fragment.appendChild(row);
         }
+        if (shown.length > rendered.length) {
+            fragment.appendChild(listMessage('Showing ' + rendered.length +
+                ' of ' + shown.length + ' matches. Search to narrow the catalog.'));
+        }
+        listEl.appendChild(fragment);
     }
 
     function renderSum() {
@@ -134,7 +170,7 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
             const tds = tr.querySelectorAll('td');
             tds[0].textContent = s.display;
             tds[1].textContent = tc;
-            tds[2].textContent = s.transport;
+            tds[2].textContent = s.transport || 'unknown';
             const pill = tr.querySelector('span');
             pill.className = statusClass(s);
             pill.textContent = statusLabel(s);
@@ -154,47 +190,129 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
 
     function renderChip() {
         const c = activeCount();
-        chip.textContent = c + ' / ' + EXTERNAL_MCPS_MAX_ACTIVE + ' active';
-        chip.classList.toggle('full', c >= EXTERNAL_MCPS_MAX_ACTIVE);
+        chip.textContent = c + ' / ' + maxActive + ' active';
+        chip.classList.toggle('full', c >= maxActive);
     }
 
     function renderAll() { renderList(); renderSum(); renderChip(); }
 
-    listEl.onclick = (e) => {
-        const row = e.target.closest('.emx-row');
-        if (!row) return;
-        const s = servers.find(x => x.key === row.dataset.key);
+    function toggleServer(key) {
+        const s = servers.find(x => x.key === key);
         if (!s) return;
-        if (!s.active && activeCount() >= EXTERNAL_MCPS_MAX_ACTIVE) {
-            flash('You can run ' + EXTERNAL_MCPS_MAX_ACTIVE +
+        if (!s.active && activeCount() >= maxActive) {
+            flash('You can run ' + maxActive +
                 ' at once — switch one off first.');
             return;
         }
         s.active = !s.active;
         warn.textContent = '';
         renderAll();
+    }
+
+    listEl.onclick = (e) => {
+        const row = e.target.closest('.emx-row');
+        if (!row) return;
+        toggleServer(row.dataset.key);
+    };
+    listEl.onkeydown = (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const row = e.target.closest('.emx-row');
+        if (!row) return;
+        e.preventDefault();
+        toggleServer(row.dataset.key);
     };
     search.value = '';
-    search.oninput = renderList;
+    search.oninput = () => {
+        listEl.scrollTop = 0;
+        renderList();
+    };
 
-    listEl.innerHTML = '<div class="emx-desc" style="padding:14px;' +
-        'text-align:center;">Loading…</div>';
+    function setSaving(nextSaving) {
+        isSaving = nextSaving;
+        saveBtn.disabled = nextSaving;
+        saveBtn.textContent = nextSaving ? 'Saving...' : 'Continue';
+    }
+
+    function closeDialog() {
+        if (warnTimer) clearTimeout(warnTimer);
+        if (_externalMcpsKeydownHandler) {
+            document.removeEventListener('keydown', _externalMcpsKeydownHandler);
+            _externalMcpsKeydownHandler = null;
+        }
+        dlg.classList.remove('is-open');
+        dlg.hidden = true;
+        document.body.classList.remove('emx-dialog-open');
+    }
+
+    function focusableElements() {
+        return Array.from(dlg.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(el => el.getClientRects().length > 0);
+    }
+
+    function onDialogKeydown(e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeDialog();
+            return;
+        }
+        if (e.key !== 'Tab') return;
+        const focusable = focusableElements();
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    function openDialog() {
+        if (_externalMcpsKeydownHandler) {
+            document.removeEventListener('keydown', _externalMcpsKeydownHandler);
+        }
+        dlg.hidden = false;
+        dlg.classList.add('is-open');
+        document.body.classList.add('emx-dialog-open');
+        _externalMcpsKeydownHandler = onDialogKeydown;
+        document.addEventListener('keydown', _externalMcpsKeydownHandler);
+        window.setTimeout(() => search.focus(), 0);
+    }
+
+    closeBtn.onclick = closeDialog;
+    cancelBtn.onclick = closeDialog;
+    dlg.onclick = (e) => {
+        if (e.target === dlg) closeDialog();
+    };
+
+    listEl.innerHTML = '';
+    listEl.appendChild(listMessage('Loading...'));
     sumEl.innerHTML = '';
     chip.textContent = '';
     warn.textContent = '';
+    setSaving(false);
+    renderLegend();
+    openDialog();
 
     fetch('/agent/external_mcps/', { credentials: 'same-origin' })
         .then(r => r.json())
         .then(payload => {
+            maxActive = Number(payload.max_active) || EXTERNAL_MCPS_MAX_ACTIVE;
             servers = (payload.servers || []).map(s => Object.assign({}, s));
+            renderLegend();
             renderAll();
         })
         .catch(err => {
-            listEl.innerHTML = '<div class="emx-desc" style="padding:14px;' +
-                'text-align:center;">Load failed: ' + err + '</div>';
+            listEl.innerHTML = '';
+            listEl.appendChild(listMessage('Load failed: ' + err));
         });
 
     function saveActive() {
+        if (isSaving) return;
+        setSaving(true);
         const active = servers.filter(s => s.active).map(s => s.key);
         fetch('/agent/external_mcps/activate/', {
             method: 'POST',
@@ -206,36 +324,17 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
             body: JSON.stringify({ active })
         }).then(r => r.json()).then(d => {
             if (d.ok) {
-                $('#external-mcps-dialog-message').dialog('close');
+                closeDialog();
             } else {
+                setSaving(false);
                 flash('Save failed: ' + (d.error || 'unknown error'));
             }
-        }).catch(err => flash('Save failed: ' + err));
+        }).catch(err => {
+            setSaving(false);
+            flash('Save failed: ' + err);
+        });
     }
-
-    $('#external-mcps-dialog-message').dialog({
-        autoOpen: false,
-        modal: true,
-        width: 600,
-        resizable: false,
-        draggable: true,
-        closeText: '',
-        open: function () { document.body.style.overflow = 'hidden'; },
-        close: function () { document.body.style.overflow = ''; },
-        create: function () {
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
-        },
-        buttons: [
-            { text: 'Continue', click: saveActive },
-            { text: 'Cancel', click: function () { $(this).dialog('close'); } }
-        ]
-    });
-    $('#external-mcps-dialog-message').dialog('open');
-    $('#external-mcps-dialog-message').dialog('option', 'position',
-        { my: 'center', at: 'center', of: window });
-    $('#external-mcps-dialog-message').parent()
-        .find('.ui-dialog-buttonpane button').css(DIALOG_BUTTON_CSS);
+    saveBtn.onclick = saveActive;
 }
 
 // ----------------------------------------------------------------
