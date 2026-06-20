@@ -7,6 +7,12 @@ from typing import Dict, Any, Optional, Tuple
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from .acpx import ACPX_TOOL_NAMES, filter_acpx_tools
+from .capability_registry import (
+    _normalize_text,
+    _score_capability,
+    _tokenize,
+    build_tool_capabilities,
+)
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
 from .exec_permission import get_broker
@@ -1463,6 +1469,172 @@ Answer:
 """
 
 
+# ---------------------------------------------------------------------------
+# Tool-surface token budgeting (Angela, 2026-06-19)
+# ---------------------------------------------------------------------------
+# Binding the FULL enabled surface (88 agents + active External-MCP tools) can
+# overflow the model context window. Observed live: "prompt too long 273284 >
+# 262144", which crashed Multi-Turn into a basic-LLM fallback ("tool backend
+# unavailable"). Instead of blindly binding everything OR starving the operator
+# with a tiny planner subset, we RANK the surface (reusing the same capability
+# scorer + planner picks used elsewhere) and fill a token budget: a guaranteed
+# operator CORE is always kept, then the planner's picks, then capability-scored
+# tools by descending score until the budget is reached. The low-rank tail is
+# dropped — never silently (the dropped count is always logged).
+_TOOL_BUDGET_CONTEXT_LIMIT_DEFAULT = 262144
+_TOOL_BUDGET_RESPONSE_HEADROOM = 8192
+_TOOL_BUDGET_SAFETY_MARGIN = 4096
+
+# Operator essentials the LLM must never be starved of, even on an off-topic
+# prompt — the file / shell / python / edit / search core plus the cheap
+# run-control + time/window helpers. Kept regardless of score so Multi-Turn
+# always has hands to work with.
+_CORE_ALWAYS_BOUND_TOOLS = frozenset({
+    "chat_agent_file_creator", "chat_agent_editor", "chat_agent_grepper",
+    "chat_agent_globber", "chat_agent_file_extractor", "chat_agent_file_interpreter",
+    "chat_agent_executer", "chat_agent_pythonxer",
+    "execute_command", "execute_file",
+    "chat_agent_run_status", "chat_agent_run_log", "chat_agent_run_list",
+    "chat_agent_run_stop", "get_current_time", "window_present",
+})
+
+_EMERGENCY_CORE_TOOL_ORDER = (
+    "get_current_time",
+    "execute_command",
+    "execute_file",
+    "chat_agent_executer",
+    "chat_agent_pythonxer",
+    "chat_agent_file_creator",
+    "chat_agent_editor",
+    "chat_agent_grepper",
+    "chat_agent_globber",
+    "chat_agent_file_extractor",
+    "chat_agent_file_interpreter",
+    "chat_agent_run_status",
+    "chat_agent_run_log",
+    "chat_agent_run_list",
+    "chat_agent_run_stop",
+    "window_present",
+)
+
+
+def _estimate_text_tokens(text) -> int:
+    """Cheap, model-agnostic token estimate (~4 chars per token)."""
+    return max(0, len(str(text or "")) // 4)
+
+
+def _estimate_tool_schema_tokens(tool) -> int:
+    """Approximate the tokens one tool's schema costs through ``bind_tools()``."""
+    try:
+        from langchain_core.utils.function_calling import convert_to_openai_tool
+        text = json.dumps(convert_to_openai_tool(tool), ensure_ascii=False, default=str)
+    except Exception:
+        parts = [getattr(tool, "name", ""), getattr(tool, "description", "")]
+        try:
+            parts.append(json.dumps(getattr(tool, "args", {}) or {}, ensure_ascii=False, default=str))
+        except Exception:
+            pass
+        text = " ".join(part for part in parts if part)
+    return max(1, len(text) // 4)
+
+
+def _budget_select_tools(request_tools, *, system_prompt_text, input_text,
+                         chat_history, global_execution_plan):
+    """Rank-and-budget the bound tool surface so the prompt fits the model window.
+
+    Best case (everything fits): return the full surface unchanged (dropped=0).
+    Otherwise: keep the guaranteed operator CORE + the planner's picks + the
+    highest capability-scored tools, filling a token budget, and drop the
+    low-rank tail. Returns ``(selected_tools, used_tool_tokens, dropped_count)``.
+    """
+    tools_list = list(request_tools)
+    if len(tools_list) <= 1:
+        return tools_list, 0, 0
+
+    context_limit = get_int_config_value(
+        "unified_agent_context_limit", _TOOL_BUDGET_CONTEXT_LIMIT_DEFAULT, minimum=8192
+    )
+    overhead = (
+        _estimate_text_tokens(system_prompt_text)
+        + _estimate_text_tokens(input_text)
+        + sum(_estimate_text_tokens(message) for message in (chat_history or []))
+    )
+    tool_budget = (
+        context_limit - overhead - _TOOL_BUDGET_RESPONSE_HEADROOM - _TOOL_BUDGET_SAFETY_MARGIN
+    )
+    costs = [(_estimate_tool_schema_tokens(tool), tool) for tool in tools_list]
+    full_cost = sum(cost for cost, _ in costs)
+    cost_by_id = {id(tool): cost for cost, tool in costs}
+    if tool_budget <= 0:
+        # Prompt + context/history already consumed the response/safety reserve.
+        # Do NOT reopen a fresh 32k-ish tool budget here: that was the exact
+        # overflow bug (the prompt alone was near the ceiling, then tools pushed
+        # it over). Keep only the always-safe operator core, and only the core
+        # tools that fit inside the remaining hard context window. If nothing
+        # fits, return no tools; upstream context summarization/truncation must
+        # reduce the non-tool prompt before a tool surface can be safely bound.
+        hard_tool_budget = max(0, context_limit - overhead)
+        by_name = {getattr(tool, "name", ""): tool for tool in tools_list}
+        selected, used = [], 0
+        for name in _EMERGENCY_CORE_TOOL_ORDER:
+            tool = by_name.get(name)
+            if tool is None:
+                continue
+            cost = cost_by_id[id(tool)]
+            if used + cost <= hard_tool_budget:
+                selected.append(tool)
+                used += cost
+        dropped = len(tools_list) - len(selected)
+        return selected, used, dropped
+
+    if full_cost <= tool_budget:
+        return tools_list, full_cost, 0  # everything fits — bind the full surface
+
+    planner_names = (
+        set(selected_tool_names_from_plan(global_execution_plan))
+        if global_execution_plan else set()
+    )
+    try:
+        normalized_request = _normalize_text(input_text)
+        request_tokens = _tokenize(input_text)
+        capability_by_name = {
+            capability.tool_name: capability
+            for capability in build_tool_capabilities(tools_list)
+        }
+    except Exception:
+        normalized_request, request_tokens, capability_by_name = "", set(), {}
+
+    def _priority(tool) -> tuple:
+        name = getattr(tool, "name", "")
+        capability = capability_by_name.get(name)
+        score = 0
+        if capability is not None:
+            try:
+                score = _score_capability(capability, normalized_request, request_tokens)
+            except Exception:
+                score = 0
+        if name in _CORE_ALWAYS_BOUND_TOOLS:
+            tier = 3
+        elif name in planner_names:
+            tier = 2
+        elif score > 0:
+            tier = 1
+        else:
+            tier = 0
+        return (tier, score, name)
+
+    ranked = sorted(tools_list, key=_priority, reverse=True)
+    selected, used = [], 0
+    for tool in ranked:
+        cost = cost_by_id[id(tool)]
+        is_core = getattr(tool, "name", "") in _CORE_ALWAYS_BOUND_TOOLS
+        if is_core or used + cost <= tool_budget:
+            selected.append(tool)
+            used += cost
+    dropped = len(tools_list) - len(selected)
+    return selected, used, dropped
+
+
 class CapabilityAwareToolAgentExecutor:
     """
     Delegates to the legacy full-tool executor by default and only applies
@@ -1579,26 +1751,45 @@ class CapabilityAwareToolAgentExecutor:
                     return legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
                 return self.legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
 
-            # === MANDATE (Angela, 2026-06-16): Multi-Turn = the FULL surface ===
-            # When Multi-Turn is ON, Tlamatini MUST see EVERY enabled tool / agent /
-            # skill she may use. Binding only a narrow planner subset starved the
-            # operator loop — she reported "I don't have a file-writing or shell tool
-            # bound this turn" even though 88 agents exist. So in Multi-Turn we bind
-            # the ENTIRE request-scoped surface (ACPX is still filtered per the
-            # toolbar checkbox; External MCP tools were refreshed above). The planner
-            # still runs upstream and is still forwarded to the executor below for the
-            # prompt's planner_summary / ordering hint, but it no longer DROPS a tool
-            # from the bind. The model chooses what to call.
+            # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
+            # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
+            # planner subset once starved the operator ("no file/shell tool bound").
+            # But blindly binding the FULL surface (88 agents + active External-MCP
+            # tools) overflowed the model window live ("prompt too long 273284 >
+            # 262144") and crashed the turn into a basic-LLM fallback. So we
+            # RANK-AND-BUDGET (_budget_select_tools): when the whole surface fits,
+            # bind it all unchanged; when it does not, keep a guaranteed operator
+            # CORE + the planner's picks + the highest capability-scored tools until
+            # a token budget is reached, and drop the low-rank tail (logged, never
+            # silent). ACPX is still filtered per the toolbar checkbox; External MCP
+            # tools were refreshed above; the planner summary is still forwarded
+            # below for ordering hints.
             _planned_count = (
                 len(selected_tool_names_from_plan(global_execution_plan))
                 if global_execution_plan else 0
             )
-            selected_tools = list(request_tools)
-            print(
-                "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; "
-                f"binding the FULL enabled surface: {len(selected_tools)} tools "
-                f"(planner hinted {_planned_count}; acpx_enabled={acpx_enabled})"
+            selected_tools, _tool_tokens, _dropped = _budget_select_tools(
+                request_tools,
+                system_prompt_text=self.preeliminary_prompt,
+                input_text=input_text,
+                chat_history=chat_history,
+                global_execution_plan=global_execution_plan,
             )
+            if _dropped:
+                print(
+                    "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; tool "
+                    f"surface OVER budget — kept {len(selected_tools)}/{len(request_tools)} "
+                    f"highest-ranked tools (~{_tool_tokens} tool-tokens), dropped {_dropped} "
+                    f"low-rank tools to fit the model window (planner hinted "
+                    f"{_planned_count}; acpx_enabled={acpx_enabled})"
+                )
+            else:
+                print(
+                    "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; binding "
+                    f"the FULL enabled surface: {len(selected_tools)} tools (~{_tool_tokens} "
+                    f"tool-tokens, within budget; planner hinted {_planned_count}; "
+                    f"acpx_enabled={acpx_enabled})"
+                )
             executor = self._get_executor_for_tools(
                 selected_tools,
                 step_by_step_enabled=step_by_step_enabled,
