@@ -174,22 +174,21 @@ function showContextMenu(x, y, canvasItem) {
     // Update Restart menu item enabled state
     updateRestartMenuItemState(canvasItem);
 
-    // Position menu at mouse coordinates
-    contextMenu.style.left = x + 'px';
-    contextMenu.style.top = y + 'px';
+    // Position once so the browser can measure the rendered menu.
+    contextMenu.style.left = '0px';
+    contextMenu.style.top = '0px';
     contextMenu.style.display = 'block';
 
     // Ensure menu stays within viewport
     const menuRect = contextMenu.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+    const margin = 8;
+    const maxLeft = Math.max(margin, viewportWidth - menuRect.width - margin);
+    const maxTop = Math.max(margin, viewportHeight - menuRect.height - margin);
 
-    if (menuRect.right > viewportWidth) {
-        contextMenu.style.left = (x - menuRect.width) + 'px';
-    }
-    if (menuRect.bottom > viewportHeight) {
-        contextMenu.style.top = (y - menuRect.height) + 'px';
-    }
+    contextMenu.style.left = `${Math.min(Math.max(x, margin), maxLeft)}px`;
+    contextMenu.style.top = `${Math.min(Math.max(y, margin), maxTop)}px`;
 }
 
 /**
@@ -468,6 +467,16 @@ function makeElementDraggable(element, handle) {
     let isDragging = false;
     let startX, startY;
     let initialLeft, initialTop;
+    const clampToViewport = (left, top) => {
+        const rect = element.getBoundingClientRect();
+        const margin = 8;
+        const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+        const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+        return {
+            left: Math.min(Math.max(left, margin), maxLeft),
+            top: Math.min(Math.max(top, margin), maxTop)
+        };
+    };
 
     handle.style.cursor = 'move';
 
@@ -509,8 +518,9 @@ function makeElementDraggable(element, handle) {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
 
-        element.style.left = `${initialLeft + dx}px`;
-        element.style.top = `${initialTop + dy}px`;
+        const next = clampToViewport(initialLeft + dx, initialTop + dy);
+        element.style.left = `${next.left}px`;
+        element.style.top = `${next.top}px`;
     }
 
     function onMouseUp() {

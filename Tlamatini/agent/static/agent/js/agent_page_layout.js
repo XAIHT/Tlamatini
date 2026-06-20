@@ -212,7 +212,7 @@
     const computeFormMinHeight = () => {
         const toolsDivEl = document.getElementById('tools-div');
         const toolsDivH = (toolsDivEl ? toolsDivEl.offsetHeight : 25) || 25;
-        const formAreaPx = 70; // textarea + Send min-heights + margins
+        const formAreaPx = 90; // textarea + Send min-heights + form margins
         return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + formAreaPx);
     };
 

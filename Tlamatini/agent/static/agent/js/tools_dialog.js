@@ -243,13 +243,25 @@ $(function () {
         });
     }
 
-    function openModal() {
+    function positionModalNearCatalogButton() {
         const buttonRect = catalogButton.getBoundingClientRect();
-        modalContent.style.left = `${buttonRect.left}px`;
-        modalContent.style.bottom = `${window.innerHeight - buttonRect.top}px`;
+        const margin = 12;
+        const contentRect = modalContent.getBoundingClientRect();
+        const contentWidth = contentRect.width || Math.min(760, window.innerWidth - (margin * 2));
+        const contentHeight = contentRect.height || Math.min(window.innerHeight - (margin * 2), window.innerHeight * 0.82);
+        const maxLeft = Math.max(margin, window.innerWidth - contentWidth - margin);
+        const maxBottom = Math.max(margin, window.innerHeight - contentHeight - margin);
+        const left = Math.min(Math.max(buttonRect.left, margin), maxLeft);
+        const bottom = Math.min(Math.max(window.innerHeight - buttonRect.top, margin), maxBottom);
+        modalContent.style.left = `${left}px`;
+        modalContent.style.bottom = `${bottom}px`;
+    }
+
+    function openModal() {
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
-        loadPrompts();
+        positionModalNearCatalogButton();
+        loadPrompts().finally(positionModalNearCatalogButton);
         setTimeout(() => {
             modal.classList.add('show');
         }, 10);
