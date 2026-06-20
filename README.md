@@ -15,6 +15,7 @@
 </p>
 
 <p align="center">
+  <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.0"><img src="https://img.shields.io/badge/VERSION-v1.26.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
@@ -26,7 +27,12 @@
 <p align="center">
   <a href="https://xaiht.org">🌐 Website</a> ·
   <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s">▶️ One-minute teaser</a> ·
-  <a href="https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamatini.md">📖 Full docs</a>
+  <a href="https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamatini.md">📖 Full docs</a> ·
+  <a href="https://discord.gg/WFQsrskgc">💬 Discord</a>
+</p>
+
+<p align="center">
+  <b>💬 <a href="https://discord.gg/WFQsrskgc">Join the Tlamatini community on Discord</a></b> — get help, show what you build, report bugs, and shape the roadmap.
 </p>
 
 ---
