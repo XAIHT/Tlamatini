@@ -127,5 +127,9 @@
       "transport": "stdio"
     }
   },
-  "active": []
+  "active": [
+    "Roblox_Studio",
+    "everything",
+    "fetch"
+  ]
 }
