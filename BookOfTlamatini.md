@@ -8,6 +8,14 @@
 
 ---
 
+## ⚠️ Agent-directory disclaimer: user jurisdiction and responsibility
+
+The workflow agents in `Tlamatini/agent/agents/` are plain-Python programs on purpose: they are readable, editable, auditable operating code under the user's control. When you enable, configure, modify, chain, or run those agents, their actions fall under **your jurisdiction**. The prompts, config files, secrets, credentials, files, folders, network targets, browsers, shells, APIs, external MCP servers, hardware devices, and downstream systems they touch are selected and authorized by you.
+
+Tlamatini provides orchestration, documentation, and guardrails, but it cannot guarantee that every user-edited agent, workflow, external service, credential scope, target machine, or local environment is safe. **Any security breach, data exposure, unauthorized action, credential leak, unsafe automation, policy violation, device damage, or other harm caused by running agents or agent workflows is the responsibility of the user who runs them.** Audit agents before use, restrict credentials and permissions, and operate them only on systems where you have explicit authorization.
+
+---
+
 ## ⭐ Start here — five steps to a cloud-powered Tlamatini
 
 Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
