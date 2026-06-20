@@ -22,10 +22,11 @@ from .rag import (
     OptimizedHistoryAwareRAGChain
 )
 from .services import (
-    generate_tree_view_content, 
-    save_files_from_db, 
+    generate_tree_view_content,
+    save_files_from_db,
     process_llm_response
 )
+from .chat_history_loader import DBChatHistoryLoader
 from .global_state import global_state
 from .path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
 from . import constants
@@ -665,6 +666,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print(f"--- [AskExecs] broker registered for user {broker_key}")
 
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
+            chat_history = await self.load_recent_chat_history(conversation_user, limit=8)
             llm_response = await ask_rag_async(
                 self.rag_chain,
                 {
@@ -676,6 +678,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     "ask_execs_enabled": ask_execs_enabled,
                     "step_by_step_enabled": bool(step_by_step_enabled),
                 },
+                chat_history=chat_history,
                 inet_enabled=self.inet_enabled
             )
             # Pick up tool-call metadata stored by the chain pipeline.
@@ -1458,6 +1461,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, user, message, conversation_user=None):
         AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message)
+
+    @database_sync_to_async
+    def load_recent_chat_history(self, user, limit=8):
+        return DBChatHistoryLoader.load(limit=limit, conversation_user=user)
 
     @database_sync_to_async
     def delete_messages_for_user(self, user):

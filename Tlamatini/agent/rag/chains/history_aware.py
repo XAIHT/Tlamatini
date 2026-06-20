@@ -148,7 +148,7 @@ class HistoryAwareNoDocsChain:
         }
 
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=3)
+            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
 
         # 1) Optional history summarization + keep tail
         hist = self._summarize_history_if_needed(payload["chat_history"], payload["input"])
@@ -383,7 +383,7 @@ class OptimizedHistoryAwareRAGChain:
         external_sources = payload.get("external_sources", [])
         
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=3)
+            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
             chat_history = payload.get("chat_history", [])
         
         # 1) History summarization (optional) + keep last few turns

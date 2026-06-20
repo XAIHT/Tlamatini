@@ -30,10 +30,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from langchain_core.messages import AIMessage, HumanMessage
 from django.test import SimpleTestCase
 
 from agent.mcp_agent import (
     CapabilityAwareToolAgentExecutor,
+    MultiTurnToolAgentExecutor,
     _build_system_prompt,
     _STEP_BY_STEP_SYSTEM_GUIDANCE,
 )
@@ -55,7 +57,8 @@ class StepByStepPromptInjectionTests(SimpleTestCase):
     def test_block_injected_when_enabled(self):
         prompt = _build_system_prompt("BASE PROMPT.", [_noop_tool()], step_by_step_enabled=True)
         self.assertIn("STEP-BY-STEP MODE", prompt)
-        self.assertIn("wait for the user's READY", prompt)
+        self.assertIn("wait for the user's requested short reply", prompt)
+        self.assertIn("bare username, DONE, ERROR, NOWINDOW", prompt)
         self.assertIn("external_mcp_doctor", prompt)
 
     def test_block_absent_when_disabled(self):
@@ -80,11 +83,13 @@ class _CapturingLLM:
 
     def __init__(self):
         self.system_prompts = []
+        self.message_batches = []
 
     def bind_tools(self, tools):
         return self
 
     def invoke(self, messages):
+        self.message_batches.append(list(messages))
         try:
             self.system_prompts.append(getattr(messages[0], "content", "") or "")
         except Exception:
@@ -135,6 +140,23 @@ class StepByStepRuntimeWiringTests(SimpleTestCase):
             prompts = list(cap.system_prompts)
         self.assertTrue(prompts and any("STEP-BY-STEP MODE" in p for p in prompts))
 
+    def test_multiturn_executor_includes_scoped_history_before_current_turn(self):
+        """Short Step-by-Step replies must reach the tool loop with prior wizard context."""
+        cap = _CapturingLLM()
+        executor = MultiTurnToolAgentExecutor(llm=cap, system_prompt="SYSTEM", tools=[])
+        executor.invoke({
+            "input": "alice",
+            "chat_history": [
+                HumanMessage(content="Tlamatini, help me create a NEW user named ----<set name here>----."),
+                AIMessage(content="Please tell me the actual username you want."),
+                HumanMessage(content="alice"),
+            ],
+        })
+        contents = [getattr(m, "content", "") for m in cap.message_batches[-1]]
+        self.assertIn("Tlamatini, help me create a NEW user named ----<set name here>----.", contents)
+        self.assertIn("Please tell me the actual username you want.", contents)
+        self.assertEqual(contents.count("alice"), 1)
+
 
 # ── 3. SOURCE: regression guards for every backend hop of the flag ──────────
 
@@ -144,6 +166,8 @@ class StepByStepPlumbingContractTests(SimpleTestCase):
         self.assertIn("step_by_step_enabled = bool(text_data_json.get('step_by_step_enabled'", text)
         self.assertIn("step_by_step_enabled=step_by_step_enabled", text)  # passed to queue_llm_retrieval
         self.assertIn('"step_by_step_enabled": bool(step_by_step_enabled)', text)  # into the question payload
+        self.assertIn("load_recent_chat_history(conversation_user", text)
+        self.assertIn("chat_history=chat_history", text)
 
     def test_interface_bypass_and_payload(self):
         text = _read("rag/interface.py")
@@ -160,6 +184,7 @@ class StepByStepPlumbingContractTests(SimpleTestCase):
         text = _read("mcp_agent.py")
         self.assertIn("_STEP_BY_STEP_SYSTEM_GUIDANCE", text)
         self.assertIn("__step_by_step__=", text)  # executor cache key includes the flag
+        self.assertIn('"chat_history": chat_history', text)
 
     def test_frontend_sends_the_flag(self):
         text = _read("static/agent/js/agent_page_init.js")

@@ -557,7 +557,11 @@ class BlendererDbRowTests(TestCase):
         from agent.models import Agent, Tool, Prompt
         self.assertTrue(Agent.objects.filter(agentDescription='Blenderer').exists())
         self.assertTrue(Tool.objects.filter(toolDescription='Chat-Agent-Blenderer').exists())
-        self.assertTrue(Prompt.objects.filter(idPrompt=75, promptName='prompt-75').exists())
+        # The Blenderer demo prompt is identified by its content, not a fixed slot:
+        # catalog inserts (0144, 0145, ...) shift idPrompt, so assert by its banner.
+        blender = [p for p in Prompt.objects.all() if 'BLENDER FORGE' in (p.promptContent or '')]
+        self.assertEqual(len(blender), 1, 'the Blenderer demo prompt must be seeded exactly once')
+        self.assertEqual(blender[0].promptName, f'prompt-{blender[0].idPrompt}')
 
 
 if __name__ == '__main__':

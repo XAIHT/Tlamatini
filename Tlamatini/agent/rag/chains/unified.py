@@ -245,7 +245,7 @@ class UnifiedAgentChain:
         }
 
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=3)
+            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
 
         # Summarize history if needed
         hist = self._summarize_history_if_needed(payload["chat_history"], payload["input"])
@@ -310,6 +310,7 @@ User Question: {enhanced_input}"""
                     "acpx_enabled": bool(payload.get("acpx_enabled", False)),
                     "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
                     "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
+                    "chat_history": hist,
                     "ask_execs_user_id": payload.get("conversation_user_id"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
@@ -593,7 +594,7 @@ class UnifiedAgentRAGChain:
         external_sources = payload.get("external_sources", [])
         
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=3)
+            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
             chat_history = payload.get("chat_history", [])
         
         # 1) History summarization (optional) + keep last few turns
@@ -794,6 +795,7 @@ User Question: {enhanced_input}"""
                     "acpx_enabled": bool(payload.get("acpx_enabled", False)),
                     "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
                     "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
+                    "chat_history": hist,
                     "ask_execs_user_id": payload.get("conversation_user_id"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),

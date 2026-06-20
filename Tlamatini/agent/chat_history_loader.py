@@ -8,7 +8,6 @@ try:
 except Exception:
     # Fallback shim if import path changes; we’ll degrade gracefully to strings.
     HumanMessage = AIMessage = None  # type: ignore
-from .global_state import global_state
 
 class DBChatHistoryLoader:
     """
@@ -17,6 +16,12 @@ class DBChatHistoryLoader:
     (your bot saves <br>, <strong>, etc.).
     """
     BOT_USERNAME = "Tlamatini"
+
+    # Conversation-memory window. load() returns AT MOST this many messages — an
+    # UPPER bound (the window is 0..N inclusive), never a per-turn minimum. The
+    # value is intentionally small so the prompt stays lean while still carrying
+    # enough turns for Step-by-Step / multi-turn continuity.
+    HISTORY_WINDOW_MAX = 8
 
     @staticmethod
     def _sanitize(text: str) -> str:
@@ -31,21 +36,38 @@ class DBChatHistoryLoader:
         return t.strip()
 
     @classmethod
-    def load(cls, limit: Optional[int] = None):
+    def load(cls, limit: Optional[int] = None, conversation_user=None, conversation_user_id=None):
         try:
             out = []
-            invokes_counter = global_state.get_state('chat_hist_summarizer_counter', 0)
-            
-            if invokes_counter > 0 and (limit is None or invokes_counter < limit):
-                limit = invokes_counter
+            # Window is a HARD UPPER bound of HISTORY_WINDOW_MAX (=8): the loader
+            # returns BETWEEN 0 AND 8 messages, whatever the conversation holds. It
+            # is a "superior" cap, never a per-turn minimum. We NO LONGER shrink it
+            # to chat_hist_summarizer_counter — that counted TURNS (a turn is ~2
+            # messages), so on the first follow-up after a Clear-history the window
+            # collapsed to a single message and the executor then dropped it as the
+            # current input, leaving EMPTY history (Step-by-Step / multi-turn could
+            # not continue). Clear-history deletes the rows and the per-user filter
+            # below keep sessions isolated, so honouring the caller's window is safe.
+            if not limit or limit <= 0 or limit > cls.HISTORY_WINDOW_MAX:
+                limit = cls.HISTORY_WINDOW_MAX
 
             if limit and limit > 0:
                 # Get the N newest messages (descending), then reverse to chronological
-                qs = AgentMessage.objects.select_related("user").order_by("-timestamp")[:limit]
+                qs = AgentMessage.objects.select_related("user")
+                if conversation_user is not None:
+                    qs = qs.filter(conversation_user=conversation_user)
+                elif conversation_user_id is not None:
+                    qs = qs.filter(conversation_user_id=conversation_user_id)
+                qs = qs.order_by("-timestamp", "-pk")[:limit]
                 qs = reversed(qs)
             else:
                 # No limit: get everything oldest -> newest
-                qs = AgentMessage.objects.select_related("user").order_by("timestamp")
+                qs = AgentMessage.objects.select_related("user")
+                if conversation_user is not None:
+                    qs = qs.filter(conversation_user=conversation_user)
+                elif conversation_user_id is not None:
+                    qs = qs.filter(conversation_user_id=conversation_user_id)
+                qs = qs.order_by("timestamp", "pk")
 
             for m in qs:
                 username = getattr(m.user, "username", "")

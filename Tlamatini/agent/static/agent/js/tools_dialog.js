@@ -57,6 +57,11 @@ const PROMPT_MODE_META = {
         label: 'Exec-report',
         cls: 'prompt-mode-badge-execreport',
         tip: 'Requires the Exec Report (with Multi-Turn) — selecting it checks the Exec Report box.'
+    },
+    stepbystep: {
+        label: 'Step-by-Step',
+        cls: 'prompt-mode-badge-stepbystep',
+        tip: 'One action at a time, waiting for you between steps; ticks the Step-by-Step box (with Multi-Turn).'
     }
 };
 
@@ -85,10 +90,20 @@ function classifyPromptModes(content) {
     const multiturn = acpx
         || /\bchat_agent_\w+/i.test(c)
         || /\bmulti-?turn\b/i.test(c);
+    // Step-by-Step is a Multi-Turn pacing modifier (do ONE action, then wait for
+    // the user). Detect it ONLY from the HYPHENATED toolbar form ("step-by-step")
+    // plus an intent word, so descriptive prose like "searches Wikipedia step by
+    // step" (spaces) never trips it: step-?by-?step matches "step-by-step" /
+    // "stepbystep" but NOT the spaced "step by step".
+    const stepbystep =
+        /step-?by-?step\s+(?:wizard|checkbox|toggle|mode|nature|guidance|pacing|cadence|setup)/i.test(c)
+        || /(?:tick|check|enable|turn\s+on)[^.\n]{0,60}step-?by-?step/i.test(c);
     let modes;
     if (acpx) modes = ['multiturn', 'acpx'];
     else if (multiturn) modes = ['multiturn'];
     else modes = ['oneshot'];
+    // Step-by-Step rides along when present (it implies Multi-Turn in practice).
+    if (stepbystep) modes.push('stepbystep');
     // Every Multi-turn prompt (ACPX implies Multi-turn) ALSO carries the
     // Exec-report nature so its run is verified; only pure One-Shot prompts skip
     // it. Clicking the card therefore ticks Exec Report whenever Multi-Turn is
@@ -132,10 +147,14 @@ function applyPromptModesToToggles(modes) {
     const wantAcpx = modes.includes('acpx');
     const wantMultiTurn = wantAcpx || modes.includes('multiturn');
     const wantExecReport = modes.includes('execreport');
+    const wantStepByStep = modes.includes('stepbystep');
     setToolbarToggle('multi-turn-enabled', wantMultiTurn);
     setToolbarToggle('acpx-enabled', wantAcpx);
     // Multi-Turn is set above first, so the Exec Report toggle is meaningful.
     setToolbarToggle('exec-report-enabled', wantExecReport);
+    // Step-by-Step is an independent Multi-Turn pacing modifier; set it to exactly
+    // what this prompt needs (so clicking a non-step-by-step card clears it too).
+    setToolbarToggle('step-by-step-enabled', wantStepByStep);
 }
 
 $(function () {

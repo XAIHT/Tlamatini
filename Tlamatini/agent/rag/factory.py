@@ -116,7 +116,7 @@ def _extract_chat_history_text(payload: dict) -> str:
     if not chat_history:
         try:
             from ..chat_history_loader import DBChatHistoryLoader
-            chat_history = DBChatHistoryLoader.load(limit=3)
+            chat_history = DBChatHistoryLoader.load(limit=8)
         except Exception:
             return ""
     parts = []
