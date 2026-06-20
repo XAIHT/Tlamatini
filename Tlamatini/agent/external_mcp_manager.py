@@ -461,10 +461,30 @@ class _StdioMcpClient:
             self._id += 1
             return self._id
 
+    def _resolve_argv(self) -> List[str]:
+        """Build the spawn argv, resolving Windows command shims.
+
+        On Windows a bare ``npx`` / ``npm`` / ``uvx`` / ``yarn`` / ``pnpm`` is a
+        ``.cmd`` (or ``.bat``) batch shim, NOT an ``.exe``. ``CreateProcess``
+        only auto-appends ``.exe``, so spawning the bare name fails with
+        ``[WinError 2] The system cannot find the file specified`` -- exactly
+        what broke the (very common) npx-launched MCP servers. Resolve the
+        command through PATHEXT (``shutil.which`` finds ``npx.cmd``) and route a
+        ``.cmd``/``.bat`` through the command processor, the only way a batch
+        shim can actually be executed. POSIX behaviour is unchanged.
+        """
+        exe = os.path.expandvars(self.command)
+        rest = [os.path.expandvars(a) for a in self.args]
+        if os.name != "nt":
+            return [exe, *rest]
+        resolved = shutil.which(exe) or exe
+        if resolved.lower().endswith((".cmd", ".bat")):
+            comspec = os.environ.get("COMSPEC", "cmd.exe")
+            return [comspec, "/c", resolved, *rest]
+        return [resolved, *rest]
+
     def _spawn(self) -> None:
-        argv = [os.path.expandvars(self.command)] + [
-            os.path.expandvars(a) for a in self.args
-        ]
+        argv = self._resolve_argv()
         kwargs: Dict[str, Any] = dict(
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, encoding="utf-8",
