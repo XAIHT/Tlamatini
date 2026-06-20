@@ -465,6 +465,8 @@ def _render_report(catalog_path: str, diagnostics: List[Dict[str, Any]], load_er
         lines.append(f"Catalog problem: {load_error}")
     lines.append(f"Catalog path: {catalog_path or '(not found)'}")
     lines.append(f"Servers diagnosed: {len(diagnostics)}")
+    active_named = [d["server_key"] for d in diagnostics if d.get("active")]
+    lines.append("Active servers: " + (", ".join(active_named) if active_named else "(none)"))
     for diag in diagnostics:
         lines.append("")
         lines.append(f"## {diag['server_key']}")
@@ -501,34 +503,63 @@ def diagnose(config: Dict[str, Any]) -> Dict[str, Any]:
     if wanted and wanted not in servers:
         diagnostics: List[Dict[str, Any]] = []
         load_error = f"unknown MCP server: {wanted}"
+    elif wanted:
+        diagnostics = [_diagnose_one(wanted, servers.get(wanted, {}) or {}, active, source_url)]
     else:
-        keys = [wanted] if wanted else sorted(str(key) for key in servers.keys())
+        # Triage EVERY catalogued server. ACTIVE servers first (alphabetical
+        # within each group) so the report always leads with the MCPs that are
+        # actually wired up. The user must see ALL of them, never just the first.
+        active_keys = sorted(k for k in servers if k in active)
+        inactive_keys = sorted(k for k in servers if k not in active)
+        keys = [str(k) for k in active_keys + inactive_keys]
         diagnostics = [_diagnose_one(key, servers.get(key, {}) or {}, active, source_url) for key in keys]
     body = _render_report(catalog_path, diagnostics, load_error)
     primary = diagnostics[0] if diagnostics else {}
     status = "error" if load_error or any(diag.get("blockers") for diag in diagnostics) else "ready"
-    return {
-        "server_key": wanted or (primary.get("server_key") or ""),
-        "transport": primary.get("transport", ""),
-        "runtime": primary.get("runtime", ""),
-        "supported": str(bool(primary.get("supported_by_current_connector", False))).lower(),
+    active_named = [d["server_key"] for d in diagnostics if d.get("active")]
+    summary = "; ".join(
+        f"{d['server_key']} [{'active' if d.get('active') else 'inactive'}, "
+        f"{d.get('transport', '?')}, {'OK' if not d.get('blockers') else 'BLOCKED'}]"
+        for d in diagnostics
+    )
+    result = {
+        "server_key": wanted or ", ".join(d["server_key"] for d in diagnostics),
+        "servers_diagnosed": len(diagnostics),
+        "active_servers": ", ".join(active_named),
+        "summary": summary,
         "catalog_path": catalog_path,
         "status": status,
         "body": body,
         "diagnostics": diagnostics,
         "load_error": load_error or "",
     }
+    # A single-server run keeps the per-server scalars for backward
+    # compatibility; a multi-server triage omits them because no single
+    # transport/runtime/supported describes the whole set (each server is in
+    # the body + the one-line summary above instead).
+    if len(diagnostics) == 1:
+        result["transport"] = primary.get("transport", "")
+        result["runtime"] = primary.get("runtime", "")
+        result["supported"] = str(bool(primary.get("supported_by_current_connector", False))).lower()
+    return result
 
 
 def _emit_section(result: Dict[str, Any]) -> None:
     header = [
+        f"servers_diagnosed: {result.get('servers_diagnosed', 0)}",
+        f"active_servers: {result.get('active_servers', '')}",
         f"server_key: {result.get('server_key', '')}",
-        f"transport: {result.get('transport', '')}",
-        f"runtime: {result.get('runtime', '')}",
-        f"supported: {result.get('supported', '')}",
         f"status: {result.get('status', '')}",
         f"catalog_path: {result.get('catalog_path', '')}",
+        f"summary: {result.get('summary', '')}",
     ]
+    # Per-server scalars only when exactly ONE server was diagnosed (a targeted
+    # run). A multi-server triage describes each server in the body + the
+    # single-line summary above, so it omits the misleading primary-only ones.
+    if "transport" in result:
+        header.append(f"transport: {result.get('transport', '')}")
+        header.append(f"runtime: {result.get('runtime', '')}")
+        header.append(f"supported: {result.get('supported', '')}")
     logging.info(
         "INI_SECTION_MCP_DOCTOR<<<\n"
         + "\n".join(header)

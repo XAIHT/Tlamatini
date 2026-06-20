@@ -1325,7 +1325,8 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "button_click", "clicked", "located_via",
     ),
     "mcp_doctor": (
-        "server_key", "transport", "runtime", "supported", "status", "catalog_path",
+        "server_key", "servers_diagnosed", "active_servers", "summary",
+        "status", "catalog_path", "transport", "runtime", "supported",
     ),
 }
 
