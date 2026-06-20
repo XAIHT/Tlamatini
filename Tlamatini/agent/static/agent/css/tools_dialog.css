@@ -22,11 +22,12 @@
 .modal {
     display: none; /* Hidden by default */
     position: fixed; 
-    z-index: 200;
+    z-index: 12000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background-color: rgba(0,0,0,0.4);
     transition: background-color 0.3s ease-in-out;
 }
@@ -38,20 +39,39 @@
 .modal-content {
     background: linear-gradient(160deg, #1f2233 0%, #2a2d44 55%, #1a1c2c 100%);
     border-radius: 18px;
+    box-sizing: border-box;
     padding: 22px 22px 18px 22px;
-    width: 80%;
-    max-width: 760px;
+    width: min(760px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
     box-shadow: 0 18px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.08);
     position: fixed;
     display: flex;
     flex-direction: column;
-    max-height: 82vh;
+    max-height: calc(100dvh - 24px);
 
     opacity: 0;
     transform: scale(0);
     transform-origin: bottom left;
     transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+@media (max-width: 520px) {
+    .modal-content {
+        border-radius: 12px;
+        padding: 16px 14px 14px;
+    }
+
+    .prompt-card-header,
+    .prompt-card-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .prompt-card-modes {
+        flex-wrap: wrap;
+        margin-left: 0;
+    }
 }
 
 /* NEW: Active state for the modal content */
