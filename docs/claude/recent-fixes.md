@@ -10,6 +10,18 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-20 — Create Flow: Windows-path config params corrupted (backslashes dropped) — JS `_parseKeyValuePairs` must mirror Python `_unquote_preserving_backslashes` — do NOT revert
+
+**Symptom:** A flow saved with the chat **Create Flow** button stored a Globber node's `path` as `C:TlamatiniTemplatesTlamatiniProjectForSTM32F407G` (every `\` gone) for the real `C:\Tlamatini\Templates\TlamatiniProjectForSTM32F407G`. It hit EVERY path-bearing config field (path / repo_path / file / output_dir / config_path / …), not just Globber — they all flow through one parser.
+
+**Root cause:** `agent/static/agent/js/agent_page_chat.js::_parseKeyValuePairs` (used ONLY by the Create-Flow-from-tool-calls path) treated `\` inside a quoted value as an escape introducer — it expanded `\n`/`\t` and, on an unrecognized escape (`\T`, `\P`, `\D`, …), did `buf += next`, which DROPPED the backslash. The live tool run was fine because the Python runtime parser `agent/tools.py::_unquote_preserving_backslashes` keeps every non-`\\`/non-quote backslash VERBATIM — so flow-gen and runtime disagreed, and the gap only showed in the saved `.flw`.
+
+**Fix:** Made the JS escape handling mirror the Python decoder exactly — inside a quoted value ONLY `\\`->`\` and `\<outer-quote>`->`<quote>` decode, a doubled outer-quote -> one quote, and EVERY other backslash is kept verbatim (no `\n`/`\t` expansion, never drop a backslash). One change fixes all path params. The backend (`normalize_flow_payload` / `flow_compiler`, YAML+JSON) and the `.flw` load/dialog/re-save path were independently audited — already lossless.
+
+**Keep aligned (parity pair):** `_parseKeyValuePairs` (JS) and `_unquote_preserving_backslashes` (Python) MUST decode identically — change one, change both, or Create Flow drifts from what the runtime executed. Shared limitation (consistent on both sides, NOT a regression): a path ending in a lone backslash inside single quotes (`path='C:\dir\'`) is ambiguous because `\'` reads as an escaped quote.
+
+**Verified:** real JS (Node) vs real Python over 9 vectors (the bug path, UNC, the `\n`/`\t` trap, regex, quotes) all byte-match; ESLint clean; 4-agent adversarial round-trip audit green. Source + collected `staticfiles/agent/js/agent_page_chat.js` both updated. Not committed.
+
 ### 2026-06-16 → 06-17 — External MCPs era: universal MCP client (4 transports) + 8 supervisor tools + `external_mcp_wait` + MCP Doctor + full-surface Multi-Turn + Step-by-Step (v1.26.0, committed `51d3ebd`, pushed to `main`) — do NOT revert
 
 A large Claude + Codex collaboration. Full design contract: `docs/external_mcp_bulletproof_architecture.md`; user/how-to docs: `docs/claude/mcp-tools.md`. The "do NOT revert / keep aligned" contracts:
