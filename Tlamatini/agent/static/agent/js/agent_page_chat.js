@@ -1567,11 +1567,23 @@ function _parseKeyValuePairs(str) {
                 const c = str[i];
                 if (c === '\\' && i + 1 < n) {
                     const next = str[i + 1];
-                    if (next === quote) { buf += quote; i += 2; continue; }
-                    if (next === 'n')   { buf += '\n';  i += 2; continue; }
-                    if (next === 't')   { buf += '\t';  i += 2; continue; }
+                    // Mirror the Python-side _unquote_preserving_backslashes
+                    // (agent/tools.py): ONLY a doubled backslash and an escaped
+                    // outer-quote are real escapes. EVERY other backslash is
+                    // kept VERBATIM so Windows paths (C:\Tlamatini\Templates\..)
+                    // regexes and other backslash-bearing values survive Create
+                    // Flow intact. Do NOT expand \n / \t and NEVER drop the
+                    // backslash on an unrecognized escape -- that silently
+                    // corrupted every path-bearing config field in a .flw.
                     if (next === '\\')  { buf += '\\';  i += 2; continue; }
-                    buf += next; i += 2; continue;
+                    if (next === quote) { buf += quote; i += 2; continue; }
+                    buf += c; i += 1; continue;
+                }
+                // SQL / YAML single-quoted convention: a doubled outer quote
+                // decodes to one literal quote ('I''m' -> I'm), matching the
+                // Python decoder so the value byte-equals what the runtime saw.
+                if (c === quote && i + 1 < n && str[i + 1] === quote) {
+                    buf += quote; i += 2; continue;
                 }
                 if (c === quote) {
                     // Decide: real terminator or embedded apostrophe?
