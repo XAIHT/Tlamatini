@@ -429,9 +429,26 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any(
+        "1.26.5" in subject
+        or "mit license" in subject
+        or "mcp-doctor" in subject
+        or "mcp doctor" in subject
+        or "external mcp income" in subject
+        or "unrealer parametrization" in subject
+        or "game creation prompt" in subject
+        or "drift of number of agents" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The live Git window now lands on `v1.26.5`: README, BookOfTlamatini, and the version surfaces identify the project as 1.26.5, with the license moved to MIT, the public Discord invite added, the live catalog corrected to 82 workflow agents, and the External MCP/MCP Doctor/Unrealer maintenance wave folded into the documentation."
+        )
+        highlights.append(
+            "The `v1.26.5` code changes are maintenance-heavy but operator-visible: External MCP input handling and catalog cleanup were improved, MCP Doctor now enumerates all active external MCPs instead of stopping at the first, Unrealer parameterization was fixed, and a new Unreal game-creation prompt was seeded for guided demos."
+        )
     if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
-            "The current Git window establishes the new `v1.26.0` baseline: the latest tag `v1.26.0` sits at commit `30a87f3` (June 17, 2026) and carries the External MCPs universal-client work — a config-driven client that connects to any MCP server over four transports (stdio / streamable-HTTP / SSE / WebSocket), the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and the Step-by-Step setup mode — on top of the earlier ESPHomer firmware lane."
+            "The current Git window still carries the `v1.26.0` External MCP baseline forward: a config-driven universal client connects to external MCP servers over stdio, streamable HTTP, SSE, or WebSocket, with MCP Doctor diagnostics, full-surface Multi-Turn tool binding, and Step-by-Step setup layered on top of the earlier ESPHomer firmware lane."
         )
     if any("installation/use steps" in subject or "getting start" in subject or "config images" in subject or "ollama token" in subject for subject in subjects):
         highlights.append(
@@ -470,6 +487,21 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
     if any(
+        "1.26.5" in subject
+        or "mit license" in subject
+        or "discord" in subject
+        or "mcp-doctor" in subject
+        or "mcp doctor" in subject
+        or "drift of number of agents" in subject
+        or "documentation" in subject
+        or "docs" in subject
+        or "disclaimer" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The latest documentation pass aligns the handbook and source with the `v1.26.5` line, which matters here because the dossier must reflect the live MIT license, Discord community link, 82-agent / 89-tool inventory, and the Agent-directory responsibility boundary instead of older public badges or stale prose."
+        )
+    elif any(
         "1.26.1" in subject
         or "disclaimer" in subject
         or ("documentation" in subject and ("1.26.1" in subject or "external mcp" in subject))
@@ -654,9 +686,26 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
+    if any(
+        "1.26.5" in subject
+        or "mit license" in subject
+        or "mcp-doctor" in subject
+        or "mcp doctor" in subject
+        or "external mcp income" in subject
+        or "unrealer parametrization" in subject
+        or "game creation prompt" in subject
+        or "drift of number of agents" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, the repository advanced to `v1.26.5`: the handbook and README now carry the MIT license identity, Discord invite, corrected 82-agent catalog, and the updated External MCP/MCP Doctor/Unrealer maintenance story."
+        )
+        highlights.append(
+            "The post-baseline implementation delta includes improved External MCP input/catalog handling, MCP Doctor enumeration across all active external MCPs, Unrealer parameterization fixes, seeded Unreal game-demo prompts, Create Superuser wizard prompt migrations, FlowCreation backslash behavior fixes, Step-by-Step polish, and context-bloat/chat-history windowing work."
+        )
     if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository moved onto the `v1.26.0` version line: tag `v1.26.0` at commit `30a87f3` establishes the new release identity, with the External MCPs universal client (four transports, the MCP Doctor agent, full-surface Multi-Turn, Step-by-Step) layered on top of the ESPHomer firmware lane."
+            "The broader `v1.26.x` line still centers on the External MCPs universal client: four transports, the MCP Doctor agent, full-surface Multi-Turn tool binding, and Step-by-Step setup layered on top of the ESPHomer firmware lane."
         )
     if any("installation/use steps" in subject or "getting start" in subject or "config images" in subject or "ollama token" in subject for subject in subjects):
         highlights.append(
@@ -1072,11 +1121,19 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the latest reachable `v1.26.5` tag, carrying forward the `v1.26.0` External MCPs release while adding the later External MCP dialog fixes, onboarding refinements, and Agent-directory disclaimer.",
-    "Operators reach that capability from a first-class UI surface: the `External -> MCPs` menu manages the server catalog, imports or exports Claude-style JSON, and can progressively guide setup instead of assuming the user already knows every transport and runtime field.",
-    "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
-    "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
-    "The broader operator surface around this release is larger too: Globber, Grepper, and Editor give Tlamatini deterministic file discovery, regex search, and surgical in-place editing, the firmware stack already includes ESPHomer for ESPHome-based smart-home devices, and the v1.26.x line adds the External MCPs universal client so Tlamatini can use the tools of any external MCP server declared in JSON.",
+    "The repository currently resolves to the latest reachable `v1.26.5` tag and the docs now identify Tlamatini as release 1.26.5, with the live source inventory confirming 82 workflow agents and 89 Multi-Turn tools.",
+    "This release keeps the `v1.26.0` External MCPs universal-client foundation, then adds the later maintenance wave: improved External MCP input/catalog handling, MCP Doctor enumeration across all active external MCPs, Unrealer parameterization fixes, and new Unreal game-creation demo prompts.",
+    "README.md and BookOfTlamatini.md now present the project under the MIT License, include the Discord community entry point, keep the strong Agent-directory disclaimer, and remove older count drift around the agent catalog.",
+    "The practical operator story is broader than a version bump: Create Superuser wizard prompts, FlowCreation backslash handling, Step-by-Step reliability, context-bloat/chat-history windowing, dialog polish, and external MCP JSON cleanup all changed in the same post-dossier span.",
+    "The resulting PDF/PPTX refresh therefore treats `v1.26.5` as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, and External MCP usage.",
+]
+
+V1265_RELEASE_GUIDE = [
+    "Release identity: latest reachable tag `v1.26.5`; HEAD documentation updates keep README.md, BookOfTlamatini.md, badges, and generated dossiers aligned to 1.26.5.",
+    "Policy/community: `LICENSE` and the handbook now describe MIT licensing, and README/Book expose the Discord invite as the public community/support path.",
+    "Catalog correction: the source and docs now converge on 82 workflow agents, 57 wrapped chat-agent tools, 20 core Python tools, 12 ACPX/Skill tools, and 89 total Multi-Turn tools.",
+    "External MCP maintenance: `external_mcp_manager.py` and `external_mcps.json` were cleaned and tightened, while MCP Doctor now lists every active external MCP instead of just the first one.",
+    "Unrealer and prompt assets: Unrealer parameter handling was corrected and the new Unreal game-demo prompt wave was seeded through migrations.",
 ]
 
 EXTERNAL_MCPS_GUIDE = [
@@ -1094,7 +1151,7 @@ MCP_DOCTOR_GUIDE = [
 EXTERNAL_MCP_ASSETS_GUIDE = [
     "The release is backed by real tracked assets rather than markdown-only claims: `agent/external_mcp_manager.py`, `agent/external_mcps.json`, the `agent/agents/mcp_doctor/` tree, the `0141`-`0143` migrations, `static/agent/js/external_mcps_dialog.js`, and `static/agent/css/external_mcps_dialog.css` are the core implementation wave.",
     "The current test surface proves this is not a shallow UI feature: `test_external_mcp_universal.py`, `test_external_mcp_transports.py`, `test_external_mcp_e2e.py`, `test_external_mcp_add_flow.py`, and `test_parametrizer_mcp_doctor.py` exercise the universal-client path and the onboarding diagnosis path.",
-    "Handbook and design evidence now exist alongside the code too: `docs/external_mcp_bulletproof_architecture.md`, the new README tutorial, Book sections, capability/planner wiring, and the dialog assets all moved together in the same release wave.",
+    "Handbook evidence now exists alongside the code too: the README tutorial, Book sections, capability/planner wiring, and the dialog assets all moved together in the same release wave, with later cleanup removing obsolete draft documentation from the tracked tree.",
 ]
 
 BLENDERER_GUIDE = [
@@ -1142,8 +1199,9 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent assets worth calling out explicitly now span several release waves: the new onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; `agent/external_mcp_manager.py`, `agent/external_mcps.json`, the `agent/agents/mcp_doctor/` tree, `static/agent/js/external_mcps_dialog.js`, `static/agent/css/external_mcps_dialog.css`, and the `0141`-`0143` migrations for the External MCP + MCP Doctor release; `agent/self_update.py` plus `apply_update.ps1` for the data-preserving updater; `build.py` for numpy/OpenCV embedding checks; the `agent/agents/{editor,grepper,globber}/` directories plus their migrations/tests for deterministic file discovery; and the `agent/agents/esphomer/` tree plus migrations/tests/sample YAML for ESPHome-based smart-home firmware control.",
-    "The current `v1.26.0` window also refreshes shipped visual assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is now part of the repository asset set described by the dossier.",
+    "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
+    "The current `v1.26.5` wave adds or updates concrete assets too: `LICENSE` now reflects MIT adoption, `agent/external_mcp_manager.py` and `agent/external_mcps.json` carry the External MCP cleanup, `agent/agents/mcp_doctor/mcp_doctor.py` handles active-server enumeration, and the `0145`-`0147` migrations seed Create Superuser wizard and Unreal game-demo prompts.",
+    "The same span refreshes shipped visual/media assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
     "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
     "Because the dossier already includes the full repository inventory (git-tracked files plus git-unignored working-tree additions) and the full line-count inventory, these named assets serve as the human-readable shortlist of what changed most materially in the latest release wave.",
@@ -1796,6 +1854,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.26.5 release delta", styles["h2"]))
+    for item in V1265_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("External MCP universal client", styles["h2"]))
     for item in EXTERNAL_MCPS_GUIDE:
@@ -2609,6 +2670,16 @@ def build_ppt(context: dict) -> None:
         "Operators still inherit the two major foundations from the immediately prior release line: self-update preserves the user's database and custom toggles, and frozen builds ship the numpy/OpenCV native libraries the media agents need.",
         "The resulting narrative now also matches the new Agent-directory disclaimer, making the plain-Python user-responsibility boundary visible in both the PDF and the deck.",
     ], THEME["jade"], "rel-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "v1.26.5 Release Delta", "MIT, catalog, External MCP, MCP Doctor, and Unrealer fixes", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Exact release checklist", V1265_RELEASE_GUIDE, THEME["copper"], "v1265-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Recent implementation assets", [
+        "`0145` and `0146` seed and update the Create Superuser wizard prompt path.",
+        "`0147` adds Unreal game-demo prompt seeds so Unrealer has a richer guided showcase.",
+        "`test_chat_history_window.py` and `test_createsuperuser_wizard.py` cover context-window and wizard behavior.",
+        "`external_mcps.json`, External MCP UI files, tools, and prompt templates were cleaned or retuned alongside README/Book updates.",
+    ], THEME["jade"], "v1265-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "External MCPs", "how Tlamatini now reaches tools outside her bundled runtime", THEME["jade"])
