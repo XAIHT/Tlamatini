@@ -476,7 +476,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.26.1` line, which matters here because some older badges or prose lines still lag behind the live 82-agent / 89-tool inventory and the new Agent-directory responsibility boundary."
+            "The latest documentation pass aligns the handbook and source with the `v1.26.5` line, which matters here because some older badges or prose lines still lag behind the live 82-agent / 89-tool inventory and the new Agent-directory responsibility boundary."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -702,7 +702,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to the `v1.26.1` line: the External MCPs universal client remains the headline runtime capability, and the new Agent-directory disclaimer now makes the user-jurisdiction boundary explicit beside the current 82-agent / 89-tool runtime surface."
+            "The latest versioning/documentation commits move the source-of-truth product story to the `v1.26.5` line: the External MCPs universal client remains the headline runtime capability, and the new Agent-directory disclaimer now makes the user-jurisdiction boundary explicit beside the current 82-agent / 89-tool runtime surface."
         )
     if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
         highlights.append(
@@ -1072,7 +1072,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the latest reachable `v1.26.1` tag, carrying forward the `v1.26.0` External MCPs release while adding the later External MCP dialog fixes, onboarding refinements, and Agent-directory disclaimer.",
+    "The repository currently resolves to the latest reachable `v1.26.5` tag, carrying forward the `v1.26.0` External MCPs release while adding the later External MCP dialog fixes, onboarding refinements, and Agent-directory disclaimer.",
     "Operators reach that capability from a first-class UI surface: the `External -> MCPs` menu manages the server catalog, imports or exports Claude-style JSON, and can progressively guide setup instead of assuming the user already knows every transport and runtime field.",
     "Data-preserving update is the key fix: the live database sits inside the PyInstaller `_internal/` folder, which an update replaces wholesale, so a naive swap would wipe chat history and custom toggles. `apply_update.ps1` now stages the user's database through `DB/ToLoad/` and drops a `post_update_migrate.flag`; on the next launch `manage.py` swaps that database back over the freshly shipped one and runs `migrate` in a child process, so the user keeps their history and toggles and still receives new agent / tool / prompt rows.",
     "The second pillar is media-agent reliability: numpy and OpenCV (`cv2`) are now embedded in both the carried Python that runs the pool agents and the frozen `_internal`, with `build.py` asserting both imports so the build aborts loudly rather than shipping a Recorder, Camcorder, AudioPlayer, VideoPlayer, or Whisperer that would crash at runtime for a missing native library.",
@@ -2602,10 +2602,10 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.26.1 docs, disclaimer, and External MCPs", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.26.5 docs, disclaimer, and External MCPs", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "The version story is now explicit: the repo resolves to the `v1.26.1` line while carrying forward the External MCPs release, whose defining feature is the universal MCP client (any external MCP server over four transports, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
+        "The version story is now explicit: the repo resolves to the `v1.26.5` line while carrying forward the External MCPs release, whose defining feature is the universal MCP client (any external MCP server over four transports, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
         "Operators still inherit the two major foundations from the immediately prior release line: self-update preserves the user's database and custom toggles, and frozen builds ship the numpy/OpenCV native libraries the media agents need.",
         "The resulting narrative now also matches the new Agent-directory disclaimer, making the plain-Python user-responsibility boundary visible in both the PDF and the deck.",
     ], THEME["jade"], "rel-b", 13)
@@ -2970,7 +2970,7 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Version identity (v1.26.0): the latest tag now resolves the product to `1.26.0` across VERSIONING.md, release-folder naming, the About dialog story, startup banner wording, and `/agent/version/` expectations; v1.26.0's defining feature is the External MCPs universal client (plus the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
+        "Version identity (v1.26.5): the latest tag now resolves the product to `1.26.5` across VERSIONING.md, release-folder naming, the About dialog story, startup banner wording, and `/agent/version/` expectations; v1.26.0's defining feature is the External MCPs universal client (plus the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
         "Visual/media asset refresh (v1.26.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
         "Self-update foundation (v1.23.0 carried into v1.26.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
         "Frozen-build hardening (v1.23.0 carried into v1.26.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
