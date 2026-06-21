@@ -655,6 +655,55 @@ def _remap_console_command(command: str, params: dict) -> dict:
     return params
 
 
+# Per-command aliases: friendly/abbreviated param names the LLM or a generated
+# .flw commonly emits, mapped to the exact wire keys the Unreal MCP plugin
+# requires. Without this, a call carrying ``material``/``parameter``/``actor``
+# is rejected by the plugin with "Missing 'material_path' or 'parameter_name'
+# parameter" even though the value was present under a near-miss name.
+_PARAM_ALIASES: dict = {
+    'set_material_parameter': {
+        'material': 'material_path',
+        'material_instance': 'material_path',
+        'path': 'material_path',
+        'parameter': 'parameter_name',
+        'param': 'parameter_name',
+    },
+    'assign_material': {
+        'actor': 'actor_name',
+        'name': 'actor_name',
+        'material': 'material_path',
+        'material_instance': 'material_path',
+    },
+}
+
+
+def _remap_param_aliases(command: str, params: dict) -> dict:
+    """Map common near-miss param names to the plugin's exact wire keys.
+
+    Only fills a canonical key that is missing or empty, and only from a
+    non-empty alias value; the alias key is then dropped so it does not also
+    reach the wire. Canonical keys already set by the caller always win.
+    """
+    aliases = _PARAM_ALIASES.get(command)
+    if not aliases or not isinstance(params, dict):
+        return params
+    for alias, canonical in aliases.items():
+        if alias not in params:
+            continue
+        alias_val = params.get(alias)
+        canonical_val = params.get(canonical)
+        canonical_unset = (
+            canonical not in params
+            or (not isinstance(canonical_val, bool) and canonical_val in _UNSET_PARAM_VALUES)
+        )
+        alias_set = isinstance(alias_val, bool) or alias_val not in _UNSET_PARAM_VALUES
+        if canonical_unset and alias_set:
+            params[canonical] = alias_val
+            logging.info(f"   ↳ Remapped params.{alias} → params.{canonical}: {alias_val!r}")
+        params.pop(alias, None)
+    return params
+
+
 def _prune_unset_params(params: dict) -> dict:
     """Drop keys whose value is an unset placeholder ('', [], {}, None)."""
     pruned = {}
@@ -681,6 +730,7 @@ def _prepare_params_for_unreal(command: str, params: dict) -> dict:
         return params
     prepared = dict(params)
     prepared = _remap_console_command(command, prepared)
+    prepared = _remap_param_aliases(command, prepared)
     prepared = _prune_unset_params(prepared)
     prepared = _normalize_params_for_unreal(prepared)
     return prepared
