@@ -1599,6 +1599,22 @@ function _parseKeyValuePairs(str) {
                 i++;
             }
             value = buf;
+        } else if (i < n && (str[i] === '[' || str[i] === '{')) {
+            // Bracketed bareword (JSON array/object): read to the MATCHING
+            // close bracket so embedded commas survive. Without this the
+            // plain bareword reader below stopped at the first comma, so
+            // ``params.location=[0,0,200]`` was captured as just ``[0`` and
+            // the truncated remainder corrupted the next pairs (this is the
+            // bug that produced ``"location": "[0"`` in a generated .flw).
+            const valStart = i;
+            let depth = 0;
+            while (i < n) {
+                const c = str[i];
+                if (c === '[' || c === '{') depth++;
+                else if (c === ']' || c === '}') { depth--; if (depth === 0) { i++; break; } }
+                i++;
+            }
+            value = str.slice(valStart, i);
         } else {
             // Bareword: read until whitespace, comma, or semicolon
             const valStart = i;
