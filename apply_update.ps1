@@ -32,7 +32,7 @@ try { $Host.UI.RawUI.WindowTitle = "Tlamatini Updater" } catch {}
 # overwritten. 'agents' is intentionally NOT here: it is renamed to
 # 'agents_backup' (step 3) and then replaced by the new version (step 5).
 $Preserve = @(
-    'config.json', 'external_mcps.json', 'DB', 'application', 'applications', 'content_generated',
+    'config.json', 'external_mcps.json', 'contacts.json', 'DB', 'application', 'applications', 'content_generated',
     'Temp', 'context_files', 'doc_generated', 'documentation', 'Templates',
     # Uninstaller.exe is built separately and is NOT carried inside pkg.zip,
     # so the staged build never contains it. Without preserving it, every

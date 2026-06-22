@@ -344,6 +344,69 @@ def send_telegram_message(api_id, api_hash, chat_id, message_text):
         return False
 
 
+# --- Contacts book resolver (inline; mirrors agent/contacts.py) ---------------
+# Self-contained pool agents cannot import agent.*, so resolve a person's NAME ->
+# their messaging handle here. contacts.json lives next to config.json; we find
+# it via the inherited TLAMATINI_CONTACTS env (set by the Django side) and fall
+# back to a walk-up search so the agent also works when launched standalone.
+def _find_contacts_file():
+    candidate = (os.environ.get('TLAMATINI_CONTACTS') or '').strip()
+    if candidate and os.path.isfile(candidate):
+        return candidate
+    cur = os.path.dirname(os.path.abspath(__file__))
+    seen = []
+    for _ in range(10):
+        seen.append(os.path.join(cur, 'contacts.json'))
+        seen.append(os.path.join(cur, 'agent', 'contacts.json'))
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    if getattr(sys, 'frozen', False):
+        seen.append(os.path.join(os.path.dirname(sys.executable), 'contacts.json'))
+    for path in seen:
+        if os.path.isfile(path):
+            return path
+    return ''
+
+
+def _resolve_contact(query, channel):
+    """Resolve a contact NAME/alias to its `channel` identifier ('' if not found)."""
+    import json as _json
+    needle = ' '.join(str(query or '').strip().lower().split())
+    if not needle:
+        return ''
+    path = _find_contacts_file()
+    if not path:
+        logging.warning("contacts.json not found - cannot resolve a contact_name.")
+        return ''
+    try:
+        with open(path, 'r', encoding='utf-8-sig') as handle:
+            data = _json.load(handle)
+    except Exception as exc:
+        logging.warning(f"Could not read contacts.json ({path}): {exc}")
+        return ''
+    contacts = data.get('contacts', []) if isinstance(data, dict) else data
+    if not isinstance(contacts, list):
+        return ''
+
+    def _names(contact):
+        raw = [contact.get('name', '')] + list(contact.get('aliases') or [])
+        return [' '.join(str(n).strip().lower().split()) for n in raw if str(n or '').strip()]
+
+    for contact in contacts:                       # exact name/alias first
+        if isinstance(contact, dict) and needle in _names(contact):
+            return str(contact.get(channel) or '').strip()
+    for contact in contacts:                       # then forgiving token match
+        if not isinstance(contact, dict):
+            continue
+        for name in _names(contact):
+            tokens = name.split()
+            if needle in name or name in needle or (needle.split() and all(t in tokens for t in needle.split())):
+                return str(contact.get(channel) or '').strip()
+    return ''
+
+
 def main():
     config = load_config()
 
@@ -361,6 +424,22 @@ def main():
         message_text = telegram_cfg.get('message', 'Hello from Telegramer agent!')
         target_agents = config.get('target_agents', [])
 
+        # Contacts book: when the user names a person ("send a Telegram to Ana
+        # Ricardo Lazcano"), resolve that name to their Telegram handle from
+        # contacts.json instead of needing a raw @username/phone/id. A given
+        # contact_name takes precedence over chat_id; if it cannot be resolved we
+        # REFUSE to send (never silently fall back to the default 'me' = yourself).
+        contact_name = (telegram_cfg.get('contact_name')
+                        or config.get('contact_name') or '').strip()
+        if contact_name:
+            resolved = _resolve_contact(contact_name, 'telegram')
+            if resolved:
+                logging.info(f"📇 Resolved contact '{contact_name}' -> Telegram '{resolved}'")
+                chat_id = resolved
+            else:
+                logging.error(f"❌ Contact '{contact_name}' not found (or has no 'telegram') in contacts.json")
+                chat_id = None
+
         logging.info("📨 TELEGRAMER AGENT STARTED (Dark-Blue to Green)")
         logging.info(f"🎯 Chat: {chat_id}")
         logging.info(f"💬 Message: {message_text}")
@@ -369,6 +448,9 @@ def main():
 
         if not api_id or not api_hash:
             logging.error("❌ Telegram api_id or api_hash missing in config.yaml")
+            success = False
+        elif not chat_id:
+            logging.error("❌ No Telegram recipient resolved — set telegram.chat_id or a known contact_name.")
             success = False
         else:
             # Send the configured message

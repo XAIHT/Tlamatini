@@ -130,7 +130,11 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
                 '<div class="emx-badges">' +
                 (tc ? '<span class="emx-badge"></span>' : '') +
                 '<span class="emx-status"></span>' +
-                '<span class="emx-trans"></span></div>';
+                '<span class="emx-trans"></span></div>' +
+                '<button type="button" class="emx-del" title="Remove from catalog">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+                '<path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9zm4 2v8h2v-8h-2zm4 0v8h2v-8h-2z"/>' +
+                '</svg></button>';
             row.querySelector('.emx-name').textContent = s.display;
             row.querySelector('.emx-desc').textContent =
                 s.command || s.transport || 'configured server';
@@ -143,6 +147,8 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
             row.querySelector('.emx-trans').textContent = s.transport || 'unknown';
             const cb = row.querySelector('.emx-cb');
             cb.setAttribute('aria-label', s.display);
+            const delBtn = row.querySelector('.emx-del');
+            if (delBtn) delBtn.setAttribute('aria-label', 'Remove ' + s.display + ' from catalog');
             fragment.appendChild(row);
         }
         if (shown.length > rendered.length) {
@@ -209,13 +215,49 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         renderAll();
     }
 
+    function removeServer(key) {
+        const s = servers.find(x => x.key === key);
+        if (!s) return;
+        const label = s.display || key;
+        if (!confirm('Remove "' + label + '" from the catalog?\n\n' +
+            'This deletes the saved server config. You can add it back any time by ' +
+            'dropping its .json onto the page again.')) {
+            return;
+        }
+        fetch('/agent/external_mcps/remove/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': _emxCsrf(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ keys: [key] })
+        }).then(r => r.json()).then(d => {
+            if (d.ok) {
+                servers = servers.filter(x => x.key !== key);
+                renderAll();
+                flash('Removed "' + label + '" from the catalog.');
+            } else {
+                flash('Remove failed: ' + (d.error || 'unknown error'));
+            }
+        }).catch(err => flash('Remove failed: ' + err));
+    }
+
     listEl.onclick = (e) => {
+        const delBtn = e.target.closest('.emx-del');
+        if (delBtn) {
+            e.stopPropagation();
+            const delRow = delBtn.closest('.emx-row');
+            if (delRow) removeServer(delRow.dataset.key);
+            return;
+        }
         const row = e.target.closest('.emx-row');
         if (!row) return;
         toggleServer(row.dataset.key);
     };
     listEl.onkeydown = (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target.closest('.emx-del')) return; // let the delete button handle its own keys
         const row = e.target.closest('.emx-row');
         if (!row) return;
         e.preventDefault();

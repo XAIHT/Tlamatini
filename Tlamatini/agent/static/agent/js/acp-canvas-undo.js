@@ -381,6 +381,9 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'windower') {
                 await updateWindowerConnection(sourceId, targetId, 'remove');
             }
+            if (sourceAgentName.toLowerCase() === 'discoverer') {
+                await updateDiscovererConnection(sourceId, targetId, 'remove');
+            }
             if (sourceAgentName.toLowerCase() === 'kalier') {
                 await updateKalierConnection(sourceId, targetId, 'remove');
             }
@@ -775,6 +778,9 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'windower') {
         await updateWindowerConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'discoverer') {
+        await updateDiscovererConnection(sourceId, targetId, 'add');
     }
     if (sourceAgentName === 'kalier') {
         await updateKalierConnection(sourceId, targetId, 'add');

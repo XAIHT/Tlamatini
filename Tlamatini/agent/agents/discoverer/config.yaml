@@ -1,0 +1,95 @@
+# Discoverer Agent Configuration
+#
+# Discoverer is Tlamatini's bridge to the ProjectDiscovery security-tool suite
+# (https://github.com/projectdiscovery): subfinder, httpx, naabu, katana, nuclei,
+# and cvemap (now shipped as `vulnx`). Like ESP32er / Arduiner / Kalier it invokes
+# the tools' own CLIs DIRECTLY (no MCP server) and is fully self-contained (stdlib
+# only: subprocess + urllib + zipfile + tarfile + json + threading) so it runs
+# identically in source and frozen builds and never imports from agent.*.
+#
+# ZERO-CONFIG — PRIVATE GO TOOLCHAIN: on the FIRST call (Multi-Turn or canvas), if
+# the requested tool is not already installed and go_bootstrap is true, Discoverer
+# DOWNLOADS the official Go compiler into <install_dir>/Go (GOROOT) and `go install`s
+# the tool into <install_dir>/Go/bin-tools (GOBIN). No system Go, no PATH changes —
+# the end user installs only Tlamatini. (First run downloads ~70-90 MB of Go and
+# compiles the tool: slow once, instant thereafter.) AUTHORIZED TARGETS ONLY.
+
+# ── tool — which ProjectDiscovery capability to run (one per run):
+#   subfinder         : passive subdomain enumeration         (target = domain)
+#   httpx             : HTTP probe / fingerprint              (target = url/host)
+#   naabu             : port scanner                          (target = host/ip/cidr)
+#   katana            : crawler / spider                      (target = url)
+#   nuclei            : template vulnerability scanner        (target = url/host)
+#   cvemap            : CVE search CLI (ProjectDiscovery vulnx) (uses cvemap_* fields)
+#   Meta:
+#     bootstrap       : install the Go toolchain + the requested tool, report (no scan)
+#     validate        : full environment preflight report (no scan)
+#     update_templates: nuclei -update-templates (refresh ~/nuclei-templates)
+#     list_tools      : list which PD tools are installed in the private GOBIN
+tool: "subfinder"
+
+# ── Target(s) ──────────────────────────────────────────────────────────────
+target: ""             # one target: domain / url / host / ip / cidr (per the tool)
+targets_file: ""       # OR a file with one target per line; overrides `target`
+
+# ── Common run controls ────────────────────────────────────────────────────
+json_output: true      # emit JSON/JSONL (parsed into the report + findings_count)
+output_dir: ""         # results dir; empty = <app>/Temp/Discoverer
+rate_limit: 0          # 0 = tool default (150 req/s; naabu 1000 pkt/s)
+concurrency: 0         # 0 = tool default (threads / fetchers)
+command_timeout: 1800  # hard cap (seconds) on a run (FIRST run also compiles the tool)
+extra_args: ""         # raw flags appended verbatim to the tool invocation (escape hatch)
+
+# ── subfinder knobs ─────────────────────────────────────────────────────────
+subfinder_all_sources: false   # -all (use every passive source; slower)
+subfinder_sources: ""          # -s  e.g. "crtsh,github"
+subfinder_include_ip: false    # -oI (include resolved IP)
+subfinder_provider_config: ""  # path to provider-config.yaml (shodan/censys/vt/…);
+                               #   empty = subfinder's own default config
+
+# ── httpx knobs ─────────────────────────────────────────────────────────────
+httpx_probes: "status_code,title,tech_detect"  # csv -> -sc -title -td (and more)
+httpx_follow_redirects: false                  # -fr
+
+# ── naabu knobs ─────────────────────────────────────────────────────────────
+naabu_ports: ""        # -p  e.g. "80,443,8000-9000" ('' = use top_ports)
+naabu_top_ports: "100" # -top-ports  (full | 100 | 1000)
+naabu_scan_type: "c"   # -s  c=connect (Windows-safe, NO Npcap) | s=SYN (needs Npcap+admin)
+
+# ── katana knobs ────────────────────────────────────────────────────────────
+katana_depth: 3        # -d crawl depth
+katana_js_crawl: true  # -jc parse JavaScript endpoints
+katana_headless: false # -hl headless browser mode (needs Chrome)
+
+# ── nuclei knobs ────────────────────────────────────────────────────────────
+nuclei_templates: ""        # -t path(s); empty = the auto-managed ~/nuclei-templates
+nuclei_severity: ""         # -s  e.g. "high,critical"
+nuclei_tags: ""             # -tags  e.g. "cve,rce"
+nuclei_template_ids: ""     # -id specific template IDs
+nuclei_automatic_scan: false # -as (wappalyzer tech-detect -> tags mapping)
+
+# ── cvemap / vulnx knobs ─────────────────────────────────────────────────────
+cvemap_id: ""          # -id  e.g. "CVE-2023-44487"
+cvemap_product: ""     # -product  e.g. "apache"
+cvemap_severity: ""    # -severity  e.g. "critical"
+
+# ── ProjectDiscovery Cloud Platform key (OPTIONAL for ALL tools) ─────────────
+pdcp_api_key: ""       # empty = read the PDCP_API_KEY env / credentials file.
+                       #   Boosts cvemap/vulnx rate limit; enables nuclei -ai + cloud.
+cloud_upload: false    # nuclei/httpx/naabu dashboard upload (-pd; needs pdcp_api_key)
+
+# ── Private Go toolchain (installed on FIRST use) ────────────────────────────
+go_bootstrap: true     # on first call, download + install the Go compiler if absent
+install_method: "go"   # go = compile the tool with the private Go (go install)
+                       #   pdtm = download prebuilt PD binaries instead (no compiler)
+go_dir: ""             # empty = <install_dir>/Go  (GOROOT). NOTE: must be writable —
+                       #   the default C:\Tlamatini install is; a Program Files install
+                       #   is not, so set this to a writable path there.
+tools_bin: ""          # empty = <install_dir>/Go/bin-tools  (GOBIN; compiled PD tools)
+go_version: "1.24.5"   # Go release fetched from https://go.dev/dl/ (PD needs >= 1.24)
+auto_update: false     # re-install/update the Go toolchain or tool before running
+preflight: true        # fail-safe checks; REFUSE rather than misfire
+
+# ── Connection fields ────────────────────────────────────────────────────
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the run (ALWAYS triggered)

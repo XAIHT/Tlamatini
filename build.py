@@ -1102,6 +1102,8 @@ def main():
             # also PRESERVED across self-update (apply_update.ps1 $Preserve) so a
             # user's added servers + active selection survive updates, like config.json.
             Path("Tlamatini") / "agent" / "external_mcps.json": dist_manage / "external_mcps.json",
+            # contacts.json is the Contacts book (name -> Telegram/WhatsApp handle).
+            Path("Tlamatini") / "agent" / "contacts.json": dist_manage / "contacts.json",
         }
         for src, dst in optional_file_copies.items():
             if src.exists():

@@ -71,7 +71,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -270,6 +270,37 @@ KALIER SPECIAL NOTES:
   - Legitimate Kalier error to flag: "Cannot reach MCP-Kali-Server at ..." — the
     Flask API server is not running on the Kali box, the SSH tunnel is down, or
     `server_url` is wrong. Treat a connection error like a broken chain hop.
+
+TELEGRAMER / WHATSAPPER SPECIAL NOTES:
+  - Both are SHORT-LIVED one-shot senders here: Telegramer always sends once and
+    finishes; Whatsapper sends once and finishes when it has a `message` and NO
+    `source_agents`. A quick run that then ends is NORMAL, not "stuck".
+  - Contacts book: a line like "Resolved contact '<name>' -> Telegram/WhatsApp ..."
+    is normal. A "Contact '<name>' not found (or has no ...) in contacts.json" line
+    is the agent working as DESIGNED (fail-safe: it refuses to send to the wrong
+    person rather than guess) — it is routable content, NOT a flow error; do NOT
+    flag it.
+  - Whatsapper in MONITOR mode (it HAS `source_agents`) is long-running by design —
+    do NOT flag it as stuck for sitting idle while it polls the source logs.
+
+DISCOVERER SPECIAL NOTES:
+  - Discoverer is SHORT-LIVED and ACTIVE: it runs ONE ProjectDiscovery tool
+    (subfinder / httpx / naabu / katana / nuclei / cvemap) then ALWAYS triggers
+    `target_agents` (success or failure).
+  - Its FIRST run is SLOW BY DESIGN: with no tool installed it downloads a private
+    Go compiler into <install_dir>/Go and `go install`s the tool into
+    <install_dir>/Go/bin-tools. While "Downloading" / "go: downloading" / compiling
+    progress keeps appearing, a long FIRST run (a few minutes) is NORMAL — do NOT
+    flag it as stuck. Subsequent runs are fast (the binary is cached).
+  - Its `INI_SECTION_DISCOVERER<<<` block is NORMAL routable output (carries `tool`,
+    `target`, `returncode`, `success`, `findings_count`, `json_path`, `pdcp_used`,
+    `stage`) — NEVER flag it as an error, even when `success: false` or
+    `findings_count: 0` (a scan that found nothing is a valid result a downstream
+    Forker branches on).
+  - A `stage: preflight` REFUSED section is Discoverer working AS DESIGNED (a missing
+    target, or a tool that could not be installed) — not a flow error.
+  - DO flag a genuine failure: "go.dev unreachable" / "Tool could not be installed" /
+    the run exceeding command_timeout (default 1800s) with no progress.
 
 STM32ER SPECIAL NOTES:
   - STM32er is SHORT-LIVED and ACTIVE: it spawns the STM32 Template Project MCP

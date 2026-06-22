@@ -1215,6 +1215,43 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     //                  command, scan_type, ports, mode, wordlist, data, module,
     //                  options, service, username, username_file, password,
     //                  password_file, hash_file, format
+    } else if (lower === 'discoverer') {
+        set('tool', pairs.tool);
+        set('target', pairs.target);
+        set('targets_file', pairs.targets_file);
+        set('output_dir', pairs.output_dir);
+        set('extra_args', pairs.extra_args);
+        set('subfinder_sources', pairs.subfinder_sources);
+        set('subfinder_provider_config', pairs.subfinder_provider_config);
+        set('httpx_probes', pairs.httpx_probes);
+        set('naabu_ports', pairs.naabu_ports);
+        set('naabu_top_ports', pairs.naabu_top_ports);
+        set('naabu_scan_type', pairs.naabu_scan_type);
+        set('nuclei_templates', pairs.nuclei_templates);
+        set('nuclei_severity', pairs.nuclei_severity);
+        set('nuclei_tags', pairs.nuclei_tags);
+        set('nuclei_template_ids', pairs.nuclei_template_ids);
+        set('cvemap_id', pairs.cvemap_id);
+        set('cvemap_product', pairs.cvemap_product);
+        set('cvemap_severity', pairs.cvemap_severity);
+        set('pdcp_api_key', pairs.pdcp_api_key);
+        set('go_dir', pairs.go_dir);
+        set('tools_bin', pairs.tools_bin);
+        set('go_version', pairs.go_version);
+        set('install_method', pairs.install_method);
+        ['json_output', 'subfinder_all_sources', 'subfinder_include_ip', 'httpx_follow_redirects',
+         'katana_js_crawl', 'katana_headless', 'nuclei_automatic_scan', 'cloud_upload',
+         'go_bootstrap', 'preflight', 'auto_update'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = (String(pairs[k]).toLowerCase() === 'true');
+            }
+        });
+        ['katana_depth', 'rate_limit', 'concurrency', 'command_timeout'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
     } else if (lower === 'kalier') {
         set('action', pairs.action);
         set('server_url', pairs.server_url);
@@ -1382,6 +1419,10 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // Template field: telegram (nested)
     } else if (lower === 'telegramer') {
         const telegram = collectDotted('telegram');
+        // Top-level shortcuts the LLM commonly passes, mapped into the nested block.
+        if (pairs.contact_name) telegram.contact_name = pairs.contact_name;
+        if (pairs.message) telegram.message = pairs.message;
+        if (pairs.chat_id) telegram.chat_id = pairs.chat_id;
         if (Object.keys(telegram).length > 0) config.telegram = telegram;
 
     // ── Whatsapper ───────────────────────────────────────────────────
@@ -1390,6 +1431,7 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         const textmebot = collectDotted('textmebot');
         if (pairs.phone_number) textmebot.phone = pairs.phone_number;
         if (pairs.message) textmebot.message = pairs.message;
+        if (pairs.contact_name) textmebot.contact_name = pairs.contact_name;
         if (Object.keys(textmebot).length > 0) config.textmebot = textmebot;
 
     // ── Recmailer ────────────────────────────────────────────────────

@@ -262,12 +262,30 @@ def _redact_yaml_text(text: str) -> tuple[str, int]:
     return new_text, count
 
 
+# The self-modify snapshot must never carry a user's REAL contacts (phone numbers
+# / @handles are PII the key-based redactor above does NOT scrub). So contacts.json
+# is replaced wholesale with this safe example in the snapshot.
+_CONTACTS_SNAPSHOT_PLACEHOLDER = (
+    '{\n'
+    '  "_README": "Tlamatini Contacts book. Add people here, then say \'send a '
+    "WhatsApp / Telegram to <name>'. Fields: name, aliases, telegram (@username / "
+    '+phone / id), whatsapp (+phone), email.",\n'
+    '  "contacts": [\n'
+    '    {"name": "Example Person", "aliases": ["Example"], '
+    '"telegram": "@example", "whatsapp": "+10000000000", "email": "example@example.com"}\n'
+    '  ]\n'
+    '}\n'
+)
+
+
 def _wants_redaction(rel_posix: str) -> str:
-    """Return 'json' / 'yaml' / '' for files whose secrets must be scrubbed."""
+    """Return 'json' / 'yaml' / 'contacts' / '' for files whose secrets must be scrubbed."""
     if rel_posix == "Tlamatini/agent/config.json":
         return "json"
     if rel_posix == "Tlamatini/agent/external_mcps.json":
         return "json"  # External MCP catalog — a server's env block may hold keys
+    if rel_posix == "Tlamatini/agent/contacts.json":
+        return "contacts"  # PII (phones / handles) — replace with a safe example
     if (rel_posix.startswith("Tlamatini/agent/agents/")
             and rel_posix.endswith("config.yaml")):
         return "yaml"
@@ -323,8 +341,12 @@ def copy_source_assets(repo_root: Path | str = REPO_ROOT,
                 mode = _wants_redaction(rel_posix) if redact else ""
                 if mode:
                     text = src.read_text(encoding="utf-8", errors="replace")
-                    new_text, n = (_redact_json_text(text) if mode == "json"
-                                   else _redact_yaml_text(text))
+                    if mode == "json":
+                        new_text, n = _redact_json_text(text)
+                    elif mode == "contacts":
+                        new_text, n = _CONTACTS_SNAPSHOT_PLACEHOLDER, 1
+                    else:
+                        new_text, n = _redact_yaml_text(text)
                     dst.write_text(new_text, encoding="utf-8")
                     if n:
                         redacted_files[rel_posix] = n

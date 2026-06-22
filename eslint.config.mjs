@@ -403,6 +403,8 @@ export default [
                 updateMouserConnection: "readonly",
                 updateWindowerConnection: "readonly",
                 updateCounterConnection: "readonly",
+                updateKalierConnection: "readonly",
+                updateDiscovererConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
                 applyAgentTypeClass: "readonly",
