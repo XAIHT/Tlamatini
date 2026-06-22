@@ -313,12 +313,105 @@ def analyze_log_chunk(llm, config, chunk: str, source_agent: str) -> Optional[st
 # Monitoring loop (single-threaded, sequential polling)
 # ─────────────────────────────────────────────────────────────
 
+# --- Contacts book resolver (inline; mirrors agent/contacts.py) ---------------
+# Self-contained pool agents cannot import agent.*, so resolve a person's NAME ->
+# their messaging handle here. contacts.json lives next to config.json; we find
+# it via the inherited TLAMATINI_CONTACTS env (set by the Django side) and fall
+# back to a walk-up search so the agent also works when launched standalone.
+def _find_contacts_file():
+    candidate = (os.environ.get('TLAMATINI_CONTACTS') or '').strip()
+    if candidate and os.path.isfile(candidate):
+        return candidate
+    cur = os.path.dirname(os.path.abspath(__file__))
+    seen = []
+    for _ in range(10):
+        seen.append(os.path.join(cur, 'contacts.json'))
+        seen.append(os.path.join(cur, 'agent', 'contacts.json'))
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    if getattr(sys, 'frozen', False):
+        seen.append(os.path.join(os.path.dirname(sys.executable), 'contacts.json'))
+    for path in seen:
+        if os.path.isfile(path):
+            return path
+    return ''
+
+
+def _resolve_contact(query, channel):
+    """Resolve a contact NAME/alias to its `channel` identifier ('' if not found)."""
+    import json as _json
+    needle = ' '.join(str(query or '').strip().lower().split())
+    if not needle:
+        return ''
+    path = _find_contacts_file()
+    if not path:
+        logging.warning("contacts.json not found - cannot resolve a contact_name.")
+        return ''
+    try:
+        with open(path, 'r', encoding='utf-8-sig') as handle:
+            data = _json.load(handle)
+    except Exception as exc:
+        logging.warning(f"Could not read contacts.json ({path}): {exc}")
+        return ''
+    contacts = data.get('contacts', []) if isinstance(data, dict) else data
+    if not isinstance(contacts, list):
+        return ''
+
+    def _names(contact):
+        raw = [contact.get('name', '')] + list(contact.get('aliases') or [])
+        return [' '.join(str(n).strip().lower().split()) for n in raw if str(n or '').strip()]
+
+    for contact in contacts:                       # exact name/alias first
+        if isinstance(contact, dict) and needle in _names(contact):
+            return str(contact.get(channel) or '').strip()
+    for contact in contacts:                       # then forgiving token match
+        if not isinstance(contact, dict):
+            continue
+        for name in _names(contact):
+            tokens = name.split()
+            if needle in name or name in needle or (needle.split() and all(t in tokens for t in needle.split())):
+                return str(contact.get(channel) or '').strip()
+    return ''
+
+
 def main():
     write_pid_file()
     if _IS_REANIMATED:
         logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
         logging.info("=" * 60)
     config = load_config()
+
+    # --- One-shot direct send (Contacts-aware) --------------------------------
+    # When a message + a recipient are present and there is NOTHING to monitor
+    # (no source_agents), send the WhatsApp NOW and exit — the "tell her I'm OK"
+    # path. Mirrors the Emailer one-shot. The recipient is resolved from the
+    # Contacts book when a contact_name is given, else the literal textmebot.phone.
+    _tb = config.get('textmebot', {}) or {}
+    _oneshot_msg = str(config.get('message') or _tb.get('message') or '').strip()
+    _contact_name = str(config.get('contact_name') or _tb.get('contact_name') or '').strip()
+    if _oneshot_msg and not (config.get('source_agents') or []):
+        _recipient = str(_tb.get('phone') or '').strip()
+        if _contact_name:
+            _resolved = _resolve_contact(_contact_name, 'whatsapp')
+            if _resolved:
+                logging.info(f"📇 Resolved contact '{_contact_name}' -> WhatsApp '{_resolved}'")
+                _recipient = _resolved
+            else:
+                logging.error(f"❌ Contact '{_contact_name}' not found (or has no 'whatsapp') in contacts.json")
+                _recipient = ''
+        logging.info("📱 WHATSAPPER one-shot send mode")
+        _apikey = str(_tb.get('apikey') or '').strip()
+        _ok = False
+        if _recipient and _apikey:
+            _ok = send_whatsapp_message(_recipient, _apikey, _oneshot_msg)
+        else:
+            logging.error("❌ One-shot WhatsApp needs a recipient (contact_name or textmebot.phone) and textmebot.apikey.")
+        time.sleep(0.4)
+        remove_pid_file()
+        logging.info(f"🏁 Whatsapper one-shot finished (sent={_ok}).")
+        return
 
     source_agents = config.get('source_agents', [])
     if isinstance(source_agents, str):

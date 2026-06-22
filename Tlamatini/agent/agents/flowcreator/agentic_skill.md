@@ -834,6 +834,7 @@ system_prompt: |
   - `telegram.api_id`: 0 (later configured by the user)
   - `telegram.api_hash`: "" (later configured by the user)
   - `telegram.chat_id`: "me" (later configured by the user)
+  - `telegram.contact_name`: "" (OPTIONAL — a name from contacts.json; when set it is resolved to that person's Telegram handle and OVERRIDES chat_id)
   - `telegram.message`: "Hello from Telegramer agent!" (message text — formulate based on the flow's objective)
   - `poll_interval`: 5
 
@@ -869,6 +870,8 @@ system_prompt: |
   - `llm.temperature`: 0.1
   - `textmebot.phone`: "" (later configured by the user)
   - `textmebot.apikey`: "" (later configured by the user)
+  - `message`: "" (OPTIONAL one-shot — when set AND there are no source_agents to monitor, Whatsapper sends this text once and exits)
+  - `contact_name`: "" (OPTIONAL — a name from contacts.json; resolved to that person's WhatsApp number, OVERRIDES textmebot.phone)
   - `poll_interval`: 2
   - `recursion_limit`: 1000
 
@@ -1948,6 +1951,28 @@ system_prompt: |
   - `name`: "tlamatini-light" / `platform`: "esp32" (esp32|esp8266|rp2040|bk72xx) / `board`: "" / `led_pin`: "" / `wifi_ssid`: "" / `wifi_password`: "" (new_config generator params)
   - `command_timeout`: 1200 (seconds for a single `esphome` run)
   - `port`: "" / `monitor_seconds`: 10 (upload/logs/run; "" port = esphome auto-detect; an IP/host in `port` = OTA upload)
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the run)
+
+### 82. Discoverer
+- **Purpose**: Tlamatini's bridge to the **ProjectDiscovery** security-tool suite (https://github.com/projectdiscovery) for recon, attack-surface mapping and vulnerability discovery. On trigger it runs ONE tool selected by its `tool` field as a direct subprocess, captures the result into an `INI_SECTION_DISCOVERER` block (`tool`, `target`, `returncode`, `success`, `findings_count`, `json_path`, `pdcp_used`, `stage`, plus a `response_body` carrying the tool's stdout + saved JSON). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{findings_count}`.
+- **Used for**: Subdomain enumeration, HTTP probing, port scanning, web crawling, template vulnerability scanning and CVE lookup as unattended flow steps. The `tool` field selects ONE: `subfinder` (passive subdomain enum, target=domain), `httpx` (HTTP probe/fingerprint, target=url/host), `naabu` (port scan, target=host/ip/cidr; CONNECT scan on Windows — no Npcap), `katana` (crawler, target=url), `nuclei` (template vuln scan, target=url/host), `cvemap` (CVE search — ProjectDiscovery's `vulnx`; uses cvemap_id/cvemap_product/cvemap_severity); plus the meta actions `bootstrap` / `validate` / `update_templates` / `list_tools`. Like ESP32er/Arduiner it invokes each tool's own CLI directly (no MCP server).
+- **Aimed at**: Building visual, repeatable recon/assessment pipelines, e.g. `subfinder` → Parametrizer (carry `{response_body}` / `{json_path}`) → `httpx` (probe the live hosts) → `nuclei` (scan them) → Forker on `{findings_count}`. **Zero-config**: leave `go_dir`/`tools_bin` blank and on the FIRST call Discoverer downloads a PRIVATE Go compiler into `<install_dir>/Go` and `go install`s the requested tool into `<install_dir>/Go/bin-tools` (no system Go, no PATH change; `tool: bootstrap` does this explicitly — the first run is slow, then cached). A fail-safe **preflight** requires a target for the scanning tools and REFUSES rather than mis-scan. **AUTHORIZED TARGETS ONLY** — subfinder/cvemap are passive, but httpx/naabu/katana/nuclei actively touch the target. The visual-canvas counterpart of the `chat_agent_discoverer` Multi-Turn tool.
+- **Application example**: Starter → Discoverer (`tool: subfinder`, `target: example.com`) → Parametrizer (map `{response_body}` into a targets file) → Discoverer (`tool: httpx`, `targets_file: ...`) → Forker (branch on `{success}`) → Discoverer (`tool: nuclei`, `target: https://example.com`, `nuclei_severity: high,critical`) → File-Creator (write `{json_path}`) → Ender.
+- **Pool name pattern**: `discoverer_<n>`
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `tool`: "subfinder" (subfinder|httpx|naabu|katana|nuclei|cvemap, or meta bootstrap|validate|update_templates|list_tools)
+  - `target`: "" / `targets_file`: "" (one target, or a file of targets; targets_file overrides target)
+  - `json_output`: true / `output_dir`: "" / `rate_limit`: 0 / `concurrency`: 0 / `command_timeout`: 1800 / `extra_args`: ""
+  - subfinder: `subfinder_all_sources`: false / `subfinder_sources`: "" / `subfinder_include_ip`: false / `subfinder_provider_config`: ""
+  - httpx: `httpx_probes`: "status_code,title,tech_detect" / `httpx_follow_redirects`: false
+  - naabu: `naabu_ports`: "" / `naabu_top_ports`: "100" / `naabu_scan_type`: "c" (c=connect, Windows-safe; s=SYN needs Npcap)
+  - katana: `katana_depth`: 3 / `katana_js_crawl`: true / `katana_headless`: false
+  - nuclei: `nuclei_templates`: "" / `nuclei_severity`: "" / `nuclei_tags`: "" / `nuclei_template_ids`: "" / `nuclei_automatic_scan`: false
+  - cvemap: `cvemap_id`: "" / `cvemap_product`: "" / `cvemap_severity`: ""
+  - `pdcp_api_key`: "" (OPTIONAL ProjectDiscovery Cloud Platform key) / `cloud_upload`: false
+  - `go_bootstrap`: true / `install_method`: "go" / `go_dir`: "" / `tools_bin`: "" / `go_version`: "1.24.5" / `auto_update`: false / `preflight`: true (private Go toolchain bootstrap + fail-safe gate)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 

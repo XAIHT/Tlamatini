@@ -181,7 +181,7 @@ body.emx-dialog-open {
     flex: 0 0 auto;
     position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 12px;
     min-height: 64px;
@@ -298,6 +298,50 @@ body.emx-dialog-open {
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.emx-del {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #c0c5d2;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.18s ease-out, background 0.18s ease-out,
+        border-color 0.18s ease-out, color 0.18s ease-out, transform 0.12s ease-out;
+}
+
+.emx-row:hover .emx-del,
+.emx-row:focus-within .emx-del {
+    opacity: 1;
+}
+
+.emx-del:hover,
+.emx-del:focus-visible {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #ffb4b4;
+    outline: none;
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.30);
+}
+
+.emx-del:active {
+    transform: translateY(0);
+}
+
+.emx-del svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    fill: currentColor;
 }
 
 .emx-warn {
@@ -585,6 +629,12 @@ body.emx-dialog-open {
         grid-column: 2;
         align-items: flex-start;
         min-width: 0;
+    }
+
+    .emx-del {
+        grid-column: 1 / -1;
+        justify-self: end;
+        opacity: 1;
     }
 
     .emx-footer {

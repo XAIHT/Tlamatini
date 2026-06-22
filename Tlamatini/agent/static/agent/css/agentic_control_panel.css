@@ -2241,6 +2241,19 @@ body.resizing-vertical {
 }
 
 /* MCP Doctor Agent - External MCP diagnostics and onboarding */
+/* Discoverer Agent — "Discovery Violet" (ProjectDiscovery recon suite) */
+.canvas-item.discoverer-agent {
+    background-color: #2E1065;
+    background: linear-gradient(135deg, #2E1065 0%, #7C3AED 33%, #C026D3 66%, #F0ABFC 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.discoverer-agent:hover {
+    background: linear-gradient(135deg, #4C1D95 0%, #9333EA 33%, #D946EF 66%, #F5D0FE 100%);
+    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.5);
+}
+
 .canvas-item.mcpdoctor-agent {
     background-color: #0F3D3E;
     color: white;

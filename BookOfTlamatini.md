@@ -2,7 +2,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 82 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 83 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 >
@@ -22,7 +22,7 @@ Tlamatini provides orchestration, documentation, and guardrails, but it cannot g
 
 Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
 
-There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **82 agent types and 75+ tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
+There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **83 agent types and 75+ tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
 
 Five steps take you from a bare machine to a Tlamatini that can flash a board, drive an engine, and run a whole workflow unattended.
 
@@ -100,7 +100,7 @@ Tlamatini does a lot. This README is organized so you can stop reading at the de
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
 - **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
-- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 82 workflow agents.
+- **Part IV — The Tlamatini Bestiary**: compact one-row-per-agent reference for all 83 workflow agents.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -3014,6 +3014,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Counter** | Persistent counter agent with L/G threshold routing. |
 | **Crawler** | Developer-oriented web crawler (raw mode + LLM analysis). |
 | **Daphne** | HTTP/HTTP2/WebSocket protocol server for ASGI. |
+| **Discoverer** | Tlamatini agent that runs the **ProjectDiscovery** recon / attack-surface / vuln-discovery suite — `subfinder` / `httpx` / `naabu` / `katana` / `nuclei` / `cvemap`→`vulnx`, one tool per run — by invoking each CLI directly (no MCP server), like Kalier / ESP32er / Arduiner. Zero-config: a self-installing PRIVATE Go toolchain under `<install_dir>/Go` compiles the tools on first use (no system Go, no PATH change); the PDCP key is optional, naabu defaults to a Windows-safe CONNECT scan, and a fail-safe preflight refuses rather than mis-scan. Available both as the wrapped Multi-Turn tool `chat_agent_discoverer` and as a visual canvas node. **Authorized targets only.** |
 | **Dockerer** | Docker container management agent. |
 | **Embedding** | Numerical vector representation of text for similarity comparison. |
 | **ESP32er** | Tlamatini agent that scaffolds, builds, flashes, and monitors ESP32 firmware by driving **PlatformIO Core** (`pio`) directly — no MCP server (unlike STM32er). Zero-config bootstrap downloads PlatformIO via `get-platformio.py`; the `scaffold_build_upload` composite collapses create→write→build→upload into one run. Available both as the wrapped Multi-Turn tool `chat_agent_esp32er` and as a visual canvas node. The 69th entry in the agent catalog; the direct-CLI sibling of Arduiner. |

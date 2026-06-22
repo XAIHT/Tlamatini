@@ -111,6 +111,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "esphomer": ("action", "tool", "ok", "returncode", "success", "config_path", "name", "port", "stage", "response_body"),
     "arduiner": ("action", "tool", "ok", "returncode", "success", "fqbn", "port", "sketch_path", "stage", "response_body"),
     "mcp_doctor": ("server_key", "transport", "runtime", "supported", "status", "catalog_path", "response_body"),
+    "discoverer": ("tool", "target", "returncode", "success", "findings_count", "json_path", "pdcp_used", "stage", "response_body"),
 }
 
 

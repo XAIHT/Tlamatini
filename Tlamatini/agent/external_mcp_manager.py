@@ -423,6 +423,45 @@ def import_servers(mcp_servers: Dict[str, Any]) -> Dict[str, Any]:
     return {"ok": True, "added": added, "updated": updated}
 
 
+def remove_servers(keys: List[str]) -> Dict[str, Any]:
+    """Delete server(s) from the catalog (the dialog's drop/delete control).
+
+    Drops the key(s) from ``mcpServers`` and from the ``active`` set, closes any
+    live client so the slot frees immediately, and clears the negative-connect
+    cooldown. Returns the keys actually removed plus any that were not found.
+    """
+    if isinstance(keys, str):
+        keys = [keys]
+    requested = [str(k) for k in (keys or []) if str(k)]
+    if not requested:
+        return {"ok": False, "error": "no server key(s) to remove"}
+    data = load_catalog()
+    servers = data.get("mcpServers", {})
+    removed, missing = [], []
+    for key in requested:
+        if key in servers:
+            servers.pop(key, None)
+            removed.append(key)
+        else:
+            missing.append(key)
+    if not removed:
+        return {"ok": False, "error": "no matching server(s) in catalog",
+                "missing": missing}
+    data["active"] = [k for k in data.get("active", []) if k in servers]
+    save_catalog(data)
+    with _clients_lock:
+        for key in removed:
+            client = _clients.pop(key, None)
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+            _failed_connects.pop(key, None)
+    return {"ok": True, "removed": removed, "missing": missing,
+            "active": data["active"]}
+
+
 # ---------------------------------------------------------------------------
 # stdio JSON-RPC client (one long-lived child per active server)
 # ---------------------------------------------------------------------------

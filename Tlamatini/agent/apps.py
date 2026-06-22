@@ -11,6 +11,15 @@ class AgentConfig(AppConfig):
         of the Django process (e.g., when using `runserver --noreload` or our
         custom `startserver`). We start it once in a daemon thread.
         """
+        # Contacts book: export TLAMATINI_CONTACTS so every spawned pool agent
+        # (Telegramer / Whatsapper) inherits the resolved contacts.json path —
+        # the same mechanism as TLAMATINI_TEMP. Fail-open; cheap on every init.
+        try:
+            import os as _os
+            from . import contacts as _contacts
+            _os.environ.setdefault('TLAMATINI_CONTACTS', _contacts.get_contacts_path())
+        except Exception:
+            pass
         try:
             # Lazy imports to avoid impacting management commands that scan apps
             import sys

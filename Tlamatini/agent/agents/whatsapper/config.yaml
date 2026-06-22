@@ -32,6 +32,14 @@ textmebot:
   phone: ""  # Your phone number with country code (e.g., +1234567890)
   apikey: "" # Your TextMeBot API Key
 
+# One-shot direct send (Contacts-aware). When `message` is set AND there are no
+# source_agents to monitor, Whatsapper sends this message once and exits (the
+# "tell her I'm OK" path). `contact_name` is a name from contacts.json (next to
+# config.json); when set it is resolved to that person's WhatsApp number and
+# OVERRIDES textmebot.phone. Leave both blank for the log-monitor mode.
+message: ""
+contact_name: ""
+
 # Polling configuration
 poll_interval: 5
 recursion_limit: 1000
