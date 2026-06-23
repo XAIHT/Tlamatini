@@ -34,10 +34,10 @@ _PROJECT_DIR = os.path.dirname(_AGENT_DIR)
 _REPO_ROOT = os.path.dirname(_PROJECT_DIR)
 _AGENTS_DIR = os.path.join(_AGENT_DIR, "agents")
 
-# The 6 agents that create temporary files and therefore ship an explicit
+# The 5 agents that create temporary files and therefore ship an explicit
 # _enforce_tlamatini_temp() block (kept in lock-step with the source edits).
 _TEMP_CREATING_AGENTS = (
-    "executer", "de_compresser", "esp32er", "stm32er", "arduiner", "telegramrx",
+    "executer", "de_compresser", "esp32er", "stm32er", "arduiner",
 )
 
 
@@ -152,7 +152,7 @@ class EnforcementTests(_TempStateGuard):
 
 
 class AgentEnforcementBlockTests(_TempStateGuard):
-    """Extract the ACTUAL _enforce_tlamatini_temp() block from each of the 6
+    """Extract the ACTUAL _enforce_tlamatini_temp() block from each of the 5
     temp-creating agents on disk and execute it — proving the shipped code (not
     a stand-in) redirects tempfile to TLAMATINI_TEMP."""
 
@@ -170,7 +170,7 @@ class AgentEnforcementBlockTests(_TempStateGuard):
         self.assertIsNotNone(m, f"{agent}: TLAMATINI_TEMP enforcement block not found")
         return m.group(0)
 
-    def test_all_six_agents_have_the_block(self):
+    def test_all_temp_creating_agents_have_the_block(self):
         for agent in _TEMP_CREATING_AGENTS:
             with self.subTest(agent=agent):
                 self._extract_block(agent)  # raises via assert if missing

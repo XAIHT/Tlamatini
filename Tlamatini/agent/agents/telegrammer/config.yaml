@@ -1,0 +1,13 @@
+mode: auto
+telegram:
+  bot_token: <TELEGRAM_BOT_TOKEN goes here>
+  chat_id: '36367295'
+message: ''
+contact_name: ''
+rx_max_seconds: 60
+rx_from_chat_id: ''
+rx_match: ''
+source_agents: []
+target_agents: []
+poll_interval: 2
+recursion_limit: 1000

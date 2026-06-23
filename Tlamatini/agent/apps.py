@@ -12,7 +12,7 @@ class AgentConfig(AppConfig):
         custom `startserver`). We start it once in a daemon thread.
         """
         # Contacts book: export TLAMATINI_CONTACTS so every spawned pool agent
-        # (Telegramer / Whatsapper) inherits the resolved contacts.json path —
+        # (Telegrammer / Whatsapper) inherits the resolved contacts.json path —
         # the same mechanism as TLAMATINI_TEMP. Fail-open; cheap on every init.
         try:
             import os as _os

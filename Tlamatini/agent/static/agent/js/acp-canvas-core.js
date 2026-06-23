@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -203,10 +203,8 @@ const AGENT_TYPE_CLASS_MAP = {
     'executer': 'executer-agent',
     'stopper': 'stopper-agent',
     'whatsapper': 'whatsapper-agent',
-    'telegramrx': 'telegramrx-agent',
-    'telegramer': 'telegramer-agent',
+    'telegrammer': 'telegrammer-agent',
     'teletlamatini': 'teletlamatini-agent',
-    'whatstlamatini': 'whatstlamatini-agent',
     'acpxer': 'acpxer-agent',
     'pythonxer': 'pythonxer-agent',
     'asker': 'asker-agent',
@@ -378,7 +376,7 @@ function appendInputTriangles(el, agentName) {
 const AGENTS_NEVER_START_OTHERS = [
     'cleaner', 'emailer', 'monitor log', 'monitor-log',
     'monitor netstat', 'monitor-netstat',
-    'recmailer', 'stopper', 'whatsapper', 'telegramrx',
+    'recmailer', 'stopper',
     'flowcreator', 'flowhypervisor'
 ];
 
@@ -925,13 +923,12 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'telegramrx') updateTelegramrxConnection(targetId, sourceId, 'remove', 'source');
-        if (targetAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'telegrammer') updateTelegrammerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'telegrammer') updateTelegrammerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'whatsapper') updateWhatsapperConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'whatsapper') updateWhatsapperConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(targetId, sourceId, 'remove', 'source');
@@ -1064,13 +1061,12 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'mcp doctor' && !sourceBeingDeleted) updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'pser' && !targetBeingDeleted) updatePserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'pser' && !sourceBeingDeleted) updatePserConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'telegramrx' && !targetBeingDeleted) updateTelegramrxConnection(targetId, sourceId, 'remove', 'source');
-        if (targetAgentName.toLowerCase() === 'telegramer' && !targetBeingDeleted) updateTelegramerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'telegramer' && !sourceBeingDeleted) updateTelegramerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'telegrammer' && !targetBeingDeleted) updateTelegrammerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'telegrammer' && !sourceBeingDeleted) updateTelegrammerConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'whatsapper' && !targetBeingDeleted) updateWhatsapperConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'whatsapper' && !sourceBeingDeleted) updateWhatsapperConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'teletlamatini' && !targetBeingDeleted) updateTeletlamatiniConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'teletlamatini' && !sourceBeingDeleted) updateTeletlamatiniConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'whatstlamatini' && !targetBeingDeleted) updateWhatstlamatiniConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'whatstlamatini' && !sourceBeingDeleted) updateWhatstlamatiniConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'acpxer' && !targetBeingDeleted) updateAcpxerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'acpxer' && !sourceBeingDeleted) updateAcpxerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'kuberneter' && !targetBeingDeleted) updateKuberneterConnection(targetId, sourceId, 'remove', 'source');
@@ -1532,14 +1528,12 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'notifier') updateNotifierConnection(sourceId, 'target', targetId, 'add');
                     if (targetAgentName.toLowerCase() === 'stopper') updateStopperConnection(targetId, 'source', sourceId, 'add');
                     if (sourceAgentName.toLowerCase() === 'stopper') updateStopperConnection(sourceId, 'output', targetId, 'add');
-                    if (targetAgentName.toLowerCase() === 'whatsapper') updateWhatsapperConnection(targetId, 'source', sourceId, 'add');
-                    if (targetAgentName.toLowerCase() === 'telegramrx') updateTelegramrxConnection(targetId, sourceId, 'add', 'source');
-                    if (targetAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(targetId, sourceId, 'add', 'source');
-                    if (sourceAgentName.toLowerCase() === 'telegramer') updateTelegramerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'telegrammer') updateTelegrammerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'telegrammer') updateTelegrammerConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'whatsapper') updateWhatsapperConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'whatsapper') updateWhatsapperConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'teletlamatini') updateTeletlamatiniConnection(sourceId, targetId, 'add', 'target');
-                    if (targetAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(targetId, sourceId, 'add', 'source');
-                    if (sourceAgentName.toLowerCase() === 'whatstlamatini') updateWhatstlamatiniConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'acpxer') updateAcpxerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'kuberneter') updateKuberneterConnection(targetId, sourceId, 'add', 'source');

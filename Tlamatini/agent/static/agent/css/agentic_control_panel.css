@@ -1013,37 +1013,20 @@ body.resizing-vertical {
     background: linear-gradient(135deg, #006400 0%, #008000 100%);
 }
 
-/* Telegramrx Agent Styles - Telegram Receiver (Dark-Blue to Black gradient) */
-.canvas-item.telegramrx-agent {
-    background-color: #0a1628;
-    color: white;
-    background: linear-gradient(135deg, #1a237e 0%, #000000 100%);
-}
-
-.canvas-item.telegramrx-agent:hover {
-    box-shadow: 0 6px 15px rgba(26, 35, 126, 0.5);
-    background: linear-gradient(135deg, #283593 0%, #1a1a2e 100%);
-}
-
-/* Telegramrx agent icon in sidebar */
-.agent-tool-item[data-content="Telegramrx"] .agent-tool-icon {
-    background: linear-gradient(135deg, #1a237e 0%, #000000 100%);
-}
-
-/* Telegramer Agent Styles - Telegram Sender (Dark-Blue to Green gradient) */
-.canvas-item.telegramer-agent {
+/* Telegrammer Agent Styles - Telegram Sender/Receiver (Dark-Blue to Green gradient) */
+.canvas-item.telegrammer-agent {
     background-color: #1a237e;
     color: white;
     background: linear-gradient(135deg, #1a237e 0%, #10B981 100%);
 }
 
-.canvas-item.telegramer-agent:hover {
+.canvas-item.telegrammer-agent:hover {
     box-shadow: 0 6px 15px rgba(26, 35, 126, 0.5);
     background: linear-gradient(135deg, #283593 0%, #34D399 100%);
 }
 
-/* Telegramer agent icon in sidebar */
-.agent-tool-item[data-content="Telegramer"] .agent-tool-icon {
+/* Telegrammer agent icon in sidebar */
+.agent-tool-item[data-content="Telegrammer"] .agent-tool-icon {
     background: linear-gradient(135deg, #1a237e 0%, #10B981 100%);
 }
 
@@ -2622,26 +2605,6 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(191, 54, 12, 0.5);
 }
 
-/* WhatsTlamatini Agent — "Verdant Mirage" gradient: deep-emerald -> vivid-emerald
-   -> tropical-cyan -> goldenrod. Echoes WhatsApp's brand palette while staying
-   distinct from .whatsapper-agent (which is plain DarkGreen). The four stops
-   read as: emerald depth (the bot's WhatsApp identity) -> living green
-   (active conversation) -> cyan (the Tlamatini bridge channel) -> gold (the
-   delivered answer). The 4-color combination is unique on the canvas and
-   does not collide with .teletlamatini-agent (blues/amber/crimson),
-   .acpxer-agent (cosmic-navy/violet/magenta/cyan) or .acpx-agent
-   (orange/coral/violet/black). */
-.canvas-item.whatstlamatini-agent {
-    background-color: #064E3B;
-    background: linear-gradient(135deg, #064E3B 0%, #10B981 33%, #06B6D4 66%, #FDE047 100%);
-    color: white;
-    font-size: smaller;
-}
-.canvas-item.whatstlamatini-agent:hover {
-    background: linear-gradient(135deg, #065F46 0%, #34D399 33%, #22D3EE 66%, #FACC15 100%);
-    box-shadow: 0 6px 15px rgba(16, 185, 129, 0.5);
-}
-
 /* ACPXer Agent — Aurora Conduit gradient: cosmic-navy -> electric-violet ->
    luminous-magenta -> cyan-radiance. Reads as "AI portal / multi-CLI conduit"
    — visually distinct from .acpx-agent (the LLM-driven exec-report row,
@@ -2676,8 +2639,8 @@ body.resizing-vertical {
    pink/purple/blue/cyan of gatewayer, not the dark-teal/teal/gold/orange
    of gateway-relayer, not the orange/coral/violet/black of acpx,
    not the red/orange/yellow/green of keyboarder, not the
-   crimson/amber/forest/blue of mouser, not the cyan/sky/amber/crimson of
-   teletlamatini, and not the deep-emerald/green/cyan/gold of whatstlamatini.
+   crimson/amber/forest/blue of mouser, and not the cyan/sky/amber/crimson of
+   teletlamatini.
    Verified by inspecting agentic_control_panel.css lines 1870-2138. */
 .canvas-item.decompresser-agent {
     background-color: #1F2A56;

@@ -18,9 +18,9 @@ Shape (``contacts.json``)::
       ]
     }
 
-The two messaging agents (Telegramer / Whatsapper) carry an INLINE copy of this
+The two messaging agents (Telegrammer / Whatsapper) carry an INLINE copy of this
 resolver, because they are self-contained pool subprocesses that cannot import
-``agent.*``. Keep ``agents/telegramer/telegramer.py::_resolve_contact`` and
+``agent.*``. Keep ``agents/telegrammer/telegrammer.py::_resolve_contact`` and
 ``agents/whatsapper/whatsapper.py::_resolve_contact`` in sync with
 ``resolve_contact()`` here. This module is the Django-side source of truth plus
 the LLM-/UI-facing helpers.
@@ -119,7 +119,7 @@ def list_contacts() -> List[Dict[str, str]]:
     return summary
 
 
-# Export the resolved path so spawned pool agents (Telegramer / Whatsapper) can
+# Export the resolved path so spawned pool agents (Telegrammer / Whatsapper) can
 # find contacts.json via the inherited environment, exactly like TLAMATINI_TEMP.
 try:
     os.environ.setdefault("TLAMATINI_CONTACTS", get_contacts_path())

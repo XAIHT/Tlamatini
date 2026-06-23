@@ -1,7 +1,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateWhatstlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
 
 // ========================================
 // SAVE BUTTON
@@ -461,7 +461,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'stopper': await updateStopperConnection(sourceId, 'output', targetId, 'add'); break;
                 case 'ssher': await updateSsherConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'scper': await updateScperConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'telegramer': await updateTelegramerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'telegrammer': await updateTelegrammerConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'whatsapper': await updateWhatsapperConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'raiser': await updateRaiserConnection(sourceId, 'target', targetId, 'add'); break;
                 case 'starter': await updateStarterConnection(sourceId, targetId, 'add'); break;
                 case 'ender': await updateEnderConnection(sourceId, targetNode, 'add', 'output'); break;
@@ -509,7 +510,6 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'parametrizer': await updateParametrizerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'googler': await updateGooglerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'teletlamatini': await updateTeletlamatiniConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'whatstlamatini': await updateWhatstlamatiniConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'acpxer': await updateAcpxerConnection(sourceId, targetId, 'add', 'target'); break;
             }
         }
@@ -544,9 +544,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'cleaner': await updateCleanerConnection(targetId, 'source', sourceId, 'add'); break;
                 case 'croner': await updateCronerConnection(targetId, 'source', sourceId, 'add'); break;
                 case 'stopper': await updateStopperConnection(targetId, 'source', sourceId, 'add'); break;
-                case 'whatsapper': await updateWhatsapperConnection(targetId, 'source', sourceId, 'add'); break;
-                case 'telegramrx': await updateTelegramrxConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'telegramer': await updateTelegramerConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'whatsapper': await updateWhatsapperConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'telegrammer': await updateTelegrammerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'raiser': await updateRaiserConnection(targetId, 'source', sourceId, 'add'); break;
                 case 'ender': await updateEnderConnection(targetId, sourceNode, 'add', 'input'); break;
                 case 'monitor-log': await updateMonitorLogConnection(targetId, sourceId, 'add'); break;
@@ -586,7 +585,6 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'parametrizer': await updateParametrizerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'googler': await updateGooglerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'teletlamatini': await updateTeletlamatiniConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'whatstlamatini': await updateWhatstlamatiniConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'acpxer': await updateAcpxerConnection(targetId, sourceId, 'add', 'source'); break;
             }
         }

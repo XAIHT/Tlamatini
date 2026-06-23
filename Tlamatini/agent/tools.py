@@ -1862,6 +1862,64 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                     field, cfg_key, configured.strip(),
                 )
 
+    if template_dir == "telegrammer":
+        # Telegrammer is the "embedded client" for the OFFICIAL Telegram Bot API:
+        # the bot_token from @BotFather lives once in config.json (Config -> URLs:
+        # telegram_bot_token) so chat prompts never repeat it. It is seeded into
+        # the nested ``telegram:`` block; an explicit per-call value still wins.
+        # Only non-empty, non-placeholder values seed. The secret token value is
+        # NOT logged (only the field name).
+        tg_block = runtime_config.get("telegram")
+        if not isinstance(tg_block, dict):
+            tg_block = {}
+        try:
+            configured = get_config_value("telegram_bot_token", "")
+        except Exception as exc:  # pragma: no cover - config read is best-effort
+            logger.warning("[tools._seed_global_agent_defaults] could not read telegram_bot_token: %s", exc)
+            configured = ""
+        value = configured.strip() if isinstance(configured, str) else ""
+        is_placeholder = value.startswith("<") and value.endswith(">")
+        if value and not is_placeholder:
+            tg_block["bot_token"] = value
+            # Don't log the bot_token value (secret); log only the field name.
+            logger.info(
+                "[tools._seed_global_agent_defaults] Telegrammer telegram.bot_token seeded from config telegram_bot_token",
+            )
+        if tg_block:
+            runtime_config["telegram"] = tg_block
+
+    if template_dir == "whatsapper":
+        # Whatsapper is the "embedded client" for Meta's WhatsApp Cloud API: the
+        # sending number's phone_number_id + the permanent access_token live once
+        # in config.json (Config -> URLs: whatsapp_*) so chat prompts never repeat
+        # them. They are seeded into the nested ``whatsapp:`` block; an explicit
+        # per-call value still wins. Only non-empty, non-placeholder values seed.
+        wa_block = runtime_config.get("whatsapp")
+        if not isinstance(wa_block, dict):
+            wa_block = {}
+        for cfg_key, field in (
+            ("whatsapp_phone_number_id", "phone_number_id"),
+            ("whatsapp_access_token", "access_token"),
+            ("whatsapp_graph_base", "graph_base"),
+            ("whatsapp_api_version", "api_version"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                continue
+            value = configured.strip() if isinstance(configured, str) else ""
+            is_placeholder = value.startswith("<") and value.endswith(">")
+            if value and not is_placeholder:
+                wa_block[field] = value
+                # Don't log the access_token value (secret); log only the field name.
+                logger.info(
+                    "[tools._seed_global_agent_defaults] Whatsapper whatsapp.%s seeded from config %s",
+                    field, cfg_key,
+                )
+        if wa_block:
+            runtime_config["whatsapp"] = wa_block
+
     return runtime_config
 
 
@@ -1968,12 +2026,15 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                                   'email.cc_addresses', 'email.bcc_addresses',
                                   'email.subject', 'email.attachments',
                                   'pattern', 'attach_log')},
-    'telegramer':     {'title': 'TELEGRAMER MESSAGE TO SEND',
-                       'body': ('telegram.message', 'telegram message'),
-                       'params': ('telegram.api_id', 'telegram.chat_id')},
-    'whatsapper':     {'title': 'WHATSAPPER MONITORING / SEND TO PERFORM',
-                       'params': ('textmebot.phone', 'keywords', 'poll_interval',
-                                  'llm.base_url', 'llm.model')},
+    'telegrammer':    {'title': 'TELEGRAMMER MESSAGE TO SEND',
+                       'body': ('message', 'telegram message'),
+                       'params': ('mode', 'telegram.bot_token', 'telegram.chat_id',
+                                  'contact_name', 'rx_max_seconds')},
+    'whatsapper':     {'title': 'WHATSAPPER MESSAGE TO SEND',
+                       'body': ('message', 'whatsapp message'),
+                       'params': ('mode', 'whatsapp.phone_number_id',
+                                  'whatsapp.access_token', 'whatsapp.to',
+                                  'contact_name', 'template', 'rx_max_seconds')},
     'notifier':       {'title': 'NOTIFIER DESKTOP ALERT TO RAISE',
                        'params': ('target.mode', 'target.search_strings',
                                   'target.outcome_detail', 'target.sound_enabled',
@@ -3101,7 +3162,7 @@ def agent_parametrizer(request: str) -> str:
     - If a parameter name is ambiguous, use its dotted config path.
 
     Examples of what to pass:
-    - Parametrize the template Telegramer agent to set api_id=123456, api_hash='adcb5adcbbad6676adc98112345678910', chat_id='Angela-Bennet', message='Telegramer parametrized and launched'
+    - Parametrize the template Telegrammer agent to set telegram.bot_token='123456:ABC-DEF1234ghIkl', telegram.chat_id='123456789', message='Telegrammer parametrized and launched'
     - Parametrize the template Emailer agent to set host='smtp.gmail.com', port=587, username='user@gmail.com', password='secret', from_address='user@gmail.com', to_addresses=['ops@example.com','soc@example.com'], subject='Alert generated', body='Emailer parametrized'
     - Parametrize the template Gatewayer agent to set http.host='0.0.0.0', http.port=8787, auth.mode='bearer', auth.bearer_token='super-secret-token', payload.required_fields=['event_type','session_id']
     - Parametrize the template J-Decompiler agent to set directory='C:\\Temp\\*.class,*.jar,*.war,*.ear', recursive=true
@@ -3225,7 +3286,7 @@ def agent_starter(request: str) -> str:
     - Start-up the agent Telegrammer
     - Start-up the agent Crawler
     - Raise the agent Summarizer
-    - Execute the agent Telegramrx
+    - Execute the agent Whatsapper
     - Run the agent J-Decompiler
 
     Input:
@@ -3320,7 +3381,7 @@ def agent_stopper(request: str) -> str:
     - Stop the agent Telegrammer
     - Stop the agent Crawler
     - Terminate the agent Summarizer
-    - Shut down the agent Telegramrx
+    - Shut down the agent Whatsapper
     - Kill the agent Sleeper
 
     Input:
@@ -3414,7 +3475,7 @@ def agent_stat_getter(request: str) -> str:
     - Get the status of agent Telegrammer
     - Check the status of agent Crawler
     - Show the state of agent Summarizer
-    - Is the agent Telegramrx running
+    - Is the agent Whatsapper running
     - What is the status of agent Sleeper
 
     Input:

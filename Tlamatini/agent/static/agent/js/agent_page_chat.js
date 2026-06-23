@@ -1415,24 +1415,38 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             }
         });
 
-    // ── Telegramer ───────────────────────────────────────────────────
-    // Template field: telegram (nested)
-    } else if (lower === 'telegramer') {
+    // ── Telegrammer ──────────────────────────────────────────────────
+    // Official Telegram BOT API (bot_token from @BotFather). Top-level:
+    // message, contact_name, mode, rx_max_seconds. Nested: telegram
+    // (bot_token, chat_id). Sends or receives, then starts target_agents.
+    } else if (lower === 'telegrammer') {
+        set('message', pairs.message);
+        set('contact_name', pairs.contact_name);
+        set('mode', pairs.mode);
+        set('rx_max_seconds', pairs.rx_max_seconds);
         const telegram = collectDotted('telegram');
         // Top-level shortcuts the LLM commonly passes, mapped into the nested block.
-        if (pairs.contact_name) telegram.contact_name = pairs.contact_name;
-        if (pairs.message) telegram.message = pairs.message;
+        if (pairs.bot_token) telegram.bot_token = pairs.bot_token;
         if (pairs.chat_id) telegram.chat_id = pairs.chat_id;
         if (Object.keys(telegram).length > 0) config.telegram = telegram;
 
     // ── Whatsapper ───────────────────────────────────────────────────
-    // Template field: textmebot (nested)
+    // Official Meta WhatsApp Cloud API ONLY. Top-level: message,
+    // contact_name, to, provider, template(+lang/params), mode,
+    // rx_max_seconds. Nested: whatsapp (phone_number_id, access_token,
+    // graph_base, api_version, to, verify_token, webhook_*).
     } else if (lower === 'whatsapper') {
-        const textmebot = collectDotted('textmebot');
-        if (pairs.phone_number) textmebot.phone = pairs.phone_number;
-        if (pairs.message) textmebot.message = pairs.message;
-        if (pairs.contact_name) textmebot.contact_name = pairs.contact_name;
-        if (Object.keys(textmebot).length > 0) config.textmebot = textmebot;
+        set('message', pairs.message);
+        set('contact_name', pairs.contact_name);
+        set('to', pairs.to || pairs.phone_number);
+        set('provider', pairs.provider);
+        set('template', pairs.template);
+        set('template_language', pairs.template_language);
+        set('template_params', pairs.template_params);
+        set('mode', pairs.mode);
+        set('rx_max_seconds', pairs.rx_max_seconds);
+        const whatsapp = collectDotted('whatsapp');
+        if (Object.keys(whatsapp).length > 0) config.whatsapp = whatsapp;
 
     // ── Recmailer ────────────────────────────────────────────────────
     // Template field: imap (nested)
@@ -1723,7 +1737,7 @@ function _agentPurpose(canonicalName) {
         'Notifier': 'Desktop notification with sound',
         'Emailer': 'SMTP email sending',
         'Recmailer': 'IMAP email receiver',
-        'Telegramer': 'Telegram messages',
+        'Telegrammer': 'Telegram messages',
         'Whatsapper': 'WhatsApp messages',
         'Monitor Log': 'LLM-powered log file monitor',
         'Monitor Netstat': 'LLM-powered network port monitor',

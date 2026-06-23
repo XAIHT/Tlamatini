@@ -1,45 +1,46 @@
-# Whatsapper Agent Configuration
-# Monitors source agents in parallel and sends WhatsApp notifications via TextMeBot.
+# Whatsapper Agent — the ONE WhatsApp send/receive agent (official Meta Cloud API only)
+# How to get the keys: see HOW_TO_GET_YOUR_WHATSAPP_ASSETS.md (Meta/Facebook, no third party).
 
-# Source agents to monitor (auto-populated via canvas connections)
+# ── Run mode ──────────────────────────────────────────────────────────────────
+# auto    → SEND if `message` or `template` is set, otherwise RECEIVE.
+# send    → (i)  send the message/template, start target_agents, die.
+# receive → (ii/iii) run the official webhook listener up to rx_max_seconds, then
+#           start target_agents and die — reporting the received text (iii) or
+#           "no message" (ii). Both are readable by Parametrizer.
+mode: "auto"
+
+# ── Meta WhatsApp Cloud API credentials ──────────────────────────────────────
+# Normally seeded from config.json globals (whatsapp_phone_number_id /
+# whatsapp_access_token) or env (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN).
+whatsapp:
+  phone_number_id: <WHATSAPP_PHONE_NUMBER_ID goes here>
+  access_token: <WHATSAPP_ACCESS_TOKEN goes here>              # secret
+  graph_base: "https://graph.facebook.com"
+  api_version: "v20.0"
+  to: ""                        # default recipient number (country code + number)
+  # RECEIVE webhook (Meta POSTs inbound here — expose it publicly + set it in
+  # Meta → WhatsApp → Configuration with this same verify_token):
+  verify_token: "tlamatini"
+  webhook_host: "0.0.0.0"
+  webhook_port: 8086
+  webhook_path: "/wa-webhook"
+
+# ── SEND ──────────────────────────────────────────────────────────────────────
+message: ""                     # free-form text (delivers only inside the 24h window)
+contact_name: ""                # or a person's name from contacts.json (→ their whatsapp number)
+# Cold-start (outside 24h) needs an APPROVED template:
+template: ""                    # e.g. hello_world
+template_language: "en_US"
+template_params: []             # body {{1}},{{2}}… values (YAML list, or "a||b")
+
+# ── RECEIVE ───────────────────────────────────────────────────────────────────
+rx_max_seconds: 60
+rx_from: ""                     # optional: only accept messages from this number
+rx_match: ""                    # optional: only accept a message containing this text
+
+# ── Wiring ────────────────────────────────────────────────────────────────────
 source_agents: []
-
-# Target agents (reference only, not auto-started)
 target_agents: []
 
-# Keywords to detect (comma-separated string)
-keywords: "error, critical, exception, fatal"
-
-# System Prompt for LLM Analysis
-system_prompt: |
-  You are a Log Analysis Agent for WhatsApp notifications within the Tlamatini platform.
-  Analyze the provided log entry.
-  If it contains any of the target keywords ({keywords}), summarize the issue in a short message suitable for WhatsApp.
-  
-  Format:
-  "🚨 Alert from {source_agent}: <Short Summary>"
-  
-  Keep it under 200 characters if possible.
-
-# LLM Configuration
-llm:
-  base_url: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
-  temperature: 0.1
-
-# TextMeBot Configuration (Get API Key from textmebot.com)
-textmebot:
-  phone: ""  # Your phone number with country code (e.g., +1234567890)
-  apikey: "" # Your TextMeBot API Key
-
-# One-shot direct send (Contacts-aware). When `message` is set AND there are no
-# source_agents to monitor, Whatsapper sends this message once and exits (the
-# "tell her I'm OK" path). `contact_name` is a name from contacts.json (next to
-# config.json); when set it is resolved to that person's WhatsApp number and
-# OVERRIDES textmebot.phone. Leave both blank for the log-monitor mode.
-message: ""
-contact_name: ""
-
-# Polling configuration
-poll_interval: 5
+poll_interval: 2
 recursion_limit: 1000

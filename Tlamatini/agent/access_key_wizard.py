@@ -99,44 +99,18 @@ WIZARD_GROUPS: Tuple[WizardGroup, ...] = (
         title="Telegram Bridges",
         fields=(
             WizardField(
-                key="TELEGRAMER_API_ID",
-                label="Telegramer API ID",
+                key="TELEGRAMMER_BOT_TOKEN",
+                label="Telegrammer bot token (@BotFather)",
+                group="telegram",
+                yaml_rules=(("telegrammer", ("telegram", "bot_token"), True),),
+                note="Official Telegram Bot API token (110201543:AAH...). See agents/telegrammer/HOW_TO_GET_YOUR_TELEGRAM_ASSETS.md",
+            ),
+            WizardField(
+                key="TELEGRAMMER_CHAT_ID",
+                label="Telegrammer chat id / @username",
                 group="telegram",
                 kind="text",
-                yaml_rules=(("telegramer", ("telegram", "api_id"), False),),
-            ),
-            WizardField(
-                key="TELEGRAMER_API_HASH",
-                label="Telegramer API hash",
-                group="telegram",
-                yaml_rules=(("telegramer", ("telegram", "api_hash"), False),),
-            ),
-            WizardField(
-                key="TELEGRAMER_CHAT_ID",
-                label="Telegramer chat",
-                group="telegram",
-                kind="text",
-                yaml_rules=(("telegramer", ("telegram", "chat_id"), False),),
-            ),
-            WizardField(
-                key="TELEGRAMRX_API_ID",
-                label="TelegramRX API ID",
-                group="telegram",
-                kind="text",
-                yaml_rules=(("telegramrx", ("telegram", "api_id"), False),),
-            ),
-            WizardField(
-                key="TELEGRAMRX_API_HASH",
-                label="TelegramRX API hash",
-                group="telegram",
-                yaml_rules=(("telegramrx", ("telegram", "api_hash"), False),),
-            ),
-            WizardField(
-                key="TELEGRAMRX_LISTEN_CHAT",
-                label="TelegramRX listen chat",
-                group="telegram",
-                kind="text",
-                yaml_rules=(("telegramrx", ("telegram", "listen_chat"), False),),
+                yaml_rules=(("telegrammer", ("telegram", "chat_id"), False),),
             ),
             WizardField(
                 key="TELETLAMATINI_API_ID",
@@ -175,6 +149,26 @@ WIZARD_GROUPS: Tuple[WizardGroup, ...] = (
                 label="Tlamatini login password",
                 group="telegram",
                 yaml_rules=(("teletlamatini", ("tlamatini", "password"), True),),
+            ),
+        ),
+    ),
+    WizardGroup(
+        key="whatsapp",
+        title="WhatsApp Bridge",
+        fields=(
+            WizardField(
+                key="WHATSAPPER_PHONE_NUMBER_ID",
+                label="Whatsapper phone number ID (Meta)",
+                group="whatsapp",
+                kind="text",
+                yaml_rules=(("whatsapper", ("whatsapp", "phone_number_id"), False),),
+                note="From Meta WhatsApp Manager -> API Setup. See agents/whatsapper/HOW_TO_GET_YOUR_WHATSAPP_ASSETS.md",
+            ),
+            WizardField(
+                key="WHATSAPPER_ACCESS_TOKEN",
+                label="Whatsapper access token (Meta)",
+                group="whatsapp",
+                yaml_rules=(("whatsapper", ("whatsapp", "access_token"), True),),
             ),
         ),
     ),
@@ -219,13 +213,13 @@ FIELD_BY_KEY: Dict[str, WizardField] = {
 }
 
 AGENT_YAML_RELATIVE_PATHS: Dict[str, Tuple[str, str]] = {
-    "telegramer": (
-        "Tlamatini/agent/agents/telegramer/config.yaml",
-        "agents/telegramer/config.yaml",
+    "telegrammer": (
+        "Tlamatini/agent/agents/telegrammer/config.yaml",
+        "agents/telegrammer/config.yaml",
     ),
-    "telegramrx": (
-        "Tlamatini/agent/agents/telegramrx/config.yaml",
-        "agents/telegramrx/config.yaml",
+    "whatsapper": (
+        "Tlamatini/agent/agents/whatsapper/config.yaml",
+        "agents/whatsapper/config.yaml",
     ),
     "teletlamatini": (
         "Tlamatini/agent/agents/teletlamatini/config.yaml",

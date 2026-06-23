@@ -607,7 +607,7 @@ class RegistryIntegrationTests(SimpleTestCase):
         # The 4-color "Vault Unsealed" gradient must appear exactly once in
         # the canvas CSS, and the four hex stops must NOT collide with the
         # other 4-color gradients in the file (gatewayer / gateway-relayer /
-        # node-manager / whatstlamatini / acpx / acpxer / keyboarder / mouser /
+        # node-manager / acpx / acpxer / keyboarder / mouser /
         # teletlamatini).
         css_path = os.path.join(
             os.path.dirname(__file__),

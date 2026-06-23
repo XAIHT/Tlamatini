@@ -5996,7 +5996,7 @@ class PreLaunchScriptPreviewTests(TestCase):
         self.assertIn('production', body)
         self.assertIn('deployment.yaml', body)
 
-    # -- dotted nested config paths (Emailer / Telegramer / SQLer / ...) --
+    # -- dotted nested config paths (Emailer / Telegrammer / SQLer / ...) --
 
     def test_emailer_preview_resolves_dotted_smtp_and_email_paths(self):
         from agent import tools

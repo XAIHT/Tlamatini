@@ -1566,7 +1566,7 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
-.exec-report-caption-telegramer {
+.exec-report-caption-telegrammer {
     background: linear-gradient(135deg, #1a237e 0%, #10B981 100%);
     color: #ffffff;
 }
@@ -1707,7 +1707,7 @@ body.resizing-vertical {
 .exec-report-blenderer thead th,
 .exec-report-playwrighter thead th,
 .exec-report-emailer thead th,
-.exec-report-telegramer thead th,
+.exec-report-telegrammer thead th,
 .exec-report-whatsapper thead th,
 .exec-report-notifier thead th,
 .exec-report-kyberkeygen thead th,
@@ -1802,7 +1802,7 @@ body.resizing-vertical {
 .exec-report-blenderer .exec-report-cmd      { border-left: 3px solid #EA7600; }
 .exec-report-playwrighter .exec-report-cmd   { border-left: 3px solid #D90368; }
 .exec-report-emailer .exec-report-cmd        { border-left: 3px solid #5C6BC0; }
-.exec-report-telegramer .exec-report-cmd     { border-left: 3px solid #1a237e; }
+.exec-report-telegrammer .exec-report-cmd     { border-left: 3px solid #1a237e; }
 .exec-report-whatsapper .exec-report-cmd     { border-left: 3px solid #006400; }
 .exec-report-notifier .exec-report-cmd       { border-left: 3px solid #DB2777; }
 .exec-report-kyberkeygen .exec-report-cmd    { border-left: 3px solid #7B2FBE; }

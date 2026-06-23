@@ -67,7 +67,7 @@ SECTION 3 — AGENT TYPES AND EXPECTED BEHAVIOR
 SHORT-LIVED agents (should start, do work, and exit quickly):
   Starter, Ender, Cleaner, Executer, Pythonxer, Shoter, Sleeper, Ssher, Scper,
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
-  Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegramer, FlowCreator,
+  Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegrammer, Whatsapper, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
@@ -78,7 +78,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
-  Emailer, Whatsapper, RecMailer, TelegramRX, TeleTlamatini, WhatsTlamatini, Stopper, Gatewayer, GatewayRelayer,
+  Emailer, RecMailer, TeleTlamatini, Stopper, Gatewayer, GatewayRelayer,
   NodeManager, Deleter (event mode), Mover (event mode)
 
 TeleTlamatini SPECIAL NOTES:
@@ -98,25 +98,6 @@ TeleTlamatini SPECIAL NOTES:
     starts its configured `target_agents` (similar to Gatewayer's
     dispatcher). A burst of "Started agent ..." lines after a long quiet
     period is NORMAL.
-
-WHATSTLAMATINI SPECIAL NOTES:
-  - WhatsTlamatini is the WhatsApp counterpart of TeleTlamatini — it bridges
-    WhatsApp users into the full Tlamatini chat (the same Multi-Turn
-    behavior as `agent_page.html`, including per-agent Exec Report tables)
-    via Meta's WhatsApp Cloud API.
-  - It runs a stdlib HTTP webhook listener and stays alive waiting for
-    inbound POSTs from Meta. Long silence is NORMAL — it simply means no
-    WhatsApp user has written. Log lines like "webhook: listening on ...",
-    "webhook: Meta verification OK", "phase=AWAIT_PASSWORD",
-    "phase=AWAIT_INFO", "phase=PROCESSING", and "completeness verdict={...}"
-    are NORMAL operational output. NEVER flag them as errors.
-  - "WhatsApp send → <number>: OK" lines after each completed request are
-    NORMAL. Sporadic 4xx HTTPError lines are typically caused by transient
-    Graph-API hiccups or expired tokens — flag only if they recur for the
-    same number across ≥3 cycles.
-  - After every successfully completed user request cycle WhatsTlamatini
-    starts its configured `target_agents`. A burst of "Started agent ..."
-    lines after a long quiet period is NORMAL.
 
 ACPXER SPECIAL NOTES:
   - ACPXer drives ONE ACPX session lifecycle: spawn an external coding-agent
@@ -271,17 +252,36 @@ KALIER SPECIAL NOTES:
     Flask API server is not running on the Kali box, the SSH tunnel is down, or
     `server_url` is wrong. Treat a connection error like a broken chain hop.
 
-TELEGRAMER / WHATSAPPER SPECIAL NOTES:
-  - Both are SHORT-LIVED one-shot senders here: Telegramer always sends once and
-    finishes; Whatsapper sends once and finishes when it has a `message` and NO
-    `source_agents`. A quick run that then ends is NORMAL, not "stuck".
+TELEGRAMMER / WHATSAPPER SPECIAL NOTES:
+  - Both are SHORT-LIVED send/receive agents that finish and then start their
+    `target_agents`. A quick run that then ends is NORMAL, not "stuck".
+  - Telegrammer uses the OFFICIAL Telegram Bot API (a `bot_token` from @BotFather) —
+    it does NOT use Telethon / api_id / api_hash / a phone login or a session file.
+    In `mode: send` it posts one message and finishes; in `mode: receive` it waits up
+    to `rx_max_seconds` for an inbound message (optionally matching `rx_match` from
+    `rx_from_chat_id`) and then finishes. A receive run that simply times out with
+    NO message is a VALID result (the downstream Forker branches on it) — do NOT flag
+    a "no message received within rx_max_seconds" line as an error.
+  - Whatsapper uses the OFFICIAL Meta WhatsApp Cloud API (Graph API + `access_token`
+    + `phone_number_id`) ONLY — no third-party gateway. In `mode: send` it posts one
+    message (or template) and finishes; in `mode: receive` it runs the official
+    webhook listener up to `rx_max_seconds` (Meta verification + inbound POST) and
+    then finishes. A receive run that times out with NO inbound message is a VALID
+    result — do NOT flag it as an error. Sporadic 4xx HTTPError lines are typically
+    transient Graph-API hiccups or expired tokens — flag only if they recur across
+    ≥3 cycles.
+  - Both START their `target_agents` after sending/receiving, then die — they are NOT
+    terminal never-start agents. A burst of "Started agent ..." lines after a send or
+    receive completes is NORMAL.
   - Contacts book: a line like "Resolved contact '<name>' -> Telegram/WhatsApp ..."
     is normal. A "Contact '<name>' not found (or has no ...) in contacts.json" line
     is the agent working as DESIGNED (fail-safe: it refuses to send to the wrong
     person rather than guess) — it is routable content, NOT a flow error; do NOT
     flag it.
-  - Whatsapper in MONITOR mode (it HAS `source_agents`) is long-running by design —
-    do NOT flag it as stuck for sitting idle while it polls the source logs.
+  - Their `INI_SECTION_TELEGRAMMER<<<` / `INI_SECTION_WHATSAPPER<<<` blocks are NORMAL
+    routable output (Telegrammer carries `mode`, `direction`, `chat_id`, `status`,
+    `message_id` + body; Whatsapper carries `mode`, `direction`, `recipient`,
+    `status`, `message_id` + body) — NEVER flag their content as an error.
 
 DISCOVERER SPECIAL NOTES:
   - Discoverer is SHORT-LIVED and ACTIVE: it runs ONE ProjectDiscovery tool
@@ -686,9 +686,6 @@ DO NOT report these as problems:
   - TeleTlamatini sitting idle waiting for the next Telegram message
   - TeleTlamatini logging "phase=AWAIT_PASSWORD/AWAIT_REQUEST/AWAIT_INFO/PROCESSING" or "completeness verdict={...}"
   - TeleTlamatini bursts of "Started agent ..." lines following a completed user request cycle
-  - WhatsTlamatini sitting idle waiting for the next WhatsApp inbound webhook POST
-  - WhatsTlamatini logging "webhook: listening on ...", "webhook: Meta verification OK", "phase=AWAIT_PASSWORD/AWAIT_INFO/PROCESSING", "WhatsApp send → ...: OK", or "completeness verdict={...}"
-  - WhatsTlamatini bursts of "Started agent ..." lines following a completed user request cycle
 
 ══════════════════════════════════════════
 SECTION 7 — RESPONSE FORMAT (STRICT)
