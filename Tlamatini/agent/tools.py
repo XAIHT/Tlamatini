@@ -2430,27 +2430,67 @@ def _launch_wrapped_chat_agent(spec, request):
             try:
                 ast.parse(script_value)
             except SyntaxError as syn:
-                detail = f"line {syn.lineno}: {syn.msg}" if syn.lineno else syn.msg
-                first_line = script_value.splitlines()[0] if script_value else ""
-                logger.warning(
-                    "[tools._launch_wrapped_chat_agent] Pythonxer pre-flight SyntaxError: %s (first line: %r)",
-                    detail, first_line,
-                )
-                return _tool_output({
-                    "status": "error",
-                    "retryable": True,
-                    "message": (
-                        f"Pythonxer script has a Python SyntaxError at {detail}. "
-                        "The script was not executed. If you intended to write files, "
-                        "prefer chat_agent_file_creator (one call per file) over embedding "
-                        "large multi-line content in a Python string literal. "
-                        "If you must use Pythonxer, send the script as a plain block without "
-                        "wrapping it in outer quotes."
-                    ),
-                    "runtime_dir": runtime_dir,
-                    "syntax_error": detail,
-                    "first_line": first_line,
-                })
+                # AUTO-REPAIR: the model frequently flattens a multi-line script
+                # into ONE physical line using literal escape sequences (a
+                # backslash followed by 'n' or 't') instead of real newlines, so
+                # ast.parse fails with "unexpected character after line
+                # continuation character". When the script is a single physical
+                # line yet carries those literal escapes, decode them and
+                # re-parse; if the repaired script is valid, USE IT instead of
+                # bouncing the call back to the LLM (which otherwise retries
+                # several times then falls back to file_creator+executer -- a
+                # needless storm of executions for a trivial task).
+                _nl = chr(10)
+                _tab = chr(9)
+                _bs = chr(92)
+                repaired = None
+                has_real_newline = _nl in script_value
+                has_escaped = (_bs + "n") in script_value or (_bs + "t") in script_value
+                if (not has_real_newline) and has_escaped:
+                    candidate = (
+                        script_value
+                        .replace(_bs + "r" + _bs + "n", _nl)
+                        .replace(_bs + "n", _nl)
+                        .replace(_bs + "t", _tab)
+                        .replace(_bs + "r", _nl)
+                    )
+                    if candidate != script_value:
+                        try:
+                            ast.parse(candidate)
+                            repaired = candidate
+                        except SyntaxError:
+                            repaired = None
+                if repaired is not None:
+                    runtime_config["script"] = repaired
+                    script_value = repaired
+                    logger.info(
+                        "[tools._launch_wrapped_chat_agent] Pythonxer script AUTO-REPAIRED: "
+                        "literal escape sequences decoded to real newlines (now %d lines); "
+                        "running instead of bouncing to the LLM.",
+                        len(repaired.splitlines()),
+                    )
+                else:
+                    detail = f"line {syn.lineno}: {syn.msg}" if syn.lineno else syn.msg
+                    first_line = script_value.splitlines()[0] if script_value else ""
+                    logger.warning(
+                        "[tools._launch_wrapped_chat_agent] Pythonxer pre-flight SyntaxError: %s (first line: %r)",
+                        detail, first_line,
+                    )
+                    return _tool_output({
+                        "status": "error",
+                        "retryable": True,
+                        "message": (
+                            f"Pythonxer script has a Python SyntaxError at {detail}. "
+                            "The script was not executed. If you intended to write files, "
+                            "prefer chat_agent_file_creator (one call per file) over embedding "
+                            "large multi-line content in a Python string literal. "
+                            "If you must use Pythonxer, send the script as a plain block without "
+                            "wrapping it in outer quotes."
+                        ),
+                        "runtime_dir": runtime_dir,
+                        "syntax_error": detail,
+                        "first_line": first_line,
+                    })
 
     try:
         with open(runtime_config_path, "w", encoding="utf-8") as file_handle:

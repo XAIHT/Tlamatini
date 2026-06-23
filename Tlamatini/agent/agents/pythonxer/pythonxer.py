@@ -401,6 +401,37 @@ def execute_python_script(script_content: str, execute_forked_window: bool = Fal
         script_path = os.path.abspath("temp_script.py")
         logging.info(f"📝 Writing Python script to: {script_path}")
 
+        _nl = chr(10)
+        _tab = chr(9)
+        _bs = chr(92)
+        _has_real_nl = _nl in script_content
+        _has_escape = (_bs + "n") in script_content or (_bs + "t") in script_content
+        if (not _has_real_nl) and _has_escape:
+            # AUTO-REPAIR: the model sometimes flattens a multi-line script into
+            # ONE physical line using literal escape sequences (a backslash
+            # followed by n/t/r) instead of real newlines, which makes compile()
+            # fail with "unexpected character after line continuation character"
+            # and forces the caller into a retry storm. Decode the escapes and
+            # keep the result ONLY if it then compiles.
+            _candidate = (
+                script_content
+                .replace(_bs + "r" + _bs + "n", _nl)
+                .replace(_bs + "n", _nl)
+                .replace(_bs + "t", _tab)
+                .replace(_bs + "r", _nl)
+            )
+            if _candidate != script_content:
+                try:
+                    compile(_candidate, script_path, "exec")
+                    logging.info(
+                        "AUTO-REPAIRED script: decoded literal escape sequences "
+                        "to real newlines (now %d lines).",
+                        len(_candidate.splitlines()),
+                    )
+                    script_content = _candidate
+                except SyntaxError:
+                    pass
+
         with open(script_path, "w", encoding="utf-8") as f:
             f.write(script_content)
 
