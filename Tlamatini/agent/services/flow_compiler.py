@@ -310,11 +310,6 @@ def _ensure_pool_agent(node: FlowNode, pool_path: Path) -> Path:
     if source_script.exists():
         shutil.copy2(source_script, pool_dir / source_script.name)
 
-    if node.agent_type == "telegramrx":
-        source_session = source_dir / "telegramrx_session.session"
-        if source_session.exists():
-            shutil.copy2(source_session, pool_dir / source_session.name)
-
     return pool_dir
 
 

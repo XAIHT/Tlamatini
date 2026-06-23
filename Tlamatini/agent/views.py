@@ -973,15 +973,6 @@ def ensure_agent_exists_view(request, agent_name):
                 else:
                     print(f"[ENSURE] Warning: Source script not found: {source_script}")
 
-                # Copy Telethon session file for telegramrx agents
-                if base_folder_name == "telegramrx":
-                    for session_file in ['telegramrx_session.session']:
-                        src_session = os.path.join(source_dir, session_file)
-                        if os.path.exists(src_session):
-                            dst_session = os.path.join(pool_dir, session_file)
-                            shutil.copy2(src_session, dst_session)
-                            print(f"[ENSURE] Copied session file: {session_file}")
-
             except Exception as e:
                 print(f"[ENSURE] Warning: Failed to update script for {pool_folder_name}: {e}")
 
@@ -1135,7 +1126,7 @@ def save_agent_config_view(request, agent_name):
             merged_config = {k: v for k, v in merged_config.items() if k in ender_known_keys}
 
         # Sanitize TeleTlamatini config: drop legacy user-account-mode keys that
-        # are now dead weight (Telegramer / TelegramRX cover that direction).
+        # are now dead weight (Telegrammer covers that direction).
         # Without this, deep_merge would preserve `telegram.listen_chat` and the
         # whole `access.*` block forever in pool configs from older deploys.
         if base_folder_name == 'teletlamatini':
@@ -1165,29 +1156,6 @@ def save_agent_config_view(request, agent_name):
                 }
                 merged_config.pop('llm', None)
             # `poll_interval` was unused — drop.
-            merged_config.pop('poll_interval', None)
-
-        # Sanitize WhatsTlamatini config: same idea as TeleTlamatini — drop
-        # the legacy `access:` text-overrides block, migrate the password if
-        # present, and migrate any legacy `llm:` block into the new
-        # `completeness_check:` shape. Also drop unused `poll_interval`.
-        if base_folder_name == 'whatstlamatini':
-            access = merged_config.get('access')
-            if isinstance(access, dict):
-                pwd_from_access = access.get('password')
-                if pwd_from_access and not merged_config.get('password'):
-                    merged_config['password'] = pwd_from_access
-                merged_config.pop('access', None)
-            llm_legacy = merged_config.get('llm')
-            cc = merged_config.get('completeness_check') or {}
-            if isinstance(llm_legacy, dict) and not cc:
-                merged_config['completeness_check'] = {
-                    'enabled': False,
-                    'host': llm_legacy.get('host', 'http://localhost:11434'),
-                    'model': llm_legacy.get('model', 'llama3'),
-                    'instruction': llm_legacy.get('understanding_prompt', ''),
-                }
-                merged_config.pop('llm', None)
             merged_config.pop('poll_interval', None)
 
         # Centralized dump path: handles multiline-string literal-block style
@@ -5162,96 +5130,6 @@ def update_teletlamatini_connection_view(request, agent_name):
 
 @csrf_exempt
 @require_POST
-def update_whatstlamatini_connection_view(request, agent_name):
-    """
-    Update a WhatsTlamatini agent's config.yaml when connections are made/removed.
-    Handles 'source' (input) and 'target' (output) connections.
-    """
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        connected_agent = data.get('connected_agent')
-        action = data.get('action')
-        connection_type = data.get('connection_type', 'source')
-
-        if not connected_agent or not action:
-            return HttpResponse(json.dumps({'error': 'Missing required fields'}), content_type='application/json', status=400)
-
-        # Transform agent names to pool folder names
-        parts = agent_name.split('-')
-        cardinal = None
-        if parts[-1].isdigit():
-            cardinal = parts.pop()
-        base_folder_name = "_".join(parts)
-        if cardinal:
-            pool_folder_name = f"{base_folder_name}_{cardinal}"
-        else:
-            pool_folder_name = base_folder_name
-
-        conn_parts = connected_agent.split('-')
-        conn_cardinal = None
-        if conn_parts[-1].isdigit():
-            conn_cardinal = conn_parts.pop()
-        conn_base = "_".join(conn_parts)
-        if conn_cardinal:
-            conn_pool_name = f"{conn_base}_{conn_cardinal}"
-        else:
-            conn_pool_name = conn_base
-
-        # Path setup
-        pool_base_path = get_pool_path(request)
-        pool_dir = os.path.join(pool_base_path, pool_folder_name)
-        config_path = os.path.join(pool_dir, 'config.yaml')
-
-        if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': 'WhatsTlamatini agent config not found'}), content_type='application/json', status=404)
-
-        # Load Config
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f) or {}
-
-        # Modify Config
-        if connection_type == 'target':
-            target_agents = config.get('target_agents', [])
-            if not isinstance(target_agents, list):
-                target_agents = []
-
-            if action == 'add':
-                if conn_pool_name not in target_agents:
-                    target_agents.append(conn_pool_name)
-            elif action == 'remove':
-                if conn_pool_name in target_agents:
-                    target_agents.remove(conn_pool_name)
-
-            config['target_agents'] = target_agents
-            msg = f'Updated target_agents: {target_agents}'
-
-        else:  # source
-            source_agents = config.get('source_agents', [])
-            if not isinstance(source_agents, list):
-                source_agents = []
-
-            if action == 'add':
-                if conn_pool_name not in source_agents:
-                    source_agents.append(conn_pool_name)
-            elif action == 'remove':
-                if conn_pool_name in source_agents:
-                    source_agents.remove(conn_pool_name)
-
-            config['source_agents'] = source_agents
-            msg = f'Updated source_agents: {source_agents}'
-
-        # Save Config
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-
-        return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
-    except Exception as e:
-        print(f"Error updating WhatsTlamatini connection: {e}")
-        return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
-
-
-@csrf_exempt
-@require_POST
 def update_acpxer_connection_view(request, agent_name):
     """
     Update an ACPXer agent's config.yaml when connections are made/removed.
@@ -5342,99 +5220,9 @@ def update_acpxer_connection_view(request, agent_name):
 
 @csrf_exempt
 @require_POST
-def update_telegramrx_connection_view(request, agent_name):
+def update_telegrammer_connection_view(request, agent_name):
     """
-    Update a Telegramrx agent's config.yaml when connections are made/removed.
-    Handles 'source' (input) connections.
-    """
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        connected_agent = data.get('connected_agent')
-        action = data.get('action')
-        connection_type = data.get('connection_type', 'source')
-
-        if not connected_agent or not action:
-            return HttpResponse(json.dumps({'error': 'Missing required fields'}), content_type='application/json', status=400)
-
-        # Transform agent names to pool folder names
-        parts = agent_name.split('-')
-        cardinal = None
-        if parts[-1].isdigit():
-            cardinal = parts.pop()
-        base_folder_name = "_".join(parts)
-        if cardinal:
-            pool_folder_name = f"{base_folder_name}_{cardinal}"
-        else:
-            pool_folder_name = base_folder_name
-
-        conn_parts = connected_agent.split('-')
-        conn_cardinal = None
-        if conn_parts[-1].isdigit():
-            conn_cardinal = conn_parts.pop()
-        conn_base = "_".join(conn_parts)
-        if conn_cardinal:
-            conn_pool_name = f"{conn_base}_{conn_cardinal}"
-        else:
-            conn_pool_name = conn_base
-
-        # Path setup
-        pool_base_path = get_pool_path(request)
-        pool_dir = os.path.join(pool_base_path, pool_folder_name)
-        config_path = os.path.join(pool_dir, 'config.yaml')
-
-        if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': 'Telegramrx agent config not found'}), content_type='application/json', status=404)
-
-        # Load Config
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f) or {}
-
-        # Modify Config
-        if connection_type == 'target':
-            target_agents = config.get('target_agents', [])
-            if not isinstance(target_agents, list):
-                target_agents = []
-
-            if action == 'add':
-                if conn_pool_name not in target_agents:
-                    target_agents.append(conn_pool_name)
-            elif action == 'remove':
-                if conn_pool_name in target_agents:
-                    target_agents.remove(conn_pool_name)
-
-            config['target_agents'] = target_agents
-            msg = f'Updated target_agents: {target_agents}'
-
-        else:  # source
-            source_agents = config.get('source_agents', [])
-            if not isinstance(source_agents, list):
-                source_agents = []
-
-            if action == 'add':
-                if conn_pool_name not in source_agents:
-                    source_agents.append(conn_pool_name)
-            elif action == 'remove':
-                if conn_pool_name in source_agents:
-                    source_agents.remove(conn_pool_name)
-
-            config['source_agents'] = source_agents
-            msg = f'Updated source_agents: {source_agents}'
-
-        # Save Config
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-
-        return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
-    except Exception as e:
-        print(f"Error updating Telegramrx connection: {e}")
-        return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
-
-
-@csrf_exempt
-@require_POST
-def update_telegramer_connection_view(request, agent_name):
-    """
-    Update a Telegramer agent's config.yaml when connections are made/removed.
+    Update a Telegrammer agent's config.yaml when connections are made/removed.
     Handles 'source' (input) and 'target' (output) connections.
     """
     try:
@@ -5473,7 +5261,7 @@ def update_telegramer_connection_view(request, agent_name):
         config_path = os.path.join(pool_dir, 'config.yaml')
 
         if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': 'Telegramer agent config not found'}), content_type='application/json', status=404)
+            return HttpResponse(json.dumps({'error': 'Telegrammer agent config not found'}), content_type='application/json', status=404)
 
         # Load Config
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -5516,7 +5304,7 @@ def update_telegramer_connection_view(request, agent_name):
 
         return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:
-        print(f"Error updating Telegramer connection: {e}")
+        print(f"Error updating Telegrammer connection: {e}")
         return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 @csrf_exempt
@@ -5613,30 +5401,20 @@ def update_pythonxer_connection_view(request, agent_name):
 @require_POST
 def update_whatsapper_connection_view(request, agent_name):
     """
-    Update config.yaml for a Whatsapper agent when a connection is made or removed.
-    Supports add/remove of source_agents.
+    Update a Whatsapper agent's config.yaml when connections are made/removed.
+    Handles 'source' (input) and 'target' (output) connections — Whatsapper now
+    starts its target_agents after sending/receiving.
     """
     try:
-        data = json.loads(request.body)
+        data = json.loads(request.body.decode('utf-8'))
         connected_agent = data.get('connected_agent')
-        action = data.get('action', 'add')
-        
-        # Fallback for legacy calls that use 'source_agent' key
-        if not connected_agent:
-            connected_agent = data.get('source_agent')
-        
-        if not connected_agent:
-            return HttpResponse(json.dumps({'status': 'error', 'message': 'No connected_agent provided'}),
-                              content_type='application/json', status=400)
-        
-        # agent_name is the Whatsapper agent (e.g. whatsapper-1)
-        if not agent_name.lower().startswith('whatsapper'):
-             return HttpResponse("Invalid agent type", status=400)
-             
-        # Resolve pool path
-        pool_base_path = get_pool_path(request)
-        
-        # Parse agent_name to get pool folder name
+        action = data.get('action')
+        connection_type = data.get('connection_type', 'source')
+
+        if not connected_agent or not action:
+            return HttpResponse(json.dumps({'error': 'Missing required fields'}), content_type='application/json', status=400)
+
+        # Transform agent names to pool folder names
         parts = agent_name.split('-')
         cardinal = None
         if parts[-1].isdigit():
@@ -5646,54 +5424,68 @@ def update_whatsapper_connection_view(request, agent_name):
             pool_folder_name = f"{base_folder_name}_{cardinal}"
         else:
             pool_folder_name = base_folder_name
-            
-        pool_dir = os.path.join(pool_base_path, pool_folder_name)
-        config_path = os.path.join(pool_dir, 'config.yaml')
-        
-        if not os.path.exists(config_path):
-            return HttpResponse(f"Config not found for {agent_name}", status=404)
-            
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f) or {}
 
-        # Resolve connected agent pool name
         conn_parts = connected_agent.split('-')
         conn_cardinal = None
         if conn_parts[-1].isdigit():
             conn_cardinal = conn_parts.pop()
         conn_base = "_".join(conn_parts)
-        connected_pool_name = f"{conn_base}_{conn_cardinal}" if conn_cardinal else conn_base
+        if conn_cardinal:
+            conn_pool_name = f"{conn_base}_{conn_cardinal}"
+        else:
+            conn_pool_name = conn_base
 
-        # Handle source_agents list
-        list_key = 'source_agents'
-        current_list = config.get(list_key, [])
-        if isinstance(current_list, str):
-            current_list = [s.strip() for s in current_list.split(',') if s.strip()]
-        
-        changed = False
-        if action == 'add':
-            if connected_pool_name not in current_list:
-                current_list.append(connected_pool_name)
-                changed = True
-                print(f"[WHATSAPPER] Added {connected_pool_name} to {agent_name} {list_key}")
-        elif action == 'remove':
-            if connected_pool_name in current_list:
-                current_list.remove(connected_pool_name)
-                changed = True
-                print(f"[WHATSAPPER] Removed {connected_pool_name} from {agent_name} {list_key}")
-        
-        config[list_key] = current_list
-        msg = f'Updated {list_key}: {current_list}'
+        # Path setup
+        pool_base_path = get_pool_path(request)
+        pool_dir = os.path.join(pool_base_path, pool_folder_name)
+        config_path = os.path.join(pool_dir, 'config.yaml')
 
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({'error': 'Whatsapper agent config not found'}), content_type='application/json', status=404)
+
+        # Load Config
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        # Modify Config
+        if connection_type == 'target':
+            target_agents = config.get('target_agents', [])
+            if not isinstance(target_agents, list):
+                target_agents = []
+
+            if action == 'add':
+                if conn_pool_name not in target_agents:
+                    target_agents.append(conn_pool_name)
+            elif action == 'remove':
+                if conn_pool_name in target_agents:
+                    target_agents.remove(conn_pool_name)
+
+            config['target_agents'] = target_agents
+            msg = f'Updated target_agents: {target_agents}'
+
+        else:  # source
+            source_agents = config.get('source_agents', [])
+            if not isinstance(source_agents, list):
+                source_agents = []
+
+            if action == 'add':
+                if conn_pool_name not in source_agents:
+                    source_agents.append(conn_pool_name)
+            elif action == 'remove':
+                if conn_pool_name in source_agents:
+                    source_agents.remove(conn_pool_name)
+
+            config['source_agents'] = source_agents
+            msg = f'Updated source_agents: {source_agents}'
+
+        # Save Config
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-            
-        return HttpResponse(json.dumps({'status': 'success', 'message': msg, 'changed': changed}), 
-                          content_type='application/json')
 
+        return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:
-        print(f"Error updating whatsapper connection: {e}")
-        return HttpResponse(f"Error: {str(e)}", status=500)
+        print(f"Error updating Whatsapper connection: {e}")
+        return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 
 @csrf_exempt

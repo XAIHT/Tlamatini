@@ -301,30 +301,6 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.appendChild(scpLegend);
         renderFields(canvasItemList, dataObj);
 
-    } else if (agentName.startsWith('telegramrx')) {
-        // Show Telegram preconfiguration warning legend before standard fields
-        const tgLegend = document.createElement('p');
-        tgLegend.innerHTML = '<strong>&#9888; Important:</strong> You must preconfigure your application and the Telegramrx template, following the instructions on <a href="https://my.telegram.org/" target="_blank" style="color: #f0ad4e;">https://my.telegram.org/</a> before using this agent.';
-        tgLegend.style.color = '#f0ad4e';
-        tgLegend.style.marginBottom = '12px';
-        tgLegend.style.padding = '8px';
-        tgLegend.style.border = '1px solid #f0ad4e';
-        tgLegend.style.borderRadius = '5px';
-        tgLegend.style.backgroundColor = 'rgba(240, 173, 78, 0.1)';
-        canvasItemList.appendChild(tgLegend);
-
-        // Show session authentication notice
-        const tgSessionLegend = document.createElement('p');
-        tgSessionLegend.innerHTML = '<strong>&#9888; Important:</strong> Before deploying this agent, you must run <code style="color: #f0ad4e;">python telegramrx.py</code> once from the template directory <code style="color: #f0ad4e;">agent/agents/telegramrx/</code> to complete the Telegram phone+code authentication. This creates the <code style="color: #f0ad4e;">telegramrx_session.session</code> file that will be copied to the pool automatically.';
-        tgSessionLegend.style.color = '#f0ad4e';
-        tgSessionLegend.style.marginBottom = '12px';
-        tgSessionLegend.style.padding = '8px';
-        tgSessionLegend.style.border = '1px solid #f0ad4e';
-        tgSessionLegend.style.borderRadius = '5px';
-        tgSessionLegend.style.backgroundColor = 'rgba(240, 173, 78, 0.1)';
-        canvasItemList.appendChild(tgSessionLegend);
-        renderFields(canvasItemList, dataObj);
-
     } else if (agentName.startsWith('ssher')) {
         // Show SSH key warning legend before standard fields
         const sshLegend = document.createElement('p');

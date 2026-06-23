@@ -133,6 +133,8 @@ SECTION_AGENT_TYPES = [
     'arduiner',
     'mcp_doctor',
     'discoverer',
+    'telegrammer',
+    'whatsapper',
 ]
 
 

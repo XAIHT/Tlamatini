@@ -26,7 +26,7 @@ Starter → Agent A → Agent B → Agent C → ...
 
 **Example of correct sequential thinking:**
 - WRONG: Starter starts 5 agents in parallel → chaotic, hard to reason about
-- RIGHT: Starter → Mover → Telegramer → Executer (each starts the next after completing its task)
+- RIGHT: Starter → Mover → Telegrammer → Executer (each starts the next after completing its task)
 - RIGHT: Starter starts Monitor-Log AND Raiser together (because Raiser must poll Monitor-Log concurrently), then Raiser → Emailer sequentially
 
 ### Agent Naming Convention
@@ -49,9 +49,9 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegramer, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, WhatsTlamatini, ACPXer, Unrealer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer.
 
-**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Whatsapper, Telegramrx, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
+**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
 ### Key Concepts
 
@@ -77,7 +77,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
    ```
    The loop runs continuously through `target_agents`. The Raiser watches for the exception condition that breaks out of the loop.
 
-4. **Terminal agents belong at the END of a reaction chain.** Never start Notifier, Emailer, or Whatsapper from Starter. They should be triggered only after the condition they are supposed to report has been detected (e.g., after a Raiser detects the alert pattern).
+4. **Terminal agents belong at the END of a reaction chain.** Never start Notifier or Emailer from Starter. They should be triggered only after the condition they are supposed to report has been detected (e.g., after a Raiser detects the alert pattern).
 
 5. **Starter should be lean.** The Starter should only start the first agent(s) in the chain. Avoid fan-out from Starter unless genuinely concurrent paths are needed (e.g., a Monitor Log and its paired Raiser). Launching 4+ agents from Starter is almost always wrong.
 
@@ -170,7 +170,7 @@ Shoter captures the screen. Image-Interpreter can accept a Shoter pool name as i
 
 **13. "Search Google and send results via Telegram" (search-notify pipeline)**
 ```
-Starter → Googler (query='latest security advisories') → Parametrizer → Telegramer (message mapped from search results) → Ender
+Starter → Googler (query='latest security advisories') → Parametrizer → Telegrammer (message mapped from search results) → Ender
 ```
 
 **14. "Run an authorized Kali Linux assessment and branch on the result" (offensive-security pipeline)**
@@ -217,7 +217,7 @@ Tlamatini now compiles Chat-created flows and ACP canvas snapshots through a bac
 - Use canonical template names and pool names only: `starter_1`, `executer_1`, `gateway_relayer_1`, etc.
 - Do not embed absolute source-mode paths such as `C:/Development/...` or installed paths beside `Tlamatini.exe` in `.flw` output.
 - Preserve Parametrizer mappings as flow artifacts and as `_parametrizer_mappings` in the Parametrizer node config so the compiler can regenerate `interconnection-scheme.csv`.
-- Treat TeleTlamatini and WhatsTlamatini as long-running remote chat ingress super-agents. They can trigger `target_agents` after each completed remote request, but they are not normal Chat-wrapped tools and should not be used as Parametrizer sources unless a future version emits structured `INI_SECTION_*` segments.
+- Treat TeleTlamatini as a long-running remote chat ingress super-agent. It can trigger `target_agents` after each completed remote request, but it is not a normal Chat-wrapped tool and should not be used as a Parametrizer source unless a future version emits structured `INI_SECTION_*` segments.
 - For Ender, `source_agents` are visual inputs, `target_agents` are the kill list, and `output_agents` are the cleanup/backup agents launched after termination.
 
 This rule exists so the same flow works in both source mode and frozen installed mode.
@@ -336,15 +336,13 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **emailer** | Sends email when a keyword appears in a source log | NO | Terminal |
 | **recmailer** | Checks received emails (IMAP) | NO | Terminal |
 | **notifier** | Shows desktop notification when keyword found | NO | Terminal |
-| **telegramer** | Sends a Telegram message | YES | Action |
-| **whatsapper** | Sends a WhatsApp message | NO | Terminal |
-| **telegramrx** | Receives Telegram messages (long-running) | NO | Terminal |
+| **telegrammer** | Sends OR receives a Telegram message via the official Telegram Bot API | YES | Action |
+| **whatsapper** | Sends OR receives a WhatsApp message via the official Meta WhatsApp Cloud API | YES | Action |
 | **cleaner** | Deletes logs and PIDs for listed agents | NO | Terminal |
 | **flowhypervisor** | LLM-powered flow health monitor (system agent) | NO | Monitoring |
 | **gatewayer** | HTTP webhook ingress + folder-drop watcher | YES | Utility |
 | **gateway_relayer** | Relays GitHub/GitLab webhooks with signature verification | YES | Utility |
 | **teletlamatini** | Long-running Telegram bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
-| **whatstlamatini** | Long-running WhatsApp Cloud API bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
 | **acpxer** | Drives ONE external coding-agent CLI session (Claude / Codex / Gemini / Cursor / Qwen / etc.) from the canvas; emits `INI_SECTION_ACPXER` for multi-CLI relay | YES | Action |
 | **unrealer** | Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (53-command surface: actors+screenshot, Blueprints, node graph, UMG widgets, input mappings, in-editor Python/console, level I/O, asset import, materials) | YES | Action |
 | **blenderer** | Drives Blender via the official Blender MCP add-on socket (code-execution protocol; rich action catalog: execute_code, scene_info, get_objects, get_object_detail, blendfile_summary, create_object, delete_object, set_material, screenshot, render) | YES | Action |
@@ -419,7 +417,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
 - **Purpose**: Terminates all agents listed in `target_agents` when the Stop button is pressed. Then launches agents in `output_agents` (typically Cleaners). Also auto-discovers any Cleaner agents in the pool and clears `reanim*` restart-state files for targets it successfully stops or finds already stopped.
 - **Used for**: Gracefully shutting down an entire flow. It kills all running agents, resets their persistent restart state, and optionally triggers Cleaner agents to remove residual log and PID files.
 - **Aimed at**: Providing a controlled, orderly termination mechanism so that flows can be stopped cleanly without orphaned processes or stale state files lingering between runs.
-- **Application example**: In a deployment pipeline, after the Notifier confirms a successful deploy and the Telegramer sends the notification, the Ender terminates all agents in the flow and launches a Cleaner to remove logs, leaving the system ready for the next deployment cycle.
+- **Application example**: In a deployment pipeline, after the Notifier confirms a successful deploy and the Telegrammer sends the notification, the Ender terminates all agents in the flow and launches a Cleaner to remove logs, leaving the system ready for the next deployment cycle.
 - **Pool name pattern**: `ender_<n>`
 - **Starts other agents**: NO (terminates agents; then launches output_agents like Cleaners)
 - **Visual connections**: Arrows point FROM other agents TO the Ender (input connections). The Ender's only outgoing connections go to Cleaner agents via `output_agents`. No agent should list `ender_<n>` in its own `target_agents`.
@@ -445,7 +443,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
 - **Purpose**: LLM-powered log file monitor. Watches a log file for keywords and writes `outcome_word` to its own log when detected. Does NOT start downstream agents. Pair with a Raiser to trigger downstream actions.
 - **Used for**: Continuously watching any log file on the local system for specific keywords or semantically equivalent phrases. It uses an LLM to perform intelligent, case-insensitive, synonym-aware keyword matching that goes beyond simple string search.
 - **Aimed at**: Detecting meaningful events (errors, warnings, state changes, deployment confirmations) in application or system log files and signaling them via an outcome word that downstream Raiser agents can act upon.
-- **Application example**: Monitoring a GlassFish server.log for the phrase "NormasDRM was successfully deployed". When the LLM detects this event, it writes the outcome word to its own log, which a paired Raiser then picks up to trigger a Notifier alert and a Telegramer message.
+- **Application example**: Monitoring a GlassFish server.log for the phrase "NormasDRM was successfully deployed". When the LLM detects this event, it writes the outcome word to its own log, which a paired Raiser then picks up to trigger a Notifier alert and a Telegrammer message.
 - **Pool name pattern**: `monitor_log_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -496,7 +494,7 @@ system_prompt: |
 - **Purpose**: LLM-powered network port monitor. Checks if a port is in a specific state and writes `outcome_word` to its own log when detected. Does NOT start downstream agents. Pair with a Raiser to trigger downstream actions.
 - **Used for**: Continuously monitoring the state of a specific network port (e.g., LISTENING, ESTABLISHED, CLOSE_WAIT) using LLM-powered semantic matching. It polls the system's network connections and writes an outcome word when the target state is detected.
 - **Aimed at**: Detecting when a service comes online, goes offline, or enters an unexpected network state. Paired with a Raiser, it enables automated responses to network-level events without writing custom scripts.
-- **Application example**: Monitoring port 8080 for the state "LISTENING" to confirm that a web server has started after a deployment. When the port enters the LISTENING state, the Raiser triggers a Telegramer to notify the ops team that the service is up.
+- **Application example**: Monitoring port 8080 for the state "LISTENING" to confirm that a web server has started after a deployment. When the port enters the LISTENING state, the Raiser triggers a Telegrammer to notify the ops team that the service is up.
 - **Pool name pattern**: `monitor_netstat_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -679,7 +677,7 @@ system_prompt: |
 - **Purpose**: Triggers target agents at a specific time (cron-like scheduling). Long-running — waits until the specified time, then starts downstream agents.
 - **Used for**: Scheduling flow execution at a specific time of day. It remains alive and polls the system clock until the configured trigger time is reached, then starts all downstream agents and stays idle.
 - **Aimed at**: Enabling time-based automation such as nightly builds, scheduled backups, timed report generation, or any operation that must occur at a predetermined hour without manual intervention.
-- **Application example**: A Croner configured with `trigger_time: "02:00"` waits until 2:00 AM, then starts a Gitter agent that pulls the latest code, followed by a Dockerer that rebuilds and redeploys containers, and a Telegramer that notifies the team of the nightly build result.
+- **Application example**: A Croner configured with `trigger_time: "02:00"` waits until 2:00 AM, then starts a Gitter agent that pulls the latest code, followed by a Dockerer that rebuilds and redeploys containers, and a Telegrammer that notifies the team of the nightly build result.
 - **Pool name pattern**: `croner_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -821,65 +819,61 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start on success)
 
-### 24. Telegramer
-- **Purpose**: Sends a Telegram message immediately upon start, then triggers downstream agents.
-- **Used for**: Sending instant Telegram messages to a configured chat or user as part of a workflow chain. It fires immediately upon start, delivers the message, and then triggers downstream agents.
-- **Aimed at**: Providing mobile-friendly real-time notifications through Telegram for events like deployment completions, error alerts, or status updates — reaching team members on their phones even when they are away from the dashboard.
-- **Application example**: After a Notifier confirms a successful application deployment, a Telegramer sends "NormasDRM Deployed!!!" to the DevOps team's Telegram group, ensuring everyone is informed of the release status in real time.
-- **Pool name pattern**: `telegramer_<n>`
+### 24. Telegrammer
+- **Purpose**: Sends OR receives a Telegram message via the official Telegram Bot API, then triggers downstream agents.
+- **Used for**: Two-way Telegram messaging in a workflow chain using a bot token from @BotFather (NOT Telethon/api_id/api_hash/phone-login). In `send` mode it delivers a message to a chat and then triggers downstream agents; in `receive` mode it waits up to `rx_max_seconds` for an incoming message, logs it, and then triggers downstream agents. In either mode it fires once and exits.
+- **Aimed at**: Providing mobile-friendly real-time notifications through Telegram (send) and Telegram-driven inbound automation (receive) for events like deployment completions, error alerts, status updates, or remote operator commands.
+- **Application example**: After a Notifier confirms a successful application deployment, a Telegrammer (mode=`send`) sends "NormasDRM Deployed!!!" to the DevOps team's Telegram group; or a Telegrammer (mode=`receive`) waits for an incoming "DEPLOY NOW" command and then triggers a deployment pipeline.
+- **Pool name pattern**: `telegrammer_<n>`
 - **Starts other agents**: YES
+- **Parametrizer source**: emits `INI_SECTION_TELEGRAMMER` with fields `mode`, `direction`, `chat_id`, `status`, `message_id`, and body=`response_body`.
 - **Config parameters**:
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start after sending)
-  - `telegram.api_id`: 0 (later configured by the user)
-  - `telegram.api_hash`: "" (later configured by the user)
-  - `telegram.chat_id`: "me" (later configured by the user)
-  - `telegram.contact_name`: "" (OPTIONAL — a name from contacts.json; when set it is resolved to that person's Telegram handle and OVERRIDES chat_id)
-  - `telegram.message`: "Hello from Telegramer agent!" (message text — formulate based on the flow's objective)
-  - `poll_interval`: 5
+  - `target_agents`: [] (downstream agents to start after sending/receiving)
+  - `mode`: "auto" (options: "auto", "send", "receive")
+  - `telegram.bot_token`: "" (REQUIRED — a bot token from @BotFather; later configured by the user)
+  - `telegram.chat_id`: "" (target chat for send; later configured by the user)
+  - `message`: "Hello from Telegrammer agent!" (message text for send — formulate based on the flow's objective)
+  - `contact_name`: "" (OPTIONAL — a name from contacts.json; when set it is resolved to that person's Telegram handle and OVERRIDES chat_id)
+  - `rx_max_seconds`: 60 (receive mode: max seconds to wait for an incoming message)
+  - `rx_from_chat_id`: "" (OPTIONAL — restrict receive to a specific chat)
+  - `rx_match`: "" (OPTIONAL — only accept incoming messages matching this pattern)
 
-### 25. Telegramrx
-- **Purpose**: Receives Telegram messages and logs them. Long-running listener. Does NOT start downstream agents.
-- **Used for**: Listening for incoming Telegram messages on a configured chat and logging their content. It includes Whisper-based speech-to-text support for voice messages, making it capable of transcribing audio messages received via Telegram.
-- **Aimed at**: Enabling inbound communication from Telegram into a Tlamatini flow. Paired with a Raiser, it can trigger actions based on received messages — creating Telegram-driven automation where remote operators can issue commands or reports via chat.
-- **Application example**: A Telegramrx listens for messages in a DevOps Telegram group. A paired Raiser watches its log for "DEPLOY NOW", and when someone sends that command via Telegram, the Raiser triggers an automated deployment pipeline.
-- **Pool name pattern**: `telegramrx_<n>`
-- **Starts other agents**: NO
-- **Config parameters**:
-  - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (for canvas connection tracking only)
-  - `telegram.api_id`: 0 (later configured by the user)
-  - `telegram.api_hash`: "" (later configured by the user)
-  - `telegram.listen_chat`: "me" (later configured by the user)
-  - `whisper.model`: "medium" (options: "small", "medium", "large")
-  - `poll_interval`: 2
-
-### 26. Whatsapper
-- **Purpose**: Monitors source agents for keywords and sends WhatsApp notifications via TextMeBot. Does NOT start downstream agents.
-- **Used for**: Sending WhatsApp alert messages when specific keywords are detected in upstream agent logs. It uses an LLM to summarize the detected issue before sending, providing concise, human-readable notifications via the TextMeBot API.
-- **Aimed at**: Reaching operators and stakeholders on their personal WhatsApp accounts with summarized alerts about critical events — ideal for on-call teams, managers, or anyone who needs to be informed via WhatsApp rather than email or desktop notifications.
-- **Application example**: A Whatsapper monitors a Monitor Log agent for the keyword "successfully deployed". When the deployment is confirmed, it uses an LLM to generate a brief summary and sends a WhatsApp message to the project manager's phone number with the deployment status.
+### 25. Whatsapper
+- **Purpose**: Sends OR receives a WhatsApp message via the official Meta WhatsApp Cloud API, then triggers downstream agents.
+- **Used for**: Two-way WhatsApp messaging in a workflow chain using the Meta WhatsApp Cloud API (Graph API). In `send` mode it delivers a message or template to a recipient and then triggers downstream agents; in `receive` mode it listens on the official webhook for up to `rx_max_seconds` for an incoming message, logs it, and then triggers downstream agents. In either mode it fires once and exits.
+- **Aimed at**: Reaching operators and stakeholders on the most ubiquitous messaging app on Earth (send) and enabling WhatsApp-driven inbound automation (receive) — ideal for on-call teams, managers, or anyone who needs to be reached via WhatsApp rather than email or desktop notifications.
+- **Application example**: A Whatsapper (mode=`send`) sends a deployment-status message to the project manager's WhatsApp number after a successful deploy; or a Whatsapper (mode=`receive`) listens on its webhook for an incoming approval message and then triggers downstream actions.
 - **Pool name pattern**: `whatsapper_<n>`
-- **Starts other agents**: NO
+- **Starts other agents**: YES
+- **Parametrizer source**: emits `INI_SECTION_WHATSAPPER` with fields `mode`, `direction`, `recipient`, `status`, `message_id`, and body=`response_body`.
 - **Config parameters**:
-  - `source_agents`: [] (upstream agents whose logs to monitor)
-  - `target_agents`: [] (for canvas connection tracking only)
-  - `keywords`: "" (keywords to detect in source agent logs — formulate based on what you want to be notified about)
-  - `llm.base_url`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
-  - `llm.temperature`: 0.1
-  - `textmebot.phone`: "" (later configured by the user)
-  - `textmebot.apikey`: "" (later configured by the user)
-  - `message`: "" (OPTIONAL one-shot — when set AND there are no source_agents to monitor, Whatsapper sends this text once and exits)
-  - `contact_name`: "" (OPTIONAL — a name from contacts.json; resolved to that person's WhatsApp number, OVERRIDES textmebot.phone)
-  - `poll_interval`: 2
-  - `recursion_limit`: 1000
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after sending/receiving)
+  - `mode`: "auto" (options: "auto", "send", "receive")
+  - `whatsapp.phone_number_id`: "" (REQUIRED — WABA number ID from WhatsApp Manager → API Setup; later configured by the user)
+  - `whatsapp.access_token`: "" (REQUIRED — system-user permanent access token; later configured by the user)
+  - `whatsapp.graph_base`: "https://graph.facebook.com" (Graph API base URL — rarely changed)
+  - `whatsapp.api_version`: "v21.0" (Graph API version)
+  - `whatsapp.to`: "" (recipient phone number in international format for send)
+  - `whatsapp.verify_token`: "" (any string of your choice; Meta echoes it during webhook subscription)
+  - `whatsapp.webhook_host`: "0.0.0.0" (receive mode: bind interface for inbound webhook listener)
+  - `whatsapp.webhook_port`: 8765 (receive mode: TCP port the listener binds to)
+  - `whatsapp.webhook_path`: "/wa-webhook" (receive mode: URL path Meta posts to)
+  - `message`: "" (message text for send — formulate based on the flow's objective)
+  - `contact_name`: "" (OPTIONAL — a name from contacts.json; resolved to that person's WhatsApp number, OVERRIDES whatsapp.to)
+  - `template`: "" (OPTIONAL — name of a pre-approved message template to send instead of free text)
+  - `template_language`: "en_US" (language code for the template)
+  - `template_params`: [] (ordered parameter values to fill the template body)
+  - `rx_max_seconds`: 60 (receive mode: max seconds to wait for an incoming message)
+  - `rx_from`: "" (OPTIONAL — restrict receive to a specific sender)
+  - `rx_match`: "" (OPTIONAL — only accept incoming messages matching this pattern)
 
 ### 27. Recmailer
 - **Purpose**: Monitors an email inbox (IMAP) for keywords using LLM analysis. Long-running. Does NOT start downstream agents.
 - **Used for**: Continuously monitoring an email inbox via IMAP for new messages that match configured keywords or phrases. It uses an LLM (via LangGraph StateGraph) to classify email content and logs matches with a configurable outcome word.
 - **Aimed at**: Enabling email-driven automation where incoming emails trigger workflow actions. Paired with a Raiser, it can initiate automated responses to specific email patterns — such as processing support tickets, reacting to automated reports, or handling approval emails.
-- **Application example**: A Recmailer monitors a shared ops@company.com inbox for emails containing "urgent" or "server down". When the LLM detects a match, it logs "PROCESSED", and a paired Raiser triggers an Executer to run diagnostics and a Telegramer to notify the on-call engineer.
+- **Application example**: A Recmailer monitors a shared ops@company.com inbox for emails containing "urgent" or "server down". When the LLM detects a match, it logs "PROCESSED", and a paired Raiser triggers an Executer to run diagnostics and a Telegrammer to notify the on-call engineer.
 - **Pool name pattern**: `recmailer_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -948,7 +942,7 @@ system_prompt: |
 - **Purpose**: Executes Git commands (clone, pull, push, commit, checkout, branch, diff, log, status) on a local repository, then starts downstream agents.
 - **Used for**: Performing Git operations on local repositories as part of automated CI/CD or source control workflows. It produces structured content reports (`<git {command}> RESPONSE { ... }`) with stdout/stderr capture, and triggers downstream agents only on success (exit code 0).
 - **Aimed at**: Automating version control tasks within deployment or integration pipelines — such as pulling the latest code before a build, cloning repositories for analysis, committing auto-generated files, or checking for changes between branches.
-- **Application example**: A Gitter clones a remote repository, then a Pythonxer runs the test suite. If tests pass, another Gitter commits and pushes the changes, and a Telegramer notifies the team. If tests fail, a Forker routes to an Emailer that alerts the developer.
+- **Application example**: A Gitter clones a remote repository, then a Pythonxer runs the test suite. If tests pass, another Gitter commits and pushes the changes, and a Telegrammer notifies the team. If tests fail, a Forker routes to an Emailer that alerts the developer.
 - **Pool name pattern**: `gitter_<n>`
 - **Starts other agents**: YES (on success, exit code 0)
 - **Config parameters**:
@@ -965,7 +959,7 @@ system_prompt: |
 - **Purpose**: Manages Docker containers and docker-compose operations, then starts downstream agents regardless of success or failure.
 - **Used for**: Executing Docker and docker-compose commands (build, up, down, restart, stop, logs, ps, pull, and custom commands) as part of containerized deployment workflows. It includes a bulletproof fallback mechanism that retries with raw `docker` if `docker-compose` fails.
 - **Aimed at**: Automating container lifecycle management within CI/CD and infrastructure pipelines — such as rebuilding images after code changes, restarting containers after configuration updates, pulling new images from registries, or checking container status as part of health monitoring.
-- **Application example**: After a Gitter pulls the latest code, a Dockerer runs `docker-compose build` followed by `docker-compose up -d` to rebuild and redeploy the application containers. A Monitor Netstat then verifies the service port is LISTENING, and a Telegramer confirms the deployment.
+- **Application example**: After a Gitter pulls the latest code, a Dockerer runs `docker-compose build` followed by `docker-compose up -d` to rebuild and redeploy the application containers. A Monitor Netstat then verifies the service port is LISTENING, and a Telegrammer confirms the deployment.
   - **Important Fallback Mechanism**: Dockerer is bulletproof. If `docker-compose` is attempted but fails (e.g. missing compose file), it will automatically try the raw `docker` equivalent (e.g. `docker-compose ps` -> `docker ps`). If a `custom_command` is provided without the `docker` prefix, it will automatically prepend `docker` as a fallback.
 - **Pool name pattern**: `dockerer_<n>`
 - **Starts other agents**: YES (always, regardless of exit code)
@@ -1093,8 +1087,8 @@ system_prompt: |
 - **Purpose**: Two operating modes selected by config. **Polling mode** (default canvas behavior): continuously polls log files from `source_agents` and sends each log to an LLM with `system_prompt` to detect events; when the LLM response contains `[EVENT_TRIGGERED]`, starts all configured downstream target agents. **One-shot mode** (used by the chat tool `chat_agent_summarize_text`): when `input_text` is non-empty AND `source_agents` is empty, the agent bypasses the polling loop entirely, sends `input_text` directly to the LLM with the resolved prompt, emits exactly one `INI_SECTION_SUMMARIZER<<<` block (so Parametrizer / Exec Report consume it identically to a polling-mode result), and triggers `target_agents` whenever the summary is non-empty.
 - **Used for**: Performing LLM-powered semantic analysis of agent log files to detect complex events that cannot be captured by simple string pattern matching, OR summarizing a verbatim block of text in a single shot from a chat-driven request.
 - **Aimed at**: Enabling intelligent, context-aware event detection in workflows; one-shot mode also doubles as the canonical "summarize this text" tool for the LLM operator.
-- **Application example (polling)**: A Summarizer monitors an Apirer's log with the prompt "Determine if the API response indicates degraded performance (latency > 2000ms or error rate > 5%)". When the LLM detects degraded performance, it outputs `[EVENT_TRIGGERED]` and the Summarizer starts a Notifier and a Telegramer to alert the SRE team.
-- **Application example (one-shot)**: After an ACPXer harvests a long transcript, the LLM calls `chat_agent_summarize_text` with `input_text='<full transcript>'` and `target_words=80`; the agent emits one INI_SECTION_SUMMARIZER block whose `response_body` carries the ~80-word digest, which a downstream Parametrizer pipes into a File-Creator or Telegramer.
+- **Application example (polling)**: A Summarizer monitors an Apirer's log with the prompt "Determine if the API response indicates degraded performance (latency > 2000ms or error rate > 5%)". When the LLM detects degraded performance, it outputs `[EVENT_TRIGGERED]` and the Summarizer starts a Notifier and a Telegrammer to alert the SRE team.
+- **Application example (one-shot)**: After an ACPXer harvests a long transcript, the LLM calls `chat_agent_summarize_text` with `input_text='<full transcript>'` and `target_words=80`; the agent emits one INI_SECTION_SUMMARIZER block whose `response_body` carries the ~80-word digest, which a downstream Parametrizer pipes into a File-Creator or Telegrammer.
 - **Pool name pattern**: `summarizer_<n>`
 - **Starts other agents**: YES (polling: when `[EVENT_TRIGGERED]` is detected; one-shot: when the summary is non-empty)
 - **Config parameters**:
@@ -1143,7 +1137,7 @@ system_prompt: |
 - **Purpose**: Reads and interprets document files (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, JSON, YAML, XML, ODT, EPUB, and more), extracting text and optionally images, then logs structured output. In summarized mode, uses an LLM to produce a summary.
 - **Used for**: Extracting text content from a wide range of document formats and logging it in structured `INI/END_FILE` blocks. It supports three reading modes: `fast` (text only), `complete` (text + image extraction), and `summarized` (text + LLM-generated summary). Supports wildcards for batch processing of multiple files.
 - **Aimed at**: Automating document processing pipelines — such as ingesting reports for analysis, extracting data from spreadsheets, parsing configuration files, processing invoices, or feeding document content into downstream LLM agents (Prompter, Summarizer) for intelligent analysis via Parametrizer.
-- **Application example**: A File-Interpreter reads all `*.pdf` files from a reports directory in `summarized` mode, generating LLM summaries for each. A Parametrizer then maps each summary into a Telegramer that sends a digest notification to the management team, iterating through all processed documents.
+- **Application example**: A File-Interpreter reads all `*.pdf` files from a reports directory in `summarized` mode, generating LLM summaries for each. A Parametrizer then maps each summary into a Telegrammer that sends a digest notification to the management team, iterating through all processed documents.
 - **Pool name pattern**: `file_interpreter_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -1202,7 +1196,7 @@ system_prompt: |
 - **Purpose**: Long-running deterministic ingress relay that receives third-party webhook events (e.g. GitHub) in their native format, validates the upstream provider signature (X-Hub-Signature-256), transforms the payload into Gatewayer-compatible canonical input (event_type + session_id + original fields), HMAC-signs the forwarded body using Gatewayer's timestamp+body scheme, and relays it to a configured Gatewayer HTTP endpoint. Bridges external providers into Gatewayer without modifying Gatewayer itself. Does NOT use any LLM.
 - **Used for**: Translating third-party webhook formats (currently GitHub) into Gatewayer's canonical event format. It validates upstream provider signatures, transforms the payload, HMAC-signs it for Gatewayer authentication, and forwards it — acting as a protocol bridge between external webhook providers and Tlamatini flows.
 - **Aimed at**: Enabling native integration with external webhook providers (like GitHub, GitLab, or other services) without modifying the Gatewayer agent itself. It handles provider-specific signature validation and event filtering, making it the entry point for provider-native webhook-driven automation.
-- **Application example**: A GatewayRelayer listens for GitHub push events on port 9090. When a developer pushes to the `main` branch, GitHub sends a webhook that the relayer validates, transforms, and forwards to a Gatewayer. The Gatewayer dispatches it to a Gitter that pulls the code, a Dockerer that rebuilds containers, and a Telegramer that notifies the team.
+- **Application example**: A GatewayRelayer listens for GitHub push events on port 9090. When a developer pushes to the `main` branch, GitHub sends a webhook that the relayer validates, transforms, and forwards to a Gatewayer. The Gatewayer dispatches it to a Gitter that pulls the code, a Dockerer that rebuilds containers, and a Telegrammer that notifies the team.
 - **Pool name pattern**: `gateway_relayer_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -1225,7 +1219,7 @@ system_prompt: |
 - **Purpose**: Long-running infrastructure agent that maintains a live registry of local and remote Windows/Linux nodes, probes health (ping, TCP, SSH, WinRM, HTTP), classifies node state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, persists normalized node state to disk, exports filtered selected-node manifests, and triggers downstream target_agents when configured node events occur. Does NOT use any LLM.
 - **Used for**: Maintaining a live inventory of infrastructure nodes and continuously monitoring their health through multiple probe types (ICMP ping, TCP connect, SSH, WinRM, HTTP). It classifies each node's state, detects capability changes (OS, Python, Git, Docker availability), persists state to disk, and exports filtered manifests for downstream agents.
 - **Aimed at**: Providing infrastructure awareness to automation flows — enabling flows to react to node-level events such as a server going offline, a new node coming online, or capabilities changing. It serves as the infrastructure discovery and health-check foundation for multi-node orchestration.
-- **Application example**: A NodeManager monitors 10 production servers. When a node goes OFFLINE, it triggers an Ssher that attempts to restart the failed service via SSH, an Emailer that alerts the ops team, and a Telegramer that notifies the on-call engineer — all automatically, without human intervention.
+- **Application example**: A NodeManager monitors 10 production servers. When a node goes OFFLINE, it triggers an Ssher that attempts to restart the failed service via SSH, an Emailer that alerts the ops team, and a Telegrammer that notifies the on-call engineer — all automatically, without human intervention.
 - **Pool name pattern**: `node_manager_<n>`
 - **Starts other agents**: YES (on configured trigger events)
 - **Config parameters**:
@@ -1464,10 +1458,10 @@ system_prompt: |
 - **Output fields** (Parametrizer-addressable): `url`, `title`, `status`, `content_length`, `response_body`
 
 ### 58. TeleTlamatini
-- **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — Telegramer / TelegramRX exist for the user-account direction; do not give TeleTlamatini a `listen_chat` field.
+- **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — the Telegrammer agent covers direct Telegram send/receive; do not give TeleTlamatini a `listen_chat` field.
 - **Used for**: Letting an authorized Telegram user drive Tlamatini end-to-end without opening the browser UI; fast OpenClaw-style fire-and-go remote operation of Multi-Turn flows; mobile triage with full Exec Report visibility.
 - **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable from anywhere — fast enough for "what's my CPU usage?" turnaround.
-- **Application example**: An on-call engineer DMs the bot with the configured password, then sends "deploy the staging branch and notify the team". TeleTlamatini forwards the request into the persistent Tlamatini WS with Multi-Turn + Exec Report enabled, waits for the assembled answer (which includes per-agent operation tables for Gitter, Dockerer, Telegramer, etc.), strips the HTML, and edits the status message into the readable result.
+- **Application example**: An on-call engineer DMs the bot with the configured password, then sends "deploy the staging branch and notify the team". TeleTlamatini forwards the request into the persistent Tlamatini WS with Multi-Turn + Exec Report enabled, waits for the assembled answer (which includes per-agent operation tables for Gitter, Dockerer, Telegrammer, etc.), strips the HTML, and edits the status message into the readable result.
 - **Pool name pattern**: `teletlamatini_<n>`
 - **Starts other agents**: YES (starts `target_agents` after every completed user request cycle)
 - **Config parameters** (slim — old `access.*` text overrides, `telegram.listen_chat`, `llm.*`, and `poll_interval` were removed; the agent reads them only for backward-compat warnings):
@@ -1487,7 +1481,7 @@ system_prompt: |
 - **Purpose**: Drives ONE ACPX session lifecycle from the visual canvas. ACPX (Agent Communication Protocol eXtension) is Tlamatini's runtime for spawning **external coding-agent CLIs** — Claude Code, Codex, Gemini CLI, Cursor agent, Qwen Code, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Factory Droid, GitHub Copilot CLI, or any custom CLI — as out-of-process child processes, talking to them over stdin/stdout, and harvesting their output. ACPXer brings that mechanic into the visual workflow designer: one ACPXer node = one external-CLI session (spawn → dispatch task → drain transcript with transport-aware idle/timeout/grace rule → harvest last-assistant text → graceful kill). It writes a NDJSON transcript to `<agent_dir>/transcript.ndjson` (same format as `agent_transcript_path` in the LLM `acp_*` tools, so transcripts are interchangeable). It emits an atomic `INI_SECTION_ACPXER<<<` block whose `response_body` is the last-assistant text — meaning a Parametrizer can pipe the answer of one ACPXer into the `task` field of another for **multi-CLI relay flows built visually**.
 - **Used for**: Building visual workflows that bridge Tlamatini to external coding-agent CLIs without writing prompts in the chat UI; multi-CLI relay (claude → gemini → cursor) drawn as a chain on the canvas; long-running scheduled flows that drive an external CLI on a Croner trigger; pipelines that hand a transcript to a Summarizer / File-Creator / Notifier triplet.
 - **Aimed at**: Letting non-LLM-driven flows include external coding agents as first-class participants. The LLM-driven path uses `acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` tools in Multi-Turn mode; ACPXer is the canvas-driven counterpart of that surface.
-- **Application example**: A Croner fires at 02:00 → ACPXer (agent_id=`claude`, task=`"Audit yesterday's git diff for security regressions and write a 5-bullet report"`) → Parametrizer copies its `response_body` into a downstream ACPXer (agent_id=`gemini`, task=`"Critique this audit and add anything you'd flag"`) → File-Creator writes the combined output → Telegramer DMs the on-call. Zero LLM operator turns; the entire multi-CLI pipeline runs unattended.
+- **Application example**: A Croner fires at 02:00 → ACPXer (agent_id=`claude`, task=`"Audit yesterday's git diff for security regressions and write a 5-bullet report"`) → Parametrizer copies its `response_body` into a downstream ACPXer (agent_id=`gemini`, task=`"Critique this audit and add anything you'd flag"`) → File-Creator writes the combined output → Telegrammer DMs the on-call. Zero LLM operator turns; the entire multi-CLI pipeline runs unattended.
 - **Pool name pattern**: `acpxer_<n>`
 - **Starts other agents**: YES (starts `target_agents` after the session ends, regardless of success or failure — so a downstream Raiser can branch on the failure mode)
 - **Config parameters**:
@@ -1509,7 +1503,7 @@ system_prompt: |
 - **Common ACPXer flow patterns**:
   - **Single-shot CLI run**: `Starter -> ACPXer(agent_id, task) -> File-Creator -> Notifier -> Ender`
   - **Visual multi-CLI relay**: `Starter -> ACPXer(claude) -> Parametrizer -> ACPXer(gemini) -> Parametrizer -> ACPXer(cursor) -> File-Creator -> Ender` (the most powerful pattern — three different LLMs argue back and forth, each adding their own pass)
-  - **Scheduled audit**: `Croner(02:00) -> ACPXer(claude, audit prompt) -> Summarizer -> Telegramer -> Ender`
+  - **Scheduled audit**: `Croner(02:00) -> ACPXer(claude, audit prompt) -> Summarizer -> Telegrammer -> Ender`
   - **Branching on CLI failure**: `Starter -> ACPXer -> Forker (settle=='timeout' vs 'done') -> [retry path] / [success path] -> Ender`
 
 ### 60. Unrealer
@@ -1528,32 +1522,6 @@ system_prompt: |
   - `read_timeout`: 10 (response read timeout in seconds)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
-
-### 61. WhatsTlamatini
-- **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over **WhatsApp**, via Meta's WhatsApp Cloud API. Mirror of TeleTlamatini, only the chat platform changes. The agent runs a stdlib HTTP listener on a configurable host/port/path and waits for Meta to POST inbound messages there (you must expose the URL publicly via ngrok / cloudflared / domain / port-forward and register it as your app's webhook). It holds ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every WhatsApp message — no per-message re-login overhead), password-gates each chat (= each WhatsApp number) on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user receives a "🔄 Working on it…" message followed by a "✅ Result:" reply containing the assembled answer (WhatsApp text-message API has no edit-message primitive, so the answer arrives as a fresh message rather than an in-place edit). After every completed request cycle, starts the configured `target_agents`.
-- **Used for**: Letting an authorized WhatsApp user drive Tlamatini end-to-end without opening the browser UI; mobile-first remote operation of Multi-Turn flows on the most ubiquitous messaging app on Earth; OpenClaw-style fire-and-go remote operation; Multi-Turn triage from regions where Telegram is restricted but WhatsApp is freely available.
-- **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable over WhatsApp from anywhere — same "what's my CPU usage?" UX as TeleTlamatini.
-- **Application example**: An on-call engineer messages the bot's WhatsApp number with the configured password, then sends "deploy the staging branch and notify the team". WhatsTlamatini forwards the request into the persistent Tlamatini WS with Multi-Turn + Exec Report enabled, waits for the assembled answer (which includes per-agent operation tables for Gitter, Dockerer, Telegramer, etc.), strips the HTML, and sends the readable result back over WhatsApp.
-- **Pool name pattern**: `whatstlamatini_<n>`
-- **Starts other agents**: YES (starts `target_agents` after every completed user request cycle)
-- **Config parameters**:
-  - `whatsapp.phone_number_id` (REQUIRED — WABA number ID from WhatsApp Manager → API Setup, NOT the phone number itself)
-  - `whatsapp.access_token` (REQUIRED — system-user permanent access token)
-  - `whatsapp.verify_token` (REQUIRED — any string of your choice; Meta echoes it during webhook subscription)
-  - `whatsapp.webhook_host`: "0.0.0.0" (bind interface for inbound webhook listener)
-  - `whatsapp.webhook_port`: 8765 (TCP port the listener binds to — expose this publicly)
-  - `whatsapp.webhook_path`: "/wa-webhook" (URL path Meta posts to)
-  - `whatsapp.graph_base`: "https://graph.facebook.com" (Graph API base URL — rarely changed)
-  - `password`: "" (single string the WhatsApp user must supply on first contact; empty disables the gate)
-  - `tlamatini.base_url`: "http://127.0.0.1:8000" (HTTP login endpoint; `ws_url` is auto-derived)
-  - `tlamatini.username` / `tlamatini.password`: Tlamatini Django credentials this agent logs in with
-  - `tlamatini.multi_turn_enabled`: true (always send chat with Multi-Turn enabled so tools can fire)
-  - `tlamatini.exec_report_enabled`: true (request the per-agent Exec Report tables in every answer)
-  - `tlamatini.response_idle_timeout` / `tlamatini.total_timeout` (seconds; how long to wait for a single answer)
-  - `completeness_check.enabled`: false (when true, runs an Ollama-backed clarification gate before forwarding — adds 2-30 s per message; default OFF for fire-and-go)
-  - `completeness_check.host` / `completeness_check.model` / `completeness_check.instruction`
-  - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
-  - `target_agents`: [] (downstream agents started after every completed user request cycle)
 
 ### 62. Reviewer
 - **Purpose**: LLM-powered code reviewer. On trigger it resolves a git diff for the configured `repo_path` (a ref like `HEAD~1` / `origin/main`, or — with an empty `diff_ref` — uncommitted working-tree + staged changes), sends the diff to an Ollama model with a rigorous senior-engineer review prompt, parses a **verdict** (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`), and emits an `INI_SECTION_REVIEWER` block. Always triggers `target_agents` so the flow can branch on `verdict`.
@@ -2195,7 +2163,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
       "source_files": ["D:\\Proyectos\\WorkspaceNormasDRM\\NormasDRM\\normasdrm-webapp-war\\target\\NormasDRM.war"],
       "destination_folder": "D:\\devenv\\Sun\\GlassFish706\\GF706\\glassfish\\domains\\domain1\\autodeploy\\",
       "source_agents": ["executer_2"],
-      "target_agents": ["monitor_log_1", "notifier_1", "whatsapper_1"],
+      "target_agents": ["monitor_log_1", "notifier_1"],
       "trigger_event_string": "EVENT DETECTED",
       "poll_interval": 5
     }
@@ -2263,69 +2231,36 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "recursion_limit": 1000
       },
       "source_agents": ["monitor_log_1"],
-      "target_agents": ["telegramer_1"]
+      "target_agents": ["telegrammer_1", "whatsapper_1"]
     }
   },
   {
     "agent_type": "whatsapper",
     "config": {
-      "source_agents": ["monitor_log_1"],
+      "source_agents": ["notifier_1"],
       "target_agents": [],
-      "keywords": "NormasDRM was successfully deployed",
-      "system_prompt": "|
-      You are a Log Monitoring Agent within the Tlamatini platform. Your job is to analyze pre-filtered log entries from a log file.
-      
-      Target Log File: {filepath}
-      Target Keywords: {keywords}
-      Outcome word: {outcome_word}
-
-      Instructions:
-      1. Call the tool 'check_log_file' to read new log entries.
-      2. The tool returns ONLY lines that matched the target keywords (pre-filtered), with surrounding context lines.
-      3. Analyze the returned lines. Classify the severity and summarize what happened.
-      4. If the tool says 'No new log lines found since last check.', say 'No events found.'
-      5. **If the tool returns pre-filtered matches: output the phrase '{outcome_word}: ' followed by the type of error and a brief summary of what happened.**
-
-      CRITICAL — Keyword Matching Rules:
-      - **Case-insensitive**: Keywords may appear in ANY combination of upper/lower case
-        (e.g., 'error', 'Error', 'ERROR', 'eRrOr' all match the keyword 'ERROR').
-        Always perform case-insensitive comparisons when looking for keywords.
-      - **Semantic synonym matching**: If a keyword or keyword phrase conveys a specific
-        meaning, you MUST also detect lines that express the SAME meaning using
-        different words or phrasing. For example:
-        • 'Failed to send email' also matches: 'Email delivery failure',
-          'Unable to dispatch mail', 'Mail sending error', 'SMTP send failed'.
-        • 'Connection refused' also matches: 'Unable to connect', 'Connection rejected',
-          'Host refused connection', 'Cannot establish connection'.
-        • 'Disk full' also matches: 'No space left on device', 'Insufficient disk space',
-          'Storage capacity exceeded'.
-        Apply this semantic matching to ALL keywords — if the log line carries the same
-        meaning as the keyword, treat it as a match regardless of the exact wording.",
-      "llm": {
-        "base_url": "http://localhost:11434",
-        "model": "gpt-oss:120b-cloud",
-        "temperature": 0.1
+      "mode": "send",
+      "whatsapp": {
+        "phone_number_id": "",
+        "access_token": "",
+        "graph_base": "https://graph.facebook.com",
+        "api_version": "v21.0",
+        "to": ""
       },
-      "textmebot": {
-        "phone": "+525559648601",
-        "apikey": "y2jPNN3hNqBu"
-      },
-      "poll_interval": 5,
-      "recursion_limit": 1000
+      "message": "NormasDRM Deployed!!!"
     }
   },
   {
-    "agent_type": "telegramer",
+    "agent_type": "telegrammer",
     "config": {
       "source_agents": ["notifier_1"],
       "target_agents": [],
+      "mode": "send",
       "telegram": {
-        "api_id": 36367295,
-        "api_hash": "9854952a0bd1cf028341b5d591305d32",
-        "chat_id": "me",
-        "message": "NormasDRM Deployed!!!"
+        "bot_token": "",
+        "chat_id": ""
       },
-      "poll_interval": 5
+      "message": "NormasDRM Deployed!!!"
     }
   },
   {
@@ -2344,9 +2279,9 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "monitor_log_1",
         "notifier_1",
         "whatsapper_1",
-        "telegramer_1"
+        "telegrammer_1"
       ],
-      "source_agents": ["notifier_1", "whatsapper_1", "telegramer_1"],
+      "source_agents": ["notifier_1", "whatsapper_1", "telegrammer_1"],
       "output_agents": ["cleaner_1"]
     }
   },
@@ -2366,7 +2301,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
         "monitor_log_1",
         "notifier_1",
         "whatsapper_1",
-        "telegramer_1"
+        "telegrammer_1"
       ],
       "cleaned_agents": [],
       "output_agents": []
@@ -2375,8 +2310,8 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 ]
 ```
 
-**Flow lifecycle**: Starter → Executer (stops domain) → sequence of 5 Deleters (clean up logs and applications) → Executer (starts domain) → Mover (copies new WAR to autodeploy) → Mover triggers downstream polling log agents (Monitor Log, Notifier, and Whatsapper).
-- **Monitoring/Alert path**: Monitor Log watches `server.log` for the success keyword "NormasDRM was successfully deployed". Notifier and Whatsapper concurrently poll the Monitor Log's output log directly. Upon seeing the success keyword, Notifier displays a GUI alert and launches Telegramer. Whatsapper concurrently sends a message via TextMeBot.
+**Flow lifecycle**: Starter → Executer (stops domain) → sequence of 5 Deleters (clean up logs and applications) → Executer (starts domain) → Mover (copies new WAR to autodeploy) → Mover triggers downstream polling log agents (Monitor Log and Notifier).
+- **Monitoring/Alert path**: Monitor Log watches `server.log` for the success keyword "NormasDRM was successfully deployed". Notifier polls the Monitor Log's output log directly. Upon seeing the success keyword, Notifier displays a GUI alert and launches Telegrammer (mode=`send`, official Telegram Bot API) and Whatsapper (mode=`send`, official Meta WhatsApp Cloud API), which each deliver a deployment-status message.
 - **Termination**: Ender is wired with `target_agents` containing all active and monitoring agents (the kill list). When stopped, it terminates them and launches Cleaner to clean up logs and PIDs. The `source_agents` are only the graphical connections to Ender's input.
 
 **Key design decisions in this example**:
@@ -2471,7 +2406,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
    - Wrong: Pythonxer_1 parses logs and executes downstream agents
    - Right: Raiser_1 watches for a keyword in the log and executes downstream agents
 
-4. **❌ Starting terminal agents from Starter.** Notifier, Emailer, and Whatsapper should NEVER be started by Starter. They should be the last step in a chain, triggered only after the event they report is detected.
+4. **❌ Starting terminal agents from Starter.** Notifier and Emailer should NEVER be started by Starter. They should be the last step in a chain, triggered only after the event they report is detected.
    - Wrong: `Starter → Notifier` (Notifier starts polling immediately, before anything happens)
    - Right: `Raiser → Notifier` (Notifier starts only when the alert condition is met)
 

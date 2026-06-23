@@ -112,6 +112,8 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "arduiner": ("action", "tool", "ok", "returncode", "success", "fqbn", "port", "sketch_path", "stage", "response_body"),
     "mcp_doctor": ("server_key", "transport", "runtime", "supported", "status", "catalog_path", "response_body"),
     "discoverer": ("tool", "target", "returncode", "success", "findings_count", "json_path", "pdcp_used", "stage", "response_body"),
+    "telegrammer": ("chat_id", "status", "message_id", "response_body"),
+    "whatsapper": ("recipient", "status", "message_id", "response_body"),
 }
 
 
@@ -139,19 +141,16 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
             "tlamatini.password",
         ),
     ),
-    "whatstlamatini": _contract(
-        "whatstlamatini",
-        long_running=True,
-        special="remote_chat_ingress",
-        secret_paths=(
-            "whatsapp.app_secret",
-            "whatsapp.verify_token",
-            "whatsapp.access_token",
-            "password",
-            "tlamatini.password",
-        ),
+    "telegrammer": _contract(
+        "telegrammer",
+        parametrizer_fields=("chat_id", "status", "message_id", "response_body"),
+        secret_paths=("telegram.bot_token",),
     ),
-    "telegramrx": _contract("telegramrx", long_running=True, never_starts_targets=True),
+    "whatsapper": _contract(
+        "whatsapper",
+        parametrizer_fields=("recipient", "status", "message_id", "response_body"),
+        secret_paths=("whatsapp.access_token",),
+    ),
     "gatewayer": _contract("gatewayer", long_running=True),
     "gateway_relayer": _contract("gateway_relayer", long_running=True, aliases=("gateway-relayer", "gateway relayer")),
     "node_manager": _contract("node_manager", long_running=True, aliases=("node-manager", "node manager")),
@@ -166,8 +165,6 @@ _NEVER_START_TARGETS = {
     "monitor_log",
     "monitor_netstat",
     "recmailer",
-    "whatsapper",
-    "telegramrx",
 }
 
 

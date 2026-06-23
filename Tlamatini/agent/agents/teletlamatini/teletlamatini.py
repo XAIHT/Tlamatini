@@ -8,8 +8,8 @@
 # rewrite cuts straight to the bone:
 #
 #   * BOT MODE ONLY. `bot_token` is required. No `listen_chat`, no
-#     "user-account fallback". Telegramer / TelegramRX exist for the
-#     user-account direction; TeleTlamatini is a bot, period.
+#     "user-account fallback". The Telegrammer agent covers direct
+#     Telegram send/receive; TeleTlamatini is a bot, period.
 #   * PERSISTENT TLAMATINI BRIDGE. We log into Tlamatini ONCE on startup,
 #     open ONE WebSocket, and reuse it for every Telegram message. No more
 #     1–2 s of HTTP login + WS handshake per CPU-usage question.
@@ -817,7 +817,7 @@ def _resolve_telegram_cfg(config: Dict[str, Any]) -> Dict[str, Any]:
     if legacy_listen_chat is not None:
         logging.warning(
             "telegram.listen_chat is ignored — TeleTlamatini is bot-only. "
-            "(Telegramer / TelegramRX cover user-account mode.)"
+            "(Use the Telegrammer agent for direct Telegram send/receive.)"
         )
     return flat
 

@@ -15,12 +15,14 @@ Targeted files (resolved relative to this script):
         GOOGLE_API_KEY     (acpx.agents.gemini.env, alias)
         OPENAI_API_KEY     (acpx.agents.codex.env)
         ollama_token       (top)
+        whatsapp_access_token, whatsapp_phone_number_id  (top — Whatsapper / Meta Cloud API)
+        telegram_bot_token (top — Telegrammer / official Telegram Bot API)
 
-    Tlamatini/agent/agents/telegramer/config.yaml
-        telegram.api_id, telegram.api_hash, telegram.chat_id
+    Tlamatini/agent/agents/telegrammer/config.yaml
+        telegram.bot_token   (official Telegram Bot API token from @BotFather)
 
-    Tlamatini/agent/agents/telegramrx/config.yaml
-        telegram.api_id, telegram.api_hash, telegram.listen_chat
+    Tlamatini/agent/agents/whatsapper/config.yaml
+        whatsapp.phone_number_id, whatsapp.access_token  (Meta WhatsApp Cloud API)
 
     Tlamatini/agent/agents/teletlamatini/config.yaml
         telegram.api_id, telegram.api_hash, telegram.bot_token,
@@ -60,8 +62,8 @@ from typing import Any, Dict, List, Tuple
 REPO_ROOT = Path(__file__).resolve().parent
 
 CONFIG_JSON = REPO_ROOT / "Tlamatini" / "agent" / "config.json"
-TELEGRAMER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "telegramer" / "config.yaml"
-TELEGRAMRX_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "telegramrx" / "config.yaml"
+TELEGRAMMER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "telegrammer" / "config.yaml"
+WHATSAPPER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "whatsapper" / "config.yaml"
 TELETLAMATINI_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "teletlamatini" / "config.yaml"
 EMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "emailer" / "config.yaml"
 RECMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "recmailer" / "config.yaml"
@@ -139,6 +141,9 @@ def patch_config_json(mode: str, keys: Dict[str, str], dry_run: bool) -> List[st
     set_top("ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
     set_top("GEMINI_API_KEY",    "GEMINI_API_KEY")
     set_top("ollama_token",      "OLLAMA_TOKEN")
+    set_top("whatsapp_access_token",     "WHATSAPP_ACCESS_TOKEN")
+    set_top("whatsapp_phone_number_id",  "WHATSAPP_PHONE_NUMBER_ID")
+    set_top("telegram_bot_token",        "TELEGRAM_BOT_TOKEN")
 
     set_acpx_env("claude", "ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
     set_acpx_env("gemini", "GEMINI_API_KEY",    "GEMINI_API_KEY")
@@ -156,16 +161,13 @@ def patch_config_json(mode: str, keys: Dict[str, str], dry_run: bool) -> List[st
 # ────────────────────────────────────────────────────────────────────────
 
 # Each rule: (yaml_path, data_key) where yaml_path is a list of nested keys.
-TELEGRAMER_RULES: List[Tuple[List[str], str]] = [
-    (["telegram", "api_id"],   "TELEGRAMER_API_ID"),
-    (["telegram", "api_hash"], "TELEGRAMER_API_HASH"),
-    (["telegram", "chat_id"],  "TELEGRAMER_CHAT_ID"),
+TELEGRAMMER_RULES: List[Tuple[List[str], str]] = [
+    (["telegram", "bot_token"], "TELEGRAM_BOT_TOKEN"),
 ]
 
-TELEGRAMRX_RULES: List[Tuple[List[str], str]] = [
-    (["telegram", "api_id"],       "TELEGRAMRX_API_ID"),
-    (["telegram", "api_hash"],     "TELEGRAMRX_API_HASH"),
-    (["telegram", "listen_chat"],  "TELEGRAMRX_LISTEN_CHAT"),
+WHATSAPPER_RULES: List[Tuple[List[str], str]] = [
+    (["whatsapp", "phone_number_id"], "WHATSAPP_PHONE_NUMBER_ID"),
+    (["whatsapp", "access_token"],    "WHATSAPP_ACCESS_TOKEN"),
 ]
 
 TELETLAMATINI_RULES: List[Tuple[List[str], str]] = [
@@ -362,8 +364,8 @@ def main() -> int:
 
     reports: List[List[str]] = [
         patch_config_json(args.mode, keys, args.dry_run),
-        patch_yaml(TELEGRAMER_YAML,    TELEGRAMER_RULES,    args.mode, keys, args.dry_run),
-        patch_yaml(TELEGRAMRX_YAML,    TELEGRAMRX_RULES,    args.mode, keys, args.dry_run),
+        patch_yaml(TELEGRAMMER_YAML,   TELEGRAMMER_RULES,   args.mode, keys, args.dry_run),
+        patch_yaml(WHATSAPPER_YAML,    WHATSAPPER_RULES,    args.mode, keys, args.dry_run),
         patch_yaml(TELETLAMATINI_YAML, TELETLAMATINI_RULES, args.mode, keys, args.dry_run),
         patch_yaml(EMAILER_YAML,       EMAILER_RULES,       args.mode, keys, args.dry_run,
                    force_quote_passwords=True),

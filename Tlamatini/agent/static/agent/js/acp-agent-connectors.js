@@ -654,22 +654,22 @@ async function updateStopperConnection(stopperAgentId, connectionType, connected
     }
 }
 
-async function updateWhatsapperConnection(whatsapperAgentId, connectionType, connectedAgentId, action) {
+async function updateWhatsapperConnection(agentId, targetAgentId, action, type = 'target') {
     try {
-        const response = await fetch(`/agent/update_whatsapper_connection/${whatsapperAgentId}/`, {
+        const response = await fetch(`/agent/update_whatsapper_connection/${agentId}/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getHeaders() },
             credentials: 'same-origin',
-            body: JSON.stringify({ connection_type: connectionType, connected_agent: connectedAgentId, action: action })
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Whatsapper ${whatsapperAgentId} config updated:`, result.message);
+            console.log(`--- Whatsapper ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update whatsapper ${whatsapperAgentId}:`, response.statusText);
+            console.error(`--- Failed to update Whatsapper ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating whatsapper ${whatsapperAgentId}:`, error);
+        console.error(`--- Error updating Whatsapper ${agentId}:`, error);
     }
 }
 
@@ -768,25 +768,6 @@ async function updateTeletlamatiniConnection(agentId, connectedAgentId, action, 
     }
 }
 
-async function updateWhatstlamatiniConnection(agentId, connectedAgentId, action, connectionType = 'source') {
-    try {
-        const response = await fetch(`/agent/update_whatstlamatini_connection/${agentId}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getHeaders() },
-            credentials: 'same-origin',
-            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
-        });
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`--- WhatsTlamatini ${agentId} config updated:`, result.message);
-        } else {
-            console.error(`--- Failed to update WhatsTlamatini ${agentId}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`--- Error updating WhatsTlamatini ${agentId}:`, error);
-    }
-}
-
 async function updateAcpxerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
         const response = await fetch(`/agent/update_acpxer_connection/${agentId}/`, {
@@ -806,9 +787,9 @@ async function updateAcpxerConnection(agentId, connectedAgentId, action, connect
     }
 }
 
-async function updateTelegramrxConnection(agentId, connectedAgentId, action, connectionType = 'source') {
+async function updateTelegrammerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
     try {
-        const response = await fetch(`/agent/update_telegramrx_connection/${agentId}/`, {
+        const response = await fetch(`/agent/update_telegrammer_connection/${agentId}/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getHeaders() },
             credentials: 'same-origin',
@@ -816,31 +797,12 @@ async function updateTelegramrxConnection(agentId, connectedAgentId, action, con
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Telegramrx ${agentId} config updated:`, result.message);
+            console.log(`--- Telegrammer ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update Telegramrx ${agentId}:`, response.statusText);
+            console.error(`--- Failed to update Telegrammer ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating Telegramrx ${agentId}:`, error);
-    }
-}
-
-async function updateTelegramerConnection(agentId, connectedAgentId, action, connectionType = 'source') {
-    try {
-        const response = await fetch(`/agent/update_telegramer_connection/${agentId}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getHeaders() },
-            credentials: 'same-origin',
-            body: JSON.stringify({ connected_agent: connectedAgentId, action: action, connection_type: connectionType })
-        });
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`--- Telegramer ${agentId} config updated:`, result.message);
-        } else {
-            console.error(`--- Failed to update Telegramer ${agentId}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`--- Error updating Telegramer ${agentId}:`, error);
+        console.error(`--- Error updating Telegrammer ${agentId}:`, error);
     }
 }
 

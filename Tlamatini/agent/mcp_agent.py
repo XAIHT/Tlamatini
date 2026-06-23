@@ -166,7 +166,7 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # renders as one "List of Playwrighter Operations" table.
     "chat_agent_playwrighter":   ("playwrighter",   "Playwrighter"),
     "chat_agent_send_email":     ("emailer",        "Emailer"),
-    "chat_agent_telegramer":     ("telegramer",     "Telegramer"),
+    "chat_agent_telegrammer":    ("telegrammer",    "Telegrammer"),
     "chat_agent_whatsapper":     ("whatsapper",     "Whatsapper"),
     "chat_agent_notifier":       ("notifier",       "Notifier"),
     "chat_agent_j_decompiler":   ("jdecompiler",    "J-Decompiler"),
@@ -1391,7 +1391,7 @@ You have access to the following tools. Use them proactively whenever the user's
 - **Docker operations** → `chat_agent_dockerer` (with command='docker ...')
 - **Kubernetes operations** → `chat_agent_kuberneter` (with command='kubectl ...')
 - **Send email** → `chat_agent_send_email` (with smtp.username='...' and to='...')
-- **Send Telegram message** → `chat_agent_telegramer`
+- **Send Telegram message** → `chat_agent_telegrammer`
 - **Send WhatsApp message** → `chat_agent_whatsapper`
 - **Desktop notification** → `chat_agent_notifier` (with title='...' and message='...')
 - **Take a screenshot** → `chat_agent_shoter` (silent — file saved to disk, NO viewer popup. Pair with `chat_agent_image_interpreter` to read what's on screen. NEVER follow with `launch_view_image` — that would pop a viewer window and steal focus from the workflow's target app)
