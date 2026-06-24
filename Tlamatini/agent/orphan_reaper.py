@@ -459,6 +459,122 @@ def _cmdline_str(proc) -> str:
         return ""
 
 
+# ── Generalized "eagle eye": spare every FORKED FOREGROUND window ───────────
+# A forked foreground window opened by ANY agent (the Telegrammer one-time login,
+# an execute_forked_window console, a Sqler / Mongoxer window, ...) owns a VISIBLE
+# console window. Whether it is WAITING ON THE USER'S KEYBOARD or actively showing
+# output, the user can see and deal with it — so neither the orphan reaper nor the
+# command watchdog may ever kill it, however long it sits. (A process that is
+# "working, not halted" is already spared by the watchdog's CPU/IO progress test;
+# this adds the missing "waiting on the user" case.) The visible-window test is the
+# primary, AGENT-AGNOSTIC signal; an explicit cmdline marker is a belt-and-braces
+# fallback for the windows we open ourselves.
+INTERACTIVE_CONSOLE_MARKERS = ("tlamatini_keep_console", "_tg_login")
+
+
+def _visible_window_owner_pids() -> Set[int]:
+    """PIDs that own a VISIBLE top-level window right now (Windows only). For a
+    console window that is the conhost.exe hosting it. Empty set off Windows or on
+    any error, so callers fall back to the marker / normal rules."""
+    pids: Set[int] = set()
+    if os.name != "nt":
+        return pids
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        enum_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+        def _cb(hwnd, _lparam):
+            try:
+                if user32.IsWindowVisible(hwnd):
+                    pid = wintypes.DWORD(0)
+                    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                    if pid.value:
+                        pids.add(int(pid.value))
+            except Exception:  # noqa: BLE001
+                pass
+            return True
+
+        user32.EnumWindows(enum_proc(_cb), 0)
+    except Exception:  # noqa: BLE001
+        pass
+    return pids
+
+
+def _owns_visible_window(proc, visible_pids: Set[int]) -> bool:
+    """True if *proc* itself, or a direct child (its conhost console host), owns a
+    visible window — i.e. *proc* is a foreground console root. A CREATE_NEW_CONSOLE
+    shell's window belongs to a conhost child, so the child check is what catches a
+    forked foreground console."""
+    if not visible_pids:
+        return False
+    try:
+        if int(proc.pid) in visible_pids:
+            return True
+    except Exception:  # noqa: BLE001
+        return False
+    try:
+        for ch in proc.children():
+            try:
+                if int(ch.pid) in visible_pids:
+                    return True
+            except Exception:  # noqa: BLE001
+                continue
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def is_protected_foreground_console(proc, visible_pids=None, protected_pids=None) -> bool:
+    """THE shared, generalized detector both reapers use. Spare *proc* when it is a
+    forked foreground window — or the process running inside one — opened by any
+    agent, so it is never killed while it waits on the user or shows output:
+
+      * it (or its conhost child) owns a visible window, OR
+      * its PARENT shell owns one and that parent is NOT our own console/ancestor
+        (this protects the inner python/login process, a sibling of the conhost,
+        without blanket-sparing ordinary children of the app), OR
+      * [belt-and-braces] its command line carries an explicit keep-console marker.
+
+    Fail-safe: False (eligible for the normal idle/orphan rules) on any error, so an
+    ordinary HEADLESS hung shell is never accidentally spared."""
+    try:
+        if visible_pids is None:
+            visible_pids = _visible_window_owner_pids()
+        protected_pids = protected_pids or set()
+        if _owns_visible_window(proc, visible_pids):
+            return True
+        try:
+            parent = proc.parent()
+        except Exception:  # noqa: BLE001
+            parent = None
+        if parent is not None:
+            try:
+                ppid = int(parent.pid)
+            except Exception:  # noqa: BLE001
+                ppid = -1
+            if ppid not in protected_pids and _owns_visible_window(parent, visible_pids):
+                return True
+        procs = [proc]
+        try:
+            procs.extend(proc.children(recursive=True))
+        except Exception:  # noqa: BLE001
+            pass
+        for p in procs:
+            cl = (_cmdline_str(p) or "").lower()
+            if cl and any(m in cl for m in INTERACTIVE_CONSOLE_MARKERS):
+                return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+# Back-compat alias (older call sites / tests).
+def is_protected_interactive_console(proc) -> bool:
+    return is_protected_foreground_console(proc)
+
+
 def reap_orphans(
     scope: str = "unspecified",
     *,
@@ -520,6 +636,12 @@ def reap_orphans(
 
     pool_fragments = _pool_path_fragments() if include_pool_scan else []
 
+    # PIDs owning a visible window THIS sweep (computed once — EnumWindows is not
+    # free). Used to spare every FORKED FOREGROUND window opened by any agent (the
+    # Telegram login, an execute_forked_window console, a Sqler/Mongoxer window)
+    # and the process running inside it — they wait on the user or show output.
+    foreground_visible_pids = _visible_window_owner_pids()
+
     # Tier-A: dead/zombie descendants of our own process tree.
     if include_self_tree:
         for child in _iter_known_descendants(our_pid):
@@ -552,6 +674,13 @@ def reap_orphans(
             if pid in (-1, our_pid) or pid in protected_pids:
                 continue
             name = _safe_name(proc)
+
+            # A FORKED FOREGROUND window (any agent's visible console — the Telegram
+            # login, an execute_forked_window, a Sqler/Mongoxer window), or the
+            # process running inside one. It is either waiting on the user or showing
+            # output the user can see — never reap it, however long it sits.
+            if is_protected_foreground_console(proc, foreground_visible_pids, protected_pids):
+                continue
 
             # Console-host sweep first (cheap — name + ppid checks). Only
             # reaps GENUINE orphans; our own / ancestor / live-parent hosts

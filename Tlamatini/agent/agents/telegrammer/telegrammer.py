@@ -881,7 +881,11 @@ def _launch_interactive_login(user_cfg: Dict) -> bool:
             si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             si.wShowWindow = 1  # SW_SHOWNORMAL - force the window visible
             proc = subprocess.Popen(
-                ["cmd.exe", "/c", wrapper],
+                # The trailing token is a watchdog/reaper EXEMPTION MARKER: both
+                # command_watchdog and orphan_reaper recognise it (and the
+                # _tg_login* file names) and NEVER kill this login window, however
+                # long the user takes to type the phone + code.
+                ["cmd.exe", "/c", wrapper, "TLAMATINI_KEEP_CONSOLE_ALIVE"],
                 cwd=here, env=get_agent_env(),
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
                 startupinfo=si,

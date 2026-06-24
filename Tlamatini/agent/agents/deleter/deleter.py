@@ -181,9 +181,12 @@ def perform_delete_operations(files_to_delete: List[str], recursive: bool = Fals
             # Handle wildcards
             files_found = glob.glob(pattern, recursive=recursive)
             if not files_found:
-                 if pattern == original_pattern: # Only warn if original pattern yielded nothing
-                    logging.warning(f"⚠️ No files found for pattern: {pattern}")
-                 continue
+                if pattern == original_pattern:  # report once per original pattern
+                    if any(c in original_pattern for c in '*?['):
+                        logging.warning(f"⚠️ No files matched pattern: {original_pattern}")
+                    else:
+                        logging.info(f"ℹ️ Not found (nothing to delete): {original_pattern}")
+                continue
             
             for file_path in files_found:
                 if file_path in processed_paths:
@@ -244,7 +247,26 @@ def main():
     
     # Configuration
     trigger_mode = config.get('trigger_mode', 'immediate') # 'immediate' or 'event'
-    files_to_delete = config.get('files_to_delete', []) # List of file paths/patterns
+
+    # Build the delete list ROBUSTLY: honor files_to_delete (a list) PLUS the
+    # intuitive single-target keys a caller or the LLM may use (target_path / path /
+    # file / file_path / target / pattern / paths), so the Deleter deletes EXACTLY
+    # what it is told no matter which key was used. Each value may be one path/glob
+    # or a list. (Previously only files_to_delete was read, so a target_path was
+    # silently dropped and the template default ran instead.)
+    files_to_delete = config.get('files_to_delete', []) or []
+    if isinstance(files_to_delete, str):
+        files_to_delete = [files_to_delete]
+    files_to_delete = [str(p).strip() for p in files_to_delete if str(p).strip()]
+    for _alias in ('target_path', 'path', 'file', 'file_path', 'target', 'pattern', 'paths'):
+        _val = config.get(_alias)
+        if isinstance(_val, str) and _val.strip():
+            files_to_delete.append(_val.strip())
+        elif isinstance(_val, (list, tuple)):
+            files_to_delete.extend([str(v).strip() for v in _val if str(v).strip()])
+    _seen = set()
+    files_to_delete = [p for p in files_to_delete if not (p in _seen or _seen.add(p))]
+
     source_agents = config.get('source_agents', []) # List of source agents for event triggering
     recursive = config.get('recursive', False)
     filetype_exclusions = config.get('filetype_exclusions', '')

@@ -2693,7 +2693,19 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
             "log_path": log_path,
         })
 
-    run = wait_briefly_for_initial_state(run, seconds=spec.poll_window_seconds)
+    # Per-turn cost cut (2026-06-24): for short (non-long_running) wrapped agents,
+    # block until the agent COMPLETES (capped at 90s) instead of returning
+    # "running" after a brief window. wait_briefly_for_initial_state already
+    # returns the instant the run reaches a final state, so a 45s agent returns
+    # at ~45s — but the LLM now gets the FULL result in ONE tool call instead of
+    # launch -> poll -> re-launch cycles, which were costing minutes per
+    # multi-step task (the LLM calls themselves are only ~1-3s). long_running
+    # agents keep the short window so they still return promptly as "running".
+    _initial_wait_seconds = (
+        spec.poll_window_seconds if spec.long_running
+        else max(spec.poll_window_seconds, 90)
+    )
+    run = wait_briefly_for_initial_state(run, seconds=_initial_wait_seconds)
     payload = serialize_chat_agent_run(run, include_log_excerpt=True)
     payload["tool"] = spec.tool_name
     payload["display_name"] = spec.display_name

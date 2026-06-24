@@ -185,6 +185,30 @@ def _external_mcp_protected_pids() -> Set[int]:
         return set()
 
 
+def _visible_window_pids() -> Set[int]:
+    """PIDs owning a visible top-level window right now (reuse orphan_reaper's
+    EnumWindows scan). Empty set on any error."""
+    try:
+        from . import orphan_reaper as _r
+        return set(_r._visible_window_owner_pids())
+    except Exception:
+        return set()
+
+
+def _is_protected_foreground_console(proc, visible_pids, protected_pids) -> bool:
+    """Share orphan_reaper's generalized "eagle eye": spare any FORKED FOREGROUND
+    window (it owns a visible console — so it is waiting on the user's keyboard or
+    showing output the user can see) opened by ANY agent, no matter how long it
+    idles. The watchdog's CPU/IO progress test already spares a "working, not
+    halted" process; this adds the missing "waiting on the user" case. Fail-safe:
+    False on any error, so a genuinely headless hung shell is still reaped."""
+    try:
+        from . import orphan_reaper as _r
+        return bool(_r.is_protected_foreground_console(proc, visible_pids, protected_pids))
+    except Exception:
+        return False
+
+
 def _kill_tree(proc, errors: List[str]) -> int:
     """Kill *proc* and every descendant (descendants first so handle holders
     die before the root). Returns the count actually reaped. Never raises."""
@@ -347,12 +371,22 @@ class CommandWatchdog:
 
         seen: Set[int] = set()
         mcp_protected = _external_mcp_protected_pids()
+        # PIDs owning a visible window this tick (computed once — EnumWindows is
+        # not free) so a forked foreground console is recognised and spared.
+        visible_pids = _visible_window_pids()
         for proc in current:
             pid = self._proc_pid(proc)
             if pid < 0 or pid in self._protected or pid == self.our_pid:
                 continue
             name = self._proc_name(proc)
             if name not in _SHELL_NAMES:
+                continue
+            if _is_protected_foreground_console(proc, visible_pids, self._protected):
+                # A FORKED FOREGROUND window (any agent's visible console — the
+                # Telegram login, an execute_forked_window, a Sqler/Mongoxer
+                # window). It is waiting on the user's keyboard or showing output —
+                # never reap it as a hung shell, however long it sits. When the
+                # user closes it, the agent continues with the freshly-entered data.
                 continue
             if pid in mcp_protected or self._has_protected_ancestor(proc, mcp_protected):
                 # External-MCP server launcher (e.g. ``cmd.exe /c mcp.bat`` →
@@ -418,22 +452,24 @@ class CommandWatchdog:
             if pid not in seen:
                 self._tracked.pop(pid, None)
 
-        # Visible per-tick heartbeat. Uses print() (NOT logger.info) on purpose:
-        # the manage.py stdout tee captures print into tlamatini.log, whereas
-        # agent.* logger INFO records are not emitted to that stream — so this is
-        # the line that proves the watchdog is alive and actively scanning every
-        # tick. Lists the tracked shells (the "instances" it is watching) so a
-        # hung cmd/powershell shows up here before it is reaped.
+        # Heartbeat via print() (NOT logger.info) so the manage.py stdout tee
+        # captures it into tlamatini.log. Emit it ONLY when something is actually
+        # being watched or was killed this tick, plus a sparse keep-alive every
+        # 40th tick (~10 min on a 15 s tick). An IDLE watchdog now stays SILENT
+        # instead of scrolling a line every single tick forever — that endless idle
+        # spam made the server console look stuck in a watchdog loop. (The kill
+        # behaviour is completely unchanged; only the console verbosity is reduced.)
         try:
-            tracked_desc = ", ".join(
-                f"{t.name}#{pid}(idle={t.idle_ticks})" for pid, t in self._tracked.items()
-            ) or "none"
-            print(
-                f"--- [WATCHDOG] tick #{self._tick_count}: scanned {len(current)} "
-                f"descendant proc(es), watching {len(self._tracked)} shell(s) "
-                f"[{tracked_desc}], killed {len(killed)} this tick",
-                flush=True,
-            )
+            if self._tracked or killed or (self._tick_count % 40 == 0):
+                tracked_desc = ", ".join(
+                    f"{t.name}#{pid}(idle={t.idle_ticks})" for pid, t in self._tracked.items()
+                ) or "none"
+                print(
+                    f"--- [WATCHDOG] tick #{self._tick_count}: scanned {len(current)} "
+                    f"descendant proc(es), watching {len(self._tracked)} shell(s) "
+                    f"[{tracked_desc}], killed {len(killed)} this tick",
+                    flush=True,
+                )
         except Exception:
             pass
         return killed

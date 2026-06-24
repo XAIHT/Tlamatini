@@ -6,6 +6,7 @@ from langchain_ollama import OllamaLLM, OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from ..global_state import global_state
+from ..llm_timing import llm_timing_callbacks
 from agent.rag_enhancements import enrich_documents_with_metadata, get_project_summary
 from .config import load_config_and_prompt, apply_conditional_rule_blocks
 from .loaders import report_oversized_docs
@@ -264,7 +265,9 @@ def _build_loaded_documents_fallback_context(documents, config):
 def build_prompt_only_chain(config, prompt_template_string, documents=None):
     """Builds a simple prompt-only chain with the same interface as the retrieval chain."""
     token = config.get('ollama_token')
-    client_kwargs = {'headers': {'Authorization': f'Bearer {token}'}} if token else {}
+    client_kwargs = {'timeout': 120.0}
+    if token:
+        client_kwargs['headers'] = {'Authorization': f'Bearer {token}'}
 
     stop_tokens = [
         "<|endoftext|>", "<|im_start|>", "<|im_end|>",
@@ -284,7 +287,8 @@ def build_prompt_only_chain(config, prompt_template_string, documents=None):
         thinking=True,
         context_window=128000,
         handle_parsing_errors=True,
-        client_kwargs=client_kwargs
+        client_kwargs=client_kwargs,
+        callbacks=llm_timing_callbacks(),
     )
 
     if llm is None:
@@ -363,7 +367,9 @@ def build_retrieval_chain(documents, config, prompt_template_string):
 
     try:
         token = config.get('ollama_token')
-        client_kwargs = {'headers': {'Authorization': f'Bearer {token}'}} if token else {}
+        client_kwargs = {'timeout': 120.0}
+        if token:
+            client_kwargs['headers'] = {'Authorization': f'Bearer {token}'}
 
         stop_tokens = [
             "<|endoftext|>", "<|im_start|>", "<|im_end|>",
@@ -383,7 +389,8 @@ def build_retrieval_chain(documents, config, prompt_template_string):
             thinking=True,
             context_window=128000,
             handle_parsing_errors=True,
-            client_kwargs=client_kwargs
+            client_kwargs=client_kwargs,
+            callbacks=llm_timing_callbacks(),
         )
 
         if llm is None:

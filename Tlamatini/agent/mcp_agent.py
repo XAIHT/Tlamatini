@@ -24,6 +24,7 @@ from .global_state import global_state, scoped_request_state
 from .orphan_reaper import reap_orphans
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
+from .llm_timing import llm_timing_callbacks
 
 
 # Tool names whose invocation is likely to spawn an external console
@@ -452,11 +453,17 @@ def _ensure_chat_tool_model(llm):
         elif public_client_kwargs:
             client_kwargs = public_client_kwargs or {}
 
+        # Bound the Ollama call so a transient cloud/serving stall fails fast
+        # (<=120s) instead of hanging the whole turn forever. setdefault never
+        # overrides an explicit/inherited timeout.
+        client_kwargs.setdefault("timeout", 120.0)
+
         # Build kwargs accepted by ChatOllama
         chat_kwargs: Dict[str, Any] = {
             "model": model,
             "base_url": base_url,
             "temperature": temperature,
+            "callbacks": llm_timing_callbacks(),
         }
 
         # Propagate optional Ollama parameters if they exist
@@ -495,6 +502,7 @@ def _ensure_chat_tool_model(llm):
                 "model": model,
                 "base_url": base_url,
                 "temperature": temperature,
+                "callbacks": llm_timing_callbacks(),
             }
             if client_kwargs:
                 basic_kwargs["client_kwargs"] = client_kwargs

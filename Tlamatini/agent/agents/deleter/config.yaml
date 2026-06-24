@@ -1,9 +1,17 @@
-trigger_mode: "immediate" # Options: "immediate", "event"
-files_to_delete:
-  - "C:/Temp/*.tmp"
-recursive: false # When true, scan subdirectories recursively for matching files
-filetype_exclusions: "" # Comma-separated extensions/filenames to exclude (e.g. "exe, msi, .profile")
-source_agents: [] # List of connected agent names (e.g., ["monitor_log_1"])
-target_agents: [] # List of downstream agents to trigger
+trigger_mode: "immediate"  # "immediate" (delete now) or "event" (delete when a source log shows trigger_event_string)
+
+# WHAT TO DELETE. Use EITHER of these (both are honored and merged):
+#   target_path     - a single file, folder, or glob, e.g. "C:/Temp/old.log" or "C:/Temp/*.tmp"
+#   files_to_delete - a list of files/folders/globs
+# A glob expands; a literal path is deleted directly (file -> removed, folder -> whole tree
+# removed); a path that does NOT exist is reported as "nothing to delete", never an error.
+# Default is EMPTY so the Deleter only ever deletes exactly what it is told.
+target_path: ""
+files_to_delete: []
+
+recursive: false  # When true, glob patterns also scan subdirectories (injects **/)
+filetype_exclusions: ""  # Comma-separated extensions/filenames to spare (e.g. "exe, msi, .profile")
+source_agents: []  # event mode: agent logs to watch for trigger_event_string
+target_agents: []  # downstream agents to start after deleting
 trigger_event_string: "EVENT DETECTED"
 poll_interval: 5

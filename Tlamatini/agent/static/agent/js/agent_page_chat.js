@@ -1509,8 +1509,10 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // ── Deleter ──────────────────────────────────────────────────────
     // Template field: files_to_delete (list)
     } else if (lower === 'deleter') {
-        if (pairs.path || pairs.files_to_delete) {
-            config.files_to_delete = [pairs.path || pairs.files_to_delete];
+        const delTarget = pairs.target_path || pairs.path || pairs.files_to_delete
+            || pairs.file || pairs.file_path || pairs.target;
+        if (delTarget) {
+            config.files_to_delete = [delTarget];
         }
 
     // ── Kyber-KeyGen ─────────────────────────────────────────────────
