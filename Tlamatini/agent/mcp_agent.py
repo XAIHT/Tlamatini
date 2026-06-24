@@ -738,6 +738,11 @@ class MultiTurnToolAgentExecutor:
                 include_self_tree=True,
                 include_pool_scan=False,   # Tier 2/3 do the wider sweep
                 include_console_host_sweep=True,
+                # Coalesce: a Multi-Turn burst calls this after every tool. The
+                # cheap self-tree zombie reap still runs each time, but the wider
+                # console-host snapshot scan runs at most once per this interval, so
+                # rapid back-to-back tool calls can't stack full sweeps.
+                min_full_scan_interval=8.0,
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("[MultiTurnExecutor] Tier-1 reap raised: %s", exc)

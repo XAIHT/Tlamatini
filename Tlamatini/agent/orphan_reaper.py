@@ -71,6 +71,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Set, Tuple
 
@@ -502,6 +503,105 @@ def _visible_window_owner_pids() -> Set[int]:
     return pids
 
 
+# ── O(N) process-index fast path (replaces per-process psutil.children() rescans) ──
+# The previous reap loop called is_protected_foreground_console() — and through it
+# psutil's proc.children() / proc.parent() — once per process in the snapshot. Each
+# of those re-walks the WHOLE process table, making a sweep O(N^2): on a busy box
+# (300+ processes, memory pressure) one sweep pegged a CPU core for ~90s holding the
+# GIL and froze the whole server (no chat answer, no catalog) until it finished. We
+# now build a parent->children index ONCE from the single process_iter() snapshot
+# and answer every parent/child question from the dict, and run the (still
+# psutil-backed) protection check ONLY on actual kill-candidates.
+
+def _build_proc_index(snapshot):
+    """From one ``process_iter(['pid','name','ppid'])`` snapshot build
+    ``(name_by_pid, ppid_by_pid, children_by_ppid)`` in O(N)."""
+    name_by_pid: dict = {}
+    ppid_by_pid: dict = {}
+    children_by_ppid: dict = {}
+    for p in snapshot:
+        try:
+            info = p.info
+        except Exception:  # noqa: BLE001
+            continue
+        pid = info.get("pid")
+        if pid is None:
+            continue
+        name_by_pid[pid] = info.get("name") or ""
+        ppid = info.get("ppid")
+        ppid_by_pid[pid] = ppid
+        if ppid is not None:
+            children_by_ppid.setdefault(ppid, []).append(pid)
+    return name_by_pid, ppid_by_pid, children_by_ppid
+
+
+def _owns_visible_window_fast(pid, visible_pids, children_by_ppid) -> bool:
+    """Map-based twin of ``_owns_visible_window``: True if *pid* itself, or one of
+    its direct children (its conhost console host), owns a visible window — using the
+    precomputed child index instead of a psutil.children() table rescan."""
+    if not visible_pids:
+        return False
+    if pid in visible_pids:
+        return True
+    for ch in children_by_ppid.get(pid, ()):  # direct children (the conhost host)
+        if ch in visible_pids:
+            return True
+    return False
+
+
+def _is_protected_foreground_fast(proc, pid, ppid, *, visible_pids,
+                                  protected_pids, children_by_ppid) -> bool:
+    """Map-based, candidate-only twin of ``is_protected_foreground_console``. Spare a
+    FORKED FOREGROUND window (the Telegram login, an execute_forked_window console, a
+    Sqler/Mongoxer window) or the process inside it when:
+
+      * it (or its conhost child) owns a visible window, OR
+      * its parent shell owns one and the parent is not our own/ancestor PID, OR
+      * [belt-and-braces] it or a direct child carries an explicit keep-console marker.
+
+    Fail-safe False so a genuinely headless orphan is never accidentally spared."""
+    try:
+        if _owns_visible_window_fast(pid, visible_pids, children_by_ppid):
+            return True
+        if (ppid is not None and ppid not in protected_pids
+                and _owns_visible_window_fast(ppid, visible_pids, children_by_ppid)):
+            return True
+        targets = [proc]
+        try:
+            import psutil
+            for ch_pid in children_by_ppid.get(pid, ()):
+                try:
+                    targets.append(psutil.Process(ch_pid))
+                except Exception:  # noqa: BLE001
+                    continue
+        except Exception:  # noqa: BLE001
+            pass
+        for tgt in targets:
+            cl = (_cmdline_str(tgt) or "").lower()
+            if cl and any(m in cl for m in INTERACTIVE_CONSOLE_MARKERS):
+                return True
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
+# Pool agents always run under the carried Python, so only these names can match a
+# pool-cmdline fragment. Gating the (handle-opening) cmdline read to them means the
+# sweep never reads the command line of unrelated processes on the box.
+_POOLISH_PROCESS_NAMES = frozenset({"python.exe", "pythonw.exe", "python", "pythonw"})
+
+
+def _is_poolish_name(name: str) -> bool:
+    return (name or "").lower() in _POOLISH_PROCESS_NAMES
+
+
+# Monotonic timestamp of the last full snapshot scan, used to COALESCE rapid full
+# sweeps (the per-tool Tier-1 path can fire many times a second during a Multi-Turn
+# burst). reap_orphans skips the snapshot loop when called again within
+# ``min_full_scan_interval`` seconds of the last full scan.
+_LAST_FULL_SCAN_MONO: float = 0.0
+
+
 def _owns_visible_window(proc, visible_pids: Set[int]) -> bool:
     """True if *proc* itself, or a direct child (its conhost console host), owns a
     visible window — i.e. *proc* is a foreground console root. A CREATE_NEW_CONSOLE
@@ -582,6 +682,7 @@ def reap_orphans(
     include_pool_scan: bool = True,
     include_console_host_sweep: bool = True,
     protect_running_tracked: bool = True,
+    min_full_scan_interval: float = 0.0,
 ) -> ReapResult:
     """Sweep for orphaned Tlamatini-spawned processes and kill them.
 
@@ -660,57 +761,84 @@ def reap_orphans(
             else:
                 result.survivors.append((name, cpid))
 
-    # Tier-B / Tier-C: wider sweep — pool-cmdline matches and orphaned
-    # console hosts. One snapshot so the iteration is cheap.
-    try:
-        snapshot = list(psutil.process_iter(["pid", "name", "ppid"]))
-    except Exception as exc:  # noqa: BLE001
-        result.errors.append(f"process_iter failed: {exc}")
-        return result
-
-    for proc in snapshot:
+    # Tier-B / Tier-C: wider sweep — pool-cmdline matches and orphaned console
+    # hosts. Skipped entirely when neither is requested (Tier-1's cheap path), and
+    # COALESCED when ``min_full_scan_interval`` says a full scan ran too recently (a
+    # Multi-Turn burst fires the per-tool reaper many times a second).
+    global _LAST_FULL_SCAN_MONO
+    _want_full = include_console_host_sweep or include_pool_scan
+    _recent = (
+        min_full_scan_interval > 0
+        and (time.monotonic() - _LAST_FULL_SCAN_MONO) < min_full_scan_interval
+    )
+    if _want_full and not _recent:
+        _LAST_FULL_SCAN_MONO = time.monotonic()
         try:
-            pid = _safe_pid(proc)
-            if pid in (-1, our_pid) or pid in protected_pids:
-                continue
-            name = _safe_name(proc)
+            snapshot = list(psutil.process_iter(["pid", "name", "ppid"]))
+        except Exception as exc:  # noqa: BLE001
+            result.errors.append(f"process_iter failed: {exc}")
+            return result
 
-            # A FORKED FOREGROUND window (any agent's visible console — the Telegram
-            # login, an execute_forked_window, a Sqler/Mongoxer window), or the
-            # process running inside one. It is either waiting on the user or showing
-            # output the user can see — never reap it, however long it sits.
-            if is_protected_foreground_console(proc, foreground_visible_pids, protected_pids):
-                continue
+        # Build the parent->children index ONCE (O(N)). Every parent/child question
+        # below is then an O(1) dict lookup, so the sweep is O(N) — not O(N^2) as it
+        # was when each process triggered a psutil.children() table rescan (that made
+        # one sweep peg a core for ~90s on a 300-process box and froze the server).
+        _names, _ppids, _children = _build_proc_index(snapshot)
 
-            # Console-host sweep first (cheap — name + ppid checks). Only
-            # reaps GENUINE orphans; our own / ancestor / live-parent hosts
-            # are protected by ``_console_host_reap_decision``.
-            if include_console_host_sweep and _is_reapable_console_orphan(
-                proc,
-                protected_pids=protected_pids,
-                our_pid=our_pid,
-                our_ancestors=our_ancestors,
-            ):
+        for proc in snapshot:
+            try:
+                info = getattr(proc, "info", None) or {}
+                pid = info.get("pid", _safe_pid(proc))
+                if pid in (-1, our_pid) or pid in protected_pids:
+                    continue
+                name = info.get("name") or _safe_name(proc)
+                ppid = info.get("ppid")
+
+                # CHEAP candidate detection FIRST. Only a genuine kill-candidate pays
+                # for the (now bounded) forked-window protection check — the old code
+                # ran that check, and its psutil.children() rescans, on EVERY process.
+                # Console-host check is name+ppid (cheap); the pool cmdline read is
+                # gated to python-named processes (only those can be a pool agent), so
+                # we never open a handle for unrelated processes on the box.
+                conhost_orphan = bool(
+                    include_console_host_sweep
+                    and _is_reapable_console_orphan(
+                        proc,
+                        protected_pids=protected_pids,
+                        our_pid=our_pid,
+                        our_ancestors=our_ancestors,
+                    )
+                )
+                pool_match = False
+                if not conhost_orphan and pool_fragments and _is_poolish_name(name):
+                    cmd = _cmdline_str(proc)
+                    pool_match = bool(cmd and any(frag in cmd for frag in pool_fragments))
+
+                if not (conhost_orphan or pool_match):
+                    continue
+
+                # A FORKED FOREGROUND window (any agent's visible console — the
+                # Telegram login, an execute_forked_window, a Sqler/Mongoxer window),
+                # or the process running inside one, is waiting on the user or showing
+                # output — never reap it, however long it sits. Checked ONLY on
+                # candidates now (map-based; was every process — the O(N^2) cost).
+                if _is_protected_foreground_fast(
+                    proc, pid, ppid,
+                    visible_pids=foreground_visible_pids,
+                    protected_pids=protected_pids,
+                    children_by_ppid=_children,
+                ):
+                    continue
+
                 if _terminate_then_kill(proc, result.errors):
                     result.killed.append((name, pid))
                 else:
                     result.survivors.append((name, pid))
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-
-            # Pool-cmdline sweep (more expensive — only run if needed).
-            if pool_fragments:
-                cmd = _cmdline_str(proc)
-                if cmd and any(frag in cmd for frag in pool_fragments):
-                    if _terminate_then_kill(proc, result.errors):
-                        result.killed.append((name, pid))
-                    else:
-                        result.survivors.append((name, pid))
-                    continue
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-        except Exception as exc:  # noqa: BLE001
-            result.errors.append(f"sweep error: {exc}")
-            continue
+            except Exception as exc:  # noqa: BLE001
+                result.errors.append(f"sweep error: {exc}")
+                continue
 
     if result.killed or result.survivors:
         logger.info(
