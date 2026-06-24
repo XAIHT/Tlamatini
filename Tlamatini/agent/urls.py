@@ -180,4 +180,7 @@ urlpatterns = [
     path('external_mcps/activate/', secure_post(views.external_mcps_activate_view), name='external_mcps_activate'),
     path('external_mcps/import/', secure_post(views.external_mcps_import_view), name='external_mcps_import'),
     path('external_mcps/remove/', secure_post(views.external_mcps_remove_view), name='external_mcps_remove'),
+    # ── Contacts book CRUD (Config ▸ Contacts dialog over contacts.json) ──
+    path('contacts/', secure_get(views.contacts_list_view), name='contacts_list'),
+    path('contacts/save/', secure_post(views.contacts_save_view), name='contacts_save'),
 ]

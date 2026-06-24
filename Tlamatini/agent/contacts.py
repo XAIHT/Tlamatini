@@ -119,6 +119,76 @@ def list_contacts() -> List[Dict[str, str]]:
     return summary
 
 
+def list_contacts_full() -> List[Dict[str, str]]:
+    """Full per-contact view for the CRUD dialog (aliases joined, note included)."""
+    rows: List[Dict[str, str]] = []
+    for contact in load_contacts():
+        rows.append({
+            "name": str(contact.get("name", "")).strip(),
+            "aliases": ", ".join(str(a) for a in (contact.get("aliases") or [])),
+            "telegram": str(contact.get("telegram", "")).strip(),
+            "whatsapp": str(contact.get("whatsapp", "")).strip(),
+            "email": str(contact.get("email", "")).strip(),
+            "note": str(contact.get("note", "")).strip(),
+        })
+    return rows
+
+
+def _read_raw_contacts_doc() -> Dict[str, Any]:
+    """Read the raw contacts document (to preserve ``_README`` etc.). Fail-open."""
+    try:
+        with open(get_contacts_path(), "r", encoding="utf-8-sig") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _clean_contact(entry: Any) -> Optional[Dict[str, Any]]:
+    """Normalize one posted contact; drop it entirely if it has no usable name."""
+    if not isinstance(entry, dict):
+        return None
+    name = str(entry.get("name", "")).strip()
+    if not name:
+        return None
+    cleaned: Dict[str, Any] = {"name": name}
+    aliases = entry.get("aliases", [])
+    if isinstance(aliases, str):
+        aliases = aliases.split(",")
+    if isinstance(aliases, list):
+        cleaned["aliases"] = [str(a).strip() for a in aliases if str(a).strip()]
+    for field in ("telegram", "whatsapp", "email", "note"):
+        value = str(entry.get(field, "")).strip()
+        if value:
+            cleaned[field] = value
+    return cleaned
+
+
+def save_contacts(contacts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Persist the full contacts list to ``contacts.json`` (preserving ``_README``).
+
+    Every kept entry must have a non-empty ``name``; nameless entries are dropped.
+    Writes atomically (temp file + ``os.replace``). Returns a small envelope
+    ``{"ok": True, "count": n}`` or ``{"ok": False, "error": ...}``.
+    """
+    if not isinstance(contacts, list):
+        return {"ok": False, "error": "contacts must be a list"}
+    cleaned = [c for c in (_clean_contact(e) for e in contacts) if c]
+    doc = _read_raw_contacts_doc()
+    if not isinstance(doc, dict):
+        doc = {}
+    doc["contacts"] = cleaned
+    path = get_contacts_path()
+    try:
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(doc, handle, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+    return {"ok": True, "count": len(cleaned)}
+
+
 # Export the resolved path so spawned pool agents (Telegrammer / Whatsapper) can
 # find contacts.json via the inherited environment, exactly like TLAMATINI_TEMP.
 try:
