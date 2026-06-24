@@ -67,10 +67,10 @@ SECTION 3 — AGENT TYPES AND EXPECTED BEHAVIOR
 SHORT-LIVED agents (should start, do work, and exit quickly):
   Starter, Ender, Cleaner, Executer, Pythonxer, Shoter, Sleeper, Ssher, Scper,
   Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
-  Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegrammer, Whatsapper, FlowCreator,
+  Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegrammer, Whatsapper, Instant Messaging Doctor, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
+  ACPXer, MCP Doctor, Instant Messaging Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
   Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
@@ -255,8 +255,10 @@ KALIER SPECIAL NOTES:
 TELEGRAMMER / WHATSAPPER SPECIAL NOTES:
   - Both are SHORT-LIVED send/receive agents that finish and then start their
     `target_agents`. A quick run that then ends is NORMAL, not "stuck".
-  - Telegrammer uses the OFFICIAL Telegram Bot API (a `bot_token` from @BotFather) —
-    it does NOT use Telethon / api_id / api_hash / a phone login or a session file.
+  - Telegrammer uses official Telegram surfaces only. Bot mode uses the OFFICIAL
+    Telegram Bot API (`bot_token` from @BotFather); optional user-session mode uses
+    official Telegram API credentials (`api_id` / `api_hash` / session) for private
+    `@username` sends that bots cannot cold-DM.
     In `mode: send` it posts one message and finishes; in `mode: receive` it waits up
     to `rx_max_seconds` for an inbound message (optionally matching `rx_match` from
     `rx_from_chat_id`) and then finishes. A receive run that simply times out with
@@ -282,6 +284,15 @@ TELEGRAMMER / WHATSAPPER SPECIAL NOTES:
     routable output (Telegrammer carries `mode`, `direction`, `chat_id`, `status`,
     `message_id` + body; Whatsapper carries `mode`, `direction`, `recipient`,
     `status`, `message_id` + body) — NEVER flag their content as an error.
+  - Instant Messaging Doctor is the normal diagnostic companion for Telegrammer /
+    Whatsapper failures. It is SHORT-LIVED and ACTIVE: it validates tokens,
+    contacts, Telegram `@username` reachability, Meta phone-number/template/webhook
+    readiness, selected failure-log excerpts, emits
+    `INI_SECTION_INSTANT_MESSAGING_DOCTOR<<<`, and then starts `target_agents`.
+    A section `status: blocked` / `repair_status: operator_required` is NOT a flow
+    crash — it is routable diagnostic content for Parametrizer / Forker. Flag only
+    if the process itself crashes before emitting the section, cannot read config,
+    or runs > 5 min with no "Instant Messaging Doctor agent finished" marker.
 
 DISCOVERER SPECIAL NOTES:
   - Discoverer is SHORT-LIVED and ACTIVE: it runs ONE ProjectDiscovery tool
@@ -542,6 +553,7 @@ STARTUP markers (each agent logs one of these when it starts):
   "J-DECOMPILER AGENT STARTED" — J-Decompiler began scanning and decompiling Java artifacts
   "📦 DE-COMPRESSER AGENT STARTED" — De-Compresser began a compression or decompression run
   "🩺 MCP DOCTOR AGENT STARTED" — MCP Doctor began diagnosing External MCP catalog/server readiness
+  "INSTANT MESSAGING DOCTOR AGENT STARTED" — Instant Messaging Doctor began diagnosing Telegrammer/Whatsapper readiness
   "🎮 UNREALER AGENT STARTED" — Unrealer began dispatching a JSON command to the Unreal MCP plugin
   "🎨 BLENDERER AGENT STARTED" — Blenderer began dispatching code to the Blender MCP add-on socket
   "🔍 REVIEWER AGENT STARTED" — Reviewer began resolving a git diff for LLM review

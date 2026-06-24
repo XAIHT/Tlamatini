@@ -2248,6 +2248,18 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(30, 123, 115, 0.5);
 }
 
+/* Instant Messaging Doctor - cross-channel critical messaging triage */
+.canvas-item.instantmessagingdoctor-agent {
+    background-color: #12343B;
+    color: white;
+    background: linear-gradient(135deg, #12343B 0%, #2A9D8F 34%, #E76F51 68%, #F4D35E 100%);
+}
+
+.canvas-item.instantmessagingdoctor-agent:hover {
+    background: linear-gradient(135deg, #15515B 0%, #36C2AF 34%, #F28566 68%, #FFE680 100%);
+    box-shadow: 0 6px 15px rgba(231, 111, 81, 0.48);
+}
+
 /* Pser Agent Styles - Process Finder (Pink to Green gradient) */
 .canvas-item.pser-agent {
     background-color: #E91E63;

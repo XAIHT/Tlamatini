@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateWhatsapperConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateWhatsapperConnection, getAgentPurposeForName, setCanvasItemMetadata */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -305,6 +305,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             }
             if (sourceAgentName.toLowerCase() === 'mcp doctor') {
                 await updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
+            }
+            if (targetAgentName.toLowerCase() === 'instant messaging doctor') {
+                await updateInstantMessagingDoctorConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'instant messaging doctor') {
+                await updateInstantMessagingDoctorConnection(sourceId, targetId, 'remove', 'target');
             }
             if (targetAgentName.toLowerCase() === 'pser') {
                 await updatePserConnection(targetId, sourceId, 'remove', 'source');
@@ -700,6 +706,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'mcp doctor') {
         await updateMcpDoctorConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'instant messaging doctor') {
+        await updateInstantMessagingDoctorConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'instant messaging doctor') {
+        await updateInstantMessagingDoctorConnection(sourceId, targetId, 'add', 'target');
     }
     if (targetAgentName === 'pser') {
         await updatePserConnection(targetId, sourceId, 'add', 'source');

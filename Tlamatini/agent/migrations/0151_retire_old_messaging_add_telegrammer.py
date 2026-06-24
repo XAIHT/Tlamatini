@@ -4,7 +4,8 @@ Angela (2026-06-22) moved the old agent directories to Trash and asked for
 exactly two messaging agents, each using ONLY the official service:
 
   * RETIRE  : Telegramer, TelegramRX, WhatsTlamatini  (dirs already trashed)
-  * ADD     : Telegrammer  (the single Telegram send/receive agent, Bot API)
+  * ADD     : Telegrammer  (the single Telegram send/receive agent, official
+                             Telegram Bot API plus optional official user session)
   * KEEP    : Whatsapper    (rebuilt onto Meta WhatsApp Cloud API; row already
                              exists from migration 0009 — we just ensure its
                              wrapped-tool row is present)
@@ -27,8 +28,8 @@ TELEGRAM_WIZARD = (
     "Tick Multi-Turn AND Step-by-Step. Goal: get my Telegram working with the "
     "Telegrammer agent. First, point me to the guide "
     "agent/agents/telegrammer/HOW_TO_GET_YOUR_TELEGRAM_ASSETS.md and ask me for "
-    "the ONE asset it needs — my **Bot Token** from @BotFather (and who to "
-    "message: a chat id or @username). Give me ONE concrete action at a time and "
+    "the ONE required asset it needs — my **Bot Token** from @BotFather (and who to "
+    "message as a readable @username). Give me ONE concrete action at a time and "
     "WAIT for my reply before the next. When I give the token, store it for the "
     "Telegrammer agent and send a test message, then confirm. End with END-RESPONSE."
 )

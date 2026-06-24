@@ -41,7 +41,7 @@ three universal options:
 
 - `wait` (bool) — wait for completion and return the full log. Default `true`,
   except known **long-running** agents (croner, flowhypervisor, teletlamatini,
-  whatstlamatini, gatewayer, gateway_relayer, telegramrx, recmailer,
+  gatewayer, gateway_relayer, recmailer,
   monitor_log, monitor_netstat, node_manager) default `false`.
 - `timeout_seconds` (int, default 180) — if the agent hasn't finished by then,
   it's left running in the background and a `run_id` is returned.

@@ -1,7 +1,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -224,6 +224,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'discoverer': 'discoverer-agent',
     'dockerer': 'dockerer-agent',
     'mcp-doctor': 'mcpdoctor-agent',
+    'instant-messaging-doctor': 'instantmessagingdoctor-agent',
     'pser': 'pser-agent',
     'kuberneter': 'kuberneter-agent',
     'apirer': 'apirer-agent',
@@ -921,6 +922,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'dockerer') updateDockererConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'instant messaging doctor') updateInstantMessagingDoctorConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'instant messaging doctor') updateInstantMessagingDoctorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'telegrammer') updateTelegrammerConnection(targetId, sourceId, 'remove', 'source');
@@ -1059,6 +1062,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'dockerer' && !sourceBeingDeleted) updateDockererConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'mcp doctor' && !targetBeingDeleted) updateMcpDoctorConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'mcp doctor' && !sourceBeingDeleted) updateMcpDoctorConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'instant messaging doctor' && !targetBeingDeleted) updateInstantMessagingDoctorConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'instant messaging doctor' && !sourceBeingDeleted) updateInstantMessagingDoctorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'pser' && !targetBeingDeleted) updatePserConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'pser' && !sourceBeingDeleted) updatePserConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'telegrammer' && !targetBeingDeleted) updateTelegrammerConnection(targetId, sourceId, 'remove', 'source');
@@ -1577,6 +1582,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'dockerer') updateDockererConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'mcp doctor') updateMcpDoctorConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'instant messaging doctor') updateInstantMessagingDoctorConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'instant messaging doctor') updateInstantMessagingDoctorConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'pser') updatePserConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'pser') updatePserConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'crawler') updateCrawlerConnection(targetId, sourceId, 'add', 'source');

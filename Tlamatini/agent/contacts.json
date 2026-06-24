@@ -1,21 +1,21 @@
 {
-  "_README": "Tlamatini Contacts book. Add the people you message here, then you can just say 'send a WhatsApp / Telegram to <name> ...' and Tlamatini resolves the handle for you. Fields: name (required), aliases (other names that should resolve to this person), telegram (@username, a +countrycode phone, or a numeric id), whatsapp (phone with country code, e.g. +5215555555555), email (optional). This file is USER STATE: it lives next to config.json and is preserved across updates. Do NOT commit real phone numbers to a public repo.",
+  "_README": "Tlamatini Contacts book. Add the people you message here, then you can just say 'send a WhatsApp / Telegram to <name> ...' and Tlamatini resolves the handle for you. Fields: name (required), aliases (other names that should resolve to this person), telegram (@username only for people), whatsapp (phone with country code, e.g. +5215555555555), email (optional). This file is USER STATE: it lives next to config.json and is preserved across updates. Do NOT commit real phone numbers to a public repo.",
   "contacts": [
     {
       "name": "Angela",
       "aliases": ["me", "Angela", "blackangy", "@blackangy"],
-      "telegram": "1662084965",
+      "telegram": "@blackangy",
       "whatsapp": "+525559648601",
       "email": "angela@xaiht.org",
-      "note": "Owner. telegram is the NUMERIC chat id (instant — no @username lookup needed)."
+      "note": "Owner 1. Telegram stays as @username; Telegrammer keeps any Bot API numeric routing id only in its private local cache."
     },
     {
       "name": "Ana Ricardo Lazcano",
-      "aliases": ["Ana", "Ana Lazcano", "Ana Ricardo"],
-      "telegram": "@ana_lazcano",
-      "whatsapp": "+5215555555555",
-      "email": "ana.lazcano@example.com",
-      "note": "EXAMPLE contact with placeholder handles — replace with a real person or delete."
+      "aliases": ["Ana", "Ana Lazcano", "Ana Ricardo", "@hanna261206"],
+      "telegram": "@hanna261206",
+      "whatsapp": "+525524020007",
+      "email": "ana@xaiht.org",
+      "note": "Owner 2. Telegram stays as @username; Telegrammer keeps any Bot API numeric routing id only in its private local cache."
     }
   ]
 }

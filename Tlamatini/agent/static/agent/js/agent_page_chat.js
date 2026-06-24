@@ -869,6 +869,33 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             config.include_catalog = String(pairs.include_catalog).toLowerCase() === 'true';
         }
 
+    // ── Instant Messaging Doctor ─────────────────────────────────────
+    // Template fields: mode, platform, contact_name, message, template,
+    // retry_send, telegram.*, whatsapp.*, ollama.*.
+    } else if (lower === 'instant messaging doctor') {
+        set('mode', pairs.mode || pairs.action);
+        set('platform', pairs.platform);
+        set('contact_name', pairs.contact_name || pairs.contact);
+        set('message', pairs.message || pairs.text);
+        set('template', pairs.template);
+        set('template_language', pairs.template_language || pairs.language);
+        if (pairs.template_params) {
+            config.template_params = pairs.template_params;
+        }
+        if (pairs.retry_send !== undefined && pairs.retry_send !== '') {
+            config.retry_send = String(pairs.retry_send).toLowerCase() === 'true';
+        }
+        const telegramCfg = collectDotted('telegram');
+        if (pairs.telegram_recipient) telegramCfg.chat_id = pairs.telegram_recipient;
+        if (Object.keys(telegramCfg).length > 0) config.telegram = telegramCfg;
+        const whatsappCfg = collectDotted('whatsapp');
+        if (pairs.whatsapp_to) whatsappCfg.to = pairs.whatsapp_to;
+        if (Object.keys(whatsappCfg).length > 0) config.whatsapp = whatsappCfg;
+        const ollamaCfg = collectDotted('ollama');
+        if (Object.keys(ollamaCfg).length > 0) config.ollama = ollamaCfg;
+        set('failure_log_excerpt', pairs.failure_log_excerpt);
+        set('failure_log_path', pairs.failure_log_path);
+
     // ── Kuberneter ───────────────────────────────────────────────────
     // Template fields: command, namespace, extra_args, custom_command
     } else if (lower === 'kuberneter') {

@@ -541,7 +541,7 @@ def main():
         # ── One-shot direct send ────────────────────────────────────────────
         # When NO source agents are wired (standalone / chat-agent launch), the
         # Emailer is NOT a log monitor — it sends the configured email once and
-        # exits, mirroring Telegramer's action-agent behavior. Source-agent
+        # exits, mirroring Telegrammer's action-agent behavior. Source-agent
         # monitoring (below) only applies when the canvas wired upstream logs.
         if not source_agents:
             logging.info("📧 EMAILER AGENT STARTED (one-shot direct send — no source agents configured)")

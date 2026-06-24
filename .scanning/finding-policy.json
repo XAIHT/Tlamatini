@@ -49,12 +49,6 @@
       },
       {
         "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
-        "path_regex": "Tlamatini/agent/agents/whatstlamatini/whatstlamatini\\.py",
-        "message_regex": "Insecure WebSocket",
-        "reason": "Same localhost-derived ws:// default as TeleTlamatini bridge; not exposed as generic WSS endpoint."
-      },
-      {
-        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
         "path_regex": "Tlamatini/agent/mcp_system_server\\.py",
         "message_regex": "Insecure WebSocket",
         "reason": "MCP system metrics server binds 127.0.0.1 by default; ws:// log line reflects local-only service."

@@ -4,8 +4,8 @@
 # access.welcome_message / rejection_message / password_prompt / unclear_request_prompt /
 # awaiting_info_intro / processing_message / completed_prefix / error_prefix, llm.*,
 # poll_interval) for backward compatibility but ignores them — they were dead weight
-# from the old user-account-mode design. Telegramer / TelegramRX cover that direction;
-# TeleTlamatini is bot-only by design.
+# from the old user-account-mode design. Telegrammer covers short-lived
+# Telegram send/receive; TeleTlamatini is bot-bridge-only by design.
 
 # ── Connection fields (auto-populated via canvas connections) ──────────────
 source_agents: []

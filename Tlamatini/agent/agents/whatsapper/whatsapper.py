@@ -1,7 +1,7 @@
 # Whatsapper Agent — the ONE WhatsApp send/receive agent.
 #
 # Uses ONLY Meta's OFFICIAL WhatsApp Cloud API (Graph API) over plain HTTPS
-# (stdlib urllib) — NO Twilio, NO TextMeBot, NO third-party gateway. Get the
+# (stdlib urllib) — NO Twilio, NO TextMeBot, NO WhatsApp Web gateway. Get the
 # Phone number ID + Access token from Meta (see HOW_TO_GET_YOUR_WHATSAPP_ASSETS.md).
 #
 # Three run-modes (config `mode`: auto | send | receive):
@@ -409,6 +409,43 @@ class WhatsAppCloudClient:
     def configured(self) -> bool:
         return bool(self.phone_number_id and self.access_token)
 
+    @staticmethod
+    def _format_meta_error(status_code: int, raw: str) -> str:
+        summary = raw[:400]
+        try:
+            err = (json.loads(raw).get("error") or {})
+            message = str(err.get("message") or "").strip()
+            code = str(err.get("code") or "").strip()
+            err_type = str(err.get("type") or "").strip()
+            fbtrace = str(err.get("fbtrace_id") or "").strip()
+            if status_code == 401 or code == "190":
+                summary = (
+                    "Meta WhatsApp Cloud API authentication failed. The access token is "
+                    "expired, revoked, malformed, or does not belong to this app/WABA/phone_number_id. "
+                    "Generate a fresh System User permanent token with whatsapp_business_messaging "
+                    "and whatsapp_business_management, assign the WhatsApp asset, update "
+                    "whatsapp_access_token, then restart Tlamatini."
+                )
+            elif code == "131047" or "re-engagement" in message.lower():
+                summary = (
+                    "Meta rejected this as a cold free-form message outside the 24-hour customer "
+                    "service window. Use an approved WhatsApp template for the first outbound message."
+                )
+            elif message:
+                summary = message
+            details = []
+            if code:
+                details.append(f"code={code}")
+            if err_type:
+                details.append(f"type={err_type}")
+            if fbtrace:
+                details.append(f"fbtrace_id={fbtrace}")
+            if details:
+                summary = f"{summary} ({', '.join(details)})"
+        except Exception:
+            pass
+        return f"HTTPError {status_code}: {summary}"
+
     def _post(self, payload: Dict) -> Tuple[bool, str, str]:
         if not self.configured:
             return False, "whatsapp.phone_number_id or whatsapp.access_token missing", ""
@@ -437,7 +474,7 @@ class WhatsAppCloudClient:
                 err = exc.read().decode("utf-8", errors="replace")
             except Exception:
                 err = str(exc)
-            return False, f"HTTPError {exc.code}: {err[:400]}", ""
+            return False, self._format_meta_error(exc.code, err), ""
         except Exception as exc:
             return False, f"send error: {exc}", ""
 

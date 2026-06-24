@@ -140,6 +140,7 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_mongoxer":       ("mongoxer",       "Mongoxer"),
     "chat_agent_jenkinser":      ("jenkinser",      "Jenkinser"),
     "chat_agent_gitter":         ("gitter",         "Gitter"),
+    "chat_agent_instant_messaging_doctor": ("instantmessagingdoctor", "Instant Messaging Doctor"),
     "chat_agent_file_creator":   ("filecreator",    "File Creator"),
     "chat_agent_move_file":      ("mover",          "Mover"),
     "chat_agent_deleter":        ("deleter",        "Deleter"),

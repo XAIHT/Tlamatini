@@ -8,7 +8,7 @@ Step-by-step guide for a new workflow agent. Follow all 8 steps in order. Replac
 
 > **Reference implementations** — read these first:
 > - Simple agent with outputs: `agent/agents/shoter/shoter.py` + `config.yaml`
-> - Source-log monitor: `agent/agents/telegramer/telegramer.py`
+> - Source-log monitor: use a current short-lived agent such as `agent/agents/telegrammer/telegrammer.py` as the scaffolding reference, not the retired Telegramer path.
 > - No downstream: `agent/agents/emailer/emailer.py`
 > - Inline-mirrored Tlamatini runtime (ACPX): `agent/agents/acpxer/acpxer.py`. Pool subprocesses have no `sys.path` back into `agent.*`, so anything needing Tlamatini runtime mechanics must be ported inline, not imported.
 

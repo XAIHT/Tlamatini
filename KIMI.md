@@ -21,7 +21,7 @@
 - **External MCPs** — a config-driven **universal MCP client** (`agent/external_mcp_manager.py`, catalog `agent/external_mcps.json`) that connects to ANY external MCP server declared in a `.mcp.json`-style JSON file over FOUR transports (`stdio` local command / `streamable-http` / legacy `sse` / `websocket`), binds the remote tools to the LLM as `ext__<server>__<tool>`, and exposes eight LLM supervisor tools. Bulletproof: connects run OFF the chat path, a bad/unreachable/unsupported server is catalogued-with-reason (never crashes or hangs), ≤5 active at once. **Distinct** from the two built-in `Mcp`-model context providers (System-Metrics / Files-Search), from ACPX, and from the per-agent inline MCP clients (STM32er / Kalier). See Section 9b
 - **Skills** — Markdown-driven, budgeted, auditable capability packages (`SKILL.md` frontmatter) with OpenClaw-compatible surface
 - **Flow Compiler** — Contract-driven backend compiler that transforms ACP canvas graphs into deterministic, runnable agent pool directories
-- Visual Agentic Workflow Designer (ACP) with **78** drag-and-drop agent types (incl. ESPHomer and the MCP Doctor)
+- Visual Agentic Workflow Designer (ACP) with **82** drag-and-drop agent types (incl. ESPHomer, MCP Doctor, and Instant Messaging Doctor)
 - Multi-model LLM support (Ollama local, Anthropic Claude cloud, Qwen vision)
 - Full PyInstaller packaging pipeline (build.py → installer → standalone .exe)
 - Real-time web interface via Django Channels/WebSocket
@@ -205,7 +205,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 83 workflow agent templates
+│   │   ├── agents/                 # 82 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -254,9 +254,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── sleeper/            # Delay agent
 │   │   │   ├── emailer/            # SMTP email sender
 │   │   │   ├── recmailer/          # IMAP email receiver/monitor
-│   │   │   ├── whatsapper/         # WhatsApp notifications (TextMeBot)
-│   │   │   ├── telegramer/         # Telegram message sender
-│   │   │   ├── telegramrx/         # Telegram message receiver
+│   │   │   ├── whatsapper/         # WhatsApp send/receive via official Meta Cloud API
+│   │   │   ├── telegrammer/        # Telegram send/receive via official Telegram surfaces
 │   │   │   ├── notifier/           # Desktop notification + sound
 │   │   │   ├── monitor_log/        # LLM-powered log file monitor
 │   │   │   ├── monitor_netstat/    # LLM-powered network port monitor
@@ -265,7 +264,6 @@ Tlamatini/                          # Git root
 │   │   │   ├── kyber_decipher/     # CRYSTALS-Kyber decryption
 │   │   │   ├── acpxer/             # ACPX session driver for external CLIs
 │   │   │   ├── teletlamatini/      # Telegram bot bridge to Tlamatini chat
-│   │   │   ├── whatstlamatini/     # WhatsApp Cloud API bridge to Tlamatini chat
 │   │   │   ├── windower/           # Win32 window manager (focus/move/resize/tile/close)
 │   │   │   ├── kalier/             # Kali Linux offensive-security bridge (MCP-Kali-Server)
 │   │   │   ├── discoverer/         # ProjectDiscovery recon suite (subfinder/httpx/naabu/katana/nuclei/cvemap) — direct CLIs, self-installing private Go toolchain
@@ -472,7 +470,7 @@ Binding every enabled tool every turn would balloon the prompt, so two cost trim
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
-- `chat_agent_send_email`, `chat_agent_telegramer`, `chat_agent_whatsapper`
+- `chat_agent_send_email`, `chat_agent_telegrammer`, `chat_agent_whatsapper`
 - `chat_agent_notifier`, `chat_agent_shoter`, `chat_agent_mouser`, `chat_agent_keyboarder`
 - `chat_agent_file_creator`, `chat_agent_move_file`, `chat_agent_deleter`
 - `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`
@@ -707,7 +705,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 83 Workflow Agent Types
+## 12. All 82 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -764,10 +762,10 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Image-Interpreter** — LLM vision-based image analysis
 - **J-Decompiler** — JAR/WAR decompilation (bundled jd-cli)
 - **De-Compresser** — Deterministic archive worker (compress OR decompress; `.gz` / `.zip` / `.7z` / `.tar.gz` / `.gz.tar`; password from `DE_COMPRESSER_PWD` when `passwordless=false`; always triggers `target_agents` on success OR failure)
-- **Telegramer** — Telegram message sender
+- **Telegrammer** — Telegram send/receive via official Telegram surfaces
 - **ACPXer** — ACPX session driver for external CLIs
 - **Teletlamatini** — Telegram bot bridge to Tlamatini chat
-- **WhatsTlamatini** — WhatsApp Cloud API bridge to Tlamatini chat
+- **Whatsapper** — WhatsApp send/receive via official Meta WhatsApp Cloud API only
 - **Unrealer** — Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (`127.0.0.1:55557`); forwards any verb the connected plugin build exposes — up to a 53-command, nine-category surface (editor incl. `take_screenshot`, Blueprints incl. `set_pawn_properties`, node graph, input mappings, UMG widgets, **system** `execute_python`/console/`get_class_info`/`list_assets`, **level** I/O, **asset** import, **material** authoring); the P3 headless tools (build/cook/test) are NOT reachable over this editor socket; emits `INI_SECTION_UNREALER` and always triggers `target_agents`. Recommended plugin: Tlamatini's own extended Unreal MCP fork (the Unreal Engine MCP modified specifically for this system) at `https://github.com/XAIHT/XaihtUnrealEngineMCP.git` — a drop-in built on upstream `chongdashu/unreal-mcp` that ships the full 53-command surface
 - **Reviewer** — LLM-powered code reviewer; resolves a `git diff` for `repo_path` (`diff_ref` like `HEAD~1`/`origin/main`, or empty = working-tree + staged), reviews it with an Ollama model, emits `INI_SECTION_REVIEWER` with a `verdict` (`APPROVE`/`REQUEST_CHANGES`/`COMMENT`); always triggers `target_agents` so a Forker can branch on `{verdict}`. Canvas counterpart of the `code-review` skill
 - **Analyzer** — Deterministic static/security scanner (no LLM); runs whichever of `bandit`/`semgrep`/`ruff`/`eslint`/`gitleaks`/`pip-audit` are on PATH over `target_path`, emits `INI_SECTION_ANALYZER` with `status` (`clean`/`findings`/`error`) + `total_findings`; always triggers `target_agents` so a Forker can gate on `{status}`. Canvas counterpart of the `security-audit` skill
@@ -788,6 +786,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Gateway-Relayer** — Bridges provider webhooks into Gatewayer
 - **Node-Manager** — Infrastructure registry and node supervision
 - **MCP Doctor** — STATIC triage of an **external MCP server** catalog entry, with **no connect**: reports transport, runtime (docker / npx / uvx / python / node / …), whether the command is on PATH, placeholder-secret detection, blockers, and a next-step. The canvas / Multi-Turn agent counterpart of the live `external_mcp_doctor` supervisor tool (Section 9b). Emits `INI_SECTION_MCP_DOCTOR` (a Parametrizer source) and triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_mcp_doctor` Multi-Turn tool
+- **Instant Messaging Doctor** — diagnoses and optionally repairs Telegrammer/Whatsapper readiness via the official Telegram Bot API + Meta WhatsApp Cloud API: validates bot/Meta tokens, contacts, recipient reachability, WhatsApp templates + the 24-hour window, and webhook config. Non-mutating by default (`retry_send: false`); only resends through an approved template or a reachable Telegram chat when asked. The automatic companion launched after a Telegrammer/Whatsapper failure (and a pre-flight for mission-critical sends). Emits `INI_SECTION_INSTANT_MESSAGING_DOCTOR`; always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_instant_messaging_doctor` Multi-Turn tool
 - **FlowCreator** — AI-powered flow designer (system agent, singleton)
 
 ### Terminal/Monitoring Agents (do NOT start downstream)
@@ -796,8 +795,8 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Emailer** — SMTP email sender on pattern detection
 - **RecMailer** — IMAP email receiver/monitor
 - **Notifier** — In-browser DOM popup (chat UI polls a dropped `notification.json`) + optional sound, plus a Tlamatini.exe console-window flash (FlashWindowEx) and an UPPERCASE log banner. (The earlier OS/desktop-toast experiment was REMOVED 2026-05-30 and replaced by the window-flash attention surface — there is no OS toast.)
-- **Whatsapper** — WhatsApp notifications (TextMeBot)
-- **TelegramRX** — Telegram message receiver
+- **Whatsapper** — WhatsApp send/receive via official Meta WhatsApp Cloud API only
+- **Telegrammer** — Telegram send/receive via official Bot API plus optional official user session
 - **FlowHypervisor** — System-managed LLM anomaly detector (system agent)
 
 ---

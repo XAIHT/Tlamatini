@@ -121,6 +121,7 @@ urlpatterns = [
     path('update_gitter_connection/<str:agent_name>/', secure_post(views.update_gitter_connection_view), name='update_gitter_connection'),
     path('update_dockerer_connection/<str:agent_name>/', secure_post(views.update_dockerer_connection_view), name='update_dockerer_connection'),
     path('update_mcp_doctor_connection/<str:agent_name>/', secure_post(views.update_mcp_doctor_connection_view), name='update_mcp_doctor_connection'),
+    path('update_instant_messaging_doctor_connection/<str:agent_name>/', secure_post(views.update_instant_messaging_doctor_connection_view), name='update_instant_messaging_doctor_connection'),
     path('update_pser_connection/<str:agent_name>/', secure_post(views.update_pser_connection_view), name='update_pser_connection'),
     path('execute_flowcreator/<str:agent_name>/', secure_post(views.execute_flowcreator_view), name='execute_flowcreator'),
     path('check_flowcreator_result/<str:agent_name>/', secure_get(views.check_flowcreator_result_view), name='check_flowcreator_result'),

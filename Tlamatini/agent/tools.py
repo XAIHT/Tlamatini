@@ -1386,6 +1386,10 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "server_key", "servers_diagnosed", "active_servers", "summary",
         "status", "catalog_path", "transport", "runtime", "supported",
     ),
+    "instant_messaging_doctor": (
+        "platform", "status", "telegram_status", "whatsapp_status",
+        "contact_status", "repair_status", "retry_status", "actions_required",
+    ),
 }
 
 
@@ -1671,6 +1675,113 @@ def _tool_output(payload):
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 
 
+def _quote_agent_assignment(value):
+    text = "" if value is None else str(value)
+    return "'" + text.replace("'", "''") + "'"
+
+
+def _find_wrapped_chat_agent_spec(key):
+    for candidate in WRAPPED_CHAT_AGENT_SPECS:
+        if candidate.key == key or candidate.template_dir == key or candidate.tool_name == key:
+            return candidate
+    return None
+
+
+def _build_instant_messaging_doctor_request(spec, runtime_config, payload):
+    if not isinstance(runtime_config, dict):
+        runtime_config = {}
+    source_key = getattr(spec, "key", "") or ""
+    platform = "telegram" if source_key == "telegrammer" else "whatsapp" if source_key == "whatsapper" else "both"
+    parts = [
+        "mode='auto'",
+        f"platform={_quote_agent_assignment(platform)}",
+        "retry_send=false",
+        f"source_agents={_quote_agent_assignment(getattr(spec, 'display_name', source_key))}",
+    ]
+
+    contact_name = runtime_config.get("contact_name")
+    if contact_name:
+        parts.append(f"contact_name={_quote_agent_assignment(contact_name)}")
+    message = runtime_config.get("message")
+    if message:
+        parts.append(f"message={_quote_agent_assignment(message)}")
+
+    telegram_cfg = runtime_config.get("telegram") if isinstance(runtime_config.get("telegram"), dict) else {}
+    telegram_recipient = telegram_cfg.get("chat_id")
+    if telegram_recipient:
+        parts.append(f"telegram.chat_id={_quote_agent_assignment(telegram_recipient)}")
+
+    whatsapp_cfg = runtime_config.get("whatsapp") if isinstance(runtime_config.get("whatsapp"), dict) else {}
+    whatsapp_recipient = whatsapp_cfg.get("to")
+    if whatsapp_recipient:
+        parts.append(f"whatsapp.to={_quote_agent_assignment(whatsapp_recipient)}")
+
+    template = runtime_config.get("template")
+    if template:
+        parts.append(f"template={_quote_agent_assignment(template)}")
+    template_language = runtime_config.get("template_language")
+    if template_language:
+        parts.append(f"template_language={_quote_agent_assignment(template_language)}")
+    template_params = runtime_config.get("template_params")
+    if template_params:
+        try:
+            parts.append(f"template_params={json.dumps(template_params, ensure_ascii=False)}")
+        except (TypeError, ValueError):
+            parts.append(f"template_params={_quote_agent_assignment(template_params)}")
+
+    log_path = payload.get("log_path") if isinstance(payload, dict) else None
+    if log_path:
+        parts.append(f"failure_log_path={_quote_agent_assignment(log_path)}")
+    log_excerpt = payload.get("log_excerpt") if isinstance(payload, dict) else None
+    if log_excerpt:
+        parts.append(f"failure_log_excerpt={_quote_agent_assignment(str(log_excerpt)[-4000:])}")
+
+    return " ".join(parts)
+
+
+def _maybe_launch_instant_messaging_doctor(payload, spec, runtime_config, *, auto_diagnose=True):
+    if not auto_diagnose:
+        return
+    if getattr(spec, "key", None) not in {"telegrammer", "whatsapper"}:
+        return
+    if not isinstance(payload, dict) or str(payload.get("status", "")).lower() != "failed":
+        return
+
+    doctor_spec = _find_wrapped_chat_agent_spec("instant_messaging_doctor")
+    if doctor_spec is None:
+        payload["auto_doctor"] = {
+            "status": "unavailable",
+            "message": "Instant Messaging Doctor is not registered.",
+        }
+        return
+
+    try:
+        doctor_request = _build_instant_messaging_doctor_request(spec, runtime_config, payload)
+        logger.info(
+            "[tools._launch_wrapped_chat_agent] Auto-launching Instant Messaging Doctor after %s failure",
+            getattr(spec, "display_name", getattr(spec, "key", "")),
+        )
+        doctor_result = _launch_wrapped_chat_agent(doctor_spec, doctor_request, auto_diagnose=False)
+        try:
+            payload["auto_doctor"] = json.loads(doctor_result)
+        except (TypeError, ValueError):
+            payload["auto_doctor"] = {
+                "status": "error",
+                "message": "Instant Messaging Doctor returned a non-JSON result.",
+                "raw": str(doctor_result)[:2000],
+            }
+    except Exception as exc:
+        logger.warning(
+            "[tools._launch_wrapped_chat_agent] Instant Messaging Doctor auto-launch failed: %s",
+            exc,
+            exc_info=True,
+        )
+        payload["auto_doctor"] = {
+            "status": "error",
+            "message": f"Instant Messaging Doctor auto-launch failed: {exc}",
+        }
+
+
 def _find_template_agent_by_dir_name(dir_name):
     normalized = _normalize_identifier(dir_name)
     logger.info("[tools._find_template_agent_by_dir_name] Looking for dir_name = %s (normalized = %s)", dir_name, normalized)
@@ -1863,28 +1974,35 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                 )
 
     if template_dir == "telegrammer":
-        # Telegrammer is the "embedded client" for the OFFICIAL Telegram Bot API:
-        # the bot_token from @BotFather lives once in config.json (Config -> URLs:
-        # telegram_bot_token) so chat prompts never repeat it. It is seeded into
-        # the nested ``telegram:`` block; an explicit per-call value still wins.
-        # Only non-empty, non-placeholder values seed. The secret token value is
-        # NOT logged (only the field name).
+        # Telegrammer uses official Telegram surfaces only. Bot API fields and
+        # optional Telegram user-session fields live once in config.json / env so
+        # chat prompts never repeat them. Explicit per-call values still win.
+        # Only non-empty, non-placeholder values seed. Secret values are NOT
+        # logged (only the field name).
         tg_block = runtime_config.get("telegram")
         if not isinstance(tg_block, dict):
             tg_block = {}
-        try:
-            configured = get_config_value("telegram_bot_token", "")
-        except Exception as exc:  # pragma: no cover - config read is best-effort
-            logger.warning("[tools._seed_global_agent_defaults] could not read telegram_bot_token: %s", exc)
-            configured = ""
-        value = configured.strip() if isinstance(configured, str) else ""
-        is_placeholder = value.startswith("<") and value.endswith(">")
-        if value and not is_placeholder:
-            tg_block["bot_token"] = value
-            # Don't log the bot_token value (secret); log only the field name.
-            logger.info(
-                "[tools._seed_global_agent_defaults] Telegrammer telegram.bot_token seeded from config telegram_bot_token",
-            )
+        for cfg_key, field in (
+            ("telegram_bot_token", "bot_token"),
+            ("telegram_api_id", "api_id"),
+            ("telegram_api_hash", "api_hash"),
+            ("telegram_session_name", "session_name"),
+            ("telegram_session_string", "session_string"),
+            ("telegram_provider", "provider"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                configured = ""
+            value = configured.strip() if isinstance(configured, str) else ""
+            is_placeholder = value.startswith("<") and value.endswith(">")
+            if value and not is_placeholder:
+                tg_block[field] = value
+                logger.info(
+                    "[tools._seed_global_agent_defaults] Telegrammer telegram.%s seeded from config %s",
+                    field, cfg_key,
+                )
         if tg_block:
             runtime_config["telegram"] = tg_block
 
@@ -1954,7 +2072,7 @@ _PRE_LAUNCH_PREVIEW_MAX_CHARS = 8000  # cap so a giant inlined payload can't flo
 # `secret_paths` in agent_contracts.py.
 _PRE_LAUNCH_PREVIEW_SECRET_LEAF_PATTERNS = (
     'password', 'secret', 'api_hash', 'api_token', 'apikey', 'api_key',
-    'access_token', 'bot_token', 'private_key', 'verify_token',
+    'access_token', 'bot_token', 'private_key', 'verify_token', 'session_string',
 )
 
 _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
@@ -2029,7 +2147,10 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
     'telegrammer':    {'title': 'TELEGRAMMER MESSAGE TO SEND',
                        'body': ('message', 'telegram message'),
                        'params': ('mode', 'telegram.bot_token', 'telegram.chat_id',
-                                  'contact_name', 'rx_max_seconds')},
+                                  'telegram.provider', 'telegram.api_id',
+                                  'telegram.api_hash', 'telegram.session_name',
+                                  'telegram.session_string', 'contact_name',
+                                  'rx_max_seconds')},
     'whatsapper':     {'title': 'WHATSAPPER MESSAGE TO SEND',
                        'body': ('message', 'whatsapp message'),
                        'params': ('mode', 'whatsapp.phone_number_id',
@@ -2292,7 +2413,7 @@ def _render_pre_launch_script_preview(spec, runtime_config, runtime_dir, log_pat
     return "\n".join(out)
 
 
-def _launch_wrapped_chat_agent(spec, request):
+def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
     logger.info("=" * 80)
     logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH START =====")
     logger.info("[tools._launch_wrapped_chat_agent] spec.key = %s, spec.template_dir = %s, spec.display_name = %s",
@@ -2623,6 +2744,7 @@ def _launch_wrapped_chat_agent(spec, request):
             "has actually been attempted."
         )
         payload["retryable"] = True
+        _maybe_launch_instant_messaging_doctor(payload, spec, runtime_config, auto_diagnose=auto_diagnose)
     else:
         payload["message"] = f"{spec.display_name} ended with status '{run.status}'."
 
