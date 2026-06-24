@@ -100,6 +100,66 @@ _MANAGEMENT_TOOLS: set[str] = {
 }
 
 
+# Outbound "I'm done" notification tools — Telegram / email / WhatsApp / the
+# in-browser Notifier popup. Used by the completion-notification ("notification
+# debt") guard in ``MultiTurnToolAgentExecutor``: when the original request
+# asked to be notified ON COMPLETION and the model tries to finish WITHOUT
+# having called one of these, the executor injects ONE nudge to actually send
+# it — instead of letting the model confabulate a "tool backend unavailable /
+# re-enable Multi-Turn" excuse (the FlowPills bug, 2026-06-24).
+_NOTIFICATION_TOOLS: frozenset = frozenset({
+    "chat_agent_telegrammer",
+    "chat_agent_send_email",
+    "chat_agent_whatsapper",
+    "chat_agent_notifier",
+})
+
+# Completion cue: "when/once/after/as soon as/upon ... finish/done/complete/...".
+_COMPLETION_CUE_RE = re.compile(
+    r"\b(when|once|after|as soon as|upon|by the time)\b[^.?!]{0,80}?\b"
+    r"(finish|finishes|finished|done|complete|completes|completed|completion|"
+    r"end|ends|ended|ready|over|wrap(?:s|ped)? up)\b",
+    re.IGNORECASE,
+)
+# Standalone completion phrasings the windowed cue above can miss.
+_COMPLETION_PHRASE_RE = re.compile(
+    r"\b(at the end|on completion|upon completion|when you(?:'?re| are)? done|"
+    r"when you finish|after finishing|once finished|after it'?s? done)\b",
+    re.IGNORECASE,
+)
+# Notification channel cue: an explicit channel word, OR a "send/notify/tell ME"
+# style verb directed at the user.
+_NOTIFY_CHANNEL_RE = re.compile(
+    r"\b(telegram|whats\s?app|e-?mail|mail|notif\w*|sms|slack|discord)\b",
+    re.IGNORECASE,
+)
+_NOTIFY_VERB_RE = re.compile(
+    r"\b(send|shoot|text|message|ping|notify|alert|tell|let|drop|email|e-?mail)\b"
+    r"[^.?!]{0,30}?\b(me|us|angela|him|her|them)\b",
+    re.IGNORECASE,
+)
+
+
+def _detect_completion_notification_request(text: str) -> bool:
+    """Heuristic: did the user ask to be NOTIFIED ON COMPLETION of this task?
+
+    Returns True only when the request contains BOTH a completion cue ("when you
+    finish", "once done", "upon completion", "at the end") AND an outbound
+    notification cue (a channel word like telegram/email/whatsapp/notification,
+    or a "send/notify/tell ME" verb directed at the user). Deliberately
+    conservative: a false positive only costs ONE harmless nudge, while a false
+    negative simply preserves the legacy behavior.
+    """
+    if not text:
+        return False
+    low = str(text)
+    has_completion = bool(_COMPLETION_CUE_RE.search(low) or _COMPLETION_PHRASE_RE.search(low))
+    if not has_completion:
+        return False
+    has_channel = bool(_NOTIFY_CHANNEL_RE.search(low) or _NOTIFY_VERB_RE.search(low))
+    return has_channel
+
+
 # Curated Exec-report map: ``tool_name`` -> ``(agent_key, agent_display)``.
 # ``agent_key`` is the lowercase, separator-free token used to scope the
 # per-agent CSS class (``.exec-report-<agent_key>`` /
@@ -949,6 +1009,14 @@ class MultiTurnToolAgentExecutor:
         self._pending_denial_detail = None
 
         input_text = payload.get("input", "")
+        # ── Completion-notification ("notification debt") guard state ──
+        # If the request asked to be notified ON COMPLETION (telegram/email/...),
+        # the loop must not finish until a notification tool has actually been
+        # called. Enforced in the final-answer branch below.
+        self._completion_notification_due = _detect_completion_notification_request(input_text)
+        self._notification_tools_called: set[str] = set()
+        self._notification_nudged = False
+        self._stashed_final_answer = ""
         chat_history = payload.get("chat_history", []) or []
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
         messages = [
@@ -1013,6 +1081,44 @@ class MultiTurnToolAgentExecutor:
                 print(f"--- Tool calls requested: {[call.get('name') for call in tool_calls]}")
 
             if not tool_calls:
+                # ── Completion-notification ("notification debt") guard ──
+                # The user asked to be notified ON COMPLETION (telegram/email/...)
+                # but the model is about to finish WITHOUT having called any
+                # notification tool. Inject ONE nudge to actually send it,
+                # instead of letting it confabulate a "tool backend unavailable /
+                # re-enable Multi-Turn" excuse. Fires at most once per request.
+                if (
+                    self._completion_notification_due
+                    and not self._notification_tools_called
+                    and not self._notification_nudged
+                ):
+                    self._notification_nudged = True
+                    # Preserve the substantive answer (e.g. the analysis) so the
+                    # follow-up notification turn can't discard the deliverable.
+                    pre_nudge_answer = str(getattr(response, "content", "") or "")
+                    if pre_nudge_answer.strip():
+                        self._stashed_final_answer = pre_nudge_answer
+                    logger.info(
+                        "[MultiTurnExecutor] Notification-debt guard fired: the request "
+                        "asked for a completion notification but no notification tool was "
+                        "called — nudging the model to send it now."
+                    )
+                    messages.append(HumanMessage(content=(
+                        "You are about to give your FINAL answer, but this request asked you "
+                        "to NOTIFY the user on completion (e.g. send a Telegram / email / "
+                        "WhatsApp message / notification) and you have NOT yet called any "
+                        "notification tool. Send it NOW: call the appropriate tool "
+                        "(chat_agent_telegrammer / chat_agent_send_email / "
+                        "chat_agent_whatsapper / chat_agent_notifier) with a concise "
+                        "completion message. The tools ARE available right now — you have "
+                        "been calling them this turn — so do NOT claim the backend is "
+                        "'unavailable', do NOT claim a 'transient network error', and do NOT "
+                        "tell the user to re-enable Multi-Turn. If, and ONLY if, the tool "
+                        "call itself returns an error, report the EXACT tool name and the "
+                        "verbatim error it returned."
+                    )))
+                    continue
+
                 answer = getattr(response, "content", "") or ""
                 if not str(answer).strip():
                     # The model finished tool-calling but returned empty content.
@@ -1043,6 +1149,14 @@ class MultiTurnToolAgentExecutor:
                             )
                         else:
                             answer = "The tool-calling model returned an empty final response."
+                # If we deferred a substantive answer to first send the requested
+                # completion notification, restore it so the long deliverable
+                # (e.g. the security analysis) is never lost behind a short
+                # "done, I notified you" reply produced on the notification turn.
+                if self._stashed_final_answer.strip() and (
+                    len(self._stashed_final_answer.strip()) > len(str(answer).strip())
+                ):
+                    answer = self._stashed_final_answer
                 return self._build_result_dict(str(answer))
 
             # --- Repetition detection ---
@@ -1114,6 +1228,10 @@ class MultiTurnToolAgentExecutor:
             # --- Normal tool execution ---
             for tool_call in tool_calls:
                 tool_name = tool_call.get("name", "")
+                # Mark that the model has attempted the requested completion
+                # notification so the notification-debt guard above stays quiet.
+                if tool_name in _NOTIFICATION_TOOLS:
+                    self._notification_tools_called.add(tool_name)
                 # Dedup: skip duplicate wrapped chat-agent calls with identical args
                 if tool_name.startswith("chat_agent_") and tool_name not in _MANAGEMENT_TOOLS:
                     dedup_sig = f"{tool_name}:{json.dumps(tool_call.get('args', {}), sort_keys=True, ensure_ascii=False)}"

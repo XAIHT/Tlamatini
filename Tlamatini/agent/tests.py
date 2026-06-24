@@ -1197,6 +1197,137 @@ class ExecReportCaptureTests(TestCase):
         self.assertIn('exec-report-caption-dockerer', html)
 
 
+class NotificationDebtGuardTests(TestCase):
+    """The completion-notification ("notification debt") guard: when the user
+    asks to be notified ON COMPLETION (Telegram / email / WhatsApp / notifier)
+    and the model tries to finish WITHOUT having called a notification tool,
+    the executor injects ONE nudge so the notification is actually sent — and
+    it preserves the substantive (deliverable) answer. Regression guard for the
+    FlowPills 'transient network error' confabulation bug (2026-06-24)."""
+
+    # ---- detector ----
+    def test_detector_matches_notify_on_completion_phrasings(self):
+        from agent.mcp_agent import _detect_completion_notification_request as d
+        self.assertTrue(d("Analyze the code and when you finish send me a Telegram telling me you finished, go!"))
+        self.assertTrue(d("Run the build and email me when it's done."))
+        self.assertTrue(d("Once the scan completes, notify me on WhatsApp."))
+        self.assertTrue(d("After finishing, send me a notification."))
+
+    def test_detector_ignores_unrelated_or_send_now_requests(self):
+        from agent.mcp_agent import _detect_completion_notification_request as d
+        self.assertFalse(d("Send me a Telegram saying hello."))          # no completion cue
+        self.assertFalse(d("Summarize this project's source code."))     # no notify
+        self.assertFalse(d("What security issues exist in this code?"))  # neither
+        self.assertFalse(d("Finish the report and show it here."))       # completion, no notify channel
+
+    # ---- guard behavior ----
+    def _telegram_tool(self):
+        from langchain.tools import Tool
+
+        def runner(request: str) -> str:
+            return json.dumps({'status': 'ok', 'tool': 'chat_agent_telegrammer'})
+        return Tool.from_function(func=runner, name='chat_agent_telegrammer',
+                                  description='Send a Telegram message.')
+
+    def _build_executor(self, tools, llm):
+        from agent.mcp_agent import MultiTurnToolAgentExecutor
+        return MultiTurnToolAgentExecutor(
+            llm=llm, system_prompt='test', tools=tools, max_iterations=10,
+        )
+
+    def test_guard_nudges_and_sends_when_notification_was_skipped(self):
+        """Model 'finishes' with the analysis but never called Telegram. The
+        guard must nudge it; on the nudged turn the model sends Telegram; and
+        the final answer must still be the substantive analysis (stash restore)."""
+        deliverable = "FULL FLOWPILLS SECURITY ANALYSIS: 3 Critical, 4 High..."
+
+        class _Fake:
+            def __init__(self):
+                self.turn = 0
+
+            def bind_tools(self, tools):
+                return self
+
+            def invoke(self, messages):
+                self.turn += 1
+                nudged = any(
+                    'you have NOT yet called any' in str(getattr(m, 'content', '') or '')
+                    for m in messages
+                )
+                if not nudged:
+                    # First "final" turn: try to finish WITHOUT notifying.
+                    return SimpleNamespace(content=deliverable, tool_calls=[])
+                # Look back: have we already sent the telegram?
+                sent = any(
+                    getattr(m, 'name', '') == 'chat_agent_telegrammer'
+                    for m in messages
+                )
+                if not sent:
+                    return SimpleNamespace(content='', tool_calls=[
+                        {'id': 't1', 'name': 'chat_agent_telegrammer',
+                         'args': {'__arg1': "contact_name='me' and message='done'"}}
+                    ])
+                # Telegram sent — produce a short confirmation final answer.
+                return SimpleNamespace(content='Sent.', tool_calls=[])
+
+        exe = self._build_executor([self._telegram_tool()], _Fake())
+        result = exe.invoke({
+            'input': 'Analyze the code and when you finish send me a Telegram telling me you finished.',
+            'exec_report_enabled': True,
+        })
+
+        # Telegram WAS actually called (captured in the exec report).
+        keys = [e['agent_key'] for e in result['exec_report_entries']]
+        self.assertIn('telegrammer', keys)
+        # The deliverable analysis is preserved, not replaced by "Sent.".
+        self.assertIn('FLOWPILLS SECURITY ANALYSIS', result['output'])
+
+    def test_guard_silent_when_notification_not_requested(self):
+        """No completion-notification ask → no nudge, Telegram never forced."""
+        class _Fake:
+            def bind_tools(self, tools):
+                return self
+
+            def invoke(self, messages):
+                return SimpleNamespace(content='here is the summary', tool_calls=[])
+
+        exe = self._build_executor([self._telegram_tool()], _Fake())
+        result = exe.invoke({
+            'input': 'Summarize this project source code, please.',
+            'exec_report_enabled': True,
+        })
+        self.assertEqual(result['exec_report_entries'], [])
+        self.assertIn('summary', result['output'])
+
+    def test_guard_does_not_double_send_when_already_notified(self):
+        """Model sends Telegram during the work, then finishes. The guard must
+        NOT fire a second notification, and the model's own final answer stands."""
+        class _Fake:
+            def __init__(self):
+                self.turn = 0
+
+            def bind_tools(self, tools):
+                return self
+
+            def invoke(self, messages):
+                self.turn += 1
+                if self.turn == 1:
+                    return SimpleNamespace(content='', tool_calls=[
+                        {'id': 't1', 'name': 'chat_agent_telegrammer',
+                         'args': {'__arg1': "message='done'"}}
+                    ])
+                return SimpleNamespace(content='All done and notified.', tool_calls=[])
+
+        exe = self._build_executor([self._telegram_tool()], _Fake())
+        result = exe.invoke({
+            'input': 'Do the work and email me when finished.',
+            'exec_report_enabled': True,
+        })
+        keys = [e['agent_key'] for e in result['exec_report_entries']]
+        self.assertEqual(keys.count('telegrammer'), 1)  # exactly one send
+        self.assertIn('notified', result['output'])
+
+
 class ExecReportPersistenceTests(TestCase):
     """Regression guard for the behaviour the end-user asked for: once the
     Exec report tables are generated, the Tlamatini chat message stored in
