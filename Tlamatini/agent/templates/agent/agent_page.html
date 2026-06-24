@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/skills_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/external_mcps_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/contacts_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/access_keys_wizard.css' %}?v={{ STATIC_VERSION }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -135,6 +136,8 @@
                   onclick="OpenConfigModelsDialog(event);">Models</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="config-urls"
                   onclick="OpenConfigUrlsDialog(event);">URLs</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="config-contacts"
+                  onclick="OpenContactsDialog(event);">Contacts</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="access-keys-wizard"
                   onclick="OpenAccessKeysWizard(event);">Access Keys Wizard</a></li>
             </ul>
@@ -358,6 +361,74 @@
         <div class="emx-actions">
           <button id="external-mcps-cancel" class="emx-button emx-button-secondary" type="button">Cancel</button>
           <button id="external-mcps-continue" class="emx-button emx-button-primary" type="button">Continue</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+  <div id="contacts-dialog-message" class="ctb-modal" role="dialog" aria-modal="true"
+    aria-labelledby="contacts-title" aria-describedby="contacts-legend" hidden>
+    <section class="ctb-panel">
+      <header class="ctb-header">
+        <div>
+          <div class="ctb-kicker">Config</div>
+          <h2 id="contacts-title">Contacts book</h2>
+        </div>
+        <button id="contacts-close" class="ctb-icon-button" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="ctb-body">
+        <section class="ctb-list-pane" aria-label="Contacts list">
+          <p id="contacts-legend"></p>
+          <div class="ctb-search-row">
+            <input id="contacts-search" type="search" placeholder="Search contacts..." autocomplete="off">
+            <button id="contacts-add" class="ctb-button ctb-button-primary ctb-add-btn" type="button">+ New</button>
+          </div>
+          <div id="contacts-list" class="ctb-list" tabindex="0"></div>
+          <div id="contacts-warn" class="ctb-warn" aria-live="polite"></div>
+        </section>
+        <section class="ctb-edit-pane" aria-label="Contact editor">
+          <div id="contacts-edit-title" class="ctb-stitle">Pick a contact, or press “New”</div>
+          <form id="contacts-form" class="ctb-form" autocomplete="off" onsubmit="return false;">
+            <label class="ctb-field">
+              <span class="ctb-flabel">Name <em>*</em></span>
+              <input id="contacts-f-name" class="ctb-input" type="text" spellcheck="false" placeholder="Full name">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Aliases</span>
+              <input id="contacts-f-aliases" class="ctb-input" type="text" spellcheck="false"
+                placeholder="Comma-separated, e.g. Ana, Ana Lazcano">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Telegram</span>
+              <input id="contacts-f-telegram" class="ctb-input" type="text" spellcheck="false" placeholder="@username">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">WhatsApp</span>
+              <input id="contacts-f-whatsapp" class="ctb-input" type="text" spellcheck="false"
+                placeholder="+5215555555555">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Email</span>
+              <input id="contacts-f-email" class="ctb-input" type="text" spellcheck="false"
+                placeholder="name@example.com">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Note</span>
+              <textarea id="contacts-f-note" class="ctb-input ctb-textarea" spellcheck="false" rows="2"
+                placeholder="Optional note"></textarea>
+            </label>
+            <div class="ctb-form-actions">
+              <button id="contacts-apply" class="ctb-button ctb-button-primary" type="button">Apply</button>
+              <button id="contacts-revert" class="ctb-button ctb-button-secondary" type="button">Clear</button>
+            </div>
+            <p class="ctb-form-hint">Edits stay local until you press <strong>Save</strong> below.</p>
+          </form>
+        </section>
+      </div>
+      <footer class="ctb-footer">
+        <span class="ctb-footer-note">Stored in <code>contacts.json</code> next to config — preserved across updates.</span>
+        <div class="ctb-actions">
+          <button id="contacts-cancel" class="ctb-button ctb-button-secondary" type="button">Close</button>
+          <button id="contacts-save" class="ctb-button ctb-button-primary" type="button">Save</button>
         </div>
       </footer>
     </section>
@@ -608,6 +679,7 @@
   <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/skills_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/external_mcps_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/contacts_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/access_keys_wizard.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/shared-runtime-dialogs.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/chat_page_runtime_poller.js' %}?v={{ STATIC_VERSION }}"></script>

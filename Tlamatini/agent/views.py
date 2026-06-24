@@ -11636,6 +11636,41 @@ def external_mcps_remove_view(request):
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
+# ── Contacts book (config-driven CRUD over contacts.json) ─────────────
+
+@login_required
+def contacts_list_view(request):
+    """Catalog payload for the Config ▸ Contacts CRUD dialog."""
+    try:
+        from .contacts import list_contacts_full, get_contacts_path
+        return JsonResponse({
+            "ok": True,
+            "contacts": list_contacts_full(),
+            "path": get_contacts_path(),
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def contacts_save_view(request):
+    """Persist the full contacts list edited in the Contacts dialog."""
+    try:
+        from .contacts import save_contacts
+        body = json.loads((request.body or b"{}").decode("utf-8") or "{}")
+        contacts = body.get("contacts")
+        if not isinstance(contacts, list):
+            return JsonResponse(
+                {"ok": False, "error": "contacts must be a list"}, status=400)
+        result = save_contacts(contacts)
+        return JsonResponse(result, status=200 if result.get("ok") else 400)
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
 @login_required
 def list_skills_view(request):
     """
