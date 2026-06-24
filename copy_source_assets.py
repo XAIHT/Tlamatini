@@ -184,7 +184,7 @@ RESTORE_FROM_INSTALL = {
 _SECRET_KEY_RE = re.compile(
     r"(?i)^(?:.*[_\-.])?("
     r"api_key|apikey|api_hash|api_id|token|bot_token|secret|client_secret|"
-    r"password|passwd|access_key|chat_id|listen_chat|username"
+    r"password|passwd|access_key|chat_id|listen_chat|session_string|username"
     r")$"
 )
 
@@ -268,8 +268,8 @@ def _redact_yaml_text(text: str) -> tuple[str, int]:
 _CONTACTS_SNAPSHOT_PLACEHOLDER = (
     '{\n'
     '  "_README": "Tlamatini Contacts book. Add people here, then say \'send a '
-    "WhatsApp / Telegram to <name>'. Fields: name, aliases, telegram (@username / "
-    '+phone / id), whatsapp (+phone), email.",\n'
+    "WhatsApp / Telegram to <name>'. Fields: name, aliases, telegram (@username "
+    'for people), whatsapp (+phone), email.",\n'
     '  "contacts": [\n'
     '    {"name": "Example Person", "aliases": ["Example"], '
     '"telegram": "@example", "whatsapp": "+10000000000", "email": "example@example.com"}\n'

@@ -34,7 +34,7 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # renders as one "List of Playwrighter Operations" table.
     "chat_agent_playwrighter": ("playwrighter",   "Playwrighter"),
     "chat_agent_send_email":   ("emailer",        "Emailer"),
-    "chat_agent_telegramer":   ("telegramer",     "Telegramer"),
+    "chat_agent_telegrammer":  ("telegrammer",    "Telegrammer"),
     "chat_agent_whatsapper":   ("whatsapper",     "Whatsapper"),
     "chat_agent_notifier":     ("notifier",       "Notifier"),
     "chat_agent_kyber_keygen": ("kyberkeygen",    "Kyber Keygen"),

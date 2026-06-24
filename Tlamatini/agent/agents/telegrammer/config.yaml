@@ -1,7 +1,17 @@
 mode: auto
 telegram:
+  # provider: auto | bot | user
+  # Keep contacts/configs readable with @username. auto uses the local username
+  # cache + official Bot API lookup first; when api_id/api_hash/session are
+  # configured it uses the official Telegram user-session API for private
+  # @usernames that bots cannot cold-DM.
+  provider: auto
   bot_token: <TELEGRAM_BOT_TOKEN goes here>
-  chat_id: '36367295'
+  chat_id: '@blackangy'
+  api_id: <TELETLAMATINI_API_ID goes here>
+  api_hash: <TELETLAMATINI_API_HASH goes here>
+  session_name: telegrammer_user_session
+  session_string: <TELEGRAM_SESSION_STRING goes here>
 message: ''
 contact_name: ''
 rx_max_seconds: 60

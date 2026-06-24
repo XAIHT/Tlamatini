@@ -11,7 +11,7 @@
 
 <p align="center">
   <b>💰 About $200 a YEAR — not $200 a MONTH.</b><br/>
-  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>81 agent types and 75+ tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
+  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>82 agent types and 75+ tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
   <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.5"><img src="https://img.shields.io/badge/VERSION-v1.26.5-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-81-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="81 agent types"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-82-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="82 agent types"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/TOOLS-75-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="75 tools"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License"/></a>
 </p>
@@ -39,7 +39,7 @@
 
 ## 🚀 Get started — 5 steps to a cloud-powered Tlamatini
 
-The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **81 agent types and 75+ tools** from your own machine. Here's the full setup.
+The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **82 agent types and 75+ tools** from your own machine. Here's the full setup.
 
 ### 1 · Install Tlamatini
 
@@ -136,7 +136,7 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 | 🛠️ | **Modify entire software projects** | Read, grep, refactor, edit, and rebuild whole codebases — not just single files — with hybrid RAG grounding. |
 | 🛡️ | **Security assessments** | Authorized Kali Linux / pentest runbooks + code security-audit skills, driven from chat. |
 | 📟 | **STM32 · ESP32 · Arduino firmware** | Scaffold → build → **flash a real connected board** → read serial, with a safety preflight that refuses mis-targeted firmware. |
-| 🧩 | **A VISUAL WORKFLOW DESIGNER** | **81 drag-and-drop agent types** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
+| 🧩 | **A VISUAL WORKFLOW DESIGNER** | **82 drag-and-drop agent types** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
 
 > **The headline no competitor can copy:** Tlamatini is the only local-first AI dev assistant where you *design the agent workflow visually*, then have it flash firmware, drive Unreal/Blender, run security tools, and command any external MCP — all from one machine.
 
@@ -159,7 +159,7 @@ Tlamatini provides orchestration, documentation, and guardrails, but it cannot g
 Everything Tlamatini can do, grouped:
 
 **🧩 Orchestration & design**
-- **Visual Workflow Designer (ACP)** — 81 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
+- **Visual Workflow Designer (ACP)** — 82 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
 - **Multi-Turn orchestration** — a tool-calling loop with **75 tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time.
 - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health.
 - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
@@ -202,8 +202,9 @@ Everything Tlamatini can do, grouped:
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
 
 **📨 Messaging, bridges & platform**
-- **Telegrammer** — Telegram send/receive over the official Telegram Bot API (a `@BotFather` bot token); no third-party relay.
-- **Whatsapper** — WhatsApp send/receive over the official Meta WhatsApp Cloud API; no third-party relay.
+- **Telegrammer** — Telegram send/receive over official Telegram surfaces: Bot API with a `@BotFather` token, plus optional official Telegram user-session credentials for private `@username` sends. Human configs stay readable as `@username`; any Bot API numeric route is private cache state.
+- **Whatsapper** — WhatsApp send/receive over the official Meta WhatsApp Cloud API only; no Twilio, no TextMeBot, no WhatsApp Web relay.
+- **Instant Messaging Doctor** — automatically diagnoses Telegrammer/Whatsapper failures and can be called directly before critical sends; validates official tokens, contacts, readable `@username` routing, Meta templates/webhooks, and emits Parametrizer-ready repair actions.
 - **TeleTlamatini** — Telegram bridge into the full chat.
 - **Multi-model** — Ollama (local), Anthropic Claude (cloud), Qwen (vision).
 - **Self-knowledge & self-modification** — can read, modify, and rebuild her own source.

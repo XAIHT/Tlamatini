@@ -1576,6 +1576,11 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+.exec-report-caption-instantmessagingdoctor {
+    background: linear-gradient(135deg, #12343B 0%, #2A9D8F 34%, #E76F51 68%, #F4D35E 100%);
+    color: #ffffff;
+}
+
 .exec-report-caption-notifier {
     background: linear-gradient(135deg, #F472B6 0%, #DB2777 100%);
     color: #ffffff;
@@ -1709,6 +1714,7 @@ body.resizing-vertical {
 .exec-report-emailer thead th,
 .exec-report-telegrammer thead th,
 .exec-report-whatsapper thead th,
+.exec-report-instantmessagingdoctor thead th,
 .exec-report-notifier thead th,
 .exec-report-kyberkeygen thead th,
 .exec-report-kybercipher thead th,
@@ -1804,6 +1810,7 @@ body.resizing-vertical {
 .exec-report-emailer .exec-report-cmd        { border-left: 3px solid #5C6BC0; }
 .exec-report-telegrammer .exec-report-cmd     { border-left: 3px solid #1a237e; }
 .exec-report-whatsapper .exec-report-cmd     { border-left: 3px solid #006400; }
+.exec-report-instantmessagingdoctor .exec-report-cmd { border-left: 3px solid #E76F51; }
 .exec-report-notifier .exec-report-cmd       { border-left: 3px solid #DB2777; }
 .exec-report-kyberkeygen .exec-report-cmd    { border-left: 3px solid #7B2FBE; }
 .exec-report-kybercipher .exec-report-cmd    { border-left: 3px solid #D35400; }

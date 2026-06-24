@@ -61,7 +61,7 @@ ALARM_FLOW_FORGE_DEMO = (
     "another 3-hour lap has passed.\",\"out_path\":\"C:/Users/angel/OneDrive/Desktop/Flows/"
     "alarm_every_3_hours.flw\",\"flow_name\":\"alarm_every_3_hours.flw\"}'. The skill copies "
     "the FlowCreator template to an isolated runtime dir, writes its config, runs FlowCreator "
-    "(which designs a recurring Telegram-alert flow &mdash; typically Starter &rarr; Telegramer "
+    "(which designs a recurring Telegram-alert flow &mdash; typically Starter &rarr; Telegrammer "
     "&rarr; a 3-hour Sleeper looping back, terminated cleanly), and converts the result into a "
     "schemaVersion-2 `.flw`. The Desktop\\Flows folder is created automatically if it does not "
     "exist. "
@@ -75,8 +75,8 @@ ALARM_FLOW_FORGE_DEMO = (
     "Step 3: close with one HTML banner &mdash; " + _BANNER_OPEN +
     "<h2 style='margin:0;letter-spacing:1px;'>&#9989; FLOW FORGED</h2>"
     "<div style='opacity:.92;margin-top:4px;'>Open it on the ACP designer (Open &#9656; select the "
-    ".flw) &mdash; then fill the Telegramer bot-token &amp; chat-id and press Start.</div></div>. "
-    "Remind me that the generated Telegramer node ships with placeholder credentials I must set "
+    ".flw) &mdash; then fill the Telegrammer bot-token and `@username` recipient and press Start.</div></div>. "
+    "Remind me that the generated Telegrammer node ships with placeholder credentials I must set "
     "before the alarm can actually send."
 )
 

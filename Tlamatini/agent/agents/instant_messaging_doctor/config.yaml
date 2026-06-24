@@ -1,0 +1,51 @@
+# Instant Messaging Doctor Agent Configuration
+mode: "auto"                  # auto | diagnose | repair | test
+platform: "both"              # both | telegram | whatsapp
+contact_name: ""
+message: ""
+
+# Optional explicit recipients. Contacts book values win when contact_name is set.
+telegram:
+  chat_id: ""
+  bot_token: ""
+  provider: "auto"            # auto | bot | user
+  api_id: ""
+  api_hash: ""
+  session_name: ""
+  session_string: ""
+
+whatsapp:
+  to: ""
+  phone_number_id: ""
+  access_token: ""
+  graph_base: "https://graph.facebook.com"
+  api_version: "v20.0"
+  verify_token: "tlamatini"
+  webhook_host: "0.0.0.0"
+  webhook_port: 8086
+  webhook_path: "/wa-webhook"
+
+# Cold WhatsApp messages need an approved template. Doctor only sends when
+# retry_send is true; normal diagnosis remains non-mutating.
+template: ""
+template_language: "en_US"
+template_params: []
+retry_send: false
+max_retries: 1
+
+# Smart summary is best-effort. The agent still works if Ollama is unavailable.
+use_llm: true
+ollama:
+  url: ""
+  model: "glm-5.2:cloud"
+  timeout_seconds: 45
+
+# Config discovery overrides. Empty means auto-detect app root/config/contacts.
+config_path: ""
+contacts_path: ""
+failure_log_path: ""
+failure_log_excerpt: ""
+
+# Connection fields
+source_agents: []
+target_agents: []

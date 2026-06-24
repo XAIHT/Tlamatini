@@ -107,7 +107,7 @@ WIZARD_GROUPS: Tuple[WizardGroup, ...] = (
             ),
             WizardField(
                 key="TELEGRAMMER_CHAT_ID",
-                label="Telegrammer chat id / @username",
+                label="Telegrammer @username recipient",
                 group="telegram",
                 kind="text",
                 yaml_rules=(("telegrammer", ("telegram", "chat_id"), False),),

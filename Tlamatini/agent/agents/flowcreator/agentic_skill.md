@@ -49,7 +49,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -338,6 +338,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **notifier** | Shows desktop notification when keyword found | NO | Terminal |
 | **telegrammer** | Sends OR receives a Telegram message via the official Telegram Bot API | YES | Action |
 | **whatsapper** | Sends OR receives a WhatsApp message via the official Meta WhatsApp Cloud API | YES | Action |
+| **instant_messaging_doctor** | Diagnoses Telegrammer/Whatsapper tokens, contacts, templates, webhooks, and failure logs; emits Parametrizer-ready repair actions | YES | Action |
 | **cleaner** | Deletes logs and PIDs for listed agents | NO | Terminal |
 | **flowhypervisor** | LLM-powered flow health monitor (system agent) | NO | Monitoring |
 | **gatewayer** | HTTP webhook ingress + folder-drop watcher | YES | Utility |
@@ -820,8 +821,8 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start on success)
 
 ### 24. Telegrammer
-- **Purpose**: Sends OR receives a Telegram message via the official Telegram Bot API, then triggers downstream agents.
-- **Used for**: Two-way Telegram messaging in a workflow chain using a bot token from @BotFather (NOT Telethon/api_id/api_hash/phone-login). In `send` mode it delivers a message to a chat and then triggers downstream agents; in `receive` mode it waits up to `rx_max_seconds` for an incoming message, logs it, and then triggers downstream agents. In either mode it fires once and exits.
+- **Purpose**: Sends OR receives a Telegram message via official Telegram surfaces only, then triggers downstream agents.
+- **Used for**: Two-way Telegram messaging in a workflow chain. Bot mode uses a bot token from @BotFather; optional user-session mode uses official Telegram API credentials (`api_id`, `api_hash`, session) when private `@username` sends need a logged-in Telegram account. In `send` mode it delivers a message to a visible `@username`/`telegram.chat_id` and then triggers downstream agents; in `receive` mode it waits up to `rx_max_seconds` for an incoming Bot API update, logs it, and then triggers downstream agents. In either mode it fires once and exits.
 - **Aimed at**: Providing mobile-friendly real-time notifications through Telegram (send) and Telegram-driven inbound automation (receive) for events like deployment completions, error alerts, status updates, or remote operator commands.
 - **Application example**: After a Notifier confirms a successful application deployment, a Telegrammer (mode=`send`) sends "NormasDRM Deployed!!!" to the DevOps team's Telegram group; or a Telegrammer (mode=`receive`) waits for an incoming "DEPLOY NOW" command and then triggers a deployment pipeline.
 - **Pool name pattern**: `telegrammer_<n>`
@@ -868,6 +869,29 @@ system_prompt: |
   - `rx_max_seconds`: 60 (receive mode: max seconds to wait for an incoming message)
   - `rx_from`: "" (OPTIONAL — restrict receive to a specific sender)
   - `rx_match`: "" (OPTIONAL — only accept incoming messages matching this pattern)
+
+### 25a. Instant Messaging Doctor
+- **Purpose**: Diagnoses Telegrammer and Whatsapper readiness with official Telegram and Meta WhatsApp Cloud API checks, then triggers downstream agents.
+- **Used for**: Critical messaging preflight, exception branches after failed Telegrammer/Whatsapper sends, contact-book validation, readable Telegram `@username` reachability, Meta token/phone/template/webhook validation, and failure-log diagnosis.
+- **Aimed at**: Making notification flows self-diagnosing so a downstream Parametrizer/Forker can branch on a clear repair summary instead of parsing raw API errors.
+- **Application example**: Starter -> Instant Messaging Doctor (`platform='both'`, `contact_name='Angela'`, `retry_send=false`) -> Parametrizer (extract `{status}` and `{actions_required}`) -> Forker (ready vs operator_required) -> Telegrammer/Whatsapper or Notifier.
+- **Pool name pattern**: `instant_messaging_doctor_<n>`
+- **Starts other agents**: YES
+- **Parametrizer source**: emits `INI_SECTION_INSTANT_MESSAGING_DOCTOR` with fields `platform`, `status`, `telegram_status`, `whatsapp_status`, `contact_status`, `repair_status`, `retry_status`, `actions_required`, and body=`response_body`.
+- **Config parameters**:
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after diagnosis)
+  - `mode`: "auto" (diagnose/preflight label)
+  - `platform`: "both" (options: "both", "telegram", "whatsapp")
+  - `contact_name`: "" (OPTIONAL — a name from contacts.json)
+  - `message`: "" (OPTIONAL — text used only if `retry_send=true`)
+  - `telegram.chat_id`: "" (OPTIONAL — readable `@username`, group/channel handle, or explicit route)
+  - `whatsapp.to`: "" (OPTIONAL — recipient phone number in international format)
+  - `template`: "" (OPTIONAL — WhatsApp approved template)
+  - `template_language`: "en_US"
+  - `template_params`: [] (ordered WhatsApp template parameter values)
+  - `retry_send`: false (keep false for diagnosis-only flows; true only when an official API retry is allowed)
+  - `ollama.model`: "glm-5.2:cloud" (LLM summary model)
 
 ### 27. Recmailer
 - **Purpose**: Monitors an email inbox (IMAP) for keywords using LLM analysis. Long-running. Does NOT start downstream agents.

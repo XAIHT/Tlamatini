@@ -132,6 +132,7 @@ SECTION_AGENT_TYPES = [
     'esphomer',
     'arduiner',
     'mcp_doctor',
+    'instant_messaging_doctor',
     'discoverer',
     'telegrammer',
     'whatsapper',

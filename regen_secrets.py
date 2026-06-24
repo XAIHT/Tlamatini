@@ -163,6 +163,16 @@ def patch_config_json(mode: str, keys: Dict[str, str], dry_run: bool) -> List[st
 # Each rule: (yaml_path, data_key) where yaml_path is a list of nested keys.
 TELEGRAMMER_RULES: List[Tuple[List[str], str]] = [
     (["telegram", "bot_token"], "TELEGRAM_BOT_TOKEN"),
+    # api_id / api_hash power the Telegram USER session (the only way a @username
+    # can be resolved at runtime). They reuse the same Telegram app credentials as
+    # TeleTlamatini. With them set, Telegrammer auto-opens a one-time login window
+    # on the first @username send, then sends.
+    (["telegram", "api_id"], "TELETLAMATINI_API_ID"),
+    (["telegram", "api_hash"], "TELETLAMATINI_API_HASH"),
+    # session_string = a one-time-login Telegram USER session, BAKED into a keyed build
+    # so a fresh install can message any @username on the FIRST send with NO login window.
+    # push-able mode redacts it to a placeholder, so a distributed build ships no session.
+    (["telegram", "session_string"], "TELEGRAM_SESSION_STRING"),
 ]
 
 WHATSAPPER_RULES: List[Tuple[List[str], str]] = [

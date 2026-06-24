@@ -148,6 +148,15 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "sse mcp", "streamable http mcp", "raw socket mcp",
         "missing secret", "mcp env",
     ),
+    "chat_agent_instant_messaging_doctor": (
+        "instant messaging doctor", "messaging doctor", "im doctor",
+        "diagnose telegram", "diagnose whatsapp", "fix telegram",
+        "fix whatsapp", "telegram failed", "whatsapp failed",
+        "message failed", "message not delivered", "validate bot token",
+        "validate whatsapp token", "validate meta token", "validate contacts",
+        "telegram username", "whatsapp template", "24 hour window",
+        "contact_name", "mission critical message",
+    ),
     "external_mcp_list_tools": (
         "mcp tools", "list mcp tools", "external mcp tools",
         "available mcp tools", "what tools", "tool schema", "tool schemas",

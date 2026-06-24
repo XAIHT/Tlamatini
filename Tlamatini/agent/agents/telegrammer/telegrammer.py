@@ -1,8 +1,9 @@
 # Telegrammer Agent — the ONE Telegram send/receive agent.
 #
-# Uses ONLY Telegram's OFFICIAL Bot API over plain HTTPS (stdlib urllib) — no
-# third-party library, no Telethon, no gateway. Get a Bot Token from @BotFather
-# (see HOW_TO_GET_YOUR_TELEGRAM_ASSETS.md).
+# Uses official Telegram surfaces only:
+#   - Bot API over plain HTTPS for bot-safe targets (numeric ids/channels).
+#   - Telegram MTProto user session via Telethon when configured, so private
+#     @usernames can be messaged by the owner's logged-in Telegram account.
 #
 # Three run-modes (config `mode`: auto | send | receive):
 #   i)  SEND     — send one message, then start target_agents, then die.
@@ -20,6 +21,7 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+import asyncio
 import time
 import json
 import yaml
@@ -295,6 +297,84 @@ def _resolve_bot_token(config: Dict) -> str:
     return _clean(tg.get('bot_token') or os.environ.get('TELEGRAM_BOT_TOKEN'))
 
 
+def _resolve_provider(config: Dict) -> str:
+    tg = config.get('telegram') or {}
+    if not isinstance(tg, dict):
+        tg = {}
+    provider = _clean(config.get('provider') or tg.get('provider') or os.environ.get('TELEGRAM_PROVIDER'))
+    provider = (provider or 'auto').lower().replace('-', '_')
+    if provider in ('mtproto', 'user_account', 'user_session', 'telegram_api'):
+        return 'user'
+    if provider in ('bot_api', 'telegram_bot'):
+        return 'bot'
+    if provider in ('auto', 'bot', 'user'):
+        return provider
+    logging.warning(f"Unknown Telegram provider {provider!r}; using auto.")
+    return 'auto'
+
+
+def _stable_state_dir() -> str:
+    candidates = []
+    explicit = (os.environ.get('TLAMATINI_STATE_DIR') or '').strip()
+    if explicit:
+        candidates.append(explicit)
+    contacts_path = (os.environ.get('TLAMATINI_CONTACTS') or '').strip()
+    if contacts_path:
+        candidates.append(os.path.join(os.path.dirname(os.path.abspath(contacts_path)), '.tlamatini'))
+    exe = os.path.abspath(sys.executable)
+    exe_parent = os.path.dirname(exe)
+    if os.path.basename(exe_parent).lower() == 'python':
+        candidates.append(os.path.join(os.path.dirname(exe_parent), '.tlamatini'))
+    cur = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(12):
+        if os.path.basename(cur).lower() == 'agents':
+            candidates.append(os.path.join(os.path.dirname(cur), '.tlamatini'))
+            break
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    candidates.append(os.path.join(script_dir, '.tlamatini'))
+    for path in candidates:
+        if not path:
+            continue
+        try:
+            os.makedirs(path, exist_ok=True)
+            return path
+        except Exception:
+            continue
+    return script_dir
+
+
+def _resolve_user_session_cfg(config: Dict) -> Dict:
+    tg = config.get('telegram') or {}
+    if not isinstance(tg, dict):
+        tg = {}
+    session_name = _clean(
+        tg.get('session_name')
+        or tg.get('session_path')
+        or config.get('telegram_session_name')
+        or os.environ.get('TELEGRAM_SESSION_NAME')
+        or 'telegrammer_user_session'
+    )
+    if session_name and not os.path.isabs(session_name):
+        session_name = os.path.join(_stable_state_dir(), session_name)
+    return {
+        'api_id': _clean(tg.get('api_id') or config.get('telegram_api_id') or os.environ.get('TELEGRAM_API_ID') or os.environ.get('TELETLAMATINI_API_ID')),
+        'api_hash': _clean(tg.get('api_hash') or config.get('telegram_api_hash') or os.environ.get('TELEGRAM_API_HASH') or os.environ.get('TELETLAMATINI_API_HASH')),
+        'session_string': _clean(
+            tg.get('session_string')
+            or config.get('telegram_session_string')
+            or os.environ.get('TELEGRAM_SESSION_STRING')
+        ),
+        'session_name': session_name,
+    }
+
+
+def _user_session_configured(cfg: Dict) -> bool:
+    return bool(cfg.get('api_id') and cfg.get('api_hash') and (cfg.get('session_string') or cfg.get('session_name')))
+
+
 def _find_contacts_file() -> str:
     candidate = (os.environ.get('TLAMATINI_CONTACTS') or '').strip()
     if candidate and os.path.isfile(candidate):
@@ -350,17 +430,29 @@ def _resolve_contact(query: str, channel: str) -> str:
     return ''
 
 
-def _resolve_recipient(config: Dict) -> str:
+def _resolve_recipient_detail(config: Dict) -> Tuple[str, str]:
     tg = config.get('telegram') or {}
     contact_name = str(config.get('contact_name') or tg.get('contact_name') or '').strip()
+    default_chat_id = str(config.get('chat_id') or tg.get('chat_id') or '').strip()
     if contact_name:
+        if contact_name.lower() in ('me', 'myself', 'self', 'owner', 'default'):
+            if default_chat_id:
+                logging.info(f"📇 Contact '{contact_name}' means configured default Telegram chat_id")
+                return default_chat_id, 'default_chat_id'
+            logging.error("❌ Contact 'me' requested but telegram.chat_id is empty.")
+            return '', 'missing_default_chat_id'
         resolved = _resolve_contact(contact_name, 'telegram')
         if resolved:
             logging.info(f"📇 Resolved contact '{contact_name}' → Telegram '{resolved}'")
-            return resolved
+            return resolved, 'contact_name'
         logging.error(f"❌ Contact '{contact_name}' not found (or has no 'telegram') in contacts.json")
-        return ''
-    return str(config.get('chat_id') or tg.get('chat_id') or '').strip()
+        return '', 'missing_contact'
+    return default_chat_id, 'chat_id'
+
+
+def _resolve_recipient(config: Dict) -> str:
+    recipient, _source = _resolve_recipient_detail(config)
+    return recipient
 
 
 # ─────────────────────────────────────────────────────────────
@@ -388,7 +480,7 @@ def tg_send_message(token: str, chat_id: str, text: str) -> Tuple[bool, str, str
             body = json.loads(resp.read().decode("utf-8", errors="replace"))
         if body.get("ok"):
             mid = str(((body.get("result") or {}).get("message_id")) or "")
-            logging.info(f"✅ Telegram sent → {chat_id} (message_id {mid})")
+            logging.info(f"✅ Telegram sent (message_id {mid})")
             return True, "ok", mid
         return False, f"API error: {body.get('description')}", ""
     except urllib.error.HTTPError as exc:
@@ -401,6 +493,55 @@ def tg_send_message(token: str, chat_id: str, text: str) -> Tuple[bool, str, str
         return False, f"send error: {exc}", ""
 
 
+async def _tg_user_send_message_async(user_cfg: Dict, recipient: str, text: str) -> Tuple[bool, str, str]:
+    try:
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+    except Exception as exc:
+        return False, f"Telethon is not installed in this Python environment: {exc}", ""
+
+    try:
+        api_id = int(str(user_cfg.get('api_id') or '').strip())
+    except Exception:
+        return False, "telegram.api_id must be numeric for Telegram user-session sends", ""
+    api_hash = str(user_cfg.get('api_hash') or '').strip()
+    if not api_id or not api_hash:
+        return False, "telegram.api_id and telegram.api_hash are required for Telegram user-session sends", ""
+    if not recipient:
+        return False, "no recipient (telegram.chat_id or contact_name)", ""
+    if not text:
+        return True, "empty message", ""
+
+    session_string = str(user_cfg.get('session_string') or '').strip()
+    session_name = str(user_cfg.get('session_name') or '').strip() or os.path.join(script_dir, 'telegrammer_user_session')
+    session = StringSession(session_string) if session_string else session_name
+    client = TelegramClient(session, api_id, api_hash)
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            return (
+                False,
+                "Telegram user session is not authorized yet. Log in once with the official "
+                "Telegram API credentials/session, or let Telegrammer learn the Bot API route from the local cache.",
+                "",
+            )
+        msg = await client.send_message(recipient, text)
+        mid = str(getattr(msg, 'id', '') or '')
+        logging.info(f"✅ Telegram user-session sent → {recipient} (message_id {mid})")
+        return True, "ok", mid
+    except Exception as exc:
+        return False, f"Telegram user-session send error: {exc}", ""
+    finally:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+
+
+def tg_user_send_message(user_cfg: Dict, recipient: str, text: str) -> Tuple[bool, str, str]:
+    return asyncio.run(_tg_user_send_message_async(user_cfg, recipient, text))
+
+
 def tg_get_updates(token: str, offset: Optional[int], timeout: int) -> Dict:
     params = {"timeout": timeout}
     if offset is not None:
@@ -411,42 +552,171 @@ def tg_get_updates(token: str, offset: Optional[int], timeout: int) -> Dict:
         return json.loads(resp.read().decode("utf-8", errors="replace"))
 
 
+def tg_get_chat(token: str, chat_id: str) -> Dict:
+    params = {"chat_id": chat_id}
+    url = _api(token, "getChat") + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, method="GET")
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read().decode("utf-8", errors="replace"))
+
+
 def _looks_numeric(value: str) -> bool:
     """A Telegram numeric chat id (users positive, groups negative)."""
     return str(value or "").lstrip("-").isdigit()
+
+
+def _looks_username(value: str) -> bool:
+    text = str(value or "").strip()
+    return text.startswith("@") and len(text) > 1
+
+
+def _username_key(value: str) -> str:
+    return "@" + str(value or "").strip().lstrip("@").lower()
+
+
+def _username_cache_path() -> str:
+    return os.path.join(_stable_state_dir(), "telegrammer_username_cache.json")
+
+
+def _username_cache_load() -> Dict:
+    try:
+        with open(_username_cache_path(), "r", encoding="utf-8-sig") as handle:
+            data = json.load(handle)
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _username_cache_save(data: Dict) -> None:
+    path = _username_cache_path()
+    tmp = f"{path}.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=True, indent=2, sort_keys=True)
+        os.replace(tmp, path)
+    except Exception as exc:
+        logging.warning(f"Could not update Telegram username cache: {exc}")
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+
+
+def _username_cache_get(username: str) -> str:
+    data = _username_cache_load()
+    entry = data.get(_username_key(username))
+    if not isinstance(entry, dict):
+        return ""
+    # Keep username routes durable. Official lookups update this when Telegram
+    # exposes a newer route, but @username configs should not rot every few days.
+    chat_id = str(entry.get("chat_id") or "").strip()
+    return chat_id if _looks_numeric(chat_id) else ""
+
+
+def _username_cache_put(username: str, chat_id: str, source: str) -> None:
+    if not _looks_username(username) or not _looks_numeric(chat_id):
+        return
+    data = _username_cache_load()
+    data[_username_key(username)] = {
+        "chat_id": str(chat_id).strip(),
+        "source": source,
+        "updated_at": time.time(),
+    }
+    _username_cache_save(data)
+
+
+def _chat_username_matches(chat: Dict, username: str) -> bool:
+    result = chat.get("result") if isinstance(chat, dict) else {}
+    if not isinstance(result, dict):
+        return False
+    got = str(result.get("username") or "").strip()
+    return bool(got) and _username_key(got) == _username_key(username)
+
+
+def _scan_updates_for_username(token: str, username: str) -> Tuple[str, str]:
+    uname = _username_key(username).lstrip("@")
+    try:
+        data = tg_get_updates(token, None, 0)
+    except Exception as exc:
+        return "", f"could not read updates to resolve {username}: {exc}"
+    for upd in reversed(data.get("result") or []):
+        msg = upd.get("message") or upd.get("edited_message") or upd.get("channel_post") or {}
+        frm = msg.get("from") or {}
+        chat = msg.get("chat") or {}
+        candidates = (
+            (frm.get("username"), (frm.get("id") or chat.get("id")), "getUpdates.from"),
+            (chat.get("username"), chat.get("id"), "getUpdates.chat"),
+        )
+        for cand_user, cand_id, source in candidates:
+            if str(cand_user or "").lower() == uname and cand_id:
+                cid = str(cand_id)
+                if _looks_numeric(cid):
+                    _username_cache_put(username, cid, source)
+                    return cid, f"resolved {username} -> Bot API route from {source}"
+    return "", (
+        f"{username} not found in the bot's recent updates. For a private user, they must press "
+        f"Start or message the bot once so the Bot API can legally address them, OR configure "
+        f"Telegrammer's official user session so @username can be used directly."
+    )
 
 
 def resolve_send_chat_id(token: str, recipient: str) -> Tuple[str, str]:
     """Turn a recipient into something the Bot API's sendMessage accepts.
 
     The Telegram Bot API can only DM a USER by their NUMERIC chat id — a user
-    @username is NOT resolvable by the API. A public @channelusername IS accepted
-    as-is. So: numeric → use directly; '@name' → scan getUpdates for a user who
-    messaged the bot with that username and use their numeric chat id; if none is
-    found, pass '@name' through (works only for public channels).
+    @username is not generally resolvable by bots. A public @channelusername can
+    resolve through getChat, and private users can be resolved only if the bot has
+    seen them in getUpdates. So: numeric -> use directly; @name -> cache, getChat,
+    then getUpdates; if none is found, pass @name through only as a last public
+    channel/group attempt.
     Returns (send_target, note)."""
     rec = str(recipient or "").strip()
     if not rec:
         return "", "empty recipient"
     if _looks_numeric(rec):
         return rec, "numeric chat id"
-    if rec.startswith("@"):
-        uname = rec[1:].lower()
+    if _looks_username(rec):
+        cached = _username_cache_get(rec)
+        if cached:
+            return cached, f"resolved {rec} -> Bot API route from local username cache"
         try:
-            data = tg_get_updates(token, None, 0)
+            chat = tg_get_chat(token, rec)
+            result = chat.get("result") if isinstance(chat, dict) else {}
+            cid = str((result or {}).get("id") or "")
+            if cid and _chat_username_matches(chat, rec):
+                _username_cache_put(rec, cid, "Bot API getChat")
+                return cid, f"resolved {rec} -> chat id from Bot API getChat"
         except Exception as exc:
-            return rec, f"could not read updates to resolve {rec}: {exc}"
-        for upd in reversed(data.get("result") or []):
-            msg = upd.get("message") or upd.get("channel_post") or {}
-            frm = msg.get("from") or {}
-            if str(frm.get("username") or "").lower() == uname:
-                cid = str((msg.get("chat") or {}).get("id") or "")
-                if cid:
-                    return cid, f"resolved {rec} -> numeric chat id {cid} (from getUpdates)"
-        return rec, (f"{rec} not found in the bot's recent updates. For a USER, they must send the "
-                     f"bot a message first so it learns their numeric id; OR give the numeric chat "
-                     f"id directly. (Passing @name through only works for public channels.)")
+            logging.info(f"   ↳ Bot API getChat could not resolve {rec}: {exc}")
+        cid, note = _scan_updates_for_username(token, rec)
+        if cid:
+            return cid, note
+        return rec, note
     return rec, "passthrough"
+
+
+def _should_use_user_provider(provider: str, user_cfg: Dict, recipient: str, source: str) -> bool:
+    if provider == 'user':
+        return True
+    if provider == 'bot':
+        return False
+    if not _user_session_configured(user_cfg):
+        return False
+    rec = str(recipient or '').strip()
+    if _looks_username(rec):
+        return True
+    if rec.startswith('+'):
+        return True
+    return False
+
+
+def _private_username_needs_user_session(recipient: str, source: str) -> bool:
+    return source == 'contact_name' and _looks_username(recipient)
+
+
+def _username_lookup_requires_user_session(recipient: str, source: str, send_target: str) -> bool:
+    return source == 'contact_name' and _looks_username(recipient) and send_target == recipient
 
 
 def receive_one(token: str, rx_max_seconds: int, rx_from_chat_id: str,
@@ -521,6 +791,142 @@ def emit_section(mode: str, direction: str, chat_id: str, status: str,
 # Main
 # ─────────────────────────────────────────────────────────────
 
+def _do_user_login(user_cfg: Dict) -> bool:
+    """One-time interactive login of YOUR Telegram account (Telethon) so
+    Telegrammer can resolve and message ANY @username at runtime, forever.
+    It does NOT create, change, or delete your bot - it logs in your own user
+    account (the only account type Telegram lets resolve @usernames). Run once
+    in a visible console; it asks for your phone + the code Telegram sends."""
+    try:
+        from telethon import TelegramClient
+    except Exception as exc:
+        logging.error("Telethon is not installed in this Python: %s -- run: pip install telethon", exc)
+        return False
+    try:
+        api_id = int(str(user_cfg.get("api_id") or "").strip())
+    except Exception:
+        api_id = 0
+    api_hash = str(user_cfg.get("api_hash") or "").strip()
+    if not api_id or not api_hash:
+        logging.error(
+            "Need telegram.api_id + telegram.api_hash to log in. Get them FREE at "
+            "https://my.telegram.org (API development tools), put them in the Telegrammer "
+            "config or the Access Keys Wizard, then run login again."
+        )
+        return False
+    session_name = str(user_cfg.get("session_name") or "").strip() or os.path.join(
+        _stable_state_dir(), "telegrammer_user_session"
+    )
+    logging.info("=" * 60)
+    logging.info("TELEGRAMMER ONE-TIME LOGIN - logs in YOUR Telegram account so it")
+    logging.info("can message ANY @username. It does NOT touch or delete your bot.")
+    logging.info("You will be asked for your phone, then the code Telegram sends you.")
+    logging.info("=" * 60)
+    client = TelegramClient(session_name, api_id, api_hash)
+    try:
+        client.start()
+        me = client.loop.run_until_complete(client.get_me())
+        who = ("@" + me.username) if getattr(me, "username", None) else (getattr(me, "first_name", "") or "your account")
+        logging.info("\u2705 Logged in as %s. Session saved at %s -- Telegrammer can now send to any @username.", who, session_name)
+        return True
+    except Exception as exc:
+        logging.error("\u274c Telegram login failed: %s", exc)
+        return False
+    finally:
+        try:
+            client.disconnect()
+        except Exception:
+            pass
+
+
+def _launch_interactive_login(user_cfg: Dict) -> bool:
+    """Pop a VISIBLE console so the user logs in their own Telegram account ONCE
+    (phone + the code Telegram sends), wait for it to finish, then let the caller
+    retry the send. Mirrors Executer's PROVEN forked-window recipe (a wrapper .bat
+    launched via cmd.exe /c with CREATE_NEW_CONSOLE + a forced-visible STARTUPINFO)
+    so the window RELIABLY appears on the user's desktop even when this agent runs
+    headless from the chat. It does NOT create, change, or delete the bot - it logs
+    in the user account that can resolve @usernames (the only account Telegram lets)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        py = list(get_python_command())
+    except Exception:
+        py = [sys.executable]
+    py_exe = py[0] if py else sys.executable
+    runner = os.path.join(here, "_tg_login_runner.py")
+    try:
+        with open(runner, "w", encoding="utf-8") as f:
+            f.write(
+                "import telegrammer as T\n"
+                "T._do_user_login(T._resolve_user_session_cfg(T.load_config()))\n"
+                "try:\n"
+                "    input(chr(10) + 'Login finished - press Enter to close this window...')\n"
+                "except Exception:\n"
+                "    pass\n"
+            )
+    except Exception as exc:
+        logging.error("Could not write the Telegram login runner: %s", exc)
+        return False
+    try:
+        logging.info("Opening the one-time Telegram login window "
+                     "(type your phone, then the code Telegram sends; close it when done).")
+        if os.name == "nt":
+            wrapper = os.path.join(here, "_tg_login_window.bat")
+            with open(wrapper, "w", encoding="utf-8") as wf:
+                wf.write("@echo off\r\n")
+                wf.write("title Telegram one-time login\r\n")
+                wf.write('cd /d "' + here + '"\r\n')
+                wf.write('"' + py_exe + '" "' + runner + '"\r\n')
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 1  # SW_SHOWNORMAL - force the window visible
+            proc = subprocess.Popen(
+                ["cmd.exe", "/c", wrapper],
+                cwd=here, env=get_agent_env(),
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                startupinfo=si,
+            )
+        else:
+            proc = subprocess.Popen(py + [runner], cwd=here, env=get_agent_env())
+        proc.wait()
+        return True
+    except Exception as exc:
+        logging.error("Could not open the Telegram login window: %s", exc)
+        return False
+
+
+def _user_send_with_autologin(user_cfg: Dict, recipient: str, text: str) -> Tuple[bool, str, str]:
+    """Send via the user session. If there is no authorized session yet, pop the
+    ONE-TIME setup window (phone + code), wait for the user, then retry once.
+
+    Behaviour the user sees:
+      * First send on a fresh install -> setup window appears.
+      * Window closed WITHOUT finishing -> a clear "setup interrupted" message,
+        nothing sent, bot untouched; the NEXT send re-opens the window.
+      * Setup finished -> the message is sent, and every later send goes straight
+        through with NO window for the life of this installation.
+      * Only deleting C:\\Tlamatini + reinstalling brings the window back once."""
+    ok, info, mid = tg_user_send_message(user_cfg, recipient, text)
+    if ok or ("not authorized" not in (info or "").lower()):
+        return ok, info, mid
+
+    logging.info("No authorized Telegram session yet - opening the one-time setup window...")
+    _launch_interactive_login(user_cfg)
+
+    # The window has closed. Try exactly once more with whatever session now exists.
+    ok, info, mid = tg_user_send_message(user_cfg, recipient, text)
+    if (not ok) and ("not authorized" in (info or "").lower()):
+        logging.info("Telegram setup interrupted - no session was created; will re-prompt next send.")
+        info = (
+            "Telegram initial setup was INTERRUPTED: the login window was closed before it "
+            "finished (your phone number + the code Telegram sends you). Nothing was sent and "
+            "your bot was NOT touched. Just ask me to send the Telegram again - the setup window "
+            "will reappear; once you complete it the message goes through, and you will not be "
+            "asked again on this installation."
+        )
+    return ok, info, mid
+
+
 def main():
     config = load_config()
     write_pid_file()
@@ -530,31 +936,54 @@ def main():
             logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
             logging.info("=" * 60)
 
+        provider = _resolve_provider(config)
         token = _resolve_bot_token(config)
+        user_cfg = _resolve_user_session_cfg(config)
         mode = str(config.get('mode') or 'auto').strip().lower()
         message = str(config.get('message') or '').strip()
         target_agents = config.get('target_agents', []) or []
 
-        logging.info("✈️ TELEGRAMMER AGENT STARTED (official Telegram Bot API)")
-        if not token:
+        logging.info(f"✈️ TELEGRAMMER AGENT STARTED (official provider={provider})")
+        if provider != 'user' and not token:
             logging.error("❌ No Bot Token. Set telegram.bot_token (or env TELEGRAM_BOT_TOKEN). "
                           "See HOW_TO_GET_YOUR_TELEGRAM_ASSETS.md")
+        if provider == 'user' and not _user_session_configured(user_cfg):
+            logging.error("❌ Telegram user-session provider selected, but telegram.api_id/api_hash/session are missing.")
 
         do_send = (mode == 'send') or (mode == 'auto' and message != '')
 
-        if do_send:
+        if mode == 'login':
+            _do_user_login(user_cfg)
+        elif do_send:
             # ── Mode (i): SEND ──────────────────────────────────────────
-            chat_id = _resolve_recipient(config)
-            logging.info(f"📤 SEND mode → recipient={chat_id!r}")
-            send_target, note = resolve_send_chat_id(token, chat_id) if token else (chat_id, "")
-            if note:
-                logging.info(f"   ↳ {note}")
-            ok, info, mid = tg_send_message(token, send_target, message)
+            chat_id, recipient_source = _resolve_recipient_detail(config)
+            logging.info(f"📤 SEND mode → recipient={chat_id!r} (source={recipient_source})")
+            send_target = chat_id
+            if _should_use_user_provider(provider, user_cfg, chat_id, recipient_source):
+                logging.info("   ↳ Using official Telegram user-session API for this recipient.")
+                ok, info, mid = _user_send_with_autologin(user_cfg, chat_id, message)
+            elif provider == 'user':
+                ok, info, mid = False, "Telegram user-session provider is not fully configured", ""
+            else:
+                send_target, note = resolve_send_chat_id(token, chat_id) if token else (chat_id, "")
+                if note:
+                    logging.info(f"   ↳ {note}")
+                if _username_lookup_requires_user_session(chat_id, recipient_source, send_target):
+                    info = (
+                        f"{note} Keep @username in contacts/configs, but configure Telegrammer with "
+                        "an authorized official Telegram user session (telegram.api_id, telegram.api_hash, "
+                        "and telegram.session_name/session_string), or have that user press Start/message "
+                        "the bot once so the Bot API can cache the address."
+                    )
+                    logging.error(f"❌ {info}")
+                    ok, mid = False, ""
+                else:
+                    ok, info, mid = tg_send_message(token, send_target, message)
             status = 'sent' if ok else 'failed'
             if not ok:
                 logging.error(f"❌ Telegram send failed: {info}")
                 exit_code = 1
-            emit_section('send', 'out', send_target or chat_id, status, mid, message if ok else info)
+            emit_section('send', 'out', chat_id, status, mid, message if ok else info)
         else:
             # ── Mode (ii)/(iii): RECEIVE ────────────────────────────────
             rx_max = int(config.get('rx_max_seconds') or 60)

@@ -63,8 +63,8 @@ CONNECTION_FIELDS = {
 
 # Agents that never finish on their own → default to background (wait=false).
 LONG_RUNNING = {
-    "croner", "flowhypervisor", "teletlamatini", "whatstlamatini",
-    "gatewayer", "gateway_relayer", "telegramrx", "recmailer",
+    "croner", "flowhypervisor", "teletlamatini",
+    "gatewayer", "gateway_relayer", "recmailer",
     "monitor_log", "monitor_netstat", "node_manager",
 }
 

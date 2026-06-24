@@ -11461,6 +11461,72 @@ def update_mcp_doctor_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
+@csrf_exempt
+@require_POST
+def update_instant_messaging_doctor_connection_view(request, agent_name):
+    """Update an Instant Messaging Doctor config.yaml when connections change."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        target_agent = data.get('target_agent')
+        action = data.get('action', 'add')
+        connection_type = data.get('type', 'target')
+
+        if not target_agent:
+            return HttpResponse(json.dumps({"success": False, "message": "Missing target_agent"}),
+                                content_type='application/json', status=400)
+
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+        pool_folder_name = "_".join(parts)
+        if cardinal:
+            pool_folder_name = f"{pool_folder_name}_{cardinal}"
+
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({"success": False, "message": "Invalid agent name"}),
+                                content_type='application/json', status=400)
+
+        config_path = os.path.join(get_pool_path(request), pool_folder_name, 'config.yaml')
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({"success": False, "message": f"Config not found: {config_path}"}),
+                                content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        target_parts = target_agent.split('-')
+        target_cardinal = None
+        if target_parts[-1].isdigit():
+            target_cardinal = target_parts.pop()
+        target_pool_name = "_".join(target_parts)
+        if target_cardinal:
+            target_pool_name = f"{target_pool_name}_{target_cardinal}"
+
+        list_name = 'source_agents' if connection_type == 'source' else 'target_agents'
+        if list_name not in config or not isinstance(config[list_name], list):
+            config[list_name] = []
+
+        if action == 'add':
+            if target_pool_name not in config[list_name]:
+                config[list_name].append(target_pool_name)
+            message = f"Added {target_pool_name} to {list_name}"
+        elif action == 'remove':
+            if target_pool_name in config[list_name]:
+                config[list_name].remove(target_pool_name)
+            message = f"Removed {target_pool_name} from {list_name}"
+        else:
+            message = f"Unknown action: {action}"
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
+    except Exception as e:
+        print(f"Error updating Instant Messaging Doctor connection: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
 # ─────────────────────────────────────────────────────────────────────
 # ACPX-Skills admin endpoints
 # ─────────────────────────────────────────────────────────────────────

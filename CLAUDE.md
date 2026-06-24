@@ -10,7 +10,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 - An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode)
 - A request-scoped **Multi-Turn orchestration layer** with dynamic tool binding and global execution planning — when Multi-Turn is on it binds the **FULL enabled tool surface** (every tool/agent/skill, ACPX still filtered by its checkbox), never a narrowed planner subset, so the operator loop is never starved of a needed tool; a **Step-by-Step** toolbar mode paces hands-on setup one concrete action at a time (it waits for the user's READY/output before the next)
-- A **Visual Agentic Workflow Designer** (ACP) with 83 drag-and-drop agent types
+- A **Visual Agentic Workflow Designer** (ACP) with 82 drag-and-drop agent types
 - A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **External MCPs** (2026-06) — a config-driven UNIVERSAL MCP **client**: connect to and use the tools of **any** external MCP server declared in a JSON file (the `mcpServers` shape, like a Claude-Code `.mcp.json`), over **four transports** — `stdio` (a local command, e.g. a Docker `mcp/*` image / npx / uvx / python) plus `streamable-http`, legacy `sse`, and `websocket` for already-running servers — with up to 5 active at once. Engine `agent/external_mcp_manager.py` + catalog `agent/external_mcps.json` (user state, resolved next to `config.json`); each remote tool is bound for the LLM as `ext__<server>__<tool>`; managed by 8 LLM supervisor tools (`external_mcp_status` / `reconnect` / `doctor` / `list_tools` / `call` / `import` / `set_active` / `wait`) and the **External ▸ MCPs** navbar dialog (searchable catalog, tick ≤5 active, drag a `.json` to import) over `/agent/external_mcps/` `…/activate/` `…/import/`. It is DISTINCT from the two built-in `Mcp`-model context providers (System-Metrics / Files-Search), from ACPX (which spawns coding-agent CLIs), and from the per-agent inline MCP clients (STM32er / Kalier). Companion **MCP Doctor** agent (#78, canvas + `chat_agent_mcp_doctor`) statically triages a catalogued MCP before you wire it. Full design contract: `docs/external_mcp_bulletproof_architecture.md`; how-to: `docs/claude/mcp-tools.md`
@@ -150,7 +150,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 83 workflow agent templates
+│   │   ├── agents/                 # 82 workflow agent templates
 │   │   │   ├── flowcreator/
 │   │   │   │   └── agentic_skill.md  # ** SKILL: FlowCreator AI reference **
 │   │   │   ├── flowhypervisor/
@@ -160,7 +160,9 @@ Tlamatini/                          # Git root
 │   │   │   ├── gateway_relayer/    # GitHub/GitLab webhook relay
 │   │   │   ├── node_manager/       # Infrastructure registry
 │   │   │   ├── teletlamatini/      # Telegram bridge into the full Multi-Turn Tlamatini chat
-│   │   │   ├── whatstlamatini/     # WhatsApp Cloud API bridge into the full Multi-Turn Tlamatini chat
+│   │   │   ├── telegrammer/        # Telegram send/receive via official Telegram surfaces
+│   │   │   ├── whatsapper/         # WhatsApp send/receive via official Meta Cloud API
+│   │   │   ├── instant_messaging_doctor/  # Diagnose + optionally safely-repair Telegrammer/Whatsapper readiness (tokens/contacts/templates/24h-window/webhook); non-mutating by default; auto-launched after a messaging failure (canvas + chat_agent_instant_messaging_doctor)
 │   │   │   ├── acpxer/             # Visual canvas counterpart of the 12 ACPX tools
 │   │   │   ├── playwrighter/       # Scripted interactive browser automation (Playwright; canvas + chat_agent_playwrighter)
 │   │   │   ├── windower/           # Window manager (Win32 focus/move/resize/min/max/close/tile/list; canvas + chat_agent_windower)
@@ -291,7 +293,7 @@ When adding a new tool that spawns a console child: either (a) add the tool name
 
 ## Temp & Templates Directory Policy (2026-06-02)
 
-Every **transient** file Tlamatini writes lives under ONE directory — `Temp` at the application root (`<exe-dir>/Temp` frozen, `<repo-root>/Temp` source) — and **never** outside Tlamatini (no `C:\Temp`, no `%TEMP%`, no system temp). `Tlamatini/manage.py::_enforce_app_temp_dir()` (before Django) and `tlamatini/settings.py::_pin_temp_directory()` (covers a direct `daphne`/`asgi` launch) pin `TMP`/`TEMP`/`TMPDIR` + Python's `tempfile.tempdir` to it and export `TLAMATINI_TEMP`, which every spawned pool agent inherits (`get_agent_env` does `os.environ.copy()`). The resolver is `agent/path_guard.py` (`get_app_temp_root` / `enforce_app_temp_dir` / `is_within_app_temp` / `resolve_temp_path`). The 6 temp-creating agents (executer, de_compresser, esp32er, stm32er, arduiner, telegramrx) also carry an explicit module-top `if (os.environ.get('TLAMATINI_TEMP')…)` guard (an `if`-block, never a top-level `def` — that trips ruff E402 before the imports).
+Every **transient** file Tlamatini writes lives under ONE directory — `Temp` at the application root (`<exe-dir>/Temp` frozen, `<repo-root>/Temp` source) — and **never** outside Tlamatini (no `C:\Temp`, no `%TEMP%`, no system temp). `Tlamatini/manage.py::_enforce_app_temp_dir()` (before Django) and `tlamatini/settings.py::_pin_temp_directory()` (covers a direct `daphne`/`asgi` launch) pin `TMP`/`TEMP`/`TMPDIR` + Python's `tempfile.tempdir` to it and export `TLAMATINI_TEMP`, which every spawned pool agent inherits (`get_agent_env` does `os.environ.copy()`). The resolver is `agent/path_guard.py` (`get_app_temp_root` / `enforce_app_temp_dir` / `is_within_app_temp` / `resolve_temp_path`). The temp-creating agents (executer, de_compresser, esp32er, stm32er, arduiner, plus historical TelegramRX templates in older installs) also carry an explicit module-top `if (os.environ.get('TLAMATINI_TEMP')…)` guard (an `if`-block, never a top-level `def` — that trips ruff E402 before the imports).
 
 Separately, the **default parent for the project trees the firmware/engine agents (STM32er / ESP32er / Arduiner / Unrealer) scaffold** is `Templates` at the application root (`TLAMATINI_TEMPLATES`; `path_guard.get_app_templates_root`), **unless the user names another path**. `Temp` = throwaway scratch; `Templates` = deliverable project trees (so it never touches `tempfile`).
 
@@ -306,7 +308,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Architecture & core systems** — config, system prompt & identity, the Five Layers, application log, doc generation, database models: @docs/claude/architecture.md
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
-- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 83 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 82 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
 - **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, ACPX toolbar toggle, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, Skills system (SKILL.md packages), key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md

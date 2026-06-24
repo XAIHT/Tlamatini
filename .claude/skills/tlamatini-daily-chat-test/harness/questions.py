@@ -86,9 +86,8 @@ AGENTS = [
     ("Image-Interpreter", ["vision", "image", "llm"]),
     ("J-Decompiler", ["jar", "decompile", "java"]),
     ("De-Compresser", ["compress", "archive", "zip"]),
-    ("Telegramer", ["telegram", "message"]),
+    ("Telegrammer", ["telegram", "message"]),
     ("TeleTlamatini", ["telegram", "bridge", "bot"]),
-    ("WhatsTlamatini", ["whatsapp", "bridge", "bot"]),
     ("ACPXer", ["acpx", "cli", "session"]),
     ("Unrealer", ["unreal", "engine", "mcp"]),
     ("Reviewer", ["review", "diff", "verdict"]),
@@ -112,7 +111,6 @@ AGENTS = [
     ("RecMailer", ["imap", "email", "receive"]),
     ("Notifier", ["notification", "popup"]),
     ("Whatsapper", ["whatsapp", "message"]),
-    ("TelegramRX", ["telegram", "receive"]),
     ("FlowHypervisor", ["health", "monitor", "watchdog"]),
 ]
 

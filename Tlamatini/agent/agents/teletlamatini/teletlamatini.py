@@ -1,7 +1,7 @@
 # TeleTlamatini Agent — pure Telegram-bot bridge to the Tlamatini chat core.
 #
 # This is a focused redesign of the original TeleTlamatini. The original was
-# carrying legacy from Telegramer's user-account mode (`listen_chat`,
+# carrying legacy from the old Telegramer user-account mode (`listen_chat`,
 # user-account fallback, customizable strings for every message, per-request
 # HTTP login, 10-second drain on every message, mandatory LLM completeness
 # gate with a slow cloud model). For a bot, all of that is dead weight. This
@@ -101,7 +101,7 @@ logging.getLogger().addHandler(console_handler)
 
 
 # ---------------------------------------------------------------------------
-# Config / PID helpers (verbatim from telegramer.py — these are the agent
+# Config / PID helpers (verbatim from the original Telegramer scaffold — these are the agent
 # platform contract; do not modify).
 # ---------------------------------------------------------------------------
 

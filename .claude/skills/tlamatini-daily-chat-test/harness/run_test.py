@@ -88,7 +88,7 @@ _SELECT_ALIASES = {
     "receive_email": "recmailer",
     "receivemail": "recmailer",
     "imap": "recmailer",
-    "telegram": "telegramer",
+    "telegram": "telegrammer",
     "whatsapp": "whatsapper",
 }
 
