@@ -304,3 +304,8 @@ Tlamatini/Temp/
 # are user output, not repo content — never commit them. See prompt.pmt Rule 16.
 /Templates/
 Tlamatini/Templates/
+# Private contacts book (names / phone numbers / messaging handles).
+# PII — must NEVER be committed. Scrubbed from history 2026-06-25.
+Tlamatini/agent/contacts.json
+/Tlamatini/agent/contacts.json
+contacts.json
