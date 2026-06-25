@@ -796,6 +796,32 @@ def main():
     # ── 1) Install dependencies ──────────────────────────────────────
     build_python = sys.executable
 
+    # GUARD: build.py must NOT be launched WITH the carried Python (<repo>/python).
+    # build_python (= the interpreter running this script) gets a numpy-purge +
+    # `--user` reinstall + import-verify (step 1b). The carried Python is a SEPARATE
+    # interpreter, provisioned cleanly into its OWN prefix by ensure_local_build_python().
+    # If they are the same, the purge wipes the carried prefix's numpy and the verify
+    # then fails with the misleading "Successfully installed numpy ... MISSING: numpy".
+    # Abort EARLY with a clear fix instead of failing ~14 min later.
+    _carried_dir = (Path(__file__).resolve().parent / "python").resolve()
+    try:
+        _build_py_under_carried = (
+            _carried_dir == Path(build_python).resolve().parent
+            or _carried_dir in Path(build_python).resolve().parents
+        )
+    except Exception:
+        _build_py_under_carried = False
+    if _build_py_under_carried:
+        print(
+            "ERROR: build.py was launched WITH the carried Python "
+            f"({build_python}).\n"
+            "       Run it with a SEPARATE system Python 3.12.10 instead, e.g.:\n"
+            '         & "C:\\Program Files\\Python312\\python.exe" .\\build.py --self-modify\n'
+            "       (The carried interpreter under <repo>\\python is provisioned by the\n"
+            "        build itself and must not be the one running build.py.) Aborting build."
+        )
+        sys.exit(1)
+
     # The CARRIED Python (the interpreter EVERY frozen pool agent runs on) is sourced
     # from a standalone, WRITABLE Python kept UNDER the source tree at <repo>/python,
     # auto-provisioned by ensure_local_build_python(). Its deps install into its OWN
