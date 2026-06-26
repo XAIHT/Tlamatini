@@ -1128,8 +1128,12 @@ def main():
             # also PRESERVED across self-update (apply_update.ps1 $Preserve) so a
             # user's added servers + active selection survive updates, like config.json.
             Path("Tlamatini") / "agent" / "external_mcps.json": dist_manage / "external_mcps.json",
-            # contacts.json is the Contacts book (name -> Telegram/WhatsApp handle).
-            Path("Tlamatini") / "agent" / "contacts.json": dist_manage / "contacts.json",
+            # NOTE: contacts.json is INTENTIONALLY NOT copied here. The dev tree's
+            # contacts.json holds the maintainer's PRIVATE data (real phone numbers /
+            # Telegram handles / emails). Shipping it would leak that PII into every
+            # release. Instead we write a sanitized EMPTY placeholder below
+            # (see "Ship a sanitized empty contacts.json"), so a fresh install gets a
+            # valid, empty contacts book that the user fills in themselves.
         }
         for src, dst in optional_file_copies.items():
             if src.exists():
@@ -1138,6 +1142,33 @@ def main():
                 print(f"Copied {src} -> {dst}")
             else:
                 print(f"WARNING: {src} not found; skipping copy.")
+
+        # ── Ship a sanitized EMPTY contacts.json (never the dev's private data) ──
+        # The dev tree's Tlamatini/agent/contacts.json contains the maintainer's
+        # real contacts (PII). We deliberately DO NOT copy it. Instead we write a
+        # clean placeholder with the same shape and an empty contacts list, so a
+        # fresh install has a valid, private-data-free contacts book that the user
+        # populates via the Contacts dialog / chat. (It is USER STATE: resolved next
+        # to config.json and preserved across self-update, so the user's own entries
+        # survive future updates.)
+        contacts_placeholder = {
+            "_README": (
+                "Tlamatini Contacts book. Add the people you message here, then you "
+                "can just say 'send a WhatsApp / Telegram to <name> ...' and Tlamatini "
+                "resolves the handle for you. Fields: name (required), aliases (other "
+                "names that should resolve to this person), telegram (@username only "
+                "for people), whatsapp (phone with country code, e.g. +5215555555555), "
+                "email (optional). This file is USER STATE: it lives next to config.json "
+                "and is preserved across updates. Do NOT commit real phone numbers to a "
+                "public repo."
+            ),
+            "contacts": [],
+        }
+        contacts_dst = dist_manage / "contacts.json"
+        contacts_dst.parent.mkdir(parents=True, exist_ok=True)
+        with open(contacts_dst, "w", encoding="utf-8") as _cf:
+            json.dump(contacts_placeholder, _cf, ensure_ascii=False, indent=2)
+        print(f"Wrote sanitized empty contacts.json -> {contacts_dst} (dev PII NOT shipped)")
 
         # Required root-level assets for the installed application.
         # ``agents_descriptions.md`` is the authoritative source for the
