@@ -3106,7 +3106,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
       api_id:   1234567                             # from https://my.telegram.org
       api_hash: 0123456789abcdef0123456789abcdef
       session_name: telegrammer_user_session        # remembers your login
-      chat_id: "@blackangy"                          # default recipient (contact_name='me')
+      chat_id: "@your_telegram_username"             # default recipient (contact_name='me')
     ```
 
   **Whatsapper — your own number, the unofficial way.** WhatsApp is the opposite of Telegram here: Meta offers **only one** official API — the business Cloud API, with its System User, message templates, and 24-hour-window rules. There is **no** official "send from my personal number" API. So Whatsapper now offers a deliberate choice:

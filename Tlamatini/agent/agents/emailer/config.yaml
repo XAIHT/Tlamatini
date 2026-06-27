@@ -89,11 +89,11 @@ smtp:
 # =============================================================================
 email:
   # Sender email address (defaults to smtp.username if not specified)
-  from_address: "mikespei64bit@gmail.com"
+  from_address: "you@example.com"
   
   # Primary recipients (required - at least one address)
   to_addresses:
-    - "mikespei64bit@gmail.com"
+    - "you@example.com"
   
   # CC recipients (optional)
   cc_addresses: []

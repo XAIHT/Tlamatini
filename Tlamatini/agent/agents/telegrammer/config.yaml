@@ -11,7 +11,7 @@ telegram:
   # session for private @usernames that bots cannot cold-DM.
   provider: auto
   bot_token: <TELEGRAM_BOT_TOKEN goes here>
-  chat_id: '@blackangy'
+  chat_id: '@your_telegram_username'
   api_id: <TELETLAMATINI_API_ID goes here>
   api_hash: <TELETLAMATINI_API_HASH goes here>
   session_name: telegrammer_user_session
