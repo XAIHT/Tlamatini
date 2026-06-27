@@ -1,3 +1,24 @@
+<!-- ==================================================================== -->
+<!-- ===================  PRIVATE DATA GUARD: ON  ======================== -->
+<!-- ==================================================================== -->
+
+# ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
+
+**NEVER REWRITE GIT HISTORY. EVER. IN THIS REPO, FOR ANY REASON.**
+
+- **NO** `rebase`, `commit --amend`, `reset --hard` to drop commits, `filter-branch`, `git filter-repo`, BFG.
+- **NO** `push --force` / `--force-with-lease`, **NO** deleting pushed tags, **NO** deleting remote refs.
+- TO REMOVE SENSITIVE / PRIVATE DATA: edit or delete the file, then make a **NEW FORWARD COMMIT** and push that. THE PAST STAYS UNTOUCHED.
+- **TAGS, PUSHES, AND `git log` MUST ALWAYS REMAIN INTACT AND TRUTHFUL** — `git log` MUST show the real history, made without lying, FOREVER.
+- PRIVATE INFORMATION MAY BE **DELETED GOING FORWARD**; THE HISTORY THAT RECORDED IT MUST **NOT** BE ERASED.
+- IF ANY TOOL OR WORKFLOW WOULD REWRITE HISTORY, **STOP** AND TELL ANGELA FIRST.
+
+Enforced by: `test_private_data_guard.py` (automated tests) + a global CAPS SessionStart banner (`~/.claude/hooks/private_data_guard_banner.py`) shown in every Claude Code session on this machine.
+
+<!-- ==================================================================== -->
+
+---
+
 # Tlamatini - CLAUDE.md
 
 This is the authoritative onboarding document for any AI assistant (Claude Code, Cursor, Gemini CLI, Antigravity IDE, etc.) working on the Tlamatini project. Read this file in full before making any changes, then follow the `@docs/claude/*.md` imports below — each specialized file is automatically included in your context.
