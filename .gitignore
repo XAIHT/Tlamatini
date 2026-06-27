@@ -249,6 +249,11 @@ context_files/
 # Telethon
 *.session
 
+# Tlamatini agent runtime state (WhatsApp Web Chromium profile, Telegram
+# session, ACPX/skill scratch). Regenerated on use; contains live login
+# credentials/cookies — NEVER commit.
+Tlamatini/agent/.tlamatini/
+
 # Building process logs
 *_log.txt
 *_log.log
