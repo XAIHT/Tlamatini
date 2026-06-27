@@ -1,10 +1,14 @@
 mode: auto
 telegram:
-  # provider: auto | bot | user
-  # Keep contacts/configs readable with @username. auto uses the local username
-  # cache + official Bot API lookup first; when api_id/api_hash/session are
-  # configured it uses the official Telegram user-session API for private
-  # @usernames that bots cannot cold-DM.
+  # provider: auto | bot | user  (pick which IDENTITY sends the message)
+  #   bot  -> send AS the bot (Bot API). Plain words: "bot", "as the bot".
+  #   user -> send AS your own logged-in account (user session). Plain words:
+  #           "me", "myself", "personal", "my account", "as me".
+  #   auto -> Bot API for numeric ids/channels; your account for private
+  #           @usernames/+phone when api_id/api_hash/session are configured.
+  # Keep contacts/configs readable with @username; auto uses the local username
+  # cache + official Bot API lookup first, then the official Telegram user
+  # session for private @usernames that bots cannot cold-DM.
   provider: auto
   bot_token: <TELEGRAM_BOT_TOKEN goes here>
   chat_id: '@blackangy'

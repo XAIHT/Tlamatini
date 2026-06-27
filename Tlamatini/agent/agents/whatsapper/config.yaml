@@ -9,6 +9,16 @@
 #           "no message" (ii). Both are readable by Parametrizer.
 mode: "auto"
 
+# ── Identity: which number SENDS ─────────────────────────────────────────────
+# provider: auto | cloud | web   (plain words ok: "me"/"personal" = web, "bot"/"business" = cloud)
+#   cloud → official Meta Cloud API; sends from the BUSINESS number (System User /
+#           templates / 24h-window rules apply).
+#   web   → UNOFFICIAL WhatsApp Web automation; sends from YOUR OWN personal number
+#           after a one-time QR login (no templates, no System User). For your own
+#           messages only — it is not a Meta-sanctioned API.
+#   auto  → cloud (unchanged default).
+provider: "auto"
+
 # ── Meta WhatsApp Cloud API credentials ──────────────────────────────────────
 # Normally seeded from config.json globals (whatsapp_phone_number_id /
 # whatsapp_access_token) or env (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN).
@@ -24,6 +34,12 @@ whatsapp:
   webhook_host: "0.0.0.0"
   webhook_port: 8086
   webhook_path: "/wa-webhook"
+  # ── WhatsApp Web (personal "as me") — ONLY used when provider=web ──
+  web:
+    headless: false            # FIRST run MUST be headed so you can scan the QR code
+    login_wait_seconds: 120    # how long to wait for the chat / QR login to complete
+    settle_seconds: 8          # pause after Send so the message flushes before closing
+    profile_dir: ""            # blank = a managed per-install login profile (remembered)
 
 # ── SEND ──────────────────────────────────────────────────────────────────────
 message: ""                     # free-form text (delivers only inside the 24h window)
