@@ -315,3 +315,8 @@ Tlamatini/Templates/
 Tlamatini/agent/contacts.json
 /Tlamatini/agent/contacts.json
 contacts.json
+
+# Private-data audit artifacts — may contain personal data; never commit
+personal_info_audit_report.md
+private_data_audit_report.json
+.private_targets.json
