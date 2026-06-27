@@ -202,8 +202,8 @@ Everything Tlamatini can do, grouped:
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
 
 **📨 Messaging, bridges & platform**
-- **Telegrammer** — Telegram send/receive over official Telegram surfaces: Bot API with a `@BotFather` token, plus optional official Telegram user-session credentials for private `@username` sends. Human configs stay readable as `@username`; any Bot API numeric route is private cache state.
-- **Whatsapper** — WhatsApp send/receive over the official Meta WhatsApp Cloud API only; no Twilio, no TextMeBot, no WhatsApp Web relay.
+- **Telegrammer** — Telegram send/receive that can send under **two identities**, picked per message with `provider`: **as the bot** (`provider=bot`, Bot API + a `@BotFather` token) or **as your own account** (`provider=user`, official Telegram user session). Plain English works — say *"send it as me"* (→ your account) or *"as the bot"*. `auto` (the default) uses your account for private `@usernames`/`+phone` and the bot for numeric ids/channels. Sending as you needs a one-time login; human configs stay readable as `@username`.
+- **Whatsapper** — WhatsApp send/receive with a `provider` switch for **which number sends**: **`cloud`** (default, the official Meta WhatsApp Cloud API — business number, templates, System User) or **`web`** (say *"send it as me"* / *"from my own WhatsApp"*) which sends from **your own personal number** by automating WhatsApp Web after a one-time QR login — no templates, no System User. The `web` path is unofficial (it drives WhatsApp Web) and carries Meta-ban risk; the `cloud` path remains the official, supported route.
 - **Instant Messaging Doctor** — automatically diagnoses Telegrammer/Whatsapper failures and can be called directly before critical sends; validates official tokens, contacts, readable `@username` routing, Meta templates/webhooks, and emits Parametrizer-ready repair actions.
 - **TeleTlamatini** — Telegram bridge into the full chat.
 - **Multi-model** — Ollama (local), Anthropic Claude (cloud), Qwen (vision).

@@ -297,19 +297,50 @@ def _resolve_bot_token(config: Dict) -> str:
     return _clean(tg.get('bot_token') or os.environ.get('TELEGRAM_BOT_TOKEN'))
 
 
+# Plain-English ways to say "send AS my own logged-in Telegram account" (the
+# user-session / MTProto route) and "send AS the bot" (the Bot API route), so the
+# operator can just say "as me" / "as the bot" instead of remembering user/bot.
+_USER_PROVIDER_WORDS = frozenset((
+    'user', 'mtproto', 'user_account', 'user_session', 'telegram_api',
+    'me', 'myself', 'my_self', 'self', 'owner', 'my_account', 'myaccount',
+    'personal', 'personal_account', 'my_personal_account', 'account',
+    'my_telegram', 'my_telegram_account', 'my_number', 'my_phone',
+))
+_BOT_PROVIDER_WORDS = frozenset((
+    'bot', 'bot_api', 'botapi', 'telegram_bot', 'the_bot', 'a_bot',
+    'bot_account', 'robot', 'botfather',
+))
+
+
+def _normalize_provider_word(value: str) -> str:
+    """Lowercase a provider string and collapse spaces/hyphens to underscores,
+    then strip a leading 'send_'/'as_' so 'send as me' == 'as me' == 'me' and
+    'as the bot' == 'the bot'."""
+    word = str(value or '').strip().lower().replace('-', '_').replace(' ', '_')
+    while '__' in word:
+        word = word.replace('__', '_')
+    prev = None
+    while prev != word:
+        prev = word
+        for pfx in ('send_', 'as_'):
+            if word.startswith(pfx):
+                word = word[len(pfx):]
+    return word
+
+
 def _resolve_provider(config: Dict) -> str:
     tg = config.get('telegram') or {}
     if not isinstance(tg, dict):
         tg = {}
-    provider = _clean(config.get('provider') or tg.get('provider') or os.environ.get('TELEGRAM_PROVIDER'))
-    provider = (provider or 'auto').lower().replace('-', '_')
-    if provider in ('mtproto', 'user_account', 'user_session', 'telegram_api'):
+    raw = _clean(config.get('provider') or tg.get('provider') or os.environ.get('TELEGRAM_PROVIDER'))
+    provider = _normalize_provider_word(raw) or 'auto'
+    if provider in _USER_PROVIDER_WORDS:
         return 'user'
-    if provider in ('bot_api', 'telegram_bot'):
+    if provider in _BOT_PROVIDER_WORDS:
         return 'bot'
     if provider in ('auto', 'bot', 'user'):
         return provider
-    logging.warning(f"Unknown Telegram provider {provider!r}; using auto.")
+    logging.warning(f"Unknown Telegram provider {raw!r}; using auto.")
     return 'auto'
 
 

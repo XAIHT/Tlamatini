@@ -1,8 +1,8 @@
 # Whatsapper Setup: Send A WhatsApp Message From Tlamatini
 
-This guide is for absolute beginners. Do one numbered step, then the next. It uses **Meta's official WhatsApp Cloud API only**.
+This guide is for absolute beginners. Do one numbered step, then the next. The **default** path (`provider=cloud`) uses **Meta's official WhatsApp Cloud API only** — no Twilio, no TextMeBot, no unofficial relay.
 
-No Twilio. No TextMeBot. No WhatsApp Web gateway. No unofficial relay.
+There is also an **optional personal mode** (`provider=web`) that sends from **your OWN number** with no templates and no System User. It is UNOFFICIAL (it drives WhatsApp Web) and has trade-offs — see **Option B** below. Pick whichever you prefer; everything from Step 1 onward is the official cloud setup.
 
 ## What You Need
 
@@ -44,6 +44,29 @@ WhatsApp has a hard platform rule:
 - Meta's built-in test template is usually `hello_world`.
 
 So for a first cold test, use a template.
+
+## Option B: Send From YOUR OWN Number (personal, unofficial)
+
+If you don't want the business setup (templates, System User, verification), Whatsapper can send from **your own personal WhatsApp number** instead, by automating WhatsApp Web — the same thing you do at <https://web.whatsapp.com>.
+
+How to use it:
+
+1. In `config.yaml` set `provider: "web"` (or just tell Tlamatini *"send it as me"* / *"from my own WhatsApp"* in chat — that maps to web).
+2. The FIRST send opens a real browser window showing the WhatsApp **QR code**. On your phone open **WhatsApp → Linked devices → Link a device** and scan it.
+3. After that one scan the login is remembered (in a private profile folder), so later sends go straight through — no QR again, exactly like WhatsApp Web/Desktop.
+
+What you get / give up:
+
+| | Personal mode (`provider=web`) | Official mode (`provider=cloud`) |
+|---|---|---|
+| Sends from | **Your own number** | The business number |
+| Templates / System User | **Not needed** | Required for cold sends |
+| 24-hour-window rule | None | Applies |
+| Meta-approved? | **No** — unofficial, automates WhatsApp Web | Yes |
+| Risk | Meta can **ban your number** for automation; breaks if WhatsApp changes its web app | Stable, supported |
+| Setup | One QR scan | The whole official flow below |
+
+Use personal mode for your own messages to your own contacts. If a number must never be put at risk, use the official cloud path. The rest of this guide covers the official setup.
 
 ## Step 1: Create The Meta App And Add WhatsApp
 

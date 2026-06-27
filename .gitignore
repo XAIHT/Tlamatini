@@ -265,8 +265,9 @@ package-lock.json
 cookie.txt
 crumb.json
 
-# Agent pools
+# Agent pools (runtime state — incl. _chat_runs_ throwaway agent copies)
 agent/agents/pools/*
+Tlamatini/agent/agents/pools/*
 
 # Applications
 applications/*

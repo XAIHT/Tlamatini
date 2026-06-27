@@ -299,6 +299,118 @@ def _normalize_msisdn(number: str) -> str:
     return ''.join(ch for ch in str(number or '') if ch.isdigit())
 
 
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+# ─────────────────────────────────────────────────────────────
+# Identity provider
+#   'cloud' -> official Meta WhatsApp Cloud API (sends from the BUSINESS number;
+#              needs the System User / templates / 24h-window rules).
+#   'web'   -> UNOFFICIAL WhatsApp Web automation (sends from YOUR OWN personal
+#              number after a one-time QR login). NOT a Meta-sanctioned API; for
+#              messaging your own contacts from your own number only.
+# Plain English is accepted so the operator can just say "as me".
+# ─────────────────────────────────────────────────────────────
+
+_WEB_PROVIDER_WORDS = frozenset((
+    'web', 'me', 'myself', 'my_self', 'self', 'owner', 'my_account', 'myaccount',
+    'personal', 'personal_account', 'my_personal_account', 'my_number',
+    'my_phone', 'whatsapp_web', 'web_whatsapp', 'wa_web', 'my_whatsapp',
+))
+_CLOUD_PROVIDER_WORDS = frozenset((
+    'cloud', 'cloud_api', 'official', 'business', 'the_business', 'meta',
+    'graph', 'api', 'bot', 'the_bot', 'a_bot', 'business_account', 'company',
+))
+
+
+def _normalize_provider_word(value: str) -> str:
+    """Lowercase + collapse spaces/hyphens to underscores, then strip a leading
+    'send_'/'as_' so 'send as me' == 'as me' == 'me'."""
+    word = str(value or '').strip().lower().replace('-', '_').replace(' ', '_')
+    while '__' in word:
+        word = word.replace('__', '_')
+    prev = None
+    while prev != word:
+        prev = word
+        for pfx in ('send_', 'as_'):
+            if word.startswith(pfx):
+                word = word[len(pfx):]
+    return word
+
+
+def _resolve_provider(config: Dict) -> str:
+    wa = config.get('whatsapp') or {}
+    if not isinstance(wa, dict):
+        wa = {}
+    raw = _clean(config.get('provider') or wa.get('provider') or os.environ.get('WHATSAPP_PROVIDER'))
+    provider = _normalize_provider_word(raw) or 'auto'
+    if provider in _WEB_PROVIDER_WORDS or provider == 'web':
+        return 'web'
+    if provider in _CLOUD_PROVIDER_WORDS or provider in ('cloud', 'auto'):
+        return 'cloud'
+    logging.warning(f"Unknown WhatsApp provider {raw!r}; using cloud.")
+    return 'cloud'
+
+
+def _stable_state_dir() -> str:
+    """A durable per-install directory for the WhatsApp Web login profile, resolved
+    the same way contacts/config are (so the QR login survives restarts/updates)."""
+    candidates = []
+    explicit = (os.environ.get('TLAMATINI_STATE_DIR') or '').strip()
+    if explicit:
+        candidates.append(explicit)
+    contacts_path = (os.environ.get('TLAMATINI_CONTACTS') or '').strip()
+    if contacts_path:
+        candidates.append(os.path.join(os.path.dirname(os.path.abspath(contacts_path)), '.tlamatini'))
+    exe_parent = os.path.dirname(os.path.abspath(sys.executable))
+    if os.path.basename(exe_parent).lower() == 'python':
+        candidates.append(os.path.join(os.path.dirname(exe_parent), '.tlamatini'))
+    cur = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(12):
+        if os.path.basename(cur).lower() == 'agents':
+            candidates.append(os.path.join(os.path.dirname(cur), '.tlamatini'))
+            break
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    candidates.append(os.path.join(script_dir, '.tlamatini'))
+    for path in candidates:
+        if not path:
+            continue
+        try:
+            os.makedirs(path, exist_ok=True)
+            return path
+        except Exception:
+            continue
+    return script_dir
+
+
+def _wa_web_profile_dir(config: Dict) -> str:
+    wa = config.get('whatsapp') or {}
+    web = (wa.get('web') if isinstance(wa, dict) else {}) or {}
+    explicit = _clean(web.get('profile_dir')) if isinstance(web, dict) else ''
+    path = explicit or os.path.join(_stable_state_dir(), 'whatsapp_web_profile')
+    if not os.path.isabs(path):
+        path = os.path.join(_stable_state_dir(), path)
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception:
+        pass
+    return path
+
+
+def _build_wa_web_send_url(number: str, text: str) -> str:
+    """The official web.whatsapp.com deep link that opens a chat with the message
+    pre-filled. Digits only (no '+'), text URL-encoded."""
+    return 'https://web.whatsapp.com/send?' + urllib.parse.urlencode(
+        {'phone': _normalize_msisdn(number), 'text': text or ''}
+    )
+
+
 def _resolve_whatsapp_cfg(config: Dict) -> Dict:
     wa = config.get('whatsapp') or {}
     if not isinstance(wa, dict):
@@ -523,6 +635,137 @@ class WhatsAppCloudClient:
 
 
 # ─────────────────────────────────────────────────────────────
+# WhatsApp Web — outbound from YOUR OWN number (UNOFFICIAL, Playwright)
+# ─────────────────────────────────────────────────────────────
+
+class WhatsAppWebClient:
+    """Sends a WhatsApp message from the user's OWN personal number by driving
+    web.whatsapp.com through a PERSISTENT (logged-in) Playwright browser profile.
+
+    This is NOT a Meta-sanctioned API — it automates WhatsApp Web the same way a
+    person would. It needs a ONE-TIME QR-code login (open it headed once, scan with
+    the phone under Linked Devices); the session is then remembered in the profile
+    dir, exactly like WhatsApp Web/Desktop. Use it only to send your own messages.
+    """
+
+    # WhatsApp Web's compose box (several fallbacks; the site changes its DOM).
+    _COMPOSE_SELECTORS = (
+        'div[aria-label="Type a message"][contenteditable="true"]',
+        'div[contenteditable="true"][data-tab="10"]',
+        'footer div[contenteditable="true"]',
+    )
+    _SEND_SELECTORS = (
+        'button[aria-label="Send"]',
+        'span[data-icon="send"]',
+        'button[data-tab="11"]',
+    )
+
+    def __init__(self, profile_dir, headless=False, login_wait_seconds=120, settle_seconds=8):
+        self.profile_dir = profile_dir
+        self.headless = bool(headless)
+        self.login_wait_seconds = int(login_wait_seconds or 120)
+        self.settle_seconds = int(settle_seconds or 8)
+
+    def send_text(self, to: str, text: str) -> Tuple[bool, str, str]:
+        try:
+            from playwright.sync_api import sync_playwright
+        except Exception as exc:
+            return False, (
+                f"Playwright is not installed in this Python environment ({exc}). "
+                "Run: pip install playwright && playwright install chromium"
+            ), ""
+        number = _normalize_msisdn(to)
+        if not number:
+            return False, "no recipient (empty WhatsApp number)", ""
+        if not text:
+            return True, "empty message", ""
+        url = _build_wa_web_send_url(number, text)
+        try:
+            with sync_playwright() as p:
+                ctx = p.chromium.launch_persistent_context(
+                    self.profile_dir,
+                    headless=self.headless,
+                    args=['--no-sandbox', '--disable-blink-features=AutomationControlled'],
+                )
+                try:
+                    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                    page.goto(url, timeout=60000)
+                    box = self._wait_for_compose(page)
+                    if box is None:
+                        if self._invalid_number(page):
+                            return False, (
+                                "WhatsApp Web reports this number is invalid / not on WhatsApp. "
+                                "Use the full international number with country code."
+                            ), ""
+                        return False, (
+                            "WhatsApp Web is not logged in yet (no chat appeared within "
+                            f"{self.login_wait_seconds}s). Run this once with headless:false and scan "
+                            "the QR code on your phone (WhatsApp -> Linked devices); the login is then "
+                            "remembered for next time."
+                        ), ""
+                    # The deep link pre-fills the text; click into the box and send.
+                    try:
+                        box.click()
+                        page.wait_for_timeout(400)
+                    except Exception:
+                        pass
+                    if not self._click_send(page):
+                        try:
+                            box.press('Enter')
+                        except Exception as exc:
+                            return False, f"could not press Send: {exc}", ""
+                    page.wait_for_timeout(min(self.settle_seconds, 15) * 1000)
+                    logging.info(f"✅ WhatsApp Web (personal) → {number}: message sent")
+                    return True, "ok", ""
+                finally:
+                    try:
+                        ctx.close()
+                    except Exception:
+                        pass
+        except Exception as exc:
+            return False, f"WhatsApp Web send error: {exc}", ""
+
+    def _wait_for_compose(self, page):
+        deadline = time.monotonic() + self.login_wait_seconds
+        while time.monotonic() < deadline:
+            for sel in self._COMPOSE_SELECTORS:
+                try:
+                    el = page.query_selector(sel)
+                    if el is not None:
+                        return el
+                except Exception:
+                    pass
+            try:
+                page.wait_for_timeout(1000)
+            except Exception:
+                time.sleep(1)
+        return None
+
+    def _click_send(self, page) -> bool:
+        for sel in self._SEND_SELECTORS:
+            try:
+                el = page.query_selector(sel)
+                if el is not None:
+                    el.click()
+                    return True
+            except Exception:
+                pass
+        return False
+
+    @staticmethod
+    def _invalid_number(page) -> bool:
+        try:
+            body = (page.inner_text('body') or '').lower()
+        except Exception:
+            return False
+        return (
+            'phone number shared via url is invalid' in body
+            or "isn't on whatsapp" in body
+            or 'is not on whatsapp' in body
+        )
+
+
+# ─────────────────────────────────────────────────────────────
 # Meta WhatsApp Cloud API — inbound (official webhook, stdlib HTTP server)
 # ─────────────────────────────────────────────────────────────
 
@@ -639,14 +882,41 @@ def main():
         mode = str(config.get('mode') or 'auto').strip().lower()
         message = str(config.get('message') or '').strip()
         template = _clean(config.get('template'))
+        provider = _resolve_provider(config)
         target_agents = config.get('target_agents', []) or []
 
-        logging.info("💬 WHATSAPPER AGENT STARTED (official Meta WhatsApp Cloud API)")
+        logging.info(f"💬 WHATSAPPER AGENT STARTED (provider={provider})")
 
         do_send = (mode == 'send') or (mode == 'auto' and (message != '' or template != ''))
 
-        if do_send:
-            # ── Mode (i): SEND ──────────────────────────────────────────
+        if do_send and provider == 'web':
+            # ── Mode (i-web): SEND from YOUR OWN number via WhatsApp Web ──
+            recipient = _resolve_recipient(config, wa_cfg)
+            wa = config.get('whatsapp') or {}
+            web_cfg = (wa.get('web') if isinstance(wa, dict) else {}) or {}
+            if not isinstance(web_cfg, dict):
+                web_cfg = {}
+            logging.info(f"📤 SEND mode (WhatsApp Web / personal account) → to={recipient!r}")
+            if template:
+                logging.warning("⚠️ WhatsApp Web (personal) mode ignores `template` "
+                                "(templates are a Cloud-API concept); sending the free-form message.")
+            client = WhatsAppWebClient(
+                _wa_web_profile_dir(config),
+                headless=_as_bool(web_cfg.get('headless', False)),
+                login_wait_seconds=int(web_cfg.get('login_wait_seconds') or 120),
+                settle_seconds=int(web_cfg.get('settle_seconds') or 8),
+            )
+            if not recipient:
+                ok, info, mid = False, "no recipient (set contact_name or to)", ""
+            else:
+                ok, info, mid = client.send_text(recipient, message)
+            status, body = ('sent', message) if ok else ('failed', info)
+            if not ok:
+                exit_code = 1
+                logging.error(f"❌ WhatsApp Web send failed: {info}")
+            emit_section('send', 'out', _normalize_msisdn(recipient), status, mid, body)
+        elif do_send:
+            # ── Mode (i): SEND via the official Meta Cloud API ──────────
             recipient = _resolve_recipient(config, wa_cfg)
             client = WhatsAppCloudClient(wa_cfg['phone_number_id'], wa_cfg['access_token'],
                                          wa_cfg['graph_base'], wa_cfg['api_version'])

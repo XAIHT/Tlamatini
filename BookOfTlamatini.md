@@ -3076,6 +3076,79 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 ### Recent Updates
 
+- **One Switch, Two Voices — Telegrammer and Whatsapper Now Choose WHO Sends ("as me" vs "as the bot") — 2026-06-27** — The two messaging agents gained the single feature people ask for first: *send this from MY account, not from a bot*. Both now carry a `provider` knob that chooses the **identity** the message goes out under, and you set it in plain English — literally say *"send it as me"* or *"as the bot"* in chat — no IDs to memorize. The mechanics differ per platform because the platforms differ, and the difference is worth understanding once.
+
+  **Telegrammer — two official voices.** Telegram is generous: it offers *two* official APIs, so Telegrammer can send under either, cleanly, with no unofficial tricks.
+    - `provider=bot` → sends **as the bot** (the Bot API, with a `@BotFather` token). Good for channels, groups, and anyone who has pressed *Start* on your bot.
+    - `provider=user` → sends **as your own Telegram account** (the official user-session / MTProto API). This is the one that can DM a private `@username` directly, exactly as if you typed it on your phone.
+    - `provider=auto` (the default) → your account for private `@usernames` and `+phone` numbers, the bot for numeric ids and channels.
+    - Plain words map straight through: *me / myself / personal / "from my account"* → `user`; *bot / "as the bot" / "as a bot"* → `bot`. ("send as me" == "as me" == "me".)
+    - **One-time login:** the first time you send *as you*, Telegrammer pops a small login window asking for your phone and the code Telegram texts you (it uses your own `api_id` / `api_hash` from <https://my.telegram.org>). After that the session is remembered forever on that install — every later "as me" send goes straight through, and your **bot is never touched** by this login.
+
+    Functional samples — chat:
+    ```text
+    Tlamatini, send a Telegram to Ana as me: "running 10 min late".
+    Tlamatini, send a Telegram to the @build_alerts channel as the bot: "main is green ✅".
+    Tlamatini, telegram Mom from my own account and say I landed safely.
+    ```
+    The exact tool-call the model makes for the first one:
+    ```text
+    chat_agent_telegrammer(mode='send', provider='me', contact_name='Ana', message='running 10 min late')
+    ```
+    Functional sample — a canvas / `.flw` node's `config.yaml` (send as you):
+    ```yaml
+    mode: send
+    provider: user            # auto | bot | user  ("me"/"personal" also resolve to user)
+    message: "Hi from my own account"
+    contact_name: "Ana"       # resolved from contacts.json (telegram: "@ana_lazcano")
+    telegram:
+      bot_token: <TELEGRAM_BOT_TOKEN goes here>     # still used by bot/auto routes
+      api_id:   1234567                             # from https://my.telegram.org
+      api_hash: 0123456789abcdef0123456789abcdef
+      session_name: telegrammer_user_session        # remembers your login
+      chat_id: "@blackangy"                          # default recipient (contact_name='me')
+    ```
+
+  **Whatsapper — your own number, the unofficial way.** WhatsApp is the opposite of Telegram here: Meta offers **only one** official API — the business Cloud API, with its System User, message templates, and 24-hour-window rules. There is **no** official "send from my personal number" API. So Whatsapper now offers a deliberate choice:
+    - `provider=cloud` (the default, unchanged) → the **official** Meta WhatsApp Cloud API. Sends from your **business** number; cold first messages need an approved `template`; free-form text only delivers inside the 24-hour customer-service window. Stable and supported.
+    - `provider=web` → sends from your **own personal number** by automating **WhatsApp Web** through a real, logged-in Playwright browser profile — the same thing you do by hand at <https://web.whatsapp.com>. No templates. No System User. No business verification.
+    - Plain words: *me / myself / personal / "from my own WhatsApp"* → `web`; *official / business / "as the business"* → `cloud`.
+    - **One-time QR login:** the first `web` send opens a real browser window showing the WhatsApp **QR code**. On your phone: **WhatsApp → Linked devices → Link a device**, scan it once, and the login is remembered in a private profile folder — later sends go straight through, exactly like WhatsApp Web/Desktop.
+    - **The honest trade-off** (this is unofficial — know it before you lean on it):
+
+      | | `provider=web` (personal) | `provider=cloud` (official) |
+      |---|---|---|
+      | Sends from | **Your own number** | The business number |
+      | Templates / System User | **Not needed** | Required for cold sends |
+      | 24-hour-window rule | None | Applies |
+      | Meta-approved? | **No** — automates WhatsApp Web | Yes |
+      | Risk | Meta can **ban the number**; breaks if WhatsApp changes its web app | Stable, supported |
+      | Setup | One QR scan | The full Cloud-API onboarding |
+
+    Functional samples — chat:
+    ```text
+    Tlamatini, WhatsApp Ana as me: "I'm outside, come down 🙂".
+    Tlamatini, send a WhatsApp from my own number to Dad and say dinner's ready.
+    Tlamatini, WhatsApp the customer as the business using template hello_world (en_US).
+    ```
+    Functional sample — `config.yaml` (send from your own number):
+    ```yaml
+    mode: send
+    provider: web             # cloud (default) | web   ("me"/"personal" => web)
+    message: "Hi from my own WhatsApp"
+    contact_name: "Ana"       # resolved from contacts.json (whatsapp: "+52 1 55 5555 5555")
+    whatsapp:
+      web:
+        headless: false       # FIRST run MUST be headed so you can scan the QR
+        login_wait_seconds: 120
+        settle_seconds: 8
+        profile_dir: ""       # blank = a managed, remembered per-install login profile
+    ```
+
+  **Catalog of Prompts** gained three ready-to-run demos so you can try it in one click (all send only to *yourself*, and stop cleanly if the identity isn't set up yet): *"TELEGRAM 'AS ME'"* (`provider='me'`), *"TELEGRAM 'AS THE BOT'"* (`provider='bot'`), and *"WHATSAPP 'AS ME'"* (`provider='me'` → WhatsApp Web). Seeded by migrations `0156` (two Telegram prompts) and `0157` (one WhatsApp prompt), kept contiguous in the catalog.
+
+  **Under the hood / for builders:** the chooser is a tiny, forgiving resolver in each agent (`_resolve_provider` + `_normalize_provider_word`) that lowercases, collapses spaces/hyphens, strips a leading `send`/`as`, and maps a generous word-list onto the canonical routes; an unknown word falls back safely (Telegram → `auto`, WhatsApp → `cloud`) rather than erroring. WhatsApp's personal path is a self-contained `WhatsAppWebClient` (Playwright persistent context, `web.whatsapp.com/send` deep link, fallback selectors for the compose box and Send button, clear `login_required` / `invalid_number` statuses) — Playwright was chosen because Tlamatini already ships it (Googler/Playwrighter), so **no Node runtime was added**. The chat tool descriptions and both `HOW_TO_GET_YOUR_*_ASSETS.md` guides were updated (WhatsApp's now has an *"Option B: Send From Your Own Number"* section). Coverage: **37 new automated tests** (`agent/test_telegrammer_identity.py` + `agent/test_whatsapper_identity.py`) pinning provider resolution, normalization, send-routing, the WhatsApp-Web deep link, the no-browser guards, and the demo prompts — all green, ruff clean, migration graph valid. The live "as me" sends (Telegram phone-code login; WhatsApp QR scan) are the one step done interactively with the operator. **Source-only** for now — a frozen install picks it up after a `build.py` rebuild + `migrate`.
+
 - **Two Messaging Agents, Official APIs Only — Telegrammer + Whatsapper Consolidated to Send/Receive, Third-Party Gateways Retired — 2026-06-22; @username Contract Hardened + Instant Messaging Doctor Added — 2026-06-23** — The messaging surface was reduced to exactly **two** send/receive agents, each on the platform's own official API, each a single send-or-receive worker. **Telegramer was renamed to Telegrammer** and now uses **official Telegram surfaces only**: Bot API with a `bot_token` from @BotFather, plus an optional official Telegram user session (`api_id` / `api_hash` / `session_name` or `session_string`) for private `@username` sends that a bot cannot cold-DM. It carries a `mode` (`auto` / `send` / `receive`): `send` posts `message` (or a resolved `contact_name`) to a visible `telegram.chat_id` / `@username`; `receive` waits up to `rx_max_seconds` for an inbound Bot API update (optionally filtered by `rx_from_chat_id` / `rx_match`). Contacts should keep people as `telegram: "@username"`; Bot API numeric routes are internal cache entries under `.tlamatini`, never the human contact-book contract. Either way it does its one job, starts `target_agents`, and dies — and as a Parametrizer source it emits `INI_SECTION_TELEGRAMMER<<<` (`mode`, `direction`, `chat_id`, `status`, `message_id`, body = `response_body`) with the visible recipient preserved. **Whatsapper kept its name but was rebuilt onto the official Meta WhatsApp Cloud API** (Graph API): the same three modes, `send` posting `message` / a `template` (`template_language` / `template_params`) / a `contact_name` to `whatsapp.to` via `whatsapp.phone_number_id` + `whatsapp.access_token`, and `receive` standing up the official webhook (`whatsapp.webhook_host` / `webhook_port` / `webhook_path`, verified by `whatsapp.verify_token`). It now **starts `target_agents`** — so it is no longer a terminal agent — and emits `INI_SECTION_WHATSAPPER<<<` (`mode`, `direction`, `recipient`, `status`, `message_id`, body = `response_body`). **Instant Messaging Doctor** was added as the diagnostic/repair companion and wrapped Multi-Turn tool `chat_agent_instant_messaging_doctor`: Telegrammer/Whatsapper failures automatically launch it with the same contact/message/failure-log context, and critical flows can call it first to validate tokens, contacts, Telegram `@username` reachability, Meta phone-number/template/webhook readiness, and next repair actions through `INI_SECTION_INSTANT_MESSAGING_DOCTOR<<<`. Two agents were **retired completely**: **TelegramRX** (receiving is now just Telegrammer's `receive` mode) and **WhatsTlamatini** (TeleTlamatini stays as the long-running Telegram bridge). Every **third-party gateway was removed** — **no Twilio, no TextMeBot, no WhatsApp Web gateway** — leaving the comms stack on first-party APIs only.
 
 - **The External MCPs Era — Tlamatini Plugs Into Any MCP From a JSON File, Across Four Transports, With a Doctor at the Door — June 2026** — Until now Tlamatini's tool surface was *her* tools: the 78 pool agents, the ACPX child-CLIs, the Skills. This is the release where the walls come down. Drop a JSON config in front of her — the same `mcpServers` block you already paste into a desktop MCP client, a single-server `{ "command": ..., "args": ... }` snippet, or just a `{ "url": ... }` — and Tlamatini connects to **any external MCP server** and binds its remote tools as her own, named `ext__<server>__<tool>`. The engine is a config-driven **universal MCP client** (`agent/external_mcp_manager.py`, catalogued in `agent/external_mcps.json`) that speaks **four transports**: `stdio` for local processes, **Streamable HTTP** for already-running HTTP endpoints, legacy **HTTP+SSE**, and **WebSocket** JSON-RPC — so a Roblox Studio bridge, a Redis server, a knowledge-graph **memory**, **SQLite**, a web **fetch** server, all reach her the same way regardless of how they happen to talk. Servers connect **lazily on a background thread** so a slow one never blocks the chat, at most **five** stay active at once (a deliberate, sane cap), and the whole thing is administered from a new **"External ▸ MCPs"** navbar dialog — searchable, with **drag-a-`.json`-to-import** — backed by three endpoints and eight LLM-facing supervisor tools (`external_mcp_status` / `reconnect` / `doctor` / `list_tools` / `call` / `import` / `set_active` / `wait`) so the model can inspect, choose, call, and add MCPs *herself*. The full design contract lives in `docs/external_mcp_bulletproof_architecture.md`.
