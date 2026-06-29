@@ -301,7 +301,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.26.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.26.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.32.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.32.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -3083,6 +3083,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.32.0 — Faster, Safer, and Properly Credited to Angela López Mendoza — 2026-06-29** — The releases from v1.27 through **v1.32.0** are a maintenance-and-identity wave layered on top of the messaging rebuild below, in four threads. **(1) Performance — the "3X" levers.** The chat path got materially faster: an Ollama serving-layer detector, a warmed embeddings handle, and `keep_alive` carried onto the basic and retrieval chains (so the stable system-prompt prefix's KV cache is reused between turns), plus an O(N²)→O(N) rewrite of the orphan-process reaper that had been pegging a core and stalling long chats — together with roughly **140** new tests. **(2) Private-data guard.** A forward-only privacy discipline: sensitive data is removed only in NEW commits — git history is never rewritten — backed by automated `test_private_data_guard.py` tests and a global CAPS SessionStart banner shown at the start of every Claude Code session on the machine. **(3) Public-release build hardening.** `build.py` keeps delicate dev-repo data out of shipped releases, the public-release verifier blocks only true PII (emails / handles / phone numbers) rather than ordinary names, and it never scrubs the operational files it actually needs (`data.keys`, `.private_targets.json`). **(4) Authorship — Angela López Mendoza, everywhere.** Angela is now stamped as the creator across the whole product: the About window credits **ANGELA LÓPEZ MENDOZA** in caps, the generated PDF and PPTX carry her name both visibly and in their document metadata, the build and package metadata embed her, `prompt.pmt` instructs the LLM to always respect her as the creator, and every source file carries an author banner. The public-release builder is explicitly forbidden from ever scrubbing her name — it may mask other PII, never that.
 
 - **One Switch, Two Voices — Telegrammer and Whatsapper Now Choose WHO Sends ("as me" vs "as the bot") — 2026-06-27** — The two messaging agents gained the single feature people ask for first: *send this from MY account, not from a bot*. Both now carry a `provider` knob that chooses the **identity** the message goes out under, and you set it in plain English — literally say *"send it as me"* or *"as the bot"* in chat — no IDs to memorize. The mechanics differ per platform because the platforms differ, and the difference is worth understanding once.
 
