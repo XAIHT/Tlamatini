@@ -11,8 +11,14 @@
 """Tlamatini Agents — MCP server.
 
 Exposes EVERY Tlamatini pool agent (Executer, Pythonxer, Croner, ACPXer,
-STM32er, ESP32er, Arduiner, Shoter, Playwrighter, Kalier, … all 74) as an
-MCP tool so an MCP client (Claude Code, etc.) can drive them directly.
+STM32er, ESP32er, Arduiner, Shoter, Playwrighter, Kalier, Blenderer,
+Talker, Whisperer, Discoverer, MCP-Doctor, … all 82) as an MCP tool so an
+MCP client (Claude Code, etc.) can drive them directly.
+
+Agent discovery is fully DYNAMIC: every directory under
+``Tlamatini/agent/agents/`` that holds both ``<name>.py`` and ``config.yaml``
+is surfaced as a tool automatically at startup — adding a new pool agent
+requires NO edit here, it appears on the next server launch.
 
 It does NOT import the Django app. For each call it performs the exact
 "launcher dance" Tlamatini's pool uses:
@@ -55,6 +61,7 @@ from mcp.server.stdio import stdio_server
 # --------------------------------------------------------------------------- #
 HERE = os.path.dirname(os.path.abspath(__file__))
 AGENTS_ROOT = os.path.join(HERE, "Tlamatini", "agent", "agents")
+SKILLS_ROOT = os.path.join(HERE, "Tlamatini", "agent", "skills_pkg")
 # Source-mode app-Temp is the repo-root /Temp (gitignored); see the 2026-06-02
 # Temp policy in CLAUDE.md. Runtime agent copies live under it so they never
 # pollute the working tree.
@@ -109,6 +116,53 @@ def discover_agents() -> Dict[str, Dict[str, Any]]:
         params = [k for k in config.keys() if k not in CONNECTION_FIELDS]
         agents[name] = {"dir": d, "config": config, "params": params}
     return agents
+
+
+def discover_skills() -> Dict[str, Dict[str, Any]]:
+    """Return {skill_name: {dir, path, description, runtime, frontmatter}} for
+    every SKILL.md package under skills_pkg/. Skills are PROCEDURAL runbooks the
+    MCP client follows — there is no in-process harness here, so the capability
+    surfaced is: enumerate them (tlamatini_list_skills) and fetch a skill's full
+    SKILL.md to follow step-by-step (tlamatini_read_skill)."""
+    skills: Dict[str, Dict[str, Any]] = {}
+    if not os.path.isdir(SKILLS_ROOT):
+        return skills
+    for name in sorted(os.listdir(SKILLS_ROOT)):
+        d = os.path.join(SKILLS_ROOT, name)
+        sk = os.path.join(d, "SKILL.md")
+        if not os.path.isfile(sk):
+            continue
+        fm: Dict[str, Any] = {}
+        try:
+            with open(sk, "r", encoding="utf-8") as f:
+                text = f.read()
+            if text.startswith("---"):
+                end = text.find("\n---", 3)
+                if end != -1:
+                    loaded = yaml.safe_load(text[3:end])
+                    fm = loaded if isinstance(loaded, dict) else {}
+        except Exception:
+            fm = {}
+        desc = str(fm.get("description", "")) if fm else ""
+        try:
+            runtime = str(((fm.get("metadata") or {}).get("tlamatini") or {}).get("runtime", ""))
+        except Exception:
+            runtime = ""
+        sk_name = str(fm.get("name") or name)
+        skills[sk_name] = {"dir": d, "path": sk, "description": desc,
+                           "runtime": runtime, "frontmatter": fm}
+    return skills
+
+
+def _read_skill_md(info: Dict[str, Any], max_chars: int = 40000) -> str:
+    try:
+        with open(info["path"], "r", encoding="utf-8", errors="replace") as f:
+            data = f.read()
+    except Exception as e:
+        return f"(could not read SKILL.md: {e})"
+    if len(data) > max_chars:
+        return data[:max_chars] + "\n…(truncated)…"
+    return data
 
 
 def _json_type(value: Any) -> str:
@@ -293,11 +347,29 @@ def _kill_tree(proc: subprocess.Popen) -> None:
 # --------------------------------------------------------------------------- #
 server = Server("tlamatini")
 _AGENTS = discover_agents()
+_SKILLS = discover_skills()
+
+# Self-contained ACPX runtime (drives external coding-agent CLIs as child
+# processes). Optional import so a load failure degrades the acp_* tools to a
+# clear error instead of killing the whole server.
+try:
+    from tlamatini_acpx import AcpxManager
+    _ACPX: Optional[Any] = AcpxManager(os.path.join(TEMP_ROOT, "acpx_sessions"))
+    _ACPX_IMPORT_ERROR = ""
+except Exception as _acpx_err:  # noqa: BLE001
+    _ACPX = None
+    _ACPX_IMPORT_ERROR = repr(_acpx_err)
+
+_ACPX_TOOL_NAMES = {
+    "acp_doctor", "list_acp_agents", "acp_spawn", "acp_send", "acp_send_and_wait",
+    "acp_relay", "acp_kill", "acp_transcript", "acp_session_status", "acp_list_sessions",
+}
 
 MANAGEMENT_TOOLS = {
     "tlamatini_list_agents", "tlamatini_run_status",
     "tlamatini_run_log", "tlamatini_run_stop", "tlamatini_list_runs",
-}
+    "tlamatini_list_skills", "tlamatini_read_skill",
+} | _ACPX_TOOL_NAMES
 
 
 @server.list_tools()
@@ -335,6 +407,115 @@ async def list_tools() -> List[types.Tool]:
             name="tlamatini_list_runs",
             description="List all agent runs launched in this session and whether they are alive.",
             inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="tlamatini_list_skills",
+            description="List every Tlamatini SKILL.md package (procedural runbook): "
+                        "name, description and runtime. Use tlamatini_read_skill to fetch "
+                        "a skill's full body and follow it step-by-step.",
+            inputSchema={"type": "object",
+                         "properties": {"filter_keywords": {
+                             "type": "string",
+                             "description": "Optional space-separated terms; only skills whose "
+                                            "name+description contain ALL terms are returned."}}},
+        ),
+        types.Tool(
+            name="tlamatini_read_skill",
+            description="Return the full SKILL.md (frontmatter + runbook body) for one skill, "
+                        "so an MCP client can follow the procedure. Skills are runbooks, not "
+                        "executable code — this fetches the instructions to follow.",
+            inputSchema={"type": "object",
+                         "properties": {"skill_name": {"type": "string"},
+                                        "max_chars": {"type": "integer"}},
+                         "required": ["skill_name"]},
+        ),
+        types.Tool(
+            name="acp_doctor",
+            description="ACPX health probe: list external coding-agent CLIs (claude / codex / "
+                        "cursor / gemini / qwen / tlamatini / kiro / kimi / iflow / kilocode / "
+                        "opencode / pi / droid / copilot) and whether each is resolvable on PATH. "
+                        "Call this FIRST in any ACPX flow.",
+            inputSchema={"type": "object", "properties": {"agent_id": {"type": "string"}}},
+        ),
+        types.Tool(
+            name="list_acp_agents",
+            description="Enumerate ACPX agent_ids and their transport (cheaper than acp_doctor; no PATH probe).",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="acp_spawn",
+            description="Spawn an external coding-agent CLI as an ACPX child and dispatch a task. "
+                        "Returns a session_id (+ captured events / last_assistant_text). "
+                        "agent_id e.g. 'claude','gemini','cursor','codex','qwen'.",
+            inputSchema={"type": "object",
+                         "properties": {"agent_id": {"type": "string"}, "task": {"type": "string"},
+                                        "cwd": {"type": "string"}, "mode": {"type": "string"},
+                                        "command": {"type": "string"},
+                                        "timeout_seconds": {"type": "number"},
+                                        "idle_seconds": {"type": "number"},
+                                        "startup_grace_seconds": {"type": "number"}},
+                         "required": ["agent_id", "task"]},
+        ),
+        types.Tool(
+            name="acp_send",
+            description="Send a follow-up turn to an existing ACPX session. (oneshot-prompt agents "
+                        "re-spawn statelessly per turn — carry context in the text.)",
+            inputSchema={"type": "object",
+                         "properties": {"session_id": {"type": "string"}, "text": {"type": "string"},
+                                        "timeout_seconds": {"type": "number"},
+                                        "idle_seconds": {"type": "number"},
+                                        "startup_grace_seconds": {"type": "number"}},
+                         "required": ["session_id", "text"]},
+        ),
+        types.Tool(
+            name="acp_send_and_wait",
+            description="Send a turn and BLOCK until the child settles (idle rule). "
+                        "Prefer this for 'wait for the full answer' prompts.",
+            inputSchema={"type": "object",
+                         "properties": {"session_id": {"type": "string"}, "text": {"type": "string"},
+                                        "until_idle_seconds": {"type": "number"},
+                                        "max_wait_seconds": {"type": "number"}},
+                         "required": ["session_id", "text"]},
+        ),
+        types.Tool(
+            name="acp_relay",
+            description="Hand off one session's last assistant text (or full transcript) to another "
+                        "session and wait for it to settle. transform: last_assistant_text | full_transcript. "
+                        "One call replaces acp_transcript -> string-munge -> acp_send.",
+            inputSchema={"type": "object",
+                         "properties": {"session_id_src": {"type": "string"},
+                                        "session_id_dst": {"type": "string"},
+                                        "transform": {"type": "string"},
+                                        "prefix": {"type": "string"}, "suffix": {"type": "string"},
+                                        "until_idle_seconds": {"type": "number"},
+                                        "max_wait_seconds": {"type": "number"}},
+                         "required": ["session_id_src", "session_id_dst"]},
+        ),
+        types.Tool(
+            name="acp_transcript",
+            description="Read an ACPX session's on-disk NDJSON transcript. direction: all | in | out.",
+            inputSchema={"type": "object",
+                         "properties": {"session_id": {"type": "string"},
+                                        "max_chars": {"type": "integer"},
+                                        "direction": {"type": "string"}},
+                         "required": ["session_id"]},
+        ),
+        types.Tool(
+            name="acp_session_status",
+            description="Status of one ACPX session (alive / closed / events_total / last assistant text).",
+            inputSchema={"type": "object", "properties": {"session_id": {"type": "string"}},
+                         "required": ["session_id"]},
+        ),
+        types.Tool(
+            name="acp_list_sessions",
+            description="List every ACPX session spawned in this server process and whether it is alive.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="acp_kill",
+            description="Terminate an ACPX session's child-process tree. Always kill sessions you spawned.",
+            inputSchema={"type": "object", "properties": {"session_id": {"type": "string"}},
+                         "required": ["session_id"]},
         ),
     ]
     return tools
@@ -388,6 +569,98 @@ async def call_tool(name: str, arguments: Optional[Dict[str, Any]]) -> List[type
             return _result({"error": f"unknown run_id {rid!r}"})
         _kill_tree(r["proc"])
         return _result({"run_id": rid, "agent": r["agent"], "stopped": True})
+
+    if name == "tlamatini_list_skills":
+        kw = str(arguments.get("filter_keywords", "")).lower().strip()
+        terms = kw.split() if kw else []
+        out = []
+        for sn, si in _SKILLS.items():
+            blob = f"{sn} {si['description']}".lower()
+            if terms and not all(t in blob for t in terms):
+                continue
+            out.append({"name": sn, "description": si["description"],
+                        "runtime": si["runtime"]})
+        return _result({"skills": out, "count": len(out)})
+
+    if name == "tlamatini_read_skill":
+        sn = arguments.get("skill_name", "")
+        si = _SKILLS.get(sn)
+        if not si:
+            return _result({"error": f"unknown skill {sn!r}",
+                            "available": sorted(_SKILLS.keys())})
+        return _result({"name": sn, "description": si["description"],
+                        "runtime": si["runtime"], "path": si["path"],
+                        "skill_md": _read_skill_md(si, int(arguments.get("max_chars", 40000)))})
+
+    if name == "tlamatini_list_skills":
+        kw = str(arguments.get("filter_keywords", "")).lower().strip()
+        terms = kw.split() if kw else []
+        out = []
+        for sn, si in _SKILLS.items():
+            blob = f"{sn} {si['description']}".lower()
+            if terms and not all(t in blob for t in terms):
+                continue
+            out.append({"name": sn, "description": si["description"], "runtime": si["runtime"]})
+        return _result({"skills": out, "count": len(out)})
+
+    if name == "tlamatini_read_skill":
+        sn = arguments.get("skill_name", "")
+        si = _SKILLS.get(sn)
+        if not si:
+            return _result({"error": f"unknown skill {sn!r}", "available": sorted(_SKILLS.keys())})
+        return _result({"name": sn, "description": si["description"], "runtime": si["runtime"],
+                        "path": si["path"],
+                        "skill_md": _read_skill_md(si, int(arguments.get("max_chars", 40000)))})
+
+    if name in _ACPX_TOOL_NAMES:
+        if _ACPX is None:
+            return _result({"ok": False, "code": "ACPX_UNAVAILABLE",
+                            "reason": f"ACPX runtime failed to load: {_ACPX_IMPORT_ERROR}"})
+        try:
+            if name == "acp_doctor":
+                return _result(_ACPX.doctor(arguments.get("agent_id", "")))
+            if name == "list_acp_agents":
+                return _result(_ACPX.list_agents())
+            if name == "acp_spawn":
+                return _result(_ACPX.spawn(
+                    arguments.get("agent_id", "claude"), arguments.get("task", ""),
+                    cwd=arguments.get("cwd", ""), mode=arguments.get("mode", "session"),
+                    command=arguments.get("command", ""),
+                    timeout_seconds=arguments.get("timeout_seconds", 0),
+                    idle_seconds=arguments.get("idle_seconds", 0),
+                    startup_grace_seconds=arguments.get("startup_grace_seconds", 0)))
+            if name == "acp_send":
+                return _result(_ACPX.send(
+                    arguments.get("session_id", ""), arguments.get("text", ""),
+                    timeout_seconds=arguments.get("timeout_seconds", 0),
+                    idle_seconds=arguments.get("idle_seconds", 0),
+                    startup_grace_seconds=arguments.get("startup_grace_seconds", 0)))
+            if name == "acp_send_and_wait":
+                return _result(_ACPX.send_and_wait(
+                    arguments.get("session_id", ""), arguments.get("text", ""),
+                    until_idle_seconds=arguments.get("until_idle_seconds", 10),
+                    max_wait_seconds=arguments.get("max_wait_seconds", 180)))
+            if name == "acp_relay":
+                return _result(_ACPX.relay(
+                    arguments.get("session_id_src", ""), arguments.get("session_id_dst", ""),
+                    transform=arguments.get("transform", "last_assistant_text"),
+                    prefix=arguments.get("prefix", ""), suffix=arguments.get("suffix", ""),
+                    until_idle_seconds=arguments.get("until_idle_seconds", 10),
+                    max_wait_seconds=arguments.get("max_wait_seconds", 180)))
+            if name == "acp_kill":
+                return _result(_ACPX.kill(arguments.get("session_id", "")))
+            if name == "acp_transcript":
+                return _result(_ACPX.transcript(
+                    arguments.get("session_id", ""),
+                    max_chars=int(arguments.get("max_chars", 8000)),
+                    direction=arguments.get("direction", "all")))
+            if name == "acp_session_status":
+                return _result(_ACPX.session_status(arguments.get("session_id", "")))
+            if name == "acp_list_sessions":
+                return _result(_ACPX.list_sessions())
+        except Exception as e:
+            return _result({"ok": False, "code": "ACPX_ERROR", "tool": name, "error": repr(e)})
+        return _result({"ok": False, "code": "UNKNOWN_ACPX_TOOL", "tool": name})
 
     # ---- an agent tool ----
     info = _AGENTS.get(name)
