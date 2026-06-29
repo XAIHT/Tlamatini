@@ -250,16 +250,29 @@ def verify_clean(py: str, verify_root: Path, targets_file: str,
     findings = []
     for scan in data.get("scans", []):
         findings += scan.get("result", {}).get("findings", [])
+
+    def _is_sensitive(value: str) -> bool:
+        # BLOCK only on genuinely-unique PII: emails / handles (contain '@') and
+        # phone numbers (>=7 digits). Bare common names ("Angela", "Ana") are NOT
+        # blocked -- they appear all over bundled third-party libraries (django,
+        # nltk, emoji, ...) and Angela wants her name left everywhere by design.
+        v = value or ""
+        return ("@" in v) or (sum(c.isdigit() for c in v) >= 7)
+
     personal = 0
+    name_only = 0
     struct = 0
     for f in findings:
         ms = f.get("matches", [])
-        if any(m.get("layer", "").startswith("bytes:") or m.get("layer") == "fuzzy-regex"
-               for m in ms):
+        pii = [m for m in ms
+               if (m.get("layer", "").startswith("bytes:") or m.get("layer") == "fuzzy-regex")]
+        if any(_is_sensitive(m.get("target", "")) for m in pii):
             personal += 1
-        struct += sum(1 for m in ms
-                      if m.get("layer", "").startswith(("struct:", "steg:")))
-    print(f"  personal-data leak files (BLOCKING): {personal}")
+        elif pii:
+            name_only += 1
+        struct += sum(1 for m in ms if m.get("layer", "").startswith(("struct:", "steg:")))
+    print(f"  sensitive PII leak files (BLOCKING: emails/handles/phones): {personal}")
+    print(f"  name-only matches (NOT blocking; common names left as-is): {name_only}")
     print(f"  structural/binary false-positive matches (informational only): {struct}")
     return personal
 
