@@ -704,7 +704,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_description="Chat-Agent-Instant-Messaging-Doctor",
         display_name="Instant Messaging Doctor",
         purpose="Diagnose and safely repair Telegrammer/Whatsapper readiness using official Telegram and Meta WhatsApp Cloud APIs. Validates bot tokens, Meta access tokens, contacts, recipient reachability, WhatsApp templates/24-hour policy, webhook config, and can optionally retry an approved template or reachable Telegram send. Emits INI_SECTION_INSTANT_MESSAGING_DOCTOR for Parametrizer/Forker flows. Use automatically after Telegrammer/Whatsapper failures or directly when messaging is mission-critical.",
-        example_request="Run Instant Messaging Doctor with platform='both' and contact_name='<REDACTED>' and message='test' and template='hello_world' and retry_send=false",
+        example_request="Run Instant Messaging Doctor with platform='both' and contact_name='Angela' and message='test' and template='hello_world' and retry_send=false",
         aliases=("instant messaging doctor", "messaging doctor", "telegram doctor", "whatsapp doctor", "im doctor"),
         security_hints=("messaging doctor", "diagnose telegram", "diagnose whatsapp", "fix telegram", "fix whatsapp", "message failed", "whatsapp failed", "telegram failed"),
         poll_window_seconds=30,

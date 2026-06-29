@@ -341,7 +341,7 @@ def _launch_updater(target_install: str, staging: str) -> str:
         "-RelaunchExe", relaunch_exe,
         "-LogPath", log_path,
     ]
-    # Visible console window (<REDACTED>'s choice) that survives this process's
+    # Visible console window (Angela's choice) that survives this process's
     # death: a new console + breakaway from any job object we may live in.
     flags = 0
     if os.name == "nt":

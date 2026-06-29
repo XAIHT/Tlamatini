@@ -48,7 +48,7 @@ channels: 1
 input_gain_percent: 100
 
 # Output directory for the saved WAV. Leave empty ("") to use the default:
-#   <Tlamatini app>/Temp   (recordings are TEMPORARY assets, per <REDACTED> 2026-06-09)
+#   <Tlamatini app>/Temp   (recordings are TEMPORARY assets, per Angela 2026-06-09)
 # An absolute path is honored as-is; a relative path resolves against the agent dir.
 output_dir: ""
 

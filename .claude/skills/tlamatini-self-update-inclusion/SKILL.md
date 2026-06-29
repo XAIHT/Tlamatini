@@ -5,7 +5,7 @@ description: Sweep the whole codebase and keep the SELF-UPDATE pipeline complete
 
 # Tlamatini — Self-Update Inclusion Sweep
 
-> **Audience:** Claude Code working ON the Tlamatini codebase for **<REDACTED>**.
+> **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.
 > **Goal:** guarantee that *every* asset a new feature introduces is (1) **carried into
 > the release** by `build.py`, and (2) **handled correctly by the self-update swap** —
 > either preserved (user data) or replaced (app code). Nothing minimal forgotten, ever.

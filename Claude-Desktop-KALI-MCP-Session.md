@@ -34,7 +34,7 @@ nmap / gobuster / nikto / sqlmap / hydra / john / wpscan / etc.
 
 | What | Where |
 |------|-------|
-| Kali Linux user | `<REDACTED>hack1` |
+| Kali Linux user | `angelahack1` |
 | Kali Linux IP | `172.17.48.44` |
 | Kali repo folder | `~/Development/Mcp-Kali-Server/` |
 | Windows repo folder | `C:\Development\mcp-kali-server\` |
@@ -678,6 +678,6 @@ Write-Host "==DONE== RESTART CLAUDE DESKTOP TO APPLY" -ForegroundColor Cyan
 - **Windows PowerShell version matters** — use `pwsh` (version 7+) if `&&` and `||` are needed. The steps above are written for PowerShell 5.1 compatibility (no `&&`/`||`).
 - **Do not paste large Windows blocks as one** — the terminal can reverse lines. Give numbered separate steps.
 - **This user is a security professional** running an authorized pentest lab. All tool use is legitimate.
-- **The user is <REDACTED>hack1** on Kali, Windows 11 Pro on Windows.
+- **The user is angelahack1** on Kali, Windows 11 Pro on Windows.
 - **Kali IP `172.17.48.44` can change** after WSL2 reboot. Always verify with `ip addr show eth0` on Kali if connection fails.
 - **Restart Claude Desktop** after any change to `settings.json` for MCP changes to take effect.

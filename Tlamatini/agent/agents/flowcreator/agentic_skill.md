@@ -874,7 +874,7 @@ system_prompt: |
 - **Purpose**: Diagnoses Telegrammer and Whatsapper readiness with official Telegram and Meta WhatsApp Cloud API checks, then triggers downstream agents.
 - **Used for**: Critical messaging preflight, exception branches after failed Telegrammer/Whatsapper sends, contact-book validation, readable Telegram `@username` reachability, Meta token/phone/template/webhook validation, and failure-log diagnosis.
 - **Aimed at**: Making notification flows self-diagnosing so a downstream Parametrizer/Forker can branch on a clear repair summary instead of parsing raw API errors.
-- **Application example**: Starter -> Instant Messaging Doctor (`platform='both'`, `contact_name='<REDACTED>'`, `retry_send=false`) -> Parametrizer (extract `{status}` and `{actions_required}`) -> Forker (ready vs operator_required) -> Telegrammer/Whatsapper or Notifier.
+- **Application example**: Starter -> Instant Messaging Doctor (`platform='both'`, `contact_name='Angela'`, `retry_send=false`) -> Parametrizer (extract `{status}` and `{actions_required}`) -> Forker (ready vs operator_required) -> Telegrammer/Whatsapper or Notifier.
 - **Pool name pattern**: `instant_messaging_doctor_<n>`
 - **Starts other agents**: YES
 - **Parametrizer source**: emits `INI_SECTION_INSTANT_MESSAGING_DOCTOR` with fields `platform`, `status`, `telegram_status`, `whatsapp_status`, `contact_status`, `repair_status`, `retry_status`, `actions_required`, and body=`response_body`.

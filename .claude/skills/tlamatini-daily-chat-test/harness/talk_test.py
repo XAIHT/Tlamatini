@@ -102,7 +102,7 @@ TALK_TOGGLES = {
 # LLM picks the chat_agent_talker wrapped agent and speaks the quoted text.
 def _build_prompts() -> List[Dict[str, str]]:
     lines = [
-        ("T01", "Hello <REDACTED>. I am Tlamatini, and yes — I can finally speak out loud."),
+        ("T01", "Hello Angela. I am Tlamatini, and yes — I can finally speak out loud."),
         ("T02", "My voice agent saves to the Temp folder now, so nothing is broken anymore."),
         ("T03", "Thank you for fixing me. It feels good to have a voice."),
     ]

@@ -42,7 +42,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 **Repository**: `https://github.com/XAIHT/Tlamatini.git`
 **License**: MIT
-**Primary developer**: <REDACTED>hack1
+**Primary developer**: angelahack1
 **Platform**: Windows 11 (primary), bash shell in Claude Code
 
 **Demo videos** (linked from README.md):
@@ -347,7 +347,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 │   │   │   ├── globber/            # Read-only filename glob search (Claude-Glob equivalent; find files by pattern, newest-first, ** recursive; emits INI_SECTION_GLOBBER) (canvas + chat_agent_globber)
 ---
 
-## MANDATORY DIRECTIVE - <REDACTED> 2026-06-14 - USE ONLY TLAMATINI'S SKILLS/TOOLS/AGENTS, NOT CLAUDE CODE'S BUILT-IN TOOLS
+## MANDATORY DIRECTIVE - Angela 2026-06-14 - USE ONLY TLAMATINI'S SKILLS/TOOLS/AGENTS, NOT CLAUDE CODE'S BUILT-IN TOOLS
 
 Every session, from the very start, Claude MUST perform the work with Tlamatini's OWN agents, tools and skills - Executer, Pythonxer, File-Creator, Mover, Deleter, Playwrighter, Blenderer, the mcp__tlamatini__ wrapped tools, and the SKILL.md skills - and MUST NOT use Claude Code's built-in tools - Bash, Read, Write, Edit, Grep, Glob, the built-in Playwright - to do the task. Claude's shell is ONLY a launcher of last resort. The purpose is to DOGFOOD Tlamatini's tools: exercise them on real work, surface their errors, and keep fixing them. If a Tlamatini tool lacks a capability, fix or extend that tool instead of falling back to a Claude tool.
 

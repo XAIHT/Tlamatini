@@ -23,7 +23,7 @@ from agent.models import AgentMessage
 class ChatHistoryWindowTests(TestCase):
     def setUp(self):
         self.bot = User.objects.create(username=DBChatHistoryLoader.BOT_USERNAME)
-        self.human = User.objects.create(username='<REDACTED>')
+        self.human = User.objects.create(username='angela')
 
     def tearDown(self):
         # Never leak the poison counter into another test.

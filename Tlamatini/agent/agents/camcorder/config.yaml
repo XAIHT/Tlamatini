@@ -35,7 +35,7 @@ resolution_height: 0
 warmup_seconds: 1.0
 
 # Output directory for the saved media. Leave empty ("") to use the default:
-#   <Tlamatini app>/Temp   (captures are TEMPORARY assets, per <REDACTED> 2026-06-09)
+#   <Tlamatini app>/Temp   (captures are TEMPORARY assets, per Angela 2026-06-09)
 # An absolute path is honored as-is; a relative path resolves against the agent dir.
 output_dir: ""
 

@@ -20,7 +20,7 @@ class CreateSuperuserWizardPromptTests(TestCase):
         p = self._wizard()
         self.assertEqual(p.promptName, 'prompt-1')
         self.assertIn('createsuperuser', p.promptContent)
-        # <REDACTED>'s opening phrasing + the placeholder the user edits before sending.
+        # Angela's opening phrasing + the placeholder the user edits before sending.
         self.assertIn('----<set name here>----', p.promptContent)
         self.assertIn('treat that reply as <USERNAME> and continue to Step 1', p.promptContent)
 

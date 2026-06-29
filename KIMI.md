@@ -9,7 +9,7 @@
 **Name**: Tlamatini (Nahuatl for "one who knows")
 **Repository**: `https://github.com/XAIHT/Tlamatini.git`
 **License**: MIT
-**Primary Developer**: <REDACTED>hack1
+**Primary Developer**: angelahack1
 **Platform**: Windows 11 (primary), with cross-platform Python support
 **Language**: Python 3.12+ (only fully tested version)
 

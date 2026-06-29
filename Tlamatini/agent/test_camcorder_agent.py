@@ -196,7 +196,7 @@ class CamcorderHelperTests(unittest.TestCase):
         self.mod = _load_camcorder_module()
 
     def test_default_temp_output_dir_nonempty(self):
-        # Media defaults to <app>/Temp (<REDACTED> 2026-06-09), not the Pictures
+        # Media defaults to <app>/Temp (Angela 2026-06-09), not the Pictures
         # known-folder — the get_pictures_dir helper was removed with that change.
         path = self.mod._default_temp_output_dir()
         self.assertTrue(path)

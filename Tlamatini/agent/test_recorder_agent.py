@@ -188,7 +188,7 @@ class RecorderHelperTests(unittest.TestCase):
         self.mod = _load_recorder_module()
 
     def test_default_temp_output_dir_nonempty(self):
-        # Media defaults to <app>/Temp (<REDACTED> 2026-06-09), not the Music
+        # Media defaults to <app>/Temp (Angela 2026-06-09), not the Music
         # known-folder — the get_music_dir helper was removed with that change.
         path = self.mod._default_temp_output_dir()
         self.assertTrue(path)

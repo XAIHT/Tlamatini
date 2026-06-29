@@ -1,6 +1,6 @@
 """Tests for the Contacts book (agent/contacts.py) — name -> messaging handle.
 
-Reproduces <REDACTED>'s use case ("send a WhatsApp and a Telegram to <REDACTED>
+Reproduces Angela's use case ("send a WhatsApp and a Telegram to <REDACTED>
 Lazcano"): a person's NAME resolves to their Telegram handle + WhatsApp number.
 The two pool agents (Telegrammer / Whatsapper) carry an INLINE copy of this
 resolver; this suite pins the shared logic AND that the shipped contacts.json is

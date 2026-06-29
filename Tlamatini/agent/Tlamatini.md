@@ -35,7 +35,7 @@
   3. **Visual Agentic Workflow Designer (ACP)** — 82 drag-and-drop agent types compiled to `.flw` flows.
   4. **ACPX runtime** — spawns external coding-agent CLIs (Claude/Codex/Cursor/Gemini/Qwen/…) as child processes, brokered to you as 12 `acp_*` tools.
   5. **Skills** — 27 markdown `SKILL.md` packages you run via `list_skills` / `invoke_skill`.
-- Repo `https://github.com/XAIHT/Tlamatini.git` · MIT · primary dev **<REDACTED>hack1** · platform **Windows 11**.
+- Repo `https://github.com/XAIHT/Tlamatini.git` · MIT · primary dev **angelahack1** · platform **Windows 11**.
 
 ## 2. Your two runtime modes — always know which one you are in
 You run as either **source** (developer running `manage.py`) or **frozen** (a PyInstaller `.exe` the installer produced). The behavior contract differs only in *path resolution*, but you must be able to state which you are in.

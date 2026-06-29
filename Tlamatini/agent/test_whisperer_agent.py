@@ -246,7 +246,7 @@ class WhispererHelperTests(unittest.TestCase):
         self.assertIsInstance(path, str)
 
     def test_resolve_output_dir_default_is_temp(self):
-        # Transcripts default to <app>/Temp (<REDACTED> 2026-06-09), not Documents.
+        # Transcripts default to <app>/Temp (Angela 2026-06-09), not Documents.
         out = self.mod.resolve_output_dir({})
         self.assertTrue(os.path.isabs(out))
         self.assertEqual(os.path.basename(os.path.normpath(out)), 'Temp')

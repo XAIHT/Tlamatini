@@ -468,7 +468,7 @@ class TalkerParseTests(unittest.TestCase):
         self.assertTrue(self.mod._coerce_bool('garbage', True))   # falls back to default
 
     def test_resolve_output_dir_default_is_temp(self):
-        # Talker audio defaults to <app>/Temp (<REDACTED> 2026-06-09), not Music.
+        # Talker audio defaults to <app>/Temp (Angela 2026-06-09), not Music.
         out = self.mod.resolve_output_dir({})
         self.assertTrue(os.path.isabs(out))
         self.assertEqual(os.path.basename(os.path.normpath(out)), 'Temp')
