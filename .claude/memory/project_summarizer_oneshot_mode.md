@@ -4,6 +4,14 @@ description: 2026-05-06 fix — chat_agent_summarize_text now actually accepts i
 type: project
 originSessionId: e25edb21-9ca2-44b3-97b0-de5d58329e32
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 Until 2026-05-06, `chat_agent_summarize_text` was a broken contract: the
 chat-tool registry described it as a one-shot text summarizer ("Use when
 the user has a large block of text..."), but the underlying summarizer

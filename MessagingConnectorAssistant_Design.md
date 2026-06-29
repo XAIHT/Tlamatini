@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # MessagingConnectorAssistant — Design
 
 **Goal (Angela's):** the user tells Tlamatini their phone number and *nothing else*; Tlamatini does every step to send/receive on **Telegram** and **WhatsApp**, even if it takes days. End state: Tlamatini says *"Everything's ready — what number do you want to message?"*

@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Tlamatini — ACPX (Agent Communication Protocol eXtension)
 
 This file is the authoritative reference for what **ACPX** means in Tlamatini, the mechanics it implements, and the contract every part of the system (LLM, planner, tools, frontend) honors. Whenever the user mentions "ACPX", "ACPX mechanics", "ACP child", "use ACPX to ...", "spawn an external CLI", "leg A → leg B", "multi-CLI relay", "hand off transcript", or anything semantically equivalent, route them through this surface — do not paraphrase, do not invent a workaround.

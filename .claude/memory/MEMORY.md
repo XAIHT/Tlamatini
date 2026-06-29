@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 - [User profile](user_profile.md) — angelahack1, primary Tlamatini developer, values robustness and parallel execution. Never infer a name or gender from the email address
 - [execute_command bounded fix](project_execute_command_bounded_fix.md) — 2026-06-06: `copy con < NUL` hung Multi-Turn (CON≠stdin, no EOF) because execute_command had no timeout/stdin. Added `_run_command_bounded` (Popen+DEVNULL+communicate timeout=600+`_terminate_process_tree` whole-tree kill). Source only, NOT committed; frozen needs build.py.
 - [Emailer/RecMailer one-shot](project_emailer_recmailer_oneshot.md) — 2026-06-05: Emailer one-shot direct-send when no source_agents (was "❌ No source agents"); RecMailer max_checks=1 one-shot exit; Gmail-domain SMTP/IMAP username fix. Agent .py/config mirrored to frozen C:\Tlamatini (live); registry text needs build.py. Verified live. Not committed.

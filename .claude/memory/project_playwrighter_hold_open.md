@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: b54d4c7b-a292-4ec1-817c-8e09c3c0cf89
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-21: Playwrighter closed the browser the instant the last step returned
 (its `run_browser_flow` `finally` block tears the browser down with no delay),

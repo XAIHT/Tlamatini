@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 6042ffd5-f15d-42d1-a80c-e57e415206ed
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-03: added **Camcorder** (#71) — a webcam capture agent (OpenCV `cv2`) on BOTH canvas + Multi-Turn (`chat_agent_camcorder`). Sibling of [[project_playwrighter_agent]]-style capture but for the physical CAMERA (Shoter = screen, Camcorder = camera); observational like Shoter so NOT in the Exec Report.
 

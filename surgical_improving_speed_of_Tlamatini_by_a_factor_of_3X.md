@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Surgical Plan — Improving the Speed of Tlamatini by a Factor of 3X
 
 > **Author:** Claude (Opus 4.8, 1M ctx) for **<REDACTED>** — XAIHT / Tlamatini

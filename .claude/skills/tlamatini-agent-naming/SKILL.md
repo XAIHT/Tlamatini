@@ -2,6 +2,14 @@
 name: tlamatini-agent-naming
 description: The authoritative Tlamatini agent NAMING CONVENTION — invoke before adding, renaming, casing, displaying, or auditing any workflow agent (STM32er, Node Manager, ACPXer, Kalier, ...). Use whenever you touch agentDescription, a pool/agent directory, a CSS .canvas-item class, a JS connection handler, agents_descriptions.md, or any place an agent name is shown. Prevents mis-casing display names (e.g. STM32er must never become STM32Er/STM32ER/Stm32Er).
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Tlamatini Agent Naming Convention
 

@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # docs/claude/ — Tlamatini AI-Assistant Docs Index
 
 This directory holds the specialized onboarding documents that back the root `CLAUDE.md`. The root file imports each of these via `@docs/claude/<name>.md` so that every assistant session loads the full set automatically.

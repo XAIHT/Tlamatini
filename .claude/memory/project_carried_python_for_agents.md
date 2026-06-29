@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 47b36155-df46-4343-a841-b1ae71269bf8
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-05: Fixed a real architectural hole — the frozen installer assumed the end user already had Python 3.12.10 + all `requirements.txt` deps + `PYTHON_HOME`. The `Tlamatini.exe` is self-contained, but **every pool agent (~74) is launched as a SEPARATE subprocess** via `get_python_command()` / `_resolve_python_executable()`, which needed an EXTERNAL python. The installer never provided one → on a clean machine NO agent could run.
 

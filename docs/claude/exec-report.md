@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Tlamatini — Exec Report (Per-Agent Execution Tables on the Final Answer)
 
 When the **"Exec Report"** toolbar checkbox is ticked alongside Multi-Turn, the final answer gets a sequence of HTML tables appended to it — one table per kind of state-changing agent that actually fired, each row = one real tool call + SUCCESS/FAILURE verdict. It is the ground-truth "show-your-work" counterpart to the LLM's prose summary.

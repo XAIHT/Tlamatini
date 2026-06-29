@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 921d575a-54c3-4cf5-a135-07be8a287b96
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-31: Successor to the removed Notifier toast ([[project_native_toast]]). User wanted a "blinking taskbar icon when an app needs attention" on (a) Ask-Execs approval prompts in agent_page.html and (b) Notifier notifications (chat + ACP).
 

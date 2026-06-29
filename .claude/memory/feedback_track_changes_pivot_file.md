@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: 9643457f-4a5c-4ebe-9aa5-a9b1914478f2
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 When I make changes for the user — **especially edits to `prompt.pmt`, the wrapped chat-agent wrapper (`tools.py` / `chat_agent_registry.py`), and agent `config.yaml` defaults** — I must keep a running record so a later "roll back just that last change" is exact and self-contained.
 

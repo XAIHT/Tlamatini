@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: d3eb9dd6-907c-45de-ba86-0002286d0e70
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 **⚠️ DISCARDED 2026-05-29 — the user reverted ALL of this (git discard of the uncommitted tree).** "nothing you did worked." Despite passing tests, this whole external-exec hardening series (gates, containment, `_run_bounded`, the f/u#7 watcher daemon) did NOT solve the real live problem (the `start cmd /k python` window still hung Tlamatini / gave a false "OK"). Treat the description below as HISTORY, not current code — none of it is in the tree. Do NOT reconstruct it or trust the PIVOT_CHANGES.md entries as live. See [[feedback_dont_overbuild_exec_safety]].
 

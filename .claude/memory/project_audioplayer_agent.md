@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 1aab0e43-c804-4922-bd35-e7fe3f7a807a
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-04: Added **AudioPlayer** (73rd agent type) — the audio PLAYBACK counterpart of [[project_recorder_agent]] (mic-IN); completes the media-I/O family Shoter(screen)/Camcorder(camera)/Recorder(mic-in)/AudioPlayer(speakers-OUT). On BOTH canvas + Multi-Turn (`chat_agent_audioplayer`).
 

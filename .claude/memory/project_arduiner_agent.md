@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: dfa6871a-7c64-4368-89f6-19f592070c15
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-02: Added **Arduiner** (agent #70), Tlamatini's bridge to the **Arduino CLI** (`arduino-cli`), on BOTH canvas + Multi-Turn (`chat_agent_arduiner`). Built per the user's explicit request, modeled on STM32er + ESP32er.
 

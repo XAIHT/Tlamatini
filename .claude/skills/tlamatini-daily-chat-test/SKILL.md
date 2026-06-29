@@ -2,6 +2,14 @@
 name: tlamatini-daily-chat-test
 description: Run the daily automated Tlamatini chat regression — drive a visible Chrome via Playwright, log into agent_page.html, ask up to 1000 curated safe questions one-by-one (Multi-Turn ON, ACPX/Ask-Execs/Exec-Report/Internet OFF), wait for and qualify each answer (heuristic + LLM judge on failures), then write a dated report + summary. Invoke when the user says "run the daily chat test", "test Tlamatini with the 1000 questions", "daily Tlamatini regression", or schedules this test.
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Tlamatini Daily Chat Test
 

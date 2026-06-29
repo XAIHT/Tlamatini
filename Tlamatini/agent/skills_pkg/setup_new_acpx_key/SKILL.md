@@ -44,6 +44,14 @@ metadata:
       keywords: ["acpx key","api key","claude key","gemini key","codex key","qwen key","setup acpx","configure acpx credential"]
       file_globs: ["Tlamatini/agent/config.json","data.keys"]
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Set Up a New ACPX Agent Key
 

@@ -42,6 +42,14 @@ metadata:
         - "Tlamatini/agent/static/agent/js/acp-*.js"
         - "Tlamatini/agent/static/agent/css/agentic_control_panel.css"
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Create New Agent — canonical reference
 

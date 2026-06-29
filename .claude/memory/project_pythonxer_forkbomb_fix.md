@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 79ff5edf-0e90-413b-a16d-6483bea7c3a2
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 **⚠️ DISCARDED 2026-05-29, then PARTIALLY re-added (strict) the same day per explicit request.** The user first reverted ALL of this ("nothing you did worked"). Later he explicitly asked for the Ruff gate + the LLM fix→re-ruff→retry loop ("...up to having a python script correct!" / "Strict"), so the SUBSET below was re-implemented — STRICT and minimal — see [[project_pythonxer_strict_ruff_gate]]. Re-added: compile() syntax floor + BLOCKING Ruff in pythonxer.py (config `ruff_blocking` default True) + `retryable=True` fix-and-retry message in tools.py `_launch_wrapped_chat_agent`. STILL discarded / do NOT reconstruct: the Job-Object containment, the `_watch_script_completion` watcher daemon, the executer.py mirror. See also [[feedback_dont_overbuild_exec_safety]]. Everything below is the ORIGINAL (over-built) write-up — HISTORY.
 

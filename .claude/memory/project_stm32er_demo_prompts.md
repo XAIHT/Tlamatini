@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 434332c6-6b89-4961-8110-df04b2046f17
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-26: Added `agent/migrations/0103_add_stm32er_demo_prompts.py` seeding 3 tiered STM32F-programming demos for the STM32er agent ([[project_stm32er_agent]]) into the Catalog of prompts (the `Prompt` model; the "Catalog of prompts" button in agent_page.html opens it). All drive the wrapped **chat_agent_stm32er** Multi-Turn tool, Multi-Turn-only (NOT behind ACPX).
 

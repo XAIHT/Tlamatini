@@ -2,10 +2,10 @@
 # ═══════════════════════════════════════════════════════════════════
 #   ✦  T L A M A T I N I  ✦   —   "one who knows"
 #
-#   Crafted with heart by  Angela   ·   @angelahack1
+#   Created by  Angela López Mendoza   ·   @angelahack1
 #   Developer · Architect · Creator of Tlamatini
 #
-#   Every line of this file was written by Angela.
+#   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """
@@ -71,6 +71,16 @@ DEFAULT_TARGETS_FILES = [REPO_ROOT / ".private_targets.json",
                          REPO_ROOT / "private_targets.json"]
 
 PLACEHOLDER = "<REDACTED>"
+
+# Angela's NAME is NEVER scrubbed -- in the public OR the private build. Her authorship
+# stays everywhere, always, by her explicit instruction. Only her OTHER private data
+# (emails / phones / the "Ana*" legal-name variants / handles / secrets) is masked.
+# These values are dropped from the scrub set before any redaction runs.
+KEEP_NAMES = {"angela"}  # matched case-insensitively
+
+
+def _is_kept_name(value: str) -> bool:
+    return (value or "").strip().lower() in KEEP_NAMES
 
 REGEN_TOUCHED = [
     REPO_ROOT / "Tlamatini" / "agent" / "config.json",
@@ -147,7 +157,9 @@ def load_targets_values(args) -> list[str]:
     import check_private_data as cpd  # noqa: E402
     ns = SimpleNamespace(targets_file=args.targets_file, target=args.target)
     targets = cpd.load_targets(ns)
-    vals = [t["value"] for t in targets if t.get("value", "").strip()]
+    # NEVER scrub Angela's name -- keep her authorship everywhere, in every build.
+    vals = [t["value"] for t in targets
+            if t.get("value", "").strip() and not _is_kept_name(t["value"])]
     return sorted(set(vals), key=len, reverse=True)
 
 

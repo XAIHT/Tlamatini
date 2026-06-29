@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: d3eb9dd6-907c-45de-ba86-0002286d0e70
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 When asked for automated tests, the user wants them HARD and REAL: cover **with-errors AND without-errors AND overflows** (fork-bomb / mass-spawn / huge-output), drive the REAL code (run the actual agent as a subprocess / call the real functions — do NOT mock the thing under test), and reproduce the ACTUAL incident byte-faithfully (e.g. the truncated `cat-art.py` ending in an unterminated f-string). Verbatim: "make the testing harder, cause your test usually dont catch real scenarios, work harder, till beyond excelence, beyond perfection, beyond god."
 

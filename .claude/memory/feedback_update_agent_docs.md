@@ -4,6 +4,14 @@ description: When adding or modifying workflow agents in Tlamatini, also update 
 type: feedback
 originSessionId: b8a2266e-dd47-49d9-8f3f-a4e91da6f11b
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 When any workflow agent (in `Tlamatini/agent/agents/<name>/`) is added, renamed, or has its behavior/connection semantics changed, update the documentation files in the same commit:
 
 - `Tlamatini/.agents/workflows/create_new_agent.md` — the step-by-step agent creation guide

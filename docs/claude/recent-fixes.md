@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
 > **This file is NOT auto-imported into the AI-assistant context** (unlike the rest of `docs/claude/*.md`). It is the chronological log of surgical fixes and "keep this in mind / do NOT revert" contracts that used to live at the bottom of `gotchas.md`. It was split out so the always-loaded onboarding stays lean — see the "Archive the fix-log" decision recorded in `docs/claude/INDEX.md`.

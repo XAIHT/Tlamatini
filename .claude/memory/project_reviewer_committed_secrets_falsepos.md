@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: f6deb605-896b-4e17-8a8f-9483ac7f8cc7
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-20: The Reviewer agent and `code-review` skill were falsely reporting "API keys and passwords are committed."
 

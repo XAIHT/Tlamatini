@@ -4,6 +4,14 @@ description: 2026-05-07 fix — Keyboarder/Mouser/Shoter purposes + prompt.pmt r
 type: project
 originSessionId: 1ee89777-fd83-41c5-abca-8fda542e7e6f
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 2026-05-07: Tlamatini left a Notepad window open after typing into it (image.png evidence) because no rule told the LLM to close the window or handle Notepad's "Save changes?" prompt. Fix codifies the lifecycle in two layers:
 
 1. **`chat_agent_registry.py`** — three `purpose` enrichments (the `purpose` field is concatenated verbatim into the LLM-visible tool description in `tools.py:1605`):

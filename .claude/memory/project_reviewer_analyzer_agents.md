@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 02c4c443-42ee-4432-aa42-df6619db6e34
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-19: Added "powerful skills" the user requested, scoped to **Code Review + Security Audit** on **both surfaces** (their explicit choices via AskUserQuestion). Split into the roadmap's Reviewer (LLM review) + Analyzer (static/security scan).
 

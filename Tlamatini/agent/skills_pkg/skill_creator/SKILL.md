@@ -32,6 +32,14 @@ metadata:
       keywords: ["new skill", "author skill", "create skill", "skill bootstrap"]
       file_globs: ["Tlamatini/agent/skills_pkg/**/SKILL.md"]
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Skill Creator
 

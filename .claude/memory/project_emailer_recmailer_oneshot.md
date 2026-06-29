@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: b5b380da-7140-445d-a68a-d37e086ff620
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-05: Fixed Emailer + RecMailer so `chat_agent_send_email` / `chat_agent_recmailer` work standalone in Multi-Turn (they previously assumed canvas flow wiring).
 

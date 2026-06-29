@@ -2,6 +2,14 @@
 name: tlamatini-agent-creation
 description: The authoritative, exhaustive end-to-end runbook for creating a BRAND-NEW Tlamatini workflow agent — every surface, in order, with 530+ numbered steps across 26 phases. Invoke whenever Angela says "create a new agent", "add an agent", "make a <X>er agent", "I want a new canvas agent", or asks to wire any new pool agent across backend + frontend + Multi-Turn + Parametrizer + FlowCreator + FlowHypervisor + watchdog + config dialog + demo prompts + Python tests + Playwright harness tests + docs + packaging. Covers naming, coloring, the inputs/outputs connector contract in agentic_control_panel.html, the Multi-Turn (wrapped chat-agent) tool, Exec Report, the configuration dialog, automated unit tests AND Playwright tests in Claude's harness. Pairs with tlamatini-agent-naming (casing) and the @-imported create_new_agent.md / create_new_mcp.md.
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Tlamatini — Complete New-Agent Creation Runbook (700+ steps)
 

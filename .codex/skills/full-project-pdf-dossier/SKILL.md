@@ -2,6 +2,14 @@
 name: full-project-pdf-dossier
 description: Use when asked to create or update a complete project PDF dossier, app summary, architecture report, or repository documentation PDF that must describe the whole system, how it works, how to use it, the complete tracked file tree, effective line counts by language excluding comments/blanks/docstrings, latest changes, and validation evidence.
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Full Project PDF Dossier
 

@@ -2,6 +2,14 @@
 name: overlap-safe-pptx-dossier
 description: Use when asked to create or update a complete technical PPTX deck, especially a Tlamatini-style presentation, where slides must describe the whole system, architecture, usage, line inventory, complete file tree, and must never contain overlapping text, images, cards, tables, or diagrams.
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Overlap-Safe PPTX Dossier
 

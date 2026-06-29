@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: bcca9652-ff3d-42a9-8039-7ceaa0b68d3b
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 ## SUPERSEDED 2026-05-20 — tkinter removed from the server entirely
 

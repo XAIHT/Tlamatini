@@ -4,6 +4,14 @@ description: Fixed planner losing tool context on short follow-up messages, plus
 type: project
 originSessionId: dcafd649-e5a5-45e2-bebd-f267bccc46c9
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 On 2026-04-16, analyzed tlamatini.log from an MXNet installation session that required 5+ user attempts over ~50 minutes. Identified and fixed 5 root causes:
 
 1. **Planner statelessness**: Short follow-ups ("continue") scored near-zero for all tools because scoring was based only on current message. Fixed by adding chat-history-aware scoring boost in `global_execution_planner.py` and `factory.py`.

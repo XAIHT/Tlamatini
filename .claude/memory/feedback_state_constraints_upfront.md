@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: 89ce9f3d-0cfd-4f8e-9841-c69b3a70eade
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 When a request hits a **hard platform or architectural constraint** (something that makes the obvious approach structurally impossible, not just hard), STATE the constraint and the real options up front as a decision for the user — do NOT chase it through trial-and-error patches.
 

@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Claude Desktop ↔ Kali Linux MCP — Complete Setup Guide
 
 **Who this document is for:** Anyone (human or Claude AI) setting up or maintaining the bridge between Claude Desktop on Windows 11 and a Kali Linux VM. You do not need to understand the code — just follow the numbered steps and look for `==OK==` after each one. If you see `==FAIL==`, something went wrong on that step and you should not continue until it is fixed.

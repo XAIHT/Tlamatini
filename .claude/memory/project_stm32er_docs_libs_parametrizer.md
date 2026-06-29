@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 434332c6-6b89-4961-8110-df04b2046f17
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-26 (v1.9.0 release prep, not committed): broad alignment pass after the STM32er zero-config bootstrap + preflight work ([[project_stm32er_bootstrap_preflight]]).
 

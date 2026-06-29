@@ -4,6 +4,14 @@ description: 2026-05-03 added ACPXer (#59) — a workflow agent that drives one 
 type: project
 originSessionId: 6515ec65-d71d-42cf-bda9-6514184e2998
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 ACPXer is the **visual workflow** counterpart of the 12 LLM-facing ACPX tools (`acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` / etc.). One ACPXer node on the ACP canvas = one full ACPX session lifecycle (spawn external coding-agent CLI → dispatch task → drain → harvest last-assistant text → kill → trigger `target_agents`).
 
 **Why:** The 12 tools require the user to drive ACPX from chat (LLM operator turns). Visual / scheduled / .flw-saved / Croner-driven ACPX flows had no canvas representation before. ACPXer adds that representation — and via Parametrizer chaining (`Starter → ACPXer(claude) → Parametrizer → ACPXer(gemini) → ... → Ender`), it enables fully unattended visual multi-CLI relay flows with zero LLM operator turns.

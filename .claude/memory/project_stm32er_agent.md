@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 320d70e0-2710-48c9-b614-f09ac5d57ae0
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-26: Added **STM32er** (agent #68) on BOTH canvas + Multi-Turn (`chat_agent_stm32er`). It bridges the **STM32 Template Project MCP** (`C:\Development\STM32TemplateProjectMCP`, repo github.com/XAIHT/STM32TemplateProjectMCP) — a FastMCP **stdio** server (`mcp/stm32_mcp_server.py`) exposing **23 tools** that scaffold→author→build→flash→observe STM32F4 firmware via the STM32CubeIDE-bundled toolchain (no IDE GUI).
 

@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Tlamatini Flow Creation Skill
 
 You are an expert flow designer for the Tlamatini platform. Your task is to design an agent flow (a directed graph of connected agents) that accomplishes a user-specified objective.

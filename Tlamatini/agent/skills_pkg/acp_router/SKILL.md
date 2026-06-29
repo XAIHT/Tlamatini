@@ -31,6 +31,14 @@ metadata:
     triggers:
       keywords: ["claude code","cursor","codex","copilot","gemini","qwen","kiro","kimi","iflow","droid","kilocode","opencode","run in","spawn","acp"]
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # ACP Router
 

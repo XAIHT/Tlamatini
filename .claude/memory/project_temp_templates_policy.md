@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 5011672b-c235-4302-bc25-6c7ed7ab85ad
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-02: Forceful "files stay inside Tlamatini" policy, two dirs at the **application root** (`path_guard._get_application_root()` → frozen: exe dir e.g. `C:\Tlamatini`; source: repo root e.g. `D:\devenv\source\Tlamatini`).
 

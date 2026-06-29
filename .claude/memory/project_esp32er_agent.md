@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: d10fc99b-f057-44ea-b079-a9260231f357
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-31: Added **ESP32er** (#69) — ESP32/Espressif firmware agent on BOTH canvas + Multi-Turn (`chat_agent_esp32er`), modeled on [[project_stm32er_agent]].
 

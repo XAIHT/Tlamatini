@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: ae591c58-c2f4-41de-a82f-6e849f86e638
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-03: User reported a recurring Ollama error (`requested context size too large num_ctx=8192 n_ctx_train=2048`, then **`error starting llama-server: llama-server binary not found (checked: C:\Development\ollama\...)`**) and asked to **shorten prompt.pmt / Tlamatini.md** to fix it. That fix is structurally impossible — surfaced up front per [[feedback_state_constraints_upfront]].
 

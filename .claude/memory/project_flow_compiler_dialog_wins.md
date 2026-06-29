@@ -4,6 +4,14 @@ description: Reverses the canvas-as-source-of-truth contract for connection fiel
 type: project
 originSessionId: 5b46eeaf-e53d-4b54-86fc-dc587a138e19
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 `Tlamatini/agent/services/flow_compiler.py::_compiled_configs` no longer clears connection fields before re-deriving them from canvas wires. As of 2026-05-09, dialog edits to `source_agents` / `target_agents` / `output_agents` / singleton fields (`source_agent`, `target_agent`, `source_agent_1/2`) always win.
 
 **Why:** User reported that reconfiguring `source_agents` on raiser_1 via the Configure dialog was being silently overwritten by the canvas-wiring derivation on Start. They explicitly chose "Dialog edits always win" via AskUserQuestion. The canvas-as-truth contract introduced in commit `0bea21d` made the editable connection fields in the Configure dialog deceptive — they accepted edits but the compiler clobbered them.

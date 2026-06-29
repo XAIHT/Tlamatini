@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 1aab0e43-c804-4922-bd35-e7fe3f7a807a
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-04: Added **VideoPlayer** (74th agent type) — on-screen VIDEO playback WITH audio; the screen sibling of [[project_audioplayer_agent]] (AudioPlayer=speakers, VideoPlayer=screen window). On BOTH canvas + Multi-Turn (`chat_agent_videoplayer`).
 

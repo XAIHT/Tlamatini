@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 1fd17e48-ad1c-4eef-a911-59efd0e3a2a2
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-22: Added **Kalier** (#66) — Tlamatini's bridge to **Kali Linux** offensive-security tooling via the MCP-Kali-Server (https://www.kali.org/tools/mcp-kali-server/). Implemented on BOTH the canvas AND Multi-Turn (`chat_agent_kalier`). Now **67 agents / 42 wrapped chat-agents**.
 

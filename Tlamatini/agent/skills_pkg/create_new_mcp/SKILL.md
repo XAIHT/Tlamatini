@@ -49,6 +49,14 @@ metadata:
         - "Tlamatini/agent/migrations/00*_*tool*.py"
         - "Tlamatini/agent/migrations/00*_*mcp*.py"
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Create New MCP / Tool — canonical reference
 

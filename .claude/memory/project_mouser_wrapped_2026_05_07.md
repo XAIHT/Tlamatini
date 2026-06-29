@@ -4,6 +4,14 @@ description: 2026-05-07 — Mouser usable from Multi-Turn; chat_agent_mouser add
 type: project
 originSessionId: f7480c2f-defb-4ab7-86cc-1d5a60ff9c71
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 2026-05-07: Added `chat_agent_mouser` so Multi-Turn can move the pointer and click — needed to focus a target window (e.g. Notepad) before chat_agent_keyboarder types into it.
 
 Changes (all on `main`):

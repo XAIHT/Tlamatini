@@ -1,6 +1,14 @@
 ---
 description: How to add a new MCP-backed context provider or unified-agent tool to Tlamatini without confusing the transport, DB, UI, and chain layers. Use when creating or updating MCP-style capabilities, LangChain tools, or both.
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Create a New MCP or Tool in Tlamatini
 

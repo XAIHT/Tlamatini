@@ -2,6 +2,14 @@
 name: tlamatini-self-update-inclusion
 description: Sweep the whole codebase and keep the SELF-UPDATE pipeline complete — so every new asset/feature added to Tlamatini is actually carried into a release by build.py AND survives (or is correctly replaced by) the self-update swap. Invoke whenever you add/rename a new agent, top-level file or directory, dependency, bundled runtime, migration, static/template asset, or any "ship it next to the exe" artifact — and ALWAYS after a feature like Blenderer or the self-update capability lands. Audits the three files that own the pipeline (build.py, agent/self_update.py, apply_update.ps1) against four hard invariants, with a runnable sweep script that never forgets the minimal thing. Pairs with copy_source_assets.py (the self-modify snapshot) and VERSIONING.md.
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Tlamatini — Self-Update Inclusion Sweep
 

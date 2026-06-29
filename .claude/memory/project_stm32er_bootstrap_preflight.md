@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 434332c6-6b89-4961-8110-df04b2046f17
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-26: Made STM32er ([[project_stm32er_agent]]) zero-config + fail-safe for critical-mission robot programming. All self-contained in `agent/agents/stm32er/stm32er.py` (stdlib only), covers BOTH Multi-Turn (chat_agent_stm32er) and canvas (same script). 122 tests green, ruff clean, verified live against the real MCP + real ST-LINK probe.
 

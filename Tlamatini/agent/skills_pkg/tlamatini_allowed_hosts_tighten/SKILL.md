@@ -29,6 +29,14 @@ metadata:
     triggers:
       keywords: ["ALLOWED_HOSTS","tighten allowed hosts","django security"]
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Tighten ALLOWED_HOSTS
 

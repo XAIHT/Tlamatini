@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: 434332c6-6b89-4961-8110-df04b2046f17
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 The single source of truth for an agent's name is the **`agentDescription`** column on the `Agent` DB row (seeded by the agent's migration). The canvas sidebar/`agentic_control_panel.html` renders that string **verbatim** (via `consumers.agent_establishment(agentName, agentDescription, agentContent)` → JS palette label), so the display name MUST carry the exact intended casing.
 

@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: a66c5e04-f5f4-4bef-b32f-f340ba2b10a1
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-03: Added **Recorder** (agent #72) — microphone / audio-input capture via `sounddevice` → WAV (written with stdlib `wave`). Audio sibling of [[project_camcorder_agent]] (camera) and Shoter (screen); **observational → NOT in Exec Report**. Both canvas + Multi-Turn (`chat_agent_recorder`).
 

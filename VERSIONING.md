@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Tlamatini — Versioning
 
 This document is the **authoritative reference** for how Tlamatini is versioned. Read it once end-to-end before cutting your first release; after that, the [Cheat Sheet](#cheat-sheet) at the bottom is the only thing you need on screen.

@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 69c7cb6d-add6-4657-ac26-4cf93c4f765f
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-06: Frozen C:\Tlamatini hung — Multi-Turn `execute_command` ran `cmd /c "... && copy con InputValidator.java < NUL"`. `copy con` reads the CON device (not stdin), so `< NUL` never gave EOF; with no console attached it blocked forever. `execute_command` (`tools.py`) used a bare `subprocess.run(command, shell=True)` with **no timeout and inherited stdin**, so it waited indefinitely → the Multi-Turn worker thread froze (log dead at iteration 64). cmd.exe alive 45 min; created a 0-byte file. Server itself stayed responsive (HTTP 200) — only that one request's thread wedged on a leaked stdout pipe handle (un-revivable from outside; killing the cmd did NOT release `communicate()`).
 

@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Claude Opus 4.5 Python Client
 
 A comprehensive, production-ready Python client for interacting with Claude Opus 4.5 via the Anthropic API. Supports text, images, PDFs, tools/functions, streaming, and conversation management.

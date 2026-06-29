@@ -4,6 +4,14 @@ description: Read-only git commands (status/log/diff/show/blame) are always allo
 type: feedback
 originSessionId: c4ba907a-c91d-4c2c-8f86-5b38594aaca7
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 The user is the only person authorized to execute git operations that change state on the Tlamatini repository. Read-only inspection is fine; writes require an explicit ask.
 
 ALLOWED without asking (read-only, never mutate state):

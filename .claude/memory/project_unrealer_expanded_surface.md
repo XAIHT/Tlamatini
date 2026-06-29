@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 0fadc47e-d29b-4b36-a8e2-4791d94f8829
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-24: Expanded the **Unrealer** agent to track the improved Unreal MCP fork.
 

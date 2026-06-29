@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 54bac691-8fd0-4556-8d77-f96234597328
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-06-05: Built a new **Claude Code skill** `tlamatini-daily-chat-test` at
 `.claude/skills/tlamatini-daily-chat-test/` (SKILL.md + `harness/{config,questions,qualify,run_test}.py` + README + requirements + .gitignore). Purpose: a daily automated regression that drives **real Chrome via Playwright** (channel=chrome, headed), logs into the Tlamatini chat, asks up to **1000 curated questions** one-by-one, waits for + scrapes + qualifies each answer, and writes `reports/run_<ts>/{results.jsonl,summary.json,report.md}`.

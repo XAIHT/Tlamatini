@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: f6deb605-896b-4e17-8a8f-9483ac7f8cc7
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-20: Added two "fancy" seeded demo prompts that showcase the Reviewer (code-review skill) and Analyzer (security-audit skill) agents, placed BEFORE the Multi-Turn sample prompts. Migration `Tlamatini/agent/migrations/0090_add_reviewer_analyzer_demo_prompts.py`. Slot 26 = CODE REVIEW SPOTLIGHT (`invoke_skill('code-review', {repo_path, diff_ref:'HEAD~1', focus})`), slot 27 = SECURITY AUDIT FLOODLIGHT (`invoke_skill('security-audit', {path, min_severity})`). Both use the agent's native canvas gradient for the banner (Reviewer teal→violet `#0E7490→#7C3AED`; Analyzer red→yellow `#7F1D1D→#FACC15`) and render banner + verdict-chip/severity-scoreboard + `exec-report-table` + closing banner. Both note the user must tick Multi-Turn AND ACPX (invoke_skill is behind the ACPX/Skill surface).
 

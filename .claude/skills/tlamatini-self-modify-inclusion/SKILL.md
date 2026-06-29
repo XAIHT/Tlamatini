@@ -2,6 +2,14 @@
 name: tlamatini-self-modify-inclusion
 description: Sweep the whole codebase and keep the SELF-MODIFY source snapshot complete — so the TlamatiniSourceCode/ tree that a `--self-modify` build ships carries every source/build asset Tlamatini needs to read, modify, and REBUILD herself, with heavy media/secrets correctly omitted+redacted and omitted binaries listed in the restore manifest. Invoke whenever you add/rename a new agent, source file, top-level dir, dependency, build input, prompt/identity file, migration, static/template asset, or any rebuild input — and ALWAYS after a feature like Blenderer or the self-update capability lands. Owns copy_source_assets.py and audits it against five invariants with a runnable sweep that GENERATES a snapshot and proves a rebuild's inputs all survive. Sibling of tlamatini-self-update-inclusion (which guards the runnable release).
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Tlamatini — Self-Modify Inclusion Sweep
 

@@ -4,6 +4,14 @@ description: Comprehensive doc-refresh pass covering the last week of changes - 
 type: project
 originSessionId: a7ef3d92-e7e0-467f-b90e-d5d919750e38
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 On 2026-05-06 ran a deep doc-refresh pass mapping all changes since 2026-04-29 into documentation deltas.
 
 **Files updated:**

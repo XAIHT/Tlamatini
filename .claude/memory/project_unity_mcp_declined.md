@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: d193b695-d7fe-4b71-922d-23fdd6e12d4a
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 User declined to implement a Uniter agent (Unity-MCP counterpart of Unrealer) on 2026-05-17 after I delivered the full analysis/proposal.
 

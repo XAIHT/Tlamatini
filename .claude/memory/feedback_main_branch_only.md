@@ -4,6 +4,14 @@ description: ABSOLUTE rule. Tlamatini is a solo project; NEVER create branches, 
 type: feedback
 originSessionId: 6011d685-3956-4be6-b3b1-ab20f1b1076c
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 **ABSOLUTE RULE.** For the Tlamatini project: all work goes on `main`, FOREVER AND EVER. The user has explicitly reinforced this rule THREE TIMES IN ESCALATING TONE in session `4a208cb5-99b2-498e-9045-72d3a2ba8110`:
 
 > "I never want to see such PR stuff never!"

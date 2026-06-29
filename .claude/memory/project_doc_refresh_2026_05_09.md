@@ -4,6 +4,14 @@ description: CLAUDE.md + docs/claude/* updated for Flow Compiler / Agent Contrac
 type: project
 originSessionId: ee628161-0643-45df-ad17-1919d3121c35
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 On 2026-05-09 the assistant updated the AI-onboarding doc set to capture five surgical changes that landed between 2026-05-07 and 2026-05-09 and were not yet documented:
 
 1. **Flow Compiler + Agent Contracts pipeline (commit `0bea21d`, 2026-05-09)**

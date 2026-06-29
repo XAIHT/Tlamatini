@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 8e2656f3-42fc-4f2b-af9e-8650b72533dc
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 The user occasionally commits real secrets because `config.json` and several agent `config.yaml` files (emailer/recmailer/telegramer/telegramrx/teletlamatini, plus acpx codex/gemini env keys) carry **injected live keys** during local dev. `regen_secrets.py` must be run to swap them back to push-able placeholders BEFORE committing — when skipped, the commit ships `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `OPENAI_API_KEY` etc. in cleartext.
 

@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: f483c755-1dd5-423b-8d4c-5897213a26a3
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-21: Added two **advanced, more-visual** demo prompts to the Catalog of Prompts, beyond the basic/medium 0095 set. Migration `Tlamatini/agent/migrations/0096_add_director_virtuoso_demo_prompts.py`, APPENDED at the tail (slots 55-56, NO renumber — catalog stays contiguous 1-56):
 

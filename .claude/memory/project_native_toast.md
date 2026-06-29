@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 65ac72ed-17ef-4daa-aed8-e8852de637ef
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 **2026-05-30: the Notifier "toast"/native-desktop-popup experiment was REMOVED COMPLETELY** at the user's explicit request — it "never worked" and burned a lot of effort/tokens. **Do NOT re-introduce any desktop/OS-toast notification surface for the Notifier.** History (all gone): first a WinRT/OS toast (`native_toast.py` + PowerShell 5.1 + HKCU AUMID + `tlamatini:` focus protocol), then a self-drawn pure-ctypes Win32 top-most popup (`toast_popup.py`). Neither was reliable — an *unpackaged* app's banners get silently dropped by Focus Assist / DND / throttling even when `Show()`=ok, and the self-drawn window was abandoned too. The Notifier is back to its single, reliable surface: it drops `notification.json`, the chat UI polls it and renders an in-page popup (+ optional `.wav`).
 

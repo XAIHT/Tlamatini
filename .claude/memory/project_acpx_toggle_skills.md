@@ -4,6 +4,14 @@ description: 2026-05-06 - acpx_enabled WebSocket flag filters the 12-tool ACPX/S
 type: project
 originSessionId: a7ef3d92-e7e0-467f-b90e-d5d919750e38
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 The chat toolbar now exposes three checkboxes side-by-side: **Multi-Turn**, **Exec Report**, **ACPX**. The third sends `acpx_enabled` on every WebSocket frame.
 
 - `agent/acpx/__init__.py` exposes `ACPX_TOOL_NAMES` (frozenset) and `filter_acpx_tools(tools, acpx_enabled)`.

@@ -4,6 +4,14 @@ description: Root cause and fix for "cannot load module more than once per proce
 type: project
 originSessionId: 2d3ec596-7d25-4d52-af08-6bef97baaa27
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 Fact: numpy >= 2.0 ships the compiled extensions (`_multiarray_umath.pyd`, `_simd.pyd`, `_multiarray_tests.pyd`, `_rational_tests.pyd`, `_operand_flag_tests.pyd`, `_struct_ufunc_tests.pyd`, `_umath_tests.pyd`) as **byte-for-byte duplicates** under both `numpy/_core/` (canonical) and `numpy/core/` (legacy shim). Stock PyInstaller `hook-numpy.py` bundles both. At runtime the same C extension initializes twice — numpy 2.x raises `ImportError: cannot load module more than once per process`. numpy 1.x had only `numpy/core/` and no one-init guard, so older builds did not hit this.
 
 Secondary fact: site-packages can carry multiple `numpy-X.Y.Z.dist-info` directories side-by-side after upgrades. `importlib.metadata.version("numpy")` returns whichever sorts first alphabetically (often the stale older one), and `collect_dynamic_libs("numpy")` walks the wrong file list — returning zero binaries and letting the module-graph walker bundle numpy unsupervised. Always use `numpy.__version__` as the version-truth source in any numpy-related hook/build logic.

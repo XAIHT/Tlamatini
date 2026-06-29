@@ -4,6 +4,14 @@ description: 2026-05-04 fix for ACPX losing TUI agent responses; claude/gemini/c
 type: project
 originSessionId: ccfb8f0a-8b12-4ab6-acd1-f6af3336f728
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 2026-05-04: Switched `claude`, `gemini`, `cursor`, `qwen`, `codex` in
 `agent/acpx/agent_registry.py::DEFAULT_ACP_AGENTS` from
 `json-acp` / `tui-repl` to **`transport="oneshot-prompt"`** with

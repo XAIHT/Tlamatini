@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 881d31f8-12cd-42f3-a3a9-62976ad43ad4
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-15: Tlamatini gained a full versioning system. SemVer 2.0.0, git tags are the single source of truth, `0.0.0+unknown` is the last-resort sentinel.
 

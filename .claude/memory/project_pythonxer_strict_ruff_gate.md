@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 1e984263-7cb7-4f48-a806-931aeb417374
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-29: After the user discarded the whole #1–#7 exec hardening, he explicitly asked for the Ruff gate + an LLM fix→re-ruff→retry loop ("...up to having a python script correct!" / "Strict"). Re-implemented ONLY that subset, strict and minimal (NOT the discarded containment/watcher/executer-mirror). Supersedes the relevant part of [[project_pythonxer_forkbomb_fix]].
 

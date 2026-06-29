@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: c691232f-09e5-4c8d-89d4-7ecf8d83bea3
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-29: Implemented **"Ask Execs"** — a new toolbar checkbox between **ACPX** and **Add internet context** that, when on, makes the Multi-Turn executor BLOCK on a browser modal (Proceed/Deny) before EVERY state-changing Tool/MCP/Agent runs. **Deny halts the whole chain** and the answer gets a big red "Execution interrupted" banner (always) + the Exec-report tables (only when Exec report also on). Multi-Turn-only modifier: checkbox is disabled+greyed unless Multi-Turn is checked; backend re-gates on `multi_turn_enabled`. Unchecked = byte-for-byte legacy Multi-Turn behaviour.
 

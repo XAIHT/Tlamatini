@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # Tlamatini — Gotchas, Build/Lint, Roadmap, Work Style
 
 > **The chronological "Recent Fixes / Gotchas" fix log now lives in `docs/claude/recent-fixes.md`** — it was split out of this file and is **NOT auto-imported** into the assistant context, to keep every session lean. It holds the dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, and the logging filters. **Read `recent-fixes.md` before modifying or reverting code in any of those subsystems.**

@@ -1,3 +1,11 @@
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 # KIMI.md — Complete Tlamatini System Knowledge Base
 
 > **Purpose**: This file contains exhaustive, structured knowledge of the Tlamatini project so that Kimi (or any AI assistant) can load it in future sessions and immediately possess complete context for development, debugging, and feature creation.

@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: 434332c6-6b89-4961-8110-df04b2046f17
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 The user strongly prefers DOGFOODING Tlamatini's own pool agents (Executer, Pythonxer, Playwrighter, Shoter, Mouser, Keyboarder, ...) to run/verify things, and wants to SEE them on screen — not Claude Code's built-in tools.
 

@@ -4,6 +4,14 @@ description: 2026-05-07 — Keyboarder + Shoter usable from Multi-Turn; chat_age
 type: project
 originSessionId: 63bc7c5f-89b5-4e8f-910d-9a3a70bdb9a3
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 2026-05-07: Added `chat_agent_keyboarder` so Multi-Turn can drive desktop UI (open notepad → screenshot/verify → type via Keyboarder).
 
 Changes (all on `main`):

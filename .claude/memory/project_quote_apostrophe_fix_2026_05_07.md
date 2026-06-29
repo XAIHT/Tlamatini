@@ -4,6 +4,14 @@ description: 2026-05-07 fix for the "Hi!, i''m tlamatini" bug — the LLM passed
 type: project
 originSessionId: 161aebfa-f2df-4d28-bcdf-e79b7579c58e
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 The 2026-05-07 desktop-UI test typed `Hi!, i''m tlamatini` instead of `Hi!, I'm Tlamatini`. Root cause was three layers all missing escape support for apostrophes inside quoted values.
 
 **Why:** the LLM passed `input_sequence=''Hi!, I''m Tlamatini''` (Python-style doubled outer quote + SQL-style doubled inner apostrophe). The wrapper stripped one outer layer leaving `'Hi!, I''m Tlamatini'`, did not decode the SQL `''`, YAML stored it verbatim, the keyboarder loaded back `'Hi!, I''m Tlamatini'` and naively toggled in_single state on every `'` — closing prematurely after the apostrophe in `I'm`, and re-opening on the real closing apostrophe (which then swallowed the rest of the sequence).

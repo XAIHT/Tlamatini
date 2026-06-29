@@ -54,6 +54,14 @@ metadata:
       keywords: ["security audit", "sast", "vulnerability scan", "secrets scan", "bandit", "semgrep", "gitleaks", "dependency audit", "pip-audit"]
       file_globs: ["**/requirements*.txt", "**/package.json", "**/*.py", "**/*.js"]
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 # Security Audit
 

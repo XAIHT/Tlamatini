@@ -6,6 +6,14 @@ metadata:
   type: project
   originSessionId: 1e984263-7cb7-4f48-a806-931aeb417374
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-29: Definitive, log-evidenced diagnosis of the recurring "create a script then run it in a foreground window → window never opens, Tlamatini says OK" incident. This SUPERSEDES the discarded [[feedback_dont_overbuild_exec_safety]] series (which fixed the wrong layer).
 

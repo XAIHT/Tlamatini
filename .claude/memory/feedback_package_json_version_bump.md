@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: 7430c470-cf56-4aa8-ad56-69e521bf07f3
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 When doing a release version-bump pass across the docs, ALSO bump the `"version"` field in repo-root `package.json` to the pushed version.
 

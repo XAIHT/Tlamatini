@@ -6,6 +6,14 @@ metadata:
   type: feedback
   originSessionId: 1e984263-7cb7-4f48-a806-931aeb417374
 ---
+<!--
+═══════════════════════════════════════════════════════════════════
+  ✦  T L A M A T I N I  ✦   —   "one who knows"
+  Created by  Angela López Mendoza   ·   @angelahack1
+  Developer · Architect · Creator of Tlamatini
+  Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
+═══════════════════════════════════════════════════════════════════
+-->
 
 2026-05-29: The user discarded the ENTIRE ~2-day external-exec hardening series in one `git discard` — "nothing you did worked." That series = [[project_pythonxer_forkbomb_fix]] + [[project_external_exec_safety_layer]] (7 follow-ups logged in PIVOT_CHANGES.md): blocking `compile()` syntax gate, blocking Ruff, Windows Job-Object containment, `_run_bounded`/`_kill_process_tree` anti-freeze, and the f/u#7 `_watch_script_completion`/`_kill_script_window_remnants` watcher daemon.
 
