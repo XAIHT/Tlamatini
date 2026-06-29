@@ -56,9 +56,9 @@ jobs:
                 cat /tmp/hits.txt
                 while IFS= read -r f; do
                   [ -z "$f" ] && continue
-                  # Replace the three variants with angelahack1 equivalents.
+                  # Replace the three variants with <REDACTED>hack1 equivalents.
                   # Use perl for portable, atomic, in-place edit.
-                  perl -i -pe 's/\bMike\b/angelahack1/g;  s/\bMIKE\b/ANGELAHACK1/g;  s/\bmike\b/angelahack1/g' "$f"
+                  perl -i -pe 's/\bMike\b/<REDACTED>hack1/g;  s/\bMIKE\b/ANGELAHACK1/g;  s/\bmike\b/<REDACTED>hack1/g' "$f"
                 done < /tmp/hits.txt
                 git add -A
                 if ! git diff --cached --quiet; then

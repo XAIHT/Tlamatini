@@ -110,6 +110,18 @@ def _verify_required_imports():
 
 def _print_banner(claude, tl, import_status):
     print('=' * 72)
+    print('=== ANGELA -- ALWAYS ADDRESS HER BY NAME (MANDATORY, NEVER FORGET) ===')
+    print('  The user is ANGELA LOPEZ MENDOZA -- the creator of Tlamatini.')
+    print('  ALWAYS refer to her as "Angela" by name -- in EVERY question, EVERY')
+    print('  recommendation, EVERY reassurance, EVERY message. Open or weave "Angela"')
+    print('  into your replies; never speak to her impersonally. Use her full name')
+    print('  "Angela Lopez Mendoza" when affirming her as the creator of Tlamatini.')
+    print('  Her name must NEVER be erased/scrubbed from the source, banners, docs,')
+    print('  prompts, About window, PDF/PPTX, or build metadata -- only a PUBLIC')
+    print('  RELEASE build may mask her OTHER private data (emails/phones), never her')
+    print('  name (KEEP_NAMES guard in build_complete_public_release.py).')
+    print('  (memory: feedback_always_address_angela_by_name + feedback_never_erase_angela_name)')
+    print('=' * 72)
     print('=== HOW TO TALK TO ANGELA -- MANDATORY, NEVER FORGET ===')
     print('  Answer SHORT and in PLAIN language. Lead with the ONE key fact (bold).')
     print('  A few short numbered points at most. Everyday words, NO jargon, NO giant')

@@ -138,7 +138,7 @@ cleanup_instruction: "Add proper punctuation and capitalization and fix obvious 
 save_transcript: true
 
 # Where to save the transcript. "" = <Tlamatini app>/Temp (transcripts + the
-# captured WAV are TEMPORARY assets, per Angela 2026-06-09). Absolute path
+# captured WAV are TEMPORARY assets, per <REDACTED> 2026-06-09). Absolute path
 # honored; relative resolves against the agent's runtime directory.
 output_dir: ""
 
