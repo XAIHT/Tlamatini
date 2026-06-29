@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Parametrizer Agent - Utility Interconnection Agent
 # Maps structured outputs from a source agent's log to a target agent's config.yaml
 # Reads interconnection-scheme.csv to know which output fields map to which config params

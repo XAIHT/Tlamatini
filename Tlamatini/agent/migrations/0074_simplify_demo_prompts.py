@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """
 Plain-text-only versions of the seven ACPX demos. The rich-HTML siblings
 in 0072 (idPrompt 36-41) and 0073 (idPrompt 42-48) embed literal banner

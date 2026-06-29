@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # VideoPlayer Agent - Plays a video FILE (with audio) on a chosen DISPLAY.
 # Action: Triggered by upstream -> Open a video file (ffpyplayer, falling back to
 #         OpenCV) -> Resolve a target display (monitor) -> Open a cv2 window

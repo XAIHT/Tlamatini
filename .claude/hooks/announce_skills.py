@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """SessionStart hook -- announce that the complete skill set (Claude Code skills +
 Tlamatini's SKILL.md packages) is loaded, so every session is notified up front.
 

@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Whisperer Agent - Self-contained SPEECH-TO-TEXT (STT / voice recognition)
 # Action: Triggered by upstream OR run from chat -> get audio (either RECORD it
 #         straight from the microphone itself, OR read a given audio file) ->

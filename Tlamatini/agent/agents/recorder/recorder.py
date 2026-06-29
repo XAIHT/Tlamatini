@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Recorder Agent - Microphone / audio-input capture agent via sounddevice
 # Action: Triggered by upstream -> Open a system audio INPUT device (mic) ->
 #         Record record_seconds of audio -> Save a WAV to the user's Music

@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # STM32er Agent - STM32 Template Project MCP-server bridge (firmware scaffold/build/flash/observe)
 # Action: Triggered by upstream -> spawn the STM32 MCP stdio server -> MCP
 #         initialize handshake -> call ONE tool (selected by `action`) via

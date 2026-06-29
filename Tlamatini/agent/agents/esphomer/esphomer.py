@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # ESPHomer Agent - ESPHome (esphome CLI) bridge (device YAML author/validate/compile/upload/observe)
 # Action: Triggered by upstream -> resolve the `esphome` executable (auto-bootstrapping
 #         ESPHome via pip when absent) -> run ONE capability (selected by `action`)

@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Reviewer Agent - LLM-powered code review of a git diff
 # Action: Triggered by upstream -> resolve git diff -> ask Ollama LLM to
 # review it -> parse a verdict -> emit INI_SECTION_REVIEWER -> trigger

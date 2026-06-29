@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Blenderer Agent — drives Blender via the OFFICIAL Blender MCP add-on's TCP
 # socket protocol (localhost:9876 by default; https://www.blender.org/lab/mcp-server/).
 # Self-contained — does NOT import from agent.acpx or any Tlamatini-internal

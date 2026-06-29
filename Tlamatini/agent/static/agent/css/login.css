@@ -1,3 +1,15 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *   ✦  T L A M A T I N I  ✦   —   "one who knows"
+ *
+ *   Crafted with heart by  Angela   ·   @angelahack1
+ *   Developer · Architect · Creator of Tlamatini
+ *
+ *   Every line of this file was written by Angela.
+ * ═══════════════════════════════════════════════════════════════════
+ *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+ */
+
 body { background-color: #343541; color: #ececf1; }
 .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 .login-card { padding: 2rem; border-radius: 1rem; background-color: #444654; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }

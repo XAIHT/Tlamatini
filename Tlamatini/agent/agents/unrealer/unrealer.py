@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Crafted with heart by  Angela   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Unrealer Agent — drives Unreal Engine via the Unreal MCP plugin's TCP
 # socket protocol (127.0.0.1:55557 by default). Self-contained — does NOT
 # import from agent.acpx or any Tlamatini-internal package, because pool
