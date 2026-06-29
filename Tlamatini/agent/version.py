@@ -295,10 +295,11 @@ def render_pyinstaller_version_file(
     *,
     product_name: str = "Tlamatini",
     company_name: str = "XAIHT",
-    file_description: str = "Tlamatini — Locally-deployed AI developer assistant",
+    file_description: str = "Tlamatini — created by Angela López Mendoza (XAIHT)",
     internal_name: str = "Tlamatini",
     original_filename: str = "Tlamatini.exe",
-    legal_copyright: str = "Copyright (c) 2026 XAIHT. MIT License.",
+    legal_copyright: str = "Copyright (c) 2026 Angela López Mendoza · XAIHT. MIT License.",
+    author: str = "Angela López Mendoza",
 ) -> str:
     """Return the contents of a PyInstaller ``--version-file`` for ``.exe``.
 
@@ -333,6 +334,8 @@ VSVersionInfo(
           u'040904B0',
           [
             StringStruct(u'CompanyName',      u'{company_name}'),
+            StringStruct(u'Author',           u'{author}'),
+            StringStruct(u'Creator',          u'{author}'),
             StringStruct(u'FileDescription',  u'{file_description}'),
             StringStruct(u'FileVersion',      u'{public}'),
             StringStruct(u'InternalName',     u'{internal_name}'),
