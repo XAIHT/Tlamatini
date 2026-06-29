@@ -10,8 +10,8 @@ Shape (``contacts.json``)::
 
     {
       "contacts": [
-        {"name": "Ana Ricardo Lazcano",
-         "aliases": ["Ana", "Ana Lazcano"],
+        {"name": "<REDACTED>",
+         "aliases": ["Ana", "<REDACTED>"],
          "telegram": "@ana_lazcano",      # @username, +phone, or numeric id
          "whatsapp": "+5215555555555",    # phone with country code
          "email": "ana@example.com"}
@@ -86,7 +86,7 @@ def find_contact(query: str) -> Optional[Dict[str, Any]]:
         if q in _contact_names(contact):
             return contact
     # 2) forgiving: substring either way, or every query token present in a name
-    #    (so "ana lazcano" finds "Ana Ricardo Lazcano").
+    #    (so "ana lazcano" finds "<REDACTED>").
     for contact in contacts:
         for name in _contact_names(contact):
             tokens = name.split()

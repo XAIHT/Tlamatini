@@ -912,7 +912,7 @@ def _extract_verbatim_assignment(request_text, target_key):
     doubled outer quote -> a single quote. That is exactly WRONG for a verbatim
     source FILE: a Java regex ``Pattern.compile("\\\\.")`` (whose on-disk bytes
     are ``"\\\\."``) gets rewritten to ``"\\."`` — an "illegal escape character"
-    — which is the FileCreator corruption Angela hit (Java/CSS/JS/JSON files
+    — which is the FileCreator corruption <REDACTED> hit (Java/CSS/JS/JSON files
     full of backslash escapes came out broken).
 
     This helper reuses the SAME segment-boundary detection as the normal parse
@@ -2506,7 +2506,7 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
 
-    # File-Creator must write the model's content BYTE-FOR-BYTE (Angela
+    # File-Creator must write the model's content BYTE-FOR-BYTE (<REDACTED>
     # 2026-06-12). The generic value coercion that every wrapped agent shares
     # (_unquote_preserving_backslashes) collapses ``\\`` -> ``\`` and doubled
     # quotes for shell/SQL payloads — which CORRUPTS verbatim source files

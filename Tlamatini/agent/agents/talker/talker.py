@@ -455,7 +455,7 @@ def resolve_output_dir(config: Dict) -> str:
             expanded = os.path.join(script_dir, expanded)
         return os.path.abspath(expanded)
 
-    # Default: <app>/Temp  (per Angela, 2026-06-09)
+    # Default: <app>/Temp  (per <REDACTED>, 2026-06-09)
     return os.path.abspath(_default_temp_output_dir())
 
 
@@ -750,7 +750,7 @@ def _split_text_into_chunks(text: str, max_chars: int) -> List[str]:
        silently cuts the speech off (~50 s). Synthesising each piece separately
        and concatenating the audio reproduces the COMPLETE text.
 
-    2. OUT-OF-ORDER SEGMENTS (Angela, 2026-06-09) — when MULTIPLE sentences were
+    2. OUT-OF-ORDER SEGMENTS (<REDACTED>, 2026-06-09) — when MULTIPLE sentences were
        packed into one Orpheus generation, the neural model could speak those
        sentences in the WRONG ORDER inside that single generation, so the
        concatenated audio sounded scrambled. The concat code is deterministic

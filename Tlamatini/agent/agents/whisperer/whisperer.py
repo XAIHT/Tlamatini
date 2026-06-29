@@ -359,7 +359,7 @@ def get_documents_dir() -> str:
 def resolve_output_dir(config: Dict) -> str:
     """Decide where to save the transcript.
 
-    Default ``<app>/Temp`` (TEMPORARY asset, per Angela 2026-06-09) — never the
+    Default ``<app>/Temp`` (TEMPORARY asset, per <REDACTED> 2026-06-09) — never the
     user's Documents folder. An explicit ``output_dir`` is still honoured.
     """
     configured = str(config.get('output_dir') or '').strip()

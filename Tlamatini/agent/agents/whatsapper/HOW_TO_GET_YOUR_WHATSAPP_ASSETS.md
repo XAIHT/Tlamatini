@@ -182,7 +182,7 @@ The API Setup token can expire. For daily Tlamatini use, create a **System User*
 22. Test again:
 
    ```text
-   Tlamatini, send a WhatsApp to Angela using template hello_world with template_language en_US.
+   Tlamatini, send a WhatsApp to <REDACTED> using template hello_world with template_language en_US.
    ```
 
 Use this permanent token in Tlamatini instead of the short-lived token.
@@ -221,8 +221,8 @@ Now add each recipient to `contacts.json` next to `config.json`:
 {
   "contacts": [
     {
-      "name": "Angela",
-      "aliases": ["Angie", "Angela phone"],
+      "name": "<REDACTED>",
+      "aliases": ["Angie", "<REDACTED> phone"],
       "whatsapp": "+52 55 0000 0001"
     },
     {
@@ -251,25 +251,25 @@ Rules:
 Cold first test with Meta's built-in template:
 
 ```text
-Tlamatini, send a WhatsApp to Angela using template hello_world with template_language en_US.
+Tlamatini, send a WhatsApp to <REDACTED> using template hello_world with template_language en_US.
 ```
 
 Direct tool shape:
 
 ```text
-chat_agent_whatsapper(contact_name='Angela' and template='hello_world' and template_language='en_US')
+chat_agent_whatsapper(contact_name='<REDACTED>' and template='hello_world' and template_language='en_US')
 ```
 
 Warm free-text send, only inside the 24-hour window after that person messaged your business number:
 
 ```text
-chat_agent_whatsapper(contact_name='Angela' and message='This is a Whatsapper warm-window test.')
+chat_agent_whatsapper(contact_name='<REDACTED>' and message='This is a Whatsapper warm-window test.')
 ```
 
 Send to several numbers by calling Whatsapper once per contact:
 
 ```text
-chat_agent_whatsapper(contact_name='Angela' and template='hello_world' and template_language='en_US')
+chat_agent_whatsapper(contact_name='<REDACTED>' and template='hello_world' and template_language='en_US')
 chat_agent_whatsapper(contact_name='Backup Operator' and template='hello_world' and template_language='en_US')
 chat_agent_whatsapper(contact_name='Manager' and template='hello_world' and template_language='en_US')
 ```
@@ -279,7 +279,7 @@ chat_agent_whatsapper(contact_name='Manager' and template='hello_world' and temp
 Use this before a critical send, or read the automatic `auto_doctor` result if Whatsapper fails:
 
 ```text
-chat_agent_instant_messaging_doctor(platform='whatsapp' and contact_name='Angela' and template='hello_world' and template_language='en_US' and retry_send=false)
+chat_agent_instant_messaging_doctor(platform='whatsapp' and contact_name='<REDACTED>' and template='hello_world' and template_language='en_US' and retry_send=false)
 ```
 
 The useful fields are:
@@ -306,7 +306,7 @@ The test setup is for verified test recipients. For real-world sending to severa
 Production cold-send shape:
 
 ```text
-chat_agent_whatsapper(contact_name='Angela' and template='my_approved_template' and template_language='en_US' and template_params='["Angela"]')
+chat_agent_whatsapper(contact_name='<REDACTED>' and template='my_approved_template' and template_language='en_US' and template_params='["<REDACTED>"]')
 ```
 
 ## Troubleshooting

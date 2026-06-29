@@ -299,7 +299,7 @@ def _default_temp_output_dir() -> str:
     """Resolve the DEFAULT save location: ``<where-Tlamatini-lives>/Temp`` —
     robust across frozen / source / installed builds.
 
-    Temp/Templates policy (Angela, 2026-06-09): every asset this agent writes is
+    Temp/Templates policy (<REDACTED>, 2026-06-09): every asset this agent writes is
     a TEMPORARY asset and must live under ``<app>/Temp``, never the user's
     Pictures folder. Order: (1) the ``TLAMATINI_TEMP`` env var the Django process
     pins to ``<app>/Temp`` and every pool agent inherits; (2) walk up from this
@@ -332,7 +332,7 @@ def resolve_output_dir(config: Dict) -> str:
 
     - If config.output_dir is set, honor it (resolved relative to the agent
       directory when not absolute).
-    - Otherwise default to ``<app>/Temp`` (TEMPORARY asset, per Angela 2026-06-09).
+    - Otherwise default to ``<app>/Temp`` (TEMPORARY asset, per <REDACTED> 2026-06-09).
     """
     configured = str(config.get('output_dir') or '').strip()
     if configured:

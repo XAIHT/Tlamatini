@@ -253,9 +253,9 @@ def verify_clean(py: str, verify_root: Path, targets_file: str,
 
     def _is_sensitive(value: str) -> bool:
         # BLOCK only on genuinely-unique PII: emails / handles (contain '@') and
-        # phone numbers (>=7 digits). Bare common names ("Angela", "Ana") are NOT
+        # phone numbers (>=7 digits). Bare common names ("<REDACTED>", "Ana") are NOT
         # blocked -- they appear all over bundled third-party libraries (django,
-        # nltk, emoji, ...) and Angela wants her name left everywhere by design.
+        # nltk, emoji, ...) and <REDACTED> wants her name left everywhere by design.
         v = value or ""
         return ("@" in v) or (sum(c.isdigit() for c in v) >= 7)
 

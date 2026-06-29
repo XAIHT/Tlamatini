@@ -10,7 +10,7 @@ Telegrammer uses official Telegram surfaces only:
 Your contact entry can stay readable:
 
 ```json
-{ "name": "Angela", "telegram": "@angela_user" }
+{ "name": "<REDACTED>", "telegram": "@<REDACTED>_user" }
 ```
 
 Any numeric Bot API route is private cache data for Telegrammer. Do not put it in `contacts.json`.
@@ -181,9 +181,9 @@ Now add people to `contacts.json` next to `config.json`:
 {
   "contacts": [
     {
-      "name": "Angela",
-      "aliases": ["Angie", "Angela phone"],
-      "telegram": "@angela_user"
+      "name": "<REDACTED>",
+      "aliases": ["Angie", "<REDACTED> phone"],
+      "telegram": "@<REDACTED>_user"
     },
     {
       "name": "Backup Operator",
@@ -210,19 +210,19 @@ Rules:
 In Tlamatini chat with Multi-Turn enabled:
 
 ```text
-Tlamatini, send a Telegram to Angela saying this is a Telegrammer test.
+Tlamatini, send a Telegram to <REDACTED> saying this is a Telegrammer test.
 ```
 
 Direct tool shape:
 
 ```text
-chat_agent_telegrammer(contact_name='Angela' and message='this is a Telegrammer test')
+chat_agent_telegrammer(contact_name='<REDACTED>' and message='this is a Telegrammer test')
 ```
 
 Send to several people by calling Telegrammer once per contact:
 
 ```text
-chat_agent_telegrammer(contact_name='Angela' and message='test 1')
+chat_agent_telegrammer(contact_name='<REDACTED>' and message='test 1')
 chat_agent_telegrammer(contact_name='Backup Operator' and message='test 2')
 chat_agent_telegrammer(contact_name='Family Group' and message='test 3')
 ```
@@ -232,7 +232,7 @@ chat_agent_telegrammer(contact_name='Family Group' and message='test 3')
 Use this before an important send, or read the automatic `auto_doctor` result if Telegrammer fails:
 
 ```text
-chat_agent_instant_messaging_doctor(platform='telegram' and contact_name='Angela' and message='test' and retry_send=false)
+chat_agent_instant_messaging_doctor(platform='telegram' and contact_name='<REDACTED>' and message='test' and retry_send=false)
 ```
 
 The useful fields are:

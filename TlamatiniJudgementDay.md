@@ -2,7 +2,7 @@
 
 > **Status:** design only — NO code changes. This document describes a surgical, out-of-risk
 > implementation of a multi-model judge-and-merge answering scheme for the Tlamatini chat path.
-> **Author intent (Angela):** add a "Judge-Merging" toolbar checkbox (sibling of Multi-Turn) that
+> **Author intent (<REDACTED>):** add a "Judge-Merging" toolbar checkbox (sibling of Multi-Turn) that
 > fans every prompt out to 3 answering models in parallel and uses a 4th "judge/merge" model to
 > produce one superior final answer.
 
@@ -228,12 +228,12 @@ travels through `UnifiedAgentChain.invoke`, it **must** be added to that method'
    cost, by design.
 5. **Graceful degrade** (Section 5): a failed/timed-out answering model does not stall the barrier;
    the judge is told how many answers it got; all-3-fail → clean error.
-6. **History clear scope = current session only** (non-destructive). To confirm with Angela if a
+6. **History clear scope = current session only** (non-destructive). To confirm with <REDACTED> if a
    wider wipe is ever wanted.
 
 ---
 
-## 10. Open question for Angela
+## 10. Open question for <REDACTED>
 
 The clear-on-enable wipes chat history — scoped to the **current session** (recommended,
 non-destructive) vs the user's **entire** history. Default in this design: current session only.

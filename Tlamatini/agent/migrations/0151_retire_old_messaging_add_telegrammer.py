@@ -1,6 +1,6 @@
 """Retire the old messaging agents and wire the two new official-only agents.
 
-Angela (2026-06-22) moved the old agent directories to Trash and asked for
+<REDACTED> (2026-06-22) moved the old agent directories to Trash and asked for
 exactly two messaging agents, each using ONLY the official service:
 
   * RETIRE  : Telegramer, TelegramRX, WhatsTlamatini  (dirs already trashed)

@@ -437,7 +437,7 @@ Run MyAgent with param1='value1', nested.param='value2'
 
 ### Step 4: Exec Report — MANDATORY for EVERY wrapped chat-agent (automatic capture)
 
-> ⚠️ **MANDATORY DIRECTIVE (Angela, 2026-06-07):** EVERY wrapped `chat_agent_*` that can run in Multi-Turn **MUST appear in the Exec Report** — observational/output and read-only agents **INCLUDED**, plus every newly-created one. A Multi-Turn agent that shows no Exec-report row is a defect (the Talker bug). The old "skip for read-only/observational" rule is **REVOKED**.
+> ⚠️ **MANDATORY DIRECTIVE (<REDACTED>, 2026-06-07):** EVERY wrapped `chat_agent_*` that can run in Multi-Turn **MUST appear in the Exec Report** — observational/output and read-only agents **INCLUDED**, plus every newly-created one. A Multi-Turn agent that shows no Exec-report row is a defect (the Talker bug). The old "skip for read-only/observational" rule is **REVOKED**.
 
 **Capture is AUTOMATIC — you write no Exec-report code.** `agent/mcp_agent.py::_resolve_exec_report_spec` captures ANY wrapped `chat_agent_*` (except the `_MANAGEMENT_TOOLS` polling helpers) by deriving `agent_key`/display from the wrapped chat-agent registry. So once Step 2 (the `ChatWrappedAgentSpec`) is done, your agent is already captured and rendered (with the default caption).
 

@@ -1,11 +1,11 @@
 ---
 name: tlamatini-agent-creation
-description: The authoritative, exhaustive end-to-end runbook for creating a BRAND-NEW Tlamatini workflow agent — every surface, in order, with 530+ numbered steps across 26 phases. Invoke whenever Angela says "create a new agent", "add an agent", "make a <X>er agent", "I want a new canvas agent", or asks to wire any new pool agent across backend + frontend + Multi-Turn + Parametrizer + FlowCreator + FlowHypervisor + watchdog + config dialog + demo prompts + Python tests + Playwright harness tests + docs + packaging. Covers naming, coloring, the inputs/outputs connector contract in agentic_control_panel.html, the Multi-Turn (wrapped chat-agent) tool, Exec Report, the configuration dialog, automated unit tests AND Playwright tests in Claude's harness. Pairs with tlamatini-agent-naming (casing) and the @-imported create_new_agent.md / create_new_mcp.md.
+description: The authoritative, exhaustive end-to-end runbook for creating a BRAND-NEW Tlamatini workflow agent — every surface, in order, with 530+ numbered steps across 26 phases. Invoke whenever <REDACTED> says "create a new agent", "add an agent", "make a <X>er agent", "I want a new canvas agent", or asks to wire any new pool agent across backend + frontend + Multi-Turn + Parametrizer + FlowCreator + FlowHypervisor + watchdog + config dialog + demo prompts + Python tests + Playwright harness tests + docs + packaging. Covers naming, coloring, the inputs/outputs connector contract in agentic_control_panel.html, the Multi-Turn (wrapped chat-agent) tool, Exec Report, the configuration dialog, automated unit tests AND Playwright tests in Claude's harness. Pairs with tlamatini-agent-naming (casing) and the @-imported create_new_agent.md / create_new_mcp.md.
 ---
 
 # Tlamatini — Complete New-Agent Creation Runbook (700+ steps)
 
-> **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.
+> **Audience:** Claude Code working ON the Tlamatini codebase for **<REDACTED>**.
 > **Scope:** adding ONE brand-new workflow agent end-to-end across **every** surface
 > Tlamatini touches — backend pool script, Django view/url, migration, Parametrizer,
 > CSS coloring, all the frontend JS, the `agentic_control_panel.html` inputs/outputs
@@ -49,7 +49,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # PHASE 0 — Preflight, scoping & naming (lock these before any code)
 
-1. Confirm with Angela the agent's **purpose** in one sentence (what task it performs).
+1. Confirm with <REDACTED> the agent's **purpose** in one sentence (what task it performs).
 2. Decide whether the agent is **deterministic** (no LLM) or **LLM-powered** — this changes config keys and FlowHypervisor timing notes.
 3. Decide whether the agent is **state-changing** (mutates files/DB/remote/GUI/sends messages) or **observational/read-only** (Shoter/Camcorder/Recorder/AudioPlayer/VideoPlayer/Monitor-*). This decides Exec-Report membership.
 4. Decide whether the agent is **Active** (starts downstream via `target_agents`) or **Terminal/Monitoring** (does not).
@@ -61,7 +61,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 10. Decide whether the agent has a **singleton** constraint (only FlowCreator/FlowHypervisor are; a normal agent is not).
 11. Lock the **`<Display>`** name with EXACT casing — this is `agentDescription` and the single source of truth.
 12. **Invoke the `tlamatini-agent-naming` skill** and derive `<lower>`, `<dash>`, `<space>`, `<Pascal>`, `<CAPS>`, `<css>` from `<Display>` per its transform table.
-13. NEVER let any non-identifier surface display a different casing of `<Display>` (Angela is emphatic — STM32er must never become STM32Er).
+13. NEVER let any non-identifier surface display a different casing of `<Display>` (<REDACTED> is emphatic — STM32er must never become STM32Er).
 14. Pick the next free **idAgent / migration number** `N`: run `Glob` over `Tlamatini/agent/migrations/0*.py` and take `max+1`; confirm no `agentDescription='<Display>'` already exists.
 15. Pick a reference sibling agent that most resembles the new one (e.g. Shoter for capture, Apirer for HTTP, Kalier for an API bridge, Camcorder/Recorder for media). You will COPY its structure.
 16. Pick a **second** reference sibling that already does Multi-Turn + Parametrizer + Exec-Report so you can copy those wirings (Camcorder and Recorder are the most recent fully-wired examples).
@@ -167,7 +167,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 96. If the agent writes TEMPORARY/scratch files, route them under `<app>/Temp` — NEVER `C:\Temp`, `%TEMP%`, or a bare `tempfile.gettempdir()`.
 97. Copy the module-top temp guard from `executer.py` verbatim: `if (os.environ.get('TLAMATINI_TEMP') or '').strip(): import tempfile as _tlt_tempfile; _tlt_tempfile.tempdir = os.environ['TLAMATINI_TEMP'].strip(); …`.
 98. Keep that guard as an `if`-block (NOT a top-level `def`) so it sits above the imports without tripping ruff E402.
-99. If the agent SCAFFOLDS a project/template directory (firmware/engine style), default its parent to `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless Angela supplies a path.
+99. If the agent SCAFFOLDS a project/template directory (firmware/engine style), default its parent to `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless <REDACTED> supplies a path.
 100. Use `agent/path_guard.py` resolvers conceptually (`get_app_temp_root` / `get_app_templates_root`) — but remember the pool script can't import `agent.*`, so rely on the inherited `TLAMATINI_TEMP` / `TLAMATINI_TEMPLATES` env vars (the parent exports them).
 101. Confirm `Temp` = throwaway scratch; `Templates` = deliverable project trees (never via `tempfile`).
 102. Confirm no path the agent writes escapes the Tlamatini app root.
@@ -188,7 +188,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 112. Confirm the agent's children carry the `CREATE_NO_WINDOW` default (the `_chg_guarded_init` monkey-patch handles this automatically — verify it is present from Phase 1).
 113. Confirm the reaper/watchdog can never be tripped into killing the agent's OWN long-running python runtime (those are python, not console interpreters; the watchdog scopes to `cmd/powershell/pwsh` + descendants only).
 114. For a VISIBLE/desktop agent (a window the user must SEE) that you launch yourself during dogfooding, recall the reaper protects ancestors + console-window owner + main PID — but the agent runs as its own subprocess, so it is reaped only if genuinely orphaned.
-115. Note: the watchdog + reaper changes take effect in a frozen build only after `python build.py` — flag this to Angela if she runs the frozen `C:\Tlamatini` install.
+115. Note: the watchdog + reaper changes take effect in a frozen build only after `python build.py` — flag this to <REDACTED> if she runs the frozen `C:\Tlamatini` install.
 
 ---
 
@@ -399,7 +399,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # PHASE 15 — Exec Report (MANDATORY for EVERY Multi-Turn agent)
 
-> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07):** EVERY agent that can run in Multi-Turn (anything wired with a wrapped `chat_agent_<lower>` tool in Phase 14) **MUST be captured and shown in the Exec Report** — **observational/output agents** (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer) and **read-only LLM agents** (Crawler, Prompter, Summarizer, File/Image interpreters, Monitor-*, Recmailer, …) **INCLUDED**, and every newly-created agent. A Multi-Turn agent that produces NO Exec-report row (Exec report ON) is a defect — that was the Talker bug. The old "state-changing only / SKIP if observational" rule is **REVOKED**.
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (<REDACTED>, 2026-06-07):** EVERY agent that can run in Multi-Turn (anything wired with a wrapped `chat_agent_<lower>` tool in Phase 14) **MUST be captured and shown in the Exec Report** — **observational/output agents** (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer) and **read-only LLM agents** (Crawler, Prompter, Summarizer, File/Image interpreters, Monitor-*, Recmailer, …) **INCLUDED**, and every newly-created agent. A Multi-Turn agent that produces NO Exec-report row (Exec report ON) is a defect — that was the Talker bug. The old "state-changing only / SKIP if observational" rule is **REVOKED**.
 
 276. **Capture is AUTOMATIC** — `mcp_agent.py::_resolve_exec_report_spec` captures ANY wrapped `chat_agent_*` (except `_MANAGEMENT_TOOLS` helpers) by deriving `agent_key`/display from the registry. If you did Phase 14, your agent is ALREADY captured with **no** Exec-report code. Do NOT skip the agent just because it is observational.
 277. **(MANDATORY) VERIFY** capture: run the agent in Multi-Turn with **Exec report ON** and confirm a `List of <Display> Operations` table appears; and ensure `agent.tests.ExecReportCaptureTests.test_every_multiturn_agent_is_capturable_including_observational` stays green (it fails if any wrapped agent resolves to no row).
@@ -485,7 +485,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # PHASE 19 — Demo "Prompts example" creation (the prompts catalog)
 
-> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07):** if the agent is **Multi-Turn-capable** (it has a wrapped `chat_agent_<lower>` tool from Phase 14), you **MUST** create **at least ONE** example prompt for it in the **Catalog of Prompts** (the `#prompts-catalog`, seeded via a `Prompt`-model migration). This is a hard completion gate, NOT optional: a Multi-Turn agent shipped **without** at least one catalog prompt is an **INCOMPLETE** agent and the task is **not done**. (Canvas-only agents with no Multi-Turn tool are exempt — but every Multi-Turn agent needs its catalog prompt.) Do NOT skip this phase for a Multi-Turn agent under any circumstance.
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (<REDACTED>, 2026-06-07):** if the agent is **Multi-Turn-capable** (it has a wrapped `chat_agent_<lower>` tool from Phase 14), you **MUST** create **at least ONE** example prompt for it in the **Catalog of Prompts** (the `#prompts-catalog`, seeded via a `Prompt`-model migration). This is a hard completion gate, NOT optional: a Multi-Turn agent shipped **without** at least one catalog prompt is an **INCOMPLETE** agent and the task is **not done**. (Canvas-only agents with no Multi-Turn tool are exempt — but every Multi-Turn agent needs its catalog prompt.) Do NOT skip this phase for a Multi-Turn agent under any circumstance.
 
 340. **(MANDATORY for Multi-Turn agents)** Seed **at least one** demo prompt (1 simple is the REQUIRED minimum; tiered basic/medium/hard like STM32er #63/#64/#65 is the gold standard). Skipping this for a Multi-Turn-capable agent is a defect — the agent is not considered finished until it has a catalog prompt.
 341. Read the prompts-catalog CONTIGUITY contract: the dropdown breaks at the first gap, order = `promptName` suffix, `idPrompt` must be contiguous.
@@ -502,7 +502,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 352. If inserting BEFORE existing prompts (to keep grouping), shift the existing `idPrompt`+`promptName` suffixes accordingly (the catalog is order-sensitive).
 353. Document the new catalog range (e.g. "catalog now 1–66") for the memory + docs.
 354. Confirm the prompts appear in the `#prompts-catalog` modal after migrate (Phase 25 live check).
-355. Confirm each prompt's title/description clearly names the agent so Angela can find it.
+355. Confirm each prompt's title/description clearly names the agent so <REDACTED> can find it.
 
 ---
 
@@ -524,8 +524,8 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 369. Bump the "74 total" style counts in `CLAUDE.md` and `docs/claude/agents.md`.
 370. If the agent is a media/observational sibling, update the relevant family descriptions (Shoter/Camcorder/Recorder/AudioPlayer/VideoPlayer prose) so the family stays consistent.
 371. If the agent is state-changing, confirm `docs/claude/exec-report.md` does not need a new note (it is generic — only add if behavior is unusual).
-372. Bump `package.json` "version" to the release version Angela targets (per `feedback_package_json_version_bump`) — only running-example/current-state strings, not historical changelog refs.
-373. Update any `BookOfTlamatini.md` "Recent Updates" narrative entry if Angela maintains it for releases.
+372. Bump `package.json` "version" to the release version <REDACTED> targets (per `feedback_package_json_version_bump`) — only running-example/current-state strings, not historical changelog refs.
+373. Update any `BookOfTlamatini.md` "Recent Updates" narrative entry if <REDACTED> maintains it for releases.
 374. Confirm `agents_descriptions.md` is shipped by `build.py` next to the exe (it is — just don't break it) so tooltips work in frozen mode.
 375. Re-grep the repo for the OLD agent count to catch any stray count you missed.
 376. Confirm every doc uses the EXACT `<Display>` casing (run the naming-skill quick-check grep).
@@ -544,7 +544,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 383. Add a static contract test to `test_build_scripts.py` if the agent introduces a new bundled asset (mirror the existing "agents ship / assets referenced+exist" tests).
 384. Confirm the new agent's imports are pinned in the build's import-verify list if `test_build_scripts.py` checks per-agent imports.
 385. Note in the final summary that the frozen `C:\Tlamatini` install needs `python build.py` + reinstall for the agent to appear there.
-386. Do NOT run `build.py` casually — it is ~18 min and there is a `.build.lock` PID guard; never run a background build while Angela may also build (they collide). Only build when Angela asks.
+386. Do NOT run `build.py` casually — it is ~18 min and there is a `.build.lock` PID guard; never run a background build while <REDACTED> may also build (they collide). Only build when <REDACTED> asks.
 387. Confirm `.gitignore` already covers any generated artifacts the agent might create at runtime (Temp/Templates are ignored).
 388. If the agent adds a new sound/icon asset, place it under `static/agent/` and reference it from the build's data files.
 
@@ -592,22 +592,22 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 421. Add KNOWLEDGE questions about the new agent to `harness/questions.py` (safe, introspective: "What does the <Display> agent do?", "Which agents capture <X>?") — these run with Multi-Turn ON, ACPX/Ask-Execs/Exec-Report OFF.
 422. Add a WRAPPED-TOOL execution question to `harness/wrapped_questions.py` so `--bank wrapped --select <lower>` exercises the live `chat_agent_<lower>` tool.
 423. Set the wrapped question's `id`, `category` (`wrapped:<lower>`), wrapped `key` (`<lower>`), and `display name` (`<Display>`) so `--select` matching works (id/category/key/name, case-insensitive, substring, aliases).
-424. Add any alias mapping (e.g. `pinger`→`<lower>`) to the harness alias table if Angela uses a colloquial name.
+424. Add any alias mapping (e.g. `pinger`→`<lower>`) to the harness alias table if <REDACTED> uses a colloquial name.
 425. Make the wrapped question SAFE to execute repeatedly (the bank may run 1000×/day) — benign, idempotent task.
 426. Add expected keywords to the question so the heuristic qualifier can PASS a correct answer.
 427. If the agent is observational/desktop, keep the wrapped question's action harmless (a single capture to the default folder, not a long video).
 428. Confirm the test's pinned toggles match the harness default: Multi-Turn ON, ACPX OFF, Ask-Execs OFF, Exec-Report OFF, Internet OFF (per `feedback_test_toggle_state` — set AND verify, clear history first).
 429. Run a focused FOREGROUND check first: `python run_test.py --bank wrapped --select <lower>` against a LIVE server (the single-select run is short).
 430. Use `--bank wrapped --list` to confirm the new `--select` token is discoverable.
-431. Verify the server is up at `http://127.0.0.1:8000` first (`curl` the root); if down, ask Angela to start it — never start a second instance (single-bound ports).
-432. Get credentials from Angela (installer default `user`/`changeme` is usually wrong on the dev box) via env `TLAMATINI_USER`/`TLAMATINI_PASS` or `harness/.creds.env`.
+431. Verify the server is up at `http://127.0.0.1:8000` first (`curl` the root); if down, ask <REDACTED> to start it — never start a second instance (single-bound ports).
+432. Get credentials from <REDACTED> (installer default `user`/`changeme` is usually wrong on the dev box) via env `TLAMATINI_USER`/`TLAMATINI_PASS` or `harness/.creds.env`.
 433. On first-time harness setup, `pip install -r requirements.txt` + `python -m playwright install chrome` in the harness dir.
 434. Confirm the question PASSES (answered, no error banner, expected keywords present); if WEAK/FAIL, read the report's heuristic reason + judge verdict and fix the agent or the question.
 435. Add the new wrapped key to the harness README's list of selectable agents if it maintains one.
 436. Do a small `--count 10` smoke of the knowledge bank to confirm the new knowledge questions don't regress.
 437. Run the harness's own `ruff check` (the harness has a `.ruff_cache`) and keep it clean.
 438. Confirm `results.jsonl` + `summary.json` + `report.md` are written under `harness/reports/run_<timestamp>/` for the run.
-439. Report the focused-run outcome (asked/pass/weak/fail, pass-rate, avg time) to Angela.
+439. Report the focused-run outcome (asked/pass/weak/fail, pass-rate, avg time) to <REDACTED>.
 440. Do NOT add destructive prompts to either bank (the daily run executes them with Multi-Turn ON).
 441. If the chat UI selectors changed because of your work, fix `harness/config.py` (selectors + ready/started JS) and re-verify with `--count 2` before trusting a full run.
 
@@ -637,7 +637,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # PHASE 25 — Live deploy, VISIBLE dogfood, and handoff
 
-459. If Angela's server is the SOURCE instance, restart it (or confirm a `--noreload` instance) so the migration + new code load.
+459. If <REDACTED>'s server is the SOURCE instance, restart it (or confirm a `--noreload` instance) so the migration + new code load.
 460. Open `agent_page.html` and confirm the new agent appears in the sidebar palette with the correct `<Display>` label and gradient icon.
 461. Drag the agent onto the canvas and confirm the node renders with the gradient + correct input/output connectors.
 462. Wire it to a Starter and an Ender; confirm the connection-update view writes `target_agents`/`source_agents` correctly (check the pool `config.yaml`).
@@ -645,7 +645,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 464. Open the node's configuration dialog → confirm every config key is editable with defaults → Save → reopen and confirm persistence.
 465. Save the flow as a `.flw`, reload it, and confirm the node + connections + config restore (exercises `acp-file-io.js`).
 466. Press Start on a tiny flow and confirm the agent runs (LED green), writes its `<lower>.log`, emits its `INI_SECTION_<CAPS>` (if a source), and triggers downstream.
-467. If the agent is VISIBLE/desktop (a window the user must SEE), and Angela asked to use Tlamatini's agents, launch it FOREGROUND with `dangerouslyDisableSandbox: true` so the window renders on her real desktop (the Bash sandbox hides GUIs; `run_in_background` detaches them) — per `feedback_run_tlamatini_agents_visible`.
+467. If the agent is VISIBLE/desktop (a window the user must SEE), and <REDACTED> asked to use Tlamatini's agents, launch it FOREGROUND with `dangerouslyDisableSandbox: true` so the window renders on her real desktop (the Bash sandbox hides GUIs; `run_in_background` detaches them) — per `feedback_run_tlamatini_agents_visible`.
 468. To dogfood via Tlamatini's pool (not Claude's own tools): copy the agent to an isolated runtime dir, write a tailored `config.yaml`, run `python <lower>.py`, then read `<lower>.log` for the result.
 469. In chat with Multi-Turn ON, ask the LLM to run the agent (`Run <Display> with ...`) and confirm `chat_agent_<lower>` fires and returns the JSON result.
 470. If state-changing, toggle Exec Report ON and confirm the `List of <Display> Operations` table renders with the correct gradient.
@@ -656,10 +656,10 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 475. Confirm the orphan reaper leaves no `conhost.exe` survivors after the agent finishes (check Task Manager / the Tier-2/3 logs).
 476. Write/update a memory file `project_<lower>_agent.md` summarizing what was added, files touched, test counts, and the "frozen needs build.py / not committed" status — and add a one-line pointer to `MEMORY.md`.
 477. Per `feedback_track_changes_pivot_file`, record the verbatim request + before/after of any `prompt.pmt`/registry/`config.yaml` default changes in a dated pivot note.
-478. Do NOT commit or push unless Angela explicitly asks (per the standard workflow + secret-leak caution — run `regen_secrets.py` before any commit).
+478. Do NOT commit or push unless <REDACTED> explicitly asks (per the standard workflow + secret-leak caution — run `regen_secrets.py` before any commit).
 479. If a commit IS requested, branch first if on `main`, scrub secrets, and end the commit message with the required Co-Authored-By line.
-480. Tell Angela explicitly: the SOURCE instance reflects the change now; the FROZEN `C:\Tlamatini` install needs `python build.py` + reinstall.
-481. Give Angela the final per-surface checklist (the summary below) so she can verify nothing was skipped.
+480. Tell <REDACTED> explicitly: the SOURCE instance reflects the change now; the FROZEN `C:\Tlamatini` install needs `python build.py` + reinstall.
+481. Give <REDACTED> the final per-surface checklist (the summary below) so she can verify nothing was skipped.
 
 ---
 
@@ -715,7 +715,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 524. **FlowHypervisor false positives** — a long-running/observational/structured-output agent without its SPECIAL NOTES gets wrongly flagged as stuck or errored.
 525. **Watchdog** — keep child processes making progress and fed EOF on stdin; never block with zero CPU+IO.
 526. **Frozen vs source** — source instance reflects edits immediately; frozen `C:\Tlamatini` needs `python build.py` + reinstall. State this every time.
-527. **Build collisions** — never run a background `build.py` while Angela may build (`.build.lock`, ~18 min, they clobber shared dirs).
+527. **Build collisions** — never run a background `build.py` while <REDACTED> may build (`.build.lock`, ~18 min, they clobber shared dirs).
 528. **Test softness** — make tests HARD (real code, real incident, error+clean+overflow); soft happy-path tests miss real bugs.
 529. **Test toggles** — automated chat tests set AND verify Multi-Turn ON / Exec-Report per intent / Ask-Execs OFF, and clear history first.
 530. **Secret leak** — run `regen_secrets.py` before any commit; config carries live keys in dev.

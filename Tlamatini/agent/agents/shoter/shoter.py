@@ -295,7 +295,7 @@ def start_agent(agent_name: str) -> bool:
 def _default_temp_output_dir() -> str:
     """Resolve the DEFAULT save location: ``<where-Tlamatini-lives>/Temp``.
 
-    Temp/Templates policy (Angela, 2026-06-09): screenshots are TEMPORARY assets
+    Temp/Templates policy (<REDACTED>, 2026-06-09): screenshots are TEMPORARY assets
     and live under ``<app>/Temp``. Order: (1) the ``TLAMATINI_TEMP`` env var the
     Django process pins and every pool agent inherits; (2) walk up to the app dir
     (holding ``manage.py``); (3) the executable's ``Temp`` when frozen; (4) a home

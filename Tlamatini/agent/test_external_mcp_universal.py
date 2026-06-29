@@ -150,13 +150,13 @@ NORMALIZE_CASES: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
 
 SECRET_CASES: list[tuple[str, dict[str, Any], list[str]]] = [
     ("env_api_key_empty", {"env": {"API_KEY": ""}}, ["API_KEY"]),
-    ("env_token_your", {"env": {"TOKEN": "YOUR_TOKEN"}}, ["TOKEN"]),
-    ("env_secret_changeme", {"env": {"CLIENT_SECRET": "changeme"}}, ["CLIENT_SECRET"]),
-    ("env_password_placeholder", {"env": {"PASSWORD": "<password>"}}, ["PASSWORD"]),
+    ("env_token_your", {"env": {"TOKEN": "<REDACTED>"}}, ["TOKEN"]),
+    ("env_secret_changeme", {"env": {"CLIENT_SECRET": "<REDACTED>"}}, ["CLIENT_SECRET"]),
+    ("env_password_placeholder", {"env": {"PASSWORD": "<REDACTED>"}}, ["PASSWORD"]),
     ("env_auth_replace_me", {"env": {"AUTH_HEADER": "replace_me"}}, ["AUTH_HEADER"]),
-    ("env_bearer_dollar", {"env": {"BEARER": "${TOKEN}"}}, ["BEARER"]),
+    ("env_bearer_dollar", {"env": {"BEARER": "<REDACTED>"}}, ["BEARER"]),
     ("env_non_secret_ignored", {"env": {"PORT": "6379"}}, []),
-    ("env_secret_real_value", {"env": {"TOKEN": "sk-live-realish"}}, []),
+    ("env_secret_real_value", {"env": {"TOKEN": "<REDACTED>"}}, []),
     ("arg_api_key", {"args": ["--api_key=TOKEN_HERE"]}, ["args[0]"]),
     ("arg_apikey", {"args": ["--apikey=api_key_here"]}, ["args[0]"]),
     ("arg_token", {"args": ["--token=xxx"]}, ["args[0]"]),

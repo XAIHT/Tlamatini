@@ -420,7 +420,7 @@ class McpSoShapeCoverageTests(SimpleTestCase):
         ("remote_ws", {"url": "wss://api.example.com/ws"}, "websocket", "unknown", True, False),
         ("declared_http_type", {"type": "streamable-http", "url": "https://api.example.com/mcp"}, "streamable-http", "unknown", True, False),
         ("declared_sse_field", {"sseUrl": "https://api.example.com/sse"}, "sse", "unknown", True, False),
-        ("secret_gated", {"command": "npx", "args": ["-y", "x"], "env": {"API_KEY": "YOUR_API_KEY_HERE"}}, "stdio", "node/npm", True, True),
+        ("secret_gated", {"command": "npx", "args": ["-y", "x"], "env": {"API_KEY": "<REDACTED>"}}, "stdio", "node/npm", True, True),
         ("remote_with_header", {"url": "https://api.example.com/mcp", "headers": {"Authorization": "Bearer ${TOKEN}"}}, "streamable-http", "unknown", True, False),
     ]
 

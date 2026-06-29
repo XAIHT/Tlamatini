@@ -96,7 +96,7 @@ class ExternalMcpAddFlowTests(SimpleTestCase):
         self.assertEqual(em.load_catalog()["active"], ["redis"])
 
     def test_import_tool_accepts_dict_via_schema(self):
-        # THE bug Angela hit: the LLM passed a JSON OBJECT; the str-only schema
+        # THE bug <REDACTED> hit: the LLM passed a JSON OBJECT; the str-only schema
         # rejected it and she fumbled into "retry with a string". Now the schema
         # accepts a dict directly through tool.invoke (the real LLM call path).
         imp = _supervisor_tool("external_mcp_import")

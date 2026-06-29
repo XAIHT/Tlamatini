@@ -10,16 +10,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/angelahack1/Tlamatini.git"
+    "url": "git+https://github.com/<REDACTED>hack1/Tlamatini.git"
   },
   "keywords": [],
   "author": "XAIHT",
   "license": "MIT",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/angelahack1/Tlamatini/issues"
+    "url": "https://github.com/<REDACTED>hack1/Tlamatini/issues"
   },
-  "homepage": "https://github.com/angelahack1/Tlamatini#readme",
+  "homepage": "https://github.com/<REDACTED>hack1/Tlamatini#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.0.0",

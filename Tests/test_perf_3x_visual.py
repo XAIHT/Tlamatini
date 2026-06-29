@@ -6,7 +6,7 @@ multi-minute stall the reaper/Ollama-serving pathologies caused.
 
 REQUIREMENTS (these are end-to-end, not hermetic):
   * Tlamatini dev server running at $TLAMATINI_URL (default http://127.0.0.1:8000/)
-  * Login creds in env: TLAMATINI_USER / TLAMATINI_PASS  (default user angela)
+  * Login creds in env: TLAMATINI_USER / TLAMATINI_PASS  (default user <REDACTED>)
   * `pip install playwright && playwright install chromium`
 
 Run:
@@ -39,7 +39,7 @@ STALL_BUDGET = float(os.environ.get("STALL_BUDGET", "90"))  # seconds; a single
 # answer slower than this means a stall regression (L1/L2 not working).
 
 URL = os.environ.get("TLAMATINI_URL", "http://127.0.0.1:8000/")
-USER = os.environ.get("TLAMATINI_USER", "angela")
+USER = os.environ.get("TLAMATINI_USER", "<REDACTED>")
 PASS = os.environ.get("TLAMATINI_PASS", "")
 HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 

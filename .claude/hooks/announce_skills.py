@@ -110,7 +110,7 @@ def _print_banner(claude, tl, import_status):
     print('  (memory: feedback_plain_short_answers)')
     print('=' * 72)
     print('=== STEP-BY-STEP INTERACTIVE MODE -- MANDATORY for any hands-on problem ===')
-    print('  When solving a problem needs Angela to DO things on her machine (Roblox/')
+    print('  When solving a problem needs <REDACTED> to DO things on her machine (Roblox/')
     print('  Studio, a browser, clicking UI, restarting the app, checking output):')
     print('  DO NOT firehose, DO NOT run long autonomous tool-loops. Go ONE step at a time:')
     print('    1) Give EXACTLY ONE concrete step.')

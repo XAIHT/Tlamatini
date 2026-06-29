@@ -82,8 +82,8 @@ def _t(key: str, name: str, config: dict, task: str) -> dict:
 MCP_TESTS = [
     _t("memory", "Memory / Knowledge-Graph",
        {"mcpServers": {"memory": {"command": "docker", "args": ["run", "-i", "--rm", "mcp/memory"]}}},
-       "Create 2 entities (Tlamatini=System, Angela=Person) with one observation each, relate them "
-       "Angela —CREATED→ Tlamatini, then read_graph and report the entity + relation counts."),
+       "Create 2 entities (Tlamatini=System, <REDACTED>=Person) with one observation each, relate them "
+       "<REDACTED> —CREATED→ Tlamatini, then read_graph and report the entity + relation counts."),
     _t("sqlite", "SQLite",
        {"mcpServers": {"sqlite": {"command": "docker", "args": ["run", "-i", "--rm", "mcp/sqlite", "--db-path", "/tmp/suite.db"]}}},
        "Create a table parts(id INTEGER PRIMARY KEY, name TEXT, qty INTEGER), insert 3 rows, then run "

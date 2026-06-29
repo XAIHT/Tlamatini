@@ -1035,6 +1035,17 @@ def main():
         # can never be dragged in transitively (no init.tcl bundling headaches).
         '--exclude-module=tkinter',
         '--exclude-module=_tkinter',
+        # python-magic (libmagic) hangs the freeze. unstructured pulls in `magic`
+        # transitively; during PyInstaller's "Looking for dynamic libraries" phase
+        # the isolated child imports it, and python-magic's compat layer runs a
+        # NATIVE libmagic database load at import time (magic/compat.py:241 ->
+        # Magic(_open(MAGIC_MIME))) which SPINS on this host (observed: a build
+        # pegged one core for hours, log frozen at "Looking for dynamic libraries").
+        # unstructured guards the import (try importlib.import_module("magic") ->
+        # LIBMAGIC_AVAILABLE, else it falls back to the `filetype` package), and no
+        # frozen-process code imports unstructured eagerly, so excluding `magic`
+        # is safe AND also prevents the same hang at runtime.
+        '--exclude-module=magic',
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',

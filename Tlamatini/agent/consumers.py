@@ -1398,6 +1398,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
             
             if not global_state.get_state('rag_chain_ready'):
                 print("!!! RAG chain not ready. Message rejected.")
+                # Self-heal: a not-ready chain (a build that failed, or a
+                # toggle-triggered rebuild that is mid-flight) would otherwise stay
+                # dead until some UNRELATED event (a toggle / clear-history) happens
+                # to trigger a successful rebuild -- so every message in between is
+                # rejected with "agent not ready" (the dominant chat failure). Kick
+                # off a rebuild here so the chain recovers on its own. ``rag_lock``
+                # serializes rebuilds and ``.locked()`` prevents a rebuild storm
+                # under repeated sends.
+                try:
+                    if not self.rag_lock.locked():
+                        asyncio.create_task(self.setup_rag_chain())
+                        print("--- Self-heal: triggered rag_chain rebuild after not-ready reject.")
+                except Exception as _heal_err:  # never let self-heal break the reject path
+                    print(f"--- Self-heal rebuild trigger failed (non-fatal): {_heal_err}")
                 bot_user, _ = await self.get_or_create_bot_user()
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,

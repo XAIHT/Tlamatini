@@ -206,8 +206,8 @@ class FlowContractTests(SimpleTestCase):
     def test_teletlamatini_export_redacts_known_secrets(self):
         config = {
             "telegram": {"api_hash": "secret-hash", "bot_token": "secret-token"},
-            "password": "remote-password",
-            "tlamatini": {"password": "local-password", "username": "user"},
+            "password": "<REDACTED>",
+            "tlamatini": {"password": "<REDACTED>", "username": "user"},
         }
 
         redacted = redact_config_for_export("teletlamatini", config)

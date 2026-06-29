@@ -1,6 +1,6 @@
 # Surgical Plan — Improving the Speed of Tlamatini by a Factor of 3X
 
-> **Author:** Claude (Opus 4.8, 1M ctx) for **Angela** — XAIHT / Tlamatini
+> **Author:** Claude (Opus 4.8, 1M ctx) for **<REDACTED>** — XAIHT / Tlamatini
 > **Date created:** 2026-06-28
 > **Status:** PLAN ONLY. **No code is modified by this document.** Every item below is a *future* surgical change to be executed in later sessions.
 > **Goal:** Make Tlamatini **at least 3× faster** end-to-end (chat first-token, Multi-Turn loop, reconnect, startup, build) through *surgical*, file:line-scoped changes that **do not alter behavior, output, or security**.
@@ -40,7 +40,7 @@ The dominant truth, confirmed by `agent/llm_timing.py` instrumentation (memory `
 
 **Bottom line:** L1+L2 alone likely deliver the headline "feels 3× faster" because they remove the *minutes-long* pathologies. L3–L5 deliver a real, measured 3× on the *steady-state* chat latency (the part that is genuinely Tlamatini's code). L6–L10 harden the rest and protect the gains. **This document specifies all of them, surgically, in execution order.**
 
-> **Honesty note for Angela:** A literal "1000 printed pages" of prose would be padding. This file is the *complete* surgical catalog — every dominant lever plus the full long-tail from the basis docs — written densely so each item is actionable (location, problem, fix, expected gain, risk, verification) instead of inflated. It is built to be *executed*, session by session, not to hit a page count.
+> **Honesty note for <REDACTED>:** A literal "1000 printed pages" of prose would be padding. This file is the *complete* surgical catalog — every dominant lever plus the full long-tail from the basis docs — written densely so each item is actionable (location, problem, fix, expected gain, risk, verification) instead of inflated. It is built to be *executed*, session by session, not to hit a page count.
 
 ---
 
@@ -631,7 +631,7 @@ Nothing ships without a number. Build this in Session 1 so every later session h
 3. Characterization tests byte-identical.
 4. `python -m ruff check` + `npm run lint` + `python manage.py test` green.
 5. Frozen carriage updated in `build.py` if touched; both inclusion sweeps clean.
-6. Forward commit (no history rewrite); push only with Angela's explicit OK.
+6. Forward commit (no history rewrite); push only with <REDACTED>'s explicit OK.
 
 ---
 

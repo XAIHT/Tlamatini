@@ -103,12 +103,12 @@ class InstantMessagingDoctorTests(SimpleTestCase):
             with open(config_json, "w", encoding="utf-8") as handle:
                 json.dump({}, handle)
             with open(contacts_json, "w", encoding="utf-8") as handle:
-                json.dump({"contacts": [{"name": "Angela", "telegram": "@angela_user", "whatsapp": "+525500000001"}]}, handle)
+                json.dump({"contacts": [{"name": "<REDACTED>", "telegram": "@<REDACTED>_user", "whatsapp": "+525500000001"}]}, handle)
 
             result = IM_DOCTOR.diagnose({
                 "config_path": config_json,
                 "contacts_path": contacts_json,
-                "contact_name": "Angela",
+                "contact_name": "<REDACTED>",
                 "platform": "both",
                 "use_llm": False,
             })

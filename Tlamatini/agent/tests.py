@@ -2191,7 +2191,7 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         self.assertFalse(get_request_state('suppress_visible_consoles', False))
 
     def test_multi_turn_binds_full_surface_even_with_a_narrow_plan(self):
-        # MANDATE (Angela, 2026-06-16): Multi-Turn binds EVERY enabled tool — even
+        # MANDATE (<REDACTED>, 2026-06-16): Multi-Turn binds EVERY enabled tool — even
         # when the planner named only a subset. The operator loop must never be
         # starved ("I don't have a file-writing or shell tool bound this turn").
         captured = {}
@@ -2249,7 +2249,7 @@ class MultiTurnBackgroundLaunchTests(TestCase):
         self.assertEqual(captured['payload']['planner_summary'], 'use get_current_time only')
 
     def test_multi_turn_binds_full_surface_even_for_context_only_plan(self):
-        # MANDATE (Angela, 2026-06-16): even a context_only plan must NOT starve
+        # MANDATE (<REDACTED>, 2026-06-16): even a context_only plan must NOT starve
         # Multi-Turn — the user may still ask Tlamatini to ACT, so every enabled
         # tool stays available. (This deliberately reverses the old "context_only
         # binds zero tools" behavior.)

@@ -135,7 +135,7 @@ _NOTIFY_CHANNEL_RE = re.compile(
 )
 _NOTIFY_VERB_RE = re.compile(
     r"\b(send|shoot|text|message|ping|notify|alert|tell|let|drop|email|e-?mail)\b"
-    r"[^.?!]{0,30}?\b(me|us|angela|him|her|them)\b",
+    r"[^.?!]{0,30}?\b(me|us|<REDACTED>|him|her|them)\b",
     re.IGNORECASE,
 )
 
@@ -1602,7 +1602,7 @@ Answer:
 
 
 # ---------------------------------------------------------------------------
-# Tool-surface token budgeting (Angela, 2026-06-19)
+# Tool-surface token budgeting (<REDACTED>, 2026-06-19)
 # ---------------------------------------------------------------------------
 # Binding the FULL enabled surface (88 agents + active External-MCP tools) can
 # overflow the model context window. Observed live: "prompt too long 273284 >
@@ -1883,7 +1883,7 @@ class CapabilityAwareToolAgentExecutor:
                     return legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
                 return self.legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
 
-            # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
+            # === MANDATE (<REDACTED>, 2026-06-16, refined 2026-06-19) ===
             # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
             # planner subset once starved the operator ("no file/shell tool bound").
             # But blindly binding the FULL surface (88 agents + active External-MCP

@@ -82,7 +82,7 @@ class ParametrizerMcpDoctorRoundTripTests(SimpleTestCase):
             with open(catalog, "w", encoding="utf-8") as fh:
                 json.dump({"mcpServers": {"Proxy": {
                     "command": "python", "args": ["-m", "some_server"],
-                    "env": {"API_KEY": "YOUR_KEY_HERE"}}}, "active": ["Proxy"]}, fh)
+                    "env": {"API_KEY": "<REDACTED>"}}}, "active": ["Proxy"]}, fh)
             result = MCP_DOCTOR.diagnose({"catalog_path": catalog, "server_key": "Proxy"})
 
         section = _emit_and_capture(result)

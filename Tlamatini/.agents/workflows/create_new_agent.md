@@ -441,7 +441,7 @@ The unified agent picks it up via `WRAPPED_CHAT_AGENT_BY_TOOL_NAME` — no edits
 
 ## Step 7.6 · MANDATORY for EVERY Multi-Turn agent: Exec Report capture
 
-> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07):** EVERY agent that can run in Multi-Turn (anything with a wrapped `chat_agent_<name>` tool from Step 7.5) **MUST be captured and shown in the Exec Report** — **observational/output agents** (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer) and **read-only LLM agents** (Crawler, Prompter, Summarizer, File/Image interpreters, Monitor-*, Recmailer, …) **INCLUDED**, plus every newly-created agent. A Multi-Turn agent that produces **no** Exec-report row when Exec report is ON is a **defect** (this was the Talker bug: a run showed zero tables). The "state-changing only" rule is **gone**.
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (<REDACTED>, 2026-06-07):** EVERY agent that can run in Multi-Turn (anything with a wrapped `chat_agent_<name>` tool from Step 7.5) **MUST be captured and shown in the Exec Report** — **observational/output agents** (Talker, Shoter, Camcorder, Recorder, AudioPlayer, VideoPlayer) and **read-only LLM agents** (Crawler, Prompter, Summarizer, File/Image interpreters, Monitor-*, Recmailer, …) **INCLUDED**, plus every newly-created agent. A Multi-Turn agent that produces **no** Exec-report row when Exec report is ON is a **defect** (this was the Talker bug: a run showed zero tables). The "state-changing only" rule is **gone**.
 
 **Good news — capture is AUTOMATIC.** `agent/mcp_agent.py::_resolve_exec_report_spec` captures ANY wrapped `chat_agent_*` (except the management/polling helpers in `_MANAGEMENT_TOOLS`) by deriving `agent_key`/display from the wrapped chat-agent registry. **So if you did Step 7.5, your agent is already captured — you write NO Exec-report code.** The mandatory work is just to VERIFY it.
 
@@ -497,7 +497,7 @@ Test by dragging the agent into the ACP once and noting the dialog field names v
 
 ## Step 7.8 · MANDATORY for Multi-Turn agents: a Catalog-of-Prompts example
 
-> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (Angela, 2026-06-07).** If you did Step 7.5 (the agent is **Multi-Turn-capable** via a wrapped `chat_agent_<name>` tool), you **MUST** seed **at least ONE** example prompt for it into the **Catalog of Prompts**. This is a hard completion gate: a Multi-Turn agent shipped **without** a catalog prompt is **INCOMPLETE** and the task is **not done**. (A canvas-only agent with NO wrapped tool is exempt.) Do NOT skip this.
+> ⚠️ **MANDATORY DIRECTIVE — NON-NEGOTIABLE (<REDACTED>, 2026-06-07).** If you did Step 7.5 (the agent is **Multi-Turn-capable** via a wrapped `chat_agent_<name>` tool), you **MUST** seed **at least ONE** example prompt for it into the **Catalog of Prompts**. This is a hard completion gate: a Multi-Turn agent shipped **without** a catalog prompt is **INCOMPLETE** and the task is **not done**. (A canvas-only agent with NO wrapped tool is exempt.) Do NOT skip this.
 
 Add a migration `agent/migrations/<NNNN>_add_<agent_name>_demo_prompts.py` that seeds rows into the **`Prompt`** model (`idPrompt`, `promptName='prompt-<N>'`, `promptContent`):
 
