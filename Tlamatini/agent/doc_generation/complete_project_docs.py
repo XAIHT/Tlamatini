@@ -438,7 +438,29 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any(
+    has_1320_wave = any(
+        "1.32.0" in subject
+        or "annouces skill" in subject
+        or "announce skill" in subject
+        or "angela" in subject
+        or "creator" in subject
+        or "author" in subject
+        or "private data" in subject
+        or "private-data" in subject
+        or "public build" in subject
+        or "public verify" in subject
+        or "3x" in subject
+        or "performance" in subject
+        for subject in subjects
+    )
+    if has_1320_wave:
+        highlights.append(
+            "The live Git window now lands on the `v1.32.0` line: README, BookOfTlamatini, package metadata, and runtime version surfaces identify the project as 1.32.0, while the source inventory tables confirm the current workflow-agent, Multi-Turn-tool, and skill totals."
+        )
+        highlights.append(
+            "The v1.27-v1.32.0 release wave is broader than a badge bump: it adds performance-focused 3X levers, forward-only private-data guardrails, hardened public-release verification, Angela López Mendoza creator/authorship stamping, skill announcement hooks, and the newest ACPX/MCP server expansion."
+        )
+    if not has_1320_wave and any(
         "1.26.5" in subject
         or "mit license" in subject
         or "mcp-doctor" in subject
@@ -455,7 +477,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The `v1.26.5` code changes are maintenance-heavy but operator-visible: External MCP input handling and catalog cleanup were improved, MCP Doctor now enumerates all active external MCPs instead of stopping at the first, Unrealer parameterization was fixed, and a new Unreal game-creation prompt was seeded for guided demos."
         )
-    if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
+    if not has_1320_wave and any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
             "The current Git window still carries the `v1.26.0` External MCP baseline forward: a config-driven universal client connects to external MCP servers over stdio, streamable HTTP, SSE, or WebSocket, with MCP Doctor diagnostics, full-surface Multi-Turn tool binding, and Step-by-Step setup layered on top of the earlier ESPHomer firmware lane."
         )
@@ -495,7 +517,25 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
-    if any(
+    if has_1320_wave or any(
+        "1.32.0" in subject
+        or "annouces skill" in subject
+        or "announce skill" in subject
+        or "angela" in subject
+        or "creator" in subject
+        or "private data" in subject
+        or "public build" in subject
+        or "public verify" in subject
+        or "3x" in subject
+        or "documentation" in subject
+        or "docs" in subject
+        or "disclaimer" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The latest documentation pass aligns the handbook and source with the `v1.32.0` line, so this dossier now carries the current performance/privacy/build/authorship story, the External MCP and ACPX expansion, the live line-count inventory, and the Agent-directory responsibility boundary instead of stale v1.26.x prose."
+        )
+    elif not has_1320_wave and any(
         "1.26.5" in subject
         or "mit license" in subject
         or "discord" in subject
@@ -695,7 +735,27 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
-    if any(
+    has_1320_wave = any(
+        "1.32.0" in subject
+        or "annouces skill" in subject
+        or "announce skill" in subject
+        or "angela" in subject
+        or "creator" in subject
+        or "author" in subject
+        or "private data" in subject
+        or "public build" in subject
+        or "public verify" in subject
+        or "3x" in subject
+        for subject in subjects
+    )
+    if has_1320_wave:
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, the repository advanced to `v1.32.0`: the handbook now summarizes the v1.27-v1.32.0 wave, README links the v1.32.0 release, and generated artifacts visibly preserve Angela López Mendoza as creator."
+        )
+        highlights.append(
+            "The current visual-doc delta covers performance 3X work, forward-only private-data cleanup, public-release verifier hardening, package/build metadata authorship, `.claude/hooks/announce_skills.py`, ACPX/MCP server upgrades, media-agent config fixes, and the latest workflow instructions."
+        )
+    if not has_1320_wave and any(
         "1.26.5" in subject
         or "mit license" in subject
         or "mcp-doctor" in subject
@@ -712,7 +772,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The post-baseline implementation delta includes improved External MCP input/catalog handling, MCP Doctor enumeration across all active external MCPs, Unrealer parameterization fixes, seeded Unreal game-demo prompts, Create Superuser wizard prompt migrations, FlowCreation backslash behavior fixes, Step-by-Step polish, and context-bloat/chat-history windowing work."
         )
-    if any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
+    if not has_1320_wave and any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
         highlights.append(
             "The broader `v1.26.x` line still centers on the External MCPs universal client: four transports, the MCP Doctor agent, full-surface Multi-Turn tool binding, and Step-by-Step setup layered on top of the ESPHomer firmware lane."
         )
@@ -752,7 +812,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
         )
-    if any(
+    if not has_1320_wave and any(
         "1.26.1" in subject
         or "disclaimer" in subject
         or "external mcp" in subject
@@ -1130,19 +1190,19 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the latest reachable `v1.26.5` tag and the docs now identify Tlamatini as release 1.26.5, with the live source inventory confirming 82 workflow agents and 89 Multi-Turn tools.",
-    "This release keeps the `v1.26.0` External MCPs universal-client foundation, then adds the later maintenance wave: improved External MCP input/catalog handling, MCP Doctor enumeration across all active external MCPs, Unrealer parameterization fixes, and new Unreal game-creation demo prompts.",
-    "README.md and BookOfTlamatini.md now present the project under the MIT License, include the Discord community entry point, keep the strong Agent-directory disclaimer, and remove older count drift around the agent catalog.",
-    "The practical operator story is broader than a version bump: Create Superuser wizard prompts, FlowCreation backslash handling, Step-by-Step reliability, context-bloat/chat-history windowing, dialog polish, and external MCP JSON cleanup all changed in the same post-dossier span.",
-    "The resulting PDF/PPTX refresh therefore treats `v1.26.5` as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, and External MCP usage.",
+    "The repository currently resolves to the `v1.32.0` release line and the live docs identify Tlamatini as 1.32.0, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
+    "The v1.27-v1.32.0 span is a quality-and-trust wave: performance 3X levers, forward-only private-data discipline, public-release verifier hardening, and explicit Angela López Mendoza creator/authorship stamping moved together.",
+    "The runtime surface also grew around delegation: ACPX remains the external coding-agent CLI bridge, External MCP remains the universal MCP client, and the newest server-side assets add `tlamatini_acpx.py`, stronger `tlamatini_mcp_server.py` behavior, and refreshed MCP workflow guidance.",
+    "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
+    "The resulting PDF/PPTX refresh treats `v1.32.0` as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, and ACPX skills.",
 ]
 
-V1265_RELEASE_GUIDE = [
-    "Release identity: latest reachable tag `v1.26.5`; HEAD documentation updates keep README.md, BookOfTlamatini.md, badges, and generated dossiers aligned to 1.26.5.",
-    "Policy/community: `LICENSE` and the handbook now describe MIT licensing, and README/Book expose the Discord invite as the public community/support path.",
-    "Catalog correction: the source and docs now converge on 82 workflow agents, 57 wrapped chat-agent tools, 20 core Python tools, 12 ACPX/Skill tools, and 89 total Multi-Turn tools.",
-    "External MCP maintenance: `external_mcp_manager.py` and `external_mcps.json` were cleaned and tightened, while MCP Doctor now lists every active external MCP instead of just the first one.",
-    "Unrealer and prompt assets: Unrealer parameter handling was corrected and the new Unreal game-demo prompt wave was seeded through migrations.",
+V1320_RELEASE_GUIDE = [
+    "Release identity: latest reachable public tag `v1.32.0`; README.md, BookOfTlamatini.md, package metadata, runtime version surfaces, and generated artifacts now point at the 1.32.0 product line.",
+    "Performance: the release notes carry the 3X optimization family — Ollama serving-layer detection, warmed embeddings handles, `keep_alive` prompt-prefix cache reuse in basic/retrieval chains, and an orphan-process reaper rewrite from O(N^2) scanning to O(N).",
+    "Privacy and release safety: the docs describe forward-only private-data cleanup, `test_private_data_guard.py`, and public-release verification that blocks real sensitive PII while preserving legitimate creator attribution.",
+    "Authorship: Angela López Mendoza is stamped visibly in the About-window story, generated PDF/PPTX metadata, build/package metadata, prompt rules, and source-file author banners; public builders must not scrub her name.",
+    "Delegation and MCP expansion: skill-announcement hooks, `tlamatini_acpx.py`, `tlamatini_mcp_server.py`, and the updated `create_new_agent.md` workflow keep ACPX, Skills, and External MCP creation visible to both operators and agents.",
 ]
 
 EXTERNAL_MCPS_GUIDE = [
@@ -1209,7 +1269,8 @@ COMMAND_WATCHDOG_GUIDE = [
 
 NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
-    "The current `v1.26.5` wave adds or updates concrete assets too: `LICENSE` now reflects MIT adoption, `agent/external_mcp_manager.py` and `agent/external_mcps.json` carry the External MCP cleanup, `agent/agents/mcp_doctor/mcp_doctor.py` handles active-server enumeration, and the `0145`-`0147` migrations seed Create Superuser wizard and Unreal game-demo prompts.",
+    "The current `v1.32.0` wave adds or updates concrete assets too: `.claude/hooks/announce_skills.py`, `.github/workflows/name-guard.yml`, `Tlamatini/agent/version.py`, `package.json`, `tlamatini_acpx.py`, `tlamatini_mcp_server.py`, and `Tlamatini/.agents/workflows/create_new_agent.md` all carry new runtime, authorship, MCP, or workflow behavior.",
+    "The same wave preserves evidence-oriented tests and build guards such as `test_private_data_guard.py`, performance/visual checks, About-window authorship tests, and public-release verification rules that distinguish sensitive PII from valid creator names.",
     "The same span refreshes shipped visual/media assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
     "Key operator/runtime files such as `prompt.pmt`, `chat_agent_registry.py`, `tools.py`, `views.py`, `urls.py`, `manage.py`, `file_extractor.py`, and the File-Creator/File-Extractor templates also changed, so the visible features are backed by concrete implementation assets rather than documentation-only promises.",
@@ -1219,7 +1280,7 @@ NEW_ASSETS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.26.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, STM32er/ESP32er demo prompts, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.32.0` release state keeps the version badge, runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1864,8 +1925,8 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("v1.26.5 release delta", styles["h2"]))
-    for item in V1265_RELEASE_GUIDE:
+    story.append(p("v1.32.0 release delta", styles["h2"]))
+    for item in V1320_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("External MCP universal client", styles["h2"]))
     for item in EXTERNAL_MCPS_GUIDE:
@@ -2649,7 +2710,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.26.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.32.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2663,7 +2724,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.26.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.32.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2672,23 +2733,23 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.26.5 docs, disclaimer, and External MCPs", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.32.0 performance, privacy, build, and delegation", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "The version story is now explicit: the repo resolves to the `v1.26.5` line while carrying forward the External MCPs release, whose defining feature is the universal MCP client (any external MCP server over four transports, the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
-        "Operators still inherit the two major foundations from the immediately prior release line: self-update preserves the user's database and custom toggles, and frozen builds ship the numpy/OpenCV native libraries the media agents need.",
-        "The resulting narrative now also matches the new Agent-directory disclaimer, making the plain-Python user-responsibility boundary visible in both the PDF and the deck.",
+        "The docs now explain the whole 1.32.0 product state, not only the newest badge or a local markdown edit.",
+        "Operators get clearer trust signals: private-data guardrails, public-release verification, creator attribution, and the Agent-directory responsibility boundary are all visible.",
+        "The deck also names the live delegation surfaces: ACPX, Skills, External MCPs, MCP Doctor, and the newest server/workflow assets.",
     ], THEME["jade"], "rel-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "v1.26.5 Release Delta", "MIT, catalog, External MCP, MCP Doctor, and Unrealer fixes", THEME["copper"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Exact release checklist", V1265_RELEASE_GUIDE, THEME["copper"], "v1265-a", 12)
+    slide, audit = add_slide(prs, "v1.32.0 Release Delta", "performance, privacy, public builds, authorship, and MCP/ACPX", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Exact release checklist", V1320_RELEASE_GUIDE, THEME["copper"], "v1320-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Recent implementation assets", [
-        "`0145` and `0146` seed and update the Create Superuser wizard prompt path.",
-        "`0147` adds Unreal game-demo prompt seeds so Unrealer has a richer guided showcase.",
-        "`test_chat_history_window.py` and `test_createsuperuser_wizard.py` cover context-window and wizard behavior.",
-        "`external_mcps.json`, External MCP UI files, tools, and prompt templates were cleaned or retuned alongside README/Book updates.",
-    ], THEME["jade"], "v1265-b", 12)
+        "`.claude/hooks/announce_skills.py` keeps skill/workflow reminders visible to agents.",
+        "`tlamatini_acpx.py` and `tlamatini_mcp_server.py` expand external delegation/server behavior.",
+        "`version.py`, `package.json`, and build metadata preserve Angela López Mendoza as creator.",
+        "`Tlamatini/.agents/workflows/create_new_agent.md` now carries updated MCP/ACPX implementation guidance.",
+    ], THEME["jade"], "v1320-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "External MCPs", "how Tlamatini now reaches tools outside her bundled runtime", THEME["jade"])
@@ -3038,7 +3099,7 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.26.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.32.0", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
         "ESPHomer (prior firmware lane, now folded into v1.26.0): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
@@ -3050,10 +3111,12 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Version identity (v1.26.5): the latest tag now resolves the product to `1.26.5` across VERSIONING.md, release-folder naming, the About dialog story, startup banner wording, and `/agent/version/` expectations; v1.26.0's defining feature is the External MCPs universal client (plus the MCP Doctor diagnostic agent, full-surface Multi-Turn tool binding, and Step-by-Step setup mode).",
+        "Version identity (v1.32.0): README, BookOfTlamatini, package metadata, runtime version surfaces, and generated dossiers now resolve to the 1.32.0 product line.",
+        "Trust wave (v1.27-v1.32.0): performance 3X levers, forward-only private-data cleanup, public-release verifier hardening, and Angela López Mendoza creator/authorship stamping moved together.",
+        "Delegation wave: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` keep external agents and external MCP servers in the documented operator surface.",
         "Visual/media asset refresh (v1.26.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
-        "Self-update foundation (v1.23.0 carried into v1.26.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
-        "Frozen-build hardening (v1.23.0 carried into v1.26.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
+        "Self-update foundation (v1.23.0, still present in v1.32.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
+        "Frozen-build hardening (v1.23.0, still present in v1.32.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, ESPHomer, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with first-build-downloads-a-large-toolchain caveats where needed.",
