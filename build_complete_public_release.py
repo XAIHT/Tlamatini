@@ -77,6 +77,11 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              "staticfiles", "Temp", "python", "ms-playwright", "jre", "git"}
 TEXT_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".env",
             ".cfg", ".ini", ".toml", ".html", ".css", ".csv", ".pmt", ".keys"}
+# NEVER scrub the sources of truth: the keys vault and the targets file. Scrubbing
+# .private_targets.json turns your real values into "<REDACTED>" inside it, which
+# then makes the verifier hunt for the literal text "<REDACTED>" and "find" it in
+# every scrubbed file (the 737-false-positive bug). data.keys must stay intact too.
+SCRUB_SKIP_FILES = {"data.keys", ".private_targets.json", "private_targets.json"}
 
 SECRET_KEY_RE = re.compile(
     r'(?i)("(?:api[_-]?key|api[_-]?secret|token|access[_-]?token|auth[_-]?token|'
@@ -187,6 +192,8 @@ def scrub_tree(values: list[str], extra: list[str], backup: Backup) -> int:
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
             if os.path.splitext(name)[1].lower() not in TEXT_EXT:
+                continue
+            if name in SCRUB_SKIP_FILES:
                 continue
             changed += scrub_file(Path(dirpath) / name, values, extra, backup)
     return changed
