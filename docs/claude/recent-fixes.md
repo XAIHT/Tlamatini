@@ -10,6 +10,20 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-28 — 3X-speed plan L1 + L2 landed (Ollama serving-layer detector, warm embeddings handle, explicit keep_alive on basic/retrieval chains; reaper O(N) carried) — do NOT revert
+
+**Context:** First execution slice of `surgical_improving_speed_of_Tlamatini_by_a_factor_of_3X.md` (repo root). Surgical, behavior-neutral speed work.
+
+**L1 — Ollama serving layer (`agent/rag/factory.py`, `agent/gpu_perf.py`):**
+- `factory._resolve_keep_alive()` mirrors `mcp_agent.py`'s `OLLAMA_KEEP_ALIVE` parsing (int → int, non-int duration string → verbatim, unset/empty → `-1`). Added `keep_alive=_resolve_keep_alive()` to BOTH `OllamaLLM(...)` constructors (`build_prompt_only_chain`, `build_retrieval_chain`). The Multi-Turn executor (`mcp_agent.py:544`) and `gpu_perf` already pinned the model; this extends the same resident-model contract to the basic/retrieval chains so KV cache survives between turns.
+- **`OllamaEmbeddings` does NOT accept `keep_alive`** (verified against the installed `langchain_ollama`: `'keep_alive' in OllamaLLM.model_fields` is True, but False for `OllamaEmbeddings`). **Do NOT add `keep_alive=` to the `OllamaEmbeddings(...)` constructor** — it raises at runtime. The embedding model is kept resident via the `OLLAMA_KEEP_ALIVE` env var + `gpu_perf.pin_ollama_model`. `tests_perf_3x.py::test_no_keep_alive_kwarg_used` guards this.
+- `factory._get_cached_embeddings(config, client_kwargs)` + `factory._EMBEDDINGS_CACHE` — a warm, reused embeddings handle keyed by `(model, base_url, token)`. Replaces the per-chain-build `OllamaEmbeddings(...)`. A Config→Models embedding-model switch changes the key and misses, so the switch still takes effect.
+- `gpu_perf.detect_ollama_serving_issues(base_url)` + `_OLLAMA_SERVING_BANNER`, called from `apply_gpu_max_performance` before pinning. **Diagnostic ONLY** — it probes `/api/version` + `/api/tags` and, on a strong signal (version answers but tags fails / body mentions `llama runner`/`llama-server`), prints a loud banner that a broken/contended serving layer (usually a SOURCE-build Ollama racing the official install on 11434) is the cause of multi-minute stalls. **It NEVER kills a process** (do not "improve" it into an auto-kill). This targets memory `project_ollama_source_build_breaks_embeddings`.
+
+**L2 — orphan reaper:** the O(N) `_build_proc_index` rewrite (`orphan_reaper.py:516`, 290× faster, memory `project_orphan_reaper_on2_freeze`) was already in the source tree; it is now committed + carried into the build. Do NOT revert to per-process `psutil.children()` rescans (the O(N²) freeze).
+
+**Tests:** `Tlamatini/agent/tests_perf_3x.py` (116 hermetic non-visual tests — keep_alive matrix, embeddings singleton, the detector against a local stub HTTP server, reaper O(N) scale guard) + `Tests/test_perf_3x_visual.py` (24 Playwright scenarios proving no chat stall; needs the live server). Run: `python Tlamatini/manage.py test agent.tests_perf_3x`.
+
 ### 2026-06-20 — Create Flow: Windows-path config params corrupted (backslashes dropped) — JS `_parseKeyValuePairs` must mirror Python `_unquote_preserving_backslashes` — do NOT revert
 
 **Symptom:** A flow saved with the chat **Create Flow** button stored a Globber node's `path` as `C:TlamatiniTemplatesTlamatiniProjectForSTM32F407G` (every `\` gone) for the real `C:\Tlamatini\Templates\TlamatiniProjectForSTM32F407G`. It hit EVERY path-bearing config field (path / repo_path / file / output_dir / config_path / …), not just Globber — they all flow through one parser.

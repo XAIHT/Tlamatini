@@ -264,6 +264,72 @@ def persist_ollama_env_for_user() -> None:
     print("--- [GPU-PERF] Persisted OLLAMA_* user env vars (effective after next 'ollama serve' restart)")
 
 
+def detect_ollama_serving_issues(base_url: str, timeout: int = 5) -> str | None:
+    """Best-effort probe for a broken / contended Ollama serving layer.
+
+    The classic, hard-to-diagnose failure (see memory
+    ``project_ollama_source_build_breaks_embeddings``) is a SOURCE build of
+    Ollama (e.g. ``C:\\Development\\ollama``) racing the official install for
+    port 11434: ``/api/version`` answers, but the model runner
+    (``llama-server`` / ``llama runner``) is missing or broken, so chat and
+    embeddings stall for minutes or fail with a "llama runner" error that
+    LOOKS like a prompt-size problem but is not.
+
+    Returns a loud banner string for the caller to log when a strong signal is
+    seen, else ``None``. DIAGNOSTIC ONLY — this never kills a process and is
+    deliberately conservative (it only warns on a clear signal).
+    """
+    if not base_url:
+        return None
+    root = base_url.rstrip("/")
+
+    def _get(path: str):
+        req = urllib.request.Request(root + path, method="GET")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status, resp.read(65536).decode("utf-8", "replace")
+
+    # 1) /api/version must answer; if it doesn't, Ollama simply isn't up and
+    #    pin_ollama_model already reports that — not our concern here.
+    try:
+        _get("/api/version")
+    except Exception:
+        return None
+
+    # 2) Version answers. Now /api/tags should list models. A broken serving
+    #    layer commonly answers version but fails tags (or returns an error
+    #    mentioning the runner). Treat that as the strong signal.
+    try:
+        status, body = _get("/api/tags")
+        low = (body or "").lower()
+        runner_error = (
+            "llama runner" in low
+            or "llama-server" in low
+            or "runner process" in low
+            or "no models" in low and "error" in low
+        )
+        if status >= 400 or runner_error:
+            return _OLLAMA_SERVING_BANNER.format(url=root, detail=f"/api/tags status={status}")
+    except Exception as exc:
+        return _OLLAMA_SERVING_BANNER.format(url=root, detail=f"/api/tags unreachable while /api/version answered: {exc}")
+
+    return None
+
+
+_OLLAMA_SERVING_BANNER = (
+    "\n"
+    "================================================================\n"
+    "  [OLLAMA] SERVING-LAYER PROBLEM DETECTED ({url})\n"
+    "  /api/version answered but the model runner looks broken:\n"
+    "    {detail}\n"
+    "  LIKELY CAUSE: a SOURCE build of Ollama (e.g. C:\\Development\\ollama)\n"
+    "  is racing the official install for port 11434. This makes chat and\n"
+    "  embeddings stall for MINUTES or fail with a 'llama runner' error.\n"
+    "  FIX: stop the source-build Ollama; keep ONLY the official install.\n"
+    "  (Tlamatini will NOT kill it for you — this is a diagnostic warning.)\n"
+    "================================================================\n"
+)
+
+
 def apply_gpu_max_performance(config: dict | None = None) -> None:
     """Top-level entry point. Runs every survivable max-perf lever.
 
@@ -295,6 +361,18 @@ def apply_gpu_max_performance(config: dict | None = None) -> None:
         persist_ollama_env_for_user()
     except Exception as exc:
         print(f"--- [GPU-PERF] env-persist step failed: {exc}")
+
+    # L1b: warn loudly if a broken/contended Ollama serving layer (commonly a
+    # source-build racing the official install on 11434) is detected. This is
+    # the usual root cause of multi-minute chat/embedding stalls.
+    try:
+        base_url_probe = str((config or {}).get("ollama_base_url") or "").strip()
+        if base_url_probe:
+            banner = detect_ollama_serving_issues(base_url_probe)
+            if banner:
+                print(banner)
+    except Exception as exc:
+        print(f"--- [GPU-PERF] Ollama serving-layer probe failed: {exc}")
 
     # Pinning is the highest-leverage fix — do it last so any earlier
     # tweaks (power plan, env vars) are in place first.

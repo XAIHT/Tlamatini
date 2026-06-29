@@ -55,6 +55,46 @@ else:
     # Go up one level to get to the root of the agent app
     application_path = os.path.dirname(application_path)
 
+
+# ── L1 (3X-speed plan): Ollama keep-alive + warm embeddings handle ──────────
+# Mirror of mcp_agent.py's keep_alive resolution so the basic/retrieval chains
+# also pin the model resident (the Multi-Turn executor + gpu_perf already do).
+# Behavior-neutral: same model/params, only resident + connection-reused.
+def _resolve_keep_alive():
+    raw = os.environ.get("OLLAMA_KEEP_ALIVE", "-1").strip()
+    try:
+        return int(raw)
+    except (ValueError, TypeError):
+        return raw or -1
+
+
+# Warm, reused embeddings handle keyed by (model, base_url, token). Recreating
+# OllamaEmbeddings per chain build cost a fresh httpx client (and a cold model
+# reload). Switching the embedding model (Config -> Models) changes the key and
+# misses, so a model switch still takes effect.
+_EMBEDDINGS_CACHE = {}
+
+
+def _get_cached_embeddings(config, client_kwargs):
+    model = config.get('embeding-model')
+    base_url = config.get('ollama_base_url')
+    token = config.get('ollama_token')
+    key = (model, base_url, token)
+    cached = _EMBEDDINGS_CACHE.get(key)
+    if cached is not None:
+        return cached
+    # NOTE: OllamaEmbeddings does NOT accept a keep_alive kwarg (verified
+    # against the installed langchain_ollama); the embedding model is kept
+    # resident via the OLLAMA_KEEP_ALIVE env var + gpu_perf.pin_ollama_model.
+    emb = OllamaEmbeddings(
+        model=model,
+        base_url=base_url,
+        client_kwargs=client_kwargs,
+    )
+    _EMBEDDINGS_CACHE[key] = emb
+    return emb
+
+
 # Helper functions for context fetching
 def get_system_context_sync(payload):
     """Synchronously fetch system context using SystemRAGChain."""
@@ -287,6 +327,7 @@ def build_prompt_only_chain(config, prompt_template_string, documents=None):
         thinking=True,
         context_window=128000,
         handle_parsing_errors=True,
+        keep_alive=_resolve_keep_alive(),
         client_kwargs=client_kwargs,
         callbacks=llm_timing_callbacks(),
     )
@@ -389,6 +430,7 @@ def build_retrieval_chain(documents, config, prompt_template_string):
             thinking=True,
             context_window=128000,
             handle_parsing_errors=True,
+            keep_alive=_resolve_keep_alive(),
             client_kwargs=client_kwargs,
             callbacks=llm_timing_callbacks(),
         )
@@ -480,11 +522,7 @@ def build_retrieval_chain(documents, config, prompt_template_string):
                 chain = _wrap_chain_with_context_prefetch(chain, "2")
             return chain
 
-        embeddings = OllamaEmbeddings(
-            model=config.get('embeding-model'),
-            base_url=config.get('ollama_base_url'),
-            client_kwargs=client_kwargs
-        )
+        embeddings = _get_cached_embeddings(config, client_kwargs)
         if embeddings is None:
             print("Error: Embeddings model not found or Ollama is not running.")
             return None
