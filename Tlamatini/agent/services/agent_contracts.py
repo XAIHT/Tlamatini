@@ -124,6 +124,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "discoverer": ("tool", "target", "returncode", "success", "findings_count", "json_path", "pdcp_used", "stage", "response_body"),
     "telegrammer": ("chat_id", "status", "message_id", "response_body"),
     "whatsapper": ("recipient", "status", "message_id", "response_body"),
+    "zavuerer": ("action", "channel", "to", "status", "message_id", "success", "base_url", "response_body"),
 }
 
 
@@ -182,6 +183,9 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
     # Kalier bridges to the MCP-Kali-Server HTTP API. Its hydra single-password
     # field is credential-shaped, so redact it from .flw exports.
     "kalier": _contract("kalier", secret_paths=("password",)),
+    # Zavuerer bridges to the Zavu unified-messaging REST API; its zavu_api_key is a
+    # credential, so redact it from .flw exports.
+    "zavuerer": _contract("zavuerer", secret_paths=("zavu_api_key",)),
 }
 
 

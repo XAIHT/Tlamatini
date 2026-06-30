@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 2,
+  "nodes": [
+    {
+      "id": "starter-1",
+      "text": "Starter",
+      "left": "40px",
+      "top": "220px",
+      "agentPurpose": "",
+      "configData": {
+        "target_agents": [
+          "apirer_1"
+        ]
+      }
+    },
+    {
+      "id": "apirer-1",
+      "text": "APIrer",
+      "left": "210px",
+      "top": "220px",
+      "agentPurpose": "",
+      "configData": {
+        "url": "https://api.github.com/zen",
+        "method": "GET",
+        "expected_status": 200,
+        "timeout": 30,
+        "target_agents": [
+          "parametrizer_1"
+        ]
+      }
+    },
+    {
+      "id": "parametrizer-1",
+      "text": "Parametrizer",
+      "left": "400px",
+      "top": "220px",
+      "agentPurpose": "",
+      "configData": {
+        "source_agent": "apirer_1",
+        "source_agents": [
+          "apirer_1"
+        ],
+        "target_agent": "zavuerer_1",
+        "target_agents": [
+          "zavuerer_1"
+        ],
+        "_parametrizer_mappings": [
+          {
+            "source_field": "response_body",
+            "target_param": "text",
+            "target_marker": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "zavuerer-1",
+      "text": "Zavuerer",
+      "left": "600px",
+      "top": "220px",
+      "agentPurpose": "",
+      "configData": {
+        "action": "send",
+        "zavu_api_key": "",
+        "zavu_base_url": "https://api.zavu.dev/v1",
+        "to": "+10000000000",
+        "channel": "auto",
+        "text": "(filled by Parametrizer)",
+        "subject": "",
+        "from_sender": "",
+        "fallback": true,
+        "timeout": 60,
+        "target_agents": [
+          "ender_1"
+        ]
+      }
+    },
+    {
+      "id": "ender-1",
+      "text": "Ender",
+      "left": "780px",
+      "top": "220px",
+      "agentPurpose": "",
+      "configData": {
+        "target_agents": [],
+        "output_agents": []
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIndex": 0,
+      "targetIndex": 1,
+      "sourceId": "starter-1",
+      "targetId": "apirer-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 1,
+      "targetIndex": 2,
+      "sourceId": "apirer-1",
+      "targetId": "parametrizer-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 2,
+      "targetIndex": 3,
+      "sourceId": "parametrizer-1",
+      "targetId": "zavuerer-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 3,
+      "targetIndex": 4,
+      "sourceId": "zavuerer-1",
+      "targetId": "ender-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    }
+  ],
+  "artifacts": {
+    "parametrizerMappings": {
+      "parametrizer-1": [
+        {
+          "source_field": "response_body",
+          "target_param": "text",
+          "target_marker": ""
+        }
+      ]
+    }
+  }
+}

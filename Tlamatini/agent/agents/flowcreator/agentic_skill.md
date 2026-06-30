@@ -1367,7 +1367,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking, max 1)
   - `target_agents`: [] (downstream agents — for canvas connection tracking, max 1)
 - **Special behavior**:
-  - Only accepts input from agents that produce structured output: Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, Image-Interpreter, File-Extractor, Prompter, FlowCreator, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer
+  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (46) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gateway-Relayer, Gatewayer, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, MCP Doctor, Mouser, Playwrighter, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, VideoPlayer, Whatsapper, Whisperer, Windower, Zavuerer
   - Exactly one source and one target agent must be connected
   - The source log is treated as a queue of structured segments; Parametrizer reads only the next complete unread segment
   - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI and can map whole fields or optional `{marker}` placeholders inside target strings
@@ -1975,6 +1975,25 @@ system_prompt: |
   - `go_bootstrap`: true / `install_method`: "go" / `go_dir`: "" / `tools_bin`: "" / `go_version`: "1.24.5" / `auto_update`: false / `preflight`: true (private Go toolchain bootstrap + fail-safe gate)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
+
+### 83. Zavuerer
+- **Purpose**: Tlamatini's bridge to **Zavu** (https://www.zavu.dev) — ONE unified messaging API for SMS, WhatsApp, Telegram, Email and Voice. On trigger it POSTs to Zavu's REST endpoint (`/v1/messages`) with a single API key and sends a message (or probes the API). Captures the result into an `INI_SECTION_ZAVUERER` block (`action`, `channel`, `to`, `status`, `message_id`, `success`, `base_url`, plus a `response_body`). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{status}`.
+- **Used for**: Sending a message to a person from a flow without wiring Twilio + Meta + SMTP separately. The `action` field selects ONE: `send` (deliver a message; `channel: auto` lets Zavu's ML pick the best channel with automatic fallback) or `health` (probe the Zavu API + key). The simplest "notify a human" / "page my phone" step.
+- **Aimed at**: A terminal notification step at the END of a pipeline (like Emailer / Notifier), e.g. `... → Forker → Zavuerer (channel: auto, text: "Build failed ❌")`. Do NOT start Zavuerer from the Starter — it is a notification/output agent, place it at the end. The `zavu_api_key` is set once (sign up at https://www.zavu.dev — free to register, pay-as-you-go to send); if empty a `send` returns `status: refused` (routable, not a crash).
+- **Application example**: Starter → Executer (run the build) → Forker (branch on the build result) → Zavuerer (`action: send`, `to: +14155551234`, `channel: auto`, `text: "Tlamatini build finished ✅"`) → Ender.
+- **Pool name pattern**: `zavuerer_<n>`
+- **Parametrizer source**: emits `INI_SECTION_ZAVUERER` with fields `action`, `channel`, `to`, `status`, `message_id`, `success`, `base_url`, and body=`response_body`.
+- **Starts other agents**: YES (always, success or failure)
+- **Config parameters**:
+  - `action`: "send" (send|health)
+  - `zavu_api_key`: "" (your Zavu API key — from https://www.zavu.dev (free sign-up, pay-as-you-go to send); empty = a `send` refuses)
+  - `zavu_base_url`: "https://api.zavu.dev/v1"
+  - `to`: "" (+E.164 phone for SMS/WhatsApp/Voice/Telegram, or an email for Email)
+  - `channel`: "auto" (auto|sms|whatsapp|telegram|voice|email)
+  - `text`: "" (the message body) / `subject`: "" (Email only) / `from_sender`: "" (optional)
+  - `fallback`: true (auto-fallback to another channel if the chosen one fails) / `timeout`: 60
+  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the send)
 
 ---
 

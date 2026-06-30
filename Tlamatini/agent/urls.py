@@ -149,6 +149,7 @@ urlpatterns = [
     path('update_mouser_connection/<str:agent_name>/', secure_post(views.update_mouser_connection_view), name='update_mouser_connection'),
     path('update_windower_connection/<str:agent_name>/', secure_post(views.update_windower_connection_view), name='update_windower_connection'),
     path('update_kalier_connection/<str:agent_name>/', secure_post(views.update_kalier_connection_view), name='update_kalier_connection'),
+    path('update_zavuerer_connection/<str:agent_name>/', secure_post(views.update_zavuerer_connection_view), name='update_zavuerer_connection'),
     path('update_discoverer_connection/<str:agent_name>/', secure_post(views.update_discoverer_connection_view), name='update_discoverer_connection'),
     path('update_stm32er_connection/<str:agent_name>/', secure_post(views.update_stm32er_connection_view), name='update_stm32er_connection'),
     path('update_esp32er_connection/<str:agent_name>/', secure_post(views.update_esp32er_connection_view), name='update_esp32er_connection'),

@@ -1399,6 +1399,9 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "platform", "status", "telegram_status", "whatsapp_status",
         "contact_status", "repair_status", "retry_status", "actions_required",
     ),
+    "zavuerer": (
+        "action", "channel", "to", "status", "message_id", "success", "base_url",
+    ),
 }
 
 
@@ -1892,6 +1895,25 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
             logger.info(
                 "[tools._seed_global_agent_defaults] Kalier server_url seeded from config: %s",
                 configured.strip(),
+            )
+
+    if template_dir == "zavuerer":
+        # Zavuerer is the "embedded client" for the Zavu unified-messaging API:
+        # the secret zavu_api_key lives once in config.json (Config -> Access Keys
+        # Wizard, "Unified Messaging (Zavu)") so chat prompts never repeat it. Seed
+        # it as the default so a plain "text my phone that the build is done"
+        # authenticates without the LLM (or the user) ever pasting the key.
+        try:
+            configured = get_config_value("zavu_api_key", "")
+        except Exception as exc:  # pragma: no cover - config read is best-effort
+            logger.warning("[tools._seed_global_agent_defaults] could not read zavu_api_key: %s", exc)
+            configured = ""
+        if isinstance(configured, str) and configured.strip():
+            runtime_config["zavu_api_key"] = configured.strip()
+            # NEVER log the key itself - only that one was seeded (length only).
+            logger.info(
+                "[tools._seed_global_agent_defaults] Zavuerer zavu_api_key seeded from config (length=%d)",
+                len(configured.strip()),
             )
 
     if template_dir == "stm32er":

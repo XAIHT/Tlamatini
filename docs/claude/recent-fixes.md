@@ -18,6 +18,10 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-06-29 — Catalog of Prompts off-by-one: the dropdown silently hid `prompt-100` — do NOT revert
+
+`static/agent/js/tools_dialog.js::loadPrompts()` enumerated the catalog with `for (let i = 1; i < MAX_PROMPTS; i++)` (`MAX_PROMPTS = 100`), so it loaded **prompt-1..prompt-99** and the **100th slot never rendered**. Latent for as long as there were ≤99 prompts; adding the Zavuerer "get-your-Zavu-key" wizard at `prompt-100` (migration `0163_add_zavuerer_get_key_wizard_prompt.py`) exposed it. Fix: the loop bound is now **`i <= MAX_PROMPTS`** (inclusive), matching the documented `MAX_PROMPTS` cap (100 at the time of this fix), so all contiguous slots show (the existing break-at-first-gap still stops early when a slot is genuinely missing). **Keep it `<=`** — reverting to `<` re-hides whatever sits in the last slot. Ran `collectstatic` so the running server serves the fixed loop. **Headroom — `MAX_PROMPTS` bumped 100 → 256 on 2026-06-29** (the catalog had hit 100/100 when the Zavuerer wizard took slot 100; 256 gives 156 free slots). The FOUR references that MUST stay byte-coherent on any future cap change: `tools_dialog.js` (the `const MAX_PROMPTS`), `CLAUDE.md`, `Tlamatini/.agents/workflows/create_new_agent.md`, and the `tlamatini-agent-creation` skill. The backend `load_prompt_view` has **NO** cap (it serves any `prompt-<N>` by `promptName`), so the frontend `MAX_PROMPTS` loop bound is the ONLY catalog ceiling.
+
 ### 2026-06-28 — 3X-speed plan L1 + L2 landed (Ollama serving-layer detector, warm embeddings handle, explicit keep_alive on basic/retrieval chains; reaper O(N) carried) — do NOT revert
 
 **Context:** First execution slice of `surgical_improving_speed_of_Tlamatini_by_a_factor_of_3X.md` (repo root). Surgical, behavior-neutral speed work.

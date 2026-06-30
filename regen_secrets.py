@@ -26,6 +26,7 @@ Targeted files (resolved relative to this script):
         ollama_token       (top)
         whatsapp_access_token, whatsapp_phone_number_id  (top — Whatsapper / Meta Cloud API)
         telegram_bot_token (top — Telegrammer / official Telegram Bot API)
+        zavu_api_key       (top — Zavuerer / Zavu unified-messaging API; secret)
 
     Tlamatini/agent/agents/telegrammer/config.yaml
         telegram.bot_token   (official Telegram Bot API token from @BotFather)
@@ -45,6 +46,9 @@ Targeted files (resolved relative to this script):
     Tlamatini/agent/agents/recmailer/config.yaml
         imap.username, imap.password (Gmail app password from
         https://myaccount.google.com/apppasswords)
+
+    Tlamatini/agent/agents/zavuerer/config.yaml
+        zavu_api_key (Zavu unified-messaging REST API key from https://www.zavu.dev)
 
 YAML files are edited line-by-line so all comments survive intact. The JSON
 file is round-tripped through json.load/dump (its existing format already uses
@@ -76,6 +80,7 @@ WHATSAPPER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "whatsapper" / 
 TELETLAMATINI_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "teletlamatini" / "config.yaml"
 EMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "emailer" / "config.yaml"
 RECMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "recmailer" / "config.yaml"
+ZAVUERER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "zavuerer" / "config.yaml"
 
 
 def placeholder(name: str) -> str:
@@ -153,6 +158,7 @@ def patch_config_json(mode: str, keys: Dict[str, str], dry_run: bool) -> List[st
     set_top("whatsapp_access_token",     "WHATSAPP_ACCESS_TOKEN")
     set_top("whatsapp_phone_number_id",  "WHATSAPP_PHONE_NUMBER_ID")
     set_top("telegram_bot_token",        "TELEGRAM_BOT_TOKEN")
+    set_top("zavu_api_key",              "ZAVU_API_KEY")
 
     set_acpx_env("claude", "ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
     set_acpx_env("gemini", "GEMINI_API_KEY",    "GEMINI_API_KEY")
@@ -206,6 +212,10 @@ EMAILER_RULES: List[Tuple[List[str], str]] = [
 RECMAILER_RULES: List[Tuple[List[str], str]] = [
     (["imap", "username"], "RECMAILER_USERNAME"),
     (["imap", "password"], "RECMAILER_PASSWORD"),
+]
+
+ZAVUERER_RULES: List[Tuple[List[str], str]] = [
+    (["zavu_api_key"], "ZAVU_API_KEY"),
 ]
 
 
@@ -390,6 +400,7 @@ def main() -> int:
                    force_quote_passwords=True),
         patch_yaml(RECMAILER_YAML,     RECMAILER_RULES,     args.mode, keys, args.dry_run,
                    force_quote_passwords=True),
+        patch_yaml(ZAVUERER_YAML,      ZAVUERER_RULES,      args.mode, keys, args.dry_run),
     ]
     for block in reports:
         for line in block:

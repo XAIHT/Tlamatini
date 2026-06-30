@@ -10,7 +10,7 @@
 """
 Seed one Catalog-of-Prompts demo for the **flow-making** skill — turning a plain
 objective into a downloadable, canvas-loadable `.flw` by driving the FlowCreator
-engine (full 69-agent catalog) end-to-end from chat, through `invoke_skill`.
+engine (full 83-agent catalog) end-to-end from chat, through `invoke_skill`.
 
     69  ALARM FLOW FORGE   builds `alarm_every_3_hours.flw` (a recurring
                            "every 3 hours, Telegram me that another 3-hour lap

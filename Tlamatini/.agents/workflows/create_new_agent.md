@@ -530,7 +530,7 @@ class Migration(migrations.Migration):
 ```
 
 Rules (do not break the catalog):
-- **CONTIGUITY contract** — the `#prompts-catalog` dropdown (`static/agent/js/tools_dialog.js`) enumerates `prompt-1, prompt-2, …` and **BREAKS at the first missing slot**, so `idPrompt` / `promptName` suffixes MUST stay a contiguous, gap-free `prompt-1..N`. **Find the current highest `idPrompt`** (read the latest `*_demo_prompts.py` migration) and **APPEND** at the next free slot with no renumber. `MAX_PROMPTS=100`.
+- **CONTIGUITY contract** — the `#prompts-catalog` dropdown (`static/agent/js/tools_dialog.js`) enumerates `prompt-1, prompt-2, …` and **BREAKS at the first missing slot**, so `idPrompt` / `promptName` suffixes MUST stay a contiguous, gap-free `prompt-1..N`. **Find the current highest `idPrompt`** (read the latest `*_demo_prompts.py` migration) and **APPEND** at the next free slot with no renumber. `MAX_PROMPTS=256` (bumped from 100 on 2026-06-29 when the wizard filled slot 100; keep the JS const + CLAUDE.md + this guide + the `tlamatini-agent-creation` skill byte-coherent).
 - The prompt must drive the new agent via `chat_agent_<agent_name>`, with a **realistic, SAFE** task (the daily chat test may run it — no destructive ops).
 - Phrase it so the prompt-catalog **mode badges** infer the right toggles (Multi-Turn ON for operator prompts); style the HTML banner to mirror the agent's CSS gradient (copy a recent sibling's prompt migration).
 - Implement the reverse migration (delete the seeded rows) and set `dependencies` on the previous migration. Then `python manage.py migrate` and confirm the prompt shows in the `#prompts-catalog` modal.

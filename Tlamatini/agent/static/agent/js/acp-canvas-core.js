@@ -13,7 +13,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -252,6 +252,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'mouser': 'mouser-agent',
     'windower': 'windower-agent',
     'kalier': 'kalier-agent',
+    'zavuerer': 'zavuerer-agent',
     'stm32er': 'stm32er-agent',
     'esp32er': 'esp32er-agent',
     'esphomer': 'esphomer-agent',
@@ -970,6 +971,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'discoverer') updateDiscovererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'zavuerer') updateZavuererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esp32er') updateEsp32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esphomer') updateEsphomerConnection(sourceId, targetId, 'remove');
@@ -1110,6 +1112,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'windower' && !sourceBeingDeleted) updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'discoverer' && !sourceBeingDeleted) updateDiscovererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier' && !sourceBeingDeleted) updateKalierConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'zavuerer' && !sourceBeingDeleted) updateZavuererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er' && !sourceBeingDeleted) updateStm32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esp32er' && !sourceBeingDeleted) updateEsp32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esphomer' && !sourceBeingDeleted) updateEsphomerConnection(sourceId, targetId, 'remove');
@@ -1606,6 +1609,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'discoverer') updateDiscovererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'zavuerer') updateZavuererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'esp32er') updateEsp32erConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'esphomer') updateEsphomerConnection(sourceId, targetId, 'add');

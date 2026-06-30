@@ -272,6 +272,11 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # ``kalier`` agent_key so a mixed flow renders as one "List of Kalier
     # Operations" table.
     "chat_agent_kalier":         ("kalier",         "Kalier"),
+    # Zavuerer is state-changing: it SENDS messages (SMS / WhatsApp / Telegram /
+    # Email / Voice) through the Zavu unified-messaging REST API. The read-only
+    # ``health`` probe shares the same ``zavuerer`` agent_key so a mixed flow renders
+    # as one "List of Zavuerer Operations" table.
+    "chat_agent_zavuerer":         ("zavuerer",         "Zavuerer"),
     # STM32er is state-changing: it drives the STM32 Template Project MCP server
     # to scaffold / write / build / flash / erase / reset firmware and to
     # write_memory on a running MCU. Read-only actions (get_config / read_source /
@@ -446,6 +451,8 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
         return f"kubectl CLI via {os_shell}"
     if name == "chat_agent_kalier":
         return "Kali Linux (MCP-Kali-Server)"
+    if name == "chat_agent_zavuerer":
+        return "Zavu unified-messaging API (HTTPS)"
     if name == "chat_agent_stm32er":
         return "STM32 Template Project MCP"
     if name == "chat_agent_esp32er":

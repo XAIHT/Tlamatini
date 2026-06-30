@@ -392,6 +392,18 @@ _EXTRA_HINTS_BY_TOOL_NAME = {
         "crack the hash", "crack hashes", "password cracking", "wpscan",
         "wordpress scan", "enum4linux", "smb enumeration",
     ),
+    # Wrapped Zavuerer — Zavu unified-messaging bridge. These tokens lift it above
+    # the planner cap on "message a person" prompts ("send me an SMS", "WhatsApp
+    # John when the build is done", "text my number") without colliding with the
+    # generic emailer / notifier tools.
+    "chat_agent_zavuerer": (
+        "zavuerer", "zavu", "send a message", "send message", "send sms", "send an sms",
+        "send a text", "send a text message", "text message", "send whatsapp",
+        "whatsapp message", "send a whatsapp", "send telegram", "telegram message",
+        "voice message", "send an email", "unified messaging", "one api messaging",
+        "notify by sms", "text my", "message my", "ping me on whatsapp",
+        "send a notification",
+    ),
     # Wrapped STM32er — STM32 Template Project MCP bridge for firmware
     # scaffold/build/flash/observe. These tokens lift it above the planner cap on
     # embedded / microcontroller prompts ("build the STM32 firmware", "flash the

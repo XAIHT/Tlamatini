@@ -258,6 +258,24 @@ KALIER SPECIAL NOTES:
     Flask API server is not running on the Kali box, the SSH tunnel is down, or
     `server_url` is wrong. Treat a connection error like a broken chain hop.
 
+ZAVUERER SPECIAL NOTES:
+  - Zavuerer is SHORT-LIVED and ACTIVE: it POSTs ONE request to the Zavu
+    unified-messaging REST API (send a message, or a `health` probe), captures
+    the result into an `INI_SECTION_ZAVUERER<<<` block, and ALWAYS triggers
+    `target_agents` regardless of success or failure. A quick run that then ends
+    is NORMAL, not "stuck".
+  - Duration is sub-second to a few seconds (one HTTP round-trip). Flag only on
+    total silence > ~2 minutes (a hung network call past its `timeout`).
+  - `success: false`, `status: failed`, or `status: refused` INSIDE the section is
+    NOT a flow error — a refused send (the `zavu_api_key` is empty / not yet
+    configured) or a provider rejection is routable content for a downstream
+    Forker / Raiser. NEVER flag a Zavuerer `INI_SECTION_ZAVUERER<<<` block as an error
+    even when its body looks like a send error (that body is data for the next
+    agent to act on).
+  - Legitimate Zavuerer error to flag: "Cannot reach the Zavu API at ..." — the
+    network is down, `zavu_base_url` is wrong, or zavu.dev is unreachable. Treat a
+    connection error like a broken chain hop.
+
 TELEGRAMMER / WHATSAPPER SPECIAL NOTES:
   - Both are SHORT-LIVED send/receive agents that finish and then start their
     `target_agents`. A quick run that then ends is NORMAL, not "stuck".

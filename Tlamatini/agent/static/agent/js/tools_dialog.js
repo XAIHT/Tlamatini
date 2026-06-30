@@ -170,7 +170,7 @@ function applyPromptModesToToggles(modes) {
 }
 
 $(function () {
-    const MAX_PROMPTS = 100;
+    const MAX_PROMPTS = 256;
     const catalogButton = document.getElementById('prompts-catalog');
     const modal = document.getElementById('modal');
     const modalContent = document.querySelector('.modal-content');
@@ -251,7 +251,7 @@ $(function () {
         toolsBodyElement.innerHTML = "";
 
         try {
-            for (let i = 1; i < MAX_PROMPTS; i++) {
+            for (let i = 1; i <= MAX_PROMPTS; i++) {
                 const promptNameIterator = "prompt-" + i.toString();
                 const errorDetected = await loadPrompt(promptNameIterator, i);
                 if (errorDetected === true) {

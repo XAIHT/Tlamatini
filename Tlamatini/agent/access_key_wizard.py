@@ -213,6 +213,20 @@ WIZARD_GROUPS: Tuple[WizardGroup, ...] = (
             ),
         ),
     ),
+    WizardGroup(
+        key="zavu",
+        title="Unified Messaging (Zavu)",
+        fields=(
+            WizardField(
+                key="ZAVU_API_KEY",
+                label="Zavuerer / Zavu API key (SMS · WhatsApp · Telegram · Email · Voice)",
+                group="zavu",
+                json_key="zavu_api_key",
+                yaml_rules=(("zavuerer", ("zavu_api_key",), True),),
+                note="ONE key for every channel. Get it at https://www.zavu.dev (free sign-up; pay-as-you-go to send). Used by the Zavuerer agent + chat_agent_zavuerer; auto-injected on every run.",
+            ),
+        ),
+    ),
 )
 
 FIELD_BY_KEY: Dict[str, WizardField] = {
@@ -241,6 +255,10 @@ AGENT_YAML_RELATIVE_PATHS: Dict[str, Tuple[str, str]] = {
     "recmailer": (
         "Tlamatini/agent/agents/recmailer/config.yaml",
         "agents/recmailer/config.yaml",
+    ),
+    "zavuerer": (
+        "Tlamatini/agent/agents/zavuerer/config.yaml",
+        "agents/zavuerer/config.yaml",
     ),
 }
 

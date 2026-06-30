@@ -1,0 +1,60 @@
+# Zavuerer Agent Configuration
+#
+# Zavuerer is Tlamatini's bridge to **Zavu** (https://www.zavu.dev) — ONE unified
+# messaging API for SMS, WhatsApp, Telegram, Email and Voice. Instead of wiring
+# Twilio + Meta Cloud API + SMTP separately (each with its own auth, templates,
+# WABA setup and 24-hour windows), Zavuerer sends through a single REST endpoint
+# with one API key, optional ML smart-routing (channel="auto") and automatic
+# fallback (e.g. WhatsApp fails -> SMS). It talks to the Zavu REST API DIRECTLY
+# over HTTP using only the Python stdlib (urllib) — exactly like the Kalier /
+# Apirer agents — so it runs identically in source and frozen builds and never
+# needs an SDK inside the agent-pool subprocess.
+#
+# Get a key at https://www.zavu.dev (free sign-up; pay-as-you-go to send), then paste it into
+# `zavu_api_key` below (or Config -> Access Keys in the navbar). Authorized,
+# opted-in recipients only — respect each channel's anti-spam / consent rules.
+
+# action — which Zavu capability to invoke:
+#   send   : send a message on a channel        (to, text, channel, subject, from_sender, fallback)
+#   health : probe the Zavu API / key (GET)     (no params)
+action: "send"
+
+# zavu_api_key — your Zavu project API key (secret). Empty = NOT configured;
+# a `send` will refuse with a clear "set your Zavu key" message (and still trigger
+# downstream so a Forker can branch). Get the key at https://www.zavu.dev (free sign-up; pay-as-you-go to send).
+zavu_api_key: <ZAVU_API_KEY goes here>
+
+# zavu_base_url — base URL of the Zavu REST API. The send endpoint is
+# `<zavu_base_url>/messages`. Adjust if your Zavu dashboard shows a different host.
+zavu_base_url: "https://api.zavu.dev/v1"
+
+# to — the recipient:
+#   * +E.164 phone number for SMS / WhatsApp / Voice / Telegram (e.g. "+14155551234")
+#   * an email address for the Email channel (e.g. "you@example.com")
+to: ""
+
+# channel — which channel to send on:
+#   auto      : let Zavu's ML pick the best/cheapest channel (recommended)
+#   sms | whatsapp | telegram | voice | email
+channel: "auto"
+
+# text — the message body to send.
+text: ""
+
+# subject — Email subject line (Email channel only; optional, ignored elsewhere).
+subject: ""
+
+# from_sender — optional sender / "from" override (channel-specific; leave empty
+# to use the default sender configured on your Zavu account).
+from_sender: ""
+
+# fallback — when true, Zavu automatically falls back to another channel if the
+# chosen one fails (delivery is deduplicated, cost tracked across the chain).
+fallback: true
+
+# timeout — seconds to wait for the Zavu API HTTP response.
+timeout: 60
+
+# Connection fields
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the send (ALWAYS triggered)

@@ -1,6 +1,6 @@
 ---
 name: flow-making
-description: Turn a natural-language objective into a downloadable .flw workflow by driving the FlowCreator engine (full 69-agent catalog), then emit a canvas-loadable .flw.
+description: Turn a natural-language objective into a downloadable .flw workflow by driving the FlowCreator engine (full 83-agent catalog), then emit a canvas-loadable .flw.
 metadata:
   openclaw:
     emoji: "🌊"
@@ -52,7 +52,7 @@ metadata:
 # Flow-Making
 
 Produce a canvas-loadable `.flw` from `${input.objective}` by wrapping the
-**FlowCreator** engine — which already encodes the full 69-agent catalog,
+**FlowCreator** engine — which already encodes the full 83-agent catalog,
 connection contracts, and design rules in `agentic_skill.md`. Do NOT hand-author
 the `.flw` JSON yourself: you do not carry the agent catalog/config-key contracts
 in context, so a hand-written flow hallucinates agent types and will not load.

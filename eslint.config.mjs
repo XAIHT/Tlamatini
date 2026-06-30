@@ -415,6 +415,7 @@ export default [
                 updateWindowerConnection: "readonly",
                 updateCounterConnection: "readonly",
                 updateKalierConnection: "readonly",
+                updateZavuererConnection: "readonly",
                 updateDiscovererConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js

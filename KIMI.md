@@ -213,7 +213,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 82 workflow agent templates
+│   │   ├── agents/                 # 83 workflow agent templates
 │   │   │   ├── starter/            # Flow initiator
 │   │   │   ├── ender/              # Flow terminator
 │   │   │   ├── stopper/            # Pattern-based agent terminator
@@ -474,7 +474,7 @@ Binding every enabled tool every turn would balloon the prompt, so two cost trim
 - `invoke_skill(name, inputs)` — Execute a skill via harness
 
 **Wrapped Chat-Agent Tools** (registered in `agent/chat_agent_registry.py`):
-`WRAPPED_CHAT_AGENT_SPECS` (recent additions: `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_esphomer`, `chat_agent_camcorder`, `chat_agent_recorder`, `chat_agent_audioplayer`, `chat_agent_videoplayer`, `chat_agent_mcp_doctor`, and `chat_agent_discoverer`). Key ones:
+`WRAPPED_CHAT_AGENT_SPECS` (recent additions: `chat_agent_windower`, `chat_agent_kalier`, `chat_agent_unrealer`, `chat_agent_stm32er`, `chat_agent_esp32er`, `chat_agent_arduiner`, `chat_agent_esphomer`, `chat_agent_camcorder`, `chat_agent_recorder`, `chat_agent_audioplayer`, `chat_agent_videoplayer`, `chat_agent_mcp_doctor`, `chat_agent_discoverer`, and `chat_agent_zavuerer`). Key ones:
 - `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_dockerer`, `chat_agent_kuberneter`
 - `chat_agent_ssher`, `chat_agent_scper`, `chat_agent_gitter`
 - `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_apirer`
@@ -713,7 +713,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 82 Workflow Agent Types
+## 12. All 83 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -764,6 +764,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **Windower** — Win32 window manager (pywin32 + ctypes, self-contained; ports the window-management subset of Microsoft's Windows-MCP incl. the `AttachThreadInput` cross-process focus dance). The third member of the desktop-UI trio — acts on the WINDOW itself (Windower = the window, Mouser = clicks inside it, Keyboarder = types into it). `action` ∈ list / focus / minimize / maximize / restore / move / resize / move_resize / close / topmost / untopmost / arrange (snap/tile to halves, quadrants, center, full); matches `window_title` by substring/exact/regex (+ `match_index`); emits `INI_SECTION_WINDOWER` (`action`/`window_title`/`matched`/`match_count`/`state`/`left`/`top`/`width`/`height`/`response_body`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_windower` Multi-Turn tool
 - **Kalier** — Kali Linux offensive-security bridge. Talks to the MCP-Kali-Server (`https://www.kali.org/tools/mcp-kali-server/`) Flask API (`server.py`; default `http://127.0.0.1:5000`) over stdlib `urllib` (self-contained, no `requests`/`mcp` deps in the pool). `action` ∈ command / nmap / gobuster / dirb / nikto / sqlmap / metasploit / hydra / john / wpscan / enum4linux / health; emits `INI_SECTION_KALIER` (`action`/`endpoint`/`method`/`subject`/`return_code`/`success`/`timed_out`/`server_url`/`response_body`) and always triggers `target_agents`. In **chat/Multi-Turn** Tlamatini is the embedded MCP-Kali-Server client: `chat_agent_kalier` auto-injects the configured **`kali_server_url`** (set once in Config ▸ URLs / `config.json`) as the default `server_url`, so prompts never repeat the Kali box address (override per-call with `server_url=`); canvas runs set it in the node dialog. Both a canvas agent and the LLM-callable `chat_agent_kalier` Multi-Turn tool. Authorized targets only
 - **Discoverer** — ProjectDiscovery recon-suite bridge (`https://github.com/projectdiscovery`) for recon / attack-surface mapping / vuln discovery. Runs ONE tool per run selected by `tool` ∈ subfinder (passive subdomain enum) / httpx (HTTP probe + fingerprint) / naabu (port scan) / katana (crawler) / nuclei (template vuln scan) / cvemap→vulnx (CVE search), plus meta `bootstrap` / `validate` / `update_templates` / `list_tools`. Direct-CLI sibling of Kalier/ESP32er/Arduiner (stdlib-only `agent/agents/discoverer/discoverer.py`; no MCP server, never imports `agent.*`). **Zero-config PRIVATE Go toolchain**: on first use it downloads the Go compiler into `<install_dir>/Go` and `go install`s the tool into `<install_dir>/Go/bin-tools` — no system Go, no PATH change. The `pdcp_api_key` (PDCP_API_KEY) is OPTIONAL for every tool; naabu defaults to a Windows-safe CONNECT scan; a fail-safe preflight REFUSES rather than mis-scan. Emits `INI_SECTION_DISCOVERER` (`tool`/`target`/`returncode`/`success`/`findings_count`/`json_path`/`pdcp_used`/`stage`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_discoverer` Multi-Turn tool. Authorized targets only
+- **Zavuerer** — **Zavu** unified-messaging bridge (`https://www.zavu.dev`): ONE REST API key for SMS / WhatsApp / Telegram / Email / Voice. Sends via Zavu's `/v1/messages` with `channel: auto` ML smart-routing + auto-fallback (e.g. WhatsApp fails → SMS); direct HTTP (stdlib `urllib`, no SDK, never imports `agent.*`), like Kalier/Apirer. The `zavu_api_key` (free to sign up at zavu.dev, but Zavu charges pay-as-you-go to send) is set ONCE via Config ▸ Access Keys Wizard ▸ "Unified Messaging (Zavu)" and auto-injected on every run; with no key a send REFUSES (`status: refused`). Fail-safe preflight (key/recipient/text/channel). Emits `INI_SECTION_ZAVUERER` (`action`/`channel`/`to`/`status`/`message_id`/`success`/`base_url`) and always triggers `target_agents`. Both a canvas agent and the LLM-callable `chat_agent_zavuerer` Multi-Turn tool. Authorized, opted-in recipients only
 - **File-Creator** — Creates files with specified content
 - **File-Interpreter** — Document parsing and text/image extraction
 - **File-Extractor** — Raw text extraction (PDF, DOCX, etc.)

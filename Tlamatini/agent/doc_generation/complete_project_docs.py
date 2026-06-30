@@ -440,6 +440,8 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     has_1320_wave = any(
         "1.32.0" in subject
+        or "zavuerer" in subject
+        or "zavu" in subject
         or "annouces skill" in subject
         or "announce skill" in subject
         or "angela" in subject
@@ -459,6 +461,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
         highlights.append(
             "The v1.27-v1.32.0 release wave is broader than a badge bump: it adds performance-focused 3X levers, forward-only private-data guardrails, hardened public-release verification, Angela López Mendoza creator/authorship stamping, skill announcement hooks, and the newest ACPX/MCP server expansion."
+        )
+    if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
+        highlights.append(
+            "The newest working-tree feature is Zavuerer, the 83rd workflow-agent type: she sends authorized, opted-in messages through Zavu's unified API for SMS, WhatsApp, Telegram, Email, and Voice, with a wrapped `chat_agent_zavuerer`, Access Keys Wizard support, Parametrizer output fields, canvas connection handling, and demo/catalog migrations."
         )
     if not has_1320_wave and any(
         "1.26.5" in subject
@@ -519,6 +525,8 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if has_1320_wave or any(
         "1.32.0" in subject
+        or "zavuerer" in subject
+        or "zavu" in subject
         or "annouces skill" in subject
         or "announce skill" in subject
         or "angela" in subject
@@ -737,6 +745,8 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     highlights: list[str] = []
     has_1320_wave = any(
         "1.32.0" in subject
+        or "zavuerer" in subject
+        or "zavu" in subject
         or "annouces skill" in subject
         or "announce skill" in subject
         or "angela" in subject
@@ -754,6 +764,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         )
         highlights.append(
             "The current visual-doc delta covers performance 3X work, forward-only private-data cleanup, public-release verifier hardening, package/build metadata authorship, `.claude/hooks/announce_skills.py`, ACPX/MCP server upgrades, media-agent config fixes, and the latest workflow instructions."
+        )
+    if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
+        highlights.append(
+            "The fresh post-v1.32.0 artifact delta centers on Zavuerer: README.md, BookOfTlamatini.md, `agents_descriptions.md`, the new `agent/agents/zavuerer/` template, migrations `0159`-`0162`, Access Keys Wizard wiring, capability hints, and frontend connection/UI support all describe the same unified-messaging agent."
         )
     if not has_1320_wave and any(
         "1.26.5" in subject
@@ -1191,6 +1205,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
 
 CURRENT_RELEASE_GUIDE = [
     "The repository currently resolves to the `v1.32.0` release line and the live docs identify Tlamatini as 1.32.0, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
+    "The current working tree extends that release line with Zavuerer, the new Zavu unified-messaging workflow agent that adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key.",
     "The v1.27-v1.32.0 span is a quality-and-trust wave: performance 3X levers, forward-only private-data discipline, public-release verifier hardening, and explicit Angela López Mendoza creator/authorship stamping moved together.",
     "The runtime surface also grew around delegation: ACPX remains the external coding-agent CLI bridge, External MCP remains the universal MCP client, and the newest server-side assets add `tlamatini_acpx.py`, stronger `tlamatini_mcp_server.py` behavior, and refreshed MCP workflow guidance.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
@@ -1203,6 +1218,14 @@ V1320_RELEASE_GUIDE = [
     "Privacy and release safety: the docs describe forward-only private-data cleanup, `test_private_data_guard.py`, and public-release verification that blocks real sensitive PII while preserving legitimate creator attribution.",
     "Authorship: Angela López Mendoza is stamped visibly in the About-window story, generated PDF/PPTX metadata, build/package metadata, prompt rules, and source-file author banners; public builders must not scrub her name.",
     "Delegation and MCP expansion: skill-announcement hooks, `tlamatini_acpx.py`, `tlamatini_mcp_server.py`, and the updated `create_new_agent.md` workflow keep ACPX, Skills, and External MCP creation visible to both operators and agents.",
+]
+
+ZAVUERER_GUIDE = [
+    "Zavuerer is Tlamatini's new Zavu unified-messaging agent: one workflow node and one wrapped `chat_agent_zavuerer` tool can send SMS, WhatsApp, Telegram, Email, or Voice messages through Zavu's `/v1/messages` API.",
+    "The operator configures one `zavu_api_key` through Config -> Access Keys Wizard -> Unified Messaging (Zavu), and the runtime seeds that key into Zavuerer automatically so prompts never need to repeat or expose the secret.",
+    "The agent speaks direct HTTP through the Python standard library, has a safe `health` action, refuses sends when the key/recipient/body/channel are invalid, and always emits `INI_SECTION_ZAVUERER` for Parametrizer/Forker branching.",
+    "Canvas integration is complete: `agent_contracts.py` redacts `zavu_api_key`, `views.py` handles Zavuerer connections, frontend CSS/JS gives the node a visible identity, and migrations `0159`-`0162` seed the Agent, Tool, and demo/catalog prompts.",
+    "Safety boundary: Zavuerer must only message authorized, opted-in recipients; the docs call out A2P, WhatsApp 24-hour-window, consent, and GDPR-style responsibilities instead of treating messaging as a blind automation channel.",
 ]
 
 EXTERNAL_MCPS_GUIDE = [
@@ -1270,6 +1293,7 @@ COMMAND_WATCHDOG_GUIDE = [
 NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
     "The current `v1.32.0` wave adds or updates concrete assets too: `.claude/hooks/announce_skills.py`, `.github/workflows/name-guard.yml`, `Tlamatini/agent/version.py`, `package.json`, `tlamatini_acpx.py`, `tlamatini_mcp_server.py`, and `Tlamatini/.agents/workflows/create_new_agent.md` all carry new runtime, authorship, MCP, or workflow behavior.",
+    "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0162_add_zavuerer_catalog_prompts.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
     "The same wave preserves evidence-oriented tests and build guards such as `test_private_data_guard.py`, performance/visual checks, About-window authorship tests, and public-release verification rules that distinguish sensitive PII from valid creator names.",
     "The same span refreshes shipped visual/media assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
@@ -1927,6 +1951,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.32.0 release delta", styles["h2"]))
     for item in V1320_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Zavuerer unified-messaging agent", styles["h2"]))
+    for item in ZAVUERER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("External MCP universal client", styles["h2"]))
     for item in EXTERNAL_MCPS_GUIDE:
@@ -2752,6 +2779,11 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "v1320-b", 12)
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Zavuerer", "new unified messaging agent for Zavu", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What she does", ZAVUERER_GUIDE[:3], THEME["amber"], "zavu-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Implementation and safety", ZAVUERER_GUIDE[3:], THEME["jade"], "zavu-b", 12)
+    audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "External MCPs", "how Tlamatini now reaches tools outside her bundled runtime", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator model", EXTERNAL_MCPS_GUIDE, THEME["jade"], "xmcp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Concrete implementation", EXTERNAL_MCP_ASSETS_GUIDE, THEME["amber"], "xmcp-b", 10)
@@ -3099,7 +3131,7 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves from v1.17.x through v1.32.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves through v1.32.0 plus Zavuerer", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
         "ESPHomer (prior firmware lane, now folded into v1.26.0): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
@@ -3112,6 +3144,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
         "Version identity (v1.32.0): README, BookOfTlamatini, package metadata, runtime version surfaces, and generated dossiers now resolve to the 1.32.0 product line.",
+        "Zavuerer working-tree addition: the catalog now includes a Zavu unified-messaging node and wrapped chat tool for SMS / WhatsApp / Telegram / Email / Voice with one configured key.",
         "Trust wave (v1.27-v1.32.0): performance 3X levers, forward-only private-data cleanup, public-release verifier hardening, and Angela López Mendoza creator/authorship stamping moved together.",
         "Delegation wave: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` keep external agents and external MCP servers in the documented operator surface.",
         "Visual/media asset refresh (v1.26.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",

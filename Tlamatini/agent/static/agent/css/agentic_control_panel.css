@@ -1360,6 +1360,23 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(57, 255, 20, 0.5);
 }
 
+/* Zavuerer Agent — Zavu unified-messaging bridge (ONE API for SMS / WhatsApp /
+   Telegram / Email / Voice). A four-channel "signal spectrum" ramp: teal →
+   royal-blue → violet → rose — four distinct hues for the four+ channels Zavu
+   unifies, sweeping cool-to-warm so it reads as a multi-channel broadcast. No
+   other agent uses this teal→blue→violet→rose sweep (Kalier is mono-green,
+   ACPXer is navy→magenta→cyan, the firmware agents are blue/red/charcoal). */
+.canvas-item.zavuerer-agent {
+    background-color: #14B8A6;
+    background: linear-gradient(135deg, #14B8A6 0%, #3B82F6 33%, #8B5CF6 66%, #F43F5E 100%);
+    color: white;
+    font-size: smaller;
+}
+.canvas-item.zavuerer-agent:hover {
+    background: linear-gradient(135deg, #2DD4BF 0%, #60A5FA 33%, #A78BFA 66%, #FB7185 100%);
+    box-shadow: 0 6px 15px rgba(139, 92, 246, 0.5);
+}
+
 /* STM32er Agent — STM32 Template Project MCP bridge (firmware scaffold/build/
    flash/observe). A 4-stop "silicon" ramp in the requested blue / black / white /
    gray palette: near-black -> vivid STM32 blue -> steel gray -> near-white. This

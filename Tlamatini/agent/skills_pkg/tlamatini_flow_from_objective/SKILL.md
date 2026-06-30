@@ -45,7 +45,7 @@ metadata:
 Produce a canvas-loadable `.flw` for the user's stated objective.
 
 > **Superseded by the `flow-making` skill.** Prefer `flow-making`: it drives the
-> FlowCreator engine (full 69-agent catalog + connection contracts) and emits a
+> FlowCreator engine (full 83-agent catalog + connection contracts) and emits a
 > validated, schemaVersion-2 `.flw`. This skill is kept as an alias/entry point —
 > do NOT hand-author the `.flw` JSON, because you do not carry the agent catalog
 > in context and a hand-written flow hallucinates agent types and will not load.

@@ -8561,6 +8561,94 @@ def update_kalier_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
+def update_zavuerer_connection_view(request, agent_name):
+    """
+    Update a Zavuerer agent's config.yaml when connections are made/removed.
+
+    Zavuerer is an active (source-side) agent like Apirer/Kalier: drawing a wire
+    FROM a Zavuerer node TO another agent records that downstream agent in the
+    Zavuerer's ``target_agents`` (started after the Zavu message send completes,
+    success or failure). Incoming wires are written by the UPSTREAM agent's own
+    connection view, so Zavuerer only ever needs the target-side path here.
+
+    Expected POST body (JSON):
+    {
+        "target_agent": "agent-id",  # e.g., "parametrizer-1"
+        "action": "add" | "remove"
+    }
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        target_agent = data.get('target_agent')
+        action = data.get('action', 'add')
+
+        if not target_agent:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Missing target_agent"
+            }), content_type='application/json', status=400)
+
+        # Parse agent_name to pool folder name: 'zavuerer-1' -> 'zavuerer_1'
+        parts = agent_name.split('-')
+        cardinal = None
+        if parts[-1].isdigit():
+            cardinal = parts.pop()
+
+        base_folder_name = "_".join(parts)
+        pool_folder_name = f"{base_folder_name}_{cardinal}" if cardinal else base_folder_name
+
+        # Security check
+        if '..' in pool_folder_name or '/' in pool_folder_name or '\\' in pool_folder_name:
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": "Invalid agent name"
+            }), content_type='application/json', status=400)
+
+        pool_base_path = get_pool_path(request)
+        config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
+
+        if not os.path.exists(config_path):
+            return HttpResponse(json.dumps({
+                "success": False,
+                "message": f"Zavuerer config not found: {config_path}"
+            }), content_type='application/json', status=404)
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        # Parse target_agent to pool folder name: 'parametrizer-1' -> 'parametrizer_1'
+        target_parts = target_agent.split('-')
+        target_cardinal = None
+        if target_parts[-1].isdigit():
+            target_cardinal = target_parts.pop()
+
+        target_base = "_".join(target_parts)
+        target_pool_name = f"{target_base}_{target_cardinal}" if target_cardinal else target_base
+
+        if 'target_agents' not in config or not isinstance(config['target_agents'], list):
+            config['target_agents'] = []
+
+        if action == 'add':
+            if target_pool_name not in config['target_agents']:
+                config['target_agents'].append(target_pool_name)
+            message = f"Added {target_pool_name} to target_agents"
+        elif action == 'remove':
+            if target_pool_name in config['target_agents']:
+                config['target_agents'].remove(target_pool_name)
+            message = f"Removed {target_pool_name} from target_agents"
+        else:
+            message = f"Unknown action: {action}"
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
+
+    except Exception as e:
+        print(f"Error updating Zavuerer connection: {e}")
+        return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
 def update_discoverer_connection_view(request, agent_name):
     """
     Update a Discoverer agent's config.yaml when connections are made/removed.
@@ -10748,11 +10836,11 @@ def get_parametrizer_dialog_data_view(request, agent_name):
         if source_base is None:
             return HttpResponse(json.dumps({
                 "success": False,
-                "message": f"Source agent '{source_agent}' does not produce structured output. "
-                           "Only Apirer, Gitter, Kuberneter, Crawler, Summarizer, File-Interpreter, "
-                           "Image-Interpreter, File-Extractor, Prompter, FlowCreator, "
-                           "Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, "
-                           "and Gateway-Relayer are allowed."
+                "message": f"Source agent '{source_agent}' does not produce structured output, so "
+                           "it cannot be a Parametrizer source. Only agents that emit an "
+                           f"INI_SECTION_<TYPE> block are allowed ({len(PARAMETRIZER_ALLOWED_SOURCES)} "
+                           "structured-output agents are currently registered, e.g. Apirer, "
+                           "Summarizer, Discoverer, Kalier, Telegrammer, Whatsapper, Zavuerer)."
             }), content_type='application/json', status=400)
 
         # Get source output field names

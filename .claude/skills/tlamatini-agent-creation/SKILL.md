@@ -497,7 +497,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 340. **(MANDATORY for Multi-Turn agents)** Seed **at least one** demo prompt (1 simple is the REQUIRED minimum; tiered basic/medium/hard like STM32er #63/#64/#65 is the gold standard). Skipping this for a Multi-Turn-capable agent is a defect — the agent is not considered finished until it has a catalog prompt.
 341. Read the prompts-catalog CONTIGUITY contract: the dropdown breaks at the first gap, order = `promptName` suffix, `idPrompt` must be contiguous.
-342. Find the current highest `idPrompt` and the next free slot (read the latest prompt-seeding migration).
+342. Find the current highest `idPrompt` and the next free slot (read the latest prompt-seeding migration; the catalog cap is `MAX_PROMPTS=256` in `tools_dialog.js`).
 343. Create a migration `Tlamatini/agent/migrations/<NNNN+k>_add_<lower>_demo_prompts.py` that seeds rows into the prompts model.
 344. Each demo prompt should drive the new agent (via `chat_agent_<lower>` if Multi-Turn) with a realistic, SAFE task.
 345. Make the prompts SAFE to run repeatedly (the daily chat test may execute them) — no destructive operations.

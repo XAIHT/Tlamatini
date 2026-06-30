@@ -330,3 +330,6 @@ done-*.flag
 # Clipboard screenshot paste-duplicates (the originally committed image.png,
 # image copy.png and image copy 2.png stay tracked; new paste duplicates are noise)
 image copy *.png
+
+# Orphan/experimental Telegram dir (real app api_hash + an old receiver) — never ship
+Tlamatini/agent/telegram/
