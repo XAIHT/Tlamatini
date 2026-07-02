@@ -27,7 +27,7 @@ every layer it can reach:
   * process forensics   (this process's memory maps, parent-process chain,
                          logged-in account)
   * LLM deep review     (an Ollama model, default glm-5.2:cloud, fallback
-                         kimi-k2.7-code:cloud, reads each candidate file and
+                         glm-5.1:cloud, reads each candidate file and
                          reports obfuscated / steganographic leaks regex misses)
 
 YOUR PRIVATE DATA IS NEVER HARDCODED HERE. Supply it at run time via:
@@ -89,7 +89,7 @@ except Exception:  # pragma: no cover
     np = None
 
 DEFAULT_MODEL = "glm-5.2:cloud"
-DEFAULT_FALLBACK_MODEL = "kimi-k2.7-code:cloud"
+DEFAULT_FALLBACK_MODEL = "glm-5.1:cloud"
 
 
 # =============================================================================

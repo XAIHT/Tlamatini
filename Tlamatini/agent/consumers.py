@@ -40,6 +40,13 @@ from .global_state import global_state
 from .path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
 from . import constants
 
+# Per-frame WebSocket receive tracing (a print + forced stdout flush on EVERY
+# incoming chat/control frame) is too expensive for default runtime. Deep
+# tracing stays one environment variable away: set TLAMATINI_WS_TRACE=1 to
+# restore it (speed batch, 2026-07-02). Errors, reaper notices and permission
+# failures are NOT gated by this — only the per-frame trace prints are.
+_WS_TRACE = (os.environ.get('TLAMATINI_WS_TRACE') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
 
 def _sanitize_context_filename(filename):
     if not isinstance(filename, str):
@@ -848,8 +855,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
             print(f"--- [Tier-2 reaper] failed to broadcast survivor list: {send_err}")
 
     async def receive(self, text_data):   # type: ignore
-        print(f">>> [RECEIVE] Got message: {text_data[:100]}...", flush=True)
-        sys.stdout.flush()
+        if _WS_TRACE:
+            print(f">>> [RECEIVE] Got message: {text_data[:100]}...", flush=True)
+            sys.stdout.flush()
         try:
             text_data_json = json.loads(text_data)
             message = text_data_json['message']
@@ -867,7 +875,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
             if 'type' in text_data_json:
                 type = text_data_json['type']
-                print(f">>> [RECEIVE] Message type: {type}", flush=True)
+                if _WS_TRACE:
+                    print(f">>> [RECEIVE] Message type: {type}", flush=True)
             else:
                 type = None
             user = self.scope['user']

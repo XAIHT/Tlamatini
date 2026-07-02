@@ -75,7 +75,30 @@ _pin_temp_directory()
 SECRET_KEY = 'django-insecure-1$f=fy&i80tqgzy%#^x@^am%)duwk7qq5_*807l)mtrsj$$7wk'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# ── Runtime mode: RELEASE vs DEBUG (speed batch, 2026-07-02) ─────────────────
+# Frozen installs (the packaged .exe) default to RELEASE (DEBUG=False): Django
+# skips per-request debug bookkeeping (query tracking, debug error pages, the
+# dev static handler) and WhiteNoise serves static files with release caching.
+# Source/development runs keep DEBUG=True so day-to-day development stays
+# friendly. Overrides:
+#   * TLAMATINI_RELEASE=1     → a SOURCE run behaves like a release build
+#                               (test release mode without packaging).
+#   * TLAMATINI_DJANGO_DEBUG  → emergency override in EITHER direction
+#                               (=1 forces DEBUG even on a frozen install,
+#                                =0 forces release even in source mode).
+# In RELEASE the browser gets a friendly error page + short error id while the
+# FULL traceback still lands in tlamatini.log — see FriendlyErrorMiddleware
+# (tlamatini/middleware.py) and the LOGGING guarantee below.
+_TRUTHY = {'1', 'true', 'yes', 'on'}
+_release_mode = (
+    getattr(sys, 'frozen', False)
+    or os.environ.get('TLAMATINI_RELEASE', '').strip().lower() in _TRUTHY
+)
+_debug_override = os.environ.get('TLAMATINI_DJANGO_DEBUG')
+if _debug_override is not None and _debug_override.strip() != '':
+    DEBUG = _debug_override.strip().lower() in _TRUTHY
+else:
+    DEBUG = not _release_mode
 
 ALLOWED_HOSTS = ['*']
 
@@ -106,9 +129,18 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Add dev-only HTML no-cache to ensure pages revalidate while static files are hashed
-if DEBUG:
-    MIDDLEWARE.append('tlamatini.middleware.NoCacheHTMLMiddleware')
+# Friendly release error pages: unhandled view exceptions become a small
+# branded page (or JSON) + short error id, while the FULL traceback goes to
+# tlamatini.log. FIRST in the list = its process_exception runs LAST (Django
+# calls them bottom-up), so it only sees what nothing else handled. In DEBUG
+# it stands aside so Django's technical debug page keeps working.
+MIDDLEWARE.insert(0, 'tlamatini.middleware.FriendlyErrorMiddleware')
+
+# HTML no-cache in BOTH modes (DEBUG used to be always-on, so this simply
+# preserves the behavior every install has today): pages always revalidate,
+# so a self-update is picked up on the next click, while static assets stay
+# cached (they cache-bust via the ?v={{ STATIC_VERSION }} query parameter).
+MIDDLEWARE.append('tlamatini.middleware.NoCacheHTMLMiddleware')
 
 ROOT_URLCONF = 'tlamatini.urls'
 
@@ -192,17 +224,28 @@ if getattr(sys, 'frozen', False):
 # Override via env var STATIC_VERSION when deploying
 STATIC_VERSION = os.environ.get('STATIC_VERSION') or str(int(time.time()))
 
-# WhiteNoise configuration: dev vs prod
+# WhiteNoise configuration: dev vs release.
+# NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+# were removed — Django 5.1+ deleted that setting (STORAGES replaced it), so
+# they never took effect. The default static storage keeps file NAMES
+# unchanged: no manifest hashing, no staticfiles.json requirement, so a frozen
+# install can never 500 on a missing/stale manifest. Cache busting comes from
+# the ?v={{ STATIC_VERSION }} query parameter (context processor
+# static_version), which changes on every server start, so a modest MAX_AGE is
+# safe across self-updates.
 if DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-    WHITENOISE_AUTOREFRESH = True
+    WHITENOISE_AUTOREFRESH = True   # re-stat files per request (dev comfort)
     WHITENOISE_MAX_AGE = 0
 else:
-    # Use hashed filenames and long cache in production
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    WHITENOISE_AUTOREFRESH = False
-    # 1 year; files are immutable due to hashing
-    WHITENOISE_MAX_AGE = 31536000
+    WHITENOISE_AUTOREFRESH = False  # scan once at startup — no per-request stat calls
+    WHITENOISE_MAX_AGE = 60         # names are NOT hashed → keep re-validation quick
+    if not getattr(sys, 'frozen', False):
+        # A SOURCE run in release mode (TLAMATINI_RELEASE=1): serve the
+        # CURRENT app static files via the staticfiles finders, so no
+        # collectstatic pass is needed to test release behavior. Frozen
+        # installs serve the collected STATIC_ROOT tree shipped next to
+        # the executable (build.py runs collectstatic).
+        WHITENOISE_USE_FINDERS = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -223,6 +266,22 @@ CHANNEL_LAYERS = {
 
 # Logging configuration – ensures that agent.chat_agent_runtime, agent.tools,
 # and agent.mcp_agent INFO-level messages are visible in the console.
+#
+# USEFUL-LOG GUARANTEE (speed batch, 2026-07-02): with DEBUG=False Django's
+# DEFAULT logging config hides its console handler behind require_debug_true —
+# 500 tracebacks would silently stop reaching the console (and therefore
+# tlamatini.log, which tees the console). The explicit "django" logger below
+# has NO debug filter, so request/server lines and FULL error tracebacks land
+# in tlamatini.log in BOTH modes. "tlamatini.request" is the logger
+# FriendlyErrorMiddleware uses (error id + request path + traceback for
+# release-mode 500s). The root logger catches everything else that has no
+# handler of its own — asyncio/background-thread errors included — at
+# TLAMATINI_LOG_LEVEL (default WARNING, so third-party INFO noise stays out;
+# set TLAMATINI_LOG_LEVEL=DEBUG or INFO to restore deeper runtime logs).
+_LOG_LEVEL = (os.environ.get('TLAMATINI_LOG_LEVEL') or 'WARNING').strip().upper()
+if _LOG_LEVEL not in {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}:
+    _LOG_LEVEL = 'WARNING'
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -243,7 +302,29 @@ LOGGING = {
             "formatter": "chat_runtime",
         },
     },
+    # Catch-all: any logger without its own handler (asyncio, channels,
+    # daphne, third-party libs, background threads) propagates here, so
+    # warnings/errors are GUARANTEED to reach the console → tlamatini.log.
+    "root": {
+        "handlers": ["console"],
+        "level": _LOG_LEVEL,
+    },
     "loggers": {
+        # No require_debug_true filter (unlike Django's default config):
+        # request lines and FULL 500 tracebacks stay in tlamatini.log even
+        # in RELEASE mode (DEBUG=False).
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # FriendlyErrorMiddleware's logger: error id + method/path + full
+        # traceback for release-mode unhandled view exceptions.
+        "tlamatini.request": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "agent.chat_agent_runtime": {
             "handlers": ["console"],
             "level": "INFO",

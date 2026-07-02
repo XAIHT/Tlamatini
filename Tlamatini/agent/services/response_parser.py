@@ -7,6 +7,7 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+import os
 import re
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import User
@@ -14,6 +15,17 @@ from ..models import LLMProgram, LLMSnippet, AgentMessage
 from .. import constants
 from .filesystem import get_time_stamp
 from .answer_analizer import analyze_answer_success
+
+# Full-answer debug dumps (the ENTIRE LLM response used to be printed up to
+# 3x per turn below) are expensive and noisy on long answers. They stay
+# available for parser debugging behind TLAMATINI_LOG_FULL_ANSWERS=1 (or
+# TLAMATINI_LOG_LEVEL=DEBUG); default runtime logs a short always-on summary
+# line instead (speed batch, 2026-07-02). Error and per-step summary logs in
+# this module are NOT gated.
+_LOG_FULL_ANSWERS = (
+    (os.environ.get('TLAMATINI_LOG_LEVEL') or '').strip().upper() == 'DEBUG'
+    or (os.environ.get('TLAMATINI_LOG_FULL_ANSWERS') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+)
 
 # Database operations wrapped for async
 @sync_to_async
@@ -308,8 +320,12 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
-    print("\n--- The Original LLM response is: <<<<<\n"+llm_response+"\n>>>>>")
-    
+    if _LOG_FULL_ANSWERS:
+        print("\n--- The Original LLM response is: <<<<<\n"+llm_response+"\n>>>>>")
+    else:
+        print(f"\n--- Original LLM response received ({len(llm_response)} chars; "
+              "set TLAMATINI_LOG_FULL_ANSWERS=1 for full dumps)")
+
     # Extract and save snippets
     snippets = re.findall(constants.REGEX_SNIPPET_WITH_LANG, llm_response, flags=re.IGNORECASE)
     for snippet in snippets:
@@ -429,9 +445,11 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     # </pre> HTML now that no further regex passes will run over the answer.
     llm_response = _restore_diagram_placeholders(llm_response, _diagram_placeholders)
 
-    print("\n--- The LLM response after cleaning is: <<<<<\n"+llm_response+"\n>>>>>")
-
-    print("\n--- The final parsed/cleaned LLM response is: "+llm_response)
+    if _LOG_FULL_ANSWERS:
+        print("\n--- The LLM response after cleaning is: <<<<<\n"+llm_response+"\n>>>>>")
+        print("\n--- The final parsed/cleaned LLM response is: "+llm_response)
+    else:
+        print(f"\n--- LLM response cleaned; final length {len(llm_response)} chars")
 
     # When multi-turn was used with tool calls, ask the LLM to classify
     # the answer as success or failure so the frontend can decide whether

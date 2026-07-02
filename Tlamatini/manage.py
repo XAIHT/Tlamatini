@@ -11,9 +11,12 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+import threading
+import time
 
 # FIX: Disable Intel Fortran runtime Ctrl+C handler to prevent "forrtl: error (200)"
 # This must be set BEFORE importing any packages that use MKL (NumPy, SciPy, etc.)
+# (threading/time above are pure stdlib — they never touch MKL.)
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
 
@@ -136,11 +139,41 @@ class _TeeStream:
     logging call on a background thread can wedge that thread and make the
     server appear hung even though the console is merely gone. The log
     file is the durable record either way.
+
+    Buffered flush policy (speed batch, 2026-07-02): the log-file ``write``
+    itself stays per-call (it only fills the file object's internal buffer,
+    which is cheap), but the EXPENSIVE ``flush()`` — an OS-level write that
+    used to run on every single line and serialized every thread on file
+    I/O — is now deferred. The log file is flushed when ANY of these hold:
+
+      * ~8 KB accumulated since the last flush, or
+      * >= 1 second passed since the last flush, or
+      * the chunk carries an urgent marker (ERROR / Traceback / Exception /
+        CRITICAL / FATAL / '!!!' / '❌' / '⛔') — errors must be readable in
+        ``tlamatini.log`` IMMEDIATELY, never sitting in a buffer, or
+      * somebody calls ``flush()`` explicitly (``print(..., flush=True)``), or
+      * process exit / quiet period — ``_setup_log_tee`` registers an atexit
+        flush AND a 1-second idle-flusher daemon thread, so the file never
+        lags more than ~1 s behind even when the app goes silent mid-burst.
+
+    ``_LOG_LOCK`` is a CLASS-level lock shared by the stdout and stderr tees
+    (they write the SAME file handle), so concurrent writes from different
+    threads/streams cannot interleave mid-chunk.
     """
+
+    _FLUSH_THRESHOLD_BYTES = 8192
+    _FLUSH_INTERVAL_SECONDS = 1.0
+    _URGENT_MARKERS = (
+        'ERROR', 'Error', 'Traceback', 'Exception', 'CRITICAL', 'Critical',
+        'FATAL', 'Fatal', '!!!', '❌', '⛔',
+    )
+    _LOG_LOCK = threading.RLock()
 
     def __init__(self, original, log_file):
         self._original = original
         self._log_file = log_file
+        self._pending_bytes = 0
+        self._last_flush = time.monotonic()
 
     def write(self, data):
         try:
@@ -148,8 +181,17 @@ class _TeeStream:
         except Exception:
             pass
         try:
-            self._log_file.write(data)
-            self._log_file.flush()
+            with self._LOG_LOCK:
+                self._log_file.write(data)
+                self._pending_bytes += len(data)
+                if (
+                    self._pending_bytes >= self._FLUSH_THRESHOLD_BYTES
+                    or (time.monotonic() - self._last_flush) >= self._FLUSH_INTERVAL_SECONDS
+                    or any(marker in data for marker in self._URGENT_MARKERS)
+                ):
+                    self._log_file.flush()
+                    self._pending_bytes = 0
+                    self._last_flush = time.monotonic()
         except Exception:
             pass
         return len(data) if isinstance(data, str) else None
@@ -160,7 +202,10 @@ class _TeeStream:
         except Exception:
             pass
         try:
-            self._log_file.flush()
+            with self._LOG_LOCK:
+                self._log_file.flush()
+                self._pending_bytes = 0
+                self._last_flush = time.monotonic()
         except Exception:
             pass
 
@@ -187,8 +232,37 @@ def _setup_log_tee():
     except OSError:
         return
 
-    sys.stdout = _TeeStream(sys.stdout, log_file)
-    sys.stderr = _TeeStream(sys.stderr, log_file)
+    tees = (_TeeStream(sys.stdout, log_file), _TeeStream(sys.stderr, log_file))
+    sys.stdout, sys.stderr = tees
+
+    def _flush_tees():
+        for tee in tees:
+            try:
+                tee.flush()
+            except Exception:
+                pass
+
+    # Exit flush: the buffered tee may hold up to ~1 s / 8 KB of tail — make
+    # sure it reaches tlamatini.log on interpreter shutdown.
+    import atexit
+    atexit.register(_flush_tees)
+
+    # Idle-tail flusher: the flush-on-write policy only runs when the NEXT
+    # write arrives, so a burst followed by silence would leave its tail
+    # invisible to anyone reading tlamatini.log live. This daemon keeps the
+    # file no more than ~1 s behind at all times; it swallows everything so
+    # interpreter shutdown can never make it raise.
+    def _idle_flush_loop():
+        while True:
+            try:
+                time.sleep(_TeeStream._FLUSH_INTERVAL_SECONDS)
+                _flush_tees()
+            except Exception:
+                pass
+
+    threading.Thread(
+        target=_idle_flush_loop, name='tlamatini-log-flusher', daemon=True
+    ).start()
 
 
 _setup_log_tee()

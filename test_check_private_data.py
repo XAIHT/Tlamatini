@@ -636,10 +636,10 @@ class TestLLM(unittest.TestCase):
         self.assertEqual(r["verdict"], "LEAK: yes")
 
     def test_primary_fail_fallback_success(self):
-        r = cpd.llm_review("text", ["glm-5.2:cloud", "kimi-k2.7-code:cloud"],
+        r = cpd.llm_review("text", ["glm-5.2:cloud", "glm-5.1:cloud"],
                            "http://x", self.ts,
-                           opener=opener_model_aware("kimi-k2.7-code:cloud", "CLEAN"))
-        self.assertEqual(r["model"], "kimi-k2.7-code:cloud")
+                           opener=opener_model_aware("glm-5.1:cloud", "CLEAN"))
+        self.assertEqual(r["model"], "glm-5.1:cloud")
         self.assertEqual(r["verdict"], "CLEAN")
 
     def test_both_fail(self):
@@ -662,7 +662,7 @@ class TestLLM(unittest.TestCase):
 
     def test_default_models(self):
         self.assertEqual(cpd.build_models(cpd.DEFAULT_MODEL, cpd.DEFAULT_FALLBACK_MODEL),
-                         ["glm-5.2:cloud", "kimi-k2.7-code:cloud"])
+                         ["glm-5.2:cloud", "glm-5.1:cloud"])
 
     def test_build_models_dedupe(self):
         self.assertEqual(cpd.build_models("same", "same"), ["same"])
@@ -896,7 +896,7 @@ class TestMain(unittest.TestCase):
                 cpd.main(["--local", "--repo", d, "--target", "x", "--output", out])
                 with open(out, encoding="utf-8") as fh:
                     report = json.load(fh)
-            self.assertEqual(report["llm_models"], ["glm-5.2:cloud", "kimi-k2.7-code:cloud"])
+            self.assertEqual(report["llm_models"], ["glm-5.2:cloud", "glm-5.1:cloud"])
         finally:
             cpd.llm_review = orig
 
@@ -1011,7 +1011,7 @@ class TestParserMisc(unittest.TestCase):
     def test_parser_defaults(self):
         args = cpd.build_parser().parse_args([])
         self.assertEqual(args.model, "glm-5.2:cloud")
-        self.assertEqual(args.fallback_model, "kimi-k2.7-code:cloud")
+        self.assertEqual(args.fallback_model, "glm-5.1:cloud")
 
     def test_parser_scope_flags(self):
         args = cpd.build_parser().parse_args(["--both"])

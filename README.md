@@ -99,11 +99,11 @@ Pull the small local embedding model, plus the cloud chat models Tlamatini will 
 ollama pull nomic-embed-text
 
 # Cloud models (served by Ollama Pro) — pull, or just sign in to use
-ollama pull kimi-k2.7-code:cloud
+ollama pull glm-5.2:cloud
 ollama pull qwen3.5:cloud
 ```
 
-Any cloud model works — these are the exact ones shown in the screenshots below.
+Any cloud model works — these two are the current recommended pair (older screenshots below may still show earlier model names).
 
 ### 5 · Point Tlamatini at the models
 

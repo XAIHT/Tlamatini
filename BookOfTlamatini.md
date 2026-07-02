@@ -76,11 +76,11 @@ Pull the small embedding model onto your own disk, and reach for the cloud chat 
 ollama pull nomic-embed-text
 
 # Cloud — served by Ollama Pro (pull, or simply sign in to use)
-ollama pull kimi-k2.7-code:cloud
+ollama pull glm-5.2:cloud
 ollama pull qwen3.5:cloud
 ```
 
-Any cloud model will do; the two above are the ones pictured in the screenshots that follow.
+Any cloud model will do; the two above are the current recommended pair (screenshots that follow may still show earlier model names).
 
 ### Step five — Point Tlamatini at the models
 

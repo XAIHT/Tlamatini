@@ -177,7 +177,7 @@ Prefer `config.json` over a new DB model (lighter, mirrors how the `acpx` block 
 ```json
 {
   "judge_merging": {
-    "answer_models": ["kimi-k2.7-code:cloud", "glm-5.1:cloud", "qwen3.5:397b-cloud"],
+    "answer_models": ["glm-5.2:cloud", "glm-5.1:cloud", "qwen3.5:397b-cloud"],
     "judge_model": "minimax-m3:cloud",
     "judge_sees_context": false,
     "configured": true,
