@@ -85,7 +85,10 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "crawler": ("label", "model", "url", "crawl_type", "content_mode", "response_body"),
     "summarizer": ("model", "source", "response_body"),
     "file_interpreter": ("file_path", "mode", "response_body"),
-    "image_interpreter": ("file_path", "response_body"),
+    "image_interpreter": (
+        "file_path", "interpreter_model_1", "interpreter_model_2",
+        "merging_model", "status", "response_body",
+    ),
     "file_extractor": ("file_path", "response_body"),
     "prompter": ("model", "response_body"),
     "flowcreator": ("model", "response_body"),

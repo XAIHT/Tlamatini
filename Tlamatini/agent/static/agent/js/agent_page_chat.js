@@ -962,10 +962,18 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
 
     // ── Image Interpreter ────────────────────────────────────────────
-    // Template fields: images_pathfilenames, llm.prompt, recursive
+    // Template fields: images_pathfilenames, recursive, prompt_user,
+    // interpreter_model_1/2, merging_model, prompt_interpreter_model_1/2,
+    // prompt_merging_model (triple-model parallel + barrier + merge pipeline)
     } else if (lower === 'image interpreter') {
         set('images_pathfilenames', pairs.images_pathfilenames || pairs.path_filename || pairs.path);
-        if (pairs.system_prompt) config.llm = { prompt: pairs.system_prompt };
+        set('prompt_user', pairs.prompt_user || pairs.system_prompt || pairs['llm.prompt']);
+        set('interpreter_model_1', pairs.interpreter_model_1);
+        set('interpreter_model_2', pairs.interpreter_model_2);
+        set('merging_model', pairs.merging_model);
+        set('prompt_interpreter_model_1', pairs.prompt_interpreter_model_1);
+        set('prompt_interpreter_model_2', pairs.prompt_interpreter_model_2);
+        set('prompt_merging_model', pairs.prompt_merging_model);
         if (pairs.recursive !== undefined) config.recursive = String(pairs.recursive) === 'true';
 
     // ── Summarizer ───────────────────────────────────────────────────

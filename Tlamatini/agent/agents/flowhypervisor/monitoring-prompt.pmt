@@ -520,6 +520,29 @@ TALKER SPECIAL NOTES (text-to-speech via Ollama):
     a stuck agent, or a broken chain. It is a deliberate, immediate self-shutdown
     in response to a forbidden request, not a fault.
 
+IMAGE_INTERPRETER SPECIAL NOTES (triple-model vision pipeline):
+  - Image-Interpreter runs THREE LLM calls per image: interpreter_model_1
+    (default qwen3.5:cloud) and interpreter_model_2 (default gemma4:cloud)
+    run IN PARALLEL on two dedicated Ollama connections, a BARRIER waits for
+    BOTH interpretations, then merging_model (default glm-5.2:cloud) fuses
+    them into one report. Expect "🔀 [CONNECTION-A/B] Interpreter N
+    STARTED/FINISHED", "🧱 BARRIER: waiting for BOTH interpretations..." and
+    "🧱 BARRIER RELEASED" log lines — ALL of these are NORMAL pipeline
+    mechanics, never errors.
+  - It is SHORT-LIVED and ACTIVE, but each image can take from tens of
+    seconds to a few MINUTES (two vision generations + one synthesis, cloud
+    models included). Long silence while a model generates is NORMAL — do
+    NOT flag before ~5 min per image without a completion line.
+  - It ALWAYS emits an INI_SECTION_IMAGE_INTERPRETER<<< block per image
+    (file_path, interpreter_model_1/2, merging_model, status; body = merged
+    report). NEVER flag that block as an error. The status values
+    partial_interpreter_1_only / partial_interpreter_2_only /
+    merge_fallback_concat are DOCUMENTED fail-safe degradations (one engine
+    or the merger failed but the pipeline still delivered a report) —
+    routable content for a downstream Forker, NOT a flow crash. Only
+    status: error on EVERY image together with "Could not connect" lines
+    indicates a real problem (the Ollama host is down).
+
 ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
   Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
@@ -545,6 +568,7 @@ TYPICAL TIMING:
   - Camcorder: `photo` mode is < 5 s (one webcam shot); `video` mode runs for ~its `video_duration_seconds` then writes the `.mp4` and exits — observational (read-only camera capture, NOT in the Exec Report). The camera sibling of Shoter/Recorder. Flag only if it runs well beyond `video_duration_seconds` with no "Camcorder agent finished" completion.
   - Talker: text-to-speech via an Ollama model — the synthesis (Ollama generation) can run from a few seconds up to a few MINUTES for a long text, a large/quantised model, or a cloud Ollama endpoint, then it plays the audio (~the speech length) and exits — observational/output (NOT in the Exec Report). Don't flag a Talker still waiting on its Ollama response before ~5 min; flag only if it is silent well beyond that with no "Talker agent finished" completion.
   - Whisperer: speech-to-text — records the mic (~`record_seconds`, default 5 s) or reads an audio file, then runs the neural recognizer. The FIRST run on a machine can take a few MINUTES while it DOWNLOADS the Whisper model weights, and CPU transcription of a long clip (no GPU) is slow; both are normal. It then writes the transcript and exits — observational (read-only; turns audio into text, NOT in the Exec Report). The speech-to-text sibling of Talker. Don't flag a Whisperer still downloading a model or transcribing before ~5 min; flag only if it is silent well beyond that with no "Whisperer agent finished" completion. A `status: engine_unavailable` block (faster-whisper not installed, no cloud key) is routable content, NOT a flow error.
+  - Image-Interpreter: THREE LLM calls per image — two parallel vision interpretations (CONNECTION-A / CONNECTION-B, each on its own Ollama connection) + one merge (CONNECTION-MERGE) after the barrier; tens of seconds to a few minutes PER IMAGE with cloud models, multiplied by the number of matched images. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge log lines keep appearing; flag only if silent > 5 min per image with no "Image-Interpreter agent finished" completion. See IMAGE_INTERPRETER SPECIAL NOTES.
   - Keyboarder/Mouser/Windower/Shoter: < 5 seconds per invocation (desktop UI primitives). Windower
     `matched: false` / `state: no_match` is NOT a flow error — it is routable content (the window was not
     open yet); only flag `state: win32_unavailable` (a real platform/environment problem) or a Windower
@@ -706,6 +730,7 @@ DO NOT report these as problems:
   - Camcorder / Recorder INI_SECTION_CAMCORDER / INI_SECTION_RECORDER blocks — observational capture agents (webcam / microphone) that ALWAYS emit their block and trigger target_agents; never a flow error (read-only camera / mic capture, NOT in the Exec Report). A device-not-found message in the block body is routable content for a downstream Forker.
   - Whisperer INI_SECTION_WHISPERER blocks with any `status` — including `status: empty` (no speech detected), `status: engine_unavailable` (faster-whisper not installed and no cloud key — a documented degraded mode, with the `pip install faster-whisper` fix), or `status: error`. Whisperer is observational (speech-to-text — records the mic itself or reads a file, then transcribes; NOT in the Exec Report) that ALWAYS emits its block and triggers target_agents; the block (whose body is the transcript) is routable content for a downstream Forker, never a flow error. Do NOT flag a Whisperer merely DOWNLOADING a model on first run or doing a slow CPU transcription (see the Whisperer note in TYPICAL TIMING).
   - Talker INI_SECTION_TALKER blocks with any `status` — including `status: tokens_only` (audio fetched but snac+torch not installed to render sound — a documented degraded mode) or `status: error` (e.g. "Cannot reach Ollama", "returned no audio tokens"). Talker is observational/output (TTS via Ollama; NOT in the Exec Report) that ALWAYS emits its block and triggers target_agents; the block is routable content for a downstream Forker, never a flow error. Do NOT flag a Talker that is merely WAITING on a slow Ollama generation (see TALKER SPECIAL NOTES).
+  - Image-Interpreter INI_SECTION_IMAGE_INTERPRETER blocks with any `status` — including the documented fail-safe degradations `partial_interpreter_1_only` / `partial_interpreter_2_only` (one of the two parallel interpreters failed; the merge proceeded from the survivor) and `merge_fallback_concat` (the merging model failed; both raw interpretations were delivered concatenated). The block is routable content for a downstream Forker, never a flow error; its 🔀 interpreter / 🧱 barrier / 🔗 merge lines are normal pipeline mechanics (see IMAGE_INTERPRETER SPECIAL NOTES).
   - Long FIRST firmware build/flash on STM32er / ESP32er / ESPHomer / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet

@@ -148,7 +148,7 @@ GOOD: Starter → Agent_A → Agent_B → Ender (Ender can kill all agents).
 
 **8. "Analyze all images in a folder" (image analysis)**
 ```
-Starter → Image-Interpreter (images_pathfilenames='C:\Photos\*.jpg', llm.prompt='Describe in detail') → Ender
+Starter → Image-Interpreter (images_pathfilenames='C:\Photos\*.jpg', prompt_user='Describe in detail') → Ender
 ```
 Image-Interpreter handles wildcards, batch processing, and LLM vision calls internally. ONE agent does all the work.
 
@@ -1183,22 +1183,28 @@ system_prompt: |
   - `llm.model`: "gpt-oss:120b-cloud" (LLM model, used only in summarized mode)
 
 ### 42. Image-Interpreter
-- **Purpose**: Non-deterministic agent that analyzes and interprets images using an LLM vision model. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64, queries the LLM, and logs structured INI_IMAGE_FILE/END_FILE blocks with the description. Can be strongly coupled with File-Interpreter.
-- **Used for**: Analyzing images using an LLM vision model (e.g., Llama 3.2 Vision). It supports 12+ image formats, converts each to base64, sends them to the LLM with a configurable prompt, and logs structured descriptions. It can read images extracted by a File-Interpreter from documents (via pool name reference).
-- **Aimed at**: Enabling visual intelligence in workflows — such as analyzing screenshots for UI verification, interpreting charts and diagrams from reports, classifying product images, reading handwritten text from scanned documents, or verifying visual conditions on screen captures taken by Shoter.
-- **Application example**: After a Shoter captures a screenshot of a dashboard, an Image-Interpreter analyzes it with the prompt "Identify any error indicators, red alerts, or anomalous graphs in this monitoring dashboard". A Forker watches the output for "ANOMALY DETECTED" to decide whether to trigger an alert chain.
-- **IMPORTANT — This is THE agent for image analysis.** If the user's objective involves interpreting, describing, classifying, or analyzing images, ALWAYS use Image-Interpreter. NEVER use Pythonxer to write vision API scripts — Image-Interpreter handles all of that internally (base64 encoding, LLM vision calls, batch multi-image processing via wildcards, recursive folder scanning). One Image-Interpreter instance with `images_pathfilenames: "C:\Photos\*"` processes ALL images in a folder automatically.
+- **Purpose**: Non-deterministic agent that analyzes and interprets images through a TRIPLE-MODEL pipeline: `interpreter_model_1` (default qwen3.5:cloud — forensic OCR/measurement) and `interpreter_model_2` (default gemma4:cloud — holistic context/people) analyze each image IN PARALLEL, each on its OWN dedicated Ollama connection; a BARRIER waits until BOTH interpretations have arrived; then `merging_model` (default glm-5.2:cloud) fuses them into ONE definitive report. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64 and logs the merged report in structured INI_SECTION_IMAGE_INTERPRETER blocks (`file_path`, `interpreter_model_1/2`, `merging_model`, `status`, body = report). Can be strongly coupled with File-Interpreter.
+- **Used for**: Deep image analysis — complete mockup/GUI element inventories (position % / size % / colors / fonts / verbatim text), full OCR, exhaustive people description with identity hypotheses, chart/diagram reading. It supports 12+ image formats and injects the image FILE NAME into ALL FOUR prompts as an identity clue (a file named after a person hints WHO appears in it). It can read images extracted by a File-Interpreter from documents (via pool name reference).
+- **Aimed at**: Enabling visual intelligence in workflows — such as analyzing screenshots for UI verification, rebuilding mockups from a single image, interpreting charts and diagrams from reports, classifying product images, identifying people in photos, or verifying visual conditions on screen captures taken by Shoter.
+- **Application example**: After a Shoter captures a screenshot of a dashboard, an Image-Interpreter analyzes it with prompt_user "Identify any error indicators, red alerts, or anomalous graphs in this monitoring dashboard". A Forker watches the output for "ANOMALY DETECTED" to decide whether to trigger an alert chain.
+- **IMPORTANT — This is THE agent for image analysis.** If the user's objective involves interpreting, describing, classifying, or analyzing images, ALWAYS use Image-Interpreter. NEVER use Pythonxer to write vision API scripts — Image-Interpreter handles all of that internally (base64 encoding, parallel dual-model vision calls + merge, batch multi-image processing via wildcards, recursive folder scanning). One Image-Interpreter instance with `images_pathfilenames: "C:\Photos\*"` processes ALL images in a folder automatically.
 - **Pool name pattern**: `image_interpreter_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
   - `images_pathfilenames`: "" (wildcards, directory path, File-Interpreter pool name, or single file)
   - `recursive`: false (when true, scans subdirectories recursively for images)
   - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "svg, ico, thumbnail.png")
+  - `interpreter_model_1`: "qwen3.5:cloud" (parallel interpreter #1 — forensic OCR/measurement vision model)
+  - `interpreter_model_2`: "gemma4:cloud" (parallel interpreter #2 — holistic context/people vision model)
+  - `merging_model`: "glm-5.2:cloud" (fuses both interpretations once the barrier releases)
+  - `prompt_interpreter_model_1`: engineered forensic-measurement prompt (FULL default ships in config.yaml; `{filename}` is replaced with the image file name)
+  - `prompt_interpreter_model_2`: engineered holistic-context prompt (FULL default ships in config.yaml; `{filename}` supported)
+  - `prompt_merging_model`: engineered merge/synthesis prompt (FULL default ships in config.yaml; `{filename}` supported)
+  - `prompt_user`: the user's question — sent to BOTH interpreters (with the image) and to the merger (FULL default ships in config.yaml; `{filename}` supported)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after ALL images are processed)
-  - `llm.host`: "http://localhost:11434" (Ollama-compatible API URL)
-  - `llm.model`: "qwen3.5:cloud" (vision model name)
-  - `llm.prompt`: "Describe this image in detail." (prompt sent with each image)
+  - `llm.host`: "http://localhost:11434" (Ollama-compatible API URL — shared by all three models, each call on its OWN connection)
+  - `llm.token`: "" (optional bearer token for Ollama cloud)
   - `llm.token`: "" (optional bearer token for authentication)
 
 ### 43. Gatewayer

@@ -7,10 +7,15 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-# Image-Interpreter Agent - Image analysis and description via LLM vision model
-# Non-deterministic agent (uses LLM)
-# Action: Resolve image paths -> Convert to base64 -> Query LLM -> Log results
-#         -> Start downstream agents
+# Image-Interpreter Agent - TRIPLE-MODEL image analysis via LLM vision models
+# Non-deterministic agent (uses LLMs)
+# Action: Resolve image paths -> Convert to base64
+#         -> Interpreter 1 (interpreter_model_1) + Interpreter 2
+#            (interpreter_model_2) run in PARALLEL, each on its OWN
+#            dedicated Ollama HTTP connection
+#         -> BARRIER: wait until BOTH interpretations have arrived
+#         -> merging_model fuses both interpretations into ONE report
+#         -> Log results -> Start downstream agents
 
 import os
 import sys
@@ -24,6 +29,7 @@ import json
 import time
 import yaml
 import logging
+import threading
 import subprocess
 
 # -- conhost.exe orphan guard ------------------------------------------
@@ -86,6 +92,38 @@ IMAGE_EXTENSIONS = {
     '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif',
     '.webp', '.svg', '.ico', '.heic', '.heif', '.avif',
 }
+
+# ── Triple-model pipeline defaults ────────────────────────────────────
+# The template config.yaml carries the FULL engineered prompts; these
+# compact fallbacks only kick in when a stale pool config.yaml predates
+# the triple-model upgrade, so the pipeline still works end-to-end.
+DEFAULT_INTERPRETER_MODEL_1 = "qwen3.5:cloud"
+DEFAULT_INTERPRETER_MODEL_2 = "gemma4:cloud"
+DEFAULT_MERGING_MODEL = "glm-5.2:cloud"
+DEFAULT_PROMPT_INTERPRETER_1 = (
+    'You are a forensic visual measurement engine. Produce a complete, measured inventory of the '
+    'image "{filename}": every element of a mockup/GUI with position and size in % of the image, '
+    'colors (hex), fonts and EXACT verbatim text (full OCR); every person with all their visible '
+    'characteristics, plus WHO they may be — use the file name as a clue, never as proof.'
+)
+DEFAULT_PROMPT_INTERPRETER_2 = (
+    'You are a deep contextual image analyst. Explain the image "{filename}": purpose, design '
+    'language, visual hierarchy and interaction model for mockups/GUIs; for each person, a complete '
+    'portrait (age, hair, clothing, expression, body language) and a reasoned hypothesis of WHO they '
+    'may be, using context and the file name as clues. Tag deductions with (inferred).'
+)
+DEFAULT_PROMPT_MERGING = (
+    'You merge two independent AI analyses of the image "{filename}" into ONE definitive report. '
+    'Keep every unique fact from both (union, not intersection); prefer Interpretation A for '
+    'measurements/OCR and Interpretation B for meaning/identity; list material conflicts at the end. '
+    'Never invent visual facts absent from both inputs.'
+)
+DEFAULT_PROMPT_USER = (
+    'Analyze this image ("{filename}") and extract every element it contains. If it is a mockup, '
+    'wireframe, or GUI window, inventory every component with its position (% of image), size (%), '
+    'colors, font styles and exact text. If it contains people, describe each person exhaustively and '
+    'infer who they may be, using every clue including the image file name.'
+)
 
 
 def load_config(path: str = "config.yaml") -> Dict:
@@ -464,93 +502,238 @@ def resolve_image_paths(images_pathfilenames: str, recursive: bool = False) -> l
     return []
 
 
-def analyze_image_with_llm(image_path: str, llm_config: dict) -> str:
+def inject_filename(text: str, image_path: str) -> str:
+    """Inject the image FILE NAME into a prompt template.
+
+    Replaces every ``{filename}`` placeholder; when the placeholder is absent
+    the file name is APPENDED as an explicit clue block, so ALL FOUR prompts
+    of the triple-model pipeline always carry the name (a file named after a
+    person is a clue to WHO appears in it).
     """
-    Analyze a single image using an LLM vision model via Ollama-compatible API.
-    Adapted from qwen_analyze_image in imaging/image_interpreter.py.
+    filename = os.path.basename(image_path)
+    text = (text or '').strip()
+    if '{filename}' in text:
+        return text.replace('{filename}', filename)
+    return (
+        f"{text}\n\n"
+        f"IMAGE FILE NAME: \"{filename}\" — treat its tokens (person names, app names, "
+        f"dates, versions) as contextual clues; hints, not proof."
+    )
+
+
+def _call_ollama_chat(host: str, token: str, model: str, messages: list,
+                      conn_label: str, timeout: int = 300,
+                      temperature: float = 0.1) -> str:
+    """POST one /api/chat request on its OWN, dedicated HTTP connection.
+
+    ``urllib.request.urlopen`` opens a FRESH TCP connection per call, so two
+    threads calling this concurrently really do talk to Ollama over TWO
+    separate sockets — the effective-parallelism contract of the
+    dual-interpreter pipeline.
     """
-    host = llm_config.get('host', 'http://localhost:11434').rstrip('/')
-    model = llm_config.get('model', 'llama3.2-vision:11b')
-    prompt = llm_config.get('prompt', 'Describe this image in detail.')
-    token = llm_config.get('token', '')
-
-    try:
-        image_base64 = convert_image_to_base64(image_path)
-        if not image_base64:
-            return "Error: Failed to convert image to base64"
-        logging.info(f"   Image converted to base64, size: {len(image_base64)} chars.")
-    except FileNotFoundError as e:
-        return f"Error: {e}"
-    except Exception as e:
-        return f"Error converting image: {e}"
-
-    # Build system context with filename hints and metadata
-    metadata = extract_image_metadata(image_path)
-    system_context = build_system_context(image_path, metadata)
-    logging.info(f"   System context built with {len(metadata)} metadata fields for: {os.path.basename(image_path)}")
-
+    host = (host or 'http://localhost:11434').rstrip('/')
     payload = {
         "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": system_context
-            },
-            {
-                "role": "user",
-                "content": prompt,
-                "images": [image_base64]
-            }
-        ],
+        "messages": messages,
         "stream": True,
         "options": {
-            "temperature": 0.0,
+            "temperature": temperature,
             "num_ctx": 32768,
-            "repeat_penalty": 1.85,
             "top_p": 0.95,
-            "top_k": 50,
-            "stop": ["<|end_of_text|>", "<|eot_id|>", "assistant", "</html>", "</body>"]
-        }
+        },
     }
-
-    payload_bytes = json.dumps(payload).encode('utf-8')
-
     headers = {'Content-Type': 'application/json'}
     if token:
         headers['Authorization'] = f'Bearer {token}'
-
     url = f"{host}/api/chat"
-    logging.info(f"   Sending request to {model} at {url}...")
+    logging.info(f"   [{conn_label}] Opening dedicated connection to {url} (model {model})...")
+    req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'),
+                                 headers=headers, method='POST')
+    chunks = []
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        for line in response:
+            if not line:
+                continue
+            try:
+                json_chunk = json.loads(line.decode('utf-8'))
+            except json.JSONDecodeError:
+                continue
+            content = ""
+            if "message" in json_chunk:
+                content = json_chunk["message"].get("content", "")
+            elif "response" in json_chunk:
+                content = json_chunk.get("response", "")
+            if content:
+                chunks.append(content)
+            if json_chunk.get("done", False):
+                break
+    return "".join(chunks).strip()
 
+
+def _is_error_result(text: str) -> bool:
+    return (not text) or text.startswith("Error")
+
+
+def analyze_image_with_model(image_path: str, image_base64: str, host: str,
+                             token: str, model: str, engineered_prompt: str,
+                             user_prompt: str, conn_label: str) -> str:
+    """Run ONE vision interpreter on its own dedicated connection. Never raises."""
     try:
-        req = urllib.request.Request(url, data=payload_bytes, headers=headers, method='POST')
-        full_description = []
-
-        with urllib.request.urlopen(req, timeout=300) as response:
-            for line in response:
-                if line:
-                    try:
-                        json_chunk = json.loads(line.decode('utf-8'))
-                        content = ""
-                        if "message" in json_chunk:
-                            content = json_chunk["message"].get("content", "")
-                        elif "response" in json_chunk:
-                            content = json_chunk.get("response", "")
-
-                        if content:
-                            full_description.append(content)
-
-                        if json_chunk.get("done", False):
-                            break
-                    except json.JSONDecodeError:
-                        continue
-
-        return "".join(full_description)
-
+        metadata = extract_image_metadata(image_path)
+        system_context = (
+            inject_filename(engineered_prompt, image_path)
+            + "\n\n"
+            + build_system_context(image_path, metadata)
+        )
+        messages = [
+            {"role": "system", "content": system_context},
+            {"role": "user", "content": inject_filename(user_prompt, image_path),
+             "images": [image_base64]},
+        ]
+        return _call_ollama_chat(host, token, model, messages, conn_label)
     except urllib.error.URLError as e:
-        return f"Error: Could not connect to LLM at {host}. Check if the server is running. ({e})"
+        return f"Error: Could not connect to LLM at {host} on {conn_label}. Check if the server is running. ({e})"
     except Exception as e:
-        return f"Error analyzing image: {e}"
+        return f"Error analyzing image with {model}: {e}"
+
+
+def merge_interpretations(host: str, token: str, model: str, merge_prompt: str,
+                          user_prompt: str, model_1: str, interp_1: str,
+                          model_2: str, interp_2: str, image_path: str) -> str:
+    """The BARRIER is already past: both interpretations arrived. Fuse them.
+
+    Text-only call (the merger never sees the pixels) on its OWN connection.
+    Never raises.
+    """
+    try:
+        user_block = (
+            f"USER REQUEST:\n{inject_filename(user_prompt, image_path)}\n\n"
+            f"=== INTERPRETATION A (from {model_1}) ===\n{interp_1}\n\n"
+            f"=== INTERPRETATION B (from {model_2}) ===\n{interp_2}\n\n"
+            f"Produce the definitive merged report now."
+        )
+        messages = [
+            {"role": "system", "content": inject_filename(merge_prompt, image_path)},
+            {"role": "user", "content": user_block},
+        ]
+        return _call_ollama_chat(host, token, model, messages, 'CONNECTION-MERGE',
+                                 temperature=0.2)
+    except urllib.error.URLError as e:
+        return f"Error: Could not connect to merging model at {host}. ({e})"
+    except Exception as e:
+        return f"Error merging interpretations with {model}: {e}"
+
+
+def interpret_image_dual(image_path: str, pipeline: dict) -> tuple:
+    """The TRIPLE-MODEL pipeline for ONE image.
+
+    1. Interpreter 1 and interpreter 2 run in PARALLEL — two threads, each
+       opening its OWN dedicated HTTP connection to Ollama.
+    2. BARRIER: join() both threads — nothing proceeds until BOTH
+       interpretations have arrived.
+    3. The merging model fuses both into one definitive report.
+
+    Fail-safe degradation: one failed interpreter still merges from the
+    surviving interpretation; a failed merger falls back to the raw
+    interpretations; both interpreters failing reports the errors.
+    Returns ``(description, status)``.
+    """
+    try:
+        image_base64 = convert_image_to_base64(image_path)
+        if not image_base64:
+            return "Error: Failed to convert image to base64", "error"
+        logging.info(f"   Image converted to base64, size: {len(image_base64)} chars.")
+    except FileNotFoundError as e:
+        return f"Error: {e}", "error"
+    except Exception as e:
+        return f"Error converting image: {e}", "error"
+
+    host = pipeline['host']
+    token = pipeline['token']
+    results = {}
+
+    def _run(slot, model, engineered_prompt, conn_label):
+        started = time.time()
+        logging.info(
+            f"🔀 [{conn_label}] Interpreter {slot} STARTED — model '{model}' "
+            f"on its own dedicated Ollama connection"
+        )
+        results[slot] = analyze_image_with_model(
+            image_path, image_base64, host, token, model,
+            engineered_prompt, pipeline['prompt_user'], conn_label,
+        )
+        verdict = 'FAILED' if _is_error_result(results[slot]) else 'OK'
+        logging.info(
+            f"🔀 [{conn_label}] Interpreter {slot} FINISHED ({verdict}) "
+            f"in {time.time() - started:.1f}s"
+        )
+
+    thread_1 = threading.Thread(
+        target=_run, args=(1, pipeline['model_1'], pipeline['prompt_1'], 'CONNECTION-A'),
+        daemon=True,
+    )
+    thread_2 = threading.Thread(
+        target=_run, args=(2, pipeline['model_2'], pipeline['prompt_2'], 'CONNECTION-B'),
+        daemon=True,
+    )
+    thread_1.start()
+    thread_2.start()
+    logging.info("🧱 BARRIER: waiting for BOTH interpretations to arrive...")
+    thread_1.join()
+    thread_2.join()
+    logging.info("🧱 BARRIER RELEASED: both interpretations arrived — invoking the merging model.")
+
+    interp_1 = results.get(1) or "Error: interpreter 1 produced no result"
+    interp_2 = results.get(2) or "Error: interpreter 2 produced no result"
+    ok_1 = not _is_error_result(interp_1)
+    ok_2 = not _is_error_result(interp_2)
+
+    if not ok_1 and not ok_2:
+        logging.error("❌ BOTH interpreters failed — skipping the merge.")
+        return (
+            f"Error: both interpreters failed.\n"
+            f"[{pipeline['model_1']}] {interp_1}\n"
+            f"[{pipeline['model_2']}] {interp_2}",
+            "error",
+        )
+
+    if ok_1 and ok_2:
+        status = "merged"
+    elif ok_1:
+        status = "partial_interpreter_1_only"
+        interp_2 = (
+            f"(Interpreter 2 '{pipeline['model_2']}' FAILED: {interp_2} "
+            f"— merge from Interpretation A alone.)"
+        )
+        logging.warning("⚠️ Interpreter 2 failed — merging from Interpretation A alone.")
+    else:
+        status = "partial_interpreter_2_only"
+        interp_1 = (
+            f"(Interpreter 1 '{pipeline['model_1']}' FAILED: {interp_1} "
+            f"— merge from Interpretation B alone.)"
+        )
+        logging.warning("⚠️ Interpreter 1 failed — merging from Interpretation B alone.")
+
+    merge_started = time.time()
+    merged = merge_interpretations(
+        host, token, pipeline['merging_model'], pipeline['prompt_merge'],
+        pipeline['prompt_user'], pipeline['model_1'], interp_1,
+        pipeline['model_2'], interp_2, image_path,
+    )
+    if _is_error_result(merged):
+        logging.warning(f"⚠️ Merging model failed ({merged}) — falling back to the raw interpretations.")
+        merged = (
+            f"[MERGE FALLBACK — the merging model failed: {merged}]\n\n"
+            f"=== INTERPRETATION A ({pipeline['model_1']}) ===\n{interp_1}\n\n"
+            f"=== INTERPRETATION B ({pipeline['model_2']}) ===\n{interp_2}"
+        )
+        status = "merge_fallback_concat"
+    else:
+        logging.info(
+            f"🔗 [CONNECTION-MERGE] Merging model '{pipeline['merging_model']}' "
+            f"finished in {time.time() - merge_started:.1f}s"
+        )
+    return merged, status
 
 
 # PID Management
@@ -592,14 +775,35 @@ def main():
         recursive = config.get('recursive', False)
         filetype_exclusions = config.get('filetype_exclusions', '')
         target_agents = config.get('target_agents', [])
-        llm_config = config.get('llm', {})
+        llm_config = config.get('llm', {}) or {}
+
+        # Triple-model pipeline configuration. Template defaults act as the
+        # fallback for stale pool configs. A llm.prompt is ALWAYS an explicit
+        # legacy override (the template no longer ships it — only an old .flw
+        # or an old-style chat call can set it), so it wins over prompt_user.
+        legacy_prompt = str(llm_config.get('prompt') or '').strip()
+        pipeline = {
+            'host': str(llm_config.get('host') or 'http://localhost:11434'),
+            'token': llm_config.get('token', ''),
+            'model_1': str(config.get('interpreter_model_1') or '').strip() or DEFAULT_INTERPRETER_MODEL_1,
+            'model_2': str(config.get('interpreter_model_2') or '').strip() or DEFAULT_INTERPRETER_MODEL_2,
+            'merging_model': str(config.get('merging_model') or '').strip() or DEFAULT_MERGING_MODEL,
+            'prompt_1': str(config.get('prompt_interpreter_model_1') or '').strip() or DEFAULT_PROMPT_INTERPRETER_1,
+            'prompt_2': str(config.get('prompt_interpreter_model_2') or '').strip() or DEFAULT_PROMPT_INTERPRETER_2,
+            'prompt_merge': str(config.get('prompt_merging_model') or '').strip() or DEFAULT_PROMPT_MERGING,
+            'prompt_user': str(config.get('prompt_user') or '').strip() or legacy_prompt or DEFAULT_PROMPT_USER,
+        }
 
         logging.info("🖼️ IMAGE-INTERPRETER AGENT STARTED")
         logging.info(f"📁 images_pathfilenames: {images_pathfilenames}")
         logging.info(f"🔄 Recursive: {recursive}")
         if filetype_exclusions:
             logging.info(f"🚫 Exclusions: {filetype_exclusions}")
-        logging.info(f"🤖 LLM model: {llm_config.get('model', 'N/A')} @ {llm_config.get('host', 'N/A')}")
+        logging.info(
+            f"🤖 Triple-model pipeline @ {pipeline['host']}: "
+            f"interpreter 1 '{pipeline['model_1']}' + interpreter 2 '{pipeline['model_2']}' "
+            f"in PARALLEL (two connections) -> BARRIER -> merger '{pipeline['merging_model']}'"
+        )
         logging.info(f"🎯 Targets: {target_agents}")
 
         # Resolve image paths
@@ -612,16 +816,20 @@ def main():
         else:
             logging.info(f"📷 Found {len(image_files)} image(s) to process.")
 
-            # Process each image
+            # Process each image through the triple-model pipeline
             for idx, image_path in enumerate(image_files, 1):
                 logging.info(f"--- Processing image {idx}/{len(image_files)}: {image_path}")
 
-                description = analyze_image_with_llm(image_path, llm_config)
+                description, status = interpret_image_dual(image_path, pipeline)
 
-                # Log in structured format
+                # Log in structured format (single atomic call — Parametrizer contract)
                 logging.info(
                     f"INI_SECTION_IMAGE_INTERPRETER<<<\n"
                     f"file_path: {image_path}\n"
+                    f"interpreter_model_1: {pipeline['model_1']}\n"
+                    f"interpreter_model_2: {pipeline['model_2']}\n"
+                    f"merging_model: {pipeline['merging_model']}\n"
+                    f"status: {status}\n"
                     f"\n"
                     f"{description}\n"
                     f">>>END_SECTION_IMAGE_INTERPRETER"
