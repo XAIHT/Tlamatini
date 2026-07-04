@@ -455,6 +455,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "public verify" in subject
         or "3x" in subject
         or "performance" in subject
+        or "image-interpreter" in subject
+        or "image interpreter" in subject
+        or "image_interpreter" in subject
+        or "config dialog" in subject
         for subject in subjects
     )
     if has_current_release_wave:
@@ -467,6 +471,14 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
         highlights.append(
             "The newest working-tree feature is Zavuerer, the 83rd workflow-agent type: she sends authorized, opted-in messages through Zavu's unified API for SMS, WhatsApp, Telegram, Email, and Voice, with a wrapped `chat_agent_zavuerer`, Access Keys Wizard support, Parametrizer output fields, canvas connection handling, and demo/catalog migrations."
+        )
+    if any("image-interpreter" in subject or "image interpreter" in subject or "image_interpreter" in subject for subject in subjects):
+        highlights.append(
+            "The latest handbook/source delta upgrades Image-Interpreter into a triple-model vision pipeline: `qwen3.5:cloud` and `gemma4:cloud` interpret each image in parallel on dedicated Ollama connections, then `glm-5.2:cloud` merges both reports into one structured `INI_SECTION_IMAGE_INTERPRETER` result."
+        )
+    if any("config dialog" in subject or "config -> models" in subject or "config models" in subject for subject in subjects):
+        highlights.append(
+            "The current Config -> Models dialog now mirrors that triple-model reality with three Image-Interpreter fields: interpreter 1, interpreter 2, and image merger, plus safe defaults so older preserved configs are not stranded with empty required values."
         )
     if not has_current_release_wave and any(
         "1.26.5" in subject
@@ -761,6 +773,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "public build" in subject
         or "public verify" in subject
         or "3x" in subject
+        or "image-interpreter" in subject
+        or "image interpreter" in subject
+        or "image_interpreter" in subject
+        or "config dialog" in subject
         for subject in subjects
     )
     if has_current_release_wave:
@@ -773,6 +789,14 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
         highlights.append(
             "The fresh `v1.33.2` artifact delta centers on Zavuerer and cleanup: README.md, BookOfTlamatini.md, `agents_descriptions.md`, `agent/agents/zavuerer/`, migrations `0159`-`0164`, Access Keys Wizard wiring, capability hints, model/config defaults, and frontend/runtime cleanup all describe the same unified-messaging release family."
+        )
+    if any("image-interpreter" in subject or "image interpreter" in subject or "image_interpreter" in subject for subject in subjects):
+        highlights.append(
+            "Since the last committed PDF/PPTX refresh, Image-Interpreter was rebuilt into a fail-safe triple-model analyzer: two dedicated Ollama vision interpreters run in parallel, a barrier waits for both, and a merger model fuses the reports while preserving raw-output fallbacks when any leg fails."
+        )
+    if any("config dialog" in subject or "config -> models" in subject or "config models" in subject for subject in subjects):
+        highlights.append(
+            "The post-refresh UI/backend delta also updates Config -> Models so the browser exposes all three Image-Interpreter model slots and `tools.py` seeds the matching wrapped-tool defaults before per-call overrides."
         )
     if not has_current_release_wave and any(
         "1.26.5" in subject
@@ -1209,13 +1233,14 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.33.2` release line, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
+    "The repository currently resolves past the `v1.33.2` tag, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
     "`v1.33.x` is the Zavuerer release family: the new Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key.",
-    "`v1.33.2` also carries follow-up cleanup: the shipped cloud-default model baseline moved to `glm-5.2:cloud`, duplicate Zavuerer setup-wizard rows were deduplicated, and stale/trash artifacts were removed from the tracked release surface.",
+    "`v1.33.2` carries follow-up cleanup: the shipped cloud-default model baseline moved to `glm-5.2:cloud`, duplicate Zavuerer setup-wizard rows were deduplicated, and stale/trash artifacts were removed from the tracked release surface.",
+    "The newest post-tag commits then add the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
     "The v1.27-v1.32.0 span is a quality-and-trust wave: performance 3X levers, forward-only private-data discipline, public-release verifier hardening, and explicit Angela López Mendoza creator/authorship stamping moved together.",
     "The runtime surface also grew around delegation: ACPX remains the external coding-agent CLI bridge, External MCP remains the universal MCP client, and the newest server-side assets add `tlamatini_acpx.py`, stronger `tlamatini_mcp_server.py` behavior, and refreshed MCP workflow guidance.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.33.2` as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, and ACPX skills.",
+    "The resulting PDF/PPTX refresh treats `v1.33.2` plus the post-tag Image-Interpreter/config-dialog commits as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, and ACPX skills.",
 ]
 
 V1332_RELEASE_GUIDE = [
@@ -1225,6 +1250,17 @@ V1332_RELEASE_GUIDE = [
     "Canvas/runtime support: `agent_contracts.py`, `views.py`, `capability_registry.py`, `chat_agent_registry.py`, `tools.py`, frontend ACP JS/CSS, and migrations `0159`-`0164` all move together to make Zavuerer usable from both surfaces.",
     "Follow-up defaults: `config.json` now favors `glm-5.2:cloud` across the primary chat/model slots, and the latest commits also adjust runtime parsing/middleware/settings surfaces around the release.",
     "Cost and safety wording: sign-up for Zavu is free, but sends are pay-as-you-go per message; the docs keep the authorized, opted-in recipient boundary explicit for A2P, WhatsApp-window, consent, and GDPR-style rules.",
+]
+
+IMAGE_INTERPRETER_GUIDE = [
+    "Image-Interpreter is now a triple-model vision analyst, not a single generic image describer: each image goes through two parallel interpreter calls and one merger pass.",
+    "`interpreter_model_1` defaults to `qwen3.5:cloud` and is tuned for forensic OCR, mockup/GUI element inventories, percent-based positions/sizes, colors, fonts, and verbatim text.",
+    "`interpreter_model_2` defaults to `gemma4:cloud` and reads the image holistically: design intent, visual hierarchy, scene meaning, people, and reasoned identity hypotheses.",
+    "`merging_model` defaults to `glm-5.2:cloud`; it waits behind a barrier until both interpretations arrive, then emits one definitive report with union-of-facts, conflict notes, and discrepancy handling.",
+    "All four prompt surfaces (`prompt_user`, `prompt_interpreter_model_1`, `prompt_interpreter_model_2`, and `prompt_merging_model`) receive the image file name as an identity clue, because a file named after a person often depicts that person.",
+    "Fail-safe behavior is explicit: one failed interpreter still lets the merger work from the survivor; a failed merger returns both raw interpretations concatenated instead of losing the analysis.",
+    "The structured output is now `INI_SECTION_IMAGE_INTERPRETER` with `file_path`, `interpreter_model_1`, `interpreter_model_2`, `merging_model`, `status`, and the merged report body for Parametrizer/Forker routing.",
+    "Config -> Models now exposes all three Image-Interpreter model slots (`image_interpreter_model`, `image_interpreter_model_2`, `image_merging_model`), and older preserved configs receive defaults so Save is not blocked by empty new fields.",
 ]
 
 ZAVUERER_GUIDE = [
@@ -1499,7 +1535,7 @@ CONFIGURATION_GUIDE = [
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096, and Ask Execs only becomes available when Multi-Turn itself is on.",
-    "Image interpretation can run through Claude-backed cloud paths or Qwen/Ollama-backed local paths, and remote Ollama can be protected with a bearer token.",
+    "Image-Interpreter now uses three model slots from Config -> Models: `image_interpreter_model` for the first forensic interpreter, `image_interpreter_model_2` for the second holistic interpreter, and `image_merging_model` for the final report merger.",
 ]
 
 START_HERE_GUIDE = [
@@ -1962,6 +1998,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Zavuerer unified-messaging agent", styles["h2"]))
     for item in ZAVUERER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Image-Interpreter triple-model vision pipeline", styles["h2"]))
+    for item in IMAGE_INTERPRETER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("External MCP universal client", styles["h2"]))
     for item in EXTERNAL_MCPS_GUIDE:
@@ -2791,6 +2830,11 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Zavuerer", "new unified messaging agent for Zavu", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What she does", ZAVUERER_GUIDE[:3], THEME["amber"], "zavu-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Implementation and safety", ZAVUERER_GUIDE[3:], THEME["jade"], "zavu-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Image-Interpreter", "triple-model vision analysis with fail-safe merging", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Parallel vision pipeline", IMAGE_INTERPRETER_GUIDE[:4], THEME["copper"], "image-interpreter-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prompts, output, and config", IMAGE_INTERPRETER_GUIDE[4:], THEME["jade"], "image-interpreter-b", 11)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "External MCPs", "how Tlamatini now reaches tools outside her bundled runtime", THEME["jade"])
