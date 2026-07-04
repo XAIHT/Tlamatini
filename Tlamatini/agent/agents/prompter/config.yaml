@@ -20,7 +20,7 @@ prompt: ""
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
+  model: "glm-5.2:cloud"
 
 # Agents to start after LLM response (auto-populated via canvas connections)
 target_agents: []

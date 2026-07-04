@@ -1,6 +1,6 @@
 llm:
   base_url: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
+  model: "glm-5.2:cloud"
   temperature: 0.0
 
 target:

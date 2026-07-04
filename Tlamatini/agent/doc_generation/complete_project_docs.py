@@ -439,7 +439,8 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
     has_current_release_wave = any(
-        "1.33.0" in subject
+        "1.33.2" in subject
+        or "1.33.0" in subject
         or "1.32.0" in subject
         or "zavuerer" in subject
         or "zavu" in subject
@@ -458,10 +459,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on the `v1.33.0` line: the tag/HEAD version identifies the Zavuerer release while README.md, BookOfTlamatini.md, and the source inventory tables confirm the current workflow-agent, Multi-Turn-tool, and skill totals."
+            "The live Git window now lands on the `v1.33.2` line: the tag/HEAD version identifies the Zavuerer release family while README.md, BookOfTlamatini.md, and the source inventory tables confirm the current workflow-agent, Multi-Turn-tool, and skill totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: it carries the v1.27-v1.32.0 performance/privacy/authorship work forward, then adds Zavuerer as the 83rd workflow-agent type for unified Zavu messaging."
+            "The current release wave is broader than a badge bump: it carries the v1.27-v1.32.0 performance/privacy/authorship work forward, adds Zavuerer as the 83rd workflow-agent type for unified Zavu messaging, then layers v1.33.2 model/config/runtime cleanup on top."
         )
     if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
         highlights.append(
@@ -525,7 +526,8 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
     if has_current_release_wave or any(
-        "1.33.0" in subject
+        "1.33.2" in subject
+        or "1.33.0" in subject
         or "1.32.0" in subject
         or "zavuerer" in subject
         or "zavu" in subject
@@ -543,7 +545,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.33.0` Zavuerer release line, so this dossier now carries the current unified-messaging agent story, performance/privacy/build/authorship background, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.26.x prose."
+            "The latest documentation pass aligns the handbook and source with the `v1.33.2` Zavuerer release line, so this dossier now carries the current unified-messaging agent story, default-model/config cleanup, performance/privacy/build/authorship background, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.26.x prose."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -713,9 +715,9 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "Multi-Turn behavior kept evolving across the period through quota tuning, execution-table persistence, autonomous-action improvements, and broader tool enablement."
         )
-    if any("kimi-k2.6:cloud" in subject or "default in config.json" in subject for subject in subjects):
+    if any("glm-5.2:cloud" in subject or "default in config.json" in subject for subject in subjects):
         highlights.append(
-            "The checked-in runtime defaults also moved: the shared config now points at `kimi-k2.6:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
+            "The checked-in runtime defaults also moved: the shared config now points at `glm-5.2:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
         )
     if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
@@ -763,14 +765,14 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced to `v1.33.0`: Zavuerer is now the headline agent release, while the generated artifacts continue to preserve Angela López Mendoza as creator."
+            "Since the last committed PDF/PPTX refresh, the repository advanced to `v1.33.2`: Zavuerer remains the headline agent release, while the latest commits add default-model/config/runtime cleanup and keep Angela López Mendoza preserved as creator."
         )
         highlights.append(
-            "The current visual-doc delta covers Zavuerer unified messaging, Zavu Access Keys Wizard wiring, the v1.27-v1.32.0 performance/privacy/authorship background, ACPX/MCP server upgrades, and the latest agent/config assets."
+            "The current visual-doc delta covers Zavuerer unified messaging, Zavu Access Keys Wizard wiring, `glm-5.2:cloud` as the shipped cloud default, `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, migration `0164`, and the v1.27-v1.32.0 performance/privacy/authorship background."
         )
     if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
         highlights.append(
-            "The fresh `v1.33.0` artifact delta centers on Zavuerer: README.md, BookOfTlamatini.md, `agents_descriptions.md`, `agent/agents/zavuerer/`, migrations `0159`-`0162`, Access Keys Wizard wiring, capability hints, and frontend connection/UI support all describe the same unified-messaging agent."
+            "The fresh `v1.33.2` artifact delta centers on Zavuerer and cleanup: README.md, BookOfTlamatini.md, `agents_descriptions.md`, `agent/agents/zavuerer/`, migrations `0159`-`0164`, Access Keys Wizard wiring, capability hints, model/config defaults, and frontend/runtime cleanup all describe the same unified-messaging release family."
         )
     if not has_current_release_wave and any(
         "1.26.5" in subject
@@ -903,9 +905,9 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "Kalier also matured during the same span: `v1.7.1` made Tlamatini the embedded MCP-Kali-Server client for chat-side runs, so operators configure the Kali box once in `Config -> URLs` instead of repeating it in every prompt."
         )
-    if any("kimi-k2.6:cloud" in subject or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
+    if any("glm-5.2:cloud" in subject or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
         highlights.append(
-            "The same span also refined the shipped operating baseline: handbook simplification, a `kimi-k2.6:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
+            "The same span also refined the shipped operating baseline: handbook simplification, a `glm-5.2:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
         )
     if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
@@ -1207,19 +1209,21 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.33.0` release line, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
-    "`v1.33.0` is the Zavuerer release: the new Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key.",
+    "The repository currently resolves to the `v1.33.2` release line, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
+    "`v1.33.x` is the Zavuerer release family: the new Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key.",
+    "`v1.33.2` also carries follow-up cleanup: the shipped cloud-default model baseline moved to `glm-5.2:cloud`, duplicate Zavuerer setup-wizard rows were deduplicated, and stale/trash artifacts were removed from the tracked release surface.",
     "The v1.27-v1.32.0 span is a quality-and-trust wave: performance 3X levers, forward-only private-data discipline, public-release verifier hardening, and explicit Angela López Mendoza creator/authorship stamping moved together.",
     "The runtime surface also grew around delegation: ACPX remains the external coding-agent CLI bridge, External MCP remains the universal MCP client, and the newest server-side assets add `tlamatini_acpx.py`, stronger `tlamatini_mcp_server.py` behavior, and refreshed MCP workflow guidance.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.33.0` as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, and ACPX skills.",
+    "The resulting PDF/PPTX refresh treats `v1.33.2` as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, and ACPX skills.",
 ]
 
-V1330_RELEASE_GUIDE = [
-    "Release identity: latest reachable public tag `v1.33.0`; the generated artifacts now describe Zavuerer as the current release headline while preserving the v1.32.0 quality-and-identity background.",
+V1332_RELEASE_GUIDE = [
+    "Release identity: latest reachable public tag `v1.33.2`; the generated artifacts now describe the Zavuerer release family plus post-release cleanup while preserving the v1.32.0 quality-and-identity background.",
     "New agent: Zavuerer becomes the 83rd workflow-agent type and the 60th wrapped chat-agent, adding `chat_agent_zavuerer` for Zavu unified messaging across SMS, WhatsApp, Telegram, Email, and Voice.",
     "Configuration: Config -> Access Keys Wizard now includes `Unified Messaging (Zavu)` and persists `zavu_api_key`, which the wrapped runtime seeds into Zavuerer without exposing the secret in prompts.",
-    "Canvas/runtime support: `agent_contracts.py`, `views.py`, `capability_registry.py`, `chat_agent_registry.py`, `tools.py`, frontend ACP JS/CSS, and migrations `0159`-`0162` all move together to make Zavuerer usable from both surfaces.",
+    "Canvas/runtime support: `agent_contracts.py`, `views.py`, `capability_registry.py`, `chat_agent_registry.py`, `tools.py`, frontend ACP JS/CSS, and migrations `0159`-`0164` all move together to make Zavuerer usable from both surfaces.",
+    "Follow-up defaults: `config.json` now favors `glm-5.2:cloud` across the primary chat/model slots, and the latest commits also adjust runtime parsing/middleware/settings surfaces around the release.",
     "Cost and safety wording: sign-up for Zavu is free, but sends are pay-as-you-go per message; the docs keep the authorized, opted-in recipient boundary explicit for A2P, WhatsApp-window, consent, and GDPR-style rules.",
 ]
 
@@ -1227,7 +1231,7 @@ ZAVUERER_GUIDE = [
     "Zavuerer is Tlamatini's new Zavu unified-messaging agent: one workflow node and one wrapped `chat_agent_zavuerer` tool can send SMS, WhatsApp, Telegram, Email, or Voice messages through Zavu's `/v1/messages` API.",
     "The operator configures one `zavu_api_key` through Config -> Access Keys Wizard -> Unified Messaging (Zavu), and the runtime seeds that key into Zavuerer automatically so prompts never need to repeat or expose the secret.",
     "The agent speaks direct HTTP through the Python standard library, has a safe `health` action, refuses sends when the key/recipient/body/channel are invalid, and always emits `INI_SECTION_ZAVUERER` for Parametrizer/Forker branching.",
-    "Canvas integration is complete: `agent_contracts.py` redacts `zavu_api_key`, `views.py` handles Zavuerer connections, frontend CSS/JS gives the node a visible identity, and migrations `0159`-`0162` seed the Agent, Tool, and demo/catalog prompts.",
+    "Canvas integration is complete: `agent_contracts.py` redacts `zavu_api_key`, `views.py` handles Zavuerer connections, frontend CSS/JS gives the node a visible identity, and migrations `0159`-`0164` seed the Agent, Tool, demo/catalog prompts, and setup-wizard dedupe.",
     "Cost and safety boundary: Zavu sign-up is free, but sending is pay-as-you-go per message; Zavuerer must only message authorized, opted-in recipients, with A2P, WhatsApp 24-hour-window, consent, and GDPR-style responsibilities called out explicitly.",
 ]
 
@@ -1295,8 +1299,9 @@ COMMAND_WATCHDOG_GUIDE = [
 
 NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
-    "The current `v1.33.0` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0162`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
-    "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0162_add_zavuerer_catalog_prompts.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
+    "The current `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
+    "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
+    "The latest cleanup/assets span also includes `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, `docs/claude/recent-fixes.md`, response-parser/runtime/settings/middleware touch-ups, and removal of the stale `Tlamatini/db.sqlite3.bak-prereseat` backup from the tracked surface.",
     "The same wave preserves evidence-oriented tests and build guards such as `test_private_data_guard.py`, performance/visual checks, About-window authorship tests, and public-release verification rules that distinguish sensitive PII from valid creator names.",
     "The same span refreshes shipped visual/media assets: `TlamatiniAbout.png` replaces the old `TlamatiniAbout.jpg`, and `agent/images/TlamatiniAndKyber.mp4` is part of the repository asset set described by the dossier.",
     "The same recent window also retains the earlier self-modify/browser-setup asset wave — `copy_source_assets.py`, `agent/access_key_wizard.py`, `static/agent/js/access_keys_wizard.js`, `static/agent/css/access_keys_wizard.css`, and the Blender control surface in `agent/agents/blenderer/`.",
@@ -1307,7 +1312,7 @@ NEW_ASSETS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.33.0` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.33.2` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1488,7 +1493,7 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
-    "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `kimi-k2.6:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
+    "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `glm-5.2:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
     "URL configuration now also includes `kali_server_url`, the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, plus ESP32er’s `pio_executable` and `pio_core_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
     "Credential configuration is no longer hand-edit-only: Config -> Access Keys Wizard provides a browser-side path for ACPX and provider secrets while preserving masked status in the UI.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
@@ -1644,7 +1649,7 @@ OLLAMA_COMMANDS = "\n".join(
         "ollama serve",
         "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
         "ollama pull Nomic-Embed-Text:latest",
-        "ollama pull kimi-k2.6:cloud",
+        "ollama pull glm-5.2:cloud",
         "ollama pull qwen3.5:cloud",
         "ollama pull gpt-oss:120b-cloud",
         "ollama pull qwen3.5:397b-cloud",
@@ -1952,8 +1957,8 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("v1.33.0 Zavuerer release delta", styles["h2"]))
-    for item in V1330_RELEASE_GUIDE:
+    story.append(p("v1.33.2 Zavuerer release delta", styles["h2"]))
+    for item in V1332_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Zavuerer unified-messaging agent", styles["h2"]))
     for item in ZAVUERER_GUIDE:
@@ -2740,7 +2745,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.33.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.33.2", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2754,7 +2759,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.33.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.33.2", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2763,23 +2768,24 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.33.0 Zavuerer unified messaging", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.33.2 Zavuerer and cleanup", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "The docs now explain the whole 1.33.0 product state, not only the new agent row.",
+        "The docs now explain the whole 1.33.2 product state, not only the new agent row.",
         "Operators get a simpler messaging surface: one Zavu key can reach SMS, WhatsApp, Telegram, Email, and Voice.",
-        "The deck also preserves the trust story: creator attribution, private-data guardrails, public-release checks, and the Agent-directory responsibility boundary.",
+        "The deck also preserves the trust story: creator attribution, private-data guardrails, public-release checks, `glm-5.2:cloud` defaults, and the Agent-directory responsibility boundary.",
     ], THEME["jade"], "rel-b", 13)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "v1.33.0 Release Delta", "Zavuerer, Zavu keys, messaging channels, and safety", THEME["copper"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Exact release checklist", V1330_RELEASE_GUIDE, THEME["copper"], "v1330-a", 12)
+    slide, audit = add_slide(prs, "v1.33.2 Release Delta", "Zavuerer, model defaults, cleanup, and safety", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Exact release checklist", V1332_RELEASE_GUIDE, THEME["copper"], "v1332-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Recent implementation assets", [
         "`agent/agents/zavuerer/` carries the stdlib-only Zavu REST client and config template.",
-        "`0159`-`0162` seed the Agent, Tool, demo prompts, and catalog prompts.",
-        "`access_key_wizard.py`, `tools.py`, and `config.json` wire the `zavu_api_key` path.",
+        "`0159`-`0164` seed the Agent, Tool, prompts, and setup-wizard dedupe.",
+        "`access_key_wizard.py`, `tools.py`, and `config.json` wire the Zavu key path.",
+        "`config.json` now favors `glm-5.2:cloud` for the shipped cloud model baseline.",
         "`views.py`, ACP JS/CSS, and `agent_contracts.py` make canvas wiring and redaction work.",
-    ], THEME["jade"], "v1330-b", 12)
+    ], THEME["jade"], "v1332-b", 11)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Zavuerer", "new unified messaging agent for Zavu", THEME["amber"])
@@ -3046,7 +3052,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Service and API", OLLAMA_GUIDE[2:], THEME["jade"], "ollama-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Default pull set", [
         "Nomic-Embed-Text:latest",
-        "kimi-k2.6:cloud",
+        "glm-5.2:cloud",
         "qwen3.5:cloud",
         "gpt-oss:120b-cloud",
         "qwen3.5:397b-cloud",
@@ -3134,7 +3140,7 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves through v1.33.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves through v1.33.2", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
         "ESPHomer (prior firmware lane, now folded into v1.26.0): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
@@ -3146,13 +3152,14 @@ def build_ppt(context: dict) -> None:
         "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Version identity (v1.33.0): the live Git tag now resolves the product to the Zavuerer release while the generated dossiers carry the current source inventory.",
+        "Version identity (v1.33.2): the live Git tag now resolves the product to the Zavuerer release family while the generated dossiers carry the current source inventory.",
         "Zavuerer release addition: the catalog now includes a Zavu unified-messaging node and wrapped chat tool for SMS / WhatsApp / Telegram / Email / Voice with one configured key.",
+        "Model/config cleanup: the shipped cloud default now favors `glm-5.2:cloud`, and the latest cleanup removed a stale DB backup from the tracked surface.",
         "Trust wave (v1.27-v1.32.0): performance 3X levers, forward-only private-data cleanup, public-release verifier hardening, and Angela López Mendoza creator/authorship stamping moved together.",
         "Delegation wave: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` keep external agents and external MCP servers in the documented operator surface.",
         "Visual/media asset refresh (v1.26.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
-        "Self-update foundation (v1.23.0, still present in v1.33.0): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
-        "Frozen-build hardening (v1.23.0, still present in v1.33.0): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
+        "Self-update foundation (v1.23.0, still present in v1.33.2): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
+        "Frozen-build hardening (v1.23.0, still present in v1.33.2): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
         "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
         "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
         "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, ESPHomer, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with first-build-downloads-a-large-toolchain caveats where needed.",

@@ -91,7 +91,7 @@ tlamatini:
 completeness_check:
   enabled: false
   host: "http://localhost:11434"
-  model: "llama3"
+  model: "glm-5.2:cloud"
   instruction: |
     You are an intent-completeness classifier. Decide whether the user's last
     message (combined with prior conversation if any) expresses a clear and

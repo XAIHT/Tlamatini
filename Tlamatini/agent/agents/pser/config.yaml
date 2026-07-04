@@ -22,7 +22,7 @@ likely_process_name: "Paint"
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
+  model: "glm-5.2:cloud"
 
 # Agents to start after process lookup (auto-populated via canvas connections)
 target_agents: []

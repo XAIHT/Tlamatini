@@ -47,7 +47,7 @@ system_prompt: ""
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
+  model: "glm-5.2:cloud"
 
 # Polling interval in seconds between log file checks
 poll_interval: 5

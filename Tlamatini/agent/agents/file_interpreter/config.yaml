@@ -42,4 +42,4 @@ target_agents: []
 # LLM connection settings (used only when reading_type is 'summarized')
 llm:
   host: "http://localhost:11434"
-  model: "gpt-oss:120b-cloud"
+  model: "glm-5.2:cloud"
