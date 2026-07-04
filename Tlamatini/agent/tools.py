@@ -1897,6 +1897,30 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                 configured.strip(),
             )
 
+    if template_dir == "image_interpreter":
+        # Image-Interpreter runs a TRIPLE-MODEL pipeline (interpreter_model_1 +
+        # interpreter_model_2 in parallel, then merging_model fuses both). The
+        # three models live once in config.json (Config -> Models: "Image
+        # interpreter 1 / 2" + "Image merger") so chat prompts never repeat
+        # them. Only non-empty configured values are seeded, so an explicit
+        # per-call value still wins.
+        for cfg_key, field in (
+            ("image_interpreter_model", "interpreter_model_1"),
+            ("image_interpreter_model_2", "interpreter_model_2"),
+            ("image_merging_model", "merging_model"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                continue
+            if isinstance(configured, str) and configured.strip():
+                runtime_config[field] = configured.strip()
+                logger.info(
+                    "[tools._seed_global_agent_defaults] Image-Interpreter %s seeded from config %s: %s",
+                    field, cfg_key, configured.strip(),
+                )
+
     if template_dir == "zavuerer":
         # Zavuerer is the "embedded client" for the Zavu unified-messaging API:
         # the secret zavu_api_key lives once in config.json (Config -> Access Keys

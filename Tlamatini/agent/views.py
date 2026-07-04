@@ -9110,10 +9110,21 @@ CONFIG_MODEL_KEYS: tuple[str, ...] = (
     "access_aimed_prompt_model",
     "unified_agent_model",
     "image_interpreter_model",
+    "image_interpreter_model_2",
+    "image_merging_model",
     "mcp_files_search_model",
     "internet_classifier_model",
     "web_summarizer_model",
 )
+
+# Defaults surfaced by the load endpoint when a key is missing/empty in the
+# user's config.json (e.g. an install self-updated from before the triple-model
+# Image-Interpreter, 2026-07-04), so the Models dialog shows the real pipeline
+# defaults instead of an empty required field.
+CONFIG_MODEL_KEY_DEFAULTS: dict[str, str] = {
+    "image_interpreter_model_2": "gemma4:cloud",
+    "image_merging_model": "glm-5.2:cloud",
+}
 
 CONFIG_URL_KEYS: tuple[str, ...] = (
     "ollama_base_url",
@@ -9223,10 +9234,9 @@ def load_config_section_view(request, section: str):
     values: dict[str, str] = {}
     for key in keys:
         raw = config.get(key, "")
-        if raw is None:
-            values[key] = ""
-        else:
-            values[key] = str(raw)
+        if raw is None or raw == "":
+            raw = CONFIG_MODEL_KEY_DEFAULTS.get(key, "")
+        values[key] = str(raw)
     return JsonResponse({"success": True, "section": section, "values": values})
 
 
@@ -9235,7 +9245,7 @@ def load_config_section_view(request, section: str):
 @login_required
 def save_config_models_view(request):
     """
-    Persist the 8 model fields from the Config -> Models dialog. Each value
+    Persist the 10 model fields from the Config -> Models dialog. Each value
     must be a non-empty string. The browser already validates against the
     Ollama catalog; this endpoint only enforces type/shape so a malformed
     request never lands in config.json.
