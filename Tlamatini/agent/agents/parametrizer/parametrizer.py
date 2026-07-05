@@ -112,7 +112,7 @@ logging.getLogger().addHandler(console_handler)
 SECTION_AGENT_TYPES = [
     'apirer', 'gitter', 'kuberneter',
     'crawler', 'summarizer', 'prompter', 'flowcreator',
-    'file_interpreter', 'image_interpreter', 'file_extractor',
+    'file_interpreter', 'image_interpreter', 'video_analyzer', 'file_extractor',
     'kyber_keygen', 'kyber_cipher', 'kyber_decipher',
     'gatewayer', 'gateway_relayer',
     'de_compresser',

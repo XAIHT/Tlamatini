@@ -1667,6 +1667,19 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* Video-Analyzer — "Cybernetic Vision" violet-black -> verdict-lime, mirrors
+   .canvas-item.video-analyzer-agent in agentic_control_panel.css. Observational
+   (it WATCHES a recorded video and returns a verdict), but every Multi-Turn
+   agent appears in the Exec Report. */
+.exec-report-caption-videoanalyzer {
+    background: linear-gradient(135deg, #12043A 0%, #39FF14 100%);
+    color: #ffffff;
+}
+
+.exec-report-videoanalyzer .exec-report-cmd {
+    border-left: 3px solid #7B2FF7;
+}
+
 /* ESP32er — charcoal -> Espressif red, mirrors .canvas-item.esp32er-agent in
    agentic_control_panel.css. State-changing because it scaffolds / writes / builds
    / uploads (flashes) ESP32 firmware through the PlatformIO `pio` CLI. */
@@ -1751,6 +1764,7 @@ body.resizing-vertical {
 .exec-report-esp32er thead th,
 .exec-report-esphomer thead th,
 .exec-report-arduiner thead th,
+.exec-report-videoanalyzer thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {
     color: #f5f5f5;

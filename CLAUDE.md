@@ -209,7 +209,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── videoplayer/        # Video-file PLAYBACK WITH audio on a chosen display (ffpyplayer [bundles ffmpeg+SDL via pip] + OpenCV window; silent-cv2 fallback) — display_index, volume_percent, time_played truncate/loop, window size/fullscreen/keep_aspect; on-screen sibling of AudioPlayer; observational/output → not in Exec Report (canvas + chat_agent_videoplayer)
 │   │   │   ├── talker/            # TEXT-TO-SPEECH (TTS): speaks input_text via an OLLAMA model (default Orpheus-3b-FT) — FEMALE VOICE ONLY by design (Tlamatini is female; a male voice is FORBIDDEN — resolve_voice raises MaleVoiceForbiddenError and main() hard-exits "NOW CLOSING.. BYE", never substitutes); voice(tara/leah/jess/mia/zoe)/emotion/language, SNAC-decoded 24 kHz WAV saved + played; voice-synthesis sibling of AudioPlayer; observational/output → not in Exec Report; snac+torch optional for audio (canvas + chat_agent_talker)
 │   │   │   ├── blenderer/          # Blender bridge — official Blender MCP add-on socket (localhost:9876, code-execution protocol); rich action catalog (execute_code + scene/object/render verbs); direct socket, no blmcp bridge (canvas + chat_agent_blenderer)
-│   │   │   └── ... (83 total agent directories)
+│   │   │   ├── video_analyzer/       # Video-Analyzer — "eye" of Robotic-Loop-Training: watches a recorded video and rules PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR via a deterministic OpenCV motion gate + triple-model Ollama CLOUD vision (qwen3-vl:235b-cloud ∥ qwen3.5:cloud → glm-5.2:cloud merge; PASS only if both agree); emits INI_SECTION_VIDEO_ANALYZER + a substring-safe TLM_VERDICT:: line a Forker branches on (canvas + chat_agent_video_analyzer)
+│   │   │   └── ... (84 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py
@@ -338,7 +339,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Architecture & core systems** — config, system prompt & identity, the Five Layers, application log, doc generation, database models: @docs/claude/architecture.md
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
-- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 83 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 84 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
 - **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, ACPX toolbar toggle, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, Skills system (SKILL.md packages), key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md

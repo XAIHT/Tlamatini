@@ -1374,6 +1374,25 @@ async function updateImageInterpreterConnection(agentId, targetAgentId, action, 
     }
 }
 
+async function updateVideoAnalyzerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
+    try {
+        const response = await fetch(`/agent/update_video_analyzer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- VideoAnalyzer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update VideoAnalyzer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating VideoAnalyzer ${agentId}:`, error);
+    }
+}
+
 async function updateGatewayerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
     try {
         const response = await fetch(`/agent/update_gatewayer_connection/${agentId}/`, {

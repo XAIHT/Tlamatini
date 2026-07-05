@@ -1084,6 +1084,32 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         }
         set('output_dir', pairs.output_dir);
 
+    // ── Video-Analyzer ───────────────────────────────────────────────
+    // Template fields: video_pathfilenames, expected_motion, num_frames,
+    //                  frame_sampling, motion_gate, motion_threshold, roi,
+    //                  interpreter_model_1/2, merging_model, llm.host/token
+    } else if (lower === 'video-analyzer' || lower === 'video_analyzer') {
+        set('video_pathfilenames', pairs.video_pathfilenames || pairs.video_path || pairs.video);
+        set('expected_motion', pairs.expected_motion);
+        if (pairs.num_frames !== undefined && pairs.num_frames !== '') {
+            const nf = parseInt(pairs.num_frames, 10);
+            if (!Number.isNaN(nf)) config.num_frames = nf;
+        }
+        set('frame_sampling', pairs.frame_sampling);
+        if (pairs.motion_gate !== undefined && pairs.motion_gate !== '') {
+            config.motion_gate = (String(pairs.motion_gate).toLowerCase() === 'true' || pairs.motion_gate === true);
+        }
+        if (pairs.motion_threshold !== undefined && pairs.motion_threshold !== '') {
+            const mt = parseFloat(pairs.motion_threshold);
+            if (!Number.isNaN(mt)) config.motion_threshold = mt;
+        }
+        set('roi', pairs.roi);
+        set('interpreter_model_1', pairs.interpreter_model_1);
+        set('interpreter_model_2', pairs.interpreter_model_2);
+        set('merging_model', pairs.merging_model);
+        const videoAnalyzerLlm = collectDotted('llm');
+        if (Object.keys(videoAnalyzerLlm).length > 0) config.llm = videoAnalyzerLlm;
+
     // ── Recorder ─────────────────────────────────────────────────────
     // Template fields: device_index, device_name, record_seconds,
     //                  sample_rate, channels, input_gain_percent, output_dir

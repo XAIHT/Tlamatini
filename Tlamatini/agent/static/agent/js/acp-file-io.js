@@ -508,6 +508,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'arduiner': await updateArduinerConnection(sourceId, targetId, 'add'); break;
                 case 'file-interpreter': await updateFileInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
+                case 'video-analyzer': await updateVideoAnalyzerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'gatewayer': await updateGatewayerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'gateway relayer':
                 case 'gateway-relayer': await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target'); break;
@@ -585,6 +586,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'summarizer': await updateSummarizerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-interpreter': await updateFileInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'image-interpreter': await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
+                case 'video-analyzer': await updateVideoAnalyzerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gatewayer': await updateGatewayerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'gateway relayer':
                 case 'gateway-relayer': await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source'); break;

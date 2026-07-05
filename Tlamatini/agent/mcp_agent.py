@@ -230,6 +230,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     "chat_agent_globber":        ("globber",        "Globber"),
     "chat_agent_grepper":        ("grepper",        "Grepper"),
     "chat_agent_editor":         ("editor",         "Editor"),
+    # Video-Analyzer is observational (it WATCHES a recorded video and returns a
+    # verdict — it mutates no state), but EVERY Multi-Turn agent must appear in the
+    # Exec Report, so it gets its own row + caption gradient (agent_key videoanalyzer).
+    "chat_agent_video_analyzer": ("videoanalyzer",  "Video-Analyzer"),
     # Playwrighter drives a real browser through a scripted flow: it submits
     # forms, clicks, logs into sites, downloads files, and otherwise changes
     # remote/web state. Read-only steps (extract_text / screenshot) share the

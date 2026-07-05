@@ -1358,6 +1358,7 @@ def _find_missing_required_config_paths(config, config_path, agent_script_path):
 _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
     "shoter": ("output_path", "output_dir", "filename"),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
+    "video_analyzer": ("verdict", "verdict_token", "confidence", "motion_score", "status", "video_path"),
     "recorder": (
         "output_path", "output_dir", "filename",
         "device_index", "device_name", "sample_rate", "channels",

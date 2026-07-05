@@ -13,7 +13,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -259,6 +259,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'arduiner': 'arduiner-agent',
     'file-interpreter': 'file-interpreter-agent',
     'image-interpreter': 'image-interpreter-agent',
+    'video-analyzer': 'video-analyzer-agent',
     'gatewayer': 'gatewayer-agent',
     'gateway-relayer': 'gateway-relayer-agent',
     'node-manager': 'nodemanager-agent',
@@ -980,6 +981,8 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'video-analyzer') updateVideoAnalyzerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'video-analyzer') updateVideoAnalyzerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
@@ -1121,6 +1124,8 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'file-interpreter' && !sourceBeingDeleted) updateFileInterpreterConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'image-interpreter' && !targetBeingDeleted) updateImageInterpreterConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'image-interpreter' && !sourceBeingDeleted) updateImageInterpreterConnection(sourceId, targetId, 'remove', 'target');
+        if (targetAgentName.toLowerCase() === 'video-analyzer' && !targetBeingDeleted) updateVideoAnalyzerConnection(targetId, sourceId, 'remove', 'source');
+        if (sourceAgentName.toLowerCase() === 'video-analyzer' && !sourceBeingDeleted) updateVideoAnalyzerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gatewayer' && !targetBeingDeleted) updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'gatewayer' && !sourceBeingDeleted) updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'gateway relayer' && !targetBeingDeleted) updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
@@ -1618,6 +1623,8 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'file-interpreter') updateFileInterpreterConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'image-interpreter') updateImageInterpreterConnection(sourceId, targetId, 'add', 'target');
+                    if (targetAgentName.toLowerCase() === 'video-analyzer') updateVideoAnalyzerConnection(targetId, sourceId, 'add', 'source');
+                    if (sourceAgentName.toLowerCase() === 'video-analyzer') updateVideoAnalyzerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source');

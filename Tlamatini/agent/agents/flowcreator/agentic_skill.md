@@ -1373,7 +1373,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking, max 1)
   - `target_agents`: [] (downstream agents — for canvas connection tracking, max 1)
 - **Special behavior**:
-  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (46) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gateway-Relayer, Gatewayer, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, MCP Doctor, Mouser, Playwrighter, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, VideoPlayer, Whatsapper, Whisperer, Windower, Zavuerer
+  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (47) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gateway-Relayer, Gatewayer, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, MCP Doctor, Mouser, Playwrighter, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, Video-Analyzer, VideoPlayer, Whatsapper, Whisperer, Windower, Zavuerer
   - Exactly one source and one target agent must be connected
   - The source log is treated as a queue of structured segments; Parametrizer reads only the next complete unread segment
   - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI and can map whole fields or optional `{marker}` placeholders inside target strings
@@ -2000,6 +2000,24 @@ system_prompt: |
   - `fallback`: true (auto-fallback to another channel if the chosen one fails) / `timeout`: 60
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the send)
+
+### 84. Video-Analyzer
+- **Purpose**: The "eye" of a **Robotic-Loop-Training** loop — it WATCHES A RECORDED VIDEO and returns a VERDICT on whether a physical system performed a motion. It extracts frames with OpenCV, runs a DETERMINISTIC motion gate (no motion → `FAIL_NO_MOTION`, no LLM call), then two Ollama CLOUD vision models judge the frames IN PARALLEL (`interpreter_model_1` = qwen3-vl:235b-cloud, `interpreter_model_2` = qwen3.5:cloud), a BARRIER waits for BOTH, and `merging_model` (glm-5.2:cloud) fuses them into ONE verdict (PASS_OK only when both agree — never a false pass). Emits `INI_SECTION_VIDEO_ANALYZER` AND a substring-safe `TLM_VERDICT::<TOKEN>` line a Forker branches on.
+- **Used for**: Closing a hardware-in-the-loop training loop: STM32er flashes firmware → Camcorder records the board + servo → Video-Analyzer judges the motion → a Forker loops back to reprogram (on FAIL) or finishes (on PASS). Also any "did the physical thing move as asked?" check. Distinct from **Image-Interpreter**, which judges ONE still image; Video-Analyzer judges MOTION across a whole clip.
+- **Aimed at**: Visual verification pipelines with a feedback loop. `video_pathfilenames` accepts a file, a wildcard, a folder (newest video), or a **Camcorder pool name** (reads that Camcorder's last recording) — so a Parametrizer copies `{output_path}` from Camcorder straight into Video-Analyzer. `expected_motion` is the checkable motion contract.
+- **Application example**: Starter → STM32er (write_source + build_and_flash a servo program) → Camcorder (`capture_mode: video`, `video_duration_seconds: 15`) → Parametrizer (map Camcorder `{output_path}` into Video-Analyzer `video_pathfilenames`) → Video-Analyzer (`expected_motion: "servo sweeps 0→90→180 and back"`) → Forker (pattern_a `TLM_VERDICT::PASS_OK` → Notifier → Ender; pattern_b `TLM_VERDICT::FAIL` → Counter → back to STM32er) → Ender.
+- **Pool name pattern**: `video_analyzer_<n>`
+- **Parametrizer source**: emits `INI_SECTION_VIDEO_ANALYZER` with fields `video_path`, `verdict`, `verdict_token`, `confidence`, `motion_score`, `frames_analyzed`, `interpreter_model_1/2`, `merging_model`, `status`, and body=`response_body`.
+- **Starts other agents**: YES (always, success or failure — so a Forker can branch on the verdict)
+- **Config parameters**:
+  - `video_pathfilenames`: "" (a .mp4 path, a wildcard, a folder = newest video, or a Camcorder pool name like `camcorder_1`)
+  - `expected_motion`: "..." (plain-language description of the motion the hardware should perform)
+  - `num_frames`: 12 (frames to sample and send to the vision models)
+  - `frame_sampling`: "uniform" / `motion_gate`: true / `motion_threshold`: 2.0 / `roi`: "" (optional "x,y,w,h" percent ROI for the motion gate)
+  - `interpreter_model_1`: "qwen3-vl:235b-cloud" (the video/temporal specialist) / `interpreter_model_2`: "qwen3.5:cloud" / `merging_model`: "glm-5.2:cloud"
+  - `llm.host`: "http://localhost:11434" / `llm.token`: ""
+  - `source_agents`: [] (upstream agents — e.g. the Camcorder feeding the video)
+  - `target_agents`: [] (downstream agents to start after the verdict — e.g. a Forker)
 
 ---
 

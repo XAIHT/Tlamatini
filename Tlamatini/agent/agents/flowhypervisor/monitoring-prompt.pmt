@@ -77,7 +77,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Instant Messaging Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -543,6 +543,36 @@ IMAGE_INTERPRETER SPECIAL NOTES (triple-model vision pipeline):
     status: error on EVERY image together with "Could not connect" lines
     indicates a real problem (the Ollama host is down).
 
+VIDEO_ANALYZER SPECIAL NOTES (triple-model video-verdict pipeline):
+  - Video-Analyzer WATCHES a recorded video and RULES on whether a physical
+    system performed the expected motion — the "eye" of Robotic-Loop-Training
+    (STM32er flashes firmware → Camcorder records the board → Video-Analyzer
+    judges the clip → a Forker branches on the verdict). It is READ-ONLY /
+    observational (it mutates no state), but as a Multi-Turn agent it DOES appear
+    in the Exec Report.
+  - It first runs a DETERMINISTIC OpenCV motion gate: if nothing moved it emits
+    verdict FAIL_NO_MOTION with NO model call (a fast, objective short-circuit,
+    NOT an error). If motion IS present it runs interpreter_model_1 (default
+    qwen3-vl:235b-cloud) and interpreter_model_2 (default qwen3.5:cloud) IN
+    PARALLEL on two dedicated Ollama connections, a BARRIER waits for BOTH, then
+    merging_model (default glm-5.2:cloud) fuses them. Expect the SAME
+    "🔀 [CONNECTION-A/B] Interpreter N STARTED/FINISHED", "🧱 BARRIER" and
+    "🔗 [CONNECTION-MERGE]" lines as Image-Interpreter — ALL NORMAL, never errors.
+  - It is SHORT-LIVED and ACTIVE but each run can take tens of seconds to a few
+    MINUTES (two cloud vision generations + one synthesis over ~8-12 frames).
+    Long silence while a model generates is NORMAL — do NOT flag before ~5 min
+    without a "Video-Analyzer agent finished" completion.
+  - It ALWAYS emits an INI_SECTION_VIDEO_ANALYZER<<< block (video_path, verdict,
+    verdict_token, confidence, motion_score, frames_analyzed, model names, status;
+    body = merged report) AND a dedicated "TLM_VERDICT::<TOKEN>" line. NEVER flag
+    either as an error — they are the agent's ROUTABLE OUTPUT for a downstream
+    Forker (pattern_a "TLM_VERDICT::PASS_OK" → finish, pattern_b "TLM_VERDICT::FAIL"
+    → reprogram). status: motion_gate_fail / partial_interpreter_* /
+    merge_fallback_concat are DOCUMENTED fail-safe outcomes, and verdict UNCLEAR /
+    ANALYSIS_ERROR (bad framing, a cloud outage, no resolvable video) is routable
+    content, NOT a flow crash. Only "Could not connect" on EVERY model together
+    indicates a real problem (the Ollama host is down).
+
 ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
   Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
@@ -569,6 +599,7 @@ TYPICAL TIMING:
   - Talker: text-to-speech via an Ollama model — the synthesis (Ollama generation) can run from a few seconds up to a few MINUTES for a long text, a large/quantised model, or a cloud Ollama endpoint, then it plays the audio (~the speech length) and exits — observational/output (NOT in the Exec Report). Don't flag a Talker still waiting on its Ollama response before ~5 min; flag only if it is silent well beyond that with no "Talker agent finished" completion.
   - Whisperer: speech-to-text — records the mic (~`record_seconds`, default 5 s) or reads an audio file, then runs the neural recognizer. The FIRST run on a machine can take a few MINUTES while it DOWNLOADS the Whisper model weights, and CPU transcription of a long clip (no GPU) is slow; both are normal. It then writes the transcript and exits — observational (read-only; turns audio into text, NOT in the Exec Report). The speech-to-text sibling of Talker. Don't flag a Whisperer still downloading a model or transcribing before ~5 min; flag only if it is silent well beyond that with no "Whisperer agent finished" completion. A `status: engine_unavailable` block (faster-whisper not installed, no cloud key) is routable content, NOT a flow error.
   - Image-Interpreter: THREE LLM calls per image — two parallel vision interpretations (CONNECTION-A / CONNECTION-B, each on its own Ollama connection) + one merge (CONNECTION-MERGE) after the barrier; tens of seconds to a few minutes PER IMAGE with cloud models, multiplied by the number of matched images. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge log lines keep appearing; flag only if silent > 5 min per image with no "Image-Interpreter agent finished" completion. See IMAGE_INTERPRETER SPECIAL NOTES.
+  - Video-Analyzer: a DETERMINISTIC OpenCV motion gate (sub-second) then, if motion is present, THREE cloud LLM calls — two parallel vision interpretations (CONNECTION-A / CONNECTION-B) + one merge (CONNECTION-MERGE) over ~8-12 frames; tens of seconds to a few minutes total. A no-motion clip short-circuits to FAIL_NO_MOTION in seconds with no model call. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge lines keep appearing; flag only if silent > 5 min with no "Video-Analyzer agent finished" completion. See VIDEO_ANALYZER SPECIAL NOTES.
   - Keyboarder/Mouser/Windower/Shoter: < 5 seconds per invocation (desktop UI primitives). Windower
     `matched: false` / `state: no_match` is NOT a flow error — it is routable content (the window was not
     open yet); only flag `state: win32_unavailable` (a real platform/environment problem) or a Windower

@@ -89,6 +89,11 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
         "file_path", "interpreter_model_1", "interpreter_model_2",
         "merging_model", "status", "response_body",
     ),
+    "video_analyzer": (
+        "video_path", "verdict", "verdict_token", "confidence", "motion_score",
+        "frames_analyzed", "interpreter_model_1", "interpreter_model_2",
+        "merging_model", "status", "response_body",
+    ),
     "file_extractor": ("file_path", "response_body"),
     "prompter": ("model", "response_body"),
     "flowcreator": ("model", "response_body"),

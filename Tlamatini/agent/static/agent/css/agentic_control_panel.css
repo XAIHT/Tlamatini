@@ -2412,6 +2412,22 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(194, 24, 91, 0.5);
 }
 
+/* Video-Analyzer Agent — "Cybernetic Vision": violet-black -> electric purple
+   -> cyan scan -> verdict-lime. Deliberately distinct from Image-Interpreter
+   (crimson/amber/teal); the lime terminus reads as the PASS/verdict signal of
+   the Robotic-Loop-Training "eye". */
+.canvas-item.video-analyzer-agent {
+    background-color: #12043A;
+    background: linear-gradient(135deg, #12043A 0%, #7B2FF7 33%, #00E5FF 66%, #39FF14 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.video-analyzer-agent:hover {
+    background: linear-gradient(135deg, #1E0A5A 0%, #9B5CFF 33%, #5CF2FF 66%, #7BFF5C 100%);
+    box-shadow: 0 6px 15px rgba(123, 47, 247, 0.5);
+}
+
 /* Gatewayer Agent */
 .canvas-item.gatewayer-agent {
     background-color: #FF006E;

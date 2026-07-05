@@ -366,6 +366,40 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=8,
     ),
     ChatWrappedAgentSpec(
+        key="video_analyzer",
+        template_dir="video_analyzer",
+        tool_name="chat_agent_video_analyzer",
+        tool_description="Chat-Agent-Video-Analyzer",
+        display_name="Video-Analyzer",
+        purpose=(
+            "WATCH A RECORDED VIDEO and return a VERDICT on whether a physical system performed the "
+            "motion the user asked for — the 'eye' of a Robotic-Loop-Training loop (STM32er flashes "
+            "firmware -> Camcorder records the board -> Video-Analyzer judges the clip -> a Forker "
+            "loops back to reprogram or finishes). It extracts frames with OpenCV, runs a "
+            "DETERMINISTIC motion gate (no motion -> FAIL_NO_MOTION with NO model call), then two "
+            "Ollama CLOUD vision models (qwen3-vl:235b-cloud + qwen3.5:cloud) judge the frames IN "
+            "PARALLEL and a merger (glm-5.2:cloud) issues the final verdict — PASS_OK only when BOTH "
+            "agree, never a false pass. Distinct from chat_agent_image_interpreter (one still image): "
+            "Video-Analyzer judges MOTION across a whole clip. Pass video_pathfilenames='<a .mp4 path, "
+            "a wildcard, a folder, or a Camcorder pool name like camcorder_1>' and expected_motion="
+            "'<what the hardware should do>'. The wrapped result includes top-level 'verdict', "
+            "'confidence' and 'motion_score' fields, so you do NOT need to parse the log. Verdict "
+            "tokens: PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR / ANALYSIS_ERROR."
+        ),
+        example_request=(
+            "Analyze the video with video_pathfilenames='C:\\Clips\\servo.mp4' and "
+            "expected_motion='the servo sweeps 0 to 90 to 180 degrees and back, repeating' and "
+            "num_frames=12"
+        ),
+        aliases=("video_analyzer", "video analyzer", "analyze video", "video verdict", "robotic loop"),
+        security_hints=(
+            "analyze video", "video analyzer", "watch the video", "did the servo move",
+            "verify motion", "robotic loop training", "check the recording", "judge the video",
+            "did it move", "video verdict",
+        ),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
         key="whisperer",
         template_dir="whisperer",
         tool_name="chat_agent_whisperer",

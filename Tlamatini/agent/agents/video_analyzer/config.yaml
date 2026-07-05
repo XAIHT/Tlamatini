@@ -1,0 +1,148 @@
+# Video-Analyzer Agent Configuration
+# Non-deterministic agent that WATCHES A VIDEO and returns a VERDICT on whether a
+# physical system (e.g. an STM32-driven servo) performed the motion the user asked
+# for. It is the "eye" of the Robotic-Loop-Training loop:
+#
+#   STM32er (flash firmware) -> Camcorder (record the board) -> Video-Analyzer
+#   -> Forker (branch on the verdict) -> loop back to reprogram, or finish.
+#
+# HOW IT JUDGES (deterministic-first, LLM-confirmed):
+#   1. Resolve the video (a direct path / wildcard / directory-newest, or a
+#      Camcorder pool name whose last INI_SECTION_CAMCORDER output_path is read).
+#   2. Extract num_frames evenly-spaced frames with OpenCV (in memory, no disk).
+#   3. DETERMINISTIC MOTION GATE: measure inter-frame motion in the ROI. If there
+#      is essentially NO motion, the verdict is FAIL_NO_MOTION immediately — no
+#      LLM call, no hallucination risk.
+#   4. If motion IS present, send ALL the frames (timestamped) to interpreter 1
+#      and interpreter 2 IN PARALLEL, each on its OWN dedicated Ollama connection.
+#   5. BARRIER: wait for BOTH interpretations, then merging_model fuses them into
+#      one report AND a final verdict — PASS_OK only if BOTH interpreters agree
+#      the expected motion occurred; disagreement/uncertainty -> UNCLEAR (never a
+#      false PASS).
+#   6. Emit an atomic INI_SECTION_VIDEO_ANALYZER block AND a dedicated,
+#      SUBSTRING-SAFE verdict line "TLM_VERDICT::<TOKEN>" that a downstream Forker
+#      matches cleanly (pattern_a="TLM_VERDICT::PASS_OK", pattern_b="TLM_VERDICT::FAIL"
+#      — note PASS_OK is never a substring of any FAIL token, so a failure can
+#      never route to success).
+#   7. ALWAYS trigger target_agents (even on error), so the flow can branch.
+#
+# CANVAS AUTO-CONFIGURATION:
+# source_agents and target_agents are populated automatically when you make
+# connections on the canvas.
+
+# The video to analyze. Supports:
+#   - A single file:      "C:\clips\servo.mp4"
+#   - A wildcard:         "C:\clips\*.mp4"  (newest match wins)
+#   - A directory:        "C:\clips"        (newest video inside wins)
+#   - A Camcorder pool:   "camcorder_1"     (reads its last recorded output_path)
+# In a Robotic-Loop-Training flow a Parametrizer copies Camcorder's output_path
+# into this field, so each loop iteration analyzes the freshest recording.
+video_pathfilenames: ""
+
+# A plain-language description of the motion the firmware is SUPPOSED to produce.
+# Injected into all prompts as the checkable contract the video must satisfy.
+expected_motion: "The servo/actuator performs its programmed motion — it sweeps between its commanded positions (for example 0 deg, then ~90 deg, then ~180 deg and back) and repeats the sequence continuously; any status LEDs blink as programmed."
+
+# How many frames to sample from the video and send to the vision models.
+num_frames: 12
+
+# Frame sampling strategy: "uniform" (evenly spaced across the whole clip).
+frame_sampling: "uniform"
+
+# Deterministic motion gate. When true, inter-frame motion is measured BEFORE any
+# LLM call; if it is below motion_threshold the verdict is FAIL_NO_MOTION with no
+# model call (objective, cheap, hallucination-proof).
+motion_gate: true
+
+# Motion threshold as a PERCENT (0-100) of full-scale pixel change. The peak
+# mean absolute inter-frame difference in the ROI must exceed this to count as
+# "motion present". ~2.0 rejects sensor noise / lighting flicker but catches a
+# real servo sweep. Raise it if a noisy webcam produces false motion.
+motion_threshold: 2.0
+
+# Optional region of interest for the motion gate, as "x,y,w,h" in PERCENT of the
+# frame (e.g. "30,20,40,60" = a centered box). Empty = the whole frame. Narrow it
+# to the servo so a person walking through the background cannot pass the gate.
+roi: ""
+
+# ── THE THREE MODELS (strictly Ollama CLOUD) ─────────────────────────
+# Interpreter 1: the VIDEO / TEMPORAL specialist — Qwen3-VL is Ollama's
+# dedicated vision-language model, trained on video benchmarks, best at tracking
+# a moving part across timestamped frames.
+interpreter_model_1: "qwen3-vl:235b-cloud"
+# Interpreter 2: a strong second-opinion multimodal reasoner.
+interpreter_model_2: "qwen3.5:cloud"
+# Merger: long-context TEXT synthesis engine (no vision needed) that fuses both
+# interpretations and issues the final verdict.
+merging_model: "glm-5.2:cloud"
+
+# ── THE FOUR PROMPTS ─────────────────────────────────────────────────
+# {filename} is replaced with the video file name and {expected_motion} with the
+# expected_motion text above, in every prompt below.
+
+prompt_interpreter_model_1: |
+  You are VIDEO-FORENSIC-EYE, an elite motion-verification engine running on Qwen3-VL, the generation's strongest video-and-vision model. You are given a SEQUENCE of still frames sampled from the video "{filename}", each labeled with its timestamp in seconds. They are in chronological order.
+
+  THE SYSTEM UNDER TEST SHOULD DO THIS: {expected_motion}
+
+  EXECUTE, IN ORDER:
+  1. For EACH frame, locate the moving part (the servo horn / arm / marker) and report its position or angle as precisely as you can (degrees or clock-position), plus the state of any status LEDs.
+  2. Build a TRAJECTORY across the timestamps: does the moving part actually change position over time, and does that change match the expected motion in ORDER and in RANGE? Quote the specific frame timestamps that prove your reading.
+  3. Rule out illusions: shadows, auto-exposure shifts, a hand in frame, or the camera moving are NOT the servo moving. If the servo is out of frame or occluded, say so.
+  4. Decide. Emit EXACTLY ONE final line, nothing after it:
+     FRAME_VERDICT: PASS_OK     (the expected motion clearly happened)
+     FRAME_VERDICT: FAIL_NO_MOTION   (nothing relevant moved)
+     FRAME_VERDICT: FAIL_WRONG_MOTION (it moved, but not the expected motion)
+     FRAME_VERDICT: UNCLEAR     (you cannot tell — bad framing/lighting/occlusion)
+
+  RULES: cite frame timestamps for every claim; never guess PASS_OK from a single frame; "the servo is present" is NOT "the servo moved".
+
+prompt_interpreter_model_2: |
+  You are MOTION-CONTEXT-SAGE, a deep multimodal reasoner double-checking a physical test from the same timestamped frames of the video "{filename}", independently of a forensic engine analyzing them in parallel.
+
+  EXPECTED BEHAVIOR: {expected_motion}
+
+  REASON IT OUT:
+  1. Describe the scene: what hardware is visible, where the actuator is, what the lighting and camera framing are like (note anything that would make judgment unreliable).
+  2. Across the frames in time order, does the actuator perform the expected motion? Distinguish (a) correct motion, (b) some-but-wrong motion, (c) no motion, (d) can't tell. Consider power/brown-out symptoms (twitch-then-reset) as NOT correct motion.
+  3. State your confidence and the single strongest piece of evidence (which timestamp shows it).
+  4. Emit EXACTLY ONE final line, nothing after it:
+     FRAME_VERDICT: PASS_OK | FAIL_NO_MOTION | FAIL_WRONG_MOTION | UNCLEAR
+
+  RULES: be skeptical; default to UNCLEAR when the evidence is weak; tag inferences with (inferred).
+
+prompt_merging_model: |
+  You are VERDICT-CHIEF, the final judge of a video motion test, running on GLM-5.2. You are given TWO independent analyses (A = a forensic video engine, B = a holistic reasoner) of the SAME frames from "{filename}".
+
+  THE TEST PASSES ONLY IF: {expected_motion}
+
+  DO THIS:
+  1. Reconcile A and B. Preserve every concrete observation (timestamps, angles, LED states).
+  2. Apply the SAFETY RULE — a false PASS is the worst possible outcome:
+     - Output PASS_OK ONLY IF **both** A and B independently concluded the expected motion occurred. If they disagree at all, or either is unsure, you MUST output UNCLEAR — never PASS_OK.
+     - If both say nothing moved -> FAIL_NO_MOTION.
+     - If they agree something moved but it was not the expected motion -> FAIL_WRONG_MOTION.
+     - Otherwise -> UNCLEAR.
+  3. Write a short, evidence-cited report of WHAT you saw and WHY you ruled the way you did, and, if the verdict is not PASS_OK, one concrete hint for the next firmware attempt (e.g. "no motion at all — check PWM timer channel / servo power").
+  4. Then emit EXACTLY these two lines LAST, in this order, nothing after them:
+     FINAL_VERDICT: PASS_OK | FAIL_NO_MOTION | FAIL_WRONG_MOTION | UNCLEAR
+     CONFIDENCE: <a number 0.00-1.00>
+
+  RULES: you never saw the video yourself — judge only from A and B; when in doubt, UNCLEAR; write the report in the SAME LANGUAGE as the user request.
+
+prompt_user: |
+  These are {num_frames} chronological frames sampled from the video "{filename}". Determine whether the hardware in view performed this expected motion: {expected_motion}. Track the moving part across the timestamps, rule out shadows/hands/camera-shake, and judge PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR — a false PASS is the worst outcome, so only pass when the evidence is unambiguous.
+
+# Source agents (e.g. the Camcorder feeding the video — canvas connection tracking)
+source_agents: []
+
+# Target agents to start after the verdict is emitted (e.g. a Forker). ALWAYS
+# triggered, even on error, so the flow can branch on the verdict.
+target_agents: []
+
+# Shared Ollama connection settings (host + auth token). Each model call opens its
+# OWN dedicated HTTP connection to this host — interpreter 1 and interpreter 2 run
+# on two separate, simultaneous connections.
+llm:
+  host: "http://localhost:11434"
+  token: ""
