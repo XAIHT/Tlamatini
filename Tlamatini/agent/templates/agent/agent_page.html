@@ -635,6 +635,16 @@
       <div class="modal-header">
         <h4 id="modal-header-title">Pre-established prompts...</h4>
       </div>
+      <div id="prompt-search-bar" class="prompt-search-bar">
+        <span class="prompt-search-icon" aria-hidden="true"></span>
+        <input type="text" id="prompt-search-input" class="prompt-search-input"
+               placeholder="Search prompts by words, initials (imd) or a #number..."
+               autocomplete="off" autocorrect="off" spellcheck="false"
+               aria-label="Search the catalog of prompts">
+        <button type="button" id="prompt-search-clear" class="prompt-search-clear"
+                title="Clear search" aria-label="Clear search">&times;</button>
+        <span id="prompt-search-count" class="prompt-search-count"></span>
+      </div>
       <div id="tools-body" class="modal-body"></div>
       <div class="modal-footer">
       </div>

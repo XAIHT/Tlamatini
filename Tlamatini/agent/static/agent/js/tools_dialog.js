@@ -169,11 +169,176 @@ function applyPromptModesToToggles(modes) {
     setToolbarToggle('step-by-step-enabled', wantStepByStep);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  Smart prompt search — substring + word-start + acronym + fuzzy
+//  subsequence scoring, so "imd", "instant msg", "#91", "telegram wizard"
+//  or "whatsapp" all surface the right card, ranked best-first, with the
+//  matched letters highlighted live as the user types.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Escape a raw string for safe insertion into innerHTML.
+function escapeHtmlForSearch(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// True when the char at `i` begins a new word (start of string, or preceded
+// by a non-alphanumeric character).
+function isWordStart(text, i) {
+    if (i <= 0) return true;
+    return /[^a-z0-9]/i.test(text.charAt(i - 1));
+}
+
+// Contiguous-substring score within `hay` (already lowercased). Rewards an
+// earlier position, a word/field start, and covering more of a short field.
+function substringMatchScore(token, hay) {
+    const idx = hay.indexOf(token);
+    if (idx === -1) return 0;
+    let score = 60;
+    if (isWordStart(hay, idx)) score += 30;
+    if (idx === 0) score += 20;
+    score += Math.max(0, 18 - idx * 0.4);
+    score += Math.min(20, (token.length / Math.max(hay.length, 1)) * 40);
+    return score;
+}
+
+// Fuzzy subsequence score: do the chars of `token` appear in `hay` in order?
+// Rewards tight, contiguous, word-start-aligned runs (the VS Code / Sublime
+// "fuzzy finder" feel). Returns 0 when the subsequence is not present.
+function subsequenceMatchScore(token, hay) {
+    if (!token) return 0;
+    let ti = 0, score = 0, run = 0, prev = -2, firstIdx = -1;
+    for (let hi = 0; hi < hay.length && ti < token.length; hi++) {
+        if (hay.charAt(hi) === token.charAt(ti)) {
+            if (firstIdx === -1) firstIdx = hi;
+            if (hi === prev + 1) { run += 1; score += 6 + run * 2; }
+            else { run = 0; score += 2; }
+            if (isWordStart(hay, hi)) score += 5;
+            prev = hi;
+            ti += 1;
+        }
+    }
+    if (ti < token.length) return 0;
+    score += Math.max(0, 10 - firstIdx * 0.3);
+    return score;
+}
+
+// Acronym score: does `token` match the initials of consecutive words in
+// `hay`? e.g. "imd" → "Instant Messaging Doctor". A strong title signal.
+function acronymMatchScore(token, hay) {
+    if (token.length < 2) return 0;
+    const initials = (hay.match(/\b[a-z0-9]/gi) || []).join('').toLowerCase();
+    const idx = initials.indexOf(token);
+    if (idx === -1) return 0;
+    let score = 70 + (token.length - 2) * 8;
+    if (idx === 0) score += 20;
+    return score;
+}
+
+// Best score for one token within one field, scaled by the field's weight.
+function scoreTokenInField(token, field, weight) {
+    if (!field) return 0;
+    const best = Math.max(
+        substringMatchScore(token, field),
+        acronymMatchScore(token, field),
+        subsequenceMatchScore(token, field)
+    );
+    return best * weight;
+}
+
+// Score a whole card against the query. AND semantics: every typed token must
+// land somewhere. Returns { score, matched } — matched=false ⇒ hide the card.
+function scorePromptCardFields(query, f) {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return { score: 0, matched: true };
+    const tokens = q.split(/\s+/).filter(Boolean);
+
+    // Whole-query contiguous-phrase bonus (so "instant messaging" beats a card
+    // that merely contains both words far apart).
+    let phraseBonus = 0;
+    if (f.title.includes(q)) phraseBonus += 120;
+    else if (f.preview.includes(q)) phraseBonus += 45;
+    else if (f.content.includes(q)) phraseBonus += 20;
+
+    // Pure "#NN" / "NN" query → match by catalog index.
+    const numQuery = q.replace(/^#/, '');
+    if (/^\d+$/.test(numQuery)) {
+        if (f.numberStr === numQuery) return { score: 10000, matched: true };
+        if (f.numberStr.indexOf(numQuery) !== -1) return { score: 4000 + phraseBonus, matched: true };
+    }
+
+    let total = phraseBonus;
+    for (const token of tokens) {
+        const tnum = token.replace(/^#/, '');
+        if (/^\d+$/.test(tnum)) {
+            if (f.numberStr === tnum) { total += 400; continue; }
+            if (f.numberStr.indexOf(tnum) !== -1) { total += 150; continue; }
+        }
+        const best = Math.max(
+            scoreTokenInField(token, f.title, 1.0),
+            scoreTokenInField(token, f.modes, 0.7),
+            scoreTokenInField(token, f.preview, 0.5),
+            scoreTokenInField(token, f.content, 0.18)
+        );
+        if (best <= 0) return { score: 0, matched: false };
+        total += best;
+    }
+    return { score: total, matched: true };
+}
+
+// Wrap every query-token match inside `text` in <mark> (contiguous hits, or a
+// greedy subsequence fallback), returning an HTML-escaped, highlighted string.
+function highlightMatches(text, query) {
+    const raw = String(text);
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return escapeHtmlForSearch(raw);
+    const lower = raw.toLowerCase();
+    const tokens = q.split(/\s+/).filter(Boolean).filter((t) => !/^#?\d+$/.test(t));
+    if (!tokens.length) return escapeHtmlForSearch(raw);
+    const marks = new Array(raw.length).fill(false);
+
+    tokens.forEach((token) => {
+        let hit = false;
+        let from = 0;
+        let idx = lower.indexOf(token, from);
+        while (idx !== -1) {
+            for (let k = idx; k < idx + token.length; k++) marks[k] = true;
+            hit = true;
+            from = idx + token.length;
+            idx = lower.indexOf(token, from);
+        }
+        if (hit) return;
+        let ti = 0;
+        for (let hi = 0; hi < lower.length && ti < token.length; hi++) {
+            if (lower.charAt(hi) === token.charAt(ti)) { marks[hi] = true; ti += 1; }
+        }
+    });
+
+    let out = '';
+    let i = 0;
+    while (i < raw.length) {
+        const on = marks[i];
+        let j = i;
+        while (j < raw.length && marks[j] === on) j++;
+        const segment = escapeHtmlForSearch(raw.slice(i, j));
+        out += on ? '<mark class="prompt-search-hit">' + segment + '</mark>' : segment;
+        i = j;
+    }
+    return out;
+}
+
 $(function () {
     const MAX_PROMPTS = 256;
     const catalogButton = document.getElementById('prompts-catalog');
     const modal = document.getElementById('modal');
     const modalContent = document.querySelector('.modal-content');
+    const searchInput = document.getElementById('prompt-search-input');
+    const searchClear = document.getElementById('prompt-search-clear');
+    const searchCount = document.getElementById('prompt-search-count');
 
     async function loadPrompt(promptName, index) {
         try {
@@ -236,6 +401,23 @@ $(function () {
             card.appendChild(preview);
             card.appendChild(footer);
 
+            // Cache the searchable fields + node refs the live search needs.
+            card._promptIndex = index;
+            card._titleEl = title;
+            card._previewEl = preview;
+            card._titleText = title.textContent;
+            card._previewText = preview.textContent;
+            card._searchFields = {
+                numberStr: String(index),
+                title: title.textContent.toLowerCase(),
+                preview: preview.textContent.toLowerCase(),
+                modes: modes
+                    .map((m) => (PROMPT_MODE_META[m] ? PROMPT_MODE_META[m].label : m))
+                    .join(' ')
+                    .toLowerCase(),
+                content: (content || '').toLowerCase()
+            };
+
             const toolsBodyElement = document.getElementById('tools-body');
             toolsBodyElement.appendChild(card);
 
@@ -274,6 +456,81 @@ $(function () {
         });
     }
 
+    // Live, ranked, fuzzy filter of the catalog. Reorders matches to the top
+    // (best-first), highlights the matched letters, shows a live count (red on
+    // zero), and scrolls the list back to the top so the best match is always
+    // in view as the user types.
+    function applyPromptSearch(rawQuery) {
+        const toolsBodyElement = document.getElementById('tools-body');
+        const cards = Array.prototype.slice.call(toolsBodyElement.querySelectorAll('.prompt-card'));
+        const query = (rawQuery || '').trim();
+
+        const priorEmpty = toolsBodyElement.querySelector('.prompt-search-empty');
+        if (priorEmpty) priorEmpty.remove();
+        cards.forEach((card) => card.classList.remove('prompt-card-top'));
+
+        // Empty query → restore the original order, show everything, no marks.
+        if (!query) {
+            cards
+                .sort((a, b) => a._promptIndex - b._promptIndex)
+                .forEach((card) => {
+                    card.classList.remove('prompt-card-hidden');
+                    if (card._titleEl) card._titleEl.textContent = card._titleText;
+                    if (card._previewEl) card._previewEl.textContent = card._previewText;
+                    toolsBodyElement.appendChild(card);
+                });
+            if (searchClear) searchClear.classList.remove('is-visible');
+            if (searchCount) {
+                searchCount.classList.remove('is-zero');
+                searchCount.textContent = cards.length ? cards.length + ' prompts' : '';
+            }
+            toolsBodyElement.scrollTop = 0;
+            return;
+        }
+
+        if (searchClear) searchClear.classList.add('is-visible');
+
+        const matched = [];
+        cards.forEach((card) => {
+            const res = scorePromptCardFields(query, card._searchFields || {});
+            if (res.matched && res.score > 0) {
+                matched.push({ card: card, score: res.score });
+            } else {
+                card.classList.add('prompt-card-hidden');
+                if (card._titleEl) card._titleEl.textContent = card._titleText;
+                if (card._previewEl) card._previewEl.textContent = card._previewText;
+            }
+        });
+
+        // Rank best-first; stable tie-break by original catalog order.
+        matched.sort((a, b) => (b.score - a.score) || (a.card._promptIndex - b.card._promptIndex));
+        matched.forEach((entry) => {
+            const card = entry.card;
+            card.classList.remove('prompt-card-hidden');
+            if (card._titleEl) card._titleEl.innerHTML = highlightMatches(card._titleText, query);
+            if (card._previewEl) card._previewEl.innerHTML = highlightMatches(card._previewText, query);
+            toolsBodyElement.appendChild(card);
+        });
+        if (matched.length) matched[0].card.classList.add('prompt-card-top');
+
+        if (searchCount) {
+            searchCount.classList.toggle('is-zero', matched.length === 0);
+            searchCount.textContent = matched.length
+                ? matched.length + (matched.length === 1 ? ' match' : ' matches')
+                : 'no matches';
+        }
+
+        if (!matched.length) {
+            const empty = document.createElement('div');
+            empty.className = 'prompt-search-empty';
+            empty.innerHTML = 'No prompt matches &ldquo;' + escapeHtmlForSearch(query)
+                + '&rdquo;. Try fewer letters, initials (e.g. <b>imd</b>), or a #number.';
+            toolsBodyElement.appendChild(empty);
+        }
+
+        toolsBodyElement.scrollTop = 0;
+    }
+
     function positionModalNearCatalogButton() {
         const buttonRect = catalogButton.getBoundingClientRect();
         const margin = 12;
@@ -291,8 +548,13 @@ $(function () {
     function openModal() {
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
+        if (searchInput) searchInput.value = '';
         positionModalNearCatalogButton();
-        loadPrompts().finally(positionModalNearCatalogButton);
+        loadPrompts().finally(() => {
+            applyPromptSearch('');
+            positionModalNearCatalogButton();
+            if (searchInput) searchInput.focus();
+        });
         setTimeout(() => {
             modal.classList.add('show');
         }, 10);
@@ -307,6 +569,34 @@ $(function () {
     }
 
     catalogButton.addEventListener('click', openModal);
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => applyPromptSearch(searchInput.value));
+        searchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && searchInput.value) {
+                event.stopPropagation();
+                searchInput.value = '';
+                applyPromptSearch('');
+            } else if (event.key === 'Enter') {
+                // Insert the top-ranked (first visible) prompt.
+                const top = document.querySelector('#tools-body .prompt-card:not(.prompt-card-hidden)');
+                if (top) {
+                    event.preventDefault();
+                    top.click();
+                }
+            }
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            applyPromptSearch('');
+        });
+    }
+
     window.addEventListener('click', (event) => {
         if (event.target === modal) {
             closeModal();

@@ -355,3 +355,132 @@
 .tool-box-entry {
     cursor: pointer;
 }
+
+/* ── Prompt catalog live search bar ──────────────────────────────────────
+   Sits between the "Pre-established prompts..." header and the card list;
+   drives the ranked fuzzy search in tools_dialog.js. */
+.prompt-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(45,49,74,0.92) 0%, rgba(30,33,52,0.92) 100%);
+    border: 1px solid rgba(157,59,255,0.35);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 10px rgba(0,0,0,0.35);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.prompt-search-bar:focus-within {
+    border-color: rgba(34,211,238,0.7);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07),
+                0 0 0 3px rgba(34,211,238,0.18),
+                0 4px 18px rgba(13,194,224,0.25);
+}
+
+.prompt-search-icon {
+    flex-shrink: 0;
+    font-size: 15px;
+    line-height: 1;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 4px rgba(34,211,238,0.4));
+}
+
+.prompt-search-icon::before {
+    content: "\1F50D";
+}
+
+.prompt-search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f2f3fb;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+    padding: 4px 0;
+}
+
+.prompt-search-input::placeholder {
+    color: #8a8fac;
+    font-style: italic;
+}
+
+.prompt-search-clear {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    color: #cdd0e6;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.prompt-search-clear.is-visible {
+    display: inline-flex;
+}
+
+.prompt-search-clear:hover {
+    background: rgba(249,115,22,0.9);
+    color: #fff;
+    transform: scale(1.08);
+}
+
+.prompt-search-count {
+    flex-shrink: 0;
+    min-width: 62px;
+    text-align: right;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    color: #7dd3fc;
+    white-space: nowrap;
+}
+
+.prompt-search-count.is-zero {
+    color: #f87171;
+}
+
+/* Non-matching cards are pulled out of the flow entirely. */
+.prompt-card-hidden {
+    display: none !important;
+}
+
+/* The single best match gets a cyan halo so the eye lands on it first. */
+.prompt-card-top {
+    border-color: rgba(34,211,238,0.7) !important;
+    box-shadow: 0 0 0 1px rgba(34,211,238,0.45), 0 10px 26px rgba(13,194,224,0.3) !important;
+}
+
+/* Matched letters highlighted inside a card's title/preview. */
+mark.prompt-search-hit {
+    background: linear-gradient(135deg, rgba(250,204,21,0.95) 0%, rgba(249,115,22,0.95) 100%);
+    color: #201200;
+    border-radius: 3px;
+    padding: 0 1px;
+    font-weight: 700;
+    box-shadow: 0 0 6px rgba(250,204,21,0.35);
+}
+
+/* Shown inside the list when nothing matches the query. */
+.prompt-search-empty {
+    text-align: center;
+    color: #b8bcd6;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 26px 16px;
+}
+
+.prompt-search-empty b {
+    color: #ffe9c4;
+}
