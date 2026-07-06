@@ -439,9 +439,19 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
     has_current_release_wave = any(
-        "1.33.2" in subject
+        "1.36.0" in subject
+        or "1.35.0" in subject
+        or "1.33.2" in subject
         or "1.33.0" in subject
         or "1.32.0" in subject
+        or "video-analizer" in subject
+        or "video-analyzer" in subject
+        or "video analyzer" in subject
+        or "video_analyzer" in subject
+        or "search of prompts" in subject
+        or "prompt search" in subject
+        or "flw generation" in subject
+        or ".flw generation" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -463,10 +473,28 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on the `v1.33.2` line: the tag/HEAD version identifies the Zavuerer release family while README.md, BookOfTlamatini.md, and the source inventory tables confirm the current workflow-agent, Multi-Turn-tool, and skill totals."
+            "The live Git window now lands on `v1.36.0` plus a post-tag `.flw` layout commit: README.md, BookOfTlamatini.md, Git tags, and source inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: it carries the v1.27-v1.32.0 performance/privacy/authorship work forward, adds Zavuerer as the 83rd workflow-agent type for unified Zavu messaging, then layers v1.33.2 model/config/runtime cleanup on top."
+            "The current release wave is broader than a badge bump: `v1.36.0` adds Video-Analyzer as the motion-verdict sibling of Image-Interpreter, `v1.35.0` improves prompt discovery, and HEAD improves generated `.flw` canvas layouts while carrying the Zavuerer, Image-Interpreter, and trust-hardening history forward."
+        )
+    if any(
+        "video-analizer" in subject
+        or "video-analyzer" in subject
+        or "video analyzer" in subject
+        or "video_analyzer" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The newest agent feature is Video-Analyzer: she reads recorded videos, gates obvious no-motion failures deterministically, runs two Ollama vision models in parallel, merges their reports, emits `INI_SECTION_VIDEO_ANALYZER`, and exposes substring-safe `TLM_VERDICT::<TOKEN>` values for Forker-driven robotic loops."
+        )
+    if any("search of prompts" in subject or "prompt search" in subject for subject in subjects):
+        highlights.append(
+            "Prompt discovery was upgraded too: the Tools dialog now supports substring, word-start, and fuzzy matching with mode badges, making the growing seeded prompt catalog easier to browse without memorizing exact titles."
+        )
+    if any("flw generation" in subject or ".flw generation" in subject for subject in subjects):
+        highlights.append(
+            "Generated `.flw` files now use a serpentine/boustrophedon canvas layout so long Multi-Turn chains stay on screen with continuous wiring instead of collapsing into unreadable off-canvas rows."
         )
     if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
         highlights.append(
@@ -538,9 +566,19 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
             "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
         )
     if has_current_release_wave or any(
-        "1.33.2" in subject
+        "1.36.0" in subject
+        or "1.35.0" in subject
+        or "1.33.2" in subject
         or "1.33.0" in subject
         or "1.32.0" in subject
+        or "video-analizer" in subject
+        or "video-analyzer" in subject
+        or "video analyzer" in subject
+        or "video_analyzer" in subject
+        or "search of prompts" in subject
+        or "prompt search" in subject
+        or "flw generation" in subject
+        or ".flw generation" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -557,7 +595,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.33.2` Zavuerer release line, so this dossier now carries the current unified-messaging agent story, default-model/config cleanup, performance/privacy/build/authorship background, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.26.x prose."
+            "The latest documentation pass aligns the handbook and source with the `v1.36.0` Video-Analyzer release line plus the post-tag `.flw` layout work, so this dossier now carries the current media-verdict agent story, prompt-search UX, generated-flow layout rules, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.33.x prose."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -760,8 +798,19 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     subjects = [commit.subject.lower() for commit in commits]
     highlights: list[str] = []
     has_current_release_wave = any(
-        "1.33.0" in subject
+        "1.36.0" in subject
+        or "1.35.0" in subject
+        or "1.33.2" in subject
+        or "1.33.0" in subject
         or "1.32.0" in subject
+        or "video-analizer" in subject
+        or "video-analyzer" in subject
+        or "video analyzer" in subject
+        or "video_analyzer" in subject
+        or "search of prompts" in subject
+        or "prompt search" in subject
+        or "flw generation" in subject
+        or ".flw generation" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -781,10 +830,28 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced to `v1.33.2`: Zavuerer remains the headline agent release, while the latest commits add default-model/config/runtime cleanup and keep Angela López Mendoza preserved as creator."
+            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.35.0` and `v1.36.0`, then received a post-tag `.flw` layout improvement: Video-Analyzer is now the headline agent release, prompt search is sharper, and generated flow files are more readable on the canvas."
         )
         highlights.append(
-            "The current visual-doc delta covers Zavuerer unified messaging, Zavu Access Keys Wizard wiring, `glm-5.2:cloud` as the shipped cloud default, `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, migration `0164`, and the v1.27-v1.32.0 performance/privacy/authorship background."
+            "The current visual-doc delta covers `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer`, prompt-card search improvements, the serpentine `.flw` generator layout, and the carried v1.33.x/v1.34.x model and messaging context."
+        )
+    if any(
+        "video-analizer" in subject
+        or "video-analyzer" in subject
+        or "video analyzer" in subject
+        or "video_analyzer" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "Video-Analyzer adds a motion-verdict surface for hardware-in-the-loop demos: Camcorder can record a board, Video-Analyzer can judge the motion with deterministic and model-backed checks, and Forker can branch on `TLM_VERDICT::PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, or `ANALYSIS_ERROR`."
+        )
+    if any("search of prompts" in subject or "prompt search" in subject for subject in subjects):
+        highlights.append(
+            "Prompt sorting/search work now makes the seeded prompt catalog easier to operate from the Tools dialog: substring, word-start, fuzzy scoring, and mode badges reduce hunting in a large prompt list."
+        )
+    if any("flw generation" in subject or ".flw generation" in subject for subject in subjects):
+        highlights.append(
+            "The latest `.flw` generator work changes layout, not just metadata: large generated flows use alternating row direction and row capacity rules so visual workflows avoid unreadable overlap and off-screen chains."
         )
     if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
         highlights.append(
@@ -1214,7 +1281,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-    "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; MCP Doctor performs safe external-MCP onboarding diagnosis; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; TeleTlamatini bridges full Tlamatini conversations into Telegram; and Telegrammer / Whatsapper send and receive messages over the official Telegram Bot API and Meta WhatsApp Cloud API.",
+        "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; Video-Analyzer closes hardware-in-the-loop video verdicts; MCP Doctor performs safe external-MCP onboarding diagnosis; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; TeleTlamatini bridges full Tlamatini conversations into Telegram; and Telegrammer / Whatsapper send and receive messages over the official Telegram Bot API and Meta WhatsApp Cloud API.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -1227,20 +1294,47 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     return [
         f"The live operator surface now stands at {context['workflow_agent_count']} workflow agents, {context['total_multi_turn_tools']} Multi-Turn tools, {context['acpx_tool_count']} ACPX tools, and {context['skills_count']} skills.",
         f"Source inspection confirms the total: {context['wrapped_chat_agent_count']} distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with {context['core_python_tool_count']} core Python tools and {context['acpx_tool_count']} ACPX/Skill tools for {context['total_multi_turn_tools']} Multi-Turn tools overall.",
-        "The count growth over older public badges now comes from several stacked waves together: the deterministic file-navigation/file-edit trio (Globber, Grepper, Editor), the ESPHomer smart-home firmware lane, and the newer MCP Doctor onboarding specialist that accompanies the External MCP universal client release.",
+        "The count growth over older public badges now comes from several stacked waves together: the deterministic file-navigation/file-edit trio (Globber, Grepper, Editor), the ESPHomer smart-home firmware lane, MCP Doctor for External MCP onboarding, Zavuerer unified messaging, and Video-Analyzer for robotic video verdicts.",
         "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
         "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves past the `v1.33.2` tag, with source inspection confirming the current workflow-agent, Multi-Turn-tool, and skill totals in the generated inventory tables.",
-    "`v1.33.x` is the Zavuerer release family: the new Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key.",
-    "`v1.33.2` carries follow-up cleanup: the shipped cloud-default model baseline moved to `glm-5.2:cloud`, duplicate Zavuerer setup-wizard rows were deduplicated, and stale/trash artifacts were removed from the tracked release surface.",
-    "The newest post-tag commits then add the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
+    "The repository currently resolves to the `v1.36.0` release line plus a post-tag `.flw` layout commit, with source inspection confirming the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals in the generated inventory tables.",
+    "`v1.36.0` is the Video-Analyzer release: the new `video_analyzer` workflow agent and wrapped `chat_agent_video_analyzer` tool read recorded videos, check for motion, ask two vision models for independent evidence, merge their reports, and emit explicit routeable verdict tokens.",
+    "`v1.35.0` improves prompt discovery: the Tools dialog prompt cards now search by substring, word-start, and fuzzy matches and show mode badges so operators can navigate the larger seeded prompt catalog without memorizing exact names.",
+    "The newest post-tag commit improves generated `.flw` layout: chat-created workflows now use a serpentine/boustrophedon grid so long Starter -> Agent -> ... -> Ender chains stay readable on the canvas instead of drifting off-screen.",
+    "`v1.34.x` adds the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
+    "`v1.33.x` remains the Zavuerer release family: the Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key, with setup-wizard dedupe and cloud-default cleanup carried forward.",
     "The v1.27-v1.32.0 span is a quality-and-trust wave: performance 3X levers, forward-only private-data discipline, public-release verifier hardening, and explicit Angela López Mendoza creator/authorship stamping moved together.",
     "The runtime surface also grew around delegation: ACPX remains the external coding-agent CLI bridge, External MCP remains the universal MCP client, and the newest server-side assets add `tlamatini_acpx.py`, stronger `tlamatini_mcp_server.py` behavior, and refreshed MCP workflow guidance.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.33.2` plus the post-tag Image-Interpreter/config-dialog commits as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, and ACPX skills.",
+    "The resulting PDF/PPTX refresh treats `v1.36.0` plus the post-tag `.flw` layout commit as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+]
+
+V136_RELEASE_GUIDE = [
+    "Release identity: latest reachable public tag `v1.36.0`; the live HEAD currently sits one commit beyond that tag with a generated-flow layout improvement.",
+    "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
+    "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
+    "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
+    "Routing contract: every run emits `INI_SECTION_VIDEO_ANALYZER` plus `TLM_VERDICT::<TOKEN>` markers such as `PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, and `ANALYSIS_ERROR` for Forker and Parametrizer.",
+    "Adjacent UI work: prompt search moved from exact-title hunting to substring, word-start, and fuzzy matching, and generated `.flw` files now use a serpentine layout to reduce visual congestion.",
+]
+
+VIDEO_ANALYZER_GUIDE = [
+    "Video-Analyzer is Tlamatini's video-verdict agent: she receives `video_pathfilenames` as a direct file, wildcard, folder-newest rule, or Camcorder pool name and resolves the video before model calls begin.",
+    "The first gate is deterministic and cheap: OpenCV/numpy frame sampling computes a motion score and returns `FAIL_NO_MOTION` without spending LLM calls when the recording clearly shows no movement.",
+    "When motion exists, two Ollama cloud vision models run in parallel. One specializes in temporal/action evidence, the other provides an independent holistic judgement, and a merger model produces the final report.",
+    "The final answer is intentionally conservative: PASS requires both interpreters to agree; disagreement or weak evidence becomes `UNCLEAR`, and wrong movement becomes `FAIL_WRONG_MOTION` rather than a false pass.",
+    "Structured output is `INI_SECTION_VIDEO_ANALYZER` with `video_path`, `verdict`, `verdict_token`, `confidence`, `motion_score`, `frames_analyzed`, model names, `status`, and the body report.",
+    "The robotics loop is now explicit: STM32er can flash firmware, Camcorder can record the board, Video-Analyzer can judge the recorded motion, and Forker can branch on the `TLM_VERDICT::` token to retry or finish.",
+]
+
+PROMPT_SEARCH_AND_FLOW_GUIDE = [
+    "Prompt search now behaves like an operator tool instead of a static dropdown: substring matches, word-start matches, fuzzy scoring, and mode badges make the full seeded prompt catalog navigable.",
+    "The prompt-card rendering work was validated against the seeded catalog so one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step prompt families remain distinguishable while searching.",
+    "Generated `.flw` workflows now use a serpentine canvas layout with row capacity and alternating direction, preserving the logical Starter -> Agent -> ... -> Ender order without pushing large chains into an unreadable line.",
+    "This matters for documentation because the PDF and deck must describe not only new agents, but also the operator usability improvements that make the larger system actually usable.",
 ]
 
 V1332_RELEASE_GUIDE = [
@@ -1335,7 +1429,9 @@ COMMAND_WATCHDOG_GUIDE = [
 
 NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
-    "The current `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
+    "The current `v1.36.0` wave adds concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
+    "The immediately adjacent `v1.35.0` and post-tag work updates prompt-card search/rendering assets and `.flw` generation layout code, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
+    "The earlier `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
     "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
     "The latest cleanup/assets span also includes `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, `docs/claude/recent-fixes.md`, response-parser/runtime/settings/middleware touch-ups, and removal of the stale `Tlamatini/db.sqlite3.bak-prereseat` backup from the tracked surface.",
     "The same wave preserves evidence-oriented tests and build guards such as `test_private_data_guard.py`, performance/visual checks, About-window authorship tests, and public-release verification rules that distinguish sensitive PII from valid creator names.",
@@ -1348,7 +1444,8 @@ NEW_ASSETS_GUIDE = [
 PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.33.2` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, and operator handbook aligned.",
+    "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.36.0` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, generated `.flw` layout, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1718,7 +1815,7 @@ AGENT_CATEGORIES = [
     ("Data and APIs", "sqler, mongoxer, apirer, crawler, googler"),
     ("Monitoring and routing", "monitor_log, monitor_netstat, flowhypervisor, forker, asker, counter, and, or"),
     ("Communication", "notifier, emailer, recmailer, telegrammer, teletlamatini, whatsapper"),
-    ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, shoter, camcorder, recorder, audioplayer, videoplayer, j_decompiler"),
+    ("Security and media", "kyber_keygen, kyber_cipher, kyber_decipher, image_interpreter, video_analyzer, shoter, camcorder, recorder, audioplayer, videoplayer, j_decompiler"),
     ("Workflow intelligence", "flowcreator, gatewayer, gateway_relayer, node_manager, parametrizer, prompter, summarizer, acpxer"),
 ]
 
@@ -1992,6 +2089,15 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.36.0 Video-Analyzer release delta", styles["h2"]))
+    for item in V136_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Video-Analyzer motion-verdict agent", styles["h2"]))
+    for item in VIDEO_ANALYZER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Prompt search and generated .flw layout", styles["h2"]))
+    for item in PROMPT_SEARCH_AND_FLOW_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.33.2 Zavuerer release delta", styles["h2"]))
     for item in V1332_RELEASE_GUIDE:
@@ -2784,7 +2890,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.33.2", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.36.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -2798,7 +2904,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.33.2", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.36.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -2807,13 +2913,24 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.33.2 Zavuerer and cleanup", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CURRENT_RELEASE_GUIDE, THEME["amber"], "rel-a", 13)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why it matters", [
-        "The docs now explain the whole 1.33.2 product state, not only the new agent row.",
-        "Operators get a simpler messaging surface: one Zavu key can reach SMS, WhatsApp, Telegram, Email, and Voice.",
-        "The deck also preserves the trust story: creator attribution, private-data guardrails, public-release checks, `glm-5.2:cloud` defaults, and the Agent-directory responsibility boundary.",
-    ], THEME["jade"], "rel-b", 13)
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.36.0 Video-Analyzer plus post-tag flow layout", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Newest changes", CURRENT_RELEASE_GUIDE[:4], THEME["amber"], "rel-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Carried context", CURRENT_RELEASE_GUIDE[4:], THEME["jade"], "rel-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "v1.36.0 Release Delta", "Video-Analyzer, prompts, and generated workflow layout", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Exact release checklist", V136_RELEASE_GUIDE[:3], THEME["copper"], "v136-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime contract", V136_RELEASE_GUIDE[3:], THEME["jade"], "v136-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Video-Analyzer", "motion-verdict agent for robotic-loop training", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What she does", VIDEO_ANALYZER_GUIDE[:3], THEME["jade"], "video-analyzer-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Verdicts and routing", VIDEO_ANALYZER_GUIDE[3:], THEME["amber"], "video-analyzer-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Prompt Search And .flw Layout", "operator usability after the catalog grew", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Prompt search", PROMPT_SEARCH_AND_FLOW_GUIDE[:2], THEME["amber"], "prompt-flow-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Generated flows", PROMPT_SEARCH_AND_FLOW_GUIDE[2:], THEME["copper"], "prompt-flow-b", 13)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "v1.33.2 Release Delta", "Zavuerer, model defaults, cleanup, and safety", THEME["copper"])
@@ -3184,31 +3301,24 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves through v1.33.2", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves through v1.36.0", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
-        "Globber / Grepper / Editor (v1.22.0 wave): a deterministic file-discovery/search/edit trio — find files by pattern, search them by regex, and make exact in-place replacements without dropping to shell `dir` / `findstr` / `sed` workflows.",
-        "ESPHomer (prior firmware lane, now folded into v1.26.0): the ESPHome bridge for YAML-authored smart-home devices — zero-config bootstrap, `new_config`, validation, compile, USB/OTA upload, bounded logs, and a bundled sample `tlamatini-light.yaml` baseline.",
-        "Blenderer (introduced in v1.20.0): the live Blender bridge over the official MCP add-on socket, so Tlamatini can inspect scenes, mutate geometry/materials, run raw code, and trigger renders from chat or canvas.",
-        "Talker (text-to-speech): SPEAKS input_text aloud via an Ollama neural TTS model (default Orpheus-3b-FT), SNAC-decoded to a 24 kHz WAV — FEMALE-VOICE-ONLY by design (a male voice is refused, never substituted); needs snac+torch (CPU is fine) else degrades to tokens_only.",
-        "Whisperer (speech-to-text): records the mic ITSELF (no Recorder dep, 30 s default) or transcribes a file, via faster-whisper LOCALLY — NVIDIA-GPU auto-detect with an ALWAYS-present CPU fallback — or cloud Groq/OpenAI; Ollama can only tidy the finished transcript.",
-        "Both audio agents now light a zero-latency console REC indicator (blinking dot + live VU bar) driven by the audio-stream callback — ON within ~20 ms of real samples, OFF the instant the stream stops; the agent reveals its own console even when spawned headless.",
-        "Camcorder + Recorder (capture): webcam photo/video via OpenCV and microphone WAV via sounddevice; AudioPlayer + VideoPlayer (playback): file to speakers / to a chosen display — the media-I/O family (screen / camera-in / mic-in / speakers-out / screen-out).",
-        "The capture/playback/voice family is observational/output, so it stays out of the Exec Report; each ships on the canvas and as a wrapped Multi-Turn tool. Arduiner adds a direct arduino-cli firmware bridge, and ESPHomer now adds the smart-home YAML/device lane on top of STM32er and ESP32er.",
+        "Video-Analyzer (v1.36.0): motion-verdict video analysis for robotic-loop training, with `TLM_VERDICT::` routing.",
+        "Image-Interpreter: triple-model still-image analysis with independent interpreters and a merger model.",
+        "Zavuerer: unified Zavu messaging for SMS, WhatsApp, Telegram, Email, and Voice.",
+        "Prompt search: substring, word-start, fuzzy matching, and mode badges in the Tools dialog.",
+        "Generated `.flw` files: serpentine canvas layout keeps long flows readable.",
+        "Media/voice and firmware lanes remain active: Talker, Whisperer, Camcorder, Recorder, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, and Unrealer.",
     ], THEME["copper"], "monday-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Version identity (v1.33.2): the live Git tag now resolves the product to the Zavuerer release family while the generated dossiers carry the current source inventory.",
-        "Zavuerer release addition: the catalog now includes a Zavu unified-messaging node and wrapped chat tool for SMS / WhatsApp / Telegram / Email / Voice with one configured key.",
-        "Model/config cleanup: the shipped cloud default now favors `glm-5.2:cloud`, and the latest cleanup removed a stale DB backup from the tracked surface.",
-        "Trust wave (v1.27-v1.32.0): performance 3X levers, forward-only private-data cleanup, public-release verifier hardening, and Angela López Mendoza creator/authorship stamping moved together.",
-        "Delegation wave: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` keep external agents and external MCP servers in the documented operator surface.",
-        "Visual/media asset refresh (v1.26.0 window): `TlamatiniAbout.png` replaces the earlier JPEG and `TlamatiniAndKyber.mp4` is now part of the shipped repository assets, so the dossier inventory and appendices need to count those new binaries.",
-        "Self-update foundation (v1.23.0, still present in v1.33.2): packaged installs preserve the user's DB across the swap — `apply_update.ps1` stages it through `DB/ToLoad/` and the next launch migrates it back into the new build.",
-        "Frozen-build hardening (v1.23.0, still present in v1.33.2): numpy and OpenCV are embedded in both bundled Python runtimes and `build.py` aborts if either import is missing, closing the last media-agent dependency gap in installed builds.",
-        "flow-making skill: turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so chat can build runnable flows without opening the designer.",
-        "Temp/Templates policy: every transient file stays under <app>/Temp and every scaffolded firmware/engine project under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts and taught to the LLM as Rules 15/16.",
-        "FlowHypervisor monitoring now covers every agent — ESP32er, Arduiner, ESPHomer, Camcorder, and Recorder were added to its categorization, timing, startup markers, and do-not-flag rules, with first-build-downloads-a-large-toolchain caveats where needed.",
+        "Resolved identity: `v1.36.0` plus post-tag generated-flow layout at the current HEAD.",
+        "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",
+        "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",
+        "Delegation baseline: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` remain first-class surfaces.",
+        "Self-update and packaged-build hardening preserve user DB state and validate media dependencies before release.",
+        "Temp/Templates policy and FlowHypervisor monitoring keep long-running workflows observable and contained.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
-    ], THEME["jade"], "monday-b", 12)
+    ], THEME["jade"], "monday-b", 11)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Effective Lines By Language", "no comments, no blanks", THEME["copper"])
