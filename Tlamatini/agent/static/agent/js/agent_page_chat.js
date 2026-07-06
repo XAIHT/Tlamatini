@@ -536,6 +536,24 @@ async function _generateAndDownloadFlow(toolCallsLog) {
         }
     });
 
+    // 3b) Re-layout the nodes as a SERPENTINE (boustrophedon) grid so a big
+    // flow is EXPLORABLE instead of one endless horizontal line. Wrap every
+    // NODES_PER_ROW nodes into a new row; ODD rows run right→left so the chain
+    // snakes straight DOWN (…→node7 drops to node8 directly below it) and the
+    // wiring stays visually continuous. This is the AUTHORITATIVE layout — it
+    // intentionally OVERRIDES the single-row left/top assigned above. Safe
+    // because connections are keyed on array INDEX (built below), never on
+    // position, so re-arranging the squares can never change the wiring.
+    const NODES_PER_ROW = 7;   // 6–8 squares wide reads well and stays scannable
+    const ROW_GAP = 170;       // vertical step between rows (a node is 60px tall)
+    nodes.forEach((node, i) => {
+        const row = Math.floor(i / NODES_PER_ROW);
+        const col = i % NODES_PER_ROW;
+        const serpentineCol = (row % 2 === 0) ? col : (NODES_PER_ROW - 1 - col);
+        node.left = (50 + serpentineCol * HORIZONTAL_GAP) + 'px';
+        node.top = (TOP_OFFSET + row * ROW_GAP) + 'px';
+    });
+
     // 4) Build connections: linear chain Starter → A → B → … → Ender
     const connections = [];
     for (let i = 0; i < nodes.length - 1; i++) {
