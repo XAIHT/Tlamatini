@@ -200,7 +200,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── esp32er/            # ESP32 firmware bridge — direct PlatformIO `pio` CLI (no MCP server), zero-config get-platformio.py auto-bootstrap + fail-safe preflight (canvas + chat_agent_esp32er)
 │   │   │   ├── esphomer/           # ESPHome smart-home device bridge — direct `esphome` CLI (no MCP server), YAML device configs (NO C++), zero-config `pip install esphome` auto-bootstrap + fail-safe preflight + headless new_config generator; ships ESPHomeTemplateProject sample (canvas + chat_agent_esphomer)
 │   │   │   ├── arduiner/           # Arduino firmware bridge — direct `arduino-cli` CLI (no MCP server), zero-config binary auto-bootstrap + auto-core-install + fail-safe preflight; ships ArduinoTemplateProject scaffold (canvas + chat_agent_arduiner)
-│   │   │   ├── discoverer/          # ProjectDiscovery recon-suite bridge (subfinder/httpx/naabu/katana/nuclei/cvemap→vulnx) — direct CLIs (no MCP server) via a self-installing PRIVATE Go toolchain in <install_dir>/Go (no system Go, no PATH change); PDCP key optional, naabu connect-scan on Windows, fail-safe preflight, INI_SECTION_DISCOVERER (canvas + chat_agent_discoverer)
+│   │   │   ├── discoverer/          # ProjectDiscovery recon-suite bridge (subfinder/httpx/naabu/katana/nuclei/cvemap→vulnx — cvemap's API was retired Aug 2025, so the CVE-search tool runs vulnx) — direct CLIs (no MCP server) via a self-installing PRIVATE Go toolchain in <install_dir>/Go (no system Go, no PATH change); PDCP key optional (set once via Config ▸ Access Keys Wizard ▸ "Security Recon (ProjectDiscovery)"; auto-injected, redacted from .flw + by regen_secrets.py), naabu connect-scan on Windows, fail-safe preflight, INI_SECTION_DISCOVERER (canvas + chat_agent_discoverer)
 │   │   │   ├── zavuerer/            # Zavu unified-messaging bridge — ONE REST API key for SMS / WhatsApp / Telegram / Email / Voice (channel:auto ML smart-routing + auto-fallback); direct HTTP (stdlib urllib, no SDK, never imports agent.*), fail-safe preflight, key set once via Config ▸ Access Keys Wizard ▸ "Unified Messaging (Zavu)" (auto-injected; Zavu is pay-as-you-go — sign-up free, sending costs), INI_SECTION_ZAVUERER (canvas + chat_agent_zavuerer)
 │   │   │   ├── camcorder/          # Webcam capture (OpenCV) — photo (default) / video; native-resolution-by-default; saves to Pictures/TlamatiniCamcorder; observational sibling of Shoter (canvas + chat_agent_camcorder)
 │   │   │   ├── recorder/           # Microphone / audio-input capture (sounddevice) — WAV; native-sample-rate-by-default (sample_rate:0); default mic with optional device_index/device_name; saves to Music/TlamatiniRecords; observational audio sibling of Camcorder/Shoter (canvas + chat_agent_recorder)
@@ -355,6 +355,19 @@ The rest of the onboarding material is split into topic files under `docs/claude
 │   │   │   ├── editor/             # Surgical in-place find-and-replace on ONE text file (Claude-Edit equivalent; byte-exact, refuses a non-unique match unless replace_all, base64 channel; emits INI_SECTION_EDITOR) (canvas + chat_agent_editor)
 │   │   │   ├── grepper/            # Read-only regex CONTENT search across a file/dir tree (Claude-Grep equivalent; file:line:match, glob filter, prunes noise dirs; emits INI_SECTION_GREPPER) (canvas + chat_agent_grepper)
 │   │   │   ├── globber/            # Read-only filename glob search (Claude-Glob equivalent; find files by pattern, newest-first, ** recursive; emits INI_SECTION_GLOBBER) (canvas + chat_agent_globber)
+---
+
+## ⛔ MANDATORY DIRECTIVE - Angela 2026-07-07 - FORBIDDEN HEADLESS TESTS: ALL AUTOMATED TESTS MUST BE VISIBLE (HEADED PLAYWRIGHT)
+
+**HEADLESS / INVISIBLE AUTOMATED TESTS ARE FORBIDDEN. EVERY automated test MUST run VISIBLE — a HEADED browser (Playwright `headless=False`, prefer real Chrome) on Angela's REAL desktop, so she can SEE every step live.** This is HARD, NON-NEGOTIABLE, FOREVER.
+
+- **Playwright**: launch HEADED. **NEVER** pass `--headless`. The chat-test harness `--headless` flag is disabled (refuses to run). Drive the **real Tlamatini chat GUI** (`http://127.0.0.1:8000/agent/agent/`, login `angela`) — never fake or bypass the UI.
+- **Run it in a VISIBLE FOREGROUND window** (`Start-Process powershell -NoExit …`, `dangerouslyDisableSandbox:true`) so it renders on her screen — never `run_in_background`, never a hidden/detached job. (Same spirit as the foreground-windows rule.)
+- **Verify each step with a FULL-SCREEN screenshot** (the ENTIRE desktop, taskbar **clock** visible) — one photo per test + a live `SUMMARY.html`.
+- **NEVER LIE**: a stale chat-history scrape, a transient self-healing "🔁 Tactic #…" status, or a timed-out answer must NEVER be recorded as a pass. Clear chat history per test, re-assert **Multi-Turn ON at every send**, reject already-seen answers.
+- If a test cannot be made visible, **do NOT run it** — tell Angela.
+- Enforced by: SessionStart hook `~/.claude/hooks/visible_tests_rule_banner.py` (prints every session), memory `feedback_forbidden_headless_visible_tests`, global `~/.claude/CLAUDE.md`, and the `tlamatini-daily-chat-test` skill. Reference runner: `.claude/skills/tlamatini-daily-chat-test/harness/discoverer_1000.py`.
+
 ---
 
 ## MANDATORY DIRECTIVE - Angela 2026-06-14 - USE ONLY TLAMATINI'S SKILLS/TOOLS/AGENTS, NOT CLAUDE CODE'S BUILT-IN TOOLS

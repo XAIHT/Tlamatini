@@ -313,7 +313,7 @@ Visual agents are designed to run out of process. The backend compiler generates
 59. **windower**: Win32 window position/focus supervisor.
 60. **kalier**: Kali Linux offensive-security scanner bridge.
 61. **discoverer**: ProjectDiscovery recon bridge (subfinder, httpx, naabu, Katana, nuclei, vulnx).
-62. **unrealer**: Unreal Engine 5 socket connector (port 9876).
+62. **unrealer**: Unreal Engine 5 editor socket connector (port 9876).
 63. **reviewer**: AI code reviewer (analyzes git diff).
 64. **analyzer**: Offline static/security SAST scanner.
 65. **stm32er**: Compile & flash manager for STM32 microcontrollers.
@@ -326,16 +326,16 @@ Visual agents are designed to run out of process. The backend compiler generates
 72. **videoplayer**: Video files player via ffpyplayer + OpenCV.
 73. **mcp_doctor**: Static external-MCP configuration validator.
 74. **de_compresser**: Extract zip and tar archives.
-75. **sqler**: Runs queries on SQL database servers.
-76. **mongoxer**: Runs MongoDB scripts.
-77. **dockerer**: Manages Docker containers.
-78. **kuberneter**: Manages Kubernetes pods.
-79. **ssher**: Executes commands on remote servers via SSH.
-80. **scper**: Moves files to remote directories.
-81. **gitter**: Executes Git commands.
-82. **pser**: Processes finder; looks up active process trees.
+75. **blenderer**: Drives a Blender instance through the Blender MCP add-on's TCP socket.
+76. **editor**: Makes surgical find-and-replace edits to a single text file.
+77. **globber**: Discovers files under a directory by glob/filename pattern matching.
+78. **grepper**: Performs read-only regex content searches across a file or directory tree.
+79. **instant_messaging_doctor**: Diagnostic/repair tool for Telegrammer and Whatsapper credentials and contacts.
+80. **playwrighter**: Scripted browser automation (navigate, click, type, screenshot) via Playwright.
+81. **talker**: Neural Text-to-Speech synthesizer (strictly female voices only).
+82. **whisperer**: Local faster-whisper or cloud-based Speech-to-Text transcriber.
 83. **zavuerer**: Multi-channel Zavu messaging gateway (SMS, WhatsApp, Email, Telegram, Voice).
-84. **video_analyzer**: The MOTION-VERDICT "eye" of Robotic-Loop-Training — watches a recorded video and rules `PASS_OK` / `FAIL_NO_MOTION` / `FAIL_WRONG_MOTION` / `UNCLEAR` via a deterministic OpenCV motion gate + triple-model Ollama CLOUD vision (`qwen3-vl:235b-cloud` ∥ `qwen3.5:cloud` → `glm-5.2:cloud` merge; PASS only when both interpreters agree). Emits `INI_SECTION_VIDEO_ANALYZER` + a substring-safe `TLM_VERDICT::<TOKEN>` line a Forker branches on.
+84. **video_analyzer**: MOTION-VERDICT video analyzer for loop training.
 
 ---
 
@@ -369,7 +369,7 @@ Skills are registered in `agent/skills/` and cataloged in `agent/skills_pkg/`. T
 24. **create_new_agent**: Developer onboarding skill (alias for tlamatini_new_acp_agent).
 25. **create_new_mcp**: Developer onboarding guide for adding new MCP tools.
 26. **flow_making**: Helper script delegator for `make_flow.py`.
-27. **tlamatini_flow_from_objective**: Delegates flow objectives to flow_making.
+27. **setup_new_acpx_key**: Configures the API key or credential for a registered ACPX agent_id.
 
 ---
 

@@ -194,6 +194,9 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
     # Zavuerer bridges to the Zavu unified-messaging REST API; its zavu_api_key is a
     # credential, so redact it from .flw exports.
     "zavuerer": _contract("zavuerer", secret_paths=("zavu_api_key",)),
+    # Discoverer bridges to the ProjectDiscovery suite; its pdcp_api_key is a
+    # credential, so redact it from .flw exports.
+    "discoverer": _contract("discoverer", secret_paths=("pdcp_api_key",)),
 }
 
 

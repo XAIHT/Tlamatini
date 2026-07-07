@@ -310,6 +310,23 @@ Tlamatini/Temp/
 # are user output, not repo content — never commit them. See prompt.pmt Rule 16.
 /Templates/
 Tlamatini/Templates/
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GO TOOLCHAIN — DENIED ENTIRELY. It must NEVER appear in Source Control.
+# Discoverer self-provisions a private Go toolchain (the ~150 MB Go compiler + the
+# module cache + the ProjectDiscovery tool binaries) on first use. It now installs to
+# %LOCALAPPDATA%\Tlamatini\Go (OUTSIDE the repo); these rules deny it ANYWHERE in the
+# tree as a hard backstop. Enforced + verified by git_deny_go.py (which also installs a
+# pre-commit hook that blocks committing any Go-toolchain path). See discoverer.py.
+# ══════════════════════════════════════════════════════════════════════════════
+/Go/
+Tlamatini/Go/
+**/Go/
+**/bin-tools/
+**/go-build/
+**/pkg/mod/
+go[0-9]*.windows-*.zip
+go[0-9]*.*.tar.gz
 # Private contacts book (names / phone numbers / messaging handles).
 # PII — must NEVER be committed. Scrubbed from history 2026-06-25.
 Tlamatini/agent/contacts.json

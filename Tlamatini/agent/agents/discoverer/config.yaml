@@ -69,12 +69,15 @@ nuclei_template_ids: ""     # -id specific template IDs
 nuclei_automatic_scan: false # -as (wappalyzer tech-detect -> tags mapping)
 
 # ── cvemap / vulnx knobs ─────────────────────────────────────────────────────
-cvemap_id: ""          # -id  e.g. "CVE-2023-44487"
-cvemap_product: ""     # -product  e.g. "apache"
-cvemap_severity: ""    # -severity  e.g. "critical"
+# The `cvemap` tool now runs ProjectDiscovery's `vulnx` (cvemap's CVE API was
+# discontinued Aug 2025). vulnx is subcommand-based: `vulnx id <CVE>` / `vulnx search`.
+cvemap_id: ""          # a CVE id -> `vulnx id <CVE>`   e.g. "CVE-2023-44487"
+cvemap_product: ""     # --product  e.g. "apache"       (vulnx search filter)
+cvemap_severity: ""    # --severity e.g. "critical" or "critical,high" (comma-separated)
+cvemap_limit: 50       # --limit N results for `vulnx search` (0 = vulnx server default)
 
 # ── ProjectDiscovery Cloud Platform key (OPTIONAL for ALL tools) ─────────────
-pdcp_api_key: ""       # empty = read the PDCP_API_KEY env / credentials file.
+pdcp_api_key: <PDCP_API_KEY goes here>       # empty = read the PDCP_API_KEY env / credentials file.
                        #   Boosts cvemap/vulnx rate limit; enables nuclei -ai + cloud.
 cloud_upload: false    # nuclei/httpx/naabu dashboard upload (-pd; needs pdcp_api_key)
 
@@ -82,10 +85,12 @@ cloud_upload: false    # nuclei/httpx/naabu dashboard upload (-pd; needs pdcp_ap
 go_bootstrap: true     # on first call, download + install the Go compiler if absent
 install_method: "go"   # go = compile the tool with the private Go (go install)
                        #   pdtm = download prebuilt PD binaries instead (no compiler)
-go_dir: ""             # empty = <install_dir>/Go  (GOROOT). NOTE: must be writable —
-                       #   the default C:\Tlamatini install is; a Program Files install
-                       #   is not, so set this to a writable path there.
-tools_bin: ""          # empty = <install_dir>/Go/bin-tools  (GOBIN; compiled PD tools)
+go_dir: ""             # empty = <install_dir>/Go (GOROOT) — SELF-CONTAINED under the
+                       #   Tlamatini dir (repo root in source mode, install dir when frozen).
+                       #   Tlamatini never depends on anything outside its own directory; the
+                       #   toolchain is bulletproof-ignored by git (.gitignore /Go/ +
+                       #   git_deny_go.py) so it never shows in the repo. Set a path to override.
+tools_bin: ""          # empty = <go_dir>/bin-tools  (GOBIN; compiled PD tools)
 go_version: "1.24.5"   # Go release fetched from https://go.dev/dl/ (PD needs >= 1.24)
 auto_update: false     # re-install/update the Go toolchain or tool before running
 preflight: true        # fail-safe checks; REFUSE rather than misfire

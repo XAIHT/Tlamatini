@@ -167,7 +167,11 @@ class Harness:
 
     # -- lifecycle --
     def launch(self, p):
-        launch_kwargs = dict(headless=self.args.headless, slow_mo=self.args.slowmo)
+        # HARD RULE (Angela, 2026-07-07): headless automated tests are FORBIDDEN.
+        # Tests MUST be VISIBLE. --headless is disabled: we ALWAYS run headed.
+        if getattr(self.args, "headless", False):
+            _log("!!! --headless is FORBIDDEN on this machine -> forcing VISIBLE (headed) Chrome.")
+        launch_kwargs = dict(headless=False, slow_mo=self.args.slowmo)
         # Prefer real Google Chrome; fall back to bundled Chromium.
         try:
             browser = p.chromium.launch(channel="chrome", **launch_kwargs)
@@ -535,7 +539,8 @@ def main() -> int:
     ap.add_argument("--base-url", default=None, help="override base URL")
     ap.add_argument("--user", default=C.USERNAME)
     ap.add_argument("--password", default=C.PASSWORD)
-    ap.add_argument("--headless", action="store_true", help="run headless (default: visible Chrome)")
+    ap.add_argument("--headless", action="store_true",
+                    help="[DISABLED / FORBIDDEN] tests are ALWAYS visible/headed; this flag is ignored")
     ap.add_argument("--slowmo", type=int, default=0, help="Playwright slow_mo ms")
     ap.add_argument("--clear-every", type=int, default=0,
                     help="clear chat history every N questions (0=never; a fresh clear runs at start)")

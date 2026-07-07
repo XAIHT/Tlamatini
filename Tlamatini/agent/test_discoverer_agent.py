@@ -82,11 +82,22 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._root = logging.getLogger()
+        # The agent logs its INI_SECTION blocks at INFO. Ensure INFO records actually
+        # reach us regardless of any root level left by Django's test logging config or
+        # a prior test in the suite (otherwise a WARNING root level filters them out and
+        # the capture sees 0 records — a cross-test pollution flake).
+        self._prev_level = self._root.level
+        self._prev_disable = logging.root.manager.disable
+        logging.disable(logging.NOTSET)
+        self._root.setLevel(logging.INFO)
+        self._root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        self._root.removeHandler(self._handler)
+        self._root.setLevel(self._prev_level)
+        logging.disable(self._prev_disable)
         return False
 
 
@@ -111,6 +122,22 @@ class DiscovererHelperTests(unittest.TestCase):
         self.assertIn("subfinder", m._NEED_TARGET)
         # Every scan tool has a go-install module path.
         self.assertEqual(set(m._TOOL_MODULES), m._SCAN_TOOLS)
+
+    def test_go_toolchain_defaults_under_tlamatini(self):
+        # DESIGN RULE (Angela): the private Go toolchain must be SELF-CONTAINED under the
+        # Tlamatini dir (app_root/Go) — NEVER an external location like %LOCALAPPDATA%.
+        # It is kept out of git by .gitignore (/Go/ + **/Go/), NOT by living elsewhere.
+        m = self.mod
+        go_dir = m._default_go_dir({})
+        self.assertEqual(os.path.normpath(go_dir),
+                         os.path.normpath(os.path.join(m._app_root(), "Go")))
+        # It lives UNDER the app/Tlamatini root (self-contained).
+        self.assertTrue(
+            os.path.normpath(go_dir).startswith(os.path.normpath(m._app_root()) + os.sep)
+        )
+        # gobin lives under it; an explicit override still wins.
+        self.assertTrue(m._default_gobin({}, go_dir).startswith(go_dir))
+        self.assertEqual(m._default_go_dir({"go_dir": r"X:\custom\go"}), r"X:\custom\go")
 
     def test_coercion_helpers(self):
         m = self.mod
@@ -220,15 +247,33 @@ class DiscovererHelperTests(unittest.TestCase):
         self.assertEqual(a[a.index("-tags") + 1], "cve")
         self.assertIn("-duc", a)  # disable the update check for a bounded run
 
-    def test_build_argv_cvemap(self):
+    def test_build_argv_cvemap_id(self):
+        # The `cvemap` tool now runs `vulnx` (cvemap's discontinued successor):
+        # a single CVE id maps to the `vulnx id <CVE>` subcommand.
         m = self.mod
-        a = m._build_argv("cvemap", "cvemap.exe",
+        a = m._build_argv("cvemap", "vulnx.exe",
                           {"cvemap_id": "CVE-2021-44228", "json_output": True}, "o.json")
-        self.assertEqual(a[a.index("-id") + 1], "CVE-2021-44228")
-        self.assertIn("-json", a)
-        # cvemap needs no target flag.
+        self.assertEqual(a[a.index("id") + 1], "CVE-2021-44228")
+        self.assertIn("-j", a)              # vulnx json flag
+        self.assertEqual(a[a.index("-o") + 1], "o.json")
+        # No legacy cvemap single-dash flags, and no target flags.
+        self.assertNotIn("-id", a)
+        self.assertNotIn("-json", a)
         self.assertNotIn("-u", a)
         self.assertNotIn("-host", a)
+
+    def test_build_argv_cvemap_search_sorted(self):
+        # No id -> `vulnx search` with --severity + --limit filters (the
+        # "latest CVEs by criticality" path used by the catalog prompt).
+        m = self.mod
+        a = m._build_argv("cvemap", "vulnx.exe",
+                          {"cvemap_severity": "critical,high", "cvemap_limit": 25,
+                           "json_output": True}, "o.json")
+        self.assertIn("search", a)
+        self.assertEqual(a[a.index("--severity") + 1], "critical,high")
+        self.assertEqual(a[a.index("--limit") + 1], "25")
+        self.assertIn("-j", a)
+        self.assertNotIn("id", a)
 
     def test_build_argv_extra_args(self):
         m = self.mod
@@ -434,6 +479,55 @@ class DiscovererIntegrationTests(SimpleTestCase):
             src = f.read()
         self.assertIn("DISCOVERER RECON SWEEP", src)
         self.assertIn("DISCOVERER AUTHORIZED PROBE", src)
+
+
+class DiscovererPdcpKeyWiringTests(SimpleTestCase):
+    """PDCP_API_KEY wiring: config.json slot, Access Keys Wizard field, the
+    wrapped-run global injection, .flw secret redaction, and regen_secrets."""
+
+    def test_config_json_has_pdcp_api_key(self):
+        from agent.config_loader import load_config
+        cfg = load_config(force_reload=True)
+        self.assertIn("pdcp_api_key", cfg)
+
+    def test_wizard_exposes_pdcp_field(self):
+        from agent.access_key_wizard import AGENT_YAML_RELATIVE_PATHS, FIELD_BY_KEY
+        self.assertIn("PDCP_API_KEY", FIELD_BY_KEY)
+        field = FIELD_BY_KEY["PDCP_API_KEY"]
+        self.assertEqual(field.json_key, "pdcp_api_key")
+        self.assertEqual(field.yaml_rules, (("discoverer", ("pdcp_api_key",), True),))
+        self.assertIn("discoverer", AGENT_YAML_RELATIVE_PATHS)
+
+    def test_seed_injects_configured_pdcp_api_key(self):
+        from unittest.mock import patch
+        from agent import tools
+        cfg = {"pdcp_api_key": ""}
+        with patch.object(tools, "get_config_value", return_value="pd-test-123"):
+            tools._seed_global_agent_defaults("discoverer", cfg)
+        self.assertEqual(cfg["pdcp_api_key"], "pd-test-123")
+
+    def test_seed_empty_pdcp_leaves_blank(self):
+        from unittest.mock import patch
+        from agent import tools
+        cfg = {"pdcp_api_key": ""}
+        with patch.object(tools, "get_config_value", return_value=""):
+            tools._seed_global_agent_defaults("discoverer", cfg)
+        self.assertEqual(cfg["pdcp_api_key"], "")
+
+    def test_agent_contract_redacts_pdcp(self):
+        from agent.services.agent_contracts import get_agent_contract
+        contract = get_agent_contract("discoverer")
+        self.assertIn("pdcp_api_key", contract.secret_paths)
+
+    def test_regen_secrets_handles_pdcp(self):
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        path = os.path.join(repo_root, "regen_secrets.py")
+        with open(path, encoding="utf-8") as f:
+            src = f.read()
+        self.assertIn("DISCOVERER_YAML", src)
+        self.assertIn("DISCOVERER_RULES", src)
+        self.assertIn('set_top("pdcp_api_key"', src)
+        self.assertIn("PDCP_API_KEY", src)
 
 
 if __name__ == "__main__":

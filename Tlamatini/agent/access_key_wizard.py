@@ -227,6 +227,20 @@ WIZARD_GROUPS: Tuple[WizardGroup, ...] = (
             ),
         ),
     ),
+    WizardGroup(
+        key="security",
+        title="Security Recon (ProjectDiscovery)",
+        fields=(
+            WizardField(
+                key="PDCP_API_KEY",
+                label="Discoverer / ProjectDiscovery Cloud Platform (PDCP) API key",
+                group="security",
+                json_key="pdcp_api_key",
+                yaml_rules=(("discoverer", ("pdcp_api_key",), True),),
+                note="OPTIONAL for every Discoverer tool - lifts cvemap/vulnx rate limits and enables nuclei -ai / cloud upload. Get a free key at https://cloud.projectdiscovery.io. Used by the Discoverer agent + chat_agent_discoverer; auto-injected on every run.",
+            ),
+        ),
+    ),
 )
 
 FIELD_BY_KEY: Dict[str, WizardField] = {
@@ -259,6 +273,10 @@ AGENT_YAML_RELATIVE_PATHS: Dict[str, Tuple[str, str]] = {
     "zavuerer": (
         "Tlamatini/agent/agents/zavuerer/config.yaml",
         "agents/zavuerer/config.yaml",
+    ),
+    "discoverer": (
+        "Tlamatini/agent/agents/discoverer/config.yaml",
+        "agents/discoverer/config.yaml",
     ),
 }
 

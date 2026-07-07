@@ -20,6 +20,10 @@ it, and qualifying it — then writes a Markdown report + JSON summary.
 
 This is the operator-mode regression the user wants run **daily**.
 
+## ⛔ FORBIDDEN: headless tests — ALL TESTS MUST BE VISIBLE (Angela, HARD RULE, 2026-07-07)
+
+**HEADLESS / INVISIBLE AUTOMATED TESTS ARE FORBIDDEN. This test ALWAYS runs in a VISIBLE, HEADED real Chrome on Angela's desktop — she MUST see every step live.** `--headless` is **disabled in `run_test.py`** (it is ignored and forced back to headed). Never try to run this or any test invisibly. Launch it inside a VISIBLE foreground window (`Start-Process powershell -NoExit …`, `dangerouslyDisableSandbox:true`), never `run_in_background`. Verify steps with FULL-SCREEN screenshots (whole desktop, taskbar clock visible) and NEVER record a stale/transient/timed-out answer as a pass. See memory `feedback_forbidden_headless_visible_tests` and the Discoverer visible-runner `harness/discoverer_1000.py`.
+
 ## Pinned run mode (do not change without being told)
 
 | Toggle | State |

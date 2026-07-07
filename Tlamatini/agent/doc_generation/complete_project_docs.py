@@ -452,6 +452,14 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "prompt search" in subject
         or "flw generation" in subject
         or ".flw generation" in subject
+        or "retrying behaviour" in subject
+        or "self-healing" in subject
+        or "self healing" in subject
+        or "failure" in subject
+        or "failures" in subject
+        or "answer classifier" in subject
+        or "answer_success" in subject
+        or "create flow" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -473,10 +481,25 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on `v1.36.0` plus a post-tag `.flw` layout commit: README.md, BookOfTlamatini.md, Git tags, and source inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
+            "The live Git window now lands on `v1.36.0` plus post-tag Multi-Turn reliability work: README.md, BookOfTlamatini.md, Git history, and source inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: `v1.36.0` adds Video-Analyzer as the motion-verdict sibling of Image-Interpreter, `v1.35.0` improves prompt discovery, and HEAD improves generated `.flw` canvas layouts while carrying the Zavuerer, Image-Interpreter, and trust-hardening history forward."
+            "The current release wave is broader than a badge bump: `v1.36.0` adds Video-Analyzer, `v1.35.0` improves prompt discovery, post-tag work improves generated `.flw` layout, and the newest committed wave adds a self-healing model-step invoker plus a cleaner Create Flow gate."
+        )
+    if any(
+        "retrying behaviour" in subject
+        or "self-healing" in subject
+        or "self healing" in subject
+        or "failure" in subject
+        or "failures" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The newest committed reliability wave adds `agent/self_healing.py`: every Multi-Turn model step now runs under a watchdog, switches recovery tactics on transient failures, broadcasts live recovery status, and preserves already-executed agent work instead of discarding it."
+        )
+    if any("answer classifier" in subject or "answer_success" in subject or "create flow" in subject for subject in subjects):
+        highlights.append(
+            "Create Flow is no longer gated by the removed whole-answer SUCCESS/FAILURE classifier: the button appears when Multi-Turn has at least one successful agent call, and the generated `.flw` keeps only successful executions."
         )
     if any(
         "video-analizer" in subject
@@ -579,6 +602,14 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "prompt search" in subject
         or "flw generation" in subject
         or ".flw generation" in subject
+        or "retrying behaviour" in subject
+        or "self-healing" in subject
+        or "self healing" in subject
+        or "failure" in subject
+        or "failures" in subject
+        or "answer classifier" in subject
+        or "answer_success" in subject
+        or "create flow" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -595,7 +626,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.36.0` Video-Analyzer release line plus the post-tag `.flw` layout work, so this dossier now carries the current media-verdict agent story, prompt-search UX, generated-flow layout rules, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.33.x prose."
+            "The latest documentation pass aligns the handbook and source with the `v1.36.0` Video-Analyzer line plus the post-tag self-healing/Create Flow/`.flw` layout work, so this dossier now carries the current reliability story, media-verdict agent story, prompt-search UX, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.33.x prose."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -811,6 +842,14 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "prompt search" in subject
         or "flw generation" in subject
         or ".flw generation" in subject
+        or "retrying behaviour" in subject
+        or "self-healing" in subject
+        or "self healing" in subject
+        or "failure" in subject
+        or "failures" in subject
+        or "answer classifier" in subject
+        or "answer_success" in subject
+        or "create flow" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -830,10 +869,25 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.35.0` and `v1.36.0`, then received a post-tag `.flw` layout improvement: Video-Analyzer is now the headline agent release, prompt search is sharper, and generated flow files are more readable on the canvas."
+            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.35.0` and `v1.36.0`, then received post-tag flow-layout and Multi-Turn reliability work: Video-Analyzer is now the headline tagged agent release, prompt search is sharper, generated flow files are more readable, and model-step failures are recovered more truthfully."
         )
         highlights.append(
-            "The current visual-doc delta covers `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer`, prompt-card search improvements, the serpentine `.flw` generator layout, and the carried v1.33.x/v1.34.x model and messaging context."
+            "The current visual-doc delta covers `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer`, prompt-card search improvements, serpentine `.flw` layout, `agent/self_healing.py`, Create Flow gate cleanup, and the carried v1.33.x/v1.34.x model and messaging context."
+        )
+    if any(
+        "retrying behaviour" in subject
+        or "self-healing" in subject
+        or "self healing" in subject
+        or "failure" in subject
+        or "failures" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The newest committed reliability wave adds `agent/self_healing.py`, routes Multi-Turn model calls through `SelfHealingInvoker`, broadcasts live recovery status, trims or retries context when model calls fail, and preserves already-executed tool evidence for a degraded but truthful final answer."
+        )
+    if any("answer classifier" in subject or "answer_success" in subject or "create flow" in subject for subject in subjects):
+        highlights.append(
+            "The old whole-answer `answer_success` classifier was removed: Create Flow now appears when Multi-Turn produced at least one successful agent call, generated `.flw` files keep only successful executions, and Exec Report remains tool-evidence rather than a global verdict."
         )
     if any(
         "video-analizer" in subject
@@ -1300,20 +1354,23 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.36.0` release line plus a post-tag `.flw` layout commit, with source inspection confirming the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals in the generated inventory tables.",
+    "The repository currently resolves to the `v1.36.0` release line plus post-tag commits through `35c8d25`, with live working-tree Discoverer PDCP/vulnx/Go-deny changes and source inspection confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals in the generated inventory tables.",
     "`v1.36.0` is the Video-Analyzer release: the new `video_analyzer` workflow agent and wrapped `chat_agent_video_analyzer` tool read recorded videos, check for motion, ask two vision models for independent evidence, merge their reports, and emit explicit routeable verdict tokens.",
     "`v1.35.0` improves prompt discovery: the Tools dialog prompt cards now search by substring, word-start, and fuzzy matches and show mode badges so operators can navigate the larger seeded prompt catalog without memorizing exact names.",
-    "The newest post-tag commit improves generated `.flw` layout: chat-created workflows now use a serpentine/boustrophedon grid so long Starter -> Agent -> ... -> Ender chains stay readable on the canvas instead of drifting off-screen.",
+    "The post-tag flow-layout commit improves generated `.flw` layout: chat-created workflows now use a serpentine/boustrophedon grid so long Starter -> Agent -> ... -> Ender chains stay readable on the canvas instead of drifting off-screen.",
+    "The newest committed reliability wave adds `agent/self_healing.py`: Multi-Turn model steps are watchdog-bounded, retry through distinct tactics, broadcast recovery status, and preserve completed agent work in degraded answers instead of discarding evidence.",
+    "Create Flow now follows concrete tool evidence rather than the removed whole-answer classifier: the button appears when Multi-Turn produced at least one successful agent call, and generated `.flw` downloads keep only successful executions.",
+    "The live working tree adds Discoverer PDCP key wiring: `PDCP_API_KEY` can be managed from Config -> Access Keys Wizard -> Security Recon (ProjectDiscovery), auto-injected into `chat_agent_discoverer`, redacted from `.flw`, and scrubbed by `regen_secrets.py`.",
+    "Discoverer's CVE lane now treats the legacy `cvemap` tool key as ProjectDiscovery `vulnx`: the old cvemap API was retired in August 2025, so Tlamatini installs/runs the `vulnx` binary, supports `search`/`id`, and counts object-style JSON findings correctly.",
+    "The private Go toolchain remains self-contained under `<install_dir>/Go`, but `.gitignore` and `git_deny_go.py` now make Go compiler/cache/tool binaries invisible to Git and block accidental commits with a pre-commit guard.",
     "`v1.34.x` adds the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
     "`v1.33.x` remains the Zavuerer release family: the Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key, with setup-wizard dedupe and cloud-default cleanup carried forward.",
-    "The v1.27-v1.32.0 span is a quality-and-trust wave: performance 3X levers, forward-only private-data discipline, public-release verifier hardening, and explicit Angela López Mendoza creator/authorship stamping moved together.",
-    "The runtime surface also grew around delegation: ACPX remains the external coding-agent CLI bridge, External MCP remains the universal MCP client, and the newest server-side assets add `tlamatini_acpx.py`, stronger `tlamatini_mcp_server.py` behavior, and refreshed MCP workflow guidance.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.36.0` plus the post-tag `.flw` layout commit as the current product snapshot while preserving the historical context for self-update, media-agent dependency hardening, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+    "The resulting PDF/PPTX refresh treats `v1.36.0` plus post-tag reliability, Create Flow, `.flw` layout, and Discoverer PDCP/vulnx/Go-deny work as the current product snapshot while preserving the historical context for self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: latest reachable public tag `v1.36.0`; the live HEAD currently sits one commit beyond that tag with a generated-flow layout improvement.",
+    "Release identity: latest reachable public tag `v1.36.0`; the live HEAD now includes post-tag generated-flow layout and self-healing reliability work.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1335,6 +1392,38 @@ PROMPT_SEARCH_AND_FLOW_GUIDE = [
     "The prompt-card rendering work was validated against the seeded catalog so one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step prompt families remain distinguishable while searching.",
     "Generated `.flw` workflows now use a serpentine canvas layout with row capacity and alternating direction, preserving the logical Starter -> Agent -> ... -> Ender order without pushing large chains into an unreadable line.",
     "This matters for documentation because the PDF and deck must describe not only new agents, but also the operator usability improvements that make the larger system actually usable.",
+]
+
+SELF_HEALING_GUIDE = [
+    "Every Multi-Turn model step now goes through `agent/self_healing.py::SelfHealingInvoker`, so model calls are bounded by `unified_agent_llm_step_timeout_seconds` and retried with distinct tactics instead of hanging silently.",
+    "Recovery tactics include plain retry, short back-off, trimming oldest messages with `trim_messages`, and a tool-less summary fallback; the ladder can run up to `unified_agent_llm_step_max_tactics` unless the user presses Cancel.",
+    "A status broadcaster registered by `consumers.py` sends live first-person recovery messages to the user's chat while the executor works in a worker thread.",
+    "If recovery is exhausted after agents already ran, `mcp_agent.py` builds a degraded but truthful answer from real `ToolMessage` results, preserves Exec Report/Create Flow evidence, and prepends `recovery_preamble(...)` instead of claiming no tools ran.",
+    "Coverage includes `agent/test_self_healing.py`, `agent/tests.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, and `Tlamatini/tests_e2e/test_create_flow_visual.py` for visible browser validation.",
+]
+
+CREATE_FLOW_GUIDE = [
+    "The whole-answer SUCCESS/FAILURE classifier `agent/services/answer_analizer.py` was removed on 2026-07-06, so no extra LLM round trip computes `answer_success`.",
+    "The browser now shows Create Flow when Multi-Turn ran, at least one tool call succeeded, and the user is not anonymous; the live agent registry still validates that the mapped agents exist.",
+    "Generated `.flw` downloads keep only successful tool-call entries, post a successful-only `tool_calls_log` to `/agent/flow_from_tool_calls/`, and drop failed executions rather than turning them into workflow nodes.",
+    "Exec Report remains per-tool evidence, not a whole-answer verdict; the checkbox is disabled/greyed unless Multi-Turn is checked.",
+]
+
+DISCOVERER_PDCP_GUIDE = [
+    "Discoverer now has an optional ProjectDiscovery Cloud Platform key (`pdcp_api_key` / `PDCP_API_KEY`) for cvemap/vulnx rate limits and nuclei `-ai` or cloud upload features.",
+    "Config -> Access Keys Wizard exposes `Security Recon (ProjectDiscovery)`, writes the key to `config.json`, `data.keys`, and `agent/agents/discoverer/config.yaml`, and blank fields preserve existing values.",
+    "`tools._seed_global_agent_defaults` auto-injects the configured key into every `chat_agent_discoverer` run so prompts never paste the credential.",
+    "`agent_contracts.py` redacts `pdcp_api_key` from `.flw` exports, and `regen_secrets.py` scrubs it back to `PDCP_API_KEY` before a push-able tree.",
+    "The new `0169_add_discoverer_cvemap_latest_demo_prompt.py` migration seeds a passive latest-CVE briefing prompt that uses cvemap/vulnx and reports whether `pdcp_used` was active.",
+]
+
+DISCOVERER_VULNX_GO_GUARD_GUIDE = [
+    "ProjectDiscovery retired cvemap's CVE API in August 2025, so Tlamatini keeps the operator-facing `cvemap` tool key but installs and runs ProjectDiscovery's successor binary, `vulnx`.",
+    "`discoverer.py` now maps `cvemap` to `github.com/projectdiscovery/cvemap/cmd/vulnx@latest`, resolves the installed binary as `vulnx`, and builds `vulnx id <CVE>` or `vulnx search --severity ... --product ... --limit ...` arguments.",
+    "The findings counter now understands vulnx object JSON such as `{\"count\": N, \"results\": [...]}`, so Exec Report and Forker routing see the real result count instead of a misleading one-line object.",
+    "The private Go compiler and ProjectDiscovery tool binaries still install under `<install_dir>/Go` / `<install_dir>/Go/bin-tools`, keeping the runtime self-contained and avoiding any system Go or PATH mutation.",
+    "The `.gitignore` Go-deny block, `git_deny_go.py`, and its managed pre-commit hook prevent `Go/`, `bin-tools/`, `go-build/`, `pkg/mod/`, and downloaded Go archives from entering source control; ignored `Go/` content is not counted as project code.",
+    "The live git-unignored asset scan still counts real working-tree additions such as `0169_add_discoverer_cvemap_latest_demo_prompt.py`, `git_deny_go.py`, and the root `image.png` binary until the user commits, ignores, or removes them.",
 ]
 
 V1332_RELEASE_GUIDE = [
@@ -1431,6 +1520,10 @@ NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
     "The current `v1.36.0` wave adds concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
     "The immediately adjacent `v1.35.0` and post-tag work updates prompt-card search/rendering assets and `.flw` generation layout code, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
+    "The newest committed reliability assets include `agent/self_healing.py`, `agent/test_self_healing.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, `Tlamatini/tests_e2e/test_create_flow_visual.py`, and coordinated changes in `mcp_agent.py`, `consumers.py`, `response_parser.py`, and the chat frontend.",
+    "The live working tree also adds Discoverer PDCP assets: `access_key_wizard.py` exposes the Security Recon field, `tools.py` seeds `pdcp_api_key`, `agent_contracts.py` redacts it from `.flw`, `regen_secrets.py` scrubs it, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` seeds the latest-CVE prompt.",
+    "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, the untracked `git_deny_go.py` guard/pre-commit installer, and the ignored self-contained `Go/` toolchain cache that is deliberately not counted as authored project code.",
+    "The current git-unignored asset scan also sees the root `image.png` as a PNG binary working-tree addition, so it is counted in the asset inventory until the operator decides whether to keep, ignore, or remove it.",
     "The earlier `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
     "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
     "The latest cleanup/assets span also includes `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, `docs/claude/recent-fixes.md`, response-parser/runtime/settings/middleware touch-ups, and removal of the stale `Tlamatini/db.sqlite3.bak-prereseat` backup from the tracked surface.",
@@ -1628,7 +1721,7 @@ CONFIGURATION_GUIDE = [
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
     "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `glm-5.2:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
     "URL configuration now also includes `kali_server_url`, the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, plus ESP32er’s `pio_executable` and `pio_core_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
-    "Credential configuration is no longer hand-edit-only: Config -> Access Keys Wizard provides a browser-side path for ACPX and provider secrets while preserving masked status in the UI.",
+    "Credential configuration is no longer hand-edit-only: Config -> Access Keys Wizard provides a browser-side path for ACPX, provider secrets, unified messaging, and Security Recon (ProjectDiscovery) keys such as `pdcp_api_key` while preserving masked status in the UI.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
     "The separate DB dropdown is not a config editor: it is a maintenance surface for copying the live SQLite database out or staging a replacement for the next full start-up.",
     "Multi-Turn is toggled from the chat toolbar, but it depends on the unified-agent configuration and the selected model/base-url pairing being valid; the current default iteration ceiling is 4096, and Ask Execs only becomes available when Multi-Turn itself is on.",
@@ -2089,6 +2182,18 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Post-v1.36.0 self-healing Multi-Turn reliability", styles["h2"]))
+    for item in SELF_HEALING_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Create Flow and Exec Report gating", styles["h2"]))
+    for item in CREATE_FLOW_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Discoverer PDCP key integration", styles["h2"]))
+    for item in DISCOVERER_PDCP_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Discoverer vulnx and Go-toolchain Git-deny guard", styles["h2"]))
+    for item in DISCOVERER_VULNX_GO_GUARD_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.36.0 Video-Analyzer release delta", styles["h2"]))
     for item in V136_RELEASE_GUIDE:
@@ -2881,7 +2986,7 @@ def build_ppt(context: dict) -> None:
         "Capability registry scores context providers, tools, and wrapped agents for the current request.",
         "Global planner builds prefetch, execute, monitor, and answer stages.",
         "Explicit tool loop runs tool calls, appends observations, and asks again until final answer or the 4096-turn limit.",
-        "Answer Analizer classifies success so the UI can expose Create Flow only when useful.",
+        "Create Flow no longer uses the removed answer classifier; it appears when Multi-Turn has at least one successful agent call.",
     ], THEME["copper"], "mt-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Unchecked mode", [
         "Keeps the original prompt validation and legacy prefetch behavior.",
@@ -2913,9 +3018,29 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.36.0 Video-Analyzer plus post-tag flow layout", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Newest changes", CURRENT_RELEASE_GUIDE[:4], THEME["amber"], "rel-a", 11)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Carried context", CURRENT_RELEASE_GUIDE[4:], THEME["jade"], "rel-b", 11)
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.36.0 plus self-healing, Create Flow, and Discoverer hardening", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Newest changes", CURRENT_RELEASE_GUIDE[:5], THEME["amber"], "rel-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Carried context", CURRENT_RELEASE_GUIDE[5:], THEME["jade"], "rel-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Self-Healing Multi-Turn", "watchdog-bounded model steps and truthful recovery", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recovery loop", SELF_HEALING_GUIDE[:3], THEME["copper"], "heal-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Evidence preservation", SELF_HEALING_GUIDE[3:], THEME["jade"], "heal-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Create Flow Gate", "successful-only flows without answer_success", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CREATE_FLOW_GUIDE[:2], THEME["jade"], "flow-gate-a", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Operator result", CREATE_FLOW_GUIDE[2:], THEME["amber"], "flow-gate-b", 13)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Discoverer PDCP Wiring", "ProjectDiscovery key without prompt-pasted secrets", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Configuration path", DISCOVERER_PDCP_GUIDE[:3], THEME["amber"], "pdcp-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Redaction and prompt seed", DISCOVERER_PDCP_GUIDE[3:], THEME["copper"], "pdcp-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Discoverer Vulnx And Go Guard", "current CVE search plus source-control protection", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "vulnx CVE lane", DISCOVERER_VULNX_GO_GUARD_GUIDE[:3], THEME["copper"], "vulnx-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Go-deny guard", DISCOVERER_VULNX_GO_GUARD_GUIDE[3:], THEME["jade"], "vulnx-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "v1.36.0 Release Delta", "Video-Analyzer, prompts, and generated workflow layout", THEME["copper"])
@@ -2989,12 +3114,13 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Newest Assets And Surfaces", "backend, frontend, and build files added or upgraded recently", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE, THEME["jade"], "assets-a", 12)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why they matter", [
-        "These files are the concrete proof behind the release narrative: build-time self-snapshotting, a graphical credentials setup surface, and a safer File-Creator transport are all implemented in tracked source, not merely described in markdown.",
-        "They also increase the line inventory in JavaScript, CSS, HTML, Markdown, YAML, and Python, which the dossier’s language tables and complete repository tree now pick up automatically.",
-        "For operators and maintainers, this makes the PDF/PPTX useful as both a product overview and a change-orientation map after a busy sprint.",
-    ], THEME["amber"], "assets-b", 12)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE[:4], THEME["jade"], "assets-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Discoverer and media", NEW_ASSETS_GUIDE[4:8], THEME["amber"], "assets-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Newest Assets Appendix", "remaining current asset deltas", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Continuing assets", NEW_ASSETS_GUIDE[8:11], THEME["amber"], "assets-c", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Inventory meaning", NEW_ASSETS_GUIDE[11:], THEME["jade"], "assets-d", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Agentic Control Panel", "visual workflow temple", THEME["jade"])
@@ -3301,24 +3427,25 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "release waves through v1.36.0", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "through post-v1.36.0 reliability wave", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Video-Analyzer (v1.36.0): motion-verdict video analysis for robotic-loop training, with `TLM_VERDICT::` routing.",
+        "Self-healing Multi-Turn: watchdog-bounded model steps, tactic switching, live status, and truthful degraded answers.",
+        "Discoverer hardening: optional PDCP key wiring, `cvemap` -> `vulnx` CVE search, and a Go-deny guard that keeps the private Go toolchain out of Git.",
         "Image-Interpreter: triple-model still-image analysis with independent interpreters and a merger model.",
         "Zavuerer: unified Zavu messaging for SMS, WhatsApp, Telegram, Email, and Voice.",
-        "Prompt search: substring, word-start, fuzzy matching, and mode badges in the Tools dialog.",
-        "Generated `.flw` files: serpentine canvas layout keeps long flows readable.",
+        "Prompt search and generated `.flw` files: fuzzy prompt cards plus serpentine successful-only flow downloads.",
         "Media/voice and firmware lanes remain active: Talker, Whisperer, Camcorder, Recorder, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, and Unrealer.",
-    ], THEME["copper"], "monday-a", 11)
+    ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: `v1.36.0` plus post-tag generated-flow layout at the current HEAD.",
+        "Resolved identity: `v1.36.0` plus post-tag generated-flow layout and self-healing reliability at the current HEAD.",
+        "Create Flow now follows successful tool calls instead of the removed `answer_success` classifier.",
         "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",
         "Delegation baseline: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` remain first-class surfaces.",
         "Self-update and packaged-build hardening preserve user DB state and validate media dependencies before release.",
-        "Temp/Templates policy and FlowHypervisor monitoring keep long-running workflows observable and contained.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
-    ], THEME["jade"], "monday-b", 11)
+    ], THEME["jade"], "monday-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Effective Lines By Language", "no comments, no blanks", THEME["copper"])

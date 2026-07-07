@@ -1941,6 +1941,25 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                 len(configured.strip()),
             )
 
+    if template_dir == "discoverer":
+        # Discoverer is the "embedded client" for the ProjectDiscovery suite: the
+        # OPTIONAL pdcp_api_key lives once in config.json (Config -> Access Keys
+        # Wizard, "Security Recon (ProjectDiscovery)") so recon prompts never repeat
+        # it. Seed it as the default so cvemap/nuclei cloud features authenticate
+        # without the LLM (or the user) ever pasting the key.
+        try:
+            configured = get_config_value("pdcp_api_key", "")
+        except Exception as exc:  # pragma: no cover - config read is best-effort
+            logger.warning("[tools._seed_global_agent_defaults] could not read pdcp_api_key: %s", exc)
+            configured = ""
+        if isinstance(configured, str) and configured.strip():
+            runtime_config["pdcp_api_key"] = configured.strip()
+            # NEVER log the key itself - only that one was seeded (length only).
+            logger.info(
+                "[tools._seed_global_agent_defaults] Discoverer pdcp_api_key seeded from config (length=%d)",
+                len(configured.strip()),
+            )
+
     if template_dir == "stm32er":
         # STM32er is the "embedded client" for the STM32 Template Project MCP:
         # the server path / interpreter / scaffold root / IDE root live once in

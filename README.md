@@ -120,7 +120,7 @@ In the Tlamatini navbar, open the **Config** menu:
 > - 🖥️ **Ollama on your own machine (localhost)?** Leave the token **blank** — a local Ollama needs no auth.
 > - ☁️ **Ollama on a remote server (e.g. [Vast.ai](https://vast.ai))?** Paste the **Ollama token** so Tlamatini can reach it.
 
-Add any cloud-CLI keys here too. Blank fields keep what's already configured; click **Save**:
+Add any cloud-CLI keys here too — plus the messaging keys, the Kali server URL, and the **OPTIONAL** ProjectDiscovery Cloud (PDCP) key under **"Security Recon (ProjectDiscovery)"**. Blank fields keep what's already configured; click **Save**:
 
 <p align="center"><img src="Tlamatini/agent/images/ACPXKeysConfigureWizard.jpg" alt="Access Keys Wizard" width="640"/></p>
 
@@ -193,7 +193,7 @@ Everything Tlamatini can do, grouped:
 
 **🛡️ Security**
 - **Kalier** — authorized Kali Linux / MCP-Kali-Server offensive-security assessments.
-- **Discoverer** — ProjectDiscovery recon suite (subfinder/httpx/naabu/katana/nuclei/cvemap) via a self-installing private Go toolchain in <install_dir>/Go; authorized recon, attack-surface mapping & vulnerability discovery.
+- **Discoverer** — ProjectDiscovery recon suite (subfinder/httpx/naabu/katana/nuclei/cvemap — the CVE search runs ProjectDiscovery's `vulnx`, since cvemap's own API was retired Aug 2025) via a self-installing private Go toolchain in <install_dir>/Go; authorized recon, attack-surface mapping & vulnerability discovery. The **ProjectDiscovery Cloud (PDCP) key is OPTIONAL** (lifts cvemap/vulnx rate limits, enables nuclei `-ai`/cloud upload) — set it once in **Config ▸ Access Keys Wizard ▸ "Security Recon (ProjectDiscovery)"** (auto-injected into every run; redacted from `.flw` exports and by `regen_secrets.py` before a push).
 - **Zavuerer** — **Zavu** unified messaging: SMS / WhatsApp / Telegram / Email / Voice from ONE API key (`channel: auto` smart-routes to the best channel with auto-fallback). Set the key once in **Config ▸ Access Keys Wizard ▸ "Unified Messaging (Zavu)"**; direct HTTP, fail-safe preflight, refuses safely when no key is set. **Zavu pricing:** sign-up is free (no card), but sending is pay-as-you-go — Zavu charges per message.
 - **security-audit / kali-pentest** skills.
 

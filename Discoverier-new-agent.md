@@ -34,7 +34,7 @@ no system Go, no developer setup, no PATH pollution.
 | `naabu` | port scanner | `-host` / `-l` | none (connect-scan on Windows) |
 | `katana` | crawler / spider | `-u` / `-list` | none |
 | `nuclei` | template vulnerability scanner | `-u` / `-l` | PDCP for AI/cloud only (optional) |
-| `cvemap` → `vulnx` | CVE search CLI | `-id` / `-product` | PDCP boosts rate limit (optional) |
+| `cvemap` → `vulnx` | CVE search CLI (cvemap's API retired Aug 2025 → the tool runs `vulnx`: `vulnx search`/`id`) | `id <CVE>` / `--severity` / `--product` / `--limit` | PDCP boosts rate limit (optional) |
 | *(meta)* | `bootstrap` / `validate` / `update_templates` / `list_tools` | — | — |
 
 > **Naming note:** ProjectDiscovery **renamed `cvemap` to `vulnx`**. The agent runs
@@ -176,7 +176,12 @@ Global defaults (`go_dir`, `tools_bin`, `pdcp_api_key`, `go_version`) seeded int
 - **PDCP key** (`PDCP_API_KEY`, ProjectDiscovery Cloud Platform, free): the key you
   remembered. **Optional.** Lifts `cvemap/vulnx`'s 10-req/min cap; enables nuclei
   `-ai` + cloud dashboard upload. One key, set once. Priority: config field →
-  `PDCP_API_KEY` env → on-disk credentials file.
+  `PDCP_API_KEY` env → on-disk credentials file. Set it graphically once in
+  **Config ▸ Access Keys Wizard ▸ "Security Recon (ProjectDiscovery)"** — the wizard
+  writes it to `data.keys` + `config.json` `pdcp_api_key` + the agent's `config.yaml`;
+  `tools._seed_global_agent_defaults` auto-injects it into every `chat_agent_discoverer`
+  run, `agent_contracts` redacts it from `.flw` exports, and `regen_secrets.py` scrubs
+  it to a placeholder before any push.
 - **subfinder providers:** subfinder does **not** use PDCP — it reads ~95 source
   keys (Shodan, Censys, VirusTotal, SecurityTrails, GitHub, FOFA, …) from
   `provider-config.yaml`. **Optional**, but more keys = more subdomains.

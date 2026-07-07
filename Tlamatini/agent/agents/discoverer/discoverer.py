@@ -364,15 +364,23 @@ def _run_cmd(cmd: list, env: dict = None, cwd: str = None, timeout: float = 1800
 # ========================================
 
 # ProjectDiscovery `go install` module paths (compiled by the private Go toolchain).
-# cvemap is now shipped as `vulnx`; the historical cvemap module path is kept and can
-# be overridden via extra_args / a future config key if ProjectDiscovery moves it.
+# The legacy `cvemap` CLI's CVE API (cve.projectdiscovery.io) was DISCONTINUED in Aug
+# 2025 (it now fails with "no address found for host"), so the `cvemap` tool key installs
+# and runs its successor `vulnx` from the same repo (cmd/vulnx). See _TOOL_BINARY below.
 _TOOL_MODULES = {
     "subfinder": "github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
     "httpx":     "github.com/projectdiscovery/httpx/cmd/httpx@latest",
     "naabu":     "github.com/projectdiscovery/naabu/v2/cmd/naabu@latest",
     "katana":    "github.com/projectdiscovery/katana/cmd/katana@latest",
     "nuclei":    "github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
-    "cvemap":    "github.com/projectdiscovery/cvemap/cmd/cvemap@latest",
+    "cvemap":    "github.com/projectdiscovery/cvemap/cmd/vulnx@latest",
+}
+
+# Installed binary base-name per tool key (defaults to the key). `go install cmd/<name>`
+# produces a binary named <name>, which can differ from the tool key: the `cvemap` tool
+# key installs and runs the `vulnx` binary (cvemap's live successor).
+_TOOL_BINARY = {
+    "cvemap": "vulnx",
 }
 
 _SCAN_TOOLS = set(_TOOL_MODULES.keys())
@@ -411,6 +419,11 @@ def _app_root() -> str:
 
 def _default_go_dir(config: dict) -> str:
     explicit = str(_cfg(config, "go_dir")).strip()
+    # SELF-CONTAINED: the private Go toolchain lives UNDER the Tlamatini dir (app_root/Go —
+    # the repo root in source mode, the install dir when frozen), so Tlamatini NEVER depends
+    # on anything outside its own directory. It is bulletproof-ignored by git (.gitignore
+    # `/Go/` + `**/Go/` + the git_deny_go.py guard + pre-commit hook), so it never appears
+    # in the repo. An explicit go_dir in config.yaml still wins.
     return explicit or os.path.join(_app_root(), "Go")
 
 
@@ -437,8 +450,9 @@ def _go_exe_path(go_dir: str) -> str:
 
 
 def _tool_exe_path(gobin: str, tool: str) -> str:
-    # cvemap's binary may be named `cvemap` (historical) — keep the tool key as the name.
-    return os.path.join(gobin, tool + _exe_suffix())
+    # The installed binary follows the module's cmd/<name> and can differ from the tool
+    # key (e.g. tool 'cvemap' installs the 'vulnx' binary — see _TOOL_BINARY).
+    return os.path.join(gobin, _TOOL_BINARY.get(tool, tool) + _exe_suffix())
 
 
 # ========================================
@@ -574,6 +588,18 @@ def _install_tool(tool: str, go_exe: str, gobin: str, env: dict, timeout: float)
     return {"ok": rc == 0, "returncode": rc, "stdout": out, "stderr": err, "module": module}
 
 
+def _real_secret(value) -> str:
+    """Return a usable secret, or '' for an unset value OR a push-able placeholder like
+    '<PDCP_API_KEY goes here>'. A redacted (push-able) build must never send a bogus key
+    to the API — that would fail auth instead of gracefully running key-less/rate-limited."""
+    s = str(value or "").strip()
+    if not s:
+        return ""
+    if s.startswith("<") and s.endswith(">") and "goes here" in s.lower():
+        return ""
+    return s
+
+
 def _go_env(base_env: dict, go_dir: str, gobin: str, config: dict) -> dict:
     """Build the environment for go install + tool runs: private GOROOT/GOPATH/GOBIN,
     GOCACHE under Temp, plus the optional PDCP key and subfinder provider config."""
@@ -593,7 +619,7 @@ def _go_env(base_env: dict, go_dir: str, gobin: str, config: dict) -> dict:
             os.makedirs(d, exist_ok=True)
         except Exception:
             pass
-    key = str(_cfg(config, "pdcp_api_key")).strip()
+    key = _real_secret(_cfg(config, "pdcp_api_key"))
     if key:
         env["PDCP_API_KEY"] = key
     pc = str(_cfg(config, "subfinder_provider_config")).strip()
@@ -604,13 +630,14 @@ def _go_env(base_env: dict, go_dir: str, gobin: str, config: dict) -> dict:
 
 def _resolve_tool(tool: str, gobin: str, env: dict) -> str:
     """Find an invocable tool binary: private GOBIN -> pdtm bin -> PATH. '' if none."""
+    bin_name = _TOOL_BINARY.get(tool, tool)
     cand = _tool_exe_path(gobin, tool)
     if os.path.isfile(cand):
         return cand
-    pdtm = os.path.join(os.path.expanduser("~"), ".pdtm", "go", "bin", tool + _exe_suffix())
+    pdtm = os.path.join(os.path.expanduser("~"), ".pdtm", "go", "bin", bin_name + _exe_suffix())
     if os.path.isfile(pdtm):
         return pdtm
-    which = shutil.which(tool, path=env.get("PATH"))
+    which = shutil.which(bin_name, path=env.get("PATH"))
     return which or ""
 
 
@@ -882,19 +909,29 @@ def _build_argv(tool: str, exe: str, config: dict, out_path: str) -> list:
         a += ["-duc", "-nc"]
 
     elif tool == "cvemap":
+        # Runs `vulnx` (cvemap's successor — see _TOOL_MODULES/_TOOL_BINARY). vulnx is
+        # subcommand-based: `vulnx id <CVE>` for one CVE, else `vulnx search` with
+        # --severity / --product filters. Results come back newest-first.
         cid = str(_cfg(config, "cvemap_id")).strip()
         prod = str(_cfg(config, "cvemap_product")).strip()
         sev = str(_cfg(config, "cvemap_severity")).strip()
+        limit = _as_int(_cfg(config, "cvemap_limit", 50), 50)
         if cid:
-            a += ["-id", cid]
-        if prod:
-            a += ["-product", prod]
-        if sev:
-            a += ["-severity", sev]
+            a += ["id", cid]
+        else:
+            a += ["search"]
+            if sev:
+                a += ["--severity", sev]
+            if prod:
+                a += ["--product", prod]
+            if limit > 0:
+                a += ["--limit", str(limit)]
         if json_out:
-            a += ["-json"]
+            a += ["-j"]
         if out_path:
             a += ["-o", out_path]
+        # Clean, fast, non-interactive output for programmatic parsing.
+        a += ["--silent", "--disable-update-check"]
 
     if extra:
         try:
@@ -916,6 +953,19 @@ def _findings_count(out_path: str, stdout: str) -> int:
                 try:
                     data = json.loads(text)
                     return len(data) if isinstance(data, list) else 1
+                except Exception:
+                    pass
+            if text[0] == "{":
+                # vulnx (cvemap's successor) writes an object: {"count":N,"results":[...]}.
+                try:
+                    data = json.loads(text)
+                    if isinstance(data, dict):
+                        res = data.get("results")
+                        if isinstance(res, list):
+                            return len(res)
+                        if isinstance(data.get("count"), int):
+                            return int(data["count"])
+                        return 1
                 except Exception:
                     pass
             return sum(1 for ln in text.splitlines() if ln.strip())
@@ -995,7 +1045,7 @@ def main():
 
         outcome = {"tool": selection, "target": "", "returncode": "", "success": "false",
                    "findings_count": "", "json_path": "", "pdcp_used": "false", "stage": "run"}
-        outcome["pdcp_used"] = "true" if str(_cfg(config, "pdcp_api_key")).strip() else "false"
+        outcome["pdcp_used"] = "true" if _real_secret(_cfg(config, "pdcp_api_key")) else "false"
         outcome["target"] = str(_cfg(config, "target") or _cfg(config, "cvemap_id")
                                  or _cfg(config, "cvemap_product") or "").strip()
         body = ""
@@ -1034,7 +1084,7 @@ def main():
                 f"go_dir (GOROOT) : {go_dir}  ({'present' if go_present else 'NOT installed'})",
                 f"tools_bin(GOBIN): {gobin}",
                 f"output_dir      : {_default_output_dir(config)}",
-                f"pdcp_api_key    : {'set' if str(_cfg(config, 'pdcp_api_key')).strip() else '(none — optional)'}",
+                f"pdcp_api_key    : {'set' if _real_secret(_cfg(config, 'pdcp_api_key')) else '(none — optional)'}",
                 "",
                 "installed tools:",
                 _list_installed_tools(gobin, env)["stdout"],
