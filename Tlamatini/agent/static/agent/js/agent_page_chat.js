@@ -236,6 +236,21 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
         // here or the user would be allowed to send a request before the
         // contextual RAG chain has finished rebuilding.
         console.log("--- Session-restored welcome message received while context is loading — leaving controls disabled.");
+    } else if (isSelfHealingStatusMessage(message)) {
+        // A LIVE self-healing recovery status line (a "Tactic #..." retry, a
+        // "switching to a different tactic" abandon/transient notice, or a
+        // "continuing the run right where I left off" success). The multi-turn
+        // run is STILL executing -- this frame is shaped exactly like the final
+        // answer, so the catch-all else below would wrongly flip the button
+        // back to 'Send' and re-enable every control while Tlamatini keeps
+        // working. Instead, render the line (below) but RE-ASSERT the busy
+        // state so the button stays 'Cancel' and the user can still cancel. The
+        // real final answer takes the else branch and re-enables everything.
+        // disableControlsDuringOperation() is idempotent (its spinner is
+        // guarded), so re-asserting is safe.
+        setTitleBusy(true);
+        disableControlsDuringOperation();
+        console.log("--- Self-healing status line - keeping controls disabled; the run is still in progress.");
     } else {
         enableControlsAfterOperation();
     }
@@ -273,14 +288,17 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     //     (dropped 2026-07-06): the button appears purely on
     //     `multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog)`, and the
     //     generated .flw is built from ONLY the successfully-executed agents
-    //     (see _generateAndDownloadFlow — failed executions are dropped).
+    //     (see _generateAndDownloadFlow - failed executions are dropped).
     //
-    //     Additionally, every canonical agent name produced from the
-    //     successful tool calls MUST exist in the Agents sidebar (registered
-    //     in the DB). Otherwise the generated .flw would reference an agent
-    //     type the canvas cannot resolve, breaking the flow at load time.
-    //     We render the button asynchronously after _missingAgents()
-    //     resolves so we can disable + tooltip it when validation fails.
+    //     Agent-name resolution (2026-07-07): each successful call's display
+    //     name is resolved against the live Agents sidebar using a
+    //     punctuation/space/case-insensitive key ("File Creator" -> "File-Creator",
+    //     "STM32er" -> "stm32er", "Monitor Log" -> "Monitor-Log"), so
+    //     display-vs-DB spelling drift never blocks the button. A successful
+    //     agent that resolves to NO registered canvas agent is simply DROPPED
+    //     from the generated flow (same treatment as a failed execution) - it
+    //     must NEVER disable the whole button. The button enables whenever AT
+    //     LEAST ONE successful agent resolves.
     if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog)) {
         const createFlowBtn = document.createElement('button');
         createFlowBtn.classList.add('create-flow');
@@ -288,29 +306,49 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
         usernameDiv.appendChild(createFlowBtn);
 
         // Start disabled until we've validated against the live agent
-        // registry; flips back on if every canonical name resolves.
+        // registry; flips on as long as >=1 successful agent resolves.
         createFlowBtn.disabled = true;
         createFlowBtn.classList.add('create-flow-validating');
         createFlowBtn.title = 'Validating agents…';
 
-        _missingAgents(toolCallsLog).then(missing => {
+        const _enableCreateFlow = (titleText) => {
             createFlowBtn.classList.remove('create-flow-validating');
-            if (missing.length === 0) {
-                createFlowBtn.disabled = false;
-                createFlowBtn.title = '';
-                createFlowBtn.addEventListener('click', () => {
-                    _generateAndDownloadFlow(toolCallsLog);
-                });
+            createFlowBtn.classList.remove('create-flow-disabled');
+            createFlowBtn.disabled = false;
+            createFlowBtn.title = titleText || '';
+            createFlowBtn.addEventListener('click', () => {
+                _generateAndDownloadFlow(toolCallsLog);
+            });
+        };
+
+        _resolveSuccessfulAgents(toolCallsLog).then(({ resolved, missing }) => {
+            createFlowBtn.classList.remove('create-flow-validating');
+            if (resolved.length > 0) {
+                // >=1 successful agent resolves -> enable. Any unresolved
+                // agents are dropped from the flow, not a blocker.
+                _enableCreateFlow(missing.length
+                    ? ('Flow includes ' + resolved.length + ' successful agent(s); '
+                        + missing.length + ' unregistered agent(s) will be skipped: '
+                        + missing.join(', '))
+                    : '');
+                if (missing.length) {
+                    console.warn('--- Create Flow: enabled; skipping unregistered agents:', missing);
+                }
             } else {
+                // Nothing resolvable to build a flow from.
                 createFlowBtn.classList.add('create-flow-disabled');
-                createFlowBtn.title = 'Cannot create flow: ' + missing.length
-                    + ' agent type(s) not registered in the Agents sidebar — '
-                    + missing.join(', ');
-                console.warn('--- Create Flow: disabled, missing agents:', missing);
+                createFlowBtn.title = 'Cannot create flow: no successful agent resolved to a '
+                    + 'registered canvas agent'
+                    + (missing.length ? ' - ' + missing.join(', ') : '');
+                console.warn('--- Create Flow: disabled, no resolvable successful agents:', missing);
             }
         }).catch(err => {
-            console.error('--- Create Flow: validation failed, hiding button:', err);
-            createFlowBtn.remove();
+            // Registry validation itself failed - do NOT hide the button.
+            // Enable best-effort; the backend normalizer (/flow_from_tool_calls/)
+            // re-validates every node through the AgentContract registry and the
+            // download falls back to the legacy draft if that endpoint is down.
+            console.warn('--- Create Flow: registry validation unavailable, enabling best-effort:', err);
+            _enableCreateFlow('');
         });
     }
 
@@ -403,31 +441,91 @@ function _loadAgentRegistry() {
 }
 
 /**
- * Given a tool_calls_log, return the list of canonical agent names that
- * the .flw generator would emit but that DON'T exist in the live Agents
- * sidebar. Empty list = every node will resolve at canvas load.
- *
- * Includes the implicit Starter and Ender wrappers added by
- * _generateAndDownloadFlow, so a flow with only Starter+Ender registered
- * is not falsely declared incomplete on a missing custom-agent install.
+ * Normalize an agent name to a comparison key: lowercase, then strip every
+ * character that is not a-z0-9. So "File Creator", "File-Creator" and
+ * "filecreator" all collapse to "filecreator", and "STM32er" -> "stm32er".
+ * This is what makes display-vs-DB spelling drift (space vs hyphen vs case)
+ * resolve cleanly against the live Agents sidebar.
  */
-async function _missingAgents(toolCallsLog) {
-    const registry = await _loadAgentRegistry();
-    const required = new Set(['Starter', 'Ender']);
+function _agentNameKey(name) {
+    return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/** Build a normalized-key -> exact-registry-name Map from a registry Set. */
+function _buildRegistryKeyMap(registrySet) {
+    const map = new Map();
+    registrySet.forEach(name => { map.set(_agentNameKey(name), name); });
+    return map;
+}
+
+/**
+ * Resolve a wrapped-agent display name to the EXACT canonical
+ * agentDescription string present in the live Agents sidebar, or null when
+ * no registered agent matches. Tries the explicit alias map first, then a
+ * punctuation/space/case-insensitive key match against the registry.
+ */
+function _resolveCanonicalAgentName(displayName, registrySet, registryKeyMap) {
+    const aliased = _canonicalAgentName(displayName);   // explicit alias first
+    if (registrySet.has(aliased)) return aliased;
+    const aliasKey = _agentNameKey(aliased);
+    if (registryKeyMap.has(aliasKey)) return registryKeyMap.get(aliasKey);
+    const rawKey = _agentNameKey(displayName);
+    if (registryKeyMap.has(rawKey)) return registryKeyMap.get(rawKey);
+    return null;
+}
+
+/** Display name carried on a tool-calls-log entry (with a safe fallback). */
+function _displayNameFromEntry(entry) {
+    return entry.agent_display_name
+        || (entry.tool_name || 'Unknown')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Resolve every SUCCESSFUL tool call against the live Agents registry.
+ *
+ * Returns { resolved, missing } where each `resolved` item carries the
+ * canonical (EXACT DB) name + args ready for flow generation, and `missing`
+ * lists the display names of successful agents that resolve to no registered
+ * canvas agent. Those are DROPPED from the generated flow (never a reason to
+ * disable the button) so the flow is built from the resolvable successes
+ * only -- exactly "only the successful agents' executions".
+ *
+ * If the registry can't be loaded, it degrades OPEN: every successful call is
+ * kept with its best-effort alias-only canonical name and `missing` stays
+ * empty, so the button still enables and the backend normalizer fixes names.
+ */
+async function _resolveSuccessfulAgents(toolCallsLog) {
+    let registry = null;
+    let keyMap = null;
+    try {
+        registry = await _loadAgentRegistry();
+        keyMap = _buildRegistryKeyMap(registry);
+    } catch (err) {
+        console.warn('--- Create Flow: agent registry unavailable, resolving best-effort:', err);
+    }
+    const resolved = [];
+    const missing = [];
     (toolCallsLog || [])
         .filter(entry => entry && entry.success)
         .forEach(entry => {
-            const displayName = entry.agent_display_name
-                || (entry.tool_name || 'Unknown')
-                    .replace(/_/g, ' ')
-                    .replace(/\b\w/g, c => c.toUpperCase());
-            required.add(_canonicalAgentName(displayName));
+            const displayName = _displayNameFromEntry(entry);
+            const canonical = registry
+                ? _resolveCanonicalAgentName(displayName, registry, keyMap)
+                : _canonicalAgentName(displayName);   // no registry -> keep best-effort
+            if (canonical) {
+                resolved.push({
+                    displayName,
+                    canonical,
+                    args: entry.args || {},
+                    toolName: entry.tool_name,
+                });
+            } else {
+                missing.push(displayName);
+            }
         });
-    const missing = [];
-    required.forEach(name => {
-        if (!registry.has(name)) missing.push(name);
-    });
-    return missing;
+    return { resolved, missing };
 }
 
 /**
@@ -457,22 +555,13 @@ async function _missingAgents(toolCallsLog) {
  *    an empty string.
  */
 async function _generateAndDownloadFlow(toolCallsLog) {
-    // 1) Keep EVERY successful tool call — preserves order + fidelity.
-    //    Each entry → its own flow node; no dedup by agent type.
-    const successfulCalls = (toolCallsLog || [])
-        .filter(entry => entry && entry.success)
-        .map(entry => {
-            const displayName = entry.agent_display_name
-                || (entry.tool_name || 'Unknown')
-                    .replace(/_/g, ' ')
-                    .replace(/\b\w/g, c => c.toUpperCase());
-            return {
-                displayName,
-                canonical: _canonicalAgentName(displayName),
-                args: entry.args || {},
-                toolName: entry.tool_name,
-            };
-        });
+    // 1) Resolve every SUCCESSFUL tool call to its canonical (exact DB) agent
+    //    name and DROP any that don't resolve to a registered canvas agent --
+    //    the generated .flw must only ever reference agents the canvas can
+    //    load, and only the successful executions become nodes (failed ones
+    //    were never in `resolved`). Order + fidelity preserved: each kept
+    //    entry becomes its own node; no dedup by agent type.
+    const { resolved: successfulCalls } = await _resolveSuccessfulAgents(toolCallsLog);
 
     if (successfulCalls.length === 0) {
         console.warn('--- Create Flow: no eligible agents found in tool_calls_log');

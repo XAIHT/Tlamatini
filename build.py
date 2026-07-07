@@ -1254,7 +1254,7 @@ def main():
                 self_src = Path("Tlamatini") / "agent" / "TlamatiniSourceCode"
                 if self_src.exists():
                     if self_dst.exists():
-                        shutil.rmtree(self_dst)
+                        shutil.rmtree(self_dst, onerror=_on_rmtree_error)
                     shutil.copytree(self_src, self_dst)
                     file_total = sum(1 for p in self_dst.rglob("*") if p.is_file())
                     print(f"Copied self-modify source tree: {self_src} -> {self_dst} ({file_total} files)")

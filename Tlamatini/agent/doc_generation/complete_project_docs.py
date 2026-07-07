@@ -460,6 +460,11 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "answer classifier" in subject
         or "answer_success" in subject
         or "create flow" in subject
+        or "pdcp" in subject
+        or "projectdiscovery" in subject
+        or "vulnx" in subject
+        or "go-deny" in subject
+        or "go deny" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -500,6 +505,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("answer classifier" in subject or "answer_success" in subject or "create flow" in subject for subject in subjects):
         highlights.append(
             "Create Flow is no longer gated by the removed whole-answer SUCCESS/FAILURE classifier: the button appears when Multi-Turn has at least one successful agent call, and the generated `.flw` keeps only successful executions."
+        )
+    if any("pdcp" in subject or "projectdiscovery" in subject or "vulnx" in subject or "go-deny" in subject or "go deny" in subject for subject in subjects):
+        highlights.append(
+            "The newest committed Discoverer wave strengthens ProjectDiscovery operation: PDCP key setup is documented and auto-injected, legacy `cvemap` CVE searches now run through `vulnx`, and Go-toolchain source-control guardrails keep the private compiler/cache out of the repository."
         )
     if any(
         "video-analizer" in subject
@@ -610,6 +619,11 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "answer classifier" in subject
         or "answer_success" in subject
         or "create flow" in subject
+        or "pdcp" in subject
+        or "projectdiscovery" in subject
+        or "vulnx" in subject
+        or "go-deny" in subject
+        or "go deny" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -850,6 +864,11 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "answer classifier" in subject
         or "answer_success" in subject
         or "create flow" in subject
+        or "pdcp" in subject
+        or "projectdiscovery" in subject
+        or "vulnx" in subject
+        or "go-deny" in subject
+        or "go deny" in subject
         or "zavuerer" in subject
         or "zavu" in subject
         or "annouces skill" in subject
@@ -888,6 +907,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     if any("answer classifier" in subject or "answer_success" in subject or "create flow" in subject for subject in subjects):
         highlights.append(
             "The old whole-answer `answer_success` classifier was removed: Create Flow now appears when Multi-Turn produced at least one successful agent call, generated `.flw` files keep only successful executions, and Exec Report remains tool-evidence rather than a global verdict."
+        )
+    if any("pdcp" in subject or "projectdiscovery" in subject or "vulnx" in subject or "go-deny" in subject or "go deny" in subject for subject in subjects):
+        highlights.append(
+            "The latest committed visual-doc delta now includes Discoverer hardening too: PDCP key retrieval/setup, `cvemap` routed to ProjectDiscovery `vulnx`, the latest-CVE demo prompt, the `git_deny_go.py` guard, and the no-Go-toolchain-in-source-control rule."
         )
     if any(
         "video-analizer" in subject
@@ -1354,13 +1377,15 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.36.0` release line plus post-tag commits through `35c8d25`, with live working-tree Discoverer PDCP/vulnx/Go-deny changes and source inspection confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals in the generated inventory tables.",
+    "The repository currently resolves to the `v1.36.0` release line plus post-tag commits through `43aa9921`, with committed Discoverer PDCP/vulnx/Go-deny changes and source inspection confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals in the generated inventory tables.",
     "`v1.36.0` is the Video-Analyzer release: the new `video_analyzer` workflow agent and wrapped `chat_agent_video_analyzer` tool read recorded videos, check for motion, ask two vision models for independent evidence, merge their reports, and emit explicit routeable verdict tokens.",
     "`v1.35.0` improves prompt discovery: the Tools dialog prompt cards now search by substring, word-start, and fuzzy matches and show mode badges so operators can navigate the larger seeded prompt catalog without memorizing exact names.",
     "The post-tag flow-layout commit improves generated `.flw` layout: chat-created workflows now use a serpentine/boustrophedon grid so long Starter -> Agent -> ... -> Ender chains stay readable on the canvas instead of drifting off-screen.",
     "The newest committed reliability wave adds `agent/self_healing.py`: Multi-Turn model steps are watchdog-bounded, retry through distinct tactics, broadcast recovery status, and preserve completed agent work in degraded answers instead of discarding evidence.",
     "Create Flow now follows concrete tool evidence rather than the removed whole-answer classifier: the button appears when Multi-Turn produced at least one successful agent call, and generated `.flw` downloads keep only successful executions.",
-    "The live working tree adds Discoverer PDCP key wiring: `PDCP_API_KEY` can be managed from Config -> Access Keys Wizard -> Security Recon (ProjectDiscovery), auto-injected into `chat_agent_discoverer`, redacted from `.flw`, and scrubbed by `regen_secrets.py`.",
+    "The live frontend follow-up keeps the browser honest during self-healing: `agent_page_chat.js` recognizes live tactic-status frames and re-asserts the busy/Cancel state until the real final answer arrives.",
+    "Create Flow resolution now tolerates display-name drift: successful calls are normalized against the live Agents sidebar, resolvable successes are kept, and unresolved successful entries are skipped instead of disabling the whole button.",
+    "The newest committed Discoverer wave adds PDCP key wiring: `PDCP_API_KEY` can be managed from Config -> Access Keys Wizard -> Security Recon (ProjectDiscovery), auto-injected into `chat_agent_discoverer`, redacted from `.flw`, and scrubbed by `regen_secrets.py`.",
     "Discoverer's CVE lane now treats the legacy `cvemap` tool key as ProjectDiscovery `vulnx`: the old cvemap API was retired in August 2025, so Tlamatini installs/runs the `vulnx` binary, supports `search`/`id`, and counts object-style JSON findings correctly.",
     "The private Go toolchain remains self-contained under `<install_dir>/Go`, but `.gitignore` and `git_deny_go.py` now make Go compiler/cache/tool binaries invisible to Git and block accidental commits with a pre-commit guard.",
     "`v1.34.x` adds the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
@@ -1400,13 +1425,25 @@ SELF_HEALING_GUIDE = [
     "A status broadcaster registered by `consumers.py` sends live first-person recovery messages to the user's chat while the executor works in a worker thread.",
     "If recovery is exhausted after agents already ran, `mcp_agent.py` builds a degraded but truthful answer from real `ToolMessage` results, preserves Exec Report/Create Flow evidence, and prepends `recovery_preamble(...)` instead of claiming no tools ran.",
     "Coverage includes `agent/test_self_healing.py`, `agent/tests.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, and `Tlamatini/tests_e2e/test_create_flow_visual.py` for visible browser validation.",
+    "Frontend follow-up: `agent_page_ui.js::isSelfHealingStatusMessage()` anchors on leading `Tactic #` or `Tactic '` status frames so `appendChatMessage()` keeps controls disabled and the Send button on Cancel while the run is still executing.",
+    "The matcher deliberately avoids substring matching because the final `recovery_preamble(...)` quotes tactic lines; a loose `includes` match would misclassify the final answer and trap the UI on Cancel forever.",
 ]
 
 CREATE_FLOW_GUIDE = [
     "The whole-answer SUCCESS/FAILURE classifier `agent/services/answer_analizer.py` was removed on 2026-07-06, so no extra LLM round trip computes `answer_success`.",
-    "The browser now shows Create Flow when Multi-Turn ran, at least one tool call succeeded, and the user is not anonymous; the live agent registry still validates that the mapped agents exist.",
-    "Generated `.flw` downloads keep only successful tool-call entries, post a successful-only `tool_calls_log` to `/agent/flow_from_tool_calls/`, and drop failed executions rather than turning them into workflow nodes.",
+    "The browser now shows Create Flow when Multi-Turn ran, at least one successful tool call resolves to a registered canvas agent, and the user is not anonymous.",
+    "Successful tool calls are resolved through a punctuation/space/case-insensitive registry key, so display names such as `File Creator`, `File-Creator`, and `filecreator` converge to the live Agents sidebar entry.",
+    "Generated `.flw` downloads keep only successful, resolvable tool-call entries, post a successful-only `tool_calls_log` to `/agent/flow_from_tool_calls/`, and drop failed or unregistered executions rather than turning them into broken workflow nodes.",
+    "If the registry cannot load, the frontend fails open: the button stays available and the backend flow normalizer remains the final validation layer.",
     "Exec Report remains per-tool evidence, not a whole-answer verdict; the checkbox is disabled/greyed unless Multi-Turn is checked.",
+]
+
+FRONTEND_RECOVERY_GUIDE = [
+    "`agent_page_chat.js::appendChatMessage()` now has a self-healing status branch before the final-answer branch, so status frames render without calling `enableControlsAfterOperation()`.",
+    "`disableControlsDuringOperation()` is re-applied idempotently for each live tactic status line, preserving the user's Cancel button while the worker thread continues.",
+    "`agent_page_ui.js::isSelfHealingStatusMessage()` strips leading icons/symbols and then anchors on `Tactic #` / `Tactic '`, matching standalone status frames but not the final recovery summary.",
+    "Create Flow validation now uses `_resolveSuccessfulAgents()`, `_agentNameKey()`, and `_buildRegistryKeyMap()` to normalize display names against the live registry and skip only unresolved successful entries.",
+    "`eslint.config.mjs` declares `isSelfHealingStatusMessage` as a global, while `docs/claude/frontend.md`, `docs/claude/multi-turn.md`, and `docs/claude/recent-fixes.md` document the gotcha and the no-substring rule.",
 ]
 
 DISCOVERER_PDCP_GUIDE = [
@@ -1422,8 +1459,8 @@ DISCOVERER_VULNX_GO_GUARD_GUIDE = [
     "`discoverer.py` now maps `cvemap` to `github.com/projectdiscovery/cvemap/cmd/vulnx@latest`, resolves the installed binary as `vulnx`, and builds `vulnx id <CVE>` or `vulnx search --severity ... --product ... --limit ...` arguments.",
     "The findings counter now understands vulnx object JSON such as `{\"count\": N, \"results\": [...]}`, so Exec Report and Forker routing see the real result count instead of a misleading one-line object.",
     "The private Go compiler and ProjectDiscovery tool binaries still install under `<install_dir>/Go` / `<install_dir>/Go/bin-tools`, keeping the runtime self-contained and avoiding any system Go or PATH mutation.",
-    "The `.gitignore` Go-deny block, `git_deny_go.py`, and its managed pre-commit hook prevent `Go/`, `bin-tools/`, `go-build/`, `pkg/mod/`, and downloaded Go archives from entering source control; ignored `Go/` content is not counted as project code.",
-    "The live git-unignored asset scan still counts real working-tree additions such as `0169_add_discoverer_cvemap_latest_demo_prompt.py`, `git_deny_go.py`, and the root `image.png` binary until the user commits, ignores, or removes them.",
+    "The `.gitignore` Go-deny block, tracked `git_deny_go.py`, and its managed pre-commit hook prevent `Go/`, `bin-tools/`, `go-build/`, `pkg/mod/`, and downloaded Go archives from entering source control; ignored `Go/` content is not counted as project code.",
+    "The committed asset wave also includes `0169_add_discoverer_cvemap_latest_demo_prompt.py`, `.claude/skills/tlamatini-daily-chat-test/harness/discoverer_1000.py`, and `Tlamatini/agent/test_discoverer_thousand.py` for latest-CVE and high-volume Discoverer validation.",
 ]
 
 V1332_RELEASE_GUIDE = [
@@ -1521,9 +1558,10 @@ NEW_ASSETS_GUIDE = [
     "The current `v1.36.0` wave adds concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
     "The immediately adjacent `v1.35.0` and post-tag work updates prompt-card search/rendering assets and `.flw` generation layout code, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
     "The newest committed reliability assets include `agent/self_healing.py`, `agent/test_self_healing.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, `Tlamatini/tests_e2e/test_create_flow_visual.py`, and coordinated changes in `mcp_agent.py`, `consumers.py`, `response_parser.py`, and the chat frontend.",
-    "The live working tree also adds Discoverer PDCP assets: `access_key_wizard.py` exposes the Security Recon field, `tools.py` seeds `pdcp_api_key`, `agent_contracts.py` redacts it from `.flw`, `regen_secrets.py` scrubs it, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` seeds the latest-CVE prompt.",
-    "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, the untracked `git_deny_go.py` guard/pre-commit installer, and the ignored self-contained `Go/` toolchain cache that is deliberately not counted as authored project code.",
-    "The current git-unignored asset scan also sees the root `image.png` as a PNG binary working-tree addition, so it is counted in the asset inventory until the operator decides whether to keep, ignore, or remove it.",
+    "The committed Discoverer PDCP assets include `access_key_wizard.py` Security Recon fields, `tools.py` default seeding, `agent_contracts.py` `.flw` redaction, `regen_secrets.py` scrubbing, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` for the latest-CVE prompt.",
+    "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, tracked `git_deny_go.py` guard/pre-commit installer, `discoverer_1000.py`, and `test_discoverer_thousand.py` validation coverage.",
+    "The current git-unignored asset scan sees `image.png` as a root PNG working-tree addition (a screenshot of a Tlamatini answer with a disabled Create Flow button), while ignored local runtime caches such as `Go/` remain outside the project inventory.",
+    "The newest frontend assets include `agent_page_chat.js`, `agent_page_ui.js`, `eslint.config.mjs`, and the Claude frontend/Multi-Turn/recent-fixes notes that document self-healing status frames and Create Flow name resolution.",
     "The earlier `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
     "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
     "The latest cleanup/assets span also includes `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, `docs/claude/recent-fixes.md`, response-parser/runtime/settings/middleware touch-ups, and removal of the stale `Tlamatini/db.sqlite3.bak-prereseat` backup from the tracked surface.",
@@ -2188,6 +2226,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Create Flow and Exec Report gating", styles["h2"]))
     for item in CREATE_FLOW_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Frontend recovery controls and Create Flow name resolution", styles["h2"]))
+    for item in FRONTEND_RECOVERY_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Discoverer PDCP key integration", styles["h2"]))
     for item in DISCOVERER_PDCP_GUIDE:
@@ -3019,18 +3060,28 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Current Release Focus", "v1.36.0 plus self-healing, Create Flow, and Discoverer hardening", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Newest changes", CURRENT_RELEASE_GUIDE[:5], THEME["amber"], "rel-a", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Carried context", CURRENT_RELEASE_GUIDE[5:], THEME["jade"], "rel-b", 10)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:4], THEME["amber"], "rel-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[4:8], THEME["jade"], "rel-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Current Release Context", "Discoverer hardening plus carried product story", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[8:11], THEME["jade"], "rel-c", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[11:], THEME["amber"], "rel-d", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Self-Healing Multi-Turn", "watchdog-bounded model steps and truthful recovery", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recovery loop", SELF_HEALING_GUIDE[:3], THEME["copper"], "heal-a", 12)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Evidence preservation", SELF_HEALING_GUIDE[3:], THEME["jade"], "heal-b", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Evidence preservation", SELF_HEALING_GUIDE[3:5], THEME["jade"], "heal-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Create Flow Gate", "successful-only flows without answer_success", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", CREATE_FLOW_GUIDE[:2], THEME["jade"], "flow-gate-a", 13)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Operator result", CREATE_FLOW_GUIDE[2:], THEME["amber"], "flow-gate-b", 13)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Operator result", CREATE_FLOW_GUIDE[2:], THEME["amber"], "flow-gate-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Frontend Recovery Controls", "status frames stay busy until the real final answer", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Self-healing status frames", FRONTEND_RECOVERY_GUIDE[:3], THEME["copper"], "frontend-recovery-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Create Flow name resolution", FRONTEND_RECOVERY_GUIDE[3:], THEME["jade"], "frontend-recovery-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Discoverer PDCP Wiring", "ProjectDiscovery key without prompt-pasted secrets", THEME["amber"])
@@ -3440,10 +3491,10 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
         "Resolved identity: `v1.36.0` plus post-tag generated-flow layout and self-healing reliability at the current HEAD.",
         "Create Flow now follows successful tool calls instead of the removed `answer_success` classifier.",
+        "Frontend recovery controls keep live self-healing status frames in Cancel/busy state until the true final answer.",
         "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",
         "Delegation baseline: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` remain first-class surfaces.",
-        "Self-update and packaged-build hardening preserve user DB state and validate media dependencies before release.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
     ], THEME["jade"], "monday-b", 10)
     audit_layout(audit, len(prs.slides))

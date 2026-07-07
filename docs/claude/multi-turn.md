@@ -40,6 +40,8 @@ Every model call inside the Multi-Turn executor — `MultiTurnToolAgentExecutor`
 
 **Live status.** While she retries, `register_status_broadcaster` (wired in `consumers.py` for every Multi-Turn request, independent of Ask-Execs, keyed by the same user id, torn down in a `finally`) pushes `agent_message` frames to THIS user's chat so the retries are visible. `mcp_agent.py` now ALWAYS forwards `executor_payload["ask_execs_user_id"]` (previously only under Ask-Execs) so the healer has a user id to emit to.
 
+**Frontend: those status lines must NOT re-enable the controls (2026-07-07).** The status frames are shaped exactly like the final answer, so the browser must not treat one as "done". `agent_page_chat.js::appendChatMessage` routes them through `isSelfHealingStatusMessage()` (`agent_page_ui.js`) and RE-ASSERTS `disableControlsDuringOperation()`, so the Send button stays **Cancel** and the input stays disabled until the REAL final answer arrives. The matcher is ANCHORED (strip leading non-letters, then `startsWith('Tactic #') / "Tactic '"`) on purpose — a substring match would collide with the `recovery_preamble` "SELF-HEALING NOTE —" banner that quotes those same lines in the final answer and would jam the button on **Cancel forever**. The "🛑 You cancelled" line is deliberately NOT matched (after a cancel the controls SHOULD return). See `docs/claude/recent-fixes.md` (2026-07-07).
+
 **Config:** `unified_agent_llm_step_max_tactics` (4096) / `unified_agent_llm_step_timeout_seconds` (80). Coverage: `agent/test_self_healing.py` + `agent/tests.py`; live-validated by `Tlamatini/tests_e2e/`. Do NOT remove the preamble, silence a failure, or wait on a model step without the watchdog.
 
 ---

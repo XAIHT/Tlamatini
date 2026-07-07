@@ -226,6 +226,31 @@ function isSessionRestoredInfoMessage(message) {
     );
 }
 
+// Matches the LIVE self-healing recovery status lines that SelfHealingInvoker
+// (agent/self_healing.py) streams to the chat WHILE a multi-turn run is still
+// executing (the "Tactic #2 ... only you can stop me (Cancel)." retry line,
+// the "Tactic '...' hit a transient network error - switching to a different
+// tactic." notice, and the "Tactic '...' worked - continuing the run right
+// where I left off." success line). They arrive as ordinary agent_message
+// frames -- identical in shape to the final answer -- so without this the
+// catch-all branch in appendChatMessage would re-enable the controls (flip the
+// button back to 'Send') on EVERY status line while Tlamatini is STILL working.
+// The run is NOT finished, so callers use this to KEEP the controls disabled
+// (button stays 'Cancel') until the real final answer arrives.
+//
+// The test is ANCHORED to the start of the message on purpose: the final
+// answer prepends a "SELF-HEALING NOTE -" banner that quotes these same tactic
+// lines (as "- <line>" list items), so a naive substring match would wrongly
+// hold the button on 'Cancel' forever. Anchoring to a leading "Tactic #" /
+// "Tactic '" (after stripping the leading emoji/symbol) matches only a
+// standalone status frame, never the final answer. The "You cancelled" line is
+// deliberately NOT matched -- after a cancel the controls SHOULD return.
+function isSelfHealingStatusMessage(message) {
+    if (!message) return false;
+    const stripped = String(message).trimStart().replace(/^[^A-Za-z]+/, '');
+    return stripped.startsWith('Tactic #') || stripped.startsWith("Tactic '");
+}
+
 function debounce(func, wait = 250) {
     let timeout;
     return function (...args) {

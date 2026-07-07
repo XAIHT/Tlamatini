@@ -183,6 +183,7 @@ export default [
                 updateLineNumbers: "readonly",
                 disableControlsDuringOperation: "readonly",
                 enableControlsAfterOperation: "readonly",
+                isSelfHealingStatusMessage: "readonly",
                 enableCanvasButtons: "readonly",
                 disableCanvasButtons: "readonly",
 

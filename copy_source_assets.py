@@ -117,6 +117,7 @@ EXCLUDED_DIR_NAMES = {
     "updater",                        # self-update staging/run dir (apply_update.ps1)
     "TlamatiniSourceCode",            # recursion guard — never snapshot a snapshot
     "python",                         # <repo>/python: source-tree build Python (carried-source artifact, gitignored)
+    "Go", "gopath", "go-build",       # Discoverer's private Go toolchain + caches (gitignored **/Go/; ~150 MB of READ-ONLY module-cache files — never snapshot)
 }
 
 # File EXTENSIONS skipped everywhere (lowercase, with dot).
@@ -167,9 +168,10 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/prompt.pmt",
     "Tlamatini/agent/Tlamatini.md",
     "CLAUDE.md",
-    # External MCP client layer (config-driven generic MCP catalog + dialog)
+    # External MCP client layer. NOTE: external_mcps.json is gitignored USER
+    # STATE (absent in a fresh checkout, redacted if present) — it is NOT a
+    # required source file; requiring it wrongly aborted snapshot generation.
     "Tlamatini/agent/external_mcp_manager.py",
-    "Tlamatini/agent/external_mcps.json",
     # Newest agent (ESPHomer) — both the script and its template config
     "Tlamatini/agent/agents/esphomer/esphomer.py",
     "Tlamatini/agent/agents/esphomer/config.yaml",
@@ -311,6 +313,17 @@ def _skip_file(name: str) -> bool:
     return any(fnmatch.fnmatch(name, pat) for pat in EXCLUDED_FILE_GLOBS)
 
 
+def _force_remove_readonly(func, path, _exc_info):
+    """rmtree onerror hook: some caches (notably Go's module cache) write files
+    READ-ONLY on Windows, so clearing a stale snapshot dest can raise WinError 5.
+    Clear the read-only bit and retry so a rebuild is never blocked by leftovers."""
+    try:
+        os.chmod(path, 0o700)
+        func(path)
+    except Exception:
+        pass
+
+
 def copy_source_assets(repo_root: Path | str = REPO_ROOT,
                        dest: Path | str = DEFAULT_DEST,
                        redact: bool = True) -> Dict[str, Any]:
@@ -321,7 +334,7 @@ def copy_source_assets(repo_root: Path | str = REPO_ROOT,
     if dest == repo_root:
         raise ValueError("dest must not be the repo root itself")
     if dest.exists():
-        shutil.rmtree(dest)
+        shutil.rmtree(dest, onerror=_force_remove_readonly)
     dest.mkdir(parents=True, exist_ok=True)
 
     files_copied = 0
