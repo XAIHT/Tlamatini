@@ -507,6 +507,7 @@ window.onload = () => {
     applyStoredAskExecsState();
     applyStoredStepByStepState();
     syncAskExecsAvailability();
+    syncExecReportAvailability();
     if (openButton) {
         openButton.addEventListener('click', (e) => {
             e.preventDefault();
@@ -700,9 +701,10 @@ window.onload = () => {
     if (multiTurnCheckbox) {
         multiTurnCheckbox.addEventListener('change', function () {
             persistMultiTurnState(!!this.checked);
-            // Ask-Execs availability depends on Multi-Turn — re-sync the
-            // enabled/disabled state of its checkbox on every toggle.
+            // Ask-Execs AND Exec-report availability both depend on Multi-Turn —
+            // re-sync the enabled/disabled state of both checkboxes on every toggle.
             syncAskExecsAvailability();
+            syncExecReportAvailability();
         });
     }
     if (execReportCheckbox) {
@@ -749,6 +751,7 @@ window.onload = () => {
                 multiTurnCheckbox.checked = true;
                 persistMultiTurnState(true);
                 syncAskExecsAvailability();
+                syncExecReportAvailability();
             }
         });
     }

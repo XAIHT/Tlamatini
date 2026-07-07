@@ -162,6 +162,7 @@ export default [
                 persistAskExecsState: "readonly",
                 applyStoredAskExecsState: "readonly",
                 syncAskExecsAvailability: "readonly",
+                syncExecReportAvailability: "readonly",
 
                 // Cross-file globals: agent_page_state.js (Open In)
                 openInDropdownItem: "readonly",

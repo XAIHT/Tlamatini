@@ -290,7 +290,6 @@ Tlamatini/                          # Git root
 │   │   │
 │   │   ├── services/               # Backend services
 │   │   │   ├── response_parser.py  # Exec report HTML renderer, message processing
-│   │   │   ├── answer_analizer.py  # SUCCESS/FAILURE classification
 │   │   │   ├── flow_compiler.py    # Compile FlowSpec into runnable pool configs
 │   │   │   ├── agent_contracts.py  # AgentContract registry and redaction
 │   │   │   ├── agent_paths.py      # Filesystem/naming utilities for agent pools
@@ -393,8 +392,7 @@ Chain types in `agent/rag/chains/`:
 4. **The FULL enabled tool/agent/skill surface is bound** (2026-06-16) — `CapabilityAwareToolAgentExecutor.invoke` no longer binds only a narrow planner subset; it binds **every enabled** tool, wrapped chat-agent, and skill (the ACPX/Skill tools are still checkbox-filtered by `filter_acpx_tools`). This fixes the "I don't have a file-writing / shell tool bound this turn" failure that appeared once 88 agents were present and the planner's `max_selected_tools` cap (20) silently excluded the one tool the user needed. The planner still scores/orders capabilities, but selection no longer gates what the LLM can call.
 5. Wrapped agents launch in headless/background mode (no console popups)
 6. `MultiTurnToolAgentExecutor` deduplicates wrapped chat-agent calls with identical arguments
-7. After final answer, `services/answer_analizer.py` classifies as SUCCESS/FAILURE
-8. Frontend renders "Create Flow" button on SUCCESS, converts tool-call log into downloadable `.flw`
+7. After the final answer, the frontend renders the "Create Flow" button whenever ≥1 agent executed successfully (no answer classifier — removed 2026-07-06), converting ONLY the successfully-executed tool calls into a downloadable `.flw`
 
 ### Full-Surface Binding — token-cost trims (2026-06-16)
 Binding every enabled tool every turn would balloon the prompt, so two cost trims keep it cheap:
@@ -436,6 +434,13 @@ Binding every enabled tool every turn would balloon the prompt, so two cost trim
 - **Exec report enrichment**: Specialized formatters for ACPX tools and skill invocations
 - Wrapped agent dedup: hashes `tool_name + sorted-JSON args` into `_wrapped_agent_signatures`
 - Empty final response nudge: asks model to summarize tool results
+
+### Self-Healing Model Steps (`self_healing.py`, 2026-07-06)
+Every model `.invoke()` in the executor (no-tools answer, each tool-loop iteration, repetition-breaker nudge, final wrap-up) is wrapped by a per-request `SelfHealingInvoker`. Contract = **never hang, never discard work, never lie**:
+- **Never hang** — each attempt runs under a per-attempt watchdog (`_run_with_watchdog`, worker thread) of `unified_agent_llm_step_timeout_seconds` (default 80 s); an over-deadline call is ABANDONED. On a transient failure it retries DISTINCT tactics (retry, back-off, message-tail trim, plain-LLM fallback) up to `unified_agent_llm_step_max_tactics` (default 4096). Only the USER (Cancel) or an exhausted ladder stops it → `ModelStepUnrecoverable`.
+- **Never discard work** — if it fails after ≥1 agent ran, the executor finishes GRACEFULLY from that work (`_degraded_answer_from_results`); Create-Flow + Exec report survive. Only pure-Q&A re-raises, and `unified.py::_invoke_unified_agent_with_retry` short-circuits it to the fallback (no re-run of the ladder).
+- **Never lie** — `recovery_preamble(recovery_events)` is prepended to the final persisted answer on every exit path (`_build_result_dict`).
+- **Live status** — `consumers.py` registers `register_status_broadcaster` per Multi-Turn request (independent of Ask-Execs) so retries stream to the user's chat; `mcp_agent.py` always forwards `executor_payload["ask_execs_user_id"]`.
 
 ---
 
@@ -713,7 +718,7 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 
 ---
 
-## 12. All 83 Workflow Agent Types
+## 12. All 84 Workflow Agent Types
 
 ### Control Agents
 - **Starter** — Entry point, launches first agents
@@ -768,7 +773,8 @@ Every agent MUST have a **4-color gradient** (0%, 33%, 66%, 100%) in `agentic_co
 - **File-Creator** — Creates files with specified content
 - **File-Interpreter** — Document parsing and text/image extraction
 - **File-Extractor** — Raw text extraction (PDF, DOCX, etc.)
-- **Image-Interpreter** — LLM vision-based image analysis
+- **Image-Interpreter** — LLM vision-based image analysis (triple-model: two interpreters run in parallel on two Ollama connections → barrier → merging model fuses them)
+- **Video-Analyzer** — The MOTION-VERDICT "eye" of Robotic-Loop-Training and the sibling of Image-Interpreter: watches a recorded video and rules `PASS_OK` / `FAIL_NO_MOTION` / `FAIL_WRONG_MOTION` / `UNCLEAR` via a deterministic OpenCV motion gate + triple-model Ollama CLOUD vision (`qwen3-vl:235b-cloud` ∥ `qwen3.5:cloud` → `glm-5.2:cloud` merge; PASS only when both interpreters agree). Emits `INI_SECTION_VIDEO_ANALYZER` + a substring-safe `TLM_VERDICT::<TOKEN>` line a Forker branches on. Canvas counterpart of `chat_agent_video_analyzer`
 - **J-Decompiler** — JAR/WAR decompilation (bundled jd-cli)
 - **De-Compresser** — Deterministic archive worker (compress OR decompress; `.gz` / `.zip` / `.7z` / `.tar.gz` / `.gz.tar`; password from `DE_COMPRESSER_PWD` when `passwordless=false`; always triggers `target_agents` on success OR failure)
 - **Telegrammer** — Telegram send/receive via official Telegram surfaces
@@ -897,10 +903,11 @@ When "Exec Report" toolbar checkbox is ticked alongside Multi-Turn, final answer
 ### CRITICAL ORDERING CONTRACT
 In `process_llm_response()`, `save_message()` MUST run AFTER exec-report HTML is appended. Order:
 1. Strip `END-RESPONSE` and artifacts
-2. Run SUCCESS/FAILURE classification against prose-only answer
-3. Append exec-report HTML
-4. **THEN** `save_message`
-5. Broadcast over WebSocket
+2. Append exec-report HTML
+3. **THEN** `save_message`
+4. Broadcast over WebSocket
+
+(The SUCCESS/FAILURE answer-classification step that used to sit here was removed 2026-07-06 along with `answer_analizer.py`.)
 
 ### Adding a State-Changing Agent to Exec Report (3 edits)
 1. `agent/mcp_agent.py` → add to `_EXEC_REPORT_TOOLS`: `"tool_name": ("agent_key", "Display Name")`
@@ -913,14 +920,13 @@ Skip for read-only/monitoring agents (Crawler, Googler, Prompter, Summarizer, Fi
 
 ## 16. Create Flow from Multi-Turn
 
-Successful Multi-Turn responses can become `.flw` workflows via the "Create Flow" button.
+A Multi-Turn response in which **≥1 agent executed successfully** can become a `.flw` workflow via the "Create Flow" button. The generated flow uses **ONLY the successful agents** (failed executions are dropped). There is no whole-answer SUCCESS/FAILURE classifier (removed 2026-07-06).
 
 Pipeline:
-1. Tool-call log capture in `mcp_agent.py` (`_tool_calls_log`)
-2. Success classification via `services/answer_analizer.py::analyze_answer_success()` (LLM-based, fails open)
-3. WebSocket broadcast from `consumers.py`
-4. Frontend button render gate in `agent_page_chat.js`
-5. Flow synthesis: maps tool names → agent display names, lays out nodes left-to-right, wires sequential `target_agents`
+1. Tool-call log capture in `mcp_agent.py` (`_tool_calls_log`; each entry carries a `success` flag)
+2. WebSocket broadcast from `consumers.py` (`tool_calls_log` + `multi_turn_used`; no `answer_success`)
+3. Frontend button render gate in `agent_page_chat.js` (shown when ≥1 successful call; validated against the live Agents registry)
+4. Flow synthesis: keeps only the successful calls, maps tool names → agent display names, lays out nodes left-to-right, wires the sequential `target_agents` chain
 
 ### Flow-Generator Mapping
 If a wrapped chat-agent tool should produce populated `.flw` nodes, add branch in `_mapToolArgsToAgentConfig()` in `agent_page_chat.js`:
@@ -1178,7 +1184,6 @@ Default credentials (installer builds): `user` / `changeme`
 | WebSocket consumer | `Tlamatini/agent/consumers.py` |
 | HTTP views | `Tlamatini/agent/views.py` |
 | Response parser / exec report | `Tlamatini/agent/services/response_parser.py` |
-| Answer analyzer | `Tlamatini/agent/services/answer_analizer.py` |
 | Flow compiler | `Tlamatini/agent/services/flow_compiler.py` |
 | Flow spec normalizer | `Tlamatini/agent/services/flow_spec.py` |
 | Agent contracts | `Tlamatini/agent/services/agent_contracts.py` |

@@ -34,6 +34,7 @@ from .orphan_reaper import reap_orphans
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
 from .llm_timing import llm_timing_callbacks
+from .self_healing import ModelStepUnrecoverable, SelfHealingInvoker, recovery_preamble
 
 
 # Tool names whose invocation is likely to spawn an external console
@@ -1012,6 +1013,46 @@ class MultiTurnToolAgentExecutor:
         ),
     }
 
+    def _degraded_answer_from_results(self, messages, step) -> str:
+        """Build a TRUTHFUL final answer from the tool results already collected,
+        used when a model step could not be reached (the user cancelled, or every
+        recovery tactic was exhausted) AFTER >=1 agent ran. It NEVER claims 'no
+        tools ran' — the real work is preserved and surfaced, and the Create Flow
+        button reflects the successful agents."""
+        ran = list(self._tool_calls_log)
+        ok = [e for e in ran if e.get("success")]
+        last_results: list[str] = []
+        for msg in reversed(messages):
+            if isinstance(msg, ToolMessage):
+                content = str(getattr(msg, "content", "") or "")
+                if "[REPETITION BREAKER]" in content:
+                    continue
+                last_results.append(content)
+                if len(last_results) >= 5:
+                    break
+        why = ("you cancelled" if getattr(step, "reason", "") == "user_cancelled"
+               else "the model became unreachable and every recovery tactic was exhausted")
+        lines = [
+            f"⚠️ I stopped the model step because {why}, but your Multi-Turn run had "
+            "ALREADY executed its agents — nothing was lost and the run was NOT discarded. "
+            "Here is what actually ran this turn:",
+            "",
+        ]
+        for e in ran:
+            mark = "✅" if e.get("success") else "❌"
+            name = e.get("tool_name") or e.get("agent_display") or "tool"
+            lines.append(f"- {mark} {name}")
+        if last_results:
+            lines.append("")
+            lines.append("Most recent tool results:")
+            lines.append("\n---\n".join(reversed(last_results)))
+        lines.append("")
+        lines.append(
+            f"({len(ok)} of {len(ran)} tool call(s) succeeded — you can click "
+            "**Create Flow** to build a workflow from the successful agents.)"
+        )
+        return "\n".join(lines)
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Reset per-invocation tool call log.
         self._tool_calls_log = []
@@ -1027,6 +1068,27 @@ class MultiTurnToolAgentExecutor:
         self._ask_execs_user_id = payload.get("ask_execs_user_id")
         self._exec_denied = None
         self._pending_denial_detail = None
+
+        # ── Self-healing model-step invoker (Angela, 2026-07-06 REDESIGN) ──
+        # EVERY model call in this loop is routed through the healer so a
+        # transient network blip is retried / re-strategized and ANNOUNCED to
+        # the user live, and a run that already did real work is finished
+        # gracefully (never discarded, never a lying "no tools ran"). Reset per
+        # request because executor instances are cached and reused.
+        self._healer = SelfHealingInvoker(
+            user_id=self._ask_execs_user_id,
+            plain_llm=self.llm,
+            # She keeps trying distinct tactics up to her full turn budget and
+            # never gives up on her own — only the USER (Cancel) stops her.
+            max_attempts=get_int_config_value(
+                "unified_agent_llm_step_max_tactics", 4096, minimum=1
+            ),
+            # Per-attempt watchdog: a call that does not answer in this many
+            # seconds is ABANDONED (never waited on) so she never hangs.
+            attempt_timeout=float(get_int_config_value(
+                "unified_agent_llm_step_timeout_seconds", 80, minimum=15
+            )),
+        )
 
         input_text = payload.get("input", "")
         # ── Completion-notification ("notification debt") guard state ──
@@ -1081,7 +1143,14 @@ class MultiTurnToolAgentExecutor:
         messages.append(HumanMessage(content=input_text))
 
         if not self.tools:
-            response = self.llm.invoke(messages)
+            try:
+                response = self._healer.invoke(self.llm, messages, label="answering")
+            except ModelStepUnrecoverable as _step:
+                return self._build_result_dict(
+                    "⚠️ I could not reach the model for this request after trying every "
+                    f"recovery tactic ({_step.reason}). No tools were selected for this "
+                    "request, so nothing was executed — please try again."
+                )
             answer = getattr(response, "content", "") or ""
             if not str(answer).strip():
                 answer = "The planner selected no tools for this request, and the model returned an empty response."
@@ -1092,7 +1161,28 @@ class MultiTurnToolAgentExecutor:
         repeat_count: int = 0
 
         for iteration in range(self.max_iterations):
-            response = self.bound_llm.invoke(messages)
+            try:
+                response = self._healer.invoke(
+                    self.bound_llm, messages, label=f"working on step {iteration + 1}"
+                )
+            except ModelStepUnrecoverable as _step:
+                # The model step could not be reached — either the USER cancelled,
+                # or every distinct recovery tactic was exhausted. NEVER discard
+                # the run: if any agent already ran, finish GRACEFULLY from that
+                # real work so the Create Flow button + Exec report survive and the
+                # answer is TRUTHFUL. Only when nothing ran yet do we surface it to
+                # the chain (a pure-Q&A with no work to preserve).
+                if self._tool_calls_log or self._exec_report_entries:
+                    print(
+                        "--- MultiTurnToolAgentExecutor: model step unreachable "
+                        f"({_step.reason}) after {_step.attempts} tactic(s); finishing "
+                        f"gracefully from {len(self._tool_calls_log)} tool call(s) already "
+                        "done (run NOT discarded) ---"
+                    )
+                    return self._build_result_dict(
+                        self._degraded_answer_from_results(messages, _step)
+                    )
+                raise
             messages.append(response)
             tool_calls = getattr(response, "tool_calls", None) or []
 
@@ -1150,9 +1240,18 @@ class MultiTurnToolAgentExecutor:
                         "Please now provide your final answer summarizing what you did and "
                         "the results you obtained. Do NOT call any more tools."
                     )))
-                    retry_response = self.bound_llm.invoke(messages)
-                    answer = getattr(retry_response, "content", "") or ""
-                    retry_tool_calls = getattr(retry_response, "tool_calls", None) or []
+                    try:
+                        retry_response = self._healer.invoke(
+                            self.bound_llm, messages, label="summarizing the results"
+                        )
+                    except ModelStepUnrecoverable:
+                        retry_response = None
+                    if retry_response is not None:
+                        answer = getattr(retry_response, "content", "") or ""
+                        retry_tool_calls = getattr(retry_response, "tool_calls", None) or []
+                    else:
+                        answer = ""
+                        retry_tool_calls = []
                     if not str(answer).strip() or retry_tool_calls:
                         # Nudge failed — collect last real tool results as fallback answer.
                         print("--- MultiTurnToolAgentExecutor: nudge failed, collecting tool results as fallback ---")
@@ -1223,9 +1322,18 @@ class MultiTurnToolAgentExecutor:
                         )
                     )
                 # Give the model one more chance to produce a final answer.
-                final_response = self.bound_llm.invoke(messages)
-                answer = getattr(final_response, "content", "") or ""
-                final_tool_calls = getattr(final_response, "tool_calls", None) or []
+                try:
+                    final_response = self._healer.invoke(
+                        self.bound_llm, messages, label="wrapping up"
+                    )
+                except ModelStepUnrecoverable:
+                    final_response = None
+                if final_response is not None:
+                    answer = getattr(final_response, "content", "") or ""
+                    final_tool_calls = getattr(final_response, "tool_calls", None) or []
+                else:
+                    answer = ""
+                    final_tool_calls = []
                 if final_tool_calls:
                     # Model still insists on calling tools — force-stop.
                     print("--- Repetition breaker: model still requesting tools after nudge. Force-stopping.")
@@ -1390,6 +1498,12 @@ class MultiTurnToolAgentExecutor:
             )
         except Exception:  # noqa: BLE001 — never block the answer path
             pass
+        # Prepend the self-healing recovery note (if any) so the FINAL, persisted
+        # answer ALWAYS tells the user what Tlamatini went through — never silent,
+        # never dishonest. Covers every exit path since they all funnel here.
+        healer = getattr(self, "_healer", None)
+        if healer is not None and getattr(healer, "recovery_events", None):
+            answer = recovery_preamble(healer.recovery_events) + str(answer)
         result: Dict[str, Any] = {
             "output": answer,
             "tool_calls_log": list(self._tool_calls_log),
@@ -1947,11 +2061,14 @@ class CapabilityAwareToolAgentExecutor:
                 step_by_step_enabled=step_by_step_enabled,
             )
             executor_payload = {"input": input_text, "chat_history": chat_history}
+            # Always forward the conversation user id so the executor's
+            # self-healing invoker can push LIVE recovery status to THIS user's
+            # chat (independent of Ask-Execs).
+            executor_payload["ask_execs_user_id"] = ask_execs_user_id
             if exec_report_enabled:
                 executor_payload["exec_report_enabled"] = True
             if ask_execs_enabled:
                 executor_payload["ask_execs_enabled"] = True
-                executor_payload["ask_execs_user_id"] = ask_execs_user_id
             if global_execution_plan:
                 executor_payload["global_execution_plan"] = global_execution_plan
                 executor_payload["planner_summary"] = (

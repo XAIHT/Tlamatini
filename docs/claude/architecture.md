@@ -20,6 +20,7 @@ Key settings:
 - `ANTHROPIC_API_KEY`: Claude API key
 - `enable_unified_agent`: Enable tool-calling agent
 - `unified_agent_max_iterations`: Max tool-call turns (default 4096)
+- `unified_agent_llm_step_max_tactics` / `unified_agent_llm_step_timeout_seconds`: Self-healing model-step invoker budgets (default **4096** distinct recovery tactics / **80 s** per-attempt watchdog). Govern `agent/self_healing.py::SelfHealingInvoker`, which wraps every model `.invoke()` in the Multi-Turn executor so a transient model failure never hangs, never discards work already done, and never produces a silent/untruthful answer. See `docs/claude/multi-turn.md` → *Self-healing model steps*.
 - `chat_agent_limit_runs`: Wrapped-run listing limit
 - `stm32_mcp_server_script` / `stm32_mcp_repo_url` / `stm32_mcp_install_dir`: STM32er globals (seeded by `tools._seed_global_agent_defaults`). `stm32_mcp_server_script` now defaults to `""` — empty means the STM32er agent **self-provisions** the STM32 Template Project MCP on first use (zero-config auto-bootstrap: shallow `git clone`, GitHub-zip fallback when git is absent, into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`), so the user installs only STM32CubeIDE + Tlamatini. See `docs/claude/agents.md` (STM32er entry).
 
@@ -163,7 +164,7 @@ The `agent/services/` package owns cross-cutting backend logic that does not fit
 
 **Answer / response post-processing**
 - `response_parser.py` — strips the `END-RESPONSE` sentinel and miscellaneous LLM-output artifacts; renders the per-agent **Exec Report** HTML and appends it to the answer in the order documented in `docs/claude/exec-report.md`
-- `answer_analizer.py` *(sic, typo preserved)* — LLM-based SUCCESS/FAILURE classifier used by Multi-Turn's Create-Flow gate; fails open on internal errors
+- *(removed 2026-07-06)* `answer_analizer.py` used to hold an LLM-based SUCCESS/FAILURE answer classifier that gated the Multi-Turn Create-Flow button. It was **dropped entirely**: the button now appears whenever Multi-Turn ran with ≥1 successfully-executed agent, and the generated flow contains only the successful agents — so no whole-answer verdict is computed.
 - `filesystem.py` — filesystem helpers shared across views and tools
 
 **Agent contracts & flow compilation** (commit `0bea21d`, May 2026)

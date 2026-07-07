@@ -14,7 +14,6 @@ from django.contrib.auth.models import User
 from ..models import LLMProgram, LLMSnippet, AgentMessage
 from .. import constants
 from .filesystem import get_time_stamp
-from .answer_analizer import analyze_answer_success
 
 # Full-answer debug dumps (the ENTIRE LLM response used to be printed up to
 # 3x per turn below) are expensive and noisy on long answers. They stay
@@ -451,16 +450,12 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     else:
         print(f"\n--- LLM response cleaned; final length {len(llm_response)} chars")
 
-    # When multi-turn was used with tool calls, ask the LLM to classify
-    # the answer as success or failure so the frontend can decide whether
-    # to show the "Create Flow" button. Classification runs against the
-    # prose answer BEFORE the exec report tables are appended so the
-    # tables don't bias the verdict.
-    answer_success = None
-    if multi_turn_used and tool_calls_log:
-        print("--- AnswerAnalizer: classifying multi-turn answer...")
-        answer_success = await analyze_answer_success(llm_response)
-        print(f"--- AnswerAnalizer: verdict = {'SUCCESS' if answer_success else 'FAILURE'}")
+    # NOTE (2026-07-06): the LLM-based SUCCESS/FAILURE answer classifier was
+    # dropped entirely. The "Create Flow" button no longer depends on a verdict
+    # for the whole answer — it is shown whenever Multi-Turn ran and at least one
+    # agent executed SUCCESSFULLY, and the generated flow is built from ONLY the
+    # successfully-executed agents (failed executions are dropped at build time).
+    # No answer_success flag is computed or broadcast anymore.
 
     # Build the system-appended section (Exec report tables + Ask-Execs denial
     # banner) SEPARATELY from the answer prose, then join it on with the
@@ -518,8 +513,6 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             broadcast_msg['tool_calls_log'] = tool_calls_log
         if multi_turn_used:
             broadcast_msg['multi_turn_used'] = True
-        if answer_success is not None:
-            broadcast_msg['answer_success'] = answer_success
         await channel_layer.group_send(room_group_name, broadcast_msg)
     print("--- Bot message broadcast to room.")
     return llm_response

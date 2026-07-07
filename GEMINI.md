@@ -143,6 +143,12 @@ To avoid ballooning LLM token counts with up to 89 tools bound:
 - Controlled by the `#step-by-step-enabled` checkbox.
 - Appends instructions forcing the LLM to execute exactly **one tool call at a time**, return a progress statement, and wait for the user to submit a `READY` input before continuing.
 
+### 4.3 Self-Healing Model Steps (`agent/self_healing.py`, 2026-07-06)
+Every model `.invoke()` inside `MultiTurnToolAgentExecutor` is wrapped by a per-request `SelfHealingInvoker`. Its contract is **never hang, never discard work, never lie**:
+- **Never hang** — each attempt runs under a per-attempt watchdog (`_run_with_watchdog`, worker thread) of `unified_agent_llm_step_timeout_seconds` (default 80 s): an over-deadline model call is ABANDONED, never awaited. On a transient failure it retries DISTINCT tactics (retry, back-off, message-tail trim, plain-LLM fallback) up to `unified_agent_llm_step_max_tactics` (default 4096). Only the USER (Cancel) or an exhausted ladder stops it, raising `ModelStepUnrecoverable`.
+- **Never discard work** — if it fails after ≥1 agent already ran, the executor finishes GRACEFULLY from that real work (`_degraded_answer_from_results`), preserving the Create-Flow button + Exec report. Only a pure-Q&A re-raises, and `rag/chains/unified.py::_invoke_unified_agent_with_retry` short-circuits it straight to the fallback.
+- **Never lie** — `recovery_preamble(recovery_events)` is prepended to the final persisted answer on every exit path, and `consumers.py` streams live retry status to the user's chat (`register_status_broadcaster`, per Multi-Turn request, independent of Ask-Execs).
+
 ---
 
 ## 5. Human-in-the-Loop: "Ask Execs" Gating
@@ -242,9 +248,9 @@ To prevent task manager pollution (where companion `conhost.exe` processes would
 
 ---
 
-## 9. Complete Visual Agent Catalog (83 Agents)
+## 9. Complete Visual Agent Catalog (84 Agents)
 
-Visual agents are designed to run out of process. The backend compiler generates their config, spawns them, and inspects their logs. Below is the complete catalog of all 83 visual agents:
+Visual agents are designed to run out of process. The backend compiler generates their config, spawns them, and inspects their logs. Below is the complete catalog of all 84 visual agents:
 
 1. **starter**: Flow initiator.
 2. **ender**: Flow terminator; kills targeted processes.
@@ -329,6 +335,7 @@ Visual agents are designed to run out of process. The backend compiler generates
 81. **gitter**: Executes Git commands.
 82. **pser**: Processes finder; looks up active process trees.
 83. **zavuerer**: Multi-channel Zavu messaging gateway (SMS, WhatsApp, Email, Telegram, Voice).
+84. **video_analyzer**: The MOTION-VERDICT "eye" of Robotic-Loop-Training — watches a recorded video and rules `PASS_OK` / `FAIL_NO_MOTION` / `FAIL_WRONG_MOTION` / `UNCLEAR` via a deterministic OpenCV motion gate + triple-model Ollama CLOUD vision (`qwen3-vl:235b-cloud` ∥ `qwen3.5:cloud` → `glm-5.2:cloud` merge; PASS only when both interpreters agree). Emits `INI_SECTION_VIDEO_ANALYZER` + a substring-safe `TLM_VERDICT::<TOKEN>` line a Forker branches on.
 
 ---
 

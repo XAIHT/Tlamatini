@@ -638,6 +638,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
     async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False):
         broker = None
         broker_key = conversation_user.id
+        status_registered = False
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -652,6 +653,35 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # Exec report and Ask-Execs are both multi-turn-only by design.
             exec_report_enabled = bool(exec_report_enabled) and bool(multi_turn_enabled)
             ask_execs_enabled = bool(ask_execs_enabled) and bool(multi_turn_enabled)
+
+            # ── Self-healing LIVE status broadcaster (Angela, 2026-07-06) ──
+            # The multi-turn executor's self-healing invoker pushes first-person
+            # recovery status ("⚠️ transient error — switching tactic…", "🔁 Tactic
+            # #3 …", "✅ recovered") to THIS user's chat AS IT WORKS THROUGH a
+            # network problem, so the user SEES she is trying different tactics
+            # and never hung. Fire-and-forget emit scheduled onto this event
+            # loop, keyed by user id; the executor worker thread looks it up.
+            # Registered for every multi-turn request (independent of Ask-Execs).
+            if multi_turn_enabled:
+                from .self_healing import register_status_broadcaster
+                _status_loop = asyncio.get_running_loop()
+                _status_channel_layer = self.channel_layer
+                _status_room = self.room_group_name
+
+                def _emit_status(text):
+                    try:
+                        asyncio.run_coroutine_threadsafe(
+                            _status_channel_layer.group_send(
+                                _status_room,
+                                {'type': 'agent_message', 'message': text, 'username': 'Tlamatini'},
+                            ),
+                            _status_loop,
+                        )
+                    except Exception as _se:  # noqa: BLE001 — status is best-effort
+                        print(f"--- [SelfHealing] failed to emit status: {_se}")
+
+                register_status_broadcaster(broker_key, _emit_status)
+                status_registered = True
 
             # ── Ask-Execs broker ──
             # The multi-turn tool executor runs in a worker thread and must be
@@ -766,6 +796,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 from .exec_permission import unregister_broker
                 unregister_broker(broker_key)
                 print(f"--- [AskExecs] broker unregistered for user {broker_key}")
+            if status_registered:
+                from .self_healing import unregister_status_broadcaster
+                unregister_status_broadcaster(broker_key)
 
     async def exec_permission_request(self, event):
         """Group handler: forward an Ask-Execs permission request to this
@@ -1486,8 +1519,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
             ws_payload['tool_calls_log'] = event['tool_calls_log']
         if event.get('multi_turn_used'):
             ws_payload['multi_turn_used'] = True
-        if 'answer_success' in event:
-            ws_payload['answer_success'] = event['answer_success']
         await self.send(text_data=json.dumps(ws_payload))
 
     @database_sync_to_async

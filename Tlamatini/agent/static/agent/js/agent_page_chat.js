@@ -185,7 +185,7 @@ function buildAutomatedMessageElement(message, addedContent = null) {
     return automatedMessage;
 }
 
-function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false, answerSuccess = null) {
+function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false) {
     const messageDiv = document.createElement('div');
     const messageContentDiv = document.createElement('div');
     const usernameDiv = document.createElement('div');
@@ -267,18 +267,21 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     usernameDiv.appendChild(usernameTextSpan);
     usernameDiv.appendChild(copyBtn);
 
-    // --- "Create Flow" button: visible only for bot messages from a
-    //     successful multi-turn execution that used tools.
-    //     The `answerSuccess` flag is determined server-side by an LLM
-    //     sub-prompt that classifies the answer as SUCCESS or FAILURE.
+    // --- "Create Flow" button: visible for any bot message from a
+    //     Multi-Turn execution in which AT LEAST ONE agent ran SUCCESSFULLY.
+    //     There is NO whole-answer SUCCESS/FAILURE classifier anymore
+    //     (dropped 2026-07-06): the button appears purely on
+    //     `multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog)`, and the
+    //     generated .flw is built from ONLY the successfully-executed agents
+    //     (see _generateAndDownloadFlow — failed executions are dropped).
     //
     //     Additionally, every canonical agent name produced from the
-    //     tool-calls log MUST exist in the Agents sidebar (registered in
-    //     the DB). Otherwise the generated .flw would reference an agent
+    //     successful tool calls MUST exist in the Agents sidebar (registered
+    //     in the DB). Otherwise the generated .flw would reference an agent
     //     type the canvas cannot resolve, breaking the flow at load time.
     //     We render the button asynchronously after _missingAgents()
     //     resolves so we can disable + tooltip it when validation fails.
-    if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog) && answerSuccess === true) {
+    if (username === 'Tlamatini' && multiTurnUsed && _hasSuccessfulToolCalls(toolCallsLog)) {
         const createFlowBtn = document.createElement('button');
         createFlowBtn.classList.add('create-flow');
         createFlowBtn.innerHTML = '<i class="bi bi-diagram-3"></i> Create Flow';
@@ -598,7 +601,15 @@ async function _normalizeChatFlowBeforeDownload(toolCallsLog, flowData) {
                 'X-CSRFToken': typeof getCsrfToken === 'function' ? getCsrfToken() : ''
             },
             credentials: 'same-origin',
-            body: JSON.stringify({ tool_calls_log: toolCallsLog || [], flow_data: flowData })
+            // Post ONLY the successfully-executed calls. The backend builds
+            // the normalized flow from flow_data (already successful-only),
+            // but forwarding a successful-only tool_calls_log too keeps the
+            // "failed executions are never part of a flow" contract explicit
+            // and future-proof against any backend that later re-reads it.
+            body: JSON.stringify({
+                tool_calls_log: (toolCallsLog || []).filter(e => e && e.success),
+                flow_data: flowData
+            })
         });
         const result = await response.json();
         if (response.ok && result.success && result.flow) {
@@ -2087,8 +2098,7 @@ chatSocket.onmessage = function (e) {
         console.log(">>>>>>>>>>>>>>>>>");
     }
     appendChatMessage(data.username, data.message, filesAnchorElement, null,
-        data.tool_calls_log || null, data.multi_turn_used || false,
-        data.answer_success != null ? data.answer_success : null);
+        data.tool_calls_log || null, data.multi_turn_used || false);
     chatLog.scrollTop = chatLog.scrollHeight;
 };
 

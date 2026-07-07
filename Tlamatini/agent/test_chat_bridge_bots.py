@@ -25,7 +25,8 @@ What these tests pin (the contract the adaptation must keep):
    meant for a browser on the same Tlamatini account can never be mistaken for
    a partial/final answer on the bot's socket.
 2. The classifier still detects the assembled FINAL frame via the
-   ``multi_turn_used`` / ``answer_success`` extras (regression guard).
+   ``multi_turn_used`` extra (the ``answer_success`` marker was dropped
+   2026-07-06 when the answer classifier was removed) (regression guard).
 3. ``_resolve_tlamatini_cfg`` surfaces ``acpx_enabled``, defaulting to False
    when absent.
 4. The outbound chat payload HARD-PINS ``ask_execs_enabled: False`` and carries
@@ -126,10 +127,11 @@ class FrameClassifierTests(SimpleTestCase):
 
     def test_final_frame_still_detected(self):
         mod = self.tele
+        # The assembled final is marked by `multi_turn_used`. The old
+        # `answer_success` marker was dropped 2026-07-06 (classifier removed),
+        # so it is no longer a final-frame signal.
         final_mt = {'username': 'Tlamatini', 'message': 'done', 'multi_turn_used': True}
-        final_as = {'username': 'Tlamatini', 'message': 'done', 'answer_success': True}
         self.assertEqual(mod._classify_frame(final_mt), 'final')
-        self.assertEqual(mod._classify_frame(final_as), 'final')
 
     def test_plain_answer_is_partial(self):
         mod = self.tele

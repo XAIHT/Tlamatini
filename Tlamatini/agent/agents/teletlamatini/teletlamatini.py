@@ -346,7 +346,8 @@ def save_reanim_state(state: Dict[str, Any]):
 # Tlamatini WS frame classifier — the single most important piece of logic
 # in this agent. See the previous bug-fix commits for the full rationale:
 # real chat answers carry NO `type` field; UI-control frames DO; and only
-# `multi_turn_used` / `answer_success` extras mark the assembled final.
+# the `multi_turn_used` extra marks the assembled final (the old
+# `answer_success` classifier extra was dropped 2026-07-06).
 # ---------------------------------------------------------------------------
 
 _SPECIAL_TYPES_TO_SKIP: Tuple[str, ...] = (
@@ -401,7 +402,7 @@ def _classify_frame(data: Dict[str, Any]) -> str:
         return "skip"
     if username != 'Tlamatini':
         return "skip"
-    if ('multi_turn_used' in data) or ('answer_success' in data):
+    if 'multi_turn_used' in data:
         return "final"
     lowered = msg.lower()
     if any(s in lowered for s in _FAILURE_SUBSTRINGS_LOWER):
@@ -418,8 +419,6 @@ def _summarize_frame_for_log(data: Dict[str, Any]) -> str:
     extras: List[str] = []
     if 'multi_turn_used' in data:
         extras.append(f"multi_turn_used={data.get('multi_turn_used')}")
-    if 'answer_success' in data:
-        extras.append(f"answer_success={data.get('answer_success')}")
     if data.get('tool_calls_log'):
         extras.append(f"tool_calls_log_len={len(data.get('tool_calls_log') or [])}")
     extras_s = (' ' + ' '.join(extras)) if extras else ''

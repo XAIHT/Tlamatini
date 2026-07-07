@@ -1556,12 +1556,22 @@ Below the toolbar checkbox, here is what really happens when you tick **Multi-Tu
    interrupted" banner (always, regardless of exec_report_enabled)
                                 ↓
 8. WEBSOCKET BROADCAST
-   {message, tool_calls_log, multi_turn_used, answer_success}
+   {message, tool_calls_log, multi_turn_used}
                                 ↓
 9. FRONTEND
    appendChatMessage() renders prose, then exec-report tables / denial banner
-   if all four gates pass → render "Create Flow" button
+   if Multi-Turn ran with ≥1 SUCCESSFUL agent (and user not anonymous)
+   → render "Create Flow" button (no whole-answer classifier gate;
+     the flow is built from only the successful agents)
 ```
+
+### Self-healing model steps — she never hangs, never loses your work, never lies (2026-07-06)
+
+Every time Tlamatini talks to the model during a Multi-Turn run (step 6 above), that call goes through a **self-healing invoker** (`agent/self_healing.py`). If the model hiccups — a slow network, an overloaded server, an empty response — she does not freeze and she does not give up:
+
+- **She never hangs.** Each attempt has a time limit (`unified_agent_llm_step_timeout_seconds`, 80 s by default); an attempt that runs over is abandoned, not waited on. She then tries again with a *different* tactic — plain retry, a short back-off, trimming the oldest messages, or a plain no-tools call — up to `unified_agent_llm_step_max_tactics` (4096) times. Only **you** (pressing Cancel) — or running out of tactics — stops her.
+- **She never throws away work.** If she truly cannot reach the model but agents have already run, she finishes from that real work instead of discarding it, so your **Create Flow** button and **Exec report** still appear and the answer is honest about what actually got done.
+- **She never lies about it.** However the run ends, a short recovery note is prepended to the answer telling you exactly what she went through, and while she is retrying you see live status messages appear in the chat.
 
 ### The Ask-Execs permission round-trip (step 6, expanded)
 
@@ -2086,7 +2096,7 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 { "type": "session-restored", "context_type": "directory", "context_path": "/path/to/project" }
 ```
 
-A successful Multi-Turn message also carries `tool_calls_log`, `multi_turn_used`, `answer_success` for the Create Flow gate.
+A Multi-Turn message also carries `tool_calls_log` and `multi_turn_used`. The Create Flow button appears whenever ≥1 agent in that log executed successfully; the old `answer_success` classifier flag was removed 2026-07-06.
 
 ## 53. HTTP endpoints
 
@@ -3314,9 +3324,9 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 - **Cancel-Current RAG Rebuild Race Fix** - `consumers.py` now `await`s `setup_rag_chain()` during cancel-current handling instead of firing it with `asyncio.create_task(...)`. Otherwise the `MSG_LLM_REESTABLISHED` confirmation reached the client before the httpx rebuild completed.
 
-- **Multi-Turn Answer SUCCESS/FAILURE Classifier** - Added `agent/services/answer_analizer.py` — a LangChain-based binary classifier that asks the configured `chained-model` whether the final answer reflects a successful outcome or a failure. Replaces fragile regex/keyword heuristics. Fails open (returns `True`) on internal errors so the "Create Flow" button is not hidden unnecessarily.
+- **Multi-Turn Answer SUCCESS/FAILURE Classifier** *(REMOVED 2026-07-06)* - Originally added `agent/services/answer_analizer.py` — a LangChain-based binary classifier that asked the configured `chained-model` whether the final answer reflected a successful outcome or a failure, gating the "Create Flow" button. It was **dropped entirely** on 2026-07-06 to save the extra LLM round-trip: the button no longer depends on any whole-answer verdict.
 
-- **Create-Flow-From-Answer Button** - On Multi-Turn SUCCESS the chat message header renders a **"Create Flow"** button. Clicking it walks the executor's per-request `_tool_calls_log`, maps each tool invocation to its sidebar agent display name, lays out nodes left-to-right, wires sequential `target_agents` connections, and downloads a `.flw` workflow file the user can re-open in the ACP designer.
+- **Create-Flow-From-Answer Button** - After a Multi-Turn run in which **≥1 agent executed successfully**, the chat message header renders a **"Create Flow"** button (no answer-classifier gate as of 2026-07-06). Clicking it walks the executor's per-request `_tool_calls_log`, keeps **only the successfully-executed** calls (failed executions are dropped), maps each to its sidebar agent display name, lays out nodes left-to-right, wires the sequential `target_agents` chain, and downloads a `.flw` workflow file the user can re-open in the ACP designer.
 
 - **Unified Application Log (`tlamatini.log`)** - `manage.py` defines a `_TeeStream` wrapper that replaces `sys.stdout` and `sys.stderr` before Django initializes, so every print, Django logger, and third-party stdout line lands in both the console and a single `tlamatini.log` file.
 

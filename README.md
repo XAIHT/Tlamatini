@@ -168,7 +168,7 @@ Everything Tlamatini can do, grouped:
 
 **🧩 Orchestration & design**
 - **Visual Workflow Designer (ACP)** — 84 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
-- **Multi-Turn orchestration** — a tool-calling loop with **75 tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time.
+- **Multi-Turn orchestration** — a tool-calling loop with **75 tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
 - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health.
 - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
 - **ACPX** — spawn external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, and more) as tools and relay between them.

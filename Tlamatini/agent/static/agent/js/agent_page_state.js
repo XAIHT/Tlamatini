@@ -220,6 +220,7 @@ const reConnectButton = document.getElementById('re-connect-button');
 const cleanHistoryButton = document.getElementById('clean-history');
 const multiTurnCheckbox = document.getElementById('multi-turn-enabled');
 const execReportCheckbox = document.getElementById('exec-report-enabled');
+const execReportToggleLabel = document.getElementById('exec-report-toggle');
 const acpxCheckbox = document.getElementById('acpx-enabled');
 const askExecsCheckbox = document.getElementById('ask-execs-enabled');
 const askExecsToggleLabel = document.getElementById('ask-execs-toggle');
@@ -417,6 +418,22 @@ function syncAskExecsAvailability() { // eslint-disable-line no-unused-vars
     askExecsCheckbox.disabled = !multiTurnOn;
     if (askExecsToggleLabel) {
         askExecsToggleLabel.classList.toggle('toolbar-toggle-disabled', !multiTurnOn);
+    }
+}
+
+// Enable the Exec-report checkbox ONLY when Multi-Turn is checked. Exec report
+// is a Multi-Turn modifier (the backend already short-circuits capture when
+// Multi-Turn is off — see isExecReportEnabled()), so the UI must make the
+// dependency obvious: off Multi-Turn → the box is disabled + visually greyed.
+// Mirrors syncAskExecsAvailability() exactly.
+function syncExecReportAvailability() { // eslint-disable-line no-unused-vars
+    if (!execReportCheckbox) {
+        return;
+    }
+    const multiTurnOn = !!(multiTurnCheckbox && multiTurnCheckbox.checked);
+    execReportCheckbox.disabled = !multiTurnOn;
+    if (execReportToggleLabel) {
+        execReportToggleLabel.classList.toggle('toolbar-toggle-disabled', !multiTurnOn);
     }
 }
 

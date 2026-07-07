@@ -98,6 +98,18 @@ def _invoke_unified_agent_with_retry(unified_agent, payload, *, max_attempts: in
             return result, None
         except Exception as exc:
             last_exception = exc
+            try:
+                from ...self_healing import ModelStepUnrecoverable as _MSU
+            except Exception:  # noqa: BLE001
+                _MSU = ()  # type: ignore[assignment]
+            if _MSU and isinstance(exc, _MSU):
+                # The self-healing invoker already exhausted every recovery
+                # tactic (or the user cancelled) for the model step. Re-running
+                # the whole executor would just repeat that expensive ladder —
+                # bubble straight to the fallback (this only happens when NO
+                # agent ran; a run with work is finished gracefully inside the
+                # executor and never reaches here).
+                return None, exc
             if not _is_transient_agent_error(exc):
                 # Non-transient → bubble up to the caller's fallback path.
                 return None, exc

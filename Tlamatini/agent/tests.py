@@ -1365,28 +1365,24 @@ class ExecReportPersistenceTests(TestCase):
         ]
 
     def _run_processor(self, *, exec_report_enabled, entries, multi_turn_used=True,
-                       tool_calls_log=(('execute_command', {'command': 'dir'}),),
-                       answer_success=True):
+                       tool_calls_log=(('execute_command', {'command': 'dir'}),)):
+        # The LLM-based SUCCESS/FAILURE answer classifier was dropped
+        # (2026-07-06): process_llm_response no longer calls analyze_answer_success
+        # and never computes/broadcasts an answer_success flag. These tests now
+        # exercise the pipeline directly with no classifier mock.
         from agent.services.response_parser import process_llm_response
 
-        async def _analyzer(_text):
-            return answer_success
-
-        with patch(
-            'agent.services.response_parser.analyze_answer_success',
-            side_effect=_analyzer,
-        ):
-            final = async_to_sync(process_llm_response)(
-                'done<br>END-RESPONSE',
-                None,
-                None,
-                None,
-                conversation_user=self.user,
-                tool_calls_log=list(tool_calls_log) if tool_calls_log else None,
-                multi_turn_used=multi_turn_used,
-                exec_report_enabled=exec_report_enabled,
-                exec_report_entries=entries,
-            )
+        final = async_to_sync(process_llm_response)(
+            'done<br>END-RESPONSE',
+            None,
+            None,
+            None,
+            conversation_user=self.user,
+            tool_calls_log=list(tool_calls_log) if tool_calls_log else None,
+            multi_turn_used=multi_turn_used,
+            exec_report_enabled=exec_report_enabled,
+            exec_report_entries=entries,
+        )
         return final
 
     def _latest_bot_message(self):
@@ -1401,7 +1397,6 @@ class ExecReportPersistenceTests(TestCase):
         final = self._run_processor(
             exec_report_enabled=True,
             entries=self.entries,
-            answer_success=True,
         )
         row = self._latest_bot_message()
         self.assertIsNotNone(row, 'Expected a Tlamatini AgentMessage row to be saved')
@@ -1414,13 +1409,14 @@ class ExecReportPersistenceTests(TestCase):
         self.assertIn('>SUCCESS<', row.message)
         self.assertIn('>FAILURE<', row.message)
 
-    def test_exec_report_tables_are_persisted_even_when_answer_is_failure(self):
-        # The user explicitly asked: the tables must persist independently
-        # of whether the LLM answer is classified SUCCESS or FAILURE.
+    def test_exec_report_tables_persist_even_with_failed_tool_rows(self):
+        # The tables must persist regardless of per-tool outcomes. self.entries
+        # includes a FAILED Dockerer row (success=False) alongside a successful
+        # Executer row; both must land in the saved AgentMessage. (There is no
+        # longer any whole-answer SUCCESS/FAILURE classifier — dropped 2026-07-06.)
         final = self._run_processor(
             exec_report_enabled=True,
             entries=self.entries,
-            answer_success=False,
         )
         row = self._latest_bot_message()
         self.assertIsNotNone(row)
@@ -1432,7 +1428,6 @@ class ExecReportPersistenceTests(TestCase):
         self._run_processor(
             exec_report_enabled=False,
             entries=self.entries,
-            answer_success=True,
         )
         row = self._latest_bot_message()
         self.assertIsNotNone(row)
@@ -1445,11 +1440,69 @@ class ExecReportPersistenceTests(TestCase):
         self._run_processor(
             exec_report_enabled=True,
             entries=[],
-            answer_success=True,
         )
         row = self._latest_bot_message()
         self.assertIsNotNone(row)
         self.assertNotIn('exec-report-block', row.message)
+
+
+class _CapturingChannelLayer:
+    """Minimal async channel-layer stand-in that records group_send frames."""
+
+    def __init__(self):
+        self.sent = []
+
+    async def group_send(self, room, msg):
+        self.sent.append((room, dict(msg)))
+
+
+class AnswerClassifierRemovalTests(TestCase):
+    """The LLM SUCCESS/FAILURE answer classifier was dropped (2026-07-06).
+
+    The Create-Flow button no longer depends on a whole-answer verdict; it is
+    shown whenever Multi-Turn ran with at least one SUCCESSFUL agent, and the
+    generated flow uses only the successful agents. These guard against a
+    reintroduction of the classifier plumbing.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='angela_clf', password='x')
+
+    def test_response_parser_has_no_answer_classifier(self):
+        import importlib
+        import agent.services.response_parser as rp
+        self.assertFalse(
+            hasattr(rp, 'analyze_answer_success'),
+            'response_parser must no longer reference the removed classifier',
+        )
+        with self.assertRaises(ModuleNotFoundError):
+            importlib.import_module('agent.services.answer_analizer')
+
+    def test_broadcast_omits_answer_success_but_keeps_tool_calls_log(self):
+        from agent.services.response_parser import process_llm_response
+        layer = _CapturingChannelLayer()
+        tcl = [{
+            'tool_name': 'execute_command',
+            'args': {'command': 'dir'},
+            'success': True,
+            'agent_display_name': 'Executer',
+        }]
+        async_to_sync(process_llm_response)(
+            'ok<br>END-RESPONSE',
+            None,
+            layer,
+            'room_x',
+            conversation_user=self.user,
+            tool_calls_log=tcl,
+            multi_turn_used=True,
+            exec_report_enabled=False,
+            exec_report_entries=None,
+        )
+        self.assertEqual(len(layer.sent), 1)
+        _room, msg = layer.sent[0]
+        self.assertNotIn('answer_success', msg)
+        self.assertIn('tool_calls_log', msg)
+        self.assertTrue(msg.get('multi_turn_used'))
 
 
 class CapabilitySelectionTests(TestCase):
@@ -5089,28 +5142,22 @@ class DiagramRenderingTests(TestCase):
 
     def _process(self, raw):
         """Drive the full process_llm_response pipeline against a raw LLM
-        answer, return the persisted bot-message text. Patches the answer
-        analyzer + Channel layer so the test stays focused on rendering."""
+        answer, return the persisted bot-message text. (The SUCCESS/FAILURE
+        answer classifier was dropped 2026-07-06, so there is nothing to patch
+        — the pipeline runs directly.)"""
         from agent.services.response_parser import process_llm_response
 
-        async def _analyzer(_text):
-            return True
-
-        with patch(
-            'agent.services.response_parser.analyze_answer_success',
-            side_effect=_analyzer,
-        ):
-            return async_to_sync(process_llm_response)(
-                raw,
-                None,
-                None,
-                None,
-                conversation_user=None,
-                tool_calls_log=None,
-                multi_turn_used=False,
-                exec_report_enabled=False,
-                exec_report_entries=None,
-            )
+        return async_to_sync(process_llm_response)(
+            raw,
+            None,
+            None,
+            None,
+            conversation_user=None,
+            tool_calls_log=None,
+            multi_turn_used=False,
+            exec_report_enabled=False,
+            exec_report_entries=None,
+        )
 
     def test_explicit_begin_diagram_block_is_wrapped_in_pre_ascii_diagram(self):
         text = (
