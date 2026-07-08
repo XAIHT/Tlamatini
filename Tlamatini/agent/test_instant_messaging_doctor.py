@@ -60,12 +60,22 @@ def _emit_and_capture(result):
             captured.append(record.getMessage())
 
     handler = _Cap()
+    handler.setLevel(logging.DEBUG)
     root = logging.getLogger()
+    # _emit_section logs the INI section at INFO. The root logger defaults to
+    # WARNING under the Django test runner, which would DROP the INFO record
+    # before it reaches our capture handler. Force the level while capturing so
+    # the test is deterministic regardless of the ambient logging config, then
+    # restore it. (In production the agent's own basicConfig(level=INFO) captures
+    # the same record to its log file — this only fixes the test harness.)
+    prev_level = root.level
+    root.setLevel(logging.DEBUG)
     root.addHandler(handler)
     try:
         IM_DOCTOR._emit_section(result)
     finally:
         root.removeHandler(handler)
+        root.setLevel(prev_level)
     for message in captured:
         if "INI_SECTION_INSTANT_MESSAGING_DOCTOR" in message:
             return message

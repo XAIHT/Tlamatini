@@ -437,7 +437,13 @@ def _find_contacts_file() -> str:
 
 
 def _resolve_contact(query: str, channel: str) -> str:
-    needle = ' '.join(str(query or '').strip().lower().split())
+    import unicodedata
+
+    def _n(value: str) -> str:
+        s = ' '.join(str(value or '').strip().lower().split())
+        return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+
+    needle = _n(query)
     if not needle:
         return ''
     path = _find_contacts_file()
@@ -455,7 +461,7 @@ def _resolve_contact(query: str, channel: str) -> str:
 
     def _names(contact):
         raw = [contact.get('name', '')] + list(contact.get('aliases') or [])
-        return [' '.join(str(n).strip().lower().split()) for n in raw if str(n or '').strip()]
+        return [_n(n) for n in raw if str(n or '').strip()]
 
     for contact in contacts:
         if isinstance(contact, dict) and needle in _names(contact):
@@ -475,16 +481,19 @@ def _resolve_recipient_detail(config: Dict) -> Tuple[str, str]:
     contact_name = str(config.get('contact_name') or tg.get('contact_name') or '').strip()
     default_chat_id = str(config.get('chat_id') or tg.get('chat_id') or '').strip()
     if contact_name:
-        if contact_name.lower() in ('me', 'myself', 'self', 'owner', 'default'):
-            if default_chat_id:
-                logging.info(f"📇 Contact '{contact_name}' means configured default Telegram chat_id")
-                return default_chat_id, 'default_chat_id'
-            logging.error("❌ Contact 'me' requested but telegram.chat_id is empty.")
-            return '', 'missing_default_chat_id'
+        # Try the contacts book FIRST so self-words ('me' / 'myself') resolve to the
+        # owner's OWN contact when one exists (e.g. 'me' → @blackangy). Only fall back
+        # to the configured default telegram.chat_id when no contact matched.
         resolved = _resolve_contact(contact_name, 'telegram')
         if resolved:
             logging.info(f"📇 Resolved contact '{contact_name}' → Telegram '{resolved}'")
             return resolved, 'contact_name'
+        if contact_name.lower() in ('me', 'myself', 'self', 'owner', 'default'):
+            if default_chat_id:
+                logging.info(f"📇 Contact '{contact_name}' means configured default Telegram chat_id")
+                return default_chat_id, 'default_chat_id'
+            logging.error("❌ Contact 'me' requested but telegram.chat_id is empty and no 'me' contact exists.")
+            return '', 'missing_default_chat_id'
         logging.error(f"❌ Contact '{contact_name}' not found (or has no 'telegram') in contacts.json")
         return '', 'missing_contact'
     return default_chat_id, 'chat_id'

@@ -124,7 +124,7 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(cpd._normalize("559648601"), "559648601")
 
     def test_mixed(self):
-        self.assertEqual(cpd._normalize("Ángela L."), "<REDACTED> l.")
+        self.assertEqual(cpd._normalize("Ángela L."), "angela l.")
 
 
 # ============================================================================
@@ -239,7 +239,7 @@ class TestByteVariants(unittest.TestCase):
 
     def test_normalized_accented(self):
         v = "Ángela"
-        self.assertEqual(cpd.byte_variants(v)["normalized"], b"<REDACTED>")
+        self.assertEqual(cpd.byte_variants(v)["normalized"], b"angela")
 
     def test_dedupe_by_bytes(self):
         # for a lowercase ascii letterless-of-accents value normalized == utf-8 -> deduped
@@ -269,10 +269,10 @@ class TestByteVariants(unittest.TestCase):
 # ============================================================================
 class TestFuzzyRegex(unittest.TestCase):
     def test_exact(self):
-        self.assertTrue(cpd.fuzzy_regex("<REDACTED>").search("<REDACTED>"))
+        self.assertTrue(cpd.fuzzy_regex("Angela").search("Angela"))
 
     def test_spaced(self):
-        self.assertTrue(cpd.fuzzy_regex("<REDACTED>").search("a n g e l a"))
+        self.assertTrue(cpd.fuzzy_regex("Angela").search("a n g e l a"))
 
     def test_dashed(self):
         self.assertTrue(cpd.fuzzy_regex("12345").search("1-2-3-4-5"))
@@ -282,7 +282,7 @@ class TestFuzzyRegex(unittest.TestCase):
 
     def test_accent_insensitive(self):
         rx = cpd.fuzzy_regex("Ángela")
-        self.assertTrue(rx.search(cpd._normalize("<REDACTED>")))
+        self.assertTrue(rx.search(cpd._normalize("Ángela")))
 
     def test_case_insensitive(self):
         self.assertTrue(cpd.fuzzy_regex("foo").search("FOO"))

@@ -468,7 +468,13 @@ def _find_contacts_file() -> str:
 
 
 def _resolve_contact(query: str, channel: str) -> str:
-    needle = ' '.join(str(query or '').strip().lower().split())
+    import unicodedata
+
+    def _n(value: str) -> str:
+        s = ' '.join(str(value or '').strip().lower().split())
+        return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+
+    needle = _n(query)
     if not needle:
         return ''
     path = _find_contacts_file()
@@ -486,7 +492,7 @@ def _resolve_contact(query: str, channel: str) -> str:
 
     def _names(contact):
         raw = [contact.get('name', '')] + list(contact.get('aliases') or [])
-        return [' '.join(str(n).strip().lower().split()) for n in raw if str(n or '').strip()]
+        return [_n(n) for n in raw if str(n or '').strip()]
 
     for contact in contacts:
         if isinstance(contact, dict) and needle in _names(contact):

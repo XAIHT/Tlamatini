@@ -48,6 +48,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -72,15 +73,38 @@ DEFAULT_TARGETS_FILES = [REPO_ROOT / ".private_targets.json",
 
 PLACEHOLDER = "<REDACTED>"
 
-# Angela's NAME is NEVER scrubbed -- in the public OR the private build. Her authorship
-# stays everywhere, always, by her explicit instruction. Only her OTHER private data
-# (emails / phones / the "Ana*" legal-name variants / handles / secrets) is masked.
-# These values are dropped from the scrub set before any redaction runs.
-KEEP_NAMES = {"angela"}  # matched case-insensitively
+# Angela's NAME and her GitHub handle are NEVER scrubbed -- in the public OR the
+# private build. Her authorship stays everywhere, always, by her explicit
+# instruction: her display name "Angela Lopez Mendoza" in ANY case / accent /
+# spacing variant (Angela, Ángela, Lopez, López, Mendoza, the full name) AND her
+# GitHub handle @angelahack1 are kept. Only her OTHER private data is masked --
+# emails, her PHONE, the "Ana*" legal-name variants, and secrets. Her phone in
+# particular must NEVER appear in the repo: it lives ONLY in data.keys (which is
+# gitignored and in SCRUB_SKIP_FILES, so it is never scrubbed OR published).
+# Kept values are dropped from the scrub set before any redaction runs.
+KEEP_NAME_TOKENS = {"angela", "lopez", "mendoza"}   # accent-stripped, lowercased
+KEEP_HANDLES = {"angelahack1"}                      # with or without a leading @
+
+
+def _strip_accents(value: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", value or "")
+                   if not unicodedata.combining(c))
 
 
 def _is_kept_name(value: str) -> bool:
-    return (value or "").strip().lower() in KEEP_NAMES
+    """True for Angela's name (ANY accent / case / spacing variant) and her GitHub
+    handle -- these are kept in EVERY build. Her emails, phone and the "Ana*" legal
+    variants are NOT kept (they carry an @domain, digits, or non-name tokens)."""
+    norm = _strip_accents(value).strip().lower()
+    if not norm:
+        return False
+    if norm.lstrip("@") in KEEP_HANDLES:
+        return True
+    # Kept only when EVERY token is one of her name tokens, so "Angela",
+    # "Angela Lopez Mendoza" and "Ángela López Mendoza" are all kept, but
+    # "Ana Lazcano" or "angela@xaiht.org" (a token that isn't a bare name) are not.
+    tokens = [t for t in re.split(r"[\s.]+", norm) if t]
+    return bool(tokens) and all(t in KEEP_NAME_TOKENS for t in tokens)
 
 REGEN_TOUCHED = [
     REPO_ROOT / "Tlamatini" / "agent" / "config.json",
@@ -100,7 +124,8 @@ TEXT_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".env"
 # .private_targets.json turns your real values into "<REDACTED>" inside it, which
 # then makes the verifier hunt for the literal text "<REDACTED>" and "find" it in
 # every scrubbed file (the 737-false-positive bug). data.keys must stay intact too.
-SCRUB_SKIP_FILES = {"data.keys", ".private_targets.json", "private_targets.json"}
+SCRUB_SKIP_FILES = {"data.keys", ".private_targets.json", "private_targets.json",
+                    "contacts.private.json"}
 
 SECRET_KEY_RE = re.compile(
     r'(?i)("(?:api[_-]?key|api[_-]?secret|token|access[_-]?token|auth[_-]?token|'
@@ -136,6 +161,10 @@ def _utf8_env() -> dict:
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    # PUBLIC build ALWAYS ships an EMPTY contacts.json -- never a real book, even
+    # if the ambient shell exported TLAMATINI_BUNDLE_CONTACTS. build.py ships the
+    # empty placeholder whenever this is unset.
+    env.pop("TLAMATINI_BUNDLE_CONTACTS", None)
     return env
 
 
@@ -273,11 +302,15 @@ def verify_clean(py: str, verify_root: Path, targets_file: str,
         findings += scan.get("result", {}).get("findings", [])
 
     def _is_sensitive(value: str) -> bool:
-        # BLOCK only on genuinely-unique PII: emails / handles (contain '@') and
-        # phone numbers (>=7 digits). Bare common names ("<REDACTED>", "Ana") are NOT
+        # BLOCK only on genuinely-unique PII: emails (contain '@') and phone
+        # numbers (>=7 digits). Bare common names ("Angela", "Ana") are NOT
         # blocked -- they appear all over bundled third-party libraries (django,
-        # nltk, emoji, ...) and <REDACTED> wants her name left everywhere by design.
+        # nltk, emoji, ...) and Angela wants her name left everywhere by design.
+        # Angela's OWN kept name / handle (@angelahack1) is never a leak, even
+        # though the handle contains '@' -- so it never blocks the build.
         v = value or ""
+        if _is_kept_name(v):
+            return False
         return ("@" in v) or (sum(c.isdigit() for c in v) >= 7)
 
     personal = 0

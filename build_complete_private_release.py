@@ -47,6 +47,9 @@ REGEN = REPO_ROOT / "regen_secrets.py"
 BUILD = REPO_ROOT / "build.py"
 BUILD_UNINST = REPO_ROOT / "build_uninstaller.py"
 BUILD_INST = REPO_ROOT / "build_installer.py"
+# Gitignored PRIVATE contacts book. When present, the keyed build bundles it as
+# contacts.json (build.py reads TLAMATINI_BUNDLE_CONTACTS). Absent -> empty book.
+CONTACTS_PRIVATE = REPO_ROOT / "contacts.private.json"
 
 
 def banner(msg: str) -> None:
@@ -76,6 +79,13 @@ def _utf8_env() -> dict:
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    # PRIVATE / keyed build: ship the REAL contacts book when the gitignored
+    # contacts.private.json is present (build.py reads TLAMATINI_BUNDLE_CONTACTS
+    # and bundles it as contacts.json). Absent -> build.py ships the empty book.
+    if CONTACTS_PRIVATE.is_file():
+        env["TLAMATINI_BUNDLE_CONTACTS"] = str(CONTACTS_PRIVATE)
+    else:
+        env.pop("TLAMATINI_BUNDLE_CONTACTS", None)
     return env
 
 
@@ -114,6 +124,7 @@ def main(argv=None) -> int:
     print(f"python      : {py}")
     print(f"keys file   : {args.keys_file}")
     print(f"self-modify : {'YES' if self_modify else 'no'}")
+    print(f"contacts    : {'COMPLETE (contacts.private.json)' if CONTACTS_PRIVATE.is_file() else 'EMPTY (contacts.private.json not found)'}")
 
     banner("STEP 1/5  regen_secrets.py --mode keyed")
     if run([py, str(REGEN), "--mode", "keyed", "--keys-file", args.keys_file]) != 0:

@@ -19,8 +19,8 @@ Shape (``contacts.json``)::
 
     {
       "contacts": [
-        {"name": "<REDACTED>",
-         "aliases": ["Ana", "<REDACTED>"],
+        {"name": "Ana Ricardo Lazcano",
+         "aliases": ["Ana", "Ana Lazcano"],
          "telegram": "@ana_lazcano",      # @username, +phone, or numeric id
          "whatsapp": "+5215555555555",    # phone with country code
          "email": "ana@example.com"}
@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import unicodedata
 from typing import Any, Dict, List, Optional
 
 CONTACTS_FILENAME = "contacts.json"
@@ -59,8 +60,11 @@ def get_contacts_path() -> str:
 
 
 def _norm(value: Any) -> str:
-    """Lower-case, collapse whitespace — for forgiving name matching."""
-    return " ".join(str(value or "").strip().lower().split())
+    """Lower-case, collapse whitespace, and STRIP ACCENTS — forgiving, accent-
+    insensitive name matching (so 'angela lopez mendoza' finds 'Ángela López
+    Mendoza', and 'COCHAmpi' finds 'Cochampi')."""
+    s = " ".join(str(value or "").strip().lower().split())
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
 
 def _contact_names(contact: Dict[str, Any]) -> List[str]:
@@ -95,7 +99,7 @@ def find_contact(query: str) -> Optional[Dict[str, Any]]:
         if q in _contact_names(contact):
             return contact
     # 2) forgiving: substring either way, or every query token present in a name
-    #    (so "ana lazcano" finds "<REDACTED>").
+    #    (so "ana lazcano" finds "Ana Ricardo Lazcano").
     for contact in contacts:
         for name in _contact_names(contact):
             tokens = name.split()

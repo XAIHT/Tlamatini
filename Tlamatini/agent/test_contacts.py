@@ -9,7 +9,7 @@
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """Tests for the Contacts book (agent/contacts.py) — name -> messaging handle.
 
-Reproduces Angela's use case ("send a WhatsApp and a Telegram to <REDACTED>
+Reproduces Angela's use case ("send a WhatsApp and a Telegram to Ana Ricardo
 Lazcano"): a person's NAME resolves to their Telegram handle + WhatsApp number.
 The two pool agents (Telegrammer / Whatsapper) carry an INLINE copy of this
 resolver; this suite pins the shared logic AND that the shipped contacts.json is
@@ -25,7 +25,7 @@ from agent import contacts
 
 _SAMPLE = {
     "contacts": [
-        {"name": "<REDACTED>", "aliases": ["Ana", "<REDACTED>"],
+        {"name": "Ana Ricardo Lazcano", "aliases": ["Ana", "Ana Lazcano"],
          "telegram": "@ana_lazcano", "whatsapp": "+5215555555555"},
         {"name": "Bob Stone", "telegram": "@bobstone", "whatsapp": "+15551230000"},
     ]
@@ -59,19 +59,19 @@ class _TempContacts:
 class ContactsResolverTests(unittest.TestCase):
     def test_exact_full_name(self):
         with _TempContacts(_SAMPLE):
-            self.assertEqual(contacts.resolve_contact("<REDACTED>", "telegram"), "@ana_lazcano")
-            self.assertEqual(contacts.resolve_contact("<REDACTED>", "whatsapp"), "+5215555555555")
+            self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "telegram"), "@ana_lazcano")
+            self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "whatsapp"), "+5215555555555")
 
     def test_alias(self):
         with _TempContacts(_SAMPLE):
-            self.assertEqual(contacts.resolve_contact("<REDACTED>", "telegram"), "@ana_lazcano")
+            self.assertEqual(contacts.resolve_contact("Ana Lazcano", "telegram"), "@ana_lazcano")
 
     def test_case_insensitive(self):
         with _TempContacts(_SAMPLE):
             self.assertEqual(contacts.resolve_contact("ANA RICARDO LAZCANO", "whatsapp"), "+5215555555555")
 
     def test_subset_tokens_match(self):
-        # "ana lazcano" (a subset of the tokens) finds "<REDACTED>".
+        # "ana lazcano" (a subset of the tokens) finds "Ana Ricardo Lazcano".
         with _TempContacts(_SAMPLE):
             self.assertEqual(contacts.resolve_contact("ana lazcano", "telegram"), "@ana_lazcano")
 
@@ -96,7 +96,7 @@ class ContactsResolverTests(unittest.TestCase):
     def test_list_contacts(self):
         with _TempContacts(_SAMPLE):
             names = [c["name"] for c in contacts.list_contacts()]
-            self.assertIn("<REDACTED>", names)
+            self.assertIn("Ana Ricardo Lazcano", names)
             self.assertIn("Bob Stone", names)
 
     def test_missing_file_fails_open(self):
@@ -114,5 +114,5 @@ class ShippedContactsFileTests(unittest.TestCase):
         if not os.path.isfile(path):
             self.skipTest("contacts.json not present in this layout")
         self.assertTrue(contacts.load_contacts(), "shipped contacts.json should hold the example contact")
-        self.assertEqual(contacts.resolve_contact("<REDACTED>", "telegram"), "@ana_lazcano")
-        self.assertEqual(contacts.resolve_contact("<REDACTED>", "whatsapp"), "+5215555555555")
+        self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "telegram"), "@ana_lazcano")
+        self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "whatsapp"), "+5215555555555")

@@ -337,6 +337,7 @@ contacts.json
 personal_info_audit_report.md
 private_data_audit_report.json
 .private_targets.json
+contacts.private.json
 public_release_verify_report.json
 
 # Transient build / run / scratch artifacts — stop them cluttering git status

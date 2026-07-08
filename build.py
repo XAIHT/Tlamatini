@@ -1163,32 +1163,50 @@ def main():
             else:
                 print(f"WARNING: {src} not found; skipping copy.")
 
-        # ── Ship a sanitized EMPTY contacts.json (never the dev's private data) ──
-        # The dev tree's Tlamatini/agent/contacts.json contains the maintainer's
-        # real contacts (PII). We deliberately DO NOT copy it. Instead we write a
-        # clean placeholder with the same shape and an empty contacts list, so a
-        # fresh install has a valid, private-data-free contacts book that the user
-        # populates via the Contacts dialog / chat. (It is USER STATE: resolved next
-        # to config.json and preserved across self-update, so the user's own entries
-        # survive future updates.)
-        contacts_placeholder = {
-            "_README": (
-                "Tlamatini Contacts book. Add the people you message here, then you "
-                "can just say 'send a WhatsApp / Telegram to <name> ...' and Tlamatini "
-                "resolves the handle for you. Fields: name (required), aliases (other "
-                "names that should resolve to this person), telegram (@username only "
-                "for people), whatsapp (phone with country code, e.g. +5215555555555), "
-                "email (optional). This file is USER STATE: it lives next to config.json "
-                "and is preserved across updates. Do NOT commit real phone numbers to a "
-                "public repo."
-            ),
-            "contacts": [],
-        }
+        # ── Ship contacts.json ──────────────────────────────────────────────────
+        # DEFAULT: a sanitized EMPTY book (never the dev's private data). A PRIVATE /
+        # keyed build OPTS IN to bundling a real contacts book by setting the env var
+        # TLAMATINI_BUNDLE_CONTACTS to a JSON file (the gitignored contacts.private.json)
+        # -- build_complete_private_release.py sets it. The public builder CLEARS that
+        # env var, so a public release ALWAYS ships the empty book; a bare `build.py`
+        # ships empty too. (contacts.json is USER STATE: resolved next to config.json
+        # and preserved across self-update, so the user's own entries survive updates.)
+        contacts_doc = None
+        _bundle_contacts = (os.environ.get("TLAMATINI_BUNDLE_CONTACTS") or "").strip()
+        if _bundle_contacts and os.path.isfile(_bundle_contacts):
+            try:
+                with open(_bundle_contacts, "r", encoding="utf-8-sig") as _cf:
+                    _loaded = json.load(_cf)
+                if isinstance(_loaded, dict) and isinstance(_loaded.get("contacts"), list):
+                    contacts_doc = _loaded
+                    print(f"Bundling PRIVATE contacts book from {_bundle_contacts} "
+                          f"({len(_loaded['contacts'])} contact(s)) -- KEYED build.")
+                else:
+                    print(f"WARNING: {_bundle_contacts} is not a valid contacts doc; "
+                          f"shipping EMPTY book instead.")
+            except Exception as _e:
+                print(f"WARNING: could not read {_bundle_contacts} ({_e}); "
+                      f"shipping EMPTY book instead.")
+        if contacts_doc is None:
+            contacts_doc = {
+                "_README": (
+                    "Tlamatini Contacts book. Add the people you message here, then you "
+                    "can just say 'send a WhatsApp / Telegram to <name> ...' and Tlamatini "
+                    "resolves the handle for you. Fields: name (required), aliases (other "
+                    "names that should resolve to this person), telegram (@username only "
+                    "for people), whatsapp (phone with country code, e.g. +5215555555555), "
+                    "email (optional). This file is USER STATE: it lives next to config.json "
+                    "and is preserved across updates. Do NOT commit real phone numbers to a "
+                    "public repo."
+                ),
+                "contacts": [],
+            }
         contacts_dst = dist_manage / "contacts.json"
         contacts_dst.parent.mkdir(parents=True, exist_ok=True)
         with open(contacts_dst, "w", encoding="utf-8") as _cf:
-            json.dump(contacts_placeholder, _cf, ensure_ascii=False, indent=2)
-        print(f"Wrote sanitized empty contacts.json -> {contacts_dst} (dev PII NOT shipped)")
+            json.dump(contacts_doc, _cf, ensure_ascii=False, indent=2)
+        print(f"Wrote contacts.json -> {contacts_dst} "
+              f"({len(contacts_doc.get('contacts', []))} contact(s))")
 
         # Required root-level assets for the installed application.
         # ``agents_descriptions.md`` is the authoritative source for the
