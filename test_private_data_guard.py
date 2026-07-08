@@ -52,14 +52,21 @@ ROOT_COMMIT = "137a0d70e1466fc69b50a8c3ac1740cf5b57c41d"
 # History only ever grows; it must never be shorter than this floor.
 MIN_COMMITS = 523
 # Anchor tags that must never disappear (first, and the privacy-scrub releases).
-REQUIRED_TAGS = ("v1.0.0", "v1.30.1", "v1.31.0", "v1.31.1")
+# NOTE: v1.31.0 was NEVER published — the release sequence skipped that patch
+# (v1.30.1 -> v1.31.1), verified absent both locally AND on origin and never in
+# the reflog. Removing it is a correction of a phantom entry, NOT a dropped
+# pushed tag (which would be forbidden).
+REQUIRED_TAGS = ("v1.0.0", "v1.30.1", "v1.31.1")
 MIN_TAG_COUNT = 49
 
 # Placeholders the forward-only scrub wrote (positive, PII-free assertions).
 PLACEHOLDER_CHECKS = (
     (REPO / "Tlamatini/agent/agents/telegrammer/config.yaml", "@your_telegram_username"),
     (REPO / "Tlamatini/agent/agents/emailer/config.yaml", "you@example.com"),
-    (REPO / "Tlamatini/agent/Tlamatini.md", "The project maintainer"),
+    # Angela's directive REVERSED the old "hide the maintainer" scrub — her name
+    # must be NAMED in the self-knowledge doc, not replaced by a generic phrase.
+    # So this sentinel now asserts her authorship is PRESENT, not that it's hidden.
+    (REPO / "Tlamatini/agent/Tlamatini.md", "Ángela López Mendoza"),
 )
 
 # A structural (NOT personal) shape: Meta/WhatsApp access tokens. Must be absent

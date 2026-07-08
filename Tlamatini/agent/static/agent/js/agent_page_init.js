@@ -1026,7 +1026,7 @@ function _validateUrlsForm(form) {
             }
             if (!parsed.host) {
                 errors[key] = 'must include a host';
-                return;
+                
             }
         } else if (type === 'host') {
             const ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -1352,7 +1352,7 @@ function _promptForContextDirectory(body) {
 // Browse button — opens a native folder picker on the server host and
 // drops the chosen absolute path into the dialog's input so the existing
 // live-validation pipeline (`_onBackupDbInputChanged`) classifies it.
-async function _browseBackupDbDirectory() { // eslint-disable-line no-unused-vars
+async function _browseBackupDbDirectory() {  
     const browseBtn = document.getElementById('backup-db-browse-btn');
     if (!backupDbTargetDirInput) return;
     if (browseBtn) browseBtn.disabled = true;
@@ -1412,7 +1412,7 @@ function OpenBackupDbDialog(e) { // eslint-disable-line no-unused-vars
     renderBackupDbDialog();
 }
 
-async function _saveBackupDb() { // eslint-disable-line no-unused-vars
+async function _saveBackupDb() {  
     const raw = (backupDbTargetDirInput ? backupDbTargetDirInput.value : '').trim();
 
     if (!raw) {
@@ -1582,7 +1582,7 @@ function _onSetDbInputChanged() {
 // absolute path into the dialog's input so the existing live-validation
 // pipeline (`_onSetDbInputChanged`) classifies it (SQLite-header check,
 // basename match, etc.).
-async function _browseSetDbFile() { // eslint-disable-line no-unused-vars
+async function _browseSetDbFile() {  
     const browseBtn = document.getElementById('set-db-browse-btn');
     if (!setDbSourcePathInput) return;
     if (browseBtn) browseBtn.disabled = true;
@@ -1651,7 +1651,7 @@ function _showSetDbLoadedNextSessionWarning() {
     renderSetDbWarningDialog();
 }
 
-async function _saveSetDb() { // eslint-disable-line no-unused-vars
+async function _saveSetDb() {  
     const raw = (setDbSourcePathInput ? setDbSourcePathInput.value : '').trim();
 
     if (!raw) {

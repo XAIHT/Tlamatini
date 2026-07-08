@@ -27,14 +27,23 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              "build", ".mypy_cache", ".ruff_cache", ".pytest_cache",
              "staticfiles", "python", "ms-playwright", "jre", "git",
              "jd-cli", "TlamatiniSourceCode", "pools", "mcp_agent_runs",
-             "Temp", "Templates", "site-packages"}
+             "Temp", "Templates", "site-packages",
+             # Self-provisioned Go toolchain (ProjectDiscovery) + Go build cache:
+             # bundled third-party binaries, gitignored, never Tlamatini source.
+             "Go", "go-build"}
 SOURCE_EXTS = {".py", ".js", ".css", ".mjs"}
+# Generated / regenerated-on-build files that never carry a hand-written banner.
+# `_version.py` is written by the build (versioning.py), is gitignored, and is
+# rewritten on every build — exempt it rather than fight the generator.
+SKIP_FILES = {"_version.py"}
 
 
 def _iter_source_files():
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
+            if name in SKIP_FILES:
+                continue
             if os.path.splitext(name)[1].lower() in SOURCE_EXTS:
                 yield Path(dirpath) / name
 
@@ -66,7 +75,14 @@ class AngelaAuthorshipTests(unittest.TestCase):
 
     def test_public_builder_never_scrubs_her_name(self):
         src = (ROOT / "build_complete_public_release.py").read_text(encoding="utf-8")
-        self.assertIn("KEEP_NAMES", src)
+        # The builder MUST keep a name-preserving guard. Hardened 2026-07-08 from
+        # the single ``KEEP_NAMES`` set into accent/case-aware ``KEEP_NAME_TOKENS``
+        # + ``KEEP_HANDLES`` resolved by ``_is_kept_name`` — accept either shape,
+        # but the semantic guard (and her name) must be present.
+        self.assertTrue(
+            "KEEP_NAMES" in src or "KEEP_NAME_TOKENS" in src,
+            "public builder lost its keep-her-name guard set")
+        self.assertIn("_is_kept_name", src)
         self.assertIn("angela", src.lower())
 
 

@@ -1,3 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Created by  Angela López Mendoza   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela López Mendoza.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove
 """
 Deterministic proof for the self-healing, NEVER-HANGING multi-turn redesign
 (Angela, 2026-07-06). These do NOT need a real network failure — a scripted fake

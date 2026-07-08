@@ -681,7 +681,7 @@ function renderReconnectRequiredDialog() { // eslint-disable-line no-unused-vars
  * Save/Cancel pair used by the Config dialogs: when ``asyncOnBackup``
  * resolves to ``true`` the dialog closes; when ``false`` it stays open.
  */
-function makeBackupCancelButtons(asyncOnBackup, onCancel) { // eslint-disable-line no-unused-vars
+function makeBackupCancelButtons(asyncOnBackup, onCancel) {  
     return [
         {
             text: "Backup",
@@ -771,7 +771,7 @@ function renderBackupDbDialog() { // eslint-disable-line no-unused-vars
  * dialog closes; when ``false`` it stays open so the user can correct
  * the input.
  */
-function makeSetCancelButtons(asyncOnSet, onCancel) { // eslint-disable-line no-unused-vars
+function makeSetCancelButtons(asyncOnSet, onCancel) {  
     return [
         {
             text: "Set",

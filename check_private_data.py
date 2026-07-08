@@ -529,7 +529,17 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              # Carried THIRD-PARTY runtimes bundled into the package — their
              # binaries trip the structural/fuzzy patterns by the thousand and
              # can never hold an intentional leak of your data. Skip them.
-             "python", "jre", "git", "ms-playwright"}
+             "python", "jre", "git", "ms-playwright",
+             # Gitignored local runtimes / scratch / snapshots (never published,
+             # so no possible leak): the self-provisioned Go toolchain (~150 MB of
+             # binaries), Go's build cache, scaffolded Templates deliverables, and
+             # the self-modify source snapshot. Walking Go/ made the deep scan
+             # time out at 60 s for zero benefit.
+             "Go", "go-build", "Templates", "TlamatiniSourceCode",
+             # Regenerable runtime scratch (gitignored): per-request agent pool
+             # copies (hundreds of _chat_runs_ clones) and MCP agent run dirs.
+             # Never published, and scanning them was the bulk of the scan time.
+             "pools", "mcp_agent_runs"}
 TEXT_REVIEW_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt",
                    ".env", ".cfg", ".ini", ".toml", ".html", ".css", ".csv",
                    ".pem", ".key", ".crt", ".keys"}

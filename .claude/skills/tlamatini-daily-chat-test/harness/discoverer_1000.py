@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+# ═══════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#
+#   Created by  Angela López Mendoza   ·   @angelahack1
+#   Developer · Architect · Creator of Tlamatini
+#
+#   Every line of this file was written by Angela López Mendoza.
+# ═══════════════════════════════════════════════════════════════════
+#   Tlamatini Author Banner — do not remove
 """
 Tlamatini — 1000 Discoverer tests through the REAL chat GUI, with full-screen
 photographic evidence (entire desktop incl. the taskbar CLOCK) for EVERY test.

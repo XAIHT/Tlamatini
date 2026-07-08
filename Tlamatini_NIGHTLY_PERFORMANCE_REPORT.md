@@ -267,3 +267,143 @@ Lint warnings:
 4. Add a stable B1-B10 timing probe that separates cold cache, warm cache, `django.setup`, `agent.views`, `agent.rag.factory`, first live request, and live generate timing behind an explicit opt-in.
 5. Profile `agent.rag.factory` import cost before touching already-green warm embedding or reaper paths.
 6. Keep large runtime artifacts out of nightly source scans unless explicitly testing release packaging; today the Go runtime added scan noise and banner false positives.
+
+## 2026-07-08 10:49:21 -06:00
+
+Automation: `tlamatini-nightly-performance-drive`
+
+Raw logs: `Temp/nightly_perf/20260708_104000/`
+
+### Worktree protection
+
+The worktree was already broadly dirty before the nightly checks, including many `.claude/` memory files, skills, docs, generated documentation artifacts, agent source files, config files, migrations, and static assets. This pass did not intentionally modify production source code.
+
+Observed status drift during checks:
+
+- The rerun status snapshot showed `Tlamatini/agent/agents/discoverer/config.yaml` and `Tlamatini/agent/agents/zavuerer/config.yaml` as newly modified after the check batch.
+- A later direct path status check showed those two paths clean again. No revert was performed by this pass.
+- The only intentional workspace update from this pass is this report entry, plus raw evidence files under `Temp/nightly_perf/20260708_104000/` and automation memory outside the repo.
+
+### Command results
+
+| Check | Command | Duration | Exit | Result |
+|---|---:|---:|---:|---|
+| Worktree | `git status --short` | 0.095s | 0 | Dirty before run; preserved as user-owned |
+| Source inventory | `git ls-files ...` | 0.182s | 0 | 815 tracked files |
+| Large/runtime inventory | `Get-ChildItem -Recurse ... -File ... >= 10MB` | 7.111s | 0 | Largest runtime artifacts listed below |
+| Compileall | `python -m compileall -q Tlamatini check_private_data.py test_check_private_data.py test_private_data_guard.py test_perf_3x_visual.py` | 0.349s | 0 | PASS |
+| Django check | `python Tlamatini/manage.py check` | 2.529s | 0 | PASS |
+| Django deploy check | `python Tlamatini/manage.py check --deploy` | 1.884s | 0 | PASS with 6 expected dev deploy warnings |
+| Focused 3x harness | `python Tlamatini/manage.py test agent.tests_perf_3x --verbosity 1` | 14.026s wall / 8.247s test time | 0 | PASS, 116 tests |
+| Visual 3x dashboard | `PYTHONIOENCODING=utf-8 python test_perf_3x_visual.py` | 8.630s | 1 | FAIL: Ollama unreachable; 3/4 dominant levers verified |
+| JS lint | `npm run lint` | 2.479s | 0 | PASS with 240 warnings |
+| Private-data scanner tests | `python -m unittest test_check_private_data -v` | 2.168s | 1 | FAIL: same 4 normalization/fuzzy tests |
+| Author banner guard | `python test_author_banner.py` | 0.714s | 1 | FAIL: 27 files missing banner, mostly Go runtime/vendor plus 4 local/project files |
+| Private-data guard | `python test_private_data_guard.py` with 60s bound | 60.251s | 124 | TIMEOUT in delegated deep scan because `.private_targets.json` is present |
+| Ollama port/process probe | `Test-NetConnection 127.0.0.1 -Port 11434; Get-Process ollama` | 10.447s | 0 | Port closed; no Ollama process row |
+| Django import probe | `python -c <django.setup import timing probe>` | 4.027s wall | 0 | PASS; timings below |
+
+### Current measurements
+
+Source inventory:
+
+- 815 tracked files.
+- Top tracked extensions: `.py` 458, `.md` 157, `.yaml` 88, `.js` 31, `.jpg` 11, `.css` 9, `.json` 8.
+
+Large/runtime inventory highlights:
+
+- `python/Lib/site-packages/torch/lib/torch_cpu.dll`: 252.67 MB.
+- `.git/objects/pack/pack-b6102f874db951e0203715be3c0c6218e9e6fcc7.pack`: 137.74 MB.
+- `python/Lib/site-packages/llvmlite/binding/llvmlite.dll`: 114.79 MB.
+- `.git/objects/pack/pack-eef0085b58822bf5d7da80ef5df1f93476199370.pack`: 82.64 MB.
+- `python/Lib/site-packages/playwright/driver/node.exe`: 79.48 MB.
+- `python/share/ffpyplayer/ffmpeg/bin/avcodec-60.dll`: 73.74 MB.
+- `python/Lib/site-packages/cv2/cv2.pyd`: 71.35 MB.
+- `Go/` runtime/module artifacts remain in the repo scan surface, including `vulnx.exe`, cvemap integration binaries, Go toolchain executables, and third-party test data.
+- Prior multi-GB `dist/` release ZIPs did not appear in the current top-40 large-file inventory.
+
+Django/import timings:
+
+- `total_seconds=3.308`
+- `import_django=0.037`
+- `django_setup=0.952`
+- `agent.views=0.215`
+- `agent.rag.factory=2.104`
+
+Visual 3x dashboard:
+
+- L1a keep-alive resolution: PASS, 12 cases.
+- L1d warm embeddings: PASS, 1 build vs 60, 60.3x speedup.
+- L1b live Ollama serving: FAIL, `/api/version` unreachable with connection refused.
+- L2 orphan reaper O(N): PASS, 8000 procs in 6.43 ms.
+- Overall: 3/4 dominant levers verified.
+
+### Prior-run comparison and 3x status
+
+Prior baseline is the 2026-07-07 report entry above.
+
+| Path | 2026-07-07 | 2026-07-08 | Change | 3x target status |
+|---|---:|---:|---:|---|
+| Compileall | 0.648s | 0.349s | 1.86x faster | Not a new 3x win |
+| `manage.py check` | 2.223s | 2.529s | 0.88x, regression | Not reached |
+| `manage.py check --deploy` | 1.608s | 1.884s | 0.85x, regression | Not reached |
+| `agent.tests_perf_3x` wall | 12.640s | 14.026s | 0.90x, regression | Not a 3x wall-clock win |
+| `agent.tests_perf_3x` test body | 7.723s | 8.247s | 0.94x, regression | Not reached |
+| Visual warm embeddings | 60.0x | 60.3x | Stable | Reached for this lever |
+| Visual reaper scaling | O(N), 5.21 ms at 8000 | O(N), 6.43 ms at 8000 | Still green, slower sample | Reached for this lever |
+| Live Ollama serving | Verified, 14.1 ms `/api/version` | Unreachable, port closed | Regression / environment blocker | Not reached today |
+| `agent.views` import | 0.222s | 0.215s | 1.03x faster | Stable, not a new 3x win vs yesterday |
+| `agent.rag.factory` import | 2.802s | 2.104s | 1.33x faster | Not reached; still dominant import bottleneck |
+| Total import probe | 4.299s | 3.308s | 1.30x faster | Not reached |
+
+Conclusion: the 3x objective remains mixed. Warm embeddings and reaper scaling remain verified, but live Ollama serving regressed to unreachable today, and broader startup/check/test/import paths are still not 3x. Keep the 500+ action security/performance objective active.
+
+### Failures and diagnosis
+
+Ollama / visual dashboard:
+
+- `test_perf_3x_visual.py` failed only the L1b live serving lever.
+- `/api/version` returned connection refused.
+- `Test-NetConnection 127.0.0.1 -Port 11434` reported `TcpTestSucceeded: False`.
+- `Get-Process ollama` returned no process rows.
+- Smallest safe next action: start/restore local Ollama, then rerun only `PYTHONIOENCODING=utf-8 python test_perf_3x_visual.py`.
+
+Private-data scanner:
+
+- 143 tests ran; 4 failed.
+- Failing tests remain `test_normalized_accented`, `test_accent_insensitive`, `test_spaced`, and `test_mixed`.
+- Code evidence still points to `check_private_data.py` normalization/fuzzy handling: accent replacement, redaction-placeholder preservation, and spaced-character matching.
+- Smallest safe next action: patch only `_normalize`, `byte_variants`, and `fuzzy_regex` behavior covered by those four tests, then rerun `python -m unittest test_check_private_data -v`.
+
+Author banner:
+
+- `test_author_banner.py` failed `test_banner_in_every_source_file`.
+- Missing banner count increased from 26 to 27.
+- Local/project files in the failure include `.claude/skills/tlamatini-daily-chat-test/harness/discoverer_1000.py`, `Tlamatini/agent/self_healing.py`, `Tlamatini/agent/test_self_healing.py`, and the truncated tail still indicates more local findings beyond the Go runtime/vendor list.
+- Most remaining noise is still bundled/runtime content under `Go/`.
+- Smallest safe next action: update the banner guard to exclude bundled third-party/runtime trees such as `Go/`, then resolve only the remaining local project files.
+
+Private-data guard:
+
+- `test_private_data_guard.py` was bounded at 60 seconds and timed out during `test_deep_pii_scan_delegated_to_auditor`.
+- Unlike prior runs, `.private_targets.json` exists today, so the guard launches `check_private_data.py --local --no-llm --repo C:\Development\Tlamatini --targets-file C:\Development\Tlamatini\.private_targets.json` instead of skipping the deep local target scan.
+- Before timeout, `test_all_published_tags_still_exist` already failed.
+- Smallest safe next action: run the delegated private-data scan separately with an explicit longer budget, then fix the missing-tag and scan findings without mixing them into performance work.
+
+Deploy warnings:
+
+- `manage.py check --deploy` exits 0 but still reports 6 development warnings: `SECURE_HSTS_SECONDS`, `SECURE_SSL_REDIRECT`, weak/insecure `SECRET_KEY`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, and `DEBUG=True`.
+
+Lint warnings:
+
+- `npm run lint` exits 0 with 240 warnings and 0 errors.
+- 39 warnings are potentially fixable with `--fix`.
+
+### Next recommended implementation batch
+
+1. Restore Ollama and rerun only the visual dashboard to recover L1b live-serving verification.
+2. Fix the 4 private-data scanner normalization/fuzzy tests in the smallest possible patch.
+3. Run the `.private_targets.json` delegated scan as its own long-budget security job, then resolve missing-tag and private-target findings separately from performance work.
+4. Update the author-banner guard to exclude bundled third-party/runtime trees, then resolve remaining local project-file banner findings.
+5. Add a stable B1-B10 timing probe that separates cold cache, warm cache, `django.setup`, `agent.views`, `agent.rag.factory`, first live request, and live generate timing behind an explicit opt-in.
+6. Profile `agent.rag.factory` import cost before touching already-green warm embedding or reaper paths.

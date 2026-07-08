@@ -1236,7 +1236,7 @@ async function pollFlowHypervisorAlertSerial() {
             flowHypervisorPollingActive = false;
             flowHypervisorPollBusy = false;
             stopSystemManagedFlowHypervisor();
-            return;
+            
         }
     } catch (err) {
         // ignore network errors

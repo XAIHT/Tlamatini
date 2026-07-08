@@ -40,7 +40,7 @@ const GLOBAL_STATE = {
     RUNNING: 'RUNNING',
     PAUSED: 'PAUSED'
 };
-let globalRunningState = GLOBAL_STATE.STOPPED;
+const globalRunningState = GLOBAL_STATE.STOPPED;
 
 // Flow validation state
 const VALIDATION_STATE = {
@@ -48,20 +48,20 @@ const VALIDATION_STATE = {
     INVALID: 'INVALID',
     NOT_VALIDATED: 'NOT-VALIDATED'
 };
-let flowValidationStatus = VALIDATION_STATE.NOT_VALIDATED;
+const flowValidationStatus = VALIDATION_STATE.NOT_VALIDATED;
 
 // Multi-array to store paused processes per session (keyed by session ID)
 // Structure: { [sessionId]: [{ canvas_id, folder_name, script_name, pid, cmdline }, ...] }
 const pausedProcessesOnPause = {};
 
 // Title hourglass prefix - updated by polling logic
-let titleBusyPrefix = "";
+const titleBusyPrefix = "";
 
 // FlowCreator waiting flag to show hourglass even if not polling
-let isFlowCreatorWaiting = false;
+const isFlowCreatorWaiting = false;
 
 // Busy flag to prevent double-clicks while processing
-let isBusyProcessing = false;
+const isBusyProcessing = false;
 
 // Unsaved changes flag
 let hasUnsavedChanges = false;

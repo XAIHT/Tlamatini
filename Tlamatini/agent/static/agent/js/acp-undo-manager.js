@@ -108,7 +108,7 @@ class UndoManager {
 // ========================================
 // AGENT STATUS POLLING CONSTANTS
 // ========================================
-let agentStatusPollerInterval = null;
+const agentStatusPollerInterval = null;
 const AGENT_STATUS_POLL_INTERVAL = 300; // Poll every 300ms for faster updates
 
 // Initialize UndoManager with 1024 action limit
