@@ -141,6 +141,17 @@ EXCLUDED_FILE_NAMES = {
     "db.sqlite3", "data.keys", "key.txt", "cookie.txt", "crumb.json",
     "package-lock.json", "settings.local.json", "_version.py",
     ".build.lock", "Thumbs.db", ".DS_Store",
+    # PII / private local state (gitignored) — NEVER snapshot. contacts.private.json
+    # holds Angela's REAL phone numbers (the private build bundles it as the install's
+    # contacts.json via TLAMATINI_BUNDLE_CONTACTS — it is user data, not source);
+    # .private_targets.json is her leak-target list (names/phones/emails); a live
+    # contacts.json is user state a rebuild never needs (build.py regenerates it).
+    "contacts.private.json", "contacts.json",
+    ".private_targets.json", "private_targets.json",
+    # Leak-audit artifacts (gitignored) — carry found-secret SAMPLES by design,
+    # so shipping them into the snapshot re-leaks what they flagged.
+    "private_data_audit_report.json", "personal_info_audit_report.md",
+    "public_release_verify_report.json",
 }
 
 # Glob patterns (matched against the file name) skipped everywhere.

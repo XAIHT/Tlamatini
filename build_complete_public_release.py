@@ -117,7 +117,14 @@ REGEN_TOUCHED = [
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              "build", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-             "staticfiles", "Temp", "python", "ms-playwright", "jre", "git"}
+             "staticfiles", "Temp", "python", "ms-playwright", "jre", "git",
+             # Gitignored local runtimes / scratch / snapshots — never published,
+             # so never scrubbed. The self-provisioned Go toolchain in particular
+             # holds READ-ONLY module-cache files (crash write_text with
+             # PermissionError), and it plus the pool scratch is huge. Mirrors the
+             # SKIP_DIRS in check_private_data.py.
+             "Go", "go-build", "Templates", "TlamatiniSourceCode",
+             "pools", "mcp_agent_runs"}
 TEXT_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".env",
             ".cfg", ".ini", ".toml", ".html", ".css", ".csv", ".pmt", ".keys"}
 # NEVER scrub the sources of truth: the keys vault and the targets file. Scrubbing
@@ -230,8 +237,15 @@ def scrub_file(path: Path, values: list[str], extra: list[str], backup: Backup) 
             text = text.replace(v, PLACEHOLDER)
     text = SECRET_KEY_RE.sub(lambda m: m.group(1) + PLACEHOLDER + m.group(3), text)
     if text != original:
-        backup.save(path)
-        path.write_text(text, encoding="utf-8")
+        try:
+            backup.save(path)
+            path.write_text(text, encoding="utf-8")
+        except OSError as exc:
+            # A read-only / locked file we don't own (e.g. a bundled runtime's
+            # module cache) must NEVER abort the release. SKIP_DIRS already excludes
+            # the known runtime trees; this is the belt-and-suspenders backstop.
+            print(f"  [skip] cannot scrub {path}: {exc}")
+            return 0
         return 1
     return 0
 
