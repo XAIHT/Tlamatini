@@ -63,16 +63,22 @@ Consequences that MUST be respected by any new canvas code:
 
 If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.), it almost always belongs as a child of `#canvas-content`, not `#submonitor-container`, so it shares the coordinate frame with the items it visualizes.
 
-## Shared / chat-runtime auxiliary (7 modules)
+## Shared / chat-runtime auxiliary (9 modules)
 - `canvas_item_dialog.js` - Agent config dialog on canvas
 - `contextual_menus.js` - Right-click menus
-- `tools_dialog.js` - Tool enable/disable dialog
+- `tools_dialog.js` - Tool enable/disable dialog + the **Catalog of Prompts** (`#prompts-catalog`): primary load is ONE `GET /agent/list_prompts/` call (v1.38.1) rendering every seeded prompt card; the legacy `prompt-1..N` probe loop is kept as the offline fallback (it still breaks at the first `idPrompt` gap)
 - `skills_dialog.js` - **ACPX-Skills navbar dropdown** dialogs (Configure checkbox grid mirroring the Mcps/Tools/Agents pattern + Browse list-and-detail + Diagnostics cross-check report + Reload single-action). Backed by `GET /agent/skills/` / `GET /agent/skills/<name>/` / `GET /agent/skills/_/diagnostics/` / `POST /agent/skills/_/reload/` plus the WebSocket `set-skills` channel for the toggle persistence. Per-skill state cached in the module-level `skills = []` array populated by `type: 'skill'` system messages — see `agent_page_chat.js`. The Configure dialog only ever writes `Skill.enabled`; everything else (description, runtime, frontmatter, sha256) is owned by `agent/acpx/service.py::boot_skills()` and reloaded from SKILL.md on disk.
 - `chat_page_runtime_poller.js` - Chat-side wrapped-runtime poller (status / log / wait helpers)
 - `shared-runtime-dialogs.js` - Shared modal dialog widgets used by chat + ACP runtime views
 - `external_mcps_dialog.js` - **External ▸ MCPs navbar dialog** (entry point `OpenExternalMcpsDialog`, navbar item `#external-mcps`). The user-facing surface of the universal External MCP CLIENT (see `docs/claude/architecture.md` → *External MCPs*): a searchable catalog of every server in `external_mcps.json`, an **at-most-5-active** selection, and **drag-a-`.json`-onto-the-dialog import**. Backed by three endpoints — `GET /agent/external_mcps/` (list catalog + active set), `POST /agent/external_mcps/activate/` (set the active ≤5), `POST /agent/external_mcps/import/` (add a server from a dropped/pasted `mcpServers` JSON). Pure HTTP (NOT a WebSocket toggle channel like Mcps/Tools/Agents/Skills); CSS in `external_mcps_dialog.css` (`.emx-*` classes). This is a SEPARATE surface from the two `Mcp`-model context-provider checkboxes — see the architecture doc.
+- `access_keys_wizard.js` - **Config ▸ Access Keys Wizard** dialog — ONE guided place to set every provider secret (Anthropic, ProjectDiscovery/PDCP, Zavu, Meta WhatsApp, Telegram, …); each key is written into `config.json` and auto-injected into the matching agent runs (and redacted from `.flw` exports / by `regen_secrets.py`)
+- `contacts_dialog.js` - **Contacts book** dialog — manages `contacts.json` (user state, preserved across self-update) so the messaging agents (Telegrammer / Whatsapper / Zavuerer / Emailer) resolve a `contact_name` into the real address / phone / `@username`
 
-**Total: 29 JS modules** (8 chat + 13 ACP + 1 ACP entry-point + 7 shared/chat-runtime auxiliary).
+**Total: 31 JS modules** (8 chat + 13 ACP + 1 ACP entry-point + 9 shared/chat-runtime auxiliary).
+
+### Cross-file mutable globals MUST stay `let` (const-poison contract — 2026-07-08, v1.38.1)
+
+Module-level state that ANY other JS file reassigns at runtime — the `tools` / `agents` / `skills` arrays, chat history, canvas running/validation state, and busy flags in `agent_page_state.js` and `acp-globals.js` — MUST be declared `let`, never `const`. Per-file ESLint structurally CANNOT see cross-file reassignment, so a `let`→`const` "cleanup" lints green and then kills the chat page AND the ACP designer at load with `TypeError: Assignment to constant variable` (the 2026-07-08 const-poison incident, commit `85ee4e6c`, fixed by `af356c31`). `agent/test_frontend_mutable_state.py` guards BOTH the source tree and the collected `staticfiles` copies against re-poisoning. Full contract: `docs/claude/recent-fixes.md` (2026-07-08).
 
 ## Flow Compiler Pipeline (canvas / chat → backend → pool)
 

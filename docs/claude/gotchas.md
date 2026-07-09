@@ -91,7 +91,7 @@ Tlamatini uses SemVer 2.0.0 with git tags (`vMAJOR.MINOR.PATCH`) as the single s
 8. `FileSearchRAGChain` falls back to `localhost:50051` for gRPC
 9. Tool status keys are handwritten and can drift
 10. `mcpContent` is stored as string, not boolean
-11. Planner default `max_selected_tools` was lowered from 50 → **20** to prevent keyword inflation from selecting every tool on a single request
+11. Planner default `max_selected_tools` was lowered from 50 → **20** to prevent keyword inflation from selecting every tool on a single request *(historical: since 2026-06 Multi-Turn binds the FULL enabled surface — the planner subset no longer drops tools from the bind; the constant now only shapes capability hints/ordering — see `multi-turn.md`)*
 12. `tlamatini.log` is truncated on every server start (mode `'w'`) and has no rotation
 
 ---

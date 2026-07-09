@@ -486,10 +486,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on `v1.36.0` plus post-tag Multi-Turn reliability work: README.md, BookOfTlamatini.md, Git history, and source inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
+            "The live Git window now lands on `v1.38.1` — the robotic-arm looping milestone `v1.38.0` plus the same-week frontend-state-recovery hotfix: README.md, BookOfTlamatini.md, Git history, and source inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: `v1.36.0` adds Video-Analyzer, `v1.35.0` improves prompt discovery, post-tag work improves generated `.flw` layout, and the newest committed wave adds a self-healing model-step invoker plus a cleaner Create Flow gate."
+            "The current release wave is broader than a badge bump: `v1.36.0` added Video-Analyzer, `v1.38.0` proved the Robotic-Loop-Training circle live on a robotic arm (programmed from a blank page and two cameras) on top of the self-healing model-step invoker and the cleaner Create Flow gate, and `v1.38.1` recovered the frontend from the const-poison incident while adding the one-call `/agent/list_prompts/` prompt catalog."
         )
     if any(
         "retrying behaviour" in subject
@@ -640,7 +640,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.36.0` Video-Analyzer line plus the post-tag self-healing/Create Flow/`.flw` layout work, so this dossier now carries the current reliability story, media-verdict agent story, prompt-search UX, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.33.x prose."
+            "The latest documentation pass aligns the handbook and source with the `v1.38.1` release line — the `v1.38.0` robotic-arm looping milestone plus the frontend-state-recovery hotfix — so this dossier now carries the current reliability story, media-verdict agent story, prompt-search UX, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.33.x prose."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -888,7 +888,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.35.0` and `v1.36.0`, then received post-tag flow-layout and Multi-Turn reliability work: Video-Analyzer is now the headline tagged agent release, prompt search is sharper, generated flow files are more readable, and model-step failures are recovered more truthfully."
+            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.35.0`, `v1.36.0`, `v1.38.0`, and `v1.38.1`: Video-Analyzer became the headline tagged agent release, the Robotic-Loop-Training circle was proven live on a robotic arm, generated flow files are more readable, model-step failures are recovered more truthfully, and the const-poison hotfix restored the frontend while adding the one-call prompt catalog."
         )
         highlights.append(
             "The current visual-doc delta covers `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer`, prompt-card search improvements, serpentine `.flw` layout, `agent/self_healing.py`, Create Flow gate cleanup, and the carried v1.33.x/v1.34.x model and messaging context."
@@ -1377,7 +1377,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.36.0` release line plus post-tag commits through `43aa9921`, with committed Discoverer PDCP/vulnx/Go-deny changes and source inspection confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals in the generated inventory tables.",
+    "The repository currently resolves to the `v1.38.1` release line (HEAD is the tagged hotfix commit `08efa1d2`), with README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals.",
     "`v1.36.0` is the Video-Analyzer release: the new `video_analyzer` workflow agent and wrapped `chat_agent_video_analyzer` tool read recorded videos, check for motion, ask two vision models for independent evidence, merge their reports, and emit explicit routeable verdict tokens.",
     "`v1.35.0` improves prompt discovery: the Tools dialog prompt cards now search by substring, word-start, and fuzzy matches and show mode badges so operators can navigate the larger seeded prompt catalog without memorizing exact names.",
     "The post-tag flow-layout commit improves generated `.flw` layout: chat-created workflows now use a serpentine/boustrophedon grid so long Starter -> Agent -> ... -> Ender chains stay readable on the canvas instead of drifting off-screen.",
@@ -1391,11 +1391,27 @@ CURRENT_RELEASE_GUIDE = [
     "`v1.34.x` adds the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
     "`v1.33.x` remains the Zavuerer release family: the Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key, with setup-wizard dedupe and cloud-default cleanup carried forward.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.36.0` plus post-tag reliability, Create Flow, `.flw` layout, and Discoverer PDCP/vulnx/Go-deny work as the current product snapshot while preserving the historical context for self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+    "The resulting PDF/PPTX refresh treats `v1.38.1` — the robotic-arm looping milestone `v1.38.0` plus the frontend-state-recovery hotfix — as the current product snapshot while preserving the historical context for self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+]
+
+ROBOTIC_LOOP_GUIDE = [
+    "`v1.38.0` is the milestone where the Robotic-Loop-Training story became concrete: Tlamatini demonstrated a closed hardware loop by programming a robotic arm from a blank page and two cameras.",
+    "The loop is intentionally composable rather than one monolith: STM32er writes/builds/flashes firmware, Camcorder records the physical attempt, Video-Analyzer judges the captured motion, and Forker routes the next branch.",
+    "Video-Analyzer keeps the loop conservative: a deterministic OpenCV gate rejects no-motion clips before model spending, then two independent Ollama cloud vision interpreters must agree before `PASS_OK` is emitted.",
+    "Forker branches on substring-safe `TLM_VERDICT::<TOKEN>` markers, so `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, or `ANALYSIS_ERROR` can never accidentally match the success route.",
+    "The PDF and PPTX now describe that loop as a system capability, not merely a release-note flourish, because it explains how Tlamatini can iteratively improve real hardware with observed evidence.",
+]
+
+FRONTEND_HOTFIX_GUIDE = [
+    "`v1.38.1` is the same-week frontend-state-recovery hotfix: package.json is aligned at the tagged HEAD `08efa1d2`, while the functional fix landed in `af356c31` after the `85ee4e6c` const-poison incident.",
+    "The core contract is explicit: cross-file runtime globals in `agent_page_state.js` and `acp-globals.js` that other modules reassign must remain `let`, because per-file ESLint cannot see those cross-file writes.",
+    "`agent/test_frontend_mutable_state.py` now guards both source files and collected staticfiles so an automated cleanup cannot silently turn chat state, ACP state, tools, agents, skills, history, or busy flags back into `const`.",
+    "The Catalog of Prompts now loads through one secure `GET /agent/list_prompts/` endpoint ordered by `idPrompt`, eliminating expected-404 console spam and preventing an `idPrompt` gap from hiding later prompts.",
+    "The legacy prompt probe loop remains as an offline fallback, and the same fix also hardened dialogs: Configure-Mcps probe loops exit cleanly, About-video `play()` promises are guarded, and Esc closes About/Update overlays.",
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: latest reachable public tag `v1.36.0`; the live HEAD now includes post-tag generated-flow layout and self-healing reliability work.",
+    "Release identity: latest reachable public tag `v1.38.1`; the live HEAD is the tagged hotfix commit itself (frontend state recovery + the one-call `/agent/list_prompts/` prompt catalog).",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1555,12 +1571,12 @@ COMMAND_WATCHDOG_GUIDE = [
 
 NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
-    "The current `v1.36.0` wave adds concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
-    "The immediately adjacent `v1.35.0` and post-tag work updates prompt-card search/rendering assets and `.flw` generation layout code, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
+    "The `v1.36.0` wave added concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
+    "The adjacent `v1.35.0`-through-`v1.38.1` work updates prompt-card search/rendering assets (now fed by the one-call `/agent/list_prompts/` endpoint), `.flw` generation layout code, and the restored-mutable frontend state, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
     "The newest committed reliability assets include `agent/self_healing.py`, `agent/test_self_healing.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, `Tlamatini/tests_e2e/test_create_flow_visual.py`, and coordinated changes in `mcp_agent.py`, `consumers.py`, `response_parser.py`, and the chat frontend.",
     "The committed Discoverer PDCP assets include `access_key_wizard.py` Security Recon fields, `tools.py` default seeding, `agent_contracts.py` `.flw` redaction, `regen_secrets.py` scrubbing, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` for the latest-CVE prompt.",
     "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, tracked `git_deny_go.py` guard/pre-commit installer, `discoverer_1000.py`, and `test_discoverer_thousand.py` validation coverage.",
-    "The current git-unignored asset scan sees `image.png` as a root PNG working-tree addition (a screenshot of a Tlamatini answer with a disabled Create Flow button), while ignored local runtime caches such as `Go/` remain outside the project inventory.",
+    "The project inventory is rebuilt from `git ls-files` plus `git ls-files --others --exclude-standard` on every run, so any git-unignored local assets are counted while ignored runtime caches such as `Go/` remain outside the dossier.",
     "The newest frontend assets include `agent_page_chat.js`, `agent_page_ui.js`, `eslint.config.mjs`, and the Claude frontend/Multi-Turn/recent-fixes notes that document self-healing status frames and Create Flow name resolution.",
     "The earlier `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
     "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
@@ -1576,7 +1592,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.36.0` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, generated `.flw` layout, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.38.1` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, Robotic-Loop-Training, generated `.flw` layout, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2220,6 +2236,12 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.38.0 robotic loop closure", styles["h2"]))
+    for item in ROBOTIC_LOOP_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.38.1 frontend-state recovery hotfix", styles["h2"]))
+    for item in FRONTEND_HOTFIX_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Post-v1.36.0 self-healing Multi-Turn reliability", styles["h2"]))
     for item in SELF_HEALING_GUIDE:
@@ -3036,7 +3058,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.36.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.38.1", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3050,7 +3072,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.36.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.38.1", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3059,7 +3081,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.36.0 plus self-healing, Create Flow, and Discoverer hardening", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.38.1 — the robotic-arm looping milestone plus the frontend-state-recovery hotfix", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:4], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[4:8], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3067,6 +3089,16 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Current Release Context", "Discoverer hardening plus carried product story", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[8:11], THEME["jade"], "rel-c", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[11:], THEME["amber"], "rel-d", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Robotic Loop Closed", "v1.38.0 — from blank page to observed hardware behavior", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Closed-loop chain", ROBOTIC_LOOP_GUIDE[:2], THEME["copper"], "robot-loop-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Verdict safety", ROBOTIC_LOOP_GUIDE[2:], THEME["jade"], "robot-loop-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "v1.38.1 Frontend Hotfix", "mutable-state recovery and one-call prompt catalog", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Const-poison recovery", FRONTEND_HOTFIX_GUIDE[:3], THEME["amber"], "frontend-hotfix-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prompt catalog path", FRONTEND_HOTFIX_GUIDE[3:], THEME["jade"], "frontend-hotfix-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Self-Healing Multi-Turn", "watchdog-bounded model steps and truthful recovery", THEME["copper"])
@@ -3478,7 +3510,7 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "through post-v1.36.0 reliability wave", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "through the v1.38.1 hotfix", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "Video-Analyzer (v1.36.0): motion-verdict video analysis for robotic-loop training, with `TLM_VERDICT::` routing.",
         "Self-healing Multi-Turn: watchdog-bounded model steps, tactic switching, live status, and truthful degraded answers.",
@@ -3489,7 +3521,7 @@ def build_ppt(context: dict) -> None:
         "Media/voice and firmware lanes remain active: Talker, Whisperer, Camcorder, Recorder, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, and Unrealer.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: `v1.36.0` plus post-tag generated-flow layout and self-healing reliability at the current HEAD.",
+        "Resolved identity: `v1.38.1` at the current HEAD — the robotic-arm looping milestone (`v1.38.0`) plus the frontend-state-recovery hotfix.",
         "Create Flow now follows successful tool calls instead of the removed `answer_success` classifier.",
         "Frontend recovery controls keep live self-healing status frames in Cancel/busy state until the true final answer.",
         "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",

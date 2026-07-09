@@ -86,7 +86,7 @@ When the user asks to **"use Tlamatini's agents"** — or names any pool agent (
 
 When you **create (or make Multi-Turn-capable) any agent** — i.e. it has a wrapped `chat_agent_<name>` tool so the LLM can run it in Multi-Turn — you **MUST** also seed **at least ONE** example prompt for it into the **Catalog of Prompts** (the `#prompts-catalog` modal). This is a **hard completion gate, NON-NEGOTIABLE**: a Multi-Turn agent shipped **without** at least one catalog prompt is **INCOMPLETE** and the task is **not done**. (Canvas-only agents with no wrapped tool are exempt.)
 
-Mechanics: add a migration `agent/migrations/<NNNN>_add_<name>_demo_prompts.py` that seeds the **`Prompt`** model (`idPrompt`, `promptName='prompt-<N>'`, `promptContent`) via `update_or_create`. **CONTIGUITY contract:** the catalog dropdown (`static/agent/js/tools_dialog.js`) enumerates `prompt-1, prompt-2, …` and **breaks at the first gap**, so `idPrompt`/`promptName` must stay contiguous — find the current highest slot (read the latest `*_demo_prompts.py`) and **append** with no renumber (`MAX_PROMPTS=256`). The prompt must drive `chat_agent_<name>` with a realistic, **SAFE** task (the daily chat test may run it). Full step-by-step: `create_new_agent.md` Step 7.8 and the `tlamatini-agent-creation` skill Phase 19.
+Mechanics: add a migration `agent/migrations/<NNNN>_add_<name>_demo_prompts.py` that seeds the **`Prompt`** model (`idPrompt`, `promptName='prompt-<N>'`, `promptContent`) via `update_or_create`. **CONTIGUITY contract (relaxed to fallback-only in v1.38.1):** the catalog's primary load is now ONE **`GET /agent/list_prompts/`** call (`views.list_prompts_view`) returning ALL `Prompt` rows ordered by `idPrompt` — a gap no longer hides the prompts after it — but the legacy `prompt-1, prompt-2, …` probe loop in `static/agent/js/tools_dialog.js` is KEPT as the offline fallback and **still breaks at the first gap**, so `idPrompt`/`promptName` must STAY contiguous — find the current highest slot (read the latest `*_demo_prompts.py`) and **append** with no renumber (`MAX_PROMPTS=256`). The prompt must drive `chat_agent_<name>` with a realistic, **SAFE** task (the daily chat test may run it). Full step-by-step: `create_new_agent.md` Step 7.8 and the `tlamatini-agent-creation` skill Phase 19.
 
 ---
 
@@ -225,10 +225,10 @@ Tlamatini/                          # Git root
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 28 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 6 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js)
+│   │   │   ├── js/                 # 31 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 9 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js, external_mcps_dialog.js, contacts_dialog.js, access_keys_wizard.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
-│   │   └── migrations/             # Django migrations (latest: 0103_add_stm32er_demo_prompts; 0101/0102 add the STM32er agent + chat_agent_stm32er tool)
+│   │   └── migrations/             # Django migrations (latest: 0169_add_discoverer_cvemap_latest_demo_prompt; 0166/0167/0168 add the Video-Analyzer agent + chat_agent_video_analyzer tool + demo prompt)
 │   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)
