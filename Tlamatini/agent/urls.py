@@ -33,6 +33,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('load_canvas/<str:filename>/', secure_get(views.load_canvas_view), name='load_canvas'),
     path('load_prompt/<str:prompt_name>/', secure_get(views.load_prompt_view), name='load_prompt'),
+    path('list_prompts/', secure_get(views.list_prompts_view), name='list_prompts'),
     path('load_omissions/<str:omission_name>/', secure_get(views.load_omissions_view), name='load_omissions'),
     path('load_mcp/<str:mcp_name>/', secure_get(views.load_mcp_view), name='load_mcp'),
     path('load_tool/<str:tool_name>/', secure_get(views.load_tool_view), name='load_tool'),

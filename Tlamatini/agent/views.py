@@ -238,6 +238,19 @@ def load_prompt_view(request, prompt_name):
     except Prompt.DoesNotExist:
         return HttpResponse("Prompt not found in database", status=404)
 
+def list_prompts_view(request):
+    prompts = Prompt.objects.order_by('idPrompt').values('idPrompt', 'promptName', 'promptContent')
+    return JsonResponse({
+        'prompts': [
+            {
+                'index': prompt['idPrompt'],
+                'name': prompt['promptName'],
+                'content': prompt['promptContent'],
+            }
+            for prompt in prompts
+        ]
+    })
+
 def load_omissions_view(request, omission_name):
     try:
         omissions = Omission.objects.get(omissionName=omission_name)

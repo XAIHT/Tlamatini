@@ -164,31 +164,31 @@ function sendChatSocketMessage(payload, disconnectedMessage = 'Live connection l
 }
 
 // --- Mutable UI flags ---
-const contextButtonClicked = false;
-const canvasSettedAsContext = false;
-const confirmationByUser = false; // eslint-disable-line no-unused-vars
+let contextButtonClicked = false;
+let canvasSettedAsContext = false;
+let confirmationByUser = false; // eslint-disable-line no-unused-vars
 let inLongOperation = false;
-const canvasLoaded = false;
-const openEnabled = true;
-const reConnectEnabled = true;
-const contextEnabled = true;
-const cleanCanvasEnabled = true;
-const actualContextDir = null;
+let canvasLoaded = false;
+let openEnabled = true;
+let reConnectEnabled = true;
+let contextEnabled = true;
+let cleanCanvasEnabled = true;
+let actualContextDir = null;
 let lapseLoadingContext = false;
-const clearContextEnabled = false;
-const cleanHistoryEnabled = true;
-const fileTypeOmissions = "";
+let clearContextEnabled = false;
+let cleanHistoryEnabled = true;
+let fileTypeOmissions = "";
 const textEditorCode = document.querySelector('#text-editor code');
-const chatHistory = [];
-const historyIndex = 0;
-const tempInput = '';
-const buildingInitial = false; // eslint-disable-line no-unused-vars
-const titleBusyPrefix = "";
-const mcp1_enabled = false;
-const mcp2_enabled = false;
-const tools = [];
-const agents = [];
-const skills = []; // populated by `type: 'skill'` system messages — see agent_page_chat.js
+let chatHistory = [];
+let historyIndex = 0;
+let tempInput = '';
+let buildingInitial = false; // eslint-disable-line no-unused-vars
+let titleBusyPrefix = "";
+let mcp1_enabled = false;
+let mcp2_enabled = false;
+let tools = [];
+let agents = [];
+let skills = []; // populated by `type: 'skill'` system messages — see agent_page_chat.js
 
 // --- Constants ---
 const loadCatalogOfPrompts = null; // eslint-disable-line no-unused-vars
@@ -467,7 +467,7 @@ function applyStoredStepByStepState() { // eslint-disable-line no-unused-vars
 const openInDropdownItem = document.getElementById('open-in-dropdown-item');
 const openInMenuButton = document.getElementById('open-in-menu-button');
 const openInMenuList = document.getElementById('open-in-menu-list');
-const installedApps = [];
+let installedApps = [];
 
 // --- Initial button state ---
 contextButton.disabled = true;

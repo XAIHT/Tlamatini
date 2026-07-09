@@ -690,15 +690,15 @@
   {{ request.user.username|json_script:"user_username" }}
   {{ initial_messages|json_script:"initial_messages" }}
   {{ ollama_base_url|json_script:"ollama_config" }}
-  <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}_statefix"></script>
   <script src="{% static 'agent/js/agent_page_ui.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}"></script>
-  <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}_dialogfix"></script>
   <script src="{% static 'agent/js/agent_page_context.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_chat.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_layout.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}"></script>
-  <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}_promptfix"></script>
   <script src="{% static 'agent/js/skills_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/external_mcps_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/contacts_dialog.js' %}?v={{ STATIC_VERSION }}"></script>

@@ -340,12 +340,75 @@ $(function () {
     const searchClear = document.getElementById('prompt-search-clear');
     const searchCount = document.getElementById('prompt-search-count');
 
+    function renderPromptCard(promptName, index, content) {
+        const modes = classifyPromptModes(content);
+
+        const card = document.createElement('div');
+        card.className = 'text-box prompt-card';
+        card.id = promptName;
+        card.dataset.fullContent = content;
+        card.dataset.modes = modes.join(',');
+
+        const header = document.createElement('div');
+        header.className = 'prompt-card-header';
+
+        const badge = document.createElement('span');
+        badge.className = 'prompt-card-badge';
+        badge.textContent = '#' + String(index).padStart(2, '0');
+
+        const title = document.createElement('span');
+        title.className = 'prompt-card-title';
+        title.textContent = extractPromptTitle(content);
+
+        header.appendChild(badge);
+        header.appendChild(title);
+        header.appendChild(buildPromptModeBadges(modes));
+
+        const preview = document.createElement('p');
+        preview.className = 'prompt-card-preview tool-box-entry';
+        preview.textContent = buildPromptPreview(content);
+
+        const footer = document.createElement('div');
+        footer.className = 'prompt-card-footer';
+        const sizeChip = document.createElement('span');
+        sizeChip.className = 'prompt-card-chip';
+        sizeChip.textContent = `${content.length.toLocaleString()} chars`;
+        const insertChip = document.createElement('span');
+        insertChip.className = 'prompt-card-chip prompt-card-chip-action';
+        insertChip.textContent = 'click to insert →';
+        footer.appendChild(sizeChip);
+        footer.appendChild(insertChip);
+
+        card.appendChild(header);
+        card.appendChild(preview);
+        card.appendChild(footer);
+
+        // Cache the searchable fields + node refs the live search needs.
+        card._promptIndex = index;
+        card._titleEl = title;
+        card._previewEl = preview;
+        card._titleText = title.textContent;
+        card._previewText = preview.textContent;
+        card._searchFields = {
+            numberStr: String(index),
+            title: title.textContent.toLowerCase(),
+            preview: preview.textContent.toLowerCase(),
+            modes: modes
+                .map((m) => (PROMPT_MODE_META[m] ? PROMPT_MODE_META[m].label : m))
+                .join(' ')
+                .toLowerCase(),
+            content: (content || '').toLowerCase()
+        };
+
+        const toolsBodyElement = document.getElementById('tools-body');
+        toolsBodyElement.appendChild(card);
+    }
+
     async function loadPrompt(promptName, index) {
         try {
             const response = await fetch(`/agent/load_prompt/${promptName}/`);
 
             if (response.status === 404) {
-                console.error('404 Error: Prompt not found - ' + promptName);
                 return true;
             }
             if (!response.ok) {
@@ -355,72 +418,10 @@ $(function () {
 
             const content = await response.text();
             if (content === 'Prompt not found in database') {
-                console.error('Prompt not found in database: ' + promptName);
                 return true;
             }
 
-            const modes = classifyPromptModes(content);
-
-            const card = document.createElement('div');
-            card.className = 'text-box prompt-card';
-            card.id = promptName;
-            card.dataset.fullContent = content;
-            card.dataset.modes = modes.join(',');
-
-            const header = document.createElement('div');
-            header.className = 'prompt-card-header';
-
-            const badge = document.createElement('span');
-            badge.className = 'prompt-card-badge';
-            badge.textContent = '#' + String(index).padStart(2, '0');
-
-            const title = document.createElement('span');
-            title.className = 'prompt-card-title';
-            title.textContent = extractPromptTitle(content);
-
-            header.appendChild(badge);
-            header.appendChild(title);
-            header.appendChild(buildPromptModeBadges(modes));
-
-            const preview = document.createElement('p');
-            preview.className = 'prompt-card-preview tool-box-entry';
-            preview.textContent = buildPromptPreview(content);
-
-            const footer = document.createElement('div');
-            footer.className = 'prompt-card-footer';
-            const sizeChip = document.createElement('span');
-            sizeChip.className = 'prompt-card-chip';
-            sizeChip.textContent = `${content.length.toLocaleString()} chars`;
-            const insertChip = document.createElement('span');
-            insertChip.className = 'prompt-card-chip prompt-card-chip-action';
-            insertChip.textContent = 'click to insert →';
-            footer.appendChild(sizeChip);
-            footer.appendChild(insertChip);
-
-            card.appendChild(header);
-            card.appendChild(preview);
-            card.appendChild(footer);
-
-            // Cache the searchable fields + node refs the live search needs.
-            card._promptIndex = index;
-            card._titleEl = title;
-            card._previewEl = preview;
-            card._titleText = title.textContent;
-            card._previewText = preview.textContent;
-            card._searchFields = {
-                numberStr: String(index),
-                title: title.textContent.toLowerCase(),
-                preview: preview.textContent.toLowerCase(),
-                modes: modes
-                    .map((m) => (PROMPT_MODE_META[m] ? PROMPT_MODE_META[m].label : m))
-                    .join(' ')
-                    .toLowerCase(),
-                content: (content || '').toLowerCase()
-            };
-
-            const toolsBodyElement = document.getElementById('tools-body');
-            toolsBodyElement.appendChild(card);
-
+            renderPromptCard(promptName, index, content);
             return false;
         } catch (error) {
             console.error('Error loading prompt:', error);
@@ -433,11 +434,23 @@ $(function () {
         toolsBodyElement.innerHTML = "";
 
         try {
-            for (let i = 1; i <= MAX_PROMPTS; i++) {
-                const promptNameIterator = "prompt-" + i.toString();
-                const errorDetected = await loadPrompt(promptNameIterator, i);
-                if (errorDetected === true) {
-                    break;
+            const response = await fetch('/agent/list_prompts/', { credentials: 'same-origin' });
+            if (response.ok) {
+                const payload = await response.json();
+                (payload.prompts || []).forEach((prompt, idx) => {
+                    renderPromptCard(
+                        prompt.name || ('prompt-' + String(idx + 1)),
+                        Number(prompt.index) || idx + 1,
+                        prompt.content || ''
+                    );
+                });
+            } else {
+                for (let i = 1; i <= MAX_PROMPTS; i++) {
+                    const promptNameIterator = "prompt-" + i.toString();
+                    const errorDetected = await loadPrompt(promptNameIterator, i);
+                    if (errorDetected === true) {
+                        break;
+                    }
                 }
             }
         } catch (error) {

@@ -1023,6 +1023,9 @@ async function loadMcps() {
     try {
         for (let i = 1; i < MAX_MCPS; i++) {
             const mcpNameIterator = "mcp-" + i.toString();
+            if (!document.getElementById(mcpNameIterator)) {
+                break;
+            }
             const errorDetected = await loadMcp(mcpNameIterator);
             if (errorDetected === true) {
                 break;
@@ -1069,16 +1072,44 @@ function OpenAboutDialog(event) {
     const video = document.getElementById('about-video');
     overlay.style.display = 'flex';
     video.currentTime = 0;
-    video.play();
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+            // Closing the dialog immediately can interrupt autoplay; that is harmless.
+        });
+    }
 }
 
 function CloseAboutDialog(event) {
-    event.preventDefault();
+    if (event && event.preventDefault) {
+        event.preventDefault();
+    }
     const overlay = document.getElementById('about-overlay');
     const video = document.getElementById('about-video');
-    overlay.style.display = 'none';
-    video.pause();
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    if (video) {
+        video.pause();
+    }
 }
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') {
+        return;
+    }
+
+    const aboutOverlay = document.getElementById('about-overlay');
+    if (aboutOverlay && aboutOverlay.style.display !== 'none') {
+        CloseAboutDialog(event);
+        return;
+    }
+
+    const updateOverlay = document.getElementById('update-overlay');
+    if (updateOverlay && updateOverlay.style.display !== 'none') {
+        CloseUpdateDialog(event);
+    }
+});
 
 // ============================================================
 // Check for updates dialog (About ▸ Check for updates)
