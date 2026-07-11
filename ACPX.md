@@ -470,6 +470,8 @@ You should see 20 skills passing. If any fail, fix the SKILL.md before continuin
 python Tlamatini/manage.py runserver --noreload
 ```
 
+> **`--noreload` is optional (since 2026-07-11):** plain `python Tlamatini/manage.py runserver` now boots clean and auto-reloads. It used to double-start the MCP ports `:8765` / `:50051` and crash with `WinError 10048`; fixed in `agent/apps.py`.
+
 In the log (`Tlamatini/tlamatini.log`) you should see:
 
 ```

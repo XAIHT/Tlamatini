@@ -531,7 +531,19 @@ def _seven_zip_extract(src_file: str, dest_dir: str, password: Optional[str]) ->
     cmd = ['7z', 'x', src_file, f'-o{dest_dir}', '-y']
     if password:
         cmd.append(f'-p{password}')
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True,
+                                stdin=subprocess.DEVNULL, timeout=600)
+    except subprocess.TimeoutExpired:
+        # An encrypted archive prompts for a password on stdin; with no timeout the 7z
+        # child blocks FOREVER, and because this runs before the end-stage the flow's
+        # target_agents never fire (permanent stall). Bound it + feed EOF so it can't
+        # wait on stdin, and convert to the SAME RuntimeError the caller already handles
+        # so the end-stage still triggers downstream. (2026-07-11 re-audit, [9])
+        raise RuntimeError(
+            "7z extraction timed out after 600s (likely an encrypted archive waiting "
+            "on a password, or a corrupt / zip-bomb input)."
+        ) from None
     if result.returncode != 0:
         err = result.stderr or result.stdout
         raise RuntimeError(f"7z extraction failed: {err.strip()}")
@@ -544,7 +556,16 @@ def _seven_zip_create(src_path: str, dest_file: str, password: Optional[str], ar
         cmd.append(f'-p{password}')
         if archive_type in ('7z', 'zip'):
             cmd.append('-mhe=on')
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True,
+                                stdin=subprocess.DEVNULL, timeout=600)
+    except subprocess.TimeoutExpired:
+        # Bound + EOF-feed 7z so it can't block forever on a stdin prompt; convert to
+        # the RuntimeError the caller handles so the end-stage still fires. (re-audit [9])
+        raise RuntimeError(
+            "7z archive creation timed out after 600s (7z waiting on stdin, or a "
+            "pathological input)."
+        ) from None
     if result.returncode != 0:
         err = result.stderr or result.stdout
         raise RuntimeError(f"7z archive creation failed: {err.strip()}")

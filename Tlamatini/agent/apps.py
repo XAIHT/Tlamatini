@@ -17,8 +17,10 @@ class AgentConfig(AppConfig):
     def ready(self):
         """
         Ensure the MCP system server runs in the background for the lifetime
-        of the Django process (e.g., when using `runserver --noreload` or our
-        custom `startserver`). We start it once in a daemon thread.
+        of the Django process (e.g., `runserver` with OR without `--noreload`,
+        or our custom `startserver`). We start it once in a daemon thread — the
+        RUN_MAIN gate below makes plain `runserver` (reloader ON) start it in the
+        worker only, so the two MCP helper ports are never double-bound.
         """
         # Contacts book: export TLAMATINI_CONTACTS so every spawned pool agent
         # (Telegrammer / Whatsapper) inherits the resolved contacts.json path —
@@ -53,6 +55,21 @@ class AgentConfig(AppConfig):
                 'asgi' in argv
             )
             if not should_start:
+                return
+
+            # Reloader-awareness (fixes plain `runserver` colliding on :8765 / :50051).
+            # `runserver` WITHOUT --noreload runs TWO processes — the autoreload watcher
+            # AND the worker child — and BOTH execute ready(). Without this gate the MCP
+            # helper servers (System-Metrics ws :8765 / Files-Search grpc :50051) get
+            # started twice and the second bind fails with WinError 10048
+            # ("only one usage of each socket address ..."). Django's autoreloader sets
+            # RUN_MAIN=true ONLY in the worker child; the watcher parent leaves it unset.
+            # So under the runserver reloader, start everything below ONLY in the worker.
+            # --noreload / daphne / asgi / startserver run a SINGLE process (no reloader,
+            # RUN_MAIN unset) and correctly fall through and start exactly once.
+            import os as _os
+            _runserver_reloader = ('runserver' in argv) and ('--noreload' not in argv)
+            if _runserver_reloader and _os.environ.get('RUN_MAIN') != 'true':
                 return
 
             # GPU max-performance + Ollama keep_alive=-1 pin. Runs on a

@@ -7,54 +7,36 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-import sys
-import asyncio
 from django.core.management.base import BaseCommand
-from agent.mcp_system_server import main as mcp1_main
-from agent.mcp_files_search_server import serve as mcp2_serve
 
 
 class Command(BaseCommand):
-    help = "Start Django dev server and run MCP system server in background (no auto-reload)."
+    help = "Start the Django server with the autoreloader OFF (the MCP helper servers are started once by AgentConfig.ready())."
 
     def add_arguments(self, parser):
         parser.add_argument('addrport', nargs='?', help='Optional port number, or ipaddr:port')
-        parser.add_argument('--noreload', action='store_true', help='Disable Django autoreloader')
+        parser.add_argument('--noreload', action='store_true', help='Disable Django autoreloader (already the default for this command)')
 
     def handle(self, *args, **options):
         """
-        Runs MCP server in the same process event loop, then delegates to runserver
-        with --noreload to prevent double-spawn. Ensures MCP task lives until
-        process exit.
+        Delegate to Django's ``runserver`` with the autoreloader OFF.
+
+        The two MCP helper servers (System-Metrics ws :8765, Files-Search grpc :50051)
+        are started EXACTLY ONCE by ``agent.apps.AgentConfig.ready()`` — its
+        ``should_start`` gate matches ``startserver`` too, and the start is guarded by
+        the ``mcp_server_running`` flag — so this command must NOT start them again.
+
+        It used to spawn its own ``run_mcp1`` / ``run_mcp2`` threads here, which
+        DOUBLE-BOUND the ports in the same process: the second :8765 bind raised
+        ``OSError [WinError 10048]`` (swallowed to stderr) and the second :50051 bind
+        silently returned 0 (gRPC ``add_insecure_port`` never raises), parking a
+        non-daemon gRPC thread on a dead socket forever. Delegating to ``runserver``
+        and letting ``ready()`` own the MCP servers removes the collision. See
+        ``docs/claude/recent-fixes.md`` (2026-07-11).
         """
-        import threading
-
-        def run_mcp1():
-            try:
-                asyncio.run(mcp1_main())
-            except KeyboardInterrupt:
-                pass
-            except Exception as e:
-                sys.stderr.write(f"MCP-1 server error: {e}\n")
-
-        def run_mcp2():
-            try:
-                asyncio.run(mcp2_serve())
-            except KeyboardInterrupt:
-                pass
-            except Exception as e:
-                sys.stderr.write(f"MCP-2 server error: {e}\n")
-
-        mcp1_thread = threading.Thread(target=run_mcp1, daemon=False, name="MCPSystemServerThread")
-        mcp1_thread.start()
-        mcp2_thread = threading.Thread(target=run_mcp2, daemon=False, name="MCPFilesSearchServerThread")
-        mcp2_thread.start()
         from django.core.management import call_command
         addrport = options.get('addrport')
-        noreload = True
-        args_call = []
-        
-        if addrport:
-            args_call.append(addrport)
-
-        call_command('runserver', *args_call, use_reloader=not noreload)
+        args_call = [addrport] if addrport else []
+        # Autoreloader OFF on purpose: a reloader child would re-run ready() and
+        # re-bind the two MCP ports. (Single process => ready() binds them once.)
+        call_command('runserver', *args_call, use_reloader=False)

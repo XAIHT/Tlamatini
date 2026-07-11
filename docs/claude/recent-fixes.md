@@ -18,6 +18,21 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-07-11 — Plain `runserver` (reloader ON) no longer double-starts the MCP helper ports — do NOT remove the `RUN_MAIN` gate in `agent/apps.py`
+
+**File: `agent/apps.py` (`AgentConfig.ready()`), plus the run-instruction docs (`README.md`, `CLAUDE.md`, `BookOfTlamatini.md`, `ACPX.md`, `KIMI.md`, `agent/doc_generation/complete_project_docs.py`).**
+
+- **Bug (long-standing, never noticed):** `python manage.py runserver` **without** `--noreload` runs TWO processes — Django's autoreload **watcher** AND the **worker** — and BOTH execute `AppConfig.ready()`. `ready()` starts the two MCP helper servers (System-Metrics `ws://…:8765`, Files-Search `grpc :50051`), so they were started **twice**; the second bind failed with `OSError [WinError 10048]` ("only one usage of each socket address…") / gRPC "Failed to bind to address `[::]:50051`", printing two red tracebacks on **every** plain-`runserver` boot. The in-process `global_state('mcp_server_running')` guard cannot catch it — it is per-process, and the two reloader processes each hold their own copy. It stayed hidden for years because EVERY doc says to run `runserver --noreload`, and the shipped `.exe` uses the single-process `startserver`; only a developer who dropped `--noreload` from source ever hit it.
+- **Fix:** immediately after the existing `should_start` gate in `ready()`, a reloader-awareness gate. Django sets `RUN_MAIN=true` ONLY in the worker child (the watcher parent leaves it unset), so:
+  ```python
+  _runserver_reloader = ('runserver' in argv) and ('--noreload' not in argv)
+  if _runserver_reloader and _os.environ.get('RUN_MAIN') != 'true':
+      return
+  ```
+  The watcher parent bows out; only the worker binds the ports (exactly once). `--noreload` / `daphne` / `asgi` / `startserver` are single-process (no reloader, `RUN_MAIN` unset) and fall through unchanged, binding once.
+- **Do NOT revert / do NOT "simplify":** removing this gate reintroduces the double-bind crash on plain `runserver`. Do NOT reduce it to `if _os.environ.get('RUN_MAIN') != 'true': return` alone — that would wrongly SKIP startup under `--noreload` (which has NO `RUN_MAIN`), breaking the documented run mode and the frozen build. The docs' `--noreload` requirement is now softened to "optional" (both modes boot clean).
+- **Same class, second site — `startserver` (2026-07-11 follow-up, found by the deep audit):** the custom `python manage.py startserver` dev command ALSO double-started the two MCP servers — `ready()` starts them (its `should_start` matches `startserver`) AND `startserver.handle()` spawned its OWN `run_mcp1` / `run_mcp2` threads, double-binding `:8765` (WinError 10048 → stderr) and `:50051` (silent gRPC bind-to-nothing on a parked `daemon=False` thread). Fixed by making `ready()` the SOLE owner: `handle()` now just `call_command('runserver', use_reloader=False)` and starts NO MCP threads (unused `sys`/`asyncio`/`mcp1_main`/`mcp2_serve` imports removed). **Do NOT re-add MCP thread starts to `startserver.py`.** (The frozen `.exe` launches via `runserver --noreload`, not `startserver`, so this was a dev-command-only defect.)
+
 ### 2026-07-08 — Const-poison incident + v1.38.1 hotfix: cross-file mutable JS globals MUST stay `let`; Catalog of Prompts now loads via `GET /agent/list_prompts/` — do NOT re-`const` the globals, do NOT drop the fallback probe loop
 
 **Files: `agent/static/agent/js/agent_page_state.js` + `agent/static/agent/js/acp-globals.js` (mutable globals restored to `let`), `agent/static/agent/js/tools_dialog.js` + `agent/views.py::list_prompts_view` + `agent/urls.py` (new `/agent/list_prompts/` route, `secure_get`-wrapped), `agent/static/agent/js/agent_page_dialogs.js` (dialog hardening), `agent/templates/agent/agent_page.html` + `agentic_control_panel.html` (cache-busters `_statefix`/`_dialogfix`/`_promptfix`), NEW `agent/test_frontend_mutable_state.py` (146-line regression suite). Commits: incident `85ee4e6c` → fix `af356c31` → tag **v1.38.1** (package.json aligned by `08efa1d2`).**

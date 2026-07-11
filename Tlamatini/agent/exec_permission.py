@@ -204,13 +204,25 @@ def get_broker(key: Any) -> Optional[ExecPermissionBroker]:
         return _BROKERS.get(key)
 
 
-def unregister_broker(key: Any) -> None:
-    """Remove and close the broker registered under ``key`` (if any)."""
+def unregister_broker(key: Any, broker: Optional[ExecPermissionBroker] = None) -> None:
+    """Remove and close the broker registered under ``key``.
+
+    Pass the SPECIFIC ``broker`` this request registered: two concurrent same-user
+    requests (two browser tabs) share the same ``key`` (the user id), so a finished
+    request's teardown must only close ITS OWN broker — never a sibling's still-live
+    broker (which would resolve the sibling's pending prompt to "deny" and halt its
+    chain). Omitting ``broker`` keeps the legacy unconditional behavior. (re-audit [1])
+    """
     with _REGISTRY_LOCK:
-        broker = _BROKERS.pop(key, None)
-    if broker is not None:
+        current = _BROKERS.get(key)
+        if broker is not None and current is not broker:
+            # A newer request replaced us under this key — leave its live broker alone.
+            return
+        _BROKERS.pop(key, None)
+        target = current
+    if target is not None:
         try:
-            broker.close()
+            target.close()
         except Exception:  # noqa: BLE001
             pass
 

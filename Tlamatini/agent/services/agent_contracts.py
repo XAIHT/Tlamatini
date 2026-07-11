@@ -130,6 +130,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "mcp_doctor": ("server_key", "transport", "runtime", "supported", "status", "catalog_path", "response_body"),
     "instant_messaging_doctor": ("platform", "status", "telegram_status", "whatsapp_status", "contact_status", "repair_status", "retry_status", "actions_required", "response_body"),
     "discoverer": ("tool", "target", "returncode", "success", "findings_count", "json_path", "pdcp_used", "stage", "response_body"),
+    "nmapper": ("action", "target", "scan_technique", "ports", "return_code", "success", "hosts_up", "open_ports", "npcap_present", "xml_path", "output_path", "stage", "response_body"),
     "telegrammer": ("chat_id", "status", "message_id", "response_body"),
     "whatsapper": ("recipient", "status", "message_id", "response_body"),
     "zavuerer": ("action", "channel", "to", "status", "message_id", "success", "base_url", "response_body"),
@@ -163,7 +164,7 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
     "telegrammer": _contract(
         "telegrammer",
         parametrizer_fields=("chat_id", "status", "message_id", "response_body"),
-        secret_paths=("telegram.bot_token",),
+        secret_paths=("telegram.bot_token", "telegram.api_hash", "telegram.session_string"),
     ),
     "whatsapper": _contract(
         "whatsapper",
@@ -185,8 +186,8 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
         ),
         secret_paths=("telegram.bot_token", "telegram.api_hash", "telegram.session_string", "whatsapp.access_token"),
     ),
-    "gatewayer": _contract("gatewayer", long_running=True),
-    "gateway_relayer": _contract("gateway_relayer", long_running=True, aliases=("gateway-relayer", "gateway relayer")),
+    "gatewayer": _contract("gatewayer", long_running=True, secret_paths=("auth.bearer_token", "auth.hmac_secret")),
+    "gateway_relayer": _contract("gateway_relayer", long_running=True, aliases=("gateway-relayer", "gateway relayer"), secret_paths=("provider_secret", "forward_hmac_secret")),
     "node_manager": _contract("node_manager", long_running=True, aliases=("node-manager", "node manager")),
     # Kalier bridges to the MCP-Kali-Server HTTP API. Its hydra single-password
     # field is credential-shaped, so redact it from .flw exports.
@@ -197,6 +198,23 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
     # Discoverer bridges to the ProjectDiscovery suite; its pdcp_api_key is a
     # credential, so redact it from .flw exports.
     "discoverer": _contract("discoverer", secret_paths=("pdcp_api_key",)),
+    # ── Credential-bearing action / connector / LLM agents: redact their secret
+    #    fields from .flw exports so a shared workflow never leaks a real password /
+    #    token / key (found by the 2026-07-11 deep audit, H1). Bare `_contract(...)`
+    #    is safe here — parametrizer source fields come from _PARAMETRIZER_OUTPUT_FIELDS
+    #    independently (the discoverer contract above proves it).
+    "apirer": _contract("apirer", secret_paths=("headers.Authorization",)),
+    "sqler": _contract("sqler", secret_paths=("sql_connection.password",)),
+    "mongoxer": _contract("mongoxer", secret_paths=("mongo_connection.password",)),
+    "jenkinser": _contract("jenkinser", secret_paths=("api_token",)),
+    "emailer": _contract("emailer", secret_paths=("smtp.password",)),
+    "recmailer": _contract("recmailer", secret_paths=("imap.password",)),
+    "kyber_decipher": _contract("kyber_decipher", secret_paths=("private_key",)),
+    "esphomer": _contract("esphomer", secret_paths=("wifi_password",)),
+    "talker": _contract("talker", secret_paths=("ollama_token",)),
+    "whisperer": _contract("whisperer", secret_paths=("ollama_token", "cloud_api_key")),
+    "image_interpreter": _contract("image_interpreter", secret_paths=("llm.token",)),
+    "video_analyzer": _contract("video_analyzer", secret_paths=("llm.token",)),
 }
 
 

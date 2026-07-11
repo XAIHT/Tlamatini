@@ -1443,6 +1443,31 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
                 if (!Number.isNaN(n)) config[k] = n;
             }
         });
+    } else if (lower === 'nmapper') {
+        set('action', pairs.action);
+        set('target', pairs.target);
+        set('targets_file', pairs.targets_file);
+        set('ports', pairs.ports);
+        set('timing', pairs.timing);
+        set('scan_technique', pairs.scan_technique);
+        set('nse_scripts', pairs.nse_scripts);
+        set('custom_args', pairs.custom_args);
+        set('nmap_executable', pairs.nmap_executable);
+        set('nmap_install_url', pairs.nmap_install_url);
+        set('nmap_version', pairs.nmap_version);
+        set('output_dir', pairs.output_dir);
+        ['version_detect', 'default_scripts', 'os_detect', 'skip_host_discovery',
+         'auto_install', 'preflight'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = (String(pairs[k]).toLowerCase() === 'true');
+            }
+        });
+        ['top_ports', 'min_rate', 'command_timeout'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
     } else if (lower === 'zavuerer') {
         set('action', pairs.action);
         set('zavu_api_key', pairs.zavu_api_key);

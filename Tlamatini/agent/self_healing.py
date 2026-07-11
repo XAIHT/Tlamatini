@@ -118,8 +118,13 @@ def register_status_broadcaster(user_id: Any, emit: Callable[[str], None]) -> No
         _STATUS_BROADCASTERS[user_id] = emit
 
 
-def unregister_status_broadcaster(user_id: Any) -> None:
+def unregister_status_broadcaster(user_id: Any, emit: "Callable[[str], None] | None" = None) -> None:
+    """Remove the status emitter for ``user_id``. Pass the SPECIFIC ``emit`` this request
+    registered so a finished request's teardown does not pop a concurrent same-user
+    request's live emitter (two browser tabs share the user id). (re-audit [2])"""
     with _STATUS_LOCK:
+        if emit is not None and _STATUS_BROADCASTERS.get(user_id) is not emit:
+            return
         _STATUS_BROADCASTERS.pop(user_id, None)
 
 

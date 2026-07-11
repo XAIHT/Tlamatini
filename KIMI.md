@@ -1166,6 +1166,8 @@ python Tlamatini/manage.py runserver --noreload
 # Visit http://127.0.0.1:8000/
 ```
 
+> **`--noreload` is optional (since 2026-07-11):** plain `python Tlamatini/manage.py runserver` now boots clean and auto-reloads. It used to double-start the MCP ports `:8765` / `:50051` and crash with `WinError 10048`; fixed in `agent/apps.py`.
+
 Default credentials (installer builds): `user` / `changeme`
 
 ---

@@ -399,6 +399,9 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'discoverer') {
                 await updateDiscovererConnection(sourceId, targetId, 'remove');
             }
+            if (sourceAgentName.toLowerCase() === 'nmapper') {
+                await updateNmapperConnection(sourceId, targetId, 'remove');
+            }
             if (sourceAgentName.toLowerCase() === 'kalier') {
                 await updateKalierConnection(sourceId, targetId, 'remove');
             }
@@ -808,6 +811,9 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'discoverer') {
         await updateDiscovererConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'nmapper') {
+        await updateNmapperConnection(sourceId, targetId, 'add');
     }
     if (sourceAgentName === 'kalier') {
         await updateKalierConnection(sourceId, targetId, 'add');

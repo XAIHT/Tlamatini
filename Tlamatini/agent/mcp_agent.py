@@ -1272,10 +1272,22 @@ class MultiTurnToolAgentExecutor:
                 # completion notification, restore it so the long deliverable
                 # (e.g. the security analysis) is never lost behind a short
                 # "done, I notified you" reply produced on the notification turn.
-                if self._stashed_final_answer.strip() and (
-                    len(self._stashed_final_answer.strip()) > len(str(answer).strip())
-                ):
-                    answer = self._stashed_final_answer
+                if self._stashed_final_answer.strip():
+                    # Restore the deferred deliverable — but ONLY when the completion
+                    # notification actually SUCCEEDED. If the notification FAILED, the
+                    # current `answer` carries the honest failure report; keep it
+                    # visible and append the deferred work below, so the user learns
+                    # the notification never went out AND still gets the deliverable.
+                    # (2026-07-11 audit, M3 — was a length-only swap that hid failures.)
+                    notification_ok = any(
+                        entry.get("tool_name") in _NOTIFICATION_TOOLS and entry.get("success")
+                        for entry in self._tool_calls_log
+                    )
+                    if notification_ok:
+                        if len(self._stashed_final_answer.strip()) > len(str(answer).strip()):
+                            answer = self._stashed_final_answer
+                    else:
+                        answer = str(answer).rstrip() + "\n\n---\n\n" + self._stashed_final_answer
                 return self._build_result_dict(str(answer))
 
             # --- Repetition detection ---

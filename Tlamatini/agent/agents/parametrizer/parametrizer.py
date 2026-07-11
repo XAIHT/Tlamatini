@@ -143,6 +143,7 @@ SECTION_AGENT_TYPES = [
     'mcp_doctor',
     'instant_messaging_doctor',
     'discoverer',
+    'nmapper',
     'zavuerer',
     'telegrammer',
     'whatsapper',

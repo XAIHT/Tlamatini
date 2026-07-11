@@ -2266,6 +2266,19 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(124, 58, 237, 0.5);
 }
 
+/* Nmapper Agent — "Radar Sweep" (local use-only nmap scanner) */
+.canvas-item.nmapper-agent {
+    background-color: #1A0A00;
+    background: linear-gradient(135deg, #1A0A00 0%, #B45309 33%, #F97316 66%, #FDE68A 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.nmapper-agent:hover {
+    background: linear-gradient(135deg, #3B1600 0%, #D97706 33%, #FB923C 66%, #FEF3C7 100%);
+    box-shadow: 0 6px 15px rgba(249, 115, 22, 0.5);
+}
+
 .canvas-item.mcpdoctor-agent {
     background-color: #0F3D3E;
     color: white;

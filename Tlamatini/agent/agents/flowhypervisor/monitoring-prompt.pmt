@@ -77,7 +77,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Instant Messaging Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -336,6 +336,27 @@ DISCOVERER SPECIAL NOTES:
     target, or a tool that could not be installed) — not a flow error.
   - DO flag a genuine failure: "go.dev unreachable" / "Tool could not be installed" /
     the run exceeding command_timeout (default 1800s) with no progress.
+
+NMAPPER SPECIAL NOTES:
+  - Nmapper is SHORT-LIVED and ACTIVE: it runs ONE local nmap scan (or a meta action)
+    then ALWAYS triggers `target_agents` (success or failure).
+  - Its `INI_SECTION_NMAPPER<<<` block is NORMAL routable output (carries `action`,
+    `target`, `scan_technique`, `ports`, `return_code`, `success`, `hosts_up`,
+    `open_ports`, `npcap_present`, `xml_path`, `output_path`, `stage`) — NEVER flag it as
+    an error, even when `success: false` or `open_ports: (none)` (a scan that found
+    nothing open is a valid result a downstream Forker branches on).
+  - A `stage: preflight` REFUSED section is Nmapper working AS DESIGNED (nmap not
+    installed and auto_install off, a missing target, or a UDP scan with no Npcap) — NOT
+    a flow error. Nmapper is USE-ONLY: it never bundles nmap, so "nmap is not installed …
+    run action='install'" is a correct refusal, not a fault.
+  - A `stage: install` section (the official nmap installer was downloaded/launched) is
+    normal one-time setup, not an error.
+  - A preflight WARNING that a SYN scan / `-O` was auto-downgraded to a connect scan on
+    Windows without Npcap is NORMAL (the default is already the safe mode) — do NOT flag.
+  - A long scan is normal for `full` (all 65535 ports) or a slow target; while nmap keeps
+    making progress, a run up to command_timeout (default 900s) is NOT stuck.
+  - DO flag a genuine failure: nmap could not be downloaded from nmap.org, or the run
+    exceeded command_timeout with no output.
 
 STM32ER SPECIAL NOTES:
   - STM32er is SHORT-LIVED and ACTIVE: it spawns the STM32 Template Project MCP

@@ -500,6 +500,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'mouser': await updateMouserConnection(sourceId, targetId, 'add'); break;
                 case 'windower': await updateWindowerConnection(sourceId, targetId, 'add'); break;
                 case 'discoverer': await updateDiscovererConnection(sourceId, targetId, 'add'); break;
+                case 'nmapper': await updateNmapperConnection(sourceId, targetId, 'add'); break;
                 case 'kalier': await updateKalierConnection(sourceId, targetId, 'add'); break;
                 case 'zavuerer': await updateZavuererConnection(sourceId, targetId, 'add'); break;
                 case 'stm32er': await updateStm32erConnection(sourceId, targetId, 'add'); break;

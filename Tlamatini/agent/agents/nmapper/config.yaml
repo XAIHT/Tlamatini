@@ -1,0 +1,70 @@
+# Nmapper Agent Configuration
+#
+# Nmapper is Tlamatini's LOCAL, USE-ONLY nmap bridge for pentesters / CTF recon.
+# It runs the real `nmap` CLI already present on THIS machine — it NEVER bundles or
+# redistributes nmap (nmap's NPSL forbids embedding it in a product without a paid OEM
+# licence), so Nmapper only ever RUNS an nmap the user installed themselves. It is
+# fully self-contained (stdlib only: subprocess + shutil + urllib + xml.etree) so it
+# runs identically in source and frozen builds and never imports from agent.*.
+#
+# USE-ONLY BINARY RESOLUTION (no bundling, no redistribution):
+#   1. nmap_executable (explicit override)      2. nmap on PATH
+#   3. C:\Program Files (x86)\Nmap\nmap.exe / C:\Program Files\Nmap\nmap.exe
+#   4. %LOCALAPPDATA%\Tlamatini\nmap            (a portable copy the user opted into)
+# If none resolve, Nmapper REFUSES gracefully with one-time install guidance; the
+# `install` action (or auto_install) downloads + launches the OFFICIAL FREE nmap
+# self-installer from nmap.org — the user's OWN download + admin install (which also
+# brings Npcap, unlocking SYN / -O / UDP). That is "use, not redistribution".
+#
+# DEFAULT = an UNPRIVILEGED TCP CONNECT SCAN (-sT), which needs NO Npcap and NO admin,
+# so a fresh install can scan immediately. AUTHORIZED TARGETS ONLY.
+
+# -- action -- one capability per run ----------------------------------------
+#   quick          : -sT -sV -sC -Pn -T4 --top-ports 1000   (the CTF opener)
+#   full           : -sT -sV -sC -Pn -T4 -p-                 (all 65535 TCP ports)
+#   top_ports      : -sT -Pn --top-ports <top_ports>         (fast surface map)
+#   version        : -sT -sV -Pn -p <ports>                  (service/version ID)
+#   scripts        : -sT -Pn --script <nse_scripts> -p <ports> (targeted NSE)
+#   host_discovery : -sn                                     (who is up)
+#   udp            : -sU --top-ports <top_ports>             (needs Npcap + admin)
+#   custom         : the safe base + <custom_args> (validated; no shell metacharacters)
+#   validate       : report nmap resolution + Npcap presence (no scan)
+#   install        : download + launch the OFFICIAL free nmap installer (consent; admin)
+action: "quick"
+
+# -- Target & scope ----------------------------------------------------------
+target: ""             # host / IP / hostname / CIDR  (e.g. scanme.nmap.org)
+targets_file: ""       # OR a file with one target per line; overrides `target`
+
+# -- Ports & timing ----------------------------------------------------------
+ports: ""              # "" = action default; "22,80,443" or "1-1000"
+top_ports: 1000        # for quick / top_ports / udp
+timing: "T4"           # T0..T5  (T4 = aggressive, the CTF norm)
+min_rate: 0            # 0 = unset; else --min-rate N
+
+# -- Scan mode / privileges --------------------------------------------------
+scan_technique: "connect"  # connect (-sT, default, no Npcap) | syn (-sS, needs Npcap; auto-downgrades)
+version_detect: true       # -sV service/version detection
+default_scripts: true      # -sC default NSE scripts (quick/full)
+nse_scripts: ""            # action=scripts: "http-title,ssl-cert" or "default,safe"
+os_detect: false           # -O OS detection (needs Npcap; dropped + warned if absent)
+skip_host_discovery: true  # -Pn treat host as up (recommended on Windows / no Npcap)
+
+# -- Custom escape hatch -----------------------------------------------------
+custom_args: ""        # action=custom: extra flags appended after the safe base
+                       #   (validated -- shell metacharacters ; | & ` $ < > are rejected)
+
+# -- Binary resolution / install (USE-ONLY -- never bundled) -----------------
+nmap_executable: ""    # "" = auto-resolve (PATH -> Program Files -> LOCALAPPDATA cache)
+auto_install: false    # if nmap is absent, download + launch the official installer (admin/UAC)
+nmap_install_url: ""   # "" = https://nmap.org/dist/nmap-<nmap_version>-setup.exe
+nmap_version: "7.99"   # version used for the installer download
+
+# -- Execution controls ------------------------------------------------------
+preflight: true        # fail-safe checks; REFUSE (never crash) rather than misfire
+command_timeout: 900   # hard cap (seconds) on a scan
+output_dir: ""         # results dir; empty = <app>/Temp/Nmapper
+
+# -- Connection fields ----------------------------------------------------
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the run (ALWAYS triggered)

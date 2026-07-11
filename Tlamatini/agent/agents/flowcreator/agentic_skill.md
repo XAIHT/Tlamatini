@@ -2019,6 +2019,24 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — e.g. the Camcorder feeding the video)
   - `target_agents`: [] (downstream agents to start after the verdict — e.g. a Forker)
 
+### 85. Nmapper
+- **Purpose**: Run LOCAL nmap security scans for recon / CTF against AUTHORIZED targets. Nmapper is USE-ONLY — it runs a real `nmap` the user installed themselves and NEVER bundles or redistributes nmap (nmap's NPSL forbids embedding it in a product without a paid OEM licence).
+- **Used for**: An instant, zero-install local port/service scan on a Windows box — the CTF opener. It resolves an installed nmap (PATH → Program Files → a `%LOCALAPPDATA%\Tlamatini\nmap` copy); if none is found it REFUSES with install guidance, and `action: install` downloads + launches the OFFICIAL FREE nmap installer (admin/UAC; also brings Npcap). The DEFAULT is an unprivileged TCP connect scan (`-sT`, no Npcap, no admin); SYN `-sS` / `-O` / UDP `-sU` auto-downgrade to a connect scan on Windows without Npcap.
+- **Aimed at**: Fast authorized recon pipelines. Distinct from **Kalier** (a remote Kali box via MCP-Kali-Server) and **Discoverer** (the ProjectDiscovery suite): Nmapper is the LOCAL, zero-install nmap.
+- **Application example**: Starter → Nmapper (`action: quick`, `target: scanme.nmap.org`) → Parametrizer (map `{output_path}` into a File-Creator) → File-Creator (write the report) → Forker (branch on `{success}`) → Ender. **AUTHORIZED TARGETS ONLY.**
+- **Pool name pattern**: `nmapper_<n>`
+- **Parametrizer source**: emits `INI_SECTION_NMAPPER` with fields `action`, `target`, `scan_technique`, `ports`, `return_code`, `success`, `hosts_up`, `open_ports`, `npcap_present`, `xml_path`, `output_path`, `stage`, and body=`response_body`.
+- **Starts other agents**: YES (always, success or failure — so a Forker can branch on `{success}` / `{open_ports}`)
+- **Config parameters**:
+  - `action`: "quick" (quick | full | top_ports | version | scripts | host_discovery | udp | custom | validate | install)
+  - `target`: "" (host / IP / hostname / CIDR, e.g. `scanme.nmap.org`) / `targets_file`: "" (one target per line; overrides `target`)
+  - `ports`: "" / `top_ports`: 1000 / `timing`: "T4" (T0..T5) / `min_rate`: 0
+  - `scan_technique`: "connect" (connect | syn) / `version_detect`: true / `default_scripts`: true / `nse_scripts`: "" / `os_detect`: false / `skip_host_discovery`: true
+  - `custom_args`: "" (action=custom; shell metacharacters rejected)
+  - `nmap_executable`: "" (auto-resolve) / `auto_install`: false / `nmap_install_url`: "" / `nmap_version`: "7.99" / `preflight`: true / `command_timeout`: 900 / `output_dir`: ""
+  - `source_agents`: [] (upstream agents — canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the scan)
+
 ---
 
 ## Output Format

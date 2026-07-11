@@ -184,13 +184,35 @@ def _clear_handle(run_id: str) -> None:
     global_state.set_state(_handle_state_key(run_id), None)
 
 
-def _is_live_process(pid: int | None):
+def _is_live_process(pid: int | None, expected_dir: str | None = None):
     if not pid:
         return None
     try:
         process = psutil.Process(pid)
         if process.status() == psutil.STATUS_ZOMBIE:
             return None
+        if expected_dir:
+            # Guard against PID REUSE: the OS may have recycled a finished run's PID
+            # for an unrelated process. Only trust this PID if the live process is
+            # actually one of OUR agent runs — its cwd or command line must reference
+            # the run's runtime dir. Otherwise report it not-live so we neither claim
+            # it "running" nor terminate a stranger. (2026-07-11 audit, L1)
+            marker = os.path.basename(os.path.normpath(expected_dir))
+            if marker:
+                haystack = ""
+                try:
+                    haystack += process.cwd() or ""
+                except Exception:
+                    pass
+                try:
+                    haystack += " " + " ".join(process.cmdline() or [])
+                except Exception:
+                    pass
+                # Reject ONLY when we could introspect and the marker is absent. If
+                # introspection was denied (empty haystack), fall back to trusting
+                # the PID rather than falsely reporting the run stopped.
+                if haystack.strip() and marker not in haystack:
+                    return None
         return process
     except Exception:
         return None
@@ -356,12 +378,12 @@ def start_chat_agent_subprocess(run: ChatAgentRun, script_path: str):
 
 def reconcile_chat_agent_run(run: ChatAgentRun) -> ChatAgentRun:
     changed_fields: list[str] = []
-    process = _is_live_process(run.pid)
+    process = _is_live_process(run.pid, run.runtimeDir)
 
     if process is None:
         runtime_pid = _read_runtime_pid(run.runtimeDir)
         if runtime_pid and runtime_pid != run.pid:
-            runtime_process = _is_live_process(runtime_pid)
+            runtime_process = _is_live_process(runtime_pid, run.runtimeDir)
             if runtime_process is not None:
                 run.pid = runtime_pid
                 run.status = "running"
@@ -513,10 +535,10 @@ def _terminate_process_tree(process) -> dict:
 
 def stop_chat_agent_run(run: ChatAgentRun) -> dict:
     run = reconcile_chat_agent_run(run)
-    process = _is_live_process(run.pid)
+    process = _is_live_process(run.pid, run.runtimeDir)
     if process is None:
         runtime_pid = _read_runtime_pid(run.runtimeDir)
-        process = _is_live_process(runtime_pid)
+        process = _is_live_process(runtime_pid, run.runtimeDir)
 
     termination = {"stopped_pids": [], "surviving_pids": [], "errors": []}
     if process is not None:

@@ -563,28 +563,28 @@ def _split_assignment_segments(assignments_text):
 
         if quote_char:
             current.append(char)
-            if escape_next:
+            if (
+                char == quote_char
+                and _closes_outer_quote(assignments_text, i, quote_char, quote_multiline)
+            ):
+                # The REAL closing quote wins even after a trailing backslash
+                # (Windows paths like ``filepath='C:\logs\'``). Backslashes are
+                # LITERAL in this scheme (see _unquote_preserving_backslashes), so a
+                # ``\`` must never escape the closer — _closes_outer_quote (EOF /
+                # ``,`` / ``;`` / ``and|with KEY=``) is the authority. (audit M4)
+                quote_char = None
+                quote_multiline = False
+                escape_next = False
+            elif escape_next:
                 escape_next = False
             elif char == '\\':
                 escape_next = True
             elif char == '\n':
-                # Dynamic multi-line upgrade: the opening-quote heuristic
-                # (_is_multiline_quote_open) only catches values whose quote
-                # is IMMEDIATELY followed by a newline. LLMs routinely start
-                # the payload on the same line (``content='package com…``),
-                # which left the value in single-line mode where any internal
-                # quote followed by ``,``/``;`` closes it — truncating Java/
-                # CSS/JS payloads at sequences like ``'self';`` (the
-                # SecurityHeadersFilter.java bug). Once a newline is consumed
-                # INSIDE the value, it is by definition multi-line, so switch
-                # to the strict closer rule (EOF or ``and|with KEY=`` only).
+                # Dynamic multi-line upgrade: once a newline is consumed INSIDE the
+                # value it is multi-line, so switch to the strict closer rule (EOF or
+                # ``and|with KEY=`` only) — see the historical
+                # SecurityHeadersFilter.java single-line-truncation bug.
                 quote_multiline = True
-            elif (
-                char == quote_char
-                and _closes_outer_quote(assignments_text, i, quote_char, quote_multiline)
-            ):
-                quote_char = None
-                quote_multiline = False
             i += 1
             continue
 
@@ -698,21 +698,23 @@ def _split_assignment_segment(segment):
 
         if quote_char:
             current.append(char)
-            if escape_next:
+            if (
+                char == quote_char
+                and _closes_outer_quote(segment, i, quote_char, quote_multiline)
+            ):
+                # The REAL closing quote wins even after a trailing backslash (Windows
+                # paths) — backslashes are literal here; _closes_outer_quote is the
+                # authority. Same fix as _split_assignment_segments. (audit M4)
+                quote_char = None
+                quote_multiline = False
+                escape_next = False
+            elif escape_next:
                 escape_next = False
             elif char == '\\':
                 escape_next = True
             elif char == '\n':
-                # Same dynamic multi-line upgrade as _split_assignment_segments
-                # (see comment there): a newline consumed inside the value
-                # flips it to the strict multi-line closer rule.
+                # Same dynamic multi-line upgrade as _split_assignment_segments.
                 quote_multiline = True
-            elif (
-                char == quote_char
-                and _closes_outer_quote(segment, i, quote_char, quote_multiline)
-            ):
-                quote_char = None
-                quote_multiline = False
             i += 1
             continue
 
@@ -3171,9 +3173,11 @@ def execute_netstat() -> str:
         command = "netstat -an"
         try:
             cmd_list = shlex.split(command)
-            result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
+            result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False,
+                                    stdin=subprocess.DEVNULL, timeout=30)
         except ValueError:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+            result = subprocess.run(command, shell=True, capture_output=True, text=True,
+                                    stdin=subprocess.DEVNULL, timeout=30)
         
         if result.returncode != 0:
             return f"Error: Command '{command}' failed with return code {result.returncode}. Output: {result.stderr}"
@@ -3381,7 +3385,8 @@ def decompile_java(path_filename: str) -> str:
         cmd = ['cmd', '/c', jd_cli_bat, path_filename, dest_dir]
 
         result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=jd_cli_dir, shell=False
+            cmd, capture_output=True, text=True, cwd=jd_cli_dir, shell=False,
+            stdin=subprocess.DEVNULL, timeout=600,
         )
         
         if result.returncode != 0:

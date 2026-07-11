@@ -628,6 +628,10 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     print(f"\n--- ask_rag: >>>>>>>>>>{question}<<<<<<<<<<")
     global_state.set_state('rag_chain_ready', False)
     clear_cancel_generation()
+    # Capture the request's user id up front (before `question` is reshaped below) so the
+    # per-request metadata handoff to the consumer can be KEYED by it — two concurrent
+    # requests must not race on one process-global slot. (re-audit [4])
+    _conversation_user_id = question.get("conversation_user_id") if isinstance(question, dict) else None
     if chat_history is None:
         chat_history = []
 
@@ -812,36 +816,23 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     
     global_state.set_state('rag_chain_ready', True)
 
+    # Per-request metadata handoff to the consumer (tool_calls_log for the Create-Flow
+    # button + exec-report tables + the Ask-Execs denial banner). Stored in ONE slot
+    # KEYED by conversation_user_id so two concurrent requests (e.g. TeleTlamatini + a
+    # browser) can never read each other's tables or build a .flw from the wrong tool
+    # log. (re-audit [4] — was five process-global slots any concurrent pair raced on.)
+    _meta_slot = f"last_request_meta::{_conversation_user_id}"
     if isinstance(response, dict):
-        # Preserve tool-call metadata for the consumer to pick up and
-        # forward to the browser so the "Create Flow" button can work.
-        if response.get("tool_calls_log"):
-            global_state.set_state('last_tool_calls_log', response["tool_calls_log"])
-        else:
-            global_state.set_state('last_tool_calls_log', None)
-        if response.get("multi_turn_used"):
-            global_state.set_state('last_multi_turn_used', True)
-        else:
-            global_state.set_state('last_multi_turn_used', None)
-        # Exec report data (only populated when the checkbox was enabled).
-        if response.get("exec_report_enabled"):
-            global_state.set_state('last_exec_report_enabled', True)
-            global_state.set_state('last_exec_report_entries', response.get("exec_report_entries") or [])
-        else:
-            global_state.set_state('last_exec_report_enabled', None)
-            global_state.set_state('last_exec_report_entries', None)
-        # Ask-Execs denial: surfaced as the red "Execution interrupted" banner.
-        # Independent of the Exec report toggle — always carried through.
-        if response.get("exec_report_denied"):
-            global_state.set_state('last_exec_report_denied', response.get("exec_report_denied"))
-        else:
-            global_state.set_state('last_exec_report_denied', None)
+        global_state.set_state(_meta_slot, {
+            "tool_calls_log": response.get("tool_calls_log") or None,
+            "multi_turn_used": True if response.get("multi_turn_used") else None,
+            "exec_report_enabled": True if response.get("exec_report_enabled") else None,
+            "exec_report_entries": (response.get("exec_report_entries") or []) if response.get("exec_report_enabled") else None,
+            "exec_report_denied": response.get("exec_report_denied") or None,
+        })
+        global_state.set_state('rag_chain_ready', True)
         return response.get("answer", "I was unable to generate a response. Please try rephrasing your question or check the system status.")
 
-    global_state.set_state('last_tool_calls_log', None)
-    global_state.set_state('last_multi_turn_used', None)
-    global_state.set_state('last_exec_report_enabled', None)
-    global_state.set_state('last_exec_report_entries', None)
-    global_state.set_state('last_exec_report_denied', None)
+    global_state.set_state(_meta_slot, None)
     global_state.set_state('rag_chain_ready', True)
     return str(response)

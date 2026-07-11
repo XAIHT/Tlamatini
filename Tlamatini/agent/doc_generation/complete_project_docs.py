@@ -1785,7 +1785,7 @@ CONFIGURATION_GUIDE = [
 START_HERE_GUIDE = [
     "BookOfTlamatini now leads with a five-step onboarding path because the easiest way to succeed with Tlamatini is to treat setup as one guided sequence instead of reading the whole handbook first.",
     "Recommended path for most operators: install the packaged release from GitHub Releases, launch the Start-menu shortcut, and let the bundled Python 3.12.10 plus dependencies carry the runtime without asking the user to install Python manually.",
-    "Developer path stays available: clone the repo, create a virtual environment, install `requirements.txt`, run migrations, and start Django with `python Tlamatini/manage.py runserver --noreload`.",
+    "Developer path stays available: clone the repo, create a virtual environment, install `requirements.txt`, run migrations, and start Django with `python Tlamatini/manage.py runserver` (the `--noreload` flag is optional since 2026-07-11 — plain `runserver` now boots clean and auto-reloads).",
     "After the app opens, the first in-app surfaces that matter are `Config -> Models`, `Config -> URLs`, and `Config -> Access Keys Wizard`; those now form the real beginner path, not manual JSON editing.",
     "For ordinary question-answering keep Multi-Turn off; turn it on only when you want Tlamatini to execute tools, wrapped agents, or remote MCP capabilities instead of answering directly.",
 ]
@@ -1798,7 +1798,7 @@ FIRST_RUN_CONFIG_GUIDE = [
 ]
 
 RUNNING_GUIDE = [
-    "Development server: `python Tlamatini/manage.py runserver --noreload`.",
+    "Development server: `python Tlamatini/manage.py runserver` — the `--noreload` flag is now OPTIONAL (plain `runserver` boots clean and auto-reloads since the 2026-07-11 `agent/apps.py` reloader-aware fix; it used to double-start the MCP helper ports :8765 / :50051 and crash with WinError 10048).",
     "Preferred async/dev bootstrap: `python Tlamatini/manage.py startserver`, which starts MCP services before the Django server.",
     "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
     "Current startup also re-applies GPU-performance / Ollama-pinning hooks in the background on supported NVIDIA Windows hosts, so restart-time behavior stays closer to the tuned development baseline.",

@@ -727,23 +727,23 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 chat_history=chat_history,
                 inet_enabled=self.inet_enabled
             )
-            # Pick up tool-call metadata stored by the chain pipeline.
-            tool_calls_log = global_state.get_state('last_tool_calls_log')
-            multi_turn_used = global_state.get_state('last_multi_turn_used')
-            exec_report_used = global_state.get_state('last_exec_report_enabled')
-            exec_report_entries = global_state.get_state('last_exec_report_entries') if exec_report_used else None
+            # Pick up per-request metadata stored by ask_rag, KEYED by THIS user id so a
+            # concurrent request (another tab / TeleTlamatini, a different user) can never
+            # hand us its exec-report tables or its Create-Flow tool-call log. (re-audit [4])
+            _meta_slot = f"last_request_meta::{conversation_user.id}"
+            _meta = global_state.get_state(_meta_slot) or {}
+            tool_calls_log = _meta.get('tool_calls_log')
+            multi_turn_used = _meta.get('multi_turn_used')
+            exec_report_used = _meta.get('exec_report_enabled')
+            exec_report_entries = _meta.get('exec_report_entries') if exec_report_used else None
             # Ask-Execs denial — surfaced as the red "Execution interrupted"
             # banner regardless of the Exec report toggle.
-            exec_report_denied = global_state.get_state('last_exec_report_denied')
+            exec_report_denied = _meta.get('exec_report_denied')
             # Tier-1 survivor list carried over from the multi-turn
             # executor — processes the per-tool reaper failed to kill.
             tier1_orphans = global_state.get_state('last_orphan_survivors') or []
             # Clear immediately to avoid leaking into the next request.
-            global_state.set_state('last_tool_calls_log', None)
-            global_state.set_state('last_multi_turn_used', None)
-            global_state.set_state('last_exec_report_enabled', None)
-            global_state.set_state('last_exec_report_entries', None)
-            global_state.set_state('last_exec_report_denied', None)
+            global_state.set_state(_meta_slot, None)
             global_state.set_state('last_orphan_survivors', None)
 
             await process_llm_response(
@@ -794,11 +794,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # ends (close() resolves any outstanding prompt to "deny").
             if broker is not None:
                 from .exec_permission import unregister_broker
-                unregister_broker(broker_key)
+                unregister_broker(broker_key, broker)
                 print(f"--- [AskExecs] broker unregistered for user {broker_key}")
             if status_registered:
                 from .self_healing import unregister_status_broadcaster
-                unregister_status_broadcaster(broker_key)
+                unregister_status_broadcaster(broker_key, _emit_status)
 
     async def exec_permission_request(self, event):
         """Group handler: forward an Ask-Execs permission request to this
