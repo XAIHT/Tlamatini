@@ -108,7 +108,11 @@ class UndoManager {
 // ========================================
 // AGENT STATUS POLLING CONSTANTS
 // ========================================
-const agentStatusPollerInterval = null;
+// MUST stay `let` — acp-running-state.js reassigns it (start/stopAgentStatusPolling).
+// Per-file ESLint cannot see that cross-file write, so a `const` here lints green and
+// then throws "Assignment to constant variable" at runtime, trapping the Start dialog
+// with no Continue button. See docs/claude/frontend.md (const-poison contract).
+let agentStatusPollerInterval = null;
 const AGENT_STATUS_POLL_INTERVAL = 300; // Poll every 300ms for faster updates
 
 // Initialize UndoManager with 1024 action limit

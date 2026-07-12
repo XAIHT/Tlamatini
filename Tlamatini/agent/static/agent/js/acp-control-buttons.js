@@ -300,6 +300,28 @@ function showStarterResult(success, failedAgentNames, dialog) {
     spinnerContainer.style.display = 'none';
     resultContainer.style.display = 'block';
 
+    // Install the way OUT before anything else can throw.
+    // This dialog opens with its titlebar X hidden, Esc disabled and no buttons, so
+    // "Continue!" is the ONLY exit. It used to be added at the END of this function,
+    // after setGlobalRunningState() / updateControlButtonStates(). Because we run
+    // inside an async poll, a throw in either was swallowed as an unhandled rejection
+    // and left a modal with no exit at all (a const-poisoned agentStatusPollerInterval
+    // did exactly that). Button first, and Esc + the X restored, so the dialog is
+    // always closable no matter what fails below.
+    dialog.dialog("option", "closeOnEscape", true);
+    dialog.dialog("option", "buttons", [{
+        text: "Continue!",
+        click: function () { $(this).dialog("close"); }
+    }]);
+    dialog.parent().find('.ui-dialog-titlebar-close').show();
+
+    const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
+    buttonPane.find('button:contains("Continue")').css({
+        'background-color': success ? '#10B981' : '#e74c3c',
+        'color': 'white', 'border': 'none', 'border-radius': '6px',
+        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
+    });
+
     if (success) {
         titleEl.innerText = "Startup Complete";
         iconEl.innerHTML = '✅';
@@ -307,7 +329,6 @@ function showStarterResult(success, failedAgentNames, dialog) {
         messageEl.innerText = 'All Starter agents have been successfully awakened!';
         messageEl.className = 'success';
         failedListEl.innerHTML = '';
-        setGlobalRunningState(GLOBAL_STATE.RUNNING);
     } else {
         titleEl.innerText = "Startup Failed";
         iconEl.innerHTML = '❌';
@@ -323,19 +344,15 @@ function showStarterResult(success, failedAgentNames, dialog) {
     }
 
     isBusyProcessing = false;
-    updateControlButtonStates();
 
-    dialog.dialog("option", "buttons", [{
-        text: "Continue!",
-        click: function () { $(this).dialog("close"); }
-    }]);
-
-    const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Continue")').css({
-        'background-color': success ? '#10B981' : '#e74c3c',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
-    });
+    try {
+        if (success) {
+            setGlobalRunningState(GLOBAL_STATE.RUNNING);
+        }
+        updateControlButtonStates();
+    } catch (error) {
+        console.error('--- Failed to update running state after startup:', error);
+    }
 }
 
 // ========================================

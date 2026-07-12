@@ -178,7 +178,11 @@ let lapseLoadingContext = false;
 let clearContextEnabled = false;
 let cleanHistoryEnabled = true;
 let fileTypeOmissions = "";
-const textEditorCode = document.querySelector('#text-editor code');
+// MUST stay `let` — agent_page_canvas.js replaces the <code> element (to drop stale
+// listeners) and reassigns this handle. A `const` here lints green per-file and then
+// throws "Assignment to constant variable" in the browser. See the const-poison
+// contract in docs/claude/frontend.md.
+let textEditorCode = document.querySelector('#text-editor code');
 let chatHistory = [];
 let historyIndex = 0;
 let tempInput = '';

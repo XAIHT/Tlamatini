@@ -690,7 +690,7 @@
   {{ request.user.username|json_script:"user_username" }}
   {{ initial_messages|json_script:"initial_messages" }}
   {{ ollama_base_url|json_script:"ollama_config" }}
-  <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}_statefix"></script>
+  <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}_statefix_constfix"></script>
   <script src="{% static 'agent/js/agent_page_ui.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}_dialogfix"></script>
