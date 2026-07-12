@@ -613,6 +613,11 @@ def _normalize_content_path(value: str) -> str:
 _CONTENT_PATH_PARAM_KEYS = (
     'path', 'package_root', 'content_path', 'asset_path',
     'destination_path', 'source', 'destination', 'parent_material', 'material',
+    # material_path is the canonical wire key the plugin reads for
+    # set_material_parameter / assign_material; the alias remap renames
+    # material -> material_path BEFORE this normalize pass runs, so it must be
+    # here too or a /Content/... material path is never rewritten to /Game/...
+    'material_path',
 )
 
 # Params that carry a real OS *disk* path, NOT a UE content path. These must NEVER
@@ -682,6 +687,12 @@ _PARAM_ALIASES: dict = {
         'name': 'actor_name',
         'material': 'material_path',
         'material_instance': 'material_path',
+        # The plugin reads the target slot as 'slot_index' (HandleAssignMaterial),
+        # but config.yaml + the docs expose it as 'slot'. Without this alias a
+        # non-zero slot is dropped on the wire and the material always lands on
+        # slot 0. slot:0 (the default placeholder) is an int, so it survives
+        # pruning and maps cleanly to slot_index:0 (the plugin's own default).
+        'slot': 'slot_index',
     },
 }
 
