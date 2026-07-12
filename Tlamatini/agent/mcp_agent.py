@@ -1268,26 +1268,10 @@ class MultiTurnToolAgentExecutor:
                             )
                         else:
                             answer = "The tool-calling model returned an empty final response."
-                # If we deferred a substantive answer to first send the requested
-                # completion notification, restore it so the long deliverable
-                # (e.g. the security analysis) is never lost behind a short
-                # "done, I notified you" reply produced on the notification turn.
-                if self._stashed_final_answer.strip():
-                    # Restore the deferred deliverable — but ONLY when the completion
-                    # notification actually SUCCEEDED. If the notification FAILED, the
-                    # current `answer` carries the honest failure report; keep it
-                    # visible and append the deferred work below, so the user learns
-                    # the notification never went out AND still gets the deliverable.
-                    # (2026-07-11 audit, M3 — was a length-only swap that hid failures.)
-                    notification_ok = any(
-                        entry.get("tool_name") in _NOTIFICATION_TOOLS and entry.get("success")
-                        for entry in self._tool_calls_log
-                    )
-                    if notification_ok:
-                        if len(self._stashed_final_answer.strip()) > len(str(answer).strip()):
-                            answer = self._stashed_final_answer
-                    else:
-                        answer = str(answer).rstrip() + "\n\n---\n\n" + self._stashed_final_answer
+                # The stashed deliverable (if any) is folded back in CENTRALLY by
+                # _build_result_dict, so EVERY terminal exit path preserves it —
+                # not just this clean-finish return (the repetition-breaker,
+                # iteration-limit and degraded paths dropped it). (2026-07-11 audit #3)
                 return self._build_result_dict(str(answer))
 
             # --- Repetition detection ---
@@ -1491,6 +1475,34 @@ class MultiTurnToolAgentExecutor:
             "Summarize the latest observed tool state or refine the request."
         )
 
+    def _merge_stashed_final_answer(self, answer: str) -> str:
+        """Fold a deferred deliverable back into the FINAL answer, on EVERY path.
+
+        The notification-debt guard stashes the substantive answer and continues
+        the loop so the requested completion notification is sent first. Whatever
+        path the run then exits by — clean finish, repetition-breaker,
+        iteration-limit, or degraded/unrecoverable — the deferred deliverable
+        must survive. Success-aware: if the notification SUCCEEDED prefer the
+        (longer) stashed deliverable; if it FAILED keep the honest failure report
+        visible and append the deliverable below it. Idempotent — a stash already
+        present in ``answer`` is not re-appended. (2026-07-11 audit #3)
+        """
+        stash = (self._stashed_final_answer or "").strip()
+        if not stash:
+            return str(answer)
+        answer_str = str(answer)
+        if stash in answer_str:
+            return answer_str  # already folded in (defensive; only one exit fires)
+        notification_ok = any(
+            entry.get("tool_name") in _NOTIFICATION_TOOLS and entry.get("success")
+            for entry in self._tool_calls_log
+        )
+        if notification_ok:
+            if len(stash) > len(answer_str.strip()):
+                return self._stashed_final_answer
+            return answer_str
+        return answer_str.rstrip() + "\n\n---\n\n" + self._stashed_final_answer
+
     def _build_result_dict(self, answer: str) -> Dict[str, Any]:
         """Assemble the final executor return dict. ``exec_report_entries``
         is always populated from the captured state-changing tool calls;
@@ -1498,14 +1510,24 @@ class MultiTurnToolAgentExecutor:
         the entries unconditionally prevents a whitelist-style bug from ever
         silently hiding the data again.
         """
+        # Fold a deferred deliverable (stashed before the completion-notification
+        # nudge) back into the FINAL answer on EVERY terminal exit path — not just
+        # the clean-finish return, which was the only path that restored it.
+        # (2026-07-11 audit #3)
+        answer = self._merge_stashed_final_answer(answer)
         # Drop into global_state so the WebSocket consumer can surface
         # surviving orphan PIDs as a follow-up chat message after it
         # broadcasts the main answer. The list is small (usually empty)
         # but bypassing the result_dict/chain whitelist gauntlet keeps
         # the contract robust against future payload-rebuild drops.
         try:
+            # Keyed by THIS request's user id (like last_request_meta) so a
+            # concurrent request (another tab / TeleTlamatini / a different user)
+            # can never read OUR survivor list — or clear it before we do. The id
+            # is always forwarded as ask_execs_user_id (== the conversation user
+            # id), so writer and consumer agree on the slot. (2026-07-12 audit [3])
             global_state.set_state(
-                'last_orphan_survivors',
+                f"last_orphan_survivors::{self._ask_execs_user_id}",
                 list(self._orphan_survivors),
             )
         except Exception:  # noqa: BLE001 — never block the answer path

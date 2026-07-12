@@ -55,7 +55,19 @@ class MCPSystemClient:
         }
         
         await self.websocket.send(json.dumps(request))
-        response = await self.websocket.recv()
+        # Bound the read so a peer that completes the WebSocket handshake but never
+        # replies to the metrics protocol (a wrong/remote ``mcp_system_client_uri``
+        # or a wedged local server) can't hang the chat FOREVER — this runs on the
+        # ask_rag worker thread via async_to_sync with no watchdog above it, so an
+        # unbounded recv() is unrecoverable except by killing the server. Raising
+        # (instead of hanging) lets the System-Metrics sidecar degrade gracefully
+        # to no system context. (2026-07-12 audit #7)
+        try:
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=15)
+        except asyncio.TimeoutError as exc:
+            raise TimeoutError(
+                f"MCP System-Metrics server at {self.uri} did not reply within 15s"
+            ) from exc
         return json.loads(response)
     
     async def get_resource(self, resource_name):

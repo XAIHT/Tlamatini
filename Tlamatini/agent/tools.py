@@ -536,6 +536,30 @@ def _closes_outer_quote(text, index, quote_char, multiline_mode):
     return False
 
 
+def _closes_outer_quote_at_boundary(text, index, quote_char, multiline_mode):
+    """Like ``_closes_outer_quote`` but WITHOUT the single-line ``,``/``;`` closers.
+
+    Used to decide whether a BACKSLASH-ESCAPED closing quote (``\\"`` / ``\\'``)
+    ends the value. A backslash is a LITERAL path separator in this scheme, so a
+    value ending in ``\\<quote>`` (a Windows path like ``filepath='C:\\logs\\'``)
+    must still close at a HARD boundary — EOF or the ``and|with KEY=`` conjunction
+    (the M4 reorder's intent). But before a bare ``,``/``;`` the ``\\<quote>`` is a
+    genuine escaped INNER quote (``message="She said \\"yes\\", ..."``) and must
+    stay literal, so only the boundary closers apply. Multi-line mode already
+    excludes ``,``/``;``, so this matches ``_closes_outer_quote`` there.
+    (2026-07-11 audit #2)
+    """
+    probe = index + 1
+    ws_chars = (' ', '\t', '\r', '\n') if multiline_mode else (' ', '\t')
+    while probe < len(text) and text[probe] in ws_chars:
+        probe += 1
+    if probe >= len(text):
+        return True
+    if _looks_like_conjunction_assignment_start(text, probe):
+        return True
+    return False
+
+
 def _split_assignment_segments(assignments_text):
     segments = []
     current = []
@@ -563,15 +587,22 @@ def _split_assignment_segments(assignments_text):
 
         if quote_char:
             current.append(char)
-            if (
-                char == quote_char
-                and _closes_outer_quote(assignments_text, i, quote_char, quote_multiline)
+            if char == quote_char and not escape_next and _closes_outer_quote(
+                assignments_text, i, quote_char, quote_multiline
             ):
-                # The REAL closing quote wins even after a trailing backslash
-                # (Windows paths like ``filepath='C:\logs\'``). Backslashes are
-                # LITERAL in this scheme (see _unquote_preserving_backslashes), so a
-                # ``\`` must never escape the closer — _closes_outer_quote (EOF /
-                # ``,`` / ``;`` / ``and|with KEY=``) is the authority. (audit M4)
+                # Unescaped closing quote: EOF / ``,`` / ``;`` / ``and|with KEY=``
+                # all close it. Backslashes are LITERAL in this scheme.
+                quote_char = None
+                quote_multiline = False
+            elif char == quote_char and escape_next and _closes_outer_quote_at_boundary(
+                assignments_text, i, quote_char, quote_multiline
+            ):
+                # A BACKSLASH-ESCAPED closing quote still closes ONLY at a HARD
+                # boundary (EOF or the ``and|with KEY=`` conjunction) — the Windows
+                # path ``filepath='C:\logs\'`` case the M4 reorder fixed. Before a
+                # bare ``,``/``;`` it is a genuine escaped INNER quote
+                # (``message="She said \"yes\", ..."``) and must stay literal, so
+                # only the boundary closers apply here. (2026-07-11 audit #2)
                 quote_char = None
                 quote_multiline = False
                 escape_next = False
@@ -698,13 +729,19 @@ def _split_assignment_segment(segment):
 
         if quote_char:
             current.append(char)
-            if (
-                char == quote_char
-                and _closes_outer_quote(segment, i, quote_char, quote_multiline)
+            if char == quote_char and not escape_next and _closes_outer_quote(
+                segment, i, quote_char, quote_multiline
             ):
-                # The REAL closing quote wins even after a trailing backslash (Windows
-                # paths) — backslashes are literal here; _closes_outer_quote is the
-                # authority. Same fix as _split_assignment_segments. (audit M4)
+                # Unescaped closing quote: EOF / ``,`` / ``;`` / conjunction close it.
+                quote_char = None
+                quote_multiline = False
+            elif char == quote_char and escape_next and _closes_outer_quote_at_boundary(
+                segment, i, quote_char, quote_multiline
+            ):
+                # A backslash-escaped closing quote closes ONLY at a hard boundary
+                # (EOF / conjunction) — a Windows path at the value end — never
+                # before a bare ``,``/``;`` where it is an escaped inner quote. Same
+                # fix as _split_assignment_segments. (2026-07-11 audit #2)
                 quote_char = None
                 quote_multiline = False
                 escape_next = False

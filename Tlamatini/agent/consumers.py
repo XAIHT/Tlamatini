@@ -739,12 +739,15 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # Ask-Execs denial — surfaced as the red "Execution interrupted"
             # banner regardless of the Exec report toggle.
             exec_report_denied = _meta.get('exec_report_denied')
-            # Tier-1 survivor list carried over from the multi-turn
-            # executor — processes the per-tool reaper failed to kill.
-            tier1_orphans = global_state.get_state('last_orphan_survivors') or []
+            # Tier-1 survivor list carried over from the multi-turn executor —
+            # processes the per-tool reaper failed to kill. KEYED by THIS user id
+            # (like _meta_slot) so a concurrent request can't hand us its survivor
+            # list or clear ours before we read it. (re-audit [3])
+            _orphan_slot = f"last_orphan_survivors::{conversation_user.id}"
+            tier1_orphans = global_state.get_state(_orphan_slot) or []
             # Clear immediately to avoid leaking into the next request.
             global_state.set_state(_meta_slot, None)
-            global_state.set_state('last_orphan_survivors', None)
+            global_state.set_state(_orphan_slot, None)
 
             await process_llm_response(
                 llm_response,

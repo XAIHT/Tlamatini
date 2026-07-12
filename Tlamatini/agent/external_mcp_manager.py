@@ -1292,10 +1292,20 @@ def _warm_connect_async(active: List[str], servers: Dict[str, Any]) -> None:
             if _failed_connects.get(key, 0.0) > now:
                 continue  # in cooldown after a recent failure
             _connecting.add(key)
-            threading.Thread(
-                target=_warm_connect_one, args=(key, spec), daemon=True
-            ).start()
-            logger.info("[ExternalMCP] warm-connect started for '%s'", key)
+            try:
+                threading.Thread(
+                    target=_warm_connect_one, args=(key, spec), daemon=True
+                ).start()
+                logger.info("[ExternalMCP] warm-connect started for '%s'", key)
+            except Exception:
+                # start() failed → _warm_connect_one never runs → drop the
+                # in-flight marker so this server can warm-connect again on a
+                # later pass (else it is stuck in _connecting forever, never
+                # reconnecting). (2026-07-11 audit #5)
+                _connecting.discard(key)
+                logger.exception(
+                    "[ExternalMCP] failed to start warm-connect thread for '%s'", key
+                )
 
 
 def _refresh_and_supervise_active(
@@ -2188,7 +2198,14 @@ def _supervise_active_async(active: List[str], servers: Dict[str, Any]) -> None:
         finally:
             _supervise_gate.release()
 
-    threading.Thread(target=_run, daemon=True).start()
+    try:
+        threading.Thread(target=_run, daemon=True).start()
+    except Exception:
+        # start() failed (OS thread/handle exhaustion) → _run never runs, so
+        # release the gate HERE or the background supervisor is silently dead
+        # for the whole process lifetime. (2026-07-11 audit #5)
+        _supervise_gate.release()
+        logger.exception("[ExternalMCP] failed to start supervise thread")
 
 
 def get_external_mcp_tools() -> List[Any]:

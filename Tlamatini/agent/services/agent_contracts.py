@@ -9,6 +9,8 @@
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 from __future__ import annotations
 
+import re
+
 from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -56,6 +58,7 @@ class AgentContract:
     parametrizer_fields: tuple[str, ...] = field(default_factory=tuple)
     secret_paths: tuple[str, ...] = field(default_factory=tuple)
     password_paths: tuple[str, ...] = field(default_factory=tuple)
+    uri_secret_paths: tuple[str, ...] = field(default_factory=tuple)
     special: str = ""
 
     def __post_init__(self):
@@ -205,7 +208,11 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
     #    independently (the discoverer contract above proves it).
     "apirer": _contract("apirer", secret_paths=("headers.Authorization",)),
     "sqler": _contract("sqler", secret_paths=("sql_connection.password",)),
-    "mongoxer": _contract("mongoxer", secret_paths=("mongo_connection.password",)),
+    "mongoxer": _contract(
+        "mongoxer",
+        secret_paths=("mongo_connection.password",),
+        uri_secret_paths=("mongo_connection.connection_string",),
+    ),
     "jenkinser": _contract("jenkinser", secret_paths=("api_token",)),
     "emailer": _contract("emailer", secret_paths=("smtp.password",)),
     "recmailer": _contract("recmailer", secret_paths=("imap.password",)),
@@ -342,9 +349,22 @@ def get_parametrizer_source_fields() -> dict[str, list[str]]:
     }
 
 
+_URI_USERINFO_RE = re.compile(r"([A-Za-z][A-Za-z0-9+.\-]*://)[^/@\s]+@")
+
+
+def _redact_uri_userinfo(value: str) -> str:
+    """Mask the ``user:pass@`` userinfo in a connection URI while keeping the
+    scheme/host/db readable (``mongodb+srv://u:p@host`` →
+    ``mongodb+srv://__REDACTED__@host``). A URI with no userinfo is returned
+    unchanged. Whole-field masking would destroy the (non-secret) host, so
+    URI-shaped secret fields are scrubbed this way instead. (2026-07-11 audit #4)
+    """
+    return _URI_USERINFO_RE.sub(r"\1__REDACTED__@", value)
+
+
 def redact_config_for_export(agent_type: str, config: dict[str, Any]) -> dict[str, Any]:
     contract = get_agent_contract(agent_type)
-    if not contract.secret_paths:
+    if not contract.secret_paths and not contract.uri_secret_paths:
         return dict(config)
 
     redacted = deepcopy(config)
@@ -358,6 +378,22 @@ def redact_config_for_export(agent_type: str, config: dict[str, Any]) -> dict[st
             parent = parent.get(part)
         if isinstance(parent, dict) and parts[-1] in parent and parent[parts[-1]]:
             parent[parts[-1]] = "__REDACTED__"
+    # URI-shaped secrets (e.g. mongodb+srv://user:pass@host): mask ONLY the
+    # user:pass@ userinfo so the exported .flw keeps the readable host/db while
+    # never leaking embedded credentials. (2026-07-11 audit #4)
+    for dotted_path in contract.uri_secret_paths:
+        parts = dotted_path.split(".")
+        parent = redacted
+        for part in parts[:-1]:
+            if not isinstance(parent, dict):
+                parent = None
+                break
+            parent = parent.get(part)
+        if isinstance(parent, dict):
+            leaf = parts[-1]
+            value = parent.get(leaf)
+            if isinstance(value, str) and value:
+                parent[leaf] = _redact_uri_userinfo(value)
     return redacted
 
 

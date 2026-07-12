@@ -652,7 +652,14 @@ def _output_paths(config: dict) -> tuple:
     subject = str(_cfg(config, "target")).strip() or "scan"
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", subject)[:50] or "scan"
     stamp = time.strftime("%Y%m%d_%H%M%S")
-    base = os.path.join(out_dir, f"nmapper_{safe}_{stamp}")
+    # Collision-proof suffix: two same-target scans launched in the SAME wall-
+    # clock second (e.g. two parallel Nmapper nodes fired by one Starter) share
+    # this SHARED output dir, so a second-granularity name alone would make both
+    # nmap children write the same -oX/-oN files and corrupt each other's report
+    # (each node then parses the wrong/truncated file). PID + sub-second millis
+    # disambiguate. (2026-07-11 audit #6)
+    unique = f"{os.getpid()}_{int((time.time() % 1) * 1000):03d}"
+    base = os.path.join(out_dir, f"nmapper_{safe}_{stamp}_{unique}")
     return base + ".xml", base + ".nmap"
 
 

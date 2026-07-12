@@ -310,7 +310,27 @@ def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this imag
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
-        response = requests.post(f"{base_url}/api/chat", json=payload, headers=headers, stream=True)
+        # Bound BOTH the connect AND the inter-chunk read so a stalled or
+        # still-loading Ollama (a large vision model paging into VRAM, a wedged
+        # inference, or a proxy holding the socket) can NEVER hang the chat
+        # request forever. This @tool runs on the Multi-Turn executor's worker
+        # thread via a bare tool.invoke() with NO watchdog (only LLM model steps
+        # go through SelfHealingInvoker), and the browser Cancel is only checked
+        # BETWEEN tool calls — so an unbounded iter_lines() read here is
+        # unrecoverable except by killing the server. timeout=(connect, read):
+        # `read` is the max gap BETWEEN streamed chunks, generous enough to
+        # cover a cold model load. Config-overridable. (2026-07-11 audit #1)
+        try:
+            read_timeout = float(config.get("image_interpreter_request_timeout", 300) or 300)
+        except (TypeError, ValueError):
+            read_timeout = 300.0
+        response = requests.post(
+            f"{base_url}/api/chat",
+            json=payload,
+            headers=headers,
+            stream=True,
+            timeout=(15, read_timeout),
+        )
         response.raise_for_status()
         full_description = []
         print("--- [Image Interpreter] Streaming Response: ---")
@@ -336,6 +356,16 @@ def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this imag
                     continue
 
         return "".join(full_description)
+    except requests.exceptions.Timeout:
+        # Covers ConnectTimeout AND ReadTimeout (a stalled stream). Caught
+        # BEFORE ConnectionError because requests' ConnectTimeout subclasses
+        # both — we want it reported as a timeout, not a plain connect failure.
+        return (
+            f"Error: Ollama at {base_url} did not respond within the timeout while "
+            f"analyzing the image (model '{model}' may be stalled or still loading "
+            f"into VRAM). Try again once the model is warm, or raise "
+            f"'image_interpreter_request_timeout' in config."
+        )
     except requests.exceptions.ConnectionError:
         return f"Error: Could not connect to Ollama at {base_url}. Check if the server is running."
     except Exception as e:
