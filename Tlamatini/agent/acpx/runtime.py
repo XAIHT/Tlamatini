@@ -306,6 +306,12 @@ class AcpSession:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                # Decode the external CLI's output as UTF-8 with replacement, NOT
+                # the Windows cp1252 default — a coding-agent CLI (claude/gemini/
+                # cursor/…) readily emits non-cp1252 bytes, which would otherwise
+                # crash the daemon reader thread and lose the whole turn.
+                encoding="utf-8",
+                errors="replace",
                 bufsize=1,
                 shell=resolved.use_shell,
                 creationflags=_windows_creationflags(),
@@ -760,6 +766,8 @@ class AcpxRuntime:
                 timeout=5,
                 shell=resolved.use_shell,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             self._healthy = res.returncode == 0
             self._last_doctor = {
@@ -820,6 +828,8 @@ class AcpxRuntime:
                 timeout=timeout_seconds,
                 shell=resolved.use_shell,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             text = (res.stdout or res.stderr or "").strip()
             # Take only the first non-empty line and cap length so a chatty

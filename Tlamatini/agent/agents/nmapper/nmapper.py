@@ -626,6 +626,27 @@ def _format_preflight_report(report: dict) -> str:
 # ARGV BUILDER + OUTPUT PARSING
 # ========================================
 
+def _default_host_timeout(action: str) -> str:
+    """Per-host budget (nmap ``--host-timeout``) for the SLOW actions only, so a
+    big scan self-terminates with the partial results already written to ``-oX``
+    instead of the agent hard-killing it at ``command_timeout`` (which loses
+    EVERYTHING and reads to the user as "no ports found"). An explicit config
+    ``host_timeout`` overrides this. (2026-07-12 — a ``full`` ``-p-`` of an
+    internet host was timing out at ~15 min with an empty result.)"""
+    return {"full": "15m", "udp": "10m", "scripts": "10m"}.get(action, "")
+
+
+def _parse_nmap_time(value: str) -> int:
+    """Parse an nmap time token ('15m' / '900s' / '1h' / '500ms') into seconds
+    (0 when unparseable), so the agent hard-kill can be kept above it."""
+    s = str(value or "").strip().lower()
+    m = re.match(r"^(\d+(?:\.\d+)?)\s*(ms|s|m|h)?$", s)
+    if not m:
+        return 0
+    mult = {"ms": 0.001, "s": 1.0, "m": 60.0, "h": 3600.0}.get(m.group(2) or "s", 1.0)
+    return int(float(m.group(1)) * mult)
+
+
 def _timing_flag(config: dict) -> str:
     t = str(_cfg(config, "timing", "T4")).strip().upper().lstrip("-")
     if not t.startswith("T"):
@@ -689,7 +710,7 @@ def _build_argv(action: str, exe: str, config: dict, xml_path: str, normal_path:
     # version / scripts
     if version_detect and action in ("quick", "full", "version", "custom"):
         a.append("-sV")
-    if default_scripts and action in ("quick", "full"):
+    if default_scripts and action == "quick":   # -sC only on fast top-1000 quick, NOT full -p- (pathologically slow)
         a.append("-sC")
     if action == "scripts":
         a += ["--script", nse or "default"]
@@ -710,6 +731,13 @@ def _build_argv(action: str, exe: str, config: dict, xml_path: str, normal_path:
     a.append(_timing_flag(config))
     if min_rate > 0:
         a += ["--min-rate", str(min_rate)]
+
+    # per-host time budget → nmap self-terminates with the partial -oX results it
+    # already has instead of the agent hard-killing the whole scan (which loses
+    # everything and looks like "no ports found"). (2026-07-12)
+    host_timeout = str(_cfg(config, "host_timeout", "")).strip() or _default_host_timeout(action)
+    if host_timeout:
+        a += ["--host-timeout", host_timeout]
 
     # structured + human output
     a += ["-oX", xml_path, "-oN", normal_path]
@@ -877,16 +905,44 @@ def main():
                     logging.error(f"❌ Preflight refused {action}: {pf['fatals']}")
             else:
                 downgrade = pf.get("downgrade", {})
+                # Keep the agent hard-kill ABOVE nmap's own --host-timeout so nmap
+                # stops itself gracefully (writing the partial results it already has
+                # to -oX) BEFORE we kill the whole process at `timeout`. (2026-07-12)
+                eff_ht = str(_cfg(config, "host_timeout", "")).strip() or _default_host_timeout(action)
+                if eff_ht:
+                    config["host_timeout"] = eff_ht          # _build_argv emits this same value
+                    ht_secs = _parse_nmap_time(eff_ht)
+                    if ht_secs > 0:
+                        timeout = max(timeout, float(ht_secs + 180))
                 xml_path, normal_path = _output_paths(config)
                 argv = _build_argv(action, nmap_exe, config, xml_path, normal_path, downgrade)
                 logging.info("🔎 nmap: " + " ".join(argv))
                 rc, out, err = _run_cmd(argv, env=env, timeout=timeout)
                 hosts_up, open_ports = _parse_xml(xml_path)
                 ok = rc == 0
+                # rc 124 = the agent hard-killed nmap at `timeout` (the whole scan
+                # blew its budget). A host that hit nmap's own --host-timeout still
+                # exits 0 with PARTIAL results. Distinguish BOTH from a genuine
+                # "0 open ports" so a timeout never reads to the user as "nothing found".
+                timed_out = rc == 124
+                host_timeout_hit = ("timed out" in (out + err).lower()
+                                    or "host timeout" in (out + err).lower())
 
                 warn = ""
+                if timed_out:
+                    warn = (
+                        "⏱ SCAN TIMED OUT — it exceeded its time budget (~%ds) and was STOPPED "
+                        "before finishing. This is NOT 'no open ports found'. Narrow the scope "
+                        "(action='quick' / 'top_ports', a smaller `ports` range) or raise "
+                        "`command_timeout` / `host_timeout`.\n\n" % int(timeout)
+                    )
+                elif host_timeout_hit:
+                    warn = (
+                        "⏱ PARTIAL RESULTS — a host hit the per-host --host-timeout, so the "
+                        "results are incomplete. Raise `host_timeout` for full coverage.\n\n"
+                    )
                 if pf.get("warnings"):
-                    warn = "[preflight: " + " | ".join(pf["warnings"]) + "]\n\n"
+                    warn += "[preflight: " + " | ".join(pf["warnings"]) + "]\n\n"
                 body_parts = []
                 if os.path.isfile(normal_path):
                     try:
@@ -912,10 +968,14 @@ def main():
                     "scan_technique": eff_tech,
                     "ports": _ports_label(action, config),
                     "hosts_up": hosts_up,
-                    "open_ports": "; ".join(open_ports[:40]) if open_ports else "(none)",
+                    "open_ports": (
+                        "; ".join(open_ports[:40]) if open_ports
+                        else "(scan timed out before completion)" if timed_out
+                        else "(none)"
+                    ),
                     "xml_path": xml_path,
                     "output_path": normal_path,
-                    "stage": "run",
+                    "stage": "timeout" if timed_out else "run",
                 })
 
         outcome["success"] = "true" if ok else "false"

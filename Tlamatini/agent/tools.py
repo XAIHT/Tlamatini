@@ -3075,6 +3075,13 @@ def _run_command_bounded(command, *, shell, timeout=_EXECUTE_COMMAND_TIMEOUT_SEC
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        # Decode child output as UTF-8 with replacement, NOT the Windows default
+        # cp1252. A command that emits a non-cp1252 byte (UTF-8 output, a binary-ish
+        # dump, a crawler payload) otherwise crashes the stdlib _readerthread with
+        # UnicodeDecodeError and ALL captured output is lost. Seen live at ~7.8 MB
+        # under the multi-user test. (2026-07-12 log audit)
+        encoding="utf-8",
+        errors="replace",
     )
     try:
         out, err = proc.communicate(timeout=timeout)
@@ -3211,10 +3218,12 @@ def execute_netstat() -> str:
         try:
             cmd_list = shlex.split(command)
             result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False,
-                                    stdin=subprocess.DEVNULL, timeout=30)
+                                    stdin=subprocess.DEVNULL, timeout=30,
+                                    encoding="utf-8", errors="replace")
         except ValueError:
             result = subprocess.run(command, shell=True, capture_output=True, text=True,
-                                    stdin=subprocess.DEVNULL, timeout=30)
+                                    stdin=subprocess.DEVNULL, timeout=30,
+                                    encoding="utf-8", errors="replace")
         
         if result.returncode != 0:
             return f"Error: Command '{command}' failed with return code {result.returncode}. Output: {result.stderr}"
@@ -3424,6 +3433,7 @@ def decompile_java(path_filename: str) -> str:
         result = subprocess.run(
             cmd, capture_output=True, text=True, cwd=jd_cli_dir, shell=False,
             stdin=subprocess.DEVNULL, timeout=600,
+            encoding="utf-8", errors="replace",
         )
         
         if result.returncode != 0:

@@ -21,7 +21,7 @@
 
 # -- action -- one capability per run ----------------------------------------
 #   quick          : -sT -sV -sC -Pn -T4 --top-ports 1000   (the CTF opener)
-#   full           : -sT -sV -sC -Pn -T4 -p-                 (all 65535 TCP ports)
+#   full           : -sT -sV -Pn -T4 -p- --host-timeout 15m   (all 65535 TCP ports; time-bounded, no -sC)
 #   top_ports      : -sT -Pn --top-ports <top_ports>         (fast surface map)
 #   version        : -sT -sV -Pn -p <ports>                  (service/version ID)
 #   scripts        : -sT -Pn --script <nse_scripts> -p <ports> (targeted NSE)
@@ -45,7 +45,7 @@ min_rate: 0            # 0 = unset; else --min-rate N
 # -- Scan mode / privileges --------------------------------------------------
 scan_technique: "connect"  # connect (-sT, default, no Npcap) | syn (-sS, needs Npcap; auto-downgrades)
 version_detect: true       # -sV service/version detection
-default_scripts: true      # -sC default NSE scripts (quick/full)
+default_scripts: true      # -sC default NSE scripts (quick only; full skips -sC — too slow on -p-)
 nse_scripts: ""            # action=scripts: "http-title,ssl-cert" or "default,safe"
 os_detect: false           # -O OS detection (needs Npcap; dropped + warned if absent)
 skip_host_discovery: true  # -Pn treat host as up (recommended on Windows / no Npcap)
@@ -62,7 +62,11 @@ nmap_version: "7.99"   # version used for the installer download
 
 # -- Execution controls ------------------------------------------------------
 preflight: true        # fail-safe checks; REFUSE (never crash) rather than misfire
-command_timeout: 900   # hard cap (seconds) on a scan
+command_timeout: 900   # hard cap (seconds) — a backstop that always sits ABOVE host_timeout
+host_timeout: ""       # per-host budget, nmap syntax ("15m" / "900s" / "1h"). "" = a default
+                       #   only for the SLOW actions (full=15m, udp/scripts=10m): nmap self-
+                       #   terminates with PARTIAL -oX results instead of hanging, and
+                       #   command_timeout is auto-raised to stay above it. Fast actions unaffected.
 output_dir: ""         # results dir; empty = <app>/Temp/Nmapper
 
 # -- Connection fields ----------------------------------------------------
