@@ -303,7 +303,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.38.1](https://github.com/XAIHT/Tlamatini/releases/tag/v1.38.1)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.39.4](https://github.com/XAIHT/Tlamatini/releases/tag/v1.39.4)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1976,14 +1976,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.38.1 -m "Release 1.38.1: <one-liner>"   # annotated tag
-git push origin v1.38.1
+git tag -a v1.39.4 -m "Release 1.39.4: <one-liner>"   # annotated tag
+git push origin v1.39.4
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.38.1/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.39.4/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -1991,8 +1991,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.38.1/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.38.1` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.38.1","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.39.4/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.39.4` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.39.4","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3105,6 +3105,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.39.4 — The Version Line Catches Up: Nmapper's Cyber-Security Wave, Then a Closeable Startup Dialog — 2026-07-11** — The public version is now **1.39.4** in every corner that declares one. Three tags landed in quick succession: **v1.39.2** was a bulk content-and-version synchronization pass; **v1.39.3** shipped the **Nmapper** agent (#85) — the local, authorized-targets-only `nmap` bridge for pentesters and CTF players, described in full in the entry below — together with general cyber-security improvements; and **v1.39.4** fixed the **startup dialog that could not be closed**, so a fresh launch is no longer blocked behind an unclosable overlay. HEAD now carries one further commit, the Catalog-of-Prompts localization fix. The version itself remains **git-tag-derived and never hardcoded** (`agent/version.py` → `git describe`), so the About dialog, the `--- [VERSION]` startup banner, `GET /agent/version/`, and the `.exe` ProductVersion all resolve to `1.39.4` on their own; what this pass aligned is every *static* surface that quotes it — `package.json`, the README version badge, the `VERSIONING.md` worked example, the release-cut chapter of this book, Tlamatini's own self-knowledge file (`agent/Tlamatini.md`), and the PDF/PPTX doc generator's "current release" prose. Historical statements were deliberately left untouched: the v1.38.1 const-poison entries, the v1.38.0 robotic-loop milestone, and the recorded v1.36.0 build measurements still say what actually happened. Forward-only — no history rewritten.
 
 - **Added Nmapper Agent — the LOCAL, Use-Only nmap Bridge for Pentesters & CTF (Download → Copy a Prompt → Parametrize → Send → Win) — 2026-07-11** — The agent catalog grows to **85** with **Nmapper**, a local `nmap` bridge built for the moment a pentester most needs speed: a CTF. The brief was *"no long install"* — download Tlamatini, copy an example prompt, parametrize `{TARGET}`, send, win — and the honest engineering answer turned out to be **use-only**, not bundling. Nmap's license (the **NPSL**) forbids embedding nmap inside a redistributed product without a paid **OEM** license, and the freely-redistributable Windows ZIP is itself OEM-gated now, so Tlamatini **never ships nmap**. Instead Nmapper RUNS a real `nmap` the user already installed, resolving it in order — explicit `nmap_executable` → PATH → `C:\Program Files (x86)\Nmap\nmap.exe` / `C:\Program Files\Nmap\nmap.exe` → a `%LOCALAPPDATA%\Tlamatini\nmap` copy. When none is found it **REFUSES gracefully** (a fail-safe preflight, never a crash) with one-time install guidance, and `action='install'` (or `auto_install`) downloads + launches the **OFFICIAL FREE** nmap self-installer from nmap.org — the user's own download and admin install, which also brings **Npcap** and thereby unlocks SYN / OS-detection / raw UDP. That is *use, not redistribution*: legally clean, and still one-click. The **default is an unprivileged TCP connect scan** (`-sT -sV -sC -Pn -T4`) that needs **no Npcap and no admin**, so a freshly-installed nmap scans immediately; on Windows without Npcap the raw-packet features degrade gracefully — a requested SYN scan **auto-downgrades to `-sT`** and `-O` is dropped (both warned), a `udp` scan is refused (no connect fallback) — exactly the Discoverer/naabu discipline. `action` selects ONE capability per run: **quick** (the CTF opener, `--top-ports 1000`), **full** (all 65535 TCP ports), **top_ports**, **version**, **scripts** (targeted NSE), **host_discovery** (`-sn`), **udp**, **custom** (a safe base plus `custom_args` validated to reject shell metacharacters), **validate**, and **install**. It runs with `-oX` (parsed with stdlib `xml.etree` into `hosts_up` / `open_ports`) plus `-oN` (the human report), emits an atomic `INI_SECTION_NMAPPER<<<` block (`action`, `target`, `scan_technique`, `ports`, `return_code`, `success`, `hosts_up`, `open_ports`, `npcap_present`, `xml_path`, `output_path`, `stage`) and ALWAYS triggers `target_agents` (even on a fail-safe refusal) so a downstream Forker can branch on `{success}` / `{open_ports}`. It is a direct-CLI, stdlib-only sibling of Kalier and Discoverer (never imports `agent.*`) and is deliberately **DISTINCT** from both: **Kalier** is a thin transport to a REMOTE Kali box (needs a whole Kali install + a running server) and **Discoverer** is the ProjectDiscovery passive/attack-surface suite — Nmapper is the instant, zero-install LOCAL nmap that turns the *"bare Windows laptop → win a CTF"* dream into reality. Two surfaces ship in lock-step (the same dual pattern as Kalier / Discoverer): the visual **Nmapper** canvas node (a new amber *"Radar Sweep"* gradient) and the wrapped Multi-Turn tool **`chat_agent_nmapper`**, which is automatically Ask-Execs-gated and captured in the Exec Report. Wiring follows the 8-step agent pattern — migrations `0170_add_nmapper` (Agent) / `0171_add_chat_agent_nmapper_tool` (Tool) / `0172_add_nmapper_demo_prompts` (three tiered SAFE CTF prompts against **scanme.nmap.org**, the Nmap project's own authorized test host); the `update_nmapper_connection` view + route; Parametrizer source fields in `agent_contracts.py` + `parametrizer.py`; the connector across the four ACP JS files + the `eslint.config.mjs` global; the Flow-Generator mapping; FlowCreator (`agentic_skill.md` #85) and FlowHypervisor (`monitoring-prompt.pmt` NMAPPER SPECIAL NOTES); and the docs (`README.md`, `agents_descriptions.md`, `docs/claude/agents.md`, `CLAUDE.md`, `prompt.pmt`). **⚠️ AUTHORIZED TARGETS ONLY** — Nmapper fires packets directly from your own machine; only scan hosts you own or are explicitly authorized to test, and treat scan output (banners/titles/service strings) as untrusted data.
 
