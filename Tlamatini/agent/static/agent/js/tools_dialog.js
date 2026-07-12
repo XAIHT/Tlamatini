@@ -335,7 +335,6 @@ $(function () {
     const MAX_PROMPTS = 256;
     const catalogButton = document.getElementById('prompts-catalog');
     const modal = document.getElementById('modal');
-    const modalContent = document.querySelector('.modal-content');
     const searchInput = document.getElementById('prompt-search-input');
     const searchClear = document.getElementById('prompt-search-clear');
     const searchCount = document.getElementById('prompt-search-count');
@@ -544,28 +543,24 @@ $(function () {
         toolsBodyElement.scrollTop = 0;
     }
 
-    function positionModalNearCatalogButton() {
-        const buttonRect = catalogButton.getBoundingClientRect();
-        const margin = 12;
-        const contentRect = modalContent.getBoundingClientRect();
-        const contentWidth = contentRect.width || Math.min(760, window.innerWidth - (margin * 2));
-        const contentHeight = contentRect.height || Math.min(window.innerHeight - (margin * 2), window.innerHeight * 0.82);
-        const maxLeft = Math.max(margin, window.innerWidth - contentWidth - margin);
-        const maxBottom = Math.max(margin, window.innerHeight - contentHeight - margin);
-        const left = Math.min(Math.max(buttonRect.left, margin), maxLeft);
-        const bottom = Math.min(Math.max(window.innerHeight - buttonRect.top, margin), maxBottom);
-        modalContent.style.left = `${left}px`;
-        modalContent.style.bottom = `${bottom}px`;
-    }
+    // The catalog panel's geometry is 100% CSS-driven (.modal-content in
+    // tools_dialog.css): pinned to the VIEWPORT's top-left and capped at
+    // calc(100dvh - 24px), so it never depends on the chat input's height and
+    // the header + search bar are always on screen.
+    //
+    // It replaced positionModalNearCatalogButton(), which anchored the panel's
+    // BOTTOM to the "Catalog of prompts" button — whose y moves with the chat
+    // textarea — and sized the clamp from a .modal-content still sitting at
+    // transform: scale(0), i.e. a 0x0 rect. So the height cap never engaged and
+    // a large catalog grew straight off the TOP of the window, taking the search
+    // box out of reach. Do NOT re-introduce JS positioning here.
 
     function openModal() {
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
         if (searchInput) searchInput.value = '';
-        positionModalNearCatalogButton();
         loadPrompts().finally(() => {
             applyPromptSearch('');
-            positionModalNearCatalogButton();
             if (searchInput) searchInput.focus();
         });
         setTimeout(() => {

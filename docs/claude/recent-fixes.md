@@ -18,6 +18,19 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-07-11 — Catalog of Prompts: the panel is CSS-pinned to the viewport — do NOT re-introduce JS positioning in `tools_dialog.js`
+
+**Files: `agent/static/agent/css/tools_dialog.css` (`.modal-content`, `.modal-header`, `.modal-body`, `.modal-footer`, `.prompt-search-bar`) and `agent/static/agent/js/tools_dialog.js` (`positionModalNearCatalogButton()` — REMOVED).**
+
+- **Bug (Angela, live):** with a large catalog (105 prompts), the `#prompts-catalog` modal grew straight off the **top** of the window and the **search box became unreachable**, and where it landed depended on how tall the user had dragged the chat textarea.
+- **Two causes, both in the removed `positionModalNearCatalogButton()`:**
+  1. It anchored the panel's **BOTTOM** to the "Catalog of prompts" button — `bottom = window.innerHeight - buttonRect.top`. That button floats above the chat textarea, so the panel's geometry literally tracked the **chat input's height** (the thing Angela explicitly wanted independence from).
+  2. Its height clamp measured `modalContent.getBoundingClientRect()` while `.modal-content` was still at `transform: scale(0)` (a **0×0** rect, since `getBoundingClientRect` returns the *transformed* box). So `contentHeight` was garbage, `maxBottom` never engaged, and the panel overflowed the viewport upward.
+- **Fix — geometry is now 100% CSS, zero JS measurement.** `.modal-content` is `position: fixed; top: 12px; left: 12px; bottom: auto; max-height: calc(100dvh - 24px)`, `transform-origin: top left`. It is anchored to the **VIEWPORT**, grows DOWNWARD, and can never exceed the window, so the header + search bar are always on screen at a **constant** y. `.modal-header` / `.prompt-search-bar` / `.modal-footer` are `flex: 0 0 auto` (never squeezed out) and `.modal-body` is `flex: 1 1 auto; min-height: 0; overflow-y: auto` — **`min-height: 0` is load-bearing**: without it a flex item's default `min-height: auto` refuses to shrink below its content, so the *panel* would stretch instead of the *list* scrolling. `.modal-footer:empty { display: none }` drops the stray divider the empty footer used to draw.
+- **DO NOT** re-add JS `left`/`bottom` inline styles to `.modal-content` (they would override the stylesheet and resurrect both bugs), and do not measure a `scale(0)` element for layout.
+- **Verified live (headed Chrome, real chat GUI, 105 cards):** panel top = 12 px, bottom = 938 of a 950 px viewport, list scrolls internally, search box on screen + clickable. Growing the chat textarea moved the Catalog **button** 835 → 1152 px while the **search box stayed at exactly 127 px** — i.e. provably independent of the chat input's vertical size.
+- **Note (bit us during this fix):** the app Angela runs on `:8000` is the **frozen install `C:\Tlamatini\Tlamatini.exe`**, not the source tree — see the frozen-static note below/`memory: project_live_app_is_frozen_install`. A repo-only edit changes nothing she can see.
+
 ### 2026-07-11 — Plain `runserver` (reloader ON) no longer double-starts the MCP helper ports — do NOT remove the `RUN_MAIN` gate in `agent/apps.py`
 
 **File: `agent/apps.py` (`AgentConfig.ready()`), plus the run-instruction docs (`README.md`, `CLAUDE.md`, `BookOfTlamatini.md`, `ACPX.md`, `KIMI.md`, `agent/doc_generation/complete_project_docs.py`).**

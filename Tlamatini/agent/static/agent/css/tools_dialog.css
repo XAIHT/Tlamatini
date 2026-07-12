@@ -57,14 +57,24 @@
     max-width: calc(100vw - 24px);
     box-shadow: 0 18px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.08);
+
+    /* Geometry is 100% CSS-driven and pinned to the VIEWPORT, never to the
+       "Catalog of prompts" button — so the panel is completely independent of
+       the chat input's height. Anchored at the top, it grows DOWNWARD and is
+       capped at the viewport, so the header + search bar are always on screen
+       however large the catalog gets; only .modal-body scrolls.
+       Do NOT re-introduce JS positioning (see tools_dialog.js). */
     position: fixed;
+    top: 12px;
+    left: 12px;
+    bottom: auto;
     display: flex;
     flex-direction: column;
     max-height: calc(100dvh - 24px);
 
     opacity: 0;
     transform: scale(0);
-    transform-origin: bottom left;
+    transform-origin: top left;
     transition: transform 0.3s ease-out, opacity 0.3s ease-out;
 }
 
@@ -111,6 +121,7 @@
 }
 
 .modal-header {
+    flex: 0 0 auto;
     padding-bottom: 15px;
     border-bottom: 1px solid #555;
     margin-bottom: 15px;
@@ -122,7 +133,11 @@
 }
 
 .modal-body {
-    flex-grow: 1;
+    flex: 1 1 auto;
+    /* min-height:0 is what lets THIS list scroll instead of stretching the
+       panel past its max-height (a flex item's default min-height:auto would
+       refuse to shrink below its content). */
+    min-height: 0;
     overflow-y: auto;
     padding-right: 10px;
 }
@@ -316,11 +331,18 @@
 }
 
 .modal-footer {
+    flex: 0 0 auto;
     padding-top: 15px;
     border-top: 1px solid #555;
     margin-top: 15px;
     display: flex;
     align-items: center;
+}
+
+/* The catalog's footer carries no controls — don't spend 31px of the card
+   list's height drawing a stray divider under it. */
+.modal-footer:empty {
+    display: none;
 }
 
 .message-input {
@@ -360,6 +382,9 @@
    Sits between the "Pre-established prompts..." header and the card list;
    drives the ranked fuzzy search in tools_dialog.js. */
 .prompt-search-bar {
+    /* Never shrink, never scroll away: it sits above the scrolling card list
+       in the bounded flex column, so it stays reachable at any catalog size. */
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     gap: 10px;
