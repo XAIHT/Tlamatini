@@ -36,6 +36,7 @@ from .config_loader import load_config, save_config_updates
 from .services.agent_contracts import (
     get_parametrizer_source_fields,
     list_contract_summaries,
+    redact_flow_snapshot,
 )
 from .services.agent_paths import pool_name_to_agent_type
 from .services.flow_compiler import (
@@ -9969,6 +9970,35 @@ def flow_from_tool_calls_view(request):
         })
     except Exception as e:
         print(f"[CHAT FLOW] Error normalizing flow: {e}")
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def redact_flow_snapshot_view(request):
+    """Redact secret fields from a canvas flow snapshot before ``.flw`` download.
+
+    The canvas Save button used to ``Blob`` the RAW ``buildACPFlowSnapshot()``
+    output, leaking every SMTP/IMAP/DB password, API token and private key typed
+    into a node dialog straight into the shared ``.flw``. This masks the secret
+    fields (per each agent's ``contract.secret_paths``) while preserving the
+    snapshot shape byte-for-byte, so the canvas ``.flw`` loader round-trips it
+    losslessly. The LOSSLESS counterpart of the chat path's
+    ``flow_from_tool_calls_view`` (which reshapes through ``FlowSpec``).
+    (2026-07-11 audit [5])
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}')
+        snapshot = data.get('flow') if isinstance(data.get('flow'), dict) else data
+        if not isinstance(snapshot, dict):
+            return JsonResponse({"success": False, "message": "Missing flow"}, status=400)
+        return JsonResponse({
+            "success": True,
+            "flow": redact_flow_snapshot(snapshot),
+        })
+    except Exception as e:
+        print(f"[FLOW REDACT] Error redacting snapshot: {e}")
         traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 

@@ -361,6 +361,41 @@ def redact_config_for_export(agent_type: str, config: dict[str, Any]) -> dict[st
     return redacted
 
 
+def redact_flow_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Redact secret fields from a canvas flow snapshot for ``.flw`` export.
+
+    The LOSSLESS counterpart of ``flow_spec_to_legacy_json(redact=True)``: it
+    preserves the snapshot shape byte-for-byte — ``schemaVersion``, node ids,
+    ``left``/``top`` positions, connections and ``artifacts`` are untouched —
+    EXCEPT that each node's ``configData`` secret fields (per that agent's
+    ``contract.secret_paths``) are masked to ``"__REDACTED__"``.
+
+    The canvas Save button round-trips through this exact snapshot shape (the
+    ``.flw`` loader reads it back verbatim), so it must NOT be reshaped through
+    ``FlowSpec`` — only scrubbed of secrets. Save used to ``Blob`` the RAW
+    snapshot, leaking every SMTP/IMAP/DB password, API token and private key
+    typed into a node dialog. Fail-safe: a non-dict input, a missing contract,
+    or a node with no ``secret_paths`` is passed through unchanged; never
+    raises. (2026-07-11 audit [5])
+    """
+    if not isinstance(snapshot, dict):
+        return snapshot
+    result = deepcopy(snapshot)
+    nodes = result.get("nodes")
+    if isinstance(nodes, list):
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            config = node.get("configData")
+            if not isinstance(config, dict):
+                continue
+            agent_name = node.get("text") or node.get("agentPurpose") or ""
+            contract = get_agent_contract(agent_name)
+            if contract.secret_paths:
+                node["configData"] = redact_config_for_export(contract.agent_type, config)
+    return result
+
+
 def list_contract_summaries() -> list[dict[str, Any]]:
     summaries = []
     for contract in sorted(get_agent_contracts().values(), key=lambda c: c.agent_type):

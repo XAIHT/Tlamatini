@@ -1248,7 +1248,7 @@ def collect_context() -> dict:
 SYSTEM_OVERVIEW = [
     "Tlamatini is a self-hosted AI developer assistant (cloud LLMs by default; the app and RAG run locally) built with Django, Django Channels, LangChain, LangGraph, FAISS/BM25 retrieval, and a large in-repository agent application.",
     "She combines a browser chat surface, a Retrieval-Augmented Generation stack, a Multi-Turn tool executor, MCP-backed context providers, wrapped chat-agent runtimes, and a visual Agentic Control Panel for workflow design.",
-    "She is designed for development operations: codebase analysis, file and directory context, deterministic file discovery/search/editing, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for STM32F4, ESP32-class, Arduino-class, and ESPHome smart-home boards.",
+    "She is designed for development operations: codebase analysis, file and directory context, deterministic file discovery/search/editing, command execution, Python execution, screenshots, web/search helpers, notifications and attention routing, DevOps tools, authorized cyber-security assessment, local model operation, Windows packaging and uninstall registration, first-person self-knowledge about her own runtime, and embedded-firmware control for STM32F4, ESP32-class, Arduino-class, and ESPHome smart-home boards.",
 ]
 
 AGENT_DIRECTORY_DISCLAIMER = [
@@ -1276,6 +1276,7 @@ WHAT_IT_DOES = [
     "Exposes a coherent versioning surface across builds, runtime UI, logs, and an open health-check endpoint.",
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
+    "Can run local authorized nmap reconnaissance through Nmapper, a use-only bridge that resolves a user-installed nmap, defaults to unprivileged TCP connect scanning, refuses unsafe/missing prerequisites gracefully, and never bundles or redistributes nmap.",
     "Can diagnose an external MCP before the first live connection through the MCP Doctor agent and wrapped `chat_agent_mcp_doctor` tool, checking transport, runtime requirements, PATH availability, placeholder secrets, and the next operator step.",
     "Can scaffold, author, build, flash, reset, and observe STM32F4 firmware through STM32er and the STM32 Template Project MCP, with a fail-safe preflight before any hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
@@ -1315,6 +1316,7 @@ HOW_IT_WORKS = [
     "When Multi-Turn is enabled, the global planner selects context and tool stages before the executor binds only the relevant tools, including wrapped deterministic agents such as De-Compresser.",
     "Optional self-modify builds bundle `TlamatiniSourceCode/`; `copy_source_assets.py` generates that snapshot with rebuild instructions and redacted secrets, and prompt rules require her to verify that directory exists before claiming she can inspect or change her own code.",
     "The Kalier path talks directly to the MCP-Kali-Server Flask API over HTTP with Python-stdlib `urllib`, auto-seeding the default box from `kali_server_url` in Config -> URLs before any one-off per-call override is applied, and captures one atomic `INI_SECTION_KALIER` block per run.",
+    "The Nmapper path resolves a user-installed `nmap` from explicit config, PATH, Program Files, or `%LOCALAPPDATA%`, constructs one safe scan action, captures XML plus normal output, parses hosts/open ports with the standard library, and emits one atomic `INI_SECTION_NMAPPER` block for Parametrizer/Forker routing.",
     "The STM32er path spawns the STM32 Template Project MCP stdio server, performs the MCP initialize handshake, runs exactly one requested tool or composite action, and emits one atomic `INI_SECTION_STM32ER` block with the result, project directory, and stage metadata.",
     "Before any flash-capable STM32er action, a critical-mission preflight validates the arm-none-eabi toolchain, STM32CubeIDE, programmer path, ST-LINK presence, and STM32F-family match; compile-only steps can run boardless, but unsafe hardware mutations are refused fail-safe.",
     "The ESP32er path resolves or bootstraps PlatformIO Core, invokes `pio` subcommands directly with Python-stdlib process control, validates project and serial-port readiness, and emits one atomic `INI_SECTION_ESP32ER` block with stage, project, port, and stdout/stderr payloads.",
@@ -1345,6 +1347,7 @@ HOW_TO_USE = [
     "If an Ask Execs approval dialog or a Notifier event needs you while the browser is buried, watch for Tlamatini’s taskbar-attention flash and the matching uppercase banner in `tlamatini.log`.",
     "If you want her to inspect or modify herself, verify that `TlamatiniSourceCode/` exists in the current build first; self-modify is optional and absent builds must be treated honestly as read-only about their own code tree.",
     "For authorized Kali Linux assessments, run MCP-Kali-Server on the Kali box, set `Config -> URLs -> Kali server (Kalier)` once, and then call `chat_agent_kalier` from Multi-Turn with the desired `action` and `target` without repeating the box URL each turn.",
+    "For local nmap reconnaissance, install nmap yourself or call `chat_agent_nmapper` with `action='install'` to launch the official free installer; then use `quick`, `full`, `top_ports`, `version`, `scripts`, `host_discovery`, `udp`, `custom`, or `validate` only against hosts you own or are explicitly authorized to test.",
     "For STM32 firmware work, install STM32CubeIDE, leave `Config -> URLs -> STM32 MCP server script` blank for zero-config bootstrap, and then call `chat_agent_stm32er` from Multi-Turn with one `action` at a time such as `validate`, `create_project`, `write_source`, `build`, `build_and_flash`, `serial_session`, or `live_monitor`.",
     "For ESP32 firmware work, leave `Config -> URLs -> pio_executable` blank for zero-config PlatformIO bootstrap, then call `chat_agent_esp32er` from Multi-Turn with actions like `bootstrap`, `validate`, `create_project`, `write_source`, `build`, `upload`, `build_and_upload`, `monitor`, or `monitor_session`.",
     "For ESPHome smart-home firmware work, leave `Config -> URLs -> esphome_executable` blank for zero-config bootstrap, then call `chat_agent_esphomer` from Multi-Turn with actions like `bootstrap`, `validate`, `new_config`, `config`, `compile`, `upload`, `logs`, or the one-shot `scaffold_compile_upload` flow.",
@@ -1369,7 +1372,7 @@ AGENT_DESCRIPTION_GUIDE = [
 AGENT_RUNTIME_GUIDE = [
     "Every workflow agent follows the same operational skeleton: template directory, `config.yaml`, a session-scoped pool copy, PID/status/log files, and explicit source/target wiring.",
     "Chat-wrapped tool calls launch isolated runtime copies under `agent/agents/pools/_chat_runs_/`, while ACP uses named pool folders such as `starter_1` or `unrealer_1`.",
-        "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; Video-Analyzer closes hardware-in-the-loop video verdicts; MCP Doctor performs safe external-MCP onboarding diagnosis; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; TeleTlamatini bridges full Tlamatini conversations into Telegram; and Telegrammer / Whatsapper send and receive messages over the official Telegram Bot API and Meta WhatsApp Cloud API.",
+        "Specialized agents now stretch the platform in different directions: Globber/Grepper/Editor cover deterministic file discovery, regex search, and surgical in-place edits; Video-Analyzer closes hardware-in-the-loop video verdicts; MCP Doctor performs safe external-MCP onboarding diagnosis; ACPXer drives external coding-agent CLIs; Kalier drives a remote or tunneled Kali Linux tool server; Nmapper drives local use-only nmap scans for authorized targets; STM32er drives a zero-config STM32 firmware MCP bridge; ESP32er drives PlatformIO directly; ESPHomer drives ESPHome directly for YAML-authored smart-home devices; Blenderer drives a live Blender editor over the official MCP add-on socket; Unrealer drives a live UE5 editor; TeleTlamatini bridges full Tlamatini conversations into Telegram; and Telegrammer / Whatsapper send and receive messages over the official Telegram Bot API and Meta WhatsApp Cloud API.",
 ]
 
 ACPX_SKILLS_GUIDE = [
@@ -1382,13 +1385,13 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     return [
         f"The live operator surface now stands at {context['workflow_agent_count']} workflow agents, {context['total_multi_turn_tools']} Multi-Turn tools, {context['acpx_tool_count']} ACPX tools, and {context['skills_count']} skills.",
         f"Source inspection confirms the total: {context['wrapped_chat_agent_count']} distinct wrapped chat-agent tools bound from `chat_agent_registry.py`, which combines with {context['core_python_tool_count']} core Python tools and {context['acpx_tool_count']} ACPX/Skill tools for {context['total_multi_turn_tools']} Multi-Turn tools overall.",
-        "The count growth over older public badges now comes from several stacked waves together: the deterministic file-navigation/file-edit trio (Globber, Grepper, Editor), the ESPHomer smart-home firmware lane, MCP Doctor for External MCP onboarding, Zavuerer unified messaging, and Video-Analyzer for robotic video verdicts.",
+        "The count growth over older public badges now comes from several stacked waves together: the deterministic file-navigation/file-edit trio (Globber, Grepper, Editor), the ESPHomer smart-home firmware lane, MCP Doctor for External MCP onboarding, Zavuerer unified messaging, Video-Analyzer for robotic video verdicts, and Nmapper for local authorized nmap reconnaissance.",
         "The workflow-agent and wrapped-tool totals are validated from the live tree even when some handbook badges or older prose lines lag behind the newest release wave, so the dossier stays tied to source truth instead of stale summaries.",
         "This matters operationally because the planner never binds everything at once: the documented default `max_selected_tools` cap stays at 20, so breadth of capability does not mean uncontrolled tool sprawl per turn.",
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.39.4` release line (the tagged startup-dialog fix `f8a7c237`, with HEAD one commit further on the Catalog-of-Prompts localization fix), with README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals.",
+    "The repository currently resolves to the `v1.39.4` release line (the tagged startup-dialog fix `f8a7c237`, with HEAD `a45fe0e0` one commit further on the Catalog-of-Prompts localization fix), with README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals.",
     "`v1.39.3` is the Nmapper release: the new `nmapper` workflow agent and wrapped `chat_agent_nmapper` tool give pentesters and CTF players a local, authorized-targets-only nmap bridge that never bundles or redistributes nmap itself, defaults to an unprivileged TCP connect scan, and degrades raw-packet features gracefully when Npcap is absent.",
     "`v1.39.4` is the startup-dialog fix: the first-run dialog can be closed again, so a fresh launch is no longer blocked by an unclosable overlay.",
     "`v1.36.0` is the Video-Analyzer release: the new `video_analyzer` workflow agent and wrapped `chat_agent_video_analyzer` tool read recorded videos, check for motion, ask two vision models for independent evidence, merge their reports, and emit explicit routeable verdict tokens.",
@@ -1405,6 +1408,31 @@ CURRENT_RELEASE_GUIDE = [
     "`v1.33.x` remains the Zavuerer release family: the Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key, with setup-wizard dedupe and cloud-default cleanup carried forward.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
     "The resulting PDF/PPTX refresh treats `v1.39.4` — the Nmapper cyber-security release `v1.39.3` plus the startup-dialog closeability fix — as the current product snapshot while preserving the historical context for the robotic-arm loop, the frontend-state-recovery hotfix, self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+]
+
+NMAPPER_GUIDE = [
+    "Nmapper is the `v1.39.3` local nmap bridge for authorized pentesting and CTF recon: it is a use-only integration, not a bundled scanner.",
+    "The agent never ships or redistributes nmap; it resolves a user-installed `nmap` from explicit config, PATH, Program Files, or `%LOCALAPPDATA%`, and its `install` action launches the official free installer path.",
+    "The default scan path is an unprivileged TCP connect scan (`-sT`), while raw-packet features such as SYN/OS/UDP are downgraded or refused safely when Npcap or elevated packet capture is unavailable.",
+    "Supported actions include `quick`, `full`, `top_ports`, `version`, `scripts`, `host_discovery`, `udp`, `custom`, `validate`, and `install`, always for targets the operator owns or is explicitly authorized to assess.",
+    "Each run emits one atomic `INI_SECTION_NMAPPER` block with action, target, scan technique, ports, return code, success state, hosts-up/open-port summaries, Npcap state, XML path/content, normal output, and stage.",
+    "Implementation assets include `agent/agents/nmapper/`, migrations `0170`-`0172`, `test_nmapper_agent.py`, `chat_agent_nmapper`, `update_nmapper_connection`, contracts/Parametrizer fields, ACP connector assets, FlowCreator/FlowHypervisor entries, and handbook/docs updates.",
+]
+
+STARTUP_PROMPT_POLISH_GUIDE = [
+    "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
+    "The current HEAD `a45fe0e0` sits one commit past the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup, keeping prompt UI wording aligned with the localized operator surface.",
+    "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by `idPrompt`, while the legacy probe loop remains only as an offline fallback.",
+    "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
+]
+
+LIVE_WORKTREE_HARDENING_GUIDE = [
+    "The live worktree also contains current source hardening that is not a release tag yet: the generated dossier counts those lines from disk, but describes them separately from committed release history.",
+    "`external_mcp_manager.py` now moves active-server supervision and `tools/list` refreshes onto a background thread, reducing chat-build stalls when an external MCP bridge is slow, empty, or reconnecting.",
+    "External MCP tool refresh timeouts were reduced for both stdio and network clients so cached tools can be bound quickly while the background supervisor refreshes or repairs bridges afterward.",
+    "Saved Agentic Control Panel `.flw` snapshots now POST through `/agent/redact_flow_snapshot/`, where `redact_flow_snapshot()` masks per-agent `secret_paths` while preserving node ids, positions, connections, artifacts, and loader shape.",
+    "`acp-file-io.js`, `urls.py`, `views.py`, and `services/agent_contracts.py` are the concrete `.flw` redaction surface, designed to prevent SMTP/IMAP/DB passwords, API tokens, and private keys from leaving the browser in shared flow files.",
+    "`agents/recmailer/recmailer.py` now passes an IMAP socket timeout to `imaplib.IMAP4_SSL`, preventing black-holed or slow mail servers from freezing one-shot mode and upstream agent-stop waits indefinitely.",
 ]
 
 ROBOTIC_LOOP_GUIDE = [
@@ -1586,6 +1614,8 @@ NEW_ASSETS_GUIDE = [
     "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
     "The `v1.36.0` wave added concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
     "The adjacent `v1.35.0`-through-`v1.39.4` work updates prompt-card search/rendering assets (now fed by the one-call `/agent/list_prompts/` endpoint), `.flw` generation layout code, the restored-mutable frontend state, the Nmapper recon agent, and the startup-dialog overlay, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
+    "The Nmapper wave adds `agent/agents/nmapper/`, migrations `0170`-`0172`, `test_nmapper_agent.py`, `chat_agent_nmapper`, `update_nmapper_connection`, agent contracts/Parametrizer fields, ACP connector assets, FlowCreator/FlowHypervisor catalog entries, and docs across README, Book, `agents_descriptions.md`, and `docs/claude`.",
+    "The current working-tree hardening assets add background External MCP supervision in `external_mcp_manager.py`, lossless `.flw` secret redaction through `redact_flow_snapshot()` plus `/agent/redact_flow_snapshot/`, browser Save redaction in `acp-file-io.js`, route/view wiring, and an IMAP timeout in `recmailer.py`.",
     "The newest committed reliability assets include `agent/self_healing.py`, `agent/test_self_healing.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, `Tlamatini/tests_e2e/test_create_flow_visual.py`, and coordinated changes in `mcp_agent.py`, `consumers.py`, `response_parser.py`, and the chat frontend.",
     "The committed Discoverer PDCP assets include `access_key_wizard.py` Security Recon fields, `tools.py` default seeding, `agent_contracts.py` `.flw` redaction, `regen_secrets.py` scrubbing, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` for the latest-CVE prompt.",
     "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, tracked `git_deny_go.py` guard/pre-commit installer, `discoverer_1000.py`, and `test_discoverer_thousand.py` validation coverage.",
@@ -2249,6 +2279,15 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Nmapper local nmap bridge", styles["h2"]))
+    for item in NMAPPER_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Startup dialog and prompt-catalog polish", styles["h2"]))
+    for item in STARTUP_PROMPT_POLISH_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Live working-tree hardening", styles["h2"]))
+    for item in LIVE_WORKTREE_HARDENING_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.38.0 robotic loop closure", styles["h2"]))
     for item in ROBOTIC_LOOP_GUIDE:
@@ -3095,13 +3134,33 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Current Release Focus", "v1.39.4 — the Nmapper cyber-security release plus the startup-dialog closeability fix", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:4], THEME["amber"], "rel-a", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[4:8], THEME["jade"], "rel-b", 10)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Current Release Context", "Discoverer hardening plus carried product story", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[8:11], THEME["jade"], "rel-c", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[11:], THEME["amber"], "rel-d", 10)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Flow and recovery", CURRENT_RELEASE_GUIDE[6:10], THEME["jade"], "rel-c", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[10:13], THEME["amber"], "rel-d", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[13:16], THEME["copper"], "rel-e", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[16:], THEME["jade"], "rel-f", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Nmapper Local Recon", "use-only nmap bridge for authorized targets", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", NMAPPER_GUIDE[:3], THEME["jade"], "nmapper-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Actions and assets", NMAPPER_GUIDE[3:], THEME["amber"], "nmapper-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Startup And Prompt Polish", "v1.39.4 closeability plus current prompt localization", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Startup dialog", STARTUP_PROMPT_POLISH_GUIDE[:2], THEME["amber"], "startup-prompt-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prompt catalog", STARTUP_PROMPT_POLISH_GUIDE[2:], THEME["jade"], "startup-prompt-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Live Working-Tree Hardening", "current source changes counted separately from release tags", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "MCP and chat responsiveness", LIVE_WORKTREE_HARDENING_GUIDE[:3], THEME["copper"], "live-hardening-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Flow secrets and mail safety", LIVE_WORKTREE_HARDENING_GUIDE[3:], THEME["jade"], "live-hardening-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Robotic Loop Closed", "v1.38.0 — from blank page to observed hardware behavior", THEME["copper"])
@@ -3210,13 +3269,18 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Newest Assets And Surfaces", "backend, frontend, and build files added or upgraded recently", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE[:4], THEME["jade"], "assets-a", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Discoverer and media", NEW_ASSETS_GUIDE[4:8], THEME["amber"], "assets-b", 10)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE[:3], THEME["jade"], "assets-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Hardening assets", NEW_ASSETS_GUIDE[3:6], THEME["amber"], "assets-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Newest Assets Appendix", "remaining current asset deltas", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Continuing assets", NEW_ASSETS_GUIDE[8:11], THEME["amber"], "assets-c", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Inventory meaning", NEW_ASSETS_GUIDE[11:], THEME["jade"], "assets-d", 10)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Discoverer and frontend", NEW_ASSETS_GUIDE[6:9], THEME["amber"], "assets-c", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Agent and cleanup assets", NEW_ASSETS_GUIDE[9:12], THEME["jade"], "assets-d", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Newest Assets Source Trail", "why the inventory and line counts changed", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Media and browser setup", NEW_ASSETS_GUIDE[12:15], THEME["copper"], "assets-e", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Inventory meaning", NEW_ASSETS_GUIDE[15:], THEME["jade"], "assets-f", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Agentic Control Panel", "visual workflow temple", THEME["jade"])

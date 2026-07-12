@@ -675,7 +675,7 @@ class _StdioMcpClient:
         if not self.alive():
             return len(self.tools)
         try:
-            result = self._request("tools/list", {}, timeout=10.0)
+            result = self._request("tools/list", {}, timeout=2.0)
             self._apply_tools_result(result)
         except Exception as exc:
             logger.info("[ExternalMCP] '%s' tools refresh failed: %s", self.key, exc)
@@ -833,7 +833,7 @@ class _NetworkMcpClientBase:
         if not self.alive():
             return len(self.tools)
         try:
-            result = self._rpc("tools/list", {}, timeout=10.0)
+            result = self._rpc("tools/list", {}, timeout=2.0)
             self._apply_tools_result(result)
         except Exception as exc:
             logger.info("[ExternalMCP] '%s' tools refresh failed: %s", self.key, exc)
@@ -2161,6 +2161,36 @@ def is_external_mcp_tool_name(name: str) -> bool:
     return str(name or "").startswith("ext__") or str(name or "") in _SUPERVISOR_TOOL_NAMES
 
 
+# At most one supervise pass runs at a time — a second chat request while one is
+# in flight is a cheap no-op (the running pass already covers the active set).
+_supervise_gate = threading.Lock()
+
+
+def _supervise_active_async(active: List[str], servers: Dict[str, Any]) -> None:
+    """Run ``_refresh_and_supervise_active`` on a BACKGROUND thread.
+
+    NEVER on the calling thread — so the chat-build path
+    (``get_external_mcp_tools``) never blocks on a ``tools/list`` round-trip or a
+    zero-tool reconnect. This is the fix for the synchronous supervise+refresh
+    that stalled the chat while merely re-listing tools that were already cached.
+    Fail-safe: swallows every error (never raises into the tool-binding path).
+    """
+    if not active:
+        return
+    if not _supervise_gate.acquire(blocking=False):
+        return  # a supervise pass is already running
+
+    def _run() -> None:
+        try:
+            _refresh_and_supervise_active(list(active), dict(servers))
+        except Exception:
+            logger.exception("[ExternalMCP] background supervise failed")
+        finally:
+            _supervise_gate.release()
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def get_external_mcp_tools() -> List[Any]:
     """Return LangChain tools for every active external MCP server's tools.
 
@@ -2179,19 +2209,18 @@ def get_external_mcp_tools() -> List[Any]:
         # what stalled the chat and dropped the redis MCP at 12 s. We only bind
         # tools from servers that are ALREADY live; the rest come online shortly.
         _warm_connect_async(active, servers)
-        _refresh_and_supervise_active(active, servers)
+        # Refresh live clients + restart stuck zero-tool bridges on a BACKGROUND
+        # thread — NEVER inline. The synchronous tools/list re-list here used to
+        # stall the whole chat build (a hung server could block for the full
+        # tools/list timeout) while only re-listing tools that were ALREADY
+        # cached. We bind from the CACHED client.tools; a server whose tools land
+        # after this turn surfaces them on the next request, and the background
+        # supervisor keeps the cache fresh + reconnects stuck bridges. (audit [7])
+        _supervise_active_async(active, servers)
         with _clients_lock:
             live = [(k, _clients[k]) for k in active
                     if k in _clients and _clients[k].alive()]
         for key, client in live:
-            # A live server with no tools may be one whose backend wasn't ready
-            # at connect (Roblox Studio not open yet) or that fired a
-            # tools/list_changed — re-list so its tools appear without reconnect.
-            if not client.tools or client._tools_dirty:
-                had = len(client.tools)
-                got = client.refresh_tools()
-                if got and not had:
-                    logger.info("[ExternalMCP] '%s' now exposes %d tool(s) after re-list", key, got)
             for tdef in client.tools:
                 try:
                     built = _build_tool(key, tdef)

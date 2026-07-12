@@ -97,7 +97,13 @@ def connect_imap():
         logging.info(f"ℹ️ IMAP username had no domain; using '{user}' for Gmail login.")
 
     try:
-        mail = imaplib.IMAP4_SSL(host, port)
+        # Bound the socket so a black-holed IMAP host (half-open firewall / slow or
+        # hung server) can't freeze the agent FOREVER mid-login/search/fetch — which
+        # also strands one-shot mode (PID never removed) and any upstream
+        # wait_for_agents_to_stop(). The timeout persists for every later socket op on
+        # this connection. Mirrors emailer.py's 30s default. (2026-07-11 audit [10])
+        imap_timeout = int(imap_config.get('timeout', 30) or 30)
+        mail = imaplib.IMAP4_SSL(host, port, timeout=imap_timeout)
         mail.login(user, password)
         return mail
     except Exception as e:

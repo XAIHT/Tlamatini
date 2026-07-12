@@ -13,14 +13,14 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename, getHeaders */
 
 // ========================================
 // SAVE BUTTON
 // ========================================
 
 if (saveBtn) {
-    saveBtn.addEventListener('click', (e) => {
+    saveBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (saveBtn.classList.contains('disabled')) return;
 
@@ -67,6 +67,15 @@ if (saveBtn) {
             data = { nodes: nodesData, connections: connectionsData };
         }
 
+        // Redact secrets (SMTP/IMAP/DB passwords, API tokens, Kyber private
+        // keys, ...) BEFORE the .flw leaves the browser. Save used to Blob the
+        // RAW snapshot, so every credential typed into a node dialog shipped in
+        // the shared file. The backend masks only secret fields per each agent's
+        // contract and preserves the snapshot shape byte-for-byte, so the loader
+        // round-trips it losslessly. Falls back to the raw snapshot ONLY if the
+        // backend is unreachable (never a silent Save failure). (audit [5])
+        data = await _redactFlowSnapshotBeforeSave(data);
+
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -77,6 +86,33 @@ if (saveBtn) {
         updateFilenameDisplay(filename);
         markClean();
     });
+}
+
+/**
+ * POST the flow snapshot to the backend so it can mask secret fields (per each
+ * agent's contract secret_paths) before the .flw is downloaded. Mirrors the
+ * chat Create-Flow contract (_normalizeChatFlowBeforeDownload): on any failure
+ * it returns the original snapshot so Save never silently fails — the canvas
+ * page is served by the same Django server, so the endpoint is reachable
+ * whenever the canvas itself is usable. (2026-07-11 audit [5])
+ */
+async function _redactFlowSnapshotBeforeSave(flowData) {
+    try {
+        const response = await fetch('/agent/redact_flow_snapshot/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ flow: flowData })
+        });
+        const result = await response.json();
+        if (response.ok && result.success && result.flow) {
+            return result.flow;
+        }
+        console.warn('--- Save: backend redaction unavailable, saving raw snapshot:', result);
+    } catch (err) {
+        console.warn('--- Save: backend redaction failed, saving raw snapshot:', err);
+    }
+    return flowData;
 }
 
 // ========================================

@@ -63,6 +63,7 @@ urlpatterns = [
     path('pick_context_directory/', secure_get(views.pick_context_directory_view), name='pick_context_directory'),
     path('compile_flow/', secure_post(views.compile_flow_view), name='compile_flow'),
     path('flow_from_tool_calls/', secure_post(views.flow_from_tool_calls_view), name='flow_from_tool_calls'),
+    path('redact_flow_snapshot/', secure_post(views.redact_flow_snapshot_view), name='redact_flow_snapshot'),
     path('agent_contracts/', secure_get(views.agent_contracts_view), name='agent_contracts'),
     path('version/', views.version_view, name='version'),
     path('check_update/', secure_get(views.check_update_view), name='check_update'),
