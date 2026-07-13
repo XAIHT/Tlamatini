@@ -303,7 +303,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.40.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.40.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.40.1](https://github.com/XAIHT/Tlamatini/releases/tag/v1.40.1)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1976,14 +1976,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.40.0 -m "Release 1.40.0: <one-liner>"   # annotated tag
-git push origin v1.40.0
+git tag -a v1.40.1 -m "Release 1.40.1: <one-liner>"   # annotated tag
+git push origin v1.40.1
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.40.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.40.1/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -1991,8 +1991,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.40.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.40.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.40.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.40.1/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.40.1` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.40.1","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3105,6 +3105,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.40.1 — The Port Is Yours: Tlamatini's Web Port Becomes Configurable — 2026-07-13** — Until now Tlamatini's web port was **8000, and only 8000** — the number was baked into `manage.py`, so on a machine where Windows had *reserved* that port there was no escape from a frozen install short of rebuilding her from source. It is a real and nasty failure: when Hyper-V / WSL / Docker claims 8000 inside one of Windows' dynamic-port **exclusion ranges** (`netsh interface ipv4 show excludedportrange protocol=tcp`), Daphne cannot bind it and Tlamatini dies at startup with **`WinError 10013`** — *"an attempt was made to access a socket in a way forbidden by its access permissions"* — a message that tells a user nothing about what to do next. So the port moved out of the code and into her configuration: **`config.json` → `django_port`** (default `8000`). Change one line, restart, and she comes up wherever you asked — **no rebuild, no code edit**. Three stdlib-only helpers in `manage.py` do the work, deliberately written to run *before* Django is even imported: `_resolve_config_path()` (honours `CONFIG_PATH`, else the frozen exe's neighbour, else `agent/config.json`), `_resolve_django_port()` (reads and range-validates the key), and `_apply_configured_port()` (injects it into `sys.argv`). The completion pass on the same day closed the half that was still missing: the first cut had only taught the **frozen** launch paths to read the key, so `python manage.py runserver` and `manage.py startserver` were **still silently binding 8000 and ignoring it** — `main()` now applies the resolver once, outside the frozen branch, so all five paths finally agree (frozen double-click, `.flw` file association, the browser she auto-opens, source `runserver`, and `startserver`). Two invariants are load-bearing and pinned by **24 tests** (`agent/test_django_port_config.py`): the resolution is **fail-open** — a missing key, a missing file, unparseable JSON, a non-numeric value or one outside `1–65535` all fall back to 8000 and print a `--- [PORT] …` line, because a typo in a config file must never be able to stop her from starting — and an **explicit command-line port always wins** (`runserver 9100` is never second-guessed, and the injector never double-appends onto the frozen rewrite). What the key deliberately does *not* reach: a direct `daphne`/`uvicorn` launch bypasses `manage.py` entirely, her two MCP helper listeners (`:8765`, `:50051`) are a separate axis with their own keys, and the TeleTlamatini bridge keeps its own `tlamatini.base_url`. Documented everywhere it matters — `README.md` (a user-facing "port 8000 already taken?" recipe), `CLAUDE.md`, `docs/claude/architecture.md`, `docs/claude/gotchas.md`, the fix log, and `agent/Tlamatini.md`, where she is now told never to say *"Tlamatini runs on 8000"* as though it were fixed. The public version moves to **1.40.1** across every static surface that quotes it (README badge, `package.json`, `VERSIONING.md`, this book, `agent/Tlamatini.md`); as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and the historical v1.40.0 / v1.39.5 entries below were left untouched. Forward-only.
 
 - **Release v1.40.0 — Tlamatini-FlowPills Companion-App Discovery: Tlamatini Publishes Where Her Agents Live — 2026-07-12** — A sister XAIHT application, **Tlamatini-FlowPills**, must find Tlamatini's agent-template catalog at startup **without importing Python, running Tlamatini, or scanning drives**. So Tlamatini now publishes three read-only, **HKCU-only, fail-open** discovery surfaces plus a documented lookup contract. (1) A per-user registry key **`HKCU\Software\XAIHT\Tlamatini`** carrying six values — `InstallLocation`, `AgentsRoot` (the exact root, read first), `SourceAgentsRoot`, `AgentManifestPath`, `Version`, and `AgentCatalogVersion` (`<count>-<sha8>`) — written by the installer and refreshed on **every launch**, so even a source checkout that has run once is discoverable. (2) A machine-readable **`_tlamatini_agents_manifest.json`** written next to the agents: every complete template (`<type>.py` + `config.yaml`; `pools`/`__pycache__` excluded) with a per-file `sha256`, re-hashed on each launch and rewritten only when the content actually changes. (3) A **`.tlamatini-preserved-agents.json`** marker the uninstaller leaves when it preserves the `agents/` directory — carrying the manifest path and a `manifest_sha256` — with the discovery key intentionally **kept** so companion apps still find the preserved agents. The engine is `agent/agent_manifest.py` + `agent/windows_app_registration.py`, wired into `apps.py`, `install.py`, `uninstall.py`, and `build.py`; the full contract lives in `docs/companion-app-discovery.md`. A second hardening sprint made it bullet-proof: discovery is **scheduled FIRST in `AgentConfig.ready()`**, before any MCP / model / ACPX import, on its own daemon thread with a dedicated idempotency gate, so an import or startup failure anywhere else can never suppress publication; the installer registers discovery **independently** of the Windows Installed-Apps entry (a missing `Uninstaller.exe` or an ARP hiccup no longer hides a valid catalog); all six registry values are **always rewritten** (empty when unknown) so no stale metadata survives; and manifest reads are BOM-tolerant (`utf-8-sig`). Coverage grew to **17 focused tests** that run secret-safely (`python -m unittest agent.test_agent_manifest`) and change **zero** tracked config files. Everything stays HKCU-only, no admin, fail-open, and read-only with respect to Tlamatini except her own manifest file and her own key. The public version moves to **1.40.0** across every static surface that quotes it (README badge, `package.json`, `VERSIONING.md`, this book, `agent/Tlamatini.md`); as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and the historical v1.39.5 / v1.39.4 entries below were left untouched. Forward-only.
 

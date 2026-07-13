@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.40.0"><img src="https://img.shields.io/badge/VERSION-v1.40.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.40.1"><img src="https://img.shields.io/badge/VERSION-v1.40.1-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-85-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="85 agent types"/></a>
@@ -60,7 +60,7 @@ Best for most people. The installer bundles its own **Python 3.12.10** and every
 1. Open the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)** and download the latest installer (`.exe`).
 2. Run it and follow the wizard.
 3. Launch **Tlamatini** from the Start-menu shortcut.
-4. Your browser opens at **`http://127.0.0.1:8000/`** — log in with **user / changeme**.
+4. Your browser opens at **`http://127.0.0.1:8000/`** — log in with **user / changeme**. *(`8000` is the default port; if it's taken or Windows has reserved it, set `django_port` in `config.json` — see the port note below.)*
 
 > 🔄 Updating later is one click: **About ▸ Check for updates** inside the app — it keeps your config, database, and keys.
 
@@ -79,6 +79,39 @@ python Tlamatini/manage.py runserver --noreload
 ```
 
 > **`--noreload` is optional (since 2026-07-11):** plain `python Tlamatini/manage.py runserver` now boots clean and auto-reloads on code edits. It used to double-start the MCP helper ports `:8765` / `:50051` and crash with `WinError 10048`; fixed by a reloader-aware gate in `agent/apps.py`.
+
+<details>
+<summary><b>🔌 Port 8000 already taken? Tlamatini won't start? (<code>WinError 10013</code>) — change one line</b></summary>
+
+<br>
+
+**`8000` is only the default.** Since **v1.40.1** the web port lives in your **`config.json`**:
+
+```jsonc
+"django_port": 8000     // ← put any free port here, e.g. 9000
+```
+
+Restart Tlamatini and she comes up on the new port — **no rebuild, no code edit**. Every launch path follows it: the desktop shortcut, double-clicking a `.flw` file, the browser that auto-opens, and `runserver` / `startserver` from source.
+
+**Why you might need this.** If Windows (usually **Hyper-V / WSL / Docker**) has *reserved* port 8000, Tlamatini cannot bind it and dies at startup with:
+
+> `WinError 10013` — *an attempt was made to access a socket in a way forbidden by its access permissions*
+
+To confirm that's what happened, list the ports Windows has reserved:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+If `8000` falls inside one of those ranges, pick a port outside them (9000 is a common safe choice).
+
+**Good to know**
+- A port passed on the command line still wins: `python Tlamatini/manage.py runserver 9100`.
+- It's **fail-safe** — if you typo the value, Tlamatini falls back to 8000 and still starts (she prints a `--- [PORT] …` line explaining why).
+- Where's `config.json`? Next to `Tlamatini.exe` in an installed build; at `Tlamatini/agent/config.json` from source.
+- If you also run the **TeleTlamatini** Telegram bridge, point its `tlamatini.base_url` at the same port.
+
+</details>
 
 ### 2 · Install Ollama
 

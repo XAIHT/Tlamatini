@@ -300,6 +300,8 @@ python Tlamatini/manage.py runserver --noreload
 
 > **`--noreload` is optional (since 2026-07-11):** plain `python Tlamatini/manage.py runserver` now boots clean and auto-reloads on code edits. It used to double-start the MCP helper ports `:8765` / `:50051` and crash with `WinError 10048`; fixed by a reloader-aware gate in `agent/apps.py`.
 
+> **The web port is CONFIGURABLE (since v1.40.1 — 2026-07-13):** `8000` is only the *default*. Set **`django_port`** in `config.json` and **every** launch path honours it — the frozen double-click, the `.flw` association, the frozen browser auto-open, source `runserver`, and `startserver`. Resolver: `manage.py::_resolve_django_port()`; injector: `manage.py::_apply_configured_port()`. An explicit `[ipaddr:]port` on the command line (`runserver 9100`) always **wins**; resolution is **fail-open** (a missing / unreadable / out-of-range value falls back to 8000 and never blocks startup). Reason it exists: on a machine where Windows/Hyper-V has **reserved** port 8000, Tlamatini used to die with `WinError 10013` and the only escape was a rebuild. See `docs/claude/architecture.md` → *Configurable web port*.
+
 Default credentials (installer builds): `user` / `changeme`
 
 ---

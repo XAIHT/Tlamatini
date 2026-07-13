@@ -601,6 +601,36 @@ def _resolve_django_port(default_port: int = 8000) -> int:
     return default_port
 
 
+_SERVER_COMMANDS = ('runserver', 'startserver')
+
+
+def _apply_configured_port(argv):
+    """Inject config.json's ``django_port`` when a server command omits a port.
+
+    ONE rule for EVERY launch path, so the configured port is not a frozen-only
+    privilege:
+
+      * frozen bare double-click / ``.flw`` association — the frozen block above
+        already appended an explicit ``0.0.0.0:<port>``, so this is a no-op there;
+      * source ``python manage.py runserver`` (the documented dev command);
+      * ``python manage.py startserver`` — its ``addrport`` is forwarded verbatim
+        to ``runserver`` (see ``agent/management/commands/startserver.py``).
+
+    An EXPLICIT ``[ipaddr:]port`` on the command line ALWAYS WINS — it is the
+    documented override and is never second-guessed. A bare port is appended (not
+    ``0.0.0.0:<port>``) so Django's default host binding stays LOOPBACK in source
+    mode; only the frozen paths deliberately bind ``0.0.0.0``.
+
+    Anything that is not a server command is returned untouched.
+    """
+    if len(argv) < 2 or argv[1] not in _SERVER_COMMANDS:
+        return argv
+    # Any positional (non-flag) token after the command IS the addrport → user wins.
+    if any(not token.startswith('-') for token in argv[2:]):
+        return argv
+    return argv + [str(_resolve_django_port())]
+
+
 def _schedule_browser_open(url: str, delay_seconds: float = 10.0) -> None:
     """Open the default browser at *url* after *delay_seconds*.
 
@@ -675,6 +705,12 @@ def main():
         # double-click and the .flw-association paths above.
         if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
             _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
+
+    # Configurable web port: honor config.json's ``django_port`` on EVERY launch
+    # path — the frozen rewrites above, the source ``runserver``, and
+    # ``startserver`` — unless the command line already carries an explicit
+    # [ipaddr:]port, which always wins. Fail-open: a missing/bad key keeps 8000.
+    sys.argv = _apply_configured_port(sys.argv)
 
     # Post-update database migration: bring the user's just-restored DB to the
     # current schema BEFORE the server starts. Gated on the launch command so

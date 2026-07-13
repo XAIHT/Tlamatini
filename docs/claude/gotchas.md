@@ -93,6 +93,7 @@ Tlamatini uses SemVer 2.0.0 with git tags (`vMAJOR.MINOR.PATCH`) as the single s
 10. `mcpContent` is stored as string, not boolean
 11. Planner default `max_selected_tools` was lowered from 50 → **20** to prevent keyword inflation from selecting every tool on a single request *(historical: since 2026-06 Multi-Turn binds the FULL enabled surface — the planner subset no longer drops tools from the bind; the constant now only shapes capability hints/ordering — see `multi-turn.md`)*
 12. `tlamatini.log` is truncated on every server start (mode `'w'`) and has no rotation
+13. **The web port is NOT hardcoded any more (v1.40.1)** — it is `config.json` → `django_port` (default `8000`), resolved by `manage.py::_resolve_django_port()` and injected into every launch path by `_apply_configured_port()` (frozen double-click, `.flw` association, browser auto-open, source `runserver`, `startserver`). An explicit CLI `[ipaddr:]port` wins; resolution is fail-open to 8000. **Do not re-introduce a literal `8000` in a launch path.** Still genuinely hardcoded and NOT covered by the key: a direct `daphne`/`uvicorn` launch (bypasses `manage.py`), the MCP helper listeners `:8765` / `:50051`, and TeleTlamatini's own `tlamatini.base_url`. See `docs/claude/architecture.md` → *Configurable web port*.
 
 ---
 

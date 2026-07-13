@@ -487,6 +487,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.39.4" in subject
         or "1.39.5" in subject
         or "1.40.0" in subject
+        or "1.40.1" in subject
+        or "configurable" in subject
+        or "django_port" in subject
+        or "port of tlamatini" in subject
         or "nmapper" in subject
         or "nmap" in subject
         or "pentesting" in subject
@@ -503,10 +507,20 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on `v1.40.0`: local HEAD `495d9036` carries the static version alignment one commit beyond tagged/remote `ef51a89d`, while README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
+            "The live Git window now lands on `v1.40.1`, tagged at the configurable-web-port commit `4dc1d546`, while README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: `v1.39.3` shipped Nmapper for authorized local recon, `v1.39.4` restored startup-dialog closeability, `v1.39.5` hardened long-running and concurrent work while adding the one-prompt Unreal Engine 5.8 scaffold path, and `v1.40.0` publishes a hashed agent-template catalog for Tlamatini-FlowPills through a fail-open HKCU discovery contract."
+            "The current release wave is broader than a badge bump: `v1.39.3` shipped Nmapper for authorized local recon, `v1.39.4` restored startup-dialog closeability, `v1.39.5` hardened long-running and concurrent work while adding the one-prompt Unreal Engine 5.8 scaffold path, `v1.40.0` publishes a hashed agent-template catalog for Tlamatini-FlowPills through a fail-open HKCU discovery contract, and `v1.40.1` moves the web port out of the code and into configuration."
+        )
+    if any(
+        "1.40.1" in subject
+        or "django_port" in subject
+        or "port of tlamatini" in subject
+        or "configurable" in subject
+        for subject in subjects
+    ):
+        highlights.append(
+            "The `v1.40.1` configurable-web-port contract retires the hardcoded 8000: `config.json`'s `django_port` is resolved by `manage.py::_resolve_django_port()` and injected into every launch path by `_apply_configured_port()` (frozen double-click, `.flw` association, browser auto-open, source `runserver`, and `startserver`), so a machine where Windows has RESERVED port 8000 — the `WinError 10013` startup death that a frozen install previously could not escape without a rebuild — is fixed by editing one line. Resolution is fail-open to 8000 and an explicit command-line port always wins, both pinned by 24 tests in `agent/test_django_port_config.py`."
         )
     if any("flowpills" in subject or "companion" in subject for subject in subjects):
         highlights.append(
@@ -669,7 +683,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.40.0`, including FlowPills companion discovery, Unreal Engine 5.8 scaffolding, the `v1.39.5` smoothness wave, Nmapper, prompt/startup fixes, live line-count inventory, and the Agent-directory responsibility boundary instead of stale release prose."
+            "The latest documentation pass aligns the handbook and source with `v1.40.1`, including the configurable web port (`config.json` → `django_port`), FlowPills companion discovery, Unreal Engine 5.8 scaffolding, the `v1.39.5` smoothness wave, Nmapper, prompt/startup fixes, live line-count inventory, and the Agent-directory responsibility boundary instead of stale release prose."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -915,6 +929,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "config dialog" in subject
         or "1.39.5" in subject
         or "1.40.0" in subject
+        or "1.40.1" in subject
+        or "django_port" in subject
+        or "port of tlamatini" in subject
+        or "configurable" in subject
         or "flowpills" in subject
         or "unrealer" in subject
         or "scaffold" in subject
@@ -923,10 +941,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.39.5` and `v1.40.0`: long-running/concurrent operations were hardened, the Unreal Engine 5.8 one-prompt scaffold path landed, and Tlamatini began publishing a hashed, HKCU-discoverable agent-template catalog for FlowPills."
+            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.39.5`, `v1.40.0`, and `v1.40.1`: long-running/concurrent operations were hardened, the Unreal Engine 5.8 one-prompt scaffold path landed, Tlamatini began publishing a hashed, HKCU-discoverable agent-template catalog for FlowPills, and the web port moved out of the code into `config.json`'s `django_port`."
         )
         highlights.append(
-            "The current visual-doc delta covers `agent_manifest.py`, `test_agent_manifest.py`, the companion-discovery contract and lifecycle wiring, migrations `0173`-`0174`, Unrealer correctness updates, and the smoothness changes across Nmapper, External MCPs, model/metrics I/O, subprocess decoding, request isolation, and `.flw` redaction."
+            "The current visual-doc delta covers `agent_manifest.py`, `test_agent_manifest.py`, the companion-discovery contract and lifecycle wiring, migrations `0173`-`0174`, Unrealer correctness updates, the configurable-web-port helpers in `manage.py` with `test_django_port_config.py`, and the smoothness changes across Nmapper, External MCPs, model/metrics I/O, subprocess decoding, request isolation, and `.flw` redaction."
         )
     if any(
         "retrying behaviour" in subject
@@ -1415,12 +1433,12 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to `v1.40.0`: local HEAD `495d9036` is one static-version-alignment commit ahead of tagged/remote `ef51a89d`, and the live source tree remains the authority for every generated count.",
+    "The repository currently resolves to `v1.40.1`, tagged at the configurable-web-port commit `4dc1d546`, and the live source tree remains the authority for every generated count.",
+    "`v1.40.1` retires the hardcoded web port: `config.json`'s `django_port` (default 8000) now controls the web UI and chat WebSocket port through `manage.py`, while direct Daphne/Uvicorn, MCP helper listeners, and TeleTlamatini remain separate port axes.",
+    "The live completion pass applies the resolver to frozen and source launch paths, keeps explicit command-line ports authoritative, fails open to 8000, and adds the untracked 24-test `agent/test_django_port_config.py` suite.",
     "`v1.40.0` makes Tlamatini discoverable to companion applications such as Tlamatini-FlowPills without importing Python, launching her runtime, or scanning whole drives.",
-    "A six-value, per-user `HKCU\\Software\\XAIHT\\Tlamatini` contract publishes the exact `AgentsRoot`, manifest path, install/source locations, version, and agent-catalog identity without requiring administrator rights.",
-    "`_tlamatini_agents_manifest.json` catalogs every complete agent template (`<type>.py` plus `config.yaml`) with per-file SHA-256 values; filesystem validation remains authoritative and the manifest rewrites only when meaningful content changes.",
-    "Discovery is scheduled first on every launch, also runs at install/build time, and survives an agents-preserving uninstall through a marker plus intentionally retained discovery metadata; all paths are idempotent and fail-open.",
-    "Seventeen focused manifest/discovery tests cover source, frozen, preserved, BOM, hashing, stale-value, registration, and failure paths without modifying tracked configuration files.",
+    "The six-value HKCU contract and `_tlamatini_agents_manifest.json` publish exact agent-template discovery metadata with per-file SHA-256 values; filesystem validation stays authoritative and publication remains idempotent, no-admin, and fail-open.",
+    "Discovery runs first on launch, at install/build time, and across an agents-preserving uninstall, with 17 focused tests covering source, frozen, preserved, BOM, hashing, stale-value, registration, and failure paths.",
     "The `v1.39.5` wave adds a two-marker Catalog-of-Prompts route that scaffolds a ready-to-build Unreal Engine 5.8 C++ project with UnrealMCP and Visual Studio 2026 guidance.",
     "Unrealer now sends `assign_material` with the plugin's actual `slot_index` key and normalizes `/Content/...` material/content paths to Unreal's `/Game/...` virtual root.",
     "The smoothness pass bounds image-model, system-metrics, subprocess, and scan I/O; improves background External MCP supervision; and prevents a stalled dependency from freezing a whole chat indefinitely.",
@@ -1428,9 +1446,19 @@ CURRENT_RELEASE_GUIDE = [
     "ACPX and command subprocesses decode UTF-8 with replacement, request-scoped orphan survivors cannot cross users, and deferred completion deliverables survive every terminal Multi-Turn exit path.",
     "Agent contracts now redact URI userinfo as well as ordinary secret fields, preserving useful MongoDB host/database context in exported `.flw` files without retaining credentials.",
     "The earlier `v1.39.3` Nmapper release and `v1.39.4` startup-dialog/prompt-catalog fixes remain carried product behavior, alongside the self-healing, Create Flow, robotic-loop, firmware, media, External MCP, and deterministic-file waves.",
-    "The pre-refresh local delta contains eight operator configuration files; the dossier counts their physical/effective lines from disk but does not reproduce private values or mislabel them as a tagged feature release.",
+    "The live working tree also carries handbook/version alignment and the source-mode port completion; the dossier counts those files from disk, identifies them separately from tagged history, and never reproduces private `config.json` values.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.40.0` as the current product snapshot while preserving the historical context for Nmapper, the robotic-arm loop, frontend recovery, self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+    "The resulting PDF/PPTX refresh treats `v1.40.1` as the current product snapshot while preserving the historical context for FlowPills companion discovery, Nmapper, the robotic-arm loop, frontend recovery, self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+]
+
+DJANGO_PORT_GUIDE = [
+    "`django_port` moves the web UI and chat WebSocket bind away from a hardcoded 8000: edit the integer in `config.json`, restart Tlamatini, and no rebuild or source edit is required.",
+    "The motivating failure is Windows `WinError 10013`: Hyper-V, WSL, or Docker can reserve port 8000 inside a dynamic exclusion range, making a frozen build unable to bind until the port is changed.",
+    "Three stdlib-only helpers run before Django imports: `_resolve_config_path()` chooses `CONFIG_PATH`, the frozen executable's neighbor, or source `agent/config.json`; `_resolve_django_port()` validates `1..65535`; `_apply_configured_port()` injects the result.",
+    "The completion pass calls `_apply_configured_port(sys.argv)` once from `main()`, outside the frozen branch, so frozen double-click, `.flw` association, browser auto-open, source `runserver`, and `startserver` all agree.",
+    "Resolution is fail-open to 8000 for missing, unreadable, malformed, non-numeric, or out-of-range values, while an explicit CLI port such as `runserver 9100` always wins and is never double-appended.",
+    "The injected source-mode value is a bare port so Django keeps its loopback host; direct Daphne/Uvicorn bypasses `manage.py`, MCP listeners `8765`/`50051` use their own settings, and TeleTlamatini keeps its own base URL.",
+    "The 24-test `agent/test_django_port_config.py` suite AST-lifts the pre-Django helpers and pins path resolution, validation, fail-open behavior, CLI precedence, frozen/source wiring, and `startserver` forwarding without importing side-effectful `manage.py`.",
 ]
 
 NMAPPER_GUIDE = [
@@ -1444,7 +1472,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.40.0`.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.40.1`.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by `idPrompt`, while the legacy probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1493,7 +1521,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: current public tag `v1.40.0` at `ef51a89d`, with local HEAD `495d9036` one static-version-alignment commit ahead; the earlier Video-Analyzer, Nmapper, and startup-dialog waves remain part of this release lineage.",
+    "Release identity: current public tag `v1.40.1` at `4dc1d546`, the configurable-web-port commit; the earlier FlowPills companion-discovery, Video-Analyzer, Nmapper, and startup-dialog waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1662,7 +1690,7 @@ NEW_ASSETS_GUIDE = [
     "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, tracked `git_deny_go.py` guard/pre-commit installer, `discoverer_1000.py`, and `test_discoverer_thousand.py` validation coverage.",
     "The project inventory is rebuilt from `git ls-files` plus `git ls-files --others --exclude-standard` on every run, so any git-unignored local assets are counted while ignored runtime caches such as `Go/` remain outside the dossier.",
     "The newest frontend assets include `agent_page_chat.js`, `agent_page_ui.js`, `eslint.config.mjs`, and the Claude frontend/Multi-Turn/recent-fixes notes that document self-healing status frames and Create Flow name resolution.",
-    "The earlier `v1.33.2` wave adds or updates concrete assets too: `agent/agents/zavuerer/`, migrations `0159`-`0164`, Zavu Access Keys Wizard fields, planner hints, wrapped-tool registration, and the latest messaging-agent config defaults.",
+    "The `v1.40.1` port assets span committed `manage.py`/`config.json`, the live source/startserver completion, untracked `agent/test_django_port_config.py`, version surfaces in `package.json`/`VERSIONING.md`, and operator contracts across README, Book, self-knowledge, prompt guidance, and `docs/claude`.",
     "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
     "The latest cleanup/assets span also includes `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, `docs/claude/recent-fixes.md`, response-parser/runtime/settings/middleware touch-ups, and removal of the stale `Tlamatini/db.sqlite3.bak-prereseat` backup from the tracked surface.",
     "The same wave preserves evidence-oriented tests and build guards such as `test_private_data_guard.py`, performance/visual checks, About-window authorship tests, and public-release verification rules that distinguish sensitive PII from valid creator names.",
@@ -1676,7 +1704,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.40.0` release state keeps runtime surfaces, self-knowledge wording, companion discovery, Unreal scaffolding, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, Robotic-Loop-Training, Nmapper recon, generated `.flw` layout, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.40.1` release state keeps runtime surfaces, the configurable web port, self-knowledge wording, companion discovery, Unreal scaffolding, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, Robotic-Loop-Training, Nmapper recon, generated `.flw` layout, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1850,6 +1878,7 @@ INSTALLATION_GUIDE = [
     "The easiest path for most users is the packaged installer from GitHub Releases: no manual Python install is required because the release already carries Python 3.12.10 and the project dependencies.",
     "Source mode remains the developer path: clone the repo, create a virtual environment, install `requirements.txt`, run migrations, create a superuser, collect static files, and then launch Django.",
     "Packaged Windows installs open the browser at `http://127.0.0.1:8000/` and create the default `user / changeme` login; manual source installs use your own `createsuperuser` account instead.",
+    "Port 8000 is only the default: `config.json`'s `django_port` moves the web UI to any free port on every launch path, which is the fix when Windows or Hyper-V has RESERVED port 8000 and startup fails with `WinError 10013`.",
     "When a newer packaged release exists, the intended upgrade path is in-app: `About -> Check for updates`, not manual folder replacement.",
     "You can run either the checked-in cloud/back-end defaults from `Tlamatini/agent/config.json` or a local/remote Ollama-backed configuration with matching model names.",
 ]
@@ -1884,7 +1913,7 @@ FIRST_RUN_CONFIG_GUIDE = [
 RUNNING_GUIDE = [
     "Development server: `python Tlamatini/manage.py runserver` — the `--noreload` flag is now OPTIONAL (plain `runserver` boots clean and auto-reloads since the 2026-07-11 `agent/apps.py` reloader-aware fix; it used to double-start the MCP helper ports :8765 / :50051 and crash with WinError 10048).",
     "Preferred async/dev bootstrap: `python Tlamatini/manage.py startserver`, which starts MCP services before the Django server.",
-    "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application`.",
+    "Production-style ASGI entrypoint: `daphne -b 127.0.0.1 -p 8000 tlamatini.asgi:application` — this path bypasses `manage.py`, so it does not read `django_port` and the port must be passed on the command line.",
     "Current startup also re-applies GPU-performance / Ollama-pinning hooks in the background on supported NVIDIA Windows hosts, so restart-time behavior stays closer to the tuned development baseline.",
     "That same early startup window is also where a staged `DB/ToLoad/db.sqlite3` file is promoted into the live database path, before Django opens SQLite.",
     "In frozen mode, startup now also self-heals the per-user Windows Installed-apps entry when `Uninstaller.exe` is present beside `Tlamatini.exe`, so old installs can gain a standard uninstall surface without a reinstall.",
@@ -2320,6 +2349,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.40.1 configurable web port", styles["h2"]))
+    for item in DJANGO_PORT_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Tlamatini-FlowPills companion discovery", styles["h2"]))
     for item in FLOWPILLS_DISCOVERY_GUIDE:
@@ -3157,7 +3189,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.40.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.40.1", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3171,7 +3203,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.40.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.40.1", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3180,19 +3212,29 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.40.0 — companion discovery, Unreal scaffolding, and bounded runtime work", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.40.1 — configurable web port plus the carried v1.40 platform", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Context", "FlowPills discovery, Unreal 5.8, and smoothness hardening", THEME["jade"])
+    slide, audit = add_slide(prs, "Current Release Context", "port completion, FlowPills discovery, Unreal 5.8, and hardening", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Flow and recovery", CURRENT_RELEASE_GUIDE[6:10], THEME["jade"], "rel-c", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[10:13], THEME["amber"], "rel-d", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[10:12], THEME["amber"], "rel-d", 11)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[12:14], THEME["copper"], "rel-e", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[14:], THEME["jade"], "rel-f", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Configurable Web Port", "v1.40.1 — escape reserved port 8000 without rebuilding", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Why and where", DJANGO_PORT_GUIDE[:3], THEME["amber"], "django-port-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Every manage.py launch path", DJANGO_PORT_GUIDE[3:5], THEME["jade"], "django-port-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Web Port Boundaries", "fail-open resolution, CLI precedence, and focused coverage", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Deliberate boundaries", DJANGO_PORT_GUIDE[5:6], THEME["copper"], "django-port-c", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Regression contract", DJANGO_PORT_GUIDE[6:], THEME["jade"], "django-port-d", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "FlowPills Companion Discovery", "v1.40.0 — find agent templates without Python or drive scans", THEME["jade"])
@@ -3332,7 +3374,7 @@ def build_ppt(context: dict) -> None:
 
     slide, audit = add_slide(prs, "Newest Assets Appendix", "remaining current asset deltas", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Discoverer and frontend", NEW_ASSETS_GUIDE[6:9], THEME["amber"], "assets-c", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Agent and cleanup assets", NEW_ASSETS_GUIDE[9:12], THEME["jade"], "assets-d", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Frontend, port, and agent assets", NEW_ASSETS_GUIDE[9:12], THEME["jade"], "assets-d", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Newest Assets Source Trail", "why the inventory and line counts changed", THEME["copper"])
@@ -3644,18 +3686,18 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "through the v1.40.0 release", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "through the v1.40.1 release and live completion pass", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
+        "Configurable web port (v1.40.1): `django_port`, fail-open validation, CLI precedence, all `manage.py` launch paths, and 24 focused tests.",
         "FlowPills discovery (v1.40.0): HKCU lookup plus a hashed agent manifest, launch/install/build publication, and preserved-agent metadata.",
         "Unreal scaffold (v1.39.5): two prompt markers create a ready-to-build UE 5.8 C++ project with UnrealMCP and VS 2026 guidance.",
         "Runtime hardening: bounded I/O, partial Nmapper results, UTF-8 subprocess output, request-isolated orphan evidence, and URI-safe `.flw` redaction.",
         "Image-Interpreter: triple-model still-image analysis with independent interpreters and a merger model.",
-        "Zavuerer: unified Zavu messaging for SMS, WhatsApp, Telegram, Email, and Voice.",
         "Prompt search and generated `.flw` files: fuzzy prompt cards plus serpentine successful-only flow downloads.",
         "Media/voice and firmware lanes remain active: Talker, Whisperer, Camcorder, Recorder, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, and Unrealer.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: `v1.40.0` is the current tag at remote `ef51a89d`; local HEAD `495d9036` carries the matching static version surfaces.",
+        "Resolved identity: local and remote both point to tagged `v1.40.1` at `4dc1d546`; the source-mode completion and handbook/version alignment remain live worktree changes.",
         "Create Flow now follows successful tool calls instead of the removed `answer_success` classifier.",
         "Frontend recovery controls keep live self-healing status frames in Cancel/busy state until the true final answer.",
         "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",

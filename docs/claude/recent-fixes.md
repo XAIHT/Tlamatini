@@ -18,6 +18,20 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-07-13 — Configurable web port `django_port` (v1.40.1) — do NOT re-hardcode 8000
+
+**The web port is now `config.json` → `django_port` (default 8000), resolved in `Tlamatini/manage.py` and applied to EVERY launch path. Contract: `docs/claude/architecture.md` → *Configurable web port*. Coverage: `agent/test_django_port_config.py` (24 tests).**
+
+- **The failure it fixes.** On a machine where Windows/Hyper-V has **RESERVED** port 8000 (a dynamic-port exclusion range — check with `netsh interface ipv4 show excludedportrange protocol=tcp`), Daphne cannot bind it and Tlamatini dies at startup with **`WinError 10013`** ("an attempt was made to access a socket in a way forbidden by its access permissions"). A **frozen install had no escape** — the port was baked into `manage.py`, so only a rebuild could move it. It is now one line of `config.json`.
+- **Three helpers in `manage.py`, deliberately stdlib-only** (they run BEFORE Django is imported — do NOT make them import `agent.*` / `config_loader`): `_resolve_config_path()` (CONFIG_PATH env > next to the frozen exe > `agent/config.json`), `_resolve_django_port(default_port=8000)` (read + range-validate), and `_apply_configured_port(argv)` (inject into `sys.argv`).
+- **Completion pass (this entry).** The original commit `4dc1d546` only wired the port into the **frozen** block, so `python manage.py runserver` (the documented source dev command) and `manage.py startserver` **still silently bound 8000 and ignored the key**. `main()` now calls `sys.argv = _apply_configured_port(sys.argv)` once, outside the frozen branch, so all five paths agree: frozen double-click, `.flw` association, frozen browser auto-open, source `runserver`, `startserver`.
+- **Do NOT weaken these two invariants** (they are what the 24 tests pin):
+  1. **Fail-open.** Missing key / missing file / unparseable JSON / non-numeric / out-of-range → fall back to **8000** and print `--- [PORT] …`. A config typo must NEVER stop the server from starting. Read with `utf-8-sig` (BOM-tolerant).
+  2. **An explicit CLI port always wins.** `runserver 9100` / `runserver 127.0.0.1:9100` is never overridden, and the injector never double-appends onto the frozen `0.0.0.0:<port>` rewrite. The "did the user pass one?" test is *any non-flag token after the command* — do not simplify it to `len(argv) > 2` (that would treat `--noreload` as an address).
+- **Bare port on purpose.** `_apply_configured_port` appends `"<port>"`, NOT `"0.0.0.0:<port>"`, so source mode keeps Django's **loopback** default host. Only the frozen paths deliberately bind `0.0.0.0`. Do not "normalize" them to the same string.
+- **Out of scope, by design:** a direct `daphne`/`uvicorn` launch bypasses `manage.py` (pass the port on that CLI). The MCP helper listeners `:8765` / `:50051` are a separate axis with their own keys. The **TeleTlamatini** bridge has its own `tlamatini.base_url` — repoint it if you move the port.
+- **Testing note:** `manage.py` CANNOT be imported in a test process (module-level console branding + the stdout/stderr tee + the Temp-dir pin). `test_django_port_config.py` therefore AST-lifts the three helpers and execs them in a clean namespace — the same "cannot safely be imported" trick `test_temp_dir_policy.py` uses. Keep it that way.
+
 ### 2026-07-12 — Tlamatini-FlowPills companion-app discovery (v1.40.0) — keep these surfaces, do NOT revert
 
 **So the sister app `Tlamatini-FlowPills` can find Tlamatini's agent-template catalog at startup WITHOUT importing Python, running Tlamatini, or scanning drives, Tlamatini publishes three read-only, HKCU-only, fail-open surfaces. Engine: `agent/agent_manifest.py` + `agent/windows_app_registration.py`; wired into `apps.py`, `install.py`, `uninstall.py`, `build.py`. Contract: `docs/companion-app-discovery.md`. Codex reports: `Tlamatini-Moded-For-Flowpills.md` + `Tlamatini-Moded-For-FlowPills-2nd-Sprint.md`. Requirement source: `Tlamatini-FlowPills-Lookup.md` §15 + `Tlamatini-FlowPills-Lookup-2nd-Sprint.md`.**

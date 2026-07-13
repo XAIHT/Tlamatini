@@ -17,6 +17,7 @@ Key settings:
 - `chained-model`: Primary chat model
 - `unified_agent_model`: Model for multi-turn tool loop
 - `ollama_base_url`: Ollama server URL
+- `django_port`: **TCP port the web UI + chat WebSocket bind** (default `8000`). See *Configurable web port* below — it is honoured on every launch path, an explicit CLI port still wins, and resolution is fail-open.
 - `ANTHROPIC_API_KEY`: Claude API key
 - `enable_unified_agent`: Enable tool-calling agent
 - `unified_agent_max_iterations`: Max tool-call turns (default 4096)
@@ -25,6 +26,39 @@ Key settings:
 - `stm32_mcp_server_script` / `stm32_mcp_repo_url` / `stm32_mcp_install_dir`: STM32er globals (seeded by `tools._seed_global_agent_defaults`). `stm32_mcp_server_script` now defaults to `""` — empty means the STM32er agent **self-provisions** the STM32 Template Project MCP on first use (zero-config auto-bootstrap: shallow `git clone`, GitHub-zip fallback when git is absent, into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`), so the user installs only STM32CubeIDE + Tlamatini. See `docs/claude/agents.md` (STM32er entry).
 
 Frozen builds resolve config from the install directory next to the executable. Source mode resolves from `Tlamatini/agent/config.json`. `CONFIG_PATH` env var overrides both.
+
+---
+
+## Configurable web port (`django_port`) — v1.40.1, 2026-07-13
+
+The port Tlamatini's web UI + chat WebSocket bind is **no longer hardcoded to 8000** — `8000` is now only the *default*. Set **`django_port`** in `config.json` and restart; no rebuild, no code edit.
+
+**Why it exists.** On a machine where Windows/Hyper-V has **reserved** port 8000 (the dynamic-port exclusion ranges — `netsh interface ipv4 show excludedportrange protocol=tcp`), Daphne cannot bind it and Tlamatini dies at startup with **`WinError 10013`** — *"an attempt was made to access a socket in a way forbidden by its access permissions"*. Before this, a frozen install had **no escape** from that: the port was baked into `manage.py` and only a rebuild could move it. Now it is one line of `config.json`.
+
+**The two helpers (both in `Tlamatini/manage.py`, stdlib-only on purpose — they run BEFORE Django is imported):**
+
+| Helper | Role |
+|---|---|
+| `_resolve_config_path()` | Absolute path to `config.json`. `CONFIG_PATH` env wins; else next to the frozen `Tlamatini.exe`; else `agent/config.json` in source mode. |
+| `_resolve_django_port(default_port=8000)` | Reads `django_port`, validates `1 ≤ port ≤ 65535`, returns it. **Fail-open** on anything wrong. |
+| `_apply_configured_port(argv)` | Injects the resolved port into `sys.argv` for `runserver` / `startserver` **when the command line omitted one**. Called once from `main()`. |
+
+**Coverage — every launch path honours the key** (this was the 2026-07-13 completion; the original commit only covered the frozen paths):
+
+- frozen bare double-click → `runserver --noreload 0.0.0.0:<port>`
+- frozen `.flw` file association → same
+- frozen browser auto-open → `http://localhost:<port>/`
+- **source `python manage.py runserver`** ← was still binding 8000 before
+- **`python manage.py startserver`** ← was still binding 8000 before (its `addrport` is forwarded verbatim to `runserver`)
+
+**Contract — do NOT weaken either half:**
+
+1. **Fail-open, always.** A missing key / missing file / unparseable JSON / non-numeric / out-of-range value falls back to **8000** and prints a `--- [PORT] …` line. A config typo must never stop the server from starting. (`utf-8-sig` read, so a BOM is tolerated.)
+2. **An explicit CLI port always wins.** `runserver 9100` or `runserver 127.0.0.1:9100` is never second-guessed, and the injector never double-appends onto the frozen `0.0.0.0:<port>` rewrite. Detection is "any non-flag token after the command".
+
+**Not covered (by design):** a direct `daphne` / `uvicorn` launch bypasses `manage.py` entirely — pass the port on that CLI yourself. The two MCP helper listeners are a separate axis with their own keys (`mcp_system_server_port` → `:8765`, Files-Search gRPC → `:50051`). If you run the **TeleTlamatini** bridge, point its `tlamatini.base_url` at the same port.
+
+Coverage: `agent/test_django_port_config.py` (24 tests — fail-open matrix, CLI-wins matrix, and a source contract pinning the wiring; `manage.py` cannot be imported in a test process, so the helpers are AST-lifted, the same trick `test_temp_dir_policy.py` uses).
 
 ---
 

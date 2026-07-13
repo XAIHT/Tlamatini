@@ -14,12 +14,26 @@ class Command(BaseCommand):
     help = "Start the Django server with the autoreloader OFF (the MCP helper servers are started once by AgentConfig.ready())."
 
     def add_arguments(self, parser):
-        parser.add_argument('addrport', nargs='?', help='Optional port number, or ipaddr:port')
+        parser.add_argument(
+            'addrport',
+            nargs='?',
+            help=("Optional port number, or ipaddr:port. OMIT IT and the port comes from "
+                  "config.json's `django_port` (default 8000) — manage.py::_apply_configured_port "
+                  "appends it to argv before this command runs. Passing it here always WINS."),
+        )
         parser.add_argument('--noreload', action='store_true', help='Disable Django autoreloader (already the default for this command)')
 
     def handle(self, *args, **options):
         """
         Delegate to Django's ``runserver`` with the autoreloader OFF.
+
+        **Port**: this command never hardcodes one. ``manage.py::_apply_configured_port``
+        injects config.json's ``django_port`` into ``sys.argv`` when no explicit
+        ``[ipaddr:]port`` was given, so it arrives here as ``addrport`` and is forwarded
+        verbatim to ``runserver``. An explicit CLI ``addrport`` always wins. Resolution is
+        fail-open — a missing / unreadable / out-of-range ``django_port`` keeps 8000, so a
+        bad config can never stop the server from starting. See
+        ``docs/claude/architecture.md`` → *Configurable web port*.
 
         The two MCP helper servers (System-Metrics ws :8765, Files-Search grpc :50051)
         are started EXACTLY ONCE by ``agent.apps.AgentConfig.ready()`` — its

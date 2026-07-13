@@ -598,6 +598,29 @@ So sister XAIHT apps like **Tlamatini-FlowPills** can find Tlamatini's agent-tem
 
 Wired into `apps.py` (`_schedule_companion_discovery()` runs FIRST in `AgentConfig.ready()`, import-independent, dedicated idempotency gate separate from `mcp_server_running`), `install.py` (independent of the ARP/Installed-Apps entry), `uninstall.py`, and `build.py`. The filesystem is authoritative — the manifest is diagnostic evidence only. Tests: `agent/test_agent_manifest.py` (17, Django-free, secret-safe). Implements `Tlamatini-FlowPills-Lookup.md` §15 + the second-sprint hardening.
 
+## 9d. Configurable Web Port (`django_port`) — v1.40.1
+
+Tlamatini's web UI + chat WebSocket port is **no longer hardcoded to 8000** — `8000` is only the *default*. It lives in `config.json` as **`django_port`**, and is resolved + applied entirely inside `Tlamatini/manage.py`:
+
+| Helper | Role |
+|---|---|
+| `_resolve_config_path()` | `CONFIG_PATH` env > next to the frozen `Tlamatini.exe` > `agent/config.json` (source). |
+| `_resolve_django_port(default_port=8000)` | Read `django_port`, validate `1 ≤ port ≤ 65535`. **Fail-open** on anything wrong. |
+| `_apply_configured_port(argv)` | Inject the port into `sys.argv` for `runserver` / `startserver` **when the CLI omitted one**. Called once from `main()`. |
+
+All three are deliberately **stdlib-only** — they run BEFORE Django is imported, so they must never import `agent.*` / `config_loader`.
+
+**Every launch path honours the key:** frozen double-click, `.flw` file association, the frozen browser auto-open (`http://localhost:<port>/`), source `python manage.py runserver`, and `manage.py startserver` (whose `addrport` is forwarded verbatim to `runserver`).
+
+**Two invariants — do NOT weaken** (pinned by 24 tests in `agent/test_django_port_config.py`):
+
+1. **Fail-open.** Missing key / missing file / unparseable JSON / non-numeric / out-of-range → fall back to **8000** and print `--- [PORT] …`. A config typo must never stop the server from starting. (`utf-8-sig` read — BOM-tolerant.)
+2. **An explicit CLI port always wins.** `runserver 9100` / `runserver 127.0.0.1:9100` is never second-guessed, and the injector never double-appends onto the frozen `0.0.0.0:<port>` rewrite. The "did the user pass one?" test is *any non-flag token after the command* — never simplify it to `len(argv) > 2` (that would treat `--noreload` as an address).
+
+**Why it exists:** on a machine where Windows/Hyper-V has RESERVED port 8000, Daphne cannot bind it and Tlamatini dies at startup with `WinError 10013` ("an attempt was made to access a socket in a way forbidden by its access permissions"). A frozen install previously had **no escape** short of a rebuild.
+
+**Not covered, by design:** a direct `daphne`/`uvicorn` launch (bypasses `manage.py` — put the port on that CLI), the MCP helper listeners `:8765` / `:50051` (separate axis, own keys), and TeleTlamatini's own `tlamatini.base_url`. Contract: `docs/claude/architecture.md` → *Configurable web port*.
+
 ## 10. ACPX System
 
 **ACPX = Agent Communication Protocol eXtension.** Tlamatini's runtime for spawning external coding-agent CLIs as child processes.
