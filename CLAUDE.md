@@ -229,7 +229,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── js/                 # 31 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 9 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js, external_mcps_dialog.js, contacts_dialog.js, access_keys_wizard.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
-│   │   └── migrations/             # Django migrations (latest: 0169_add_discoverer_cvemap_latest_demo_prompt; 0166/0167/0168 add the Video-Analyzer agent + chat_agent_video_analyzer tool + demo prompt)
+│   │   └── migrations/             # Django migrations (latest: 0174_unreal_scaffold_build_project_tip; 0173 seeds the Unreal-5.8-scaffold Catalog prompt; 0170/0171/0172 add the Nmapper agent + tool + demo prompts)
 │   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)
@@ -354,6 +354,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 
 - **Recent Fixes / fix log** — `docs/claude/recent-fixes.md`. The dated chronological log of surgical fixes and "do NOT revert this / keep these surfaces aligned" contracts (ACPX, Flow Compiler, planner, Exec Report, ACP canvas, wrapped chat-agent parsing, desktop-UI agents, the STM32er zero-config bootstrap + fail-safe hardware preflight, `prompt.pmt`, `regen_secrets.py`, logging filters). **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there rather than to `gotchas.md`.
 - **Creating a new Skill (SKILL.md package)** — `Tlamatini/.skills/create_new_skill.md`. The dedicated authoring guide for a `SKILL.md` (the two runtimes — `in-process` vs `acpx`; the frontmatter contract + schema ranges; discovery / 30 s staleness cache; lint + `quick_validate`; ACPX-surface gotchas). NOT auto-imported — read it when adding or editing a skill. The `flow-making` skill (`agent/skills_pkg/flow_making/`) is the canonical worked example of an in-process skill that shells out to a shipped `scripts/*.py`.
+- **Companion-app discovery** — `docs/companion-app-discovery.md`. How Tlamatini lets XAIHT companion apps (**Tlamatini-FlowPills**) find the agents catalog without Python/scans: the `HKCU\Software\XAIHT\Tlamatini` registry key + `<agents_root>\_tlamatini_agents_manifest.json` + the `.tlamatini-preserved-agents.json` preserved marker. Engine `agent/agent_manifest.py` + `agent/windows_app_registration.py`, wired in `apps.py` / `install.py` / `uninstall.py` / `build.py`; HKCU-only, no-admin, fail-open. Implements `Tlamatini-FlowPills-Lookup.md` §15.
 
 │   │   │   ├── editor/             # Surgical in-place find-and-replace on ONE text file (Claude-Edit equivalent; byte-exact, refuses a non-unique match unless replace_all, base64 channel; emits INI_SECTION_EDITOR) (canvas + chat_agent_editor)
 │   │   │   ├── grepper/            # Read-only regex CONTENT search across a file/dir tree (Claude-Grep equivalent; file:line:match, glob filter, prunes noise dirs; emits INI_SECTION_GREPPER) (canvas + chat_agent_grepper)

@@ -8,6 +8,85 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 from django.apps import AppConfig
+import threading as _threading
+
+
+# ── Companion-app discovery (Tlamatini-FlowPills) — process-local gate ──────────
+# Dedicated to discovery publication and DELIBERATELY separate from the MCP
+# ``mcp_server_running`` flag, so (a) an MCP-running state can never suppress
+# discovery and (b) a duplicate ``AgentConfig.ready()`` can never start two
+# publisher threads (REQ-S2-PUB-003). See docs/companion-app-discovery.md and
+# Tlamatini-FlowPills-Lookup-2nd-Sprint.md.
+_DISCOVERY_GATE_LOCK = _threading.Lock()
+_discovery_thread_started = False
+
+
+def _discovery_publish_eligible(argv_str, run_main):
+    """Pure predicate: is this an eligible application-server launch that should
+    publish companion discovery? ``argv_str`` = ``' '.join(sys.argv).lower()`` and
+    ``run_main`` = ``os.environ.get('RUN_MAIN')``. Application modes are
+    ``runserver`` / ``startserver`` / ``daphne`` / ``asgi`` (REQ-S2-PUB-004); under
+    the ``runserver`` autoreloader only the worker child (``RUN_MAIN == 'true'``)
+    publishes, never the watcher parent.
+    """
+    if not (
+        'runserver' in argv_str
+        or 'startserver' in argv_str
+        or 'daphne' in argv_str
+        or 'asgi' in argv_str
+    ):
+        return False
+    reloader = ('runserver' in argv_str) and ('--noreload' not in argv_str)
+    if reloader and run_main != 'true':
+        return False
+    return True
+
+
+def _schedule_companion_discovery():
+    """Schedule companion-app discovery publication on an INDEPENDENT daemon thread.
+
+    Uses ONLY stdlib imports and is called FIRST in ``ready()`` — before any optional
+    runtime subsystem (``global_state`` / the two MCP servers / ``models`` / ACPX /
+    skills) is imported — so an import or startup failure in any of those can NEVER
+    prevent publication (REQ-S2-PUB-001/002). Idempotent via a dedicated lock + flag,
+    independent of ``mcp_server_running`` (REQ-S2-PUB-003). Fail-open, HKCU-only, off
+    the hot path. Returns ``True`` iff it started the publisher thread this call.
+    """
+    global _discovery_thread_started
+    try:
+        import sys
+        import os
+        import logging
+
+        if not _discovery_publish_eligible(
+            ' '.join(sys.argv).lower(), os.environ.get('RUN_MAIN')
+        ):
+            return False
+
+        with _DISCOVERY_GATE_LOCK:
+            if _discovery_thread_started:
+                return False
+            _discovery_thread_started = True
+
+        def _run_discovery_publish():
+            try:
+                from . import agent_manifest
+                from .version import get_version
+                agent_manifest.publish_discovery(version=get_version())
+            except Exception:
+                logging.exception("Companion-app discovery publish failed")
+
+        _threading.Thread(
+            target=_run_discovery_publish, name="DiscoveryPublish", daemon=True
+        ).start()
+        return True
+    except Exception:
+        try:
+            import logging
+            logging.exception("Could not schedule companion-app discovery")
+        except Exception:
+            pass
+        return False
 
 
 class AgentConfig(AppConfig):
@@ -22,6 +101,13 @@ class AgentConfig(AppConfig):
         RUN_MAIN gate below makes plain `runserver` (reloader ON) start it in the
         worker only, so the two MCP helper ports are never double-bound.
         """
+        # ── Companion-app discovery (Tlamatini-FlowPills) ──────────────
+        # Scheduled FIRST — before ANY optional-subsystem import below — on its own
+        # daemon thread with a dedicated idempotency gate, so an import or startup
+        # failure in MCP / models / ACPX / skills can NEVER prevent publication
+        # (REQ-S2-PUB-001/002/003). Fail-open. See docs/companion-app-discovery.md.
+        _schedule_companion_discovery()
+
         # Contacts book: export TLAMATINI_CONTACTS so every spawned pool agent
         # (Telegrammer / Whatsapper) inherits the resolved contacts.json path —
         # the same mechanism as TLAMATINI_TEMP. Fail-open; cheap on every init.

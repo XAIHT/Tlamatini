@@ -283,6 +283,12 @@ Tlamatini/agent/external_mcps.json
 # that the build scripts clean up themselves, but ignore them anyway in
 # case a build aborts mid-run.
 Tlamatini/agent/_version.py
+
+# Companion-app discovery: the agents manifest is generated on first launch
+# (agent_manifest.publish_discovery) in source mode — a build/runtime artifact,
+# shipped inside frozen builds but never committed from the source tree.
+Tlamatini/agent/agents/_tlamatini_agents_manifest.json
+
 Tlamatini.version.txt
 Installer.version.txt
 Uninstaller.version.txt

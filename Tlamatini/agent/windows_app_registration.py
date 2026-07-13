@@ -185,3 +185,84 @@ def self_heal_for_frozen(version: str = "") -> bool:
     except Exception as exc:  # noqa: BLE001 — fail-open
         logger.warning("[app_registration] self_heal_for_frozen failed: %s", exc)
         return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Companion-app discovery — HKCU\Software\XAIHT\Tlamatini  (PROP-001)
+# ─────────────────────────────────────────────────────────────────────────────
+# A per-user (HKCU, no-admin) key that lets XAIHT companion apps (e.g.
+# Tlamatini-FlowPills) find Tlamatini's agents root WITHOUT importing Python,
+# running Tlamatini, or scanning drives. Written by ``install.py`` at install and
+# refreshed by ``agent_manifest.publish_discovery()`` on every app launch (so a
+# source checkout that has run once is discoverable too). An agents-PRESERVING
+# uninstall intentionally KEEPS this key (so companion apps still find the preserved
+# agents); only an explicit FULL removal calls ``unregister_discovery_entry()``.
+# Same ADMIN/SAFETY contract as above: HKCU only, no admin, fail-open, idempotent.
+XAIHT_DISCOVERY_KEY = r"Software\XAIHT\Tlamatini"
+XAIHT_PARENT_KEY = r"Software\XAIHT"
+
+
+def register_discovery_entry(
+    *,
+    install_location: str = "",
+    agents_root: str = "",
+    source_agents_root: str = "",
+    agent_manifest_path: str = "",
+    version: str = "",
+    agent_catalog_version: str = "",
+) -> bool:
+    """Write the companion-app discovery values under ``HKCU\\Software\\XAIHT\\Tlamatini``.
+
+    Values (all ``REG_SZ``): ``InstallLocation``, ``AgentsRoot``,
+    ``SourceAgentsRoot``, ``AgentManifestPath``, ``Version``, ``AgentCatalogVersion``.
+    ALL SIX are (re)written on every successful call — an empty string when the
+    caller does not know a value — so no stale metadata from a previous
+    install/source root can survive (REQ-S2-REG-001). Idempotent and fail-open.
+    HKCU, no admin. See ``docs/companion-app-discovery.md``.
+    """
+    if not is_supported():
+        return False
+    try:
+        import winreg
+
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, XAIHT_DISCOVERY_KEY) as key:
+            winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_location or "")
+            winreg.SetValueEx(key, "AgentsRoot", 0, winreg.REG_SZ, agents_root or "")
+            winreg.SetValueEx(key, "SourceAgentsRoot", 0, winreg.REG_SZ, source_agents_root or "")
+            winreg.SetValueEx(key, "AgentManifestPath", 0, winreg.REG_SZ, agent_manifest_path or "")
+            # REQ-S2-REG-001: write ALL SIX values on every call — empty string when
+            # unknown — so a re-registration can never leave a STALE ``Version`` /
+            # ``AgentCatalogVersion`` from a previous install/source root behind.
+            winreg.SetValueEx(key, "Version", 0, winreg.REG_SZ, version or "")
+            winreg.SetValueEx(key, "AgentCatalogVersion", 0, winreg.REG_SZ, agent_catalog_version or "")
+        return True
+    except Exception as exc:  # noqa: BLE001 — fail-open
+        logger.warning("[app_registration] register_discovery_entry failed: %s", exc)
+        return False
+
+
+def unregister_discovery_entry() -> bool:
+    """Delete ``HKCU\\Software\\XAIHT\\Tlamatini`` (and the ``XAIHT`` parent if it is
+    left empty). Idempotent, fail-open. HKCU, no admin."""
+    if not is_supported():
+        return False
+    try:
+        import winreg
+
+        try:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, XAIHT_DISCOVERY_KEY)
+        except FileNotFoundError:
+            pass  # already gone — success
+        # Prune the XAIHT parent only if it has no remaining subkeys or values, so
+        # we never clobber a sibling XAIHT product's key.
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, XAIHT_PARENT_KEY) as parent:
+                subkeys, values, _ = winreg.QueryInfoKey(parent)
+            if subkeys == 0 and values == 0:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, XAIHT_PARENT_KEY)
+        except FileNotFoundError:
+            pass
+        return True
+    except Exception as exc:  # noqa: BLE001 — fail-open
+        logger.warning("[app_registration] unregister_discovery_entry failed: %s", exc)
+        return False

@@ -87,6 +87,18 @@ Tlamatini updates herself from **About ▸ Check for updates** (`agent/self_upda
 
 ---
 
+## Companion-App Discovery — `HKCU\Software\XAIHT\Tlamatini` + agents manifest (2026-07-12)
+
+So XAIHT **companion apps** (e.g. **Tlamatini-FlowPills**) can find Tlamatini's agent-template catalog **without importing Python, running Tlamatini, or scanning drives**, Tlamatini publishes three read-only, **HKCU-only, fail-open** surfaces (engine: `agent/agent_manifest.py`):
+
+- **Registry key** `HKCU\Software\XAIHT\Tlamatini` (`windows_app_registration.register_discovery_entry`) — values `InstallLocation`, `AgentsRoot` (the exact root, read FIRST), `SourceAgentsRoot`, `AgentManifestPath`, `Version`, `AgentCatalogVersion` (`<count>-<sha8>`). Written by `install.py`; refreshed by `agent_manifest.publish_discovery()` on **every launch** (background thread in `apps.ready()`), so a source checkout that has run once is discoverable too.
+- **Agents manifest** `<agents_root>\_tlamatini_agents_manifest.json` — complete templates only (`<type>.py` + `config.yaml`; `pools`/`__pycache__` excluded), each with `sha256`. Generated at build (`build.py`) and refreshed on launch: **every complete agent file body is hashed on each background check** and the manifest is **rewritten only when meaningful content differs** (the volatile `generated_at` alone never rewrites; an edit to any agent file refreshes its `sha256`). `read_manifest` reads `utf-8-sig` (BOM-tolerant). Gitignored in source mode.
+- **Preserved marker** `<install>\agents\.tlamatini-preserved-agents.json` — left by `uninstall.py` when it preserves `agents/`; the discovery key is intentionally **kept** so companion apps still find the preserved agents.
+
+Contract (do NOT weaken): HKCU only, never admin, every writer fail-open, read-only w.r.t. Tlamatini **except our own manifest file + our own registry key**. Implements `Tlamatini-FlowPills-Lookup.md` §15 (PROP-001…004). Full contract + companion lookup sequence: `docs/companion-app-discovery.md`.
+
+---
+
 ## The Five Layers of the System
 
 ### Layer 1: Persisted Toggles (Database)

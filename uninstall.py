@@ -620,6 +620,14 @@ class FancyUninstaller:
         for item in items:
             # ── PRESERVE the agents directory ────────────────────────
             if item.lower() == "agents":
+                # Leave a companion-app marker + re-stamp the manifest so
+                # Tlamatini-FlowPills can find these PRESERVED agents (PROP-003).
+                try:
+                    self._write_preserved_agents_marker(
+                        os.path.join(target, item), target
+                    )
+                except Exception:
+                    pass
                 processed += 1
                 frac = processed / total if total else 1.0
                 self._set_progress(
@@ -647,6 +655,98 @@ class FancyUninstaller:
                 cumulative + weight * frac,
                 f"Removing files… ({processed}/{total})",
             )
+
+    def _write_preserved_agents_marker(self, agents_dir: str, original_install: str):
+        """Leave ``.tlamatini-preserved-agents.json`` in the preserved agents/
+        directory (Tlamatini-FlowPills PROP-003) and re-stamp the agents manifest's
+        kind to ``preserved``. Best-effort — never raises into the uninstall pipeline.
+
+        The XAIHT discovery registry key is intentionally NOT removed here: its
+        ``AgentsRoot`` still points at these preserved agents, so a companion app
+        can keep finding them after uninstall (FlowPills AC-002)."""
+        if not os.path.isdir(agents_dir):
+            return
+        import json
+        from datetime import datetime, timezone
+
+        manifest_path = os.path.join(agents_dir, "_tlamatini_agents_manifest.json")
+        agent_count = None
+        manifest_catalog = ""
+        # Prefer the shipped manifest for count/catalog, and re-stamp its kind so
+        # it truthfully reports ``preserved`` after the app binaries are gone.
+        try:
+            if os.path.isfile(manifest_path):
+                with open(manifest_path, encoding="utf-8") as mf:
+                    manifest = json.load(mf)
+                agent_count = manifest.get("agent_count")
+                manifest_catalog = str(manifest.get("agent_catalog_version", "") or "")
+                if manifest.get("agents_root_kind") != "preserved":
+                    manifest["agents_root_kind"] = "preserved"
+                    try:
+                        with open(manifest_path, "w", encoding="utf-8") as mf:
+                            json.dump(manifest, mf, indent=2)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        if agent_count is None:
+            agent_count = self._count_complete_agents(agents_dir)
+        # Checksum the (re-stamped) manifest so a companion app can verify it
+        # (requirement: "manifest path/checksum"). Computed AFTER the kind re-stamp
+        # above, so the hash matches the FINAL on-disk manifest.
+        manifest_sha256 = ""
+        try:
+            if os.path.isfile(manifest_path):
+                import hashlib
+
+                h = hashlib.sha256()
+                with open(manifest_path, "rb") as mfb:
+                    for chunk in iter(lambda: mfb.read(1 << 16), b""):
+                        h.update(chunk)
+                manifest_sha256 = h.hexdigest()
+        except Exception:
+            manifest_sha256 = ""
+        marker = {
+            "product": "Tlamatini",
+            "preserved": True,
+            "note": (
+                "Tlamatini application binaries were removed by the uninstaller, "
+                "but this agents/ directory was intentionally preserved."
+            ),
+            "original_install_path": os.path.abspath(original_install),
+            "uninstalled_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "version": getattr(self, "version", "") or "",
+            "agent_count": agent_count,
+            "agent_catalog_version": manifest_catalog,
+            "manifest_path": manifest_path if os.path.isfile(manifest_path) else "",
+            "manifest_sha256": manifest_sha256,
+        }
+        try:
+            marker_path = os.path.join(agents_dir, ".tlamatini-preserved-agents.json")
+            with open(marker_path, "w", encoding="utf-8") as f:
+                json.dump(marker, f, indent=2)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _count_complete_agents(agents_dir: str) -> int:
+        """Count complete direct-child agent templates (``<type>.py`` + ``config.yaml``),
+        skipping ``pools`` / ``__pycache__``. Mirrors FlowPills REQ-VAL-003."""
+        count = 0
+        try:
+            for name in os.listdir(agents_dir):
+                if name in ("pools", "__pycache__"):
+                    continue
+                sub = os.path.join(agents_dir, name)
+                if not os.path.isdir(sub):
+                    continue
+                has_script = os.path.isfile(os.path.join(sub, name + ".py"))
+                has_config = os.path.isfile(os.path.join(sub, "config.yaml"))
+                if has_script and has_config:
+                    count += 1
+        except Exception:
+            return count
+        return count
 
     @staticmethod
     def _unregister_programs_entry():

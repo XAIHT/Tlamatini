@@ -1243,6 +1243,27 @@ def main():
             else:
                 print(f"WARNING: Source directory not found: {src_dir}")
 
+        # ── Companion-app agents manifest (Tlamatini-FlowPills PROP-002) ──────
+        # Ship <install>/agents/_tlamatini_agents_manifest.json so a companion app
+        # (Tlamatini-FlowPills) can validate the agent catalog immediately after
+        # install, before Tlamatini's first launch. Loaded straight from the source
+        # file via importlib so we do NOT import the Django ``agent`` package here.
+        # Fail-open: the running app regenerates it on first launch regardless.
+        try:
+            import importlib.util as _ilu
+            _am_src = Path("Tlamatini") / "agent" / "agent_manifest.py"
+            _spec = _ilu.spec_from_file_location("_tlm_agent_manifest", str(_am_src))
+            _am = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_am)
+            _mpath = _am.write_manifest(
+                str((dist_manage / "agents").resolve()),
+                kind="installed",
+                version=tlamatini_version,
+            )
+            print(f"Companion-app agents manifest: {_mpath}")
+        except Exception as _mexc:
+            print(f"WARNING: could not generate agents manifest (non-fatal): {_mexc}")
+
         # Optional: Tlamatini's own source tree — included recursively ONLY when
         # the build was invoked with --self-modify. It lands at the install root
         # (the frozen-mode application_path, next to the executable), so the

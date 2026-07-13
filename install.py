@@ -587,6 +587,11 @@ class FancyInstaller:
             # non-fatal: a registry hiccup must not fail the whole install.
             self._set_progress(cumulative, "Registering with Windows…")
             self._register_programs_entry(target)
+            # Companion-app discovery is registered INDEPENDENTLY of the ARP entry
+            # above (REQ-S2-INSTALL-001/002/003): a valid installed agents catalog
+            # must be discoverable by FlowPills even when Uninstaller.exe is missing
+            # or the ARP registration raised. Own fail-open boundary inside.
+            self._register_companion_discovery(target)
             cumulative += self.STEPS[step_idx][1]
             self._set_progress(cumulative)
             self._mark_step(step_idx)
@@ -752,6 +757,52 @@ class FancyInstaller:
             print(f"Registered Tlamatini in Installed apps (HKCU): {key_path}")
         except Exception as e:
             print(f"WARNING: Could not register Installed-apps entry: {e}")
+
+    def _register_companion_discovery(self, target_dir: str):
+        """Write the HKCU companion-app discovery key (Software\\XAIHT\\Tlamatini) so
+        XAIHT companion apps (Tlamatini-FlowPills) can find the agents root without
+        importing Python or scanning drives.
+
+        INDEPENDENT of the Installed-apps/ARP registration and of Uninstaller.exe
+        (REQ-S2-INSTALL-001/002/003): an install with a valid agents catalog must be
+        discoverable by FlowPills even when ARP registration is skipped or fails.
+        Self-contained (the installer is a standalone frozen exe and cannot import
+        agent.*). HKCU only, fail-open — never raises into the install pipeline.
+        """
+        if sys.platform != "win32":
+            return
+        try:
+            import json
+            import winreg
+
+            install_dir = os.path.abspath(target_dir)
+            agents_root = os.path.join(install_dir, "agents")
+            manifest_path = os.path.join(agents_root, "_tlamatini_agents_manifest.json")
+            catalog_version = ""
+            try:
+                if os.path.isfile(manifest_path):
+                    # utf-8-sig tolerates a BOM if one was written.
+                    with open(manifest_path, encoding="utf-8-sig") as mf:
+                        catalog_version = str(json.load(mf).get("agent_catalog_version", "") or "")
+            except Exception:
+                catalog_version = ""
+
+            disc_key = r"Software\XAIHT\Tlamatini"
+            # REQ-S2-INSTALL-004 / REQ-S2-REG-001: write ALL SIX values, empty string
+            # when unknown, so no stale value from a previous install survives.
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, disc_key) as dkey:
+                winreg.SetValueEx(dkey, "InstallLocation", 0, winreg.REG_SZ, install_dir)
+                winreg.SetValueEx(dkey, "AgentsRoot", 0, winreg.REG_SZ, agents_root)
+                winreg.SetValueEx(dkey, "SourceAgentsRoot", 0, winreg.REG_SZ, "")
+                winreg.SetValueEx(
+                    dkey, "AgentManifestPath", 0, winreg.REG_SZ,
+                    manifest_path if os.path.isfile(manifest_path) else "",
+                )
+                winreg.SetValueEx(dkey, "Version", 0, winreg.REG_SZ, self.version or "")
+                winreg.SetValueEx(dkey, "AgentCatalogVersion", 0, winreg.REG_SZ, catalog_version)
+            print(f"Registered companion-app discovery (HKCU): {disc_key}")
+        except Exception as de:
+            print(f"WARNING: Could not register companion-app discovery: {de}")
 
     # ─── Desktop refresh helper ──────────────────────────────────────
     @staticmethod
