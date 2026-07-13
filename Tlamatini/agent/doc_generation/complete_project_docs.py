@@ -485,6 +485,8 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.39.2" in subject
         or "1.39.3" in subject
         or "1.39.4" in subject
+        or "1.39.5" in subject
+        or "1.40.0" in subject
         or "nmapper" in subject
         or "nmap" in subject
         or "pentesting" in subject
@@ -493,14 +495,30 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "cyber sec" in subject
         or "startup dialog" in subject
         or "catalog of prompts" in subject
+        or "flowpills" in subject
+        or "unrealer" in subject
+        or "scaffold" in subject
+        or "smoothness" in subject
         for subject in subjects
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on `v1.39.4` — the Nmapper cyber-security line (`v1.39.3`) plus the startup-dialog closeability fix: README.md, BookOfTlamatini.md, Git history, and source inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
+            "The live Git window now lands on `v1.40.0`: local HEAD `495d9036` carries the static version alignment one commit beyond tagged/remote `ef51a89d`, while README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: `v1.36.0` added Video-Analyzer, `v1.38.0` proved the Robotic-Loop-Training circle live on a robotic arm (programmed from a blank page and two cameras) on top of the self-healing model-step invoker and the cleaner Create Flow gate, `v1.38.1` recovered the frontend from the const-poison incident while adding the one-call `/agent/list_prompts/` prompt catalog, `v1.39.3` shipped the Nmapper agent for authorized pentesting and CTF recon alongside general cyber-security improvements, and `v1.39.4` fixed the startup dialog that could not be closed."
+            "The current release wave is broader than a badge bump: `v1.39.3` shipped Nmapper for authorized local recon, `v1.39.4` restored startup-dialog closeability, `v1.39.5` hardened long-running and concurrent work while adding the one-prompt Unreal Engine 5.8 scaffold path, and `v1.40.0` publishes a hashed agent-template catalog for Tlamatini-FlowPills through a fail-open HKCU discovery contract."
+        )
+    if any("flowpills" in subject or "companion" in subject for subject in subjects):
+        highlights.append(
+            "The `v1.40.0` companion-app contract adds `agent_manifest.py`, a six-value `HKCU\\Software\\XAIHT\\Tlamatini` discovery key, `_tlamatini_agents_manifest.json` with per-file SHA-256 values, preserved-agent uninstall metadata, launch/install/build integration, and 17 focused tests so FlowPills can locate valid agent templates without importing Tlamatini or scanning drives."
+        )
+    if any("unrealer" in subject or "scaffold" in subject for subject in subjects):
+        highlights.append(
+            "The Unrealer wave adds a two-field Catalog-of-Prompts route to a ready-to-build Unreal Engine 5.8 C++ project, including plugin wiring and Visual Studio 2026 guidance, while normalizing `/Content` paths to `/Game` and sending `assign_material` through the plugin's real `slot_index` wire key."
+        )
+    if any("smoothness" in subject for subject in subjects):
+        highlights.append(
+            "The `v1.39.5` smoothness pass bounds previously open-ended I/O, preserves partial Nmapper results, makes subprocess decoding UTF-8-safe, hardens background External MCP supervision, keeps deferred deliverables and request-scoped orphan evidence, and improves `.flw` secret redaction without weakening runtime behavior."
         )
     if any(
         "retrying behaviour" in subject
@@ -651,7 +669,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.39.4` release line — the `v1.39.3` Nmapper cyber-security release plus the startup-dialog closeability fix — so this dossier now carries the current reliability story, media-verdict agent story, local-nmap recon story, prompt-search UX, live line-count inventory, and Agent-directory responsibility boundary instead of stale v1.33.x prose."
+            "The latest documentation pass aligns the handbook and source with `v1.40.0`, including FlowPills companion discovery, Unreal Engine 5.8 scaffolding, the `v1.39.5` smoothness wave, Nmapper, prompt/startup fixes, live line-count inventory, and the Agent-directory responsibility boundary instead of stale release prose."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -895,14 +913,20 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "image interpreter" in subject
         or "image_interpreter" in subject
         or "config dialog" in subject
+        or "1.39.5" in subject
+        or "1.40.0" in subject
+        or "flowpills" in subject
+        or "unrealer" in subject
+        or "scaffold" in subject
+        or "smoothness" in subject
         for subject in subjects
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.35.0`, `v1.36.0`, `v1.38.0`, `v1.38.1`, `v1.39.3`, and `v1.39.4`: Video-Analyzer became the headline tagged agent release, the Robotic-Loop-Training circle was proven live on a robotic arm, generated flow files are more readable, model-step failures are recovered more truthfully, the const-poison hotfix restored the frontend while adding the one-call prompt catalog, the Nmapper agent brought local authorized nmap recon to the pentesting and CTF workflow, and the startup dialog became closeable again."
+            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.39.5` and `v1.40.0`: long-running/concurrent operations were hardened, the Unreal Engine 5.8 one-prompt scaffold path landed, and Tlamatini began publishing a hashed, HKCU-discoverable agent-template catalog for FlowPills."
         )
         highlights.append(
-            "The current visual-doc delta covers `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer`, prompt-card search improvements, serpentine `.flw` layout, `agent/self_healing.py`, Create Flow gate cleanup, and the carried v1.33.x/v1.34.x model and messaging context."
+            "The current visual-doc delta covers `agent_manifest.py`, `test_agent_manifest.py`, the companion-discovery contract and lifecycle wiring, migrations `0173`-`0174`, Unrealer correctness updates, and the smoothness changes across Nmapper, External MCPs, model/metrics I/O, subprocess decoding, request isolation, and `.flw` redaction."
         )
     if any(
         "retrying behaviour" in subject
@@ -1391,23 +1415,22 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to the `v1.39.4` release line (the tagged startup-dialog fix `f8a7c237`, with HEAD `a45fe0e0` one commit further on the Catalog-of-Prompts localization fix), with README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirming the workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals.",
-    "`v1.39.3` is the Nmapper release: the new `nmapper` workflow agent and wrapped `chat_agent_nmapper` tool give pentesters and CTF players a local, authorized-targets-only nmap bridge that never bundles or redistributes nmap itself, defaults to an unprivileged TCP connect scan, and degrades raw-packet features gracefully when Npcap is absent.",
-    "`v1.39.4` is the startup-dialog fix: the first-run dialog can be closed again, so a fresh launch is no longer blocked by an unclosable overlay.",
-    "`v1.36.0` is the Video-Analyzer release: the new `video_analyzer` workflow agent and wrapped `chat_agent_video_analyzer` tool read recorded videos, check for motion, ask two vision models for independent evidence, merge their reports, and emit explicit routeable verdict tokens.",
-    "`v1.35.0` improves prompt discovery: the Tools dialog prompt cards now search by substring, word-start, and fuzzy matches and show mode badges so operators can navigate the larger seeded prompt catalog without memorizing exact names.",
-    "The post-tag flow-layout commit improves generated `.flw` layout: chat-created workflows now use a serpentine/boustrophedon grid so long Starter -> Agent -> ... -> Ender chains stay readable on the canvas instead of drifting off-screen.",
-    "The newest committed reliability wave adds `agent/self_healing.py`: Multi-Turn model steps are watchdog-bounded, retry through distinct tactics, broadcast recovery status, and preserve completed agent work in degraded answers instead of discarding evidence.",
-    "Create Flow now follows concrete tool evidence rather than the removed whole-answer classifier: the button appears when Multi-Turn produced at least one successful agent call, and generated `.flw` downloads keep only successful executions.",
-    "The live frontend follow-up keeps the browser honest during self-healing: `agent_page_chat.js` recognizes live tactic-status frames and re-asserts the busy/Cancel state until the real final answer arrives.",
-    "Create Flow resolution now tolerates display-name drift: successful calls are normalized against the live Agents sidebar, resolvable successes are kept, and unresolved successful entries are skipped instead of disabling the whole button.",
-    "The newest committed Discoverer wave adds PDCP key wiring: `PDCP_API_KEY` can be managed from Config -> Access Keys Wizard -> Security Recon (ProjectDiscovery), auto-injected into `chat_agent_discoverer`, redacted from `.flw`, and scrubbed by `regen_secrets.py`.",
-    "Discoverer's CVE lane now treats the legacy `cvemap` tool key as ProjectDiscovery `vulnx`: the old cvemap API was retired in August 2025, so Tlamatini installs/runs the `vulnx` binary, supports `search`/`id`, and counts object-style JSON findings correctly.",
-    "The private Go toolchain remains self-contained under `<install_dir>/Go`, but `.gitignore` and `git_deny_go.py` now make Go compiler/cache/tool binaries invisible to Git and block accidental commits with a pre-commit guard.",
-    "`v1.34.x` adds the triple-model Image-Interpreter release and the matching Config -> Models dialog work: three visible model fields now correspond to interpreter 1, interpreter 2, and image merger instead of hiding a multi-model agent behind one old vision-model slot.",
-    "`v1.33.x` remains the Zavuerer release family: the Zavu unified-messaging workflow agent adds SMS, WhatsApp, Telegram, Email, and Voice delivery through one configured API key, with setup-wizard dedupe and cloud-default cleanup carried forward.",
+    "The repository currently resolves to `v1.40.0`: local HEAD `495d9036` is one static-version-alignment commit ahead of tagged/remote `ef51a89d`, and the live source tree remains the authority for every generated count.",
+    "`v1.40.0` makes Tlamatini discoverable to companion applications such as Tlamatini-FlowPills without importing Python, launching her runtime, or scanning whole drives.",
+    "A six-value, per-user `HKCU\\Software\\XAIHT\\Tlamatini` contract publishes the exact `AgentsRoot`, manifest path, install/source locations, version, and agent-catalog identity without requiring administrator rights.",
+    "`_tlamatini_agents_manifest.json` catalogs every complete agent template (`<type>.py` plus `config.yaml`) with per-file SHA-256 values; filesystem validation remains authoritative and the manifest rewrites only when meaningful content changes.",
+    "Discovery is scheduled first on every launch, also runs at install/build time, and survives an agents-preserving uninstall through a marker plus intentionally retained discovery metadata; all paths are idempotent and fail-open.",
+    "Seventeen focused manifest/discovery tests cover source, frozen, preserved, BOM, hashing, stale-value, registration, and failure paths without modifying tracked configuration files.",
+    "The `v1.39.5` wave adds a two-marker Catalog-of-Prompts route that scaffolds a ready-to-build Unreal Engine 5.8 C++ project with UnrealMCP and Visual Studio 2026 guidance.",
+    "Unrealer now sends `assign_material` with the plugin's actual `slot_index` key and normalizes `/Content/...` material/content paths to Unreal's `/Game/...` virtual root.",
+    "The smoothness pass bounds image-model, system-metrics, subprocess, and scan I/O; improves background External MCP supervision; and prevents a stalled dependency from freezing a whole chat indefinitely.",
+    "Nmapper slow scans receive per-host budgets and collision-proof output names, preserve partial XML results, and distinguish a timeout from a legitimate zero-open-port result.",
+    "ACPX and command subprocesses decode UTF-8 with replacement, request-scoped orphan survivors cannot cross users, and deferred completion deliverables survive every terminal Multi-Turn exit path.",
+    "Agent contracts now redact URI userinfo as well as ordinary secret fields, preserving useful MongoDB host/database context in exported `.flw` files without retaining credentials.",
+    "The earlier `v1.39.3` Nmapper release and `v1.39.4` startup-dialog/prompt-catalog fixes remain carried product behavior, alongside the self-healing, Create Flow, robotic-loop, firmware, media, External MCP, and deterministic-file waves.",
+    "The pre-refresh local delta contains eight operator configuration files; the dossier counts their physical/effective lines from disk but does not reproduce private values or mislabel them as a tagged feature release.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.39.4` — the Nmapper cyber-security release `v1.39.3` plus the startup-dialog closeability fix — as the current product snapshot while preserving the historical context for the robotic-arm loop, the frontend-state-recovery hotfix, self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+    "The resulting PDF/PPTX refresh treats `v1.40.0` as the current product snapshot while preserving the historical context for Nmapper, the robotic-arm loop, frontend recovery, self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
 ]
 
 NMAPPER_GUIDE = [
@@ -1421,18 +1444,36 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "The current HEAD `a45fe0e0` sits one commit past the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup, keeping prompt UI wording aligned with the localized operator surface.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.40.0`.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by `idPrompt`, while the legacy probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
 
-LIVE_WORKTREE_HARDENING_GUIDE = [
-    "The live worktree also contains current source hardening that is not a release tag yet: the generated dossier counts those lines from disk, but describes them separately from committed release history.",
-    "`external_mcp_manager.py` now moves active-server supervision and `tools/list` refreshes onto a background thread, reducing chat-build stalls when an external MCP bridge is slow, empty, or reconnecting.",
-    "External MCP tool refresh timeouts were reduced for both stdio and network clients so cached tools can be bound quickly while the background supervisor refreshes or repairs bridges afterward.",
-    "Saved Agentic Control Panel `.flw` snapshots now POST through `/agent/redact_flow_snapshot/`, where `redact_flow_snapshot()` masks per-agent `secret_paths` while preserving node ids, positions, connections, artifacts, and loader shape.",
-    "`acp-file-io.js`, `urls.py`, `views.py`, and `services/agent_contracts.py` are the concrete `.flw` redaction surface, designed to prevent SMTP/IMAP/DB passwords, API tokens, and private keys from leaving the browser in shared flow files.",
-    "`agents/recmailer/recmailer.py` now passes an IMAP socket timeout to `imaplib.IMAP4_SSL`, preventing black-holed or slow mail servers from freezing one-shot mode and upstream agent-stop waits indefinitely.",
+FLOWPILLS_DISCOVERY_GUIDE = [
+    "Tlamatini-FlowPills reads `HKCU\\Software\\XAIHT\\Tlamatini` first, especially the exact `AgentsRoot`, before falling back to Installed Apps, `.flw` association data, executable-relative roots, or source/preserved probes.",
+    "The registry contract always rewrites six REG_SZ values — `InstallLocation`, `AgentsRoot`, `SourceAgentsRoot`, `AgentManifestPath`, `Version`, and `AgentCatalogVersion` — using an empty value when something is unknown so stale metadata cannot survive across source and frozen runs.",
+    "`agent_manifest.py` discovers only complete templates, excludes `pools` and `__pycache__`, hashes script/config contents, computes a name-set catalog id, and writes atomically only when meaningful data changed.",
+    "Launch publication runs first in `AgentConfig.ready()` on a daemon thread with its own idempotency gate, so optional MCP, model, ACPX, or skill import failures cannot suppress companion discovery.",
+    "An agents-preserving uninstall restamps the manifest as `preserved`, writes `.tlamatini-preserved-agents.json` with the manifest SHA-256, and keeps the discovery key pointing to the preserved catalog.",
+    "The contract is HKCU-only, no-admin, fail-open, and read-only with respect to agent templates; the filesystem remains the final validity authority for companion applications.",
+]
+
+UNREAL_SCAFFOLD_GUIDE = [
+    "The new Unreal scaffold prompt asks for only project name and destination, locates or obtains `XaihtUnrealEngineMCP`, and invokes its deterministic `scaffold_unreal_project.py` helper.",
+    "The scaffold copies and renames `MCPGameProject`, sets EngineAssociation 5.8, finds an installed UE 5.8 even when it is not registered, bundles UnrealMCP, and generates the Visual Studio 2026 solution.",
+    "UE 5.8 build compatibility is explicit: V7 build settings, `Unreal5_8` include order, a `Directory.Build.targets` mitigation for the Windows environment-length limit, and a pre-fixed Visual Studio Tools plugin.",
+    "The prompt instructs operators to build the project target rather than the entire solution, then open the editor; UnrealMCP starts its TCP listener at `127.0.0.1:55557` for Unrealer.",
+    "Unrealer normalizes disk-style `/Content` references to `/Game`, maps the friendly material `slot` input to `slot_index`, and forwards one command per TCP connection into the live editor.",
+    "Migrations `0173` and `0174`, Unrealer code/config comments, README/Book entries, and the current release metadata carry the scaffold workflow across source, catalog, and operator documentation.",
+]
+
+RESPONSIVENESS_HARDENING_GUIDE = [
+    "The `v1.39.5` smoothness wave focuses on bounded waits, concurrency isolation, accurate partial-result reporting, and lossless final answers rather than a new agent count.",
+    "Image-Interpreter now bounds Ollama connect/read gaps; the System-Metrics WebSocket bounds receive time; External MCP warm-connect/supervisor gates recover if thread start fails; and command/ACPX output decoding is UTF-8-safe.",
+    "Nmapper assigns per-host budgets to slow actions, keeps the outer kill budget above them, preserves partial output, uses collision-proof filenames for parallel scans, and labels hard timeouts honestly.",
+    "Multi-Turn folds deferred completion deliverables into every exit path, while orphan-survivor state is keyed by conversation user so simultaneous requests cannot consume or clear each other's evidence.",
+    "`.flw` export redaction covers ordinary secret paths and URI userinfo, and the command parser distinguishes Windows trailing backslashes from escaped inner quotes at assignment boundaries.",
+    "These changes are now committed release behavior; the user's pre-refresh uncommitted configuration values remain private and are not quoted in this dossier.",
 ]
 
 ROBOTIC_LOOP_GUIDE = [
@@ -1452,7 +1493,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: latest reachable public tag `v1.39.4` (the startup-dialog closeability fix, on top of the `v1.39.3` Nmapper cyber-security release); the live HEAD sits one commit past it, on the Catalog-of-Prompts localization fix.",
+    "Release identity: current public tag `v1.40.0` at `ef51a89d`, with local HEAD `495d9036` one static-version-alignment commit ahead; the earlier Video-Analyzer, Nmapper, and startup-dialog waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1611,11 +1652,11 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "Recent assets worth calling out explicitly now span several release waves: onboarding screenshots `agent/images/MenuConfig.jpg`, `agent/images/ConfigureModels.jpg`, and `agent/images/ACPXKeysConfigureWizard.jpg`; the External MCP + MCP Doctor implementation files; data-preserving updater files; numpy/OpenCV build checks; deterministic file-agent directories; and the ESPHomer smart-home firmware tree.",
-    "The `v1.36.0` wave added concrete video-verdict assets: `agent/agents/video_analyzer/`, migrations `0166`-`0168`, `test_video_analyzer_agent.py`, `chat_agent_video_analyzer` registry wiring, Video-Analyzer service contracts, and a seeded robotic-loop demo prompt.",
-    "The adjacent `v1.35.0`-through-`v1.39.4` work updates prompt-card search/rendering assets (now fed by the one-call `/agent/list_prompts/` endpoint), `.flw` generation layout code, the restored-mutable frontend state, the Nmapper recon agent, and the startup-dialog overlay, so the latest operator improvements are visible in JavaScript/CSS and canvas workflow output, not only markdown.",
+    "The `v1.40.0` companion-discovery wave adds `agent_manifest.py`, `test_agent_manifest.py`, `docs/companion-app-discovery.md`, launch wiring in `apps.py`, registry writers in `windows_app_registration.py`/`install.py`, build-time manifest creation, preserved-agent uninstall metadata, and two FlowPills design-sprint documents.",
+    "The `v1.39.5` Unreal scaffold wave adds migrations `0173`-`0174`, Unrealer path/slot correctness changes, prompt/config guidance, and a deterministic route into the external `XaihtUnrealEngineMCP` scaffold/template for UE 5.8 plus Visual Studio 2026.",
+    "The same smoothness window hardens `acpx/runtime.py`, Nmapper, `consumers.py`, `external_mcp_manager.py`, Image-Interpreter, `mcp_agent.py`, `mcp_system_client.py`, `agent_contracts.py`, and `tools.py` around bounded waits, UTF-8 output, request isolation, partial results, and secret-safe exports.",
     "The Nmapper wave adds `agent/agents/nmapper/`, migrations `0170`-`0172`, `test_nmapper_agent.py`, `chat_agent_nmapper`, `update_nmapper_connection`, agent contracts/Parametrizer fields, ACP connector assets, FlowCreator/FlowHypervisor catalog entries, and docs across README, Book, `agents_descriptions.md`, and `docs/claude`.",
-    "The current working-tree hardening assets add background External MCP supervision in `external_mcp_manager.py`, lossless `.flw` secret redaction through `redact_flow_snapshot()` plus `/agent/redact_flow_snapshot/`, browser Save redaction in `acp-file-io.js`, route/view wiring, and an IMAP timeout in `recmailer.py`.",
+    "The earlier flow-security assets add background External MCP supervision in `external_mcp_manager.py`, lossless `.flw` secret redaction through `redact_flow_snapshot()` plus `/agent/redact_flow_snapshot/`, browser Save redaction in `acp-file-io.js`, route/view wiring, and an IMAP timeout in `recmailer.py`; the smoothness wave extends that contract to URI-embedded credentials.",
     "The newest committed reliability assets include `agent/self_healing.py`, `agent/test_self_healing.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, `Tlamatini/tests_e2e/test_create_flow_visual.py`, and coordinated changes in `mcp_agent.py`, `consumers.py`, `response_parser.py`, and the chat frontend.",
     "The committed Discoverer PDCP assets include `access_key_wizard.py` Security Recon fields, `tools.py` default seeding, `agent_contracts.py` `.flw` redaction, `regen_secrets.py` scrubbing, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` for the latest-CVE prompt.",
     "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, tracked `git_deny_go.py` guard/pre-commit installer, `discoverer_1000.py`, and `test_discoverer_thousand.py` validation coverage.",
@@ -1635,7 +1676,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.39.4` release state keeps runtime surfaces, self-knowledge wording, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, Robotic-Loop-Training, Nmapper recon, generated `.flw` layout, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and the current `v1.40.0` release state keeps runtime surfaces, self-knowledge wording, companion discovery, Unreal scaffolding, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, Robotic-Loop-Training, Nmapper recon, generated `.flw` layout, and operator handbook aligned.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2280,14 +2321,20 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Tlamatini-FlowPills companion discovery", styles["h2"]))
+    for item in FLOWPILLS_DISCOVERY_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Unreal Engine 5.8 one-prompt scaffold", styles["h2"]))
+    for item in UNREAL_SCAFFOLD_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.39.5 responsiveness and safety hardening", styles["h2"]))
+    for item in RESPONSIVENESS_HARDENING_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("Nmapper local nmap bridge", styles["h2"]))
     for item in NMAPPER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Startup dialog and prompt-catalog polish", styles["h2"]))
     for item in STARTUP_PROMPT_POLISH_GUIDE:
-        story.append(bullet(item, styles["bullet"]))
-    story.append(p("Live working-tree hardening", styles["h2"]))
-    for item in LIVE_WORKTREE_HARDENING_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.38.0 robotic loop closure", styles["h2"]))
     for item in ROBOTIC_LOOP_GUIDE:
@@ -3110,7 +3157,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.39.4", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.40.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3124,7 +3171,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.39.4", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.40.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3133,19 +3180,34 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.39.4 — the Nmapper cyber-security release plus the startup-dialog closeability fix", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.40.0 — companion discovery, Unreal scaffolding, and bounded runtime work", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Context", "Discoverer hardening plus carried product story", THEME["jade"])
+    slide, audit = add_slide(prs, "Current Release Context", "FlowPills discovery, Unreal 5.8, and smoothness hardening", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Flow and recovery", CURRENT_RELEASE_GUIDE[6:10], THEME["jade"], "rel-c", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[10:13], THEME["amber"], "rel-d", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[13:16], THEME["copper"], "rel-e", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[16:], THEME["jade"], "rel-f", 11)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[12:14], THEME["copper"], "rel-e", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[14:], THEME["jade"], "rel-f", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "FlowPills Companion Discovery", "v1.40.0 — find agent templates without Python or drive scans", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Lookup contract", FLOWPILLS_DISCOVERY_GUIDE[:3], THEME["jade"], "flowpills-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Publication and preservation", FLOWPILLS_DISCOVERY_GUIDE[3:], THEME["amber"], "flowpills-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Unreal 5.8 Project Scaffold", "v1.39.5 — two prompt fields to a ready-to-build C++ project", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Deterministic scaffold", UNREAL_SCAFFOLD_GUIDE[:3], THEME["copper"], "unreal-scaffold-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Build and editor handoff", UNREAL_SCAFFOLD_GUIDE[3:], THEME["jade"], "unreal-scaffold-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "v1.39.5 Runtime Hardening", "bounded waits, accurate partial results, and request isolation", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Responsiveness", RESPONSIVENESS_HARDENING_GUIDE[:3], THEME["amber"], "responsive-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Safety and result integrity", RESPONSIVENESS_HARDENING_GUIDE[3:], THEME["jade"], "responsive-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Nmapper Local Recon", "use-only nmap bridge for authorized targets", THEME["jade"])
@@ -3156,11 +3218,6 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Startup And Prompt Polish", "v1.39.4 closeability plus current prompt localization", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Startup dialog", STARTUP_PROMPT_POLISH_GUIDE[:2], THEME["amber"], "startup-prompt-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Prompt catalog", STARTUP_PROMPT_POLISH_GUIDE[2:], THEME["jade"], "startup-prompt-b", 12)
-    audit_layout(audit, len(prs.slides))
-
-    slide, audit = add_slide(prs, "Live Working-Tree Hardening", "current source changes counted separately from release tags", THEME["copper"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "MCP and chat responsiveness", LIVE_WORKTREE_HARDENING_GUIDE[:3], THEME["copper"], "live-hardening-a", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Flow secrets and mail safety", LIVE_WORKTREE_HARDENING_GUIDE[3:], THEME["jade"], "live-hardening-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Robotic Loop Closed", "v1.38.0 — from blank page to observed hardware behavior", THEME["copper"])
@@ -3587,18 +3644,18 @@ def build_ppt(context: dict) -> None:
         add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "through the v1.39.4 release", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "through the v1.40.0 release", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
-        "Video-Analyzer (v1.36.0): motion-verdict video analysis for robotic-loop training, with `TLM_VERDICT::` routing.",
-        "Self-healing Multi-Turn: watchdog-bounded model steps, tactic switching, live status, and truthful degraded answers.",
-        "Discoverer hardening: optional PDCP key wiring, `cvemap` -> `vulnx` CVE search, and a Go-deny guard that keeps the private Go toolchain out of Git.",
+        "FlowPills discovery (v1.40.0): HKCU lookup plus a hashed agent manifest, launch/install/build publication, and preserved-agent metadata.",
+        "Unreal scaffold (v1.39.5): two prompt markers create a ready-to-build UE 5.8 C++ project with UnrealMCP and VS 2026 guidance.",
+        "Runtime hardening: bounded I/O, partial Nmapper results, UTF-8 subprocess output, request-isolated orphan evidence, and URI-safe `.flw` redaction.",
         "Image-Interpreter: triple-model still-image analysis with independent interpreters and a merger model.",
         "Zavuerer: unified Zavu messaging for SMS, WhatsApp, Telegram, Email, and Voice.",
         "Prompt search and generated `.flw` files: fuzzy prompt cards plus serpentine successful-only flow downloads.",
         "Media/voice and firmware lanes remain active: Talker, Whisperer, Camcorder, Recorder, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, and Unrealer.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: `v1.39.4` is the current tag — the startup-dialog closeability fix on top of the Nmapper cyber-security release (`v1.39.3`).",
+        "Resolved identity: `v1.40.0` is the current tag at remote `ef51a89d`; local HEAD `495d9036` carries the matching static version surfaces.",
         "Create Flow now follows successful tool calls instead of the removed `answer_success` classifier.",
         "Frontend recovery controls keep live self-healing status frames in Cancel/busy state until the true final answer.",
         "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",
