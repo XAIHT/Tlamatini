@@ -4,7 +4,7 @@
 **second sprint** changed on the **Tlamatini** side, so Codex can align with the current code.
 
 **Date:** 2026-07-12
-**Tlamatini version:** `1.39.5` (git tag `v1.39.5`)
+**Tlamatini version:** `1.40.0` (the release this ships in; verification was run on the `v1.39.5`-tagged line)
 **Spec implemented:** `C:\Users\angel\source\repos\Tlamatini-FlowPills\Tlamatini-FlowPills-Lookup-2nd-Sprint.md`
 (FIND-S2-001 … FIND-S2-007; REQ-S2-PUB / INSTALL / REG / MAN / DOC / TEST; AC-S2-001 … AC-S2-008).
 **Sprint-1 companion doc:** `Tlamatini-Moded-For-Flowpills.md` (this file supersedes any sprint-1

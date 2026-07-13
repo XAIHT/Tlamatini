@@ -588,6 +588,16 @@ See Section 12 (Utility Agents) and Section 23 — the canvas/Multi-Turn agent c
 
 ---
 
+## 9c. Companion-App Discovery (Tlamatini-FlowPills)
+
+So sister XAIHT apps like **Tlamatini-FlowPills** can find Tlamatini's agent-template catalog at startup WITHOUT importing Python, running Tlamatini, or scanning drives, Tlamatini publishes three read-only, **HKCU-only, fail-open** surfaces (engine `agent/agent_manifest.py` + `agent/windows_app_registration.py`; contract `docs/companion-app-discovery.md`):
+
+- **Registry key** `HKCU\Software\XAIHT\Tlamatini` — six `REG_SZ` values (`InstallLocation`, `AgentsRoot` = the exact root read first, `SourceAgentsRoot`, `AgentManifestPath`, `Version`, `AgentCatalogVersion` = `<count>-<sha8>`), ALL SIX written every call (empty when unknown). Written by `install.py` and refreshed on **every launch**.
+- **Agents manifest** `<agents_root>\_tlamatini_agents_manifest.json` — complete templates only (`<type>.py` + `config.yaml`; `pools`/`__pycache__` excluded), each with a per-file `sha256`; re-hashed on each launch, rewritten only when content differs; read with `utf-8-sig`.
+- **Preserved marker** `.tlamatini-preserved-agents.json` — left by `uninstall.py` when it preserves `agents/` (carries `manifest_path` + `manifest_sha256`); the discovery key is intentionally KEPT so companion apps still find the preserved agents.
+
+Wired into `apps.py` (`_schedule_companion_discovery()` runs FIRST in `AgentConfig.ready()`, import-independent, dedicated idempotency gate separate from `mcp_server_running`), `install.py` (independent of the ARP/Installed-Apps entry), `uninstall.py`, and `build.py`. The filesystem is authoritative — the manifest is diagnostic evidence only. Tests: `agent/test_agent_manifest.py` (17, Django-free, secret-safe). Implements `Tlamatini-FlowPills-Lookup.md` §15 + the second-sprint hardening.
+
 ## 10. ACPX System
 
 **ACPX = Agent Communication Protocol eXtension.** Tlamatini's runtime for spawning external coding-agent CLIs as child processes.

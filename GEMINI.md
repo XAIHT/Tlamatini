@@ -248,6 +248,10 @@ To prevent task manager pollution (where companion `conhost.exe` processes would
 
 ---
 
+### 8.3 Companion-App Discovery (Tlamatini-FlowPills)
+
+So sister XAIHT apps like **Tlamatini-FlowPills** can find Tlamatini's agent-template catalog at startup WITHOUT importing Python, running Tlamatini, or scanning drives, Tlamatini publishes three read-only, **HKCU-only, fail-open** surfaces: the registry key `HKCU\Software\XAIHT\Tlamatini` (six `REG_SZ` values — `InstallLocation`, `AgentsRoot`, `SourceAgentsRoot`, `AgentManifestPath`, `Version`, `AgentCatalogVersion`; all six written every call, empty when unknown), the `_tlamatini_agents_manifest.json` next to the agents (complete templates only, per-file `sha256`, `utf-8-sig` read), and the `.tlamatini-preserved-agents.json` marker the uninstaller leaves (with `manifest_sha256`; the discovery key is KEPT). Engine `agent/agent_manifest.py` + `agent/windows_app_registration.py`; wired into `apps.py` (scheduled FIRST in `ready()`, import-independent, dedicated idempotency gate), `install.py` (independent of the ARP entry), `uninstall.py`, `build.py`. Filesystem is authoritative; 17 Django-free secret-safe tests in `agent/test_agent_manifest.py`. Contract: `docs/companion-app-discovery.md`; implements `Tlamatini-FlowPills-Lookup.md` §15 + second-sprint hardening.
+
 ## 9. Complete Visual Agent Catalog (84 Agents)
 
 Visual agents are designed to run out of process. The backend compiler generates their config, spawns them, and inspects their logs. Below is the complete catalog of all 84 visual agents:

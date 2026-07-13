@@ -303,7 +303,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.39.5](https://github.com/XAIHT/Tlamatini/releases/tag/v1.39.5)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.40.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.40.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1976,14 +1976,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.39.5 -m "Release 1.39.5: <one-liner>"   # annotated tag
-git push origin v1.39.5
+git tag -a v1.40.0 -m "Release 1.40.0: <one-liner>"   # annotated tag
+git push origin v1.40.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.39.5/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.40.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -1991,8 +1991,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.39.5/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.39.5` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.39.5","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.40.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.40.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.40.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3105,6 +3105,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.40.0 — Tlamatini-FlowPills Companion-App Discovery: Tlamatini Publishes Where Her Agents Live — 2026-07-12** — A sister XAIHT application, **Tlamatini-FlowPills**, must find Tlamatini's agent-template catalog at startup **without importing Python, running Tlamatini, or scanning drives**. So Tlamatini now publishes three read-only, **HKCU-only, fail-open** discovery surfaces plus a documented lookup contract. (1) A per-user registry key **`HKCU\Software\XAIHT\Tlamatini`** carrying six values — `InstallLocation`, `AgentsRoot` (the exact root, read first), `SourceAgentsRoot`, `AgentManifestPath`, `Version`, and `AgentCatalogVersion` (`<count>-<sha8>`) — written by the installer and refreshed on **every launch**, so even a source checkout that has run once is discoverable. (2) A machine-readable **`_tlamatini_agents_manifest.json`** written next to the agents: every complete template (`<type>.py` + `config.yaml`; `pools`/`__pycache__` excluded) with a per-file `sha256`, re-hashed on each launch and rewritten only when the content actually changes. (3) A **`.tlamatini-preserved-agents.json`** marker the uninstaller leaves when it preserves the `agents/` directory — carrying the manifest path and a `manifest_sha256` — with the discovery key intentionally **kept** so companion apps still find the preserved agents. The engine is `agent/agent_manifest.py` + `agent/windows_app_registration.py`, wired into `apps.py`, `install.py`, `uninstall.py`, and `build.py`; the full contract lives in `docs/companion-app-discovery.md`. A second hardening sprint made it bullet-proof: discovery is **scheduled FIRST in `AgentConfig.ready()`**, before any MCP / model / ACPX import, on its own daemon thread with a dedicated idempotency gate, so an import or startup failure anywhere else can never suppress publication; the installer registers discovery **independently** of the Windows Installed-Apps entry (a missing `Uninstaller.exe` or an ARP hiccup no longer hides a valid catalog); all six registry values are **always rewritten** (empty when unknown) so no stale metadata survives; and manifest reads are BOM-tolerant (`utf-8-sig`). Coverage grew to **17 focused tests** that run secret-safely (`python -m unittest agent.test_agent_manifest`) and change **zero** tracked config files. Everything stays HKCU-only, no admin, fail-open, and read-only with respect to Tlamatini except her own manifest file and her own key. The public version moves to **1.40.0** across every static surface that quotes it (README badge, `package.json`, `VERSIONING.md`, this book, `agent/Tlamatini.md`); as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and the historical v1.39.5 / v1.39.4 entries below were left untouched. Forward-only.
 
 - **Release v1.39.5 — One Prompt to a Ready-to-Build Unreal Engine 5.8 Project — 2026-07-12** — Tlamatini can now stand up a **brand-new Unreal Engine 5.8 C++ project** from a single Catalog-of-Prompts card. You fill in only two `[[ ]]` markers — the project's NAME and the DIRECTORY it goes in (the same fill-in-the-blank shape as the add-a-contact prompt, `prompt-106`) — and Tlamatini runs a deterministic scaffolder (`scaffold_unreal_project.py`, in the `XaihtUnrealEngineMCP` repo) that copies and renames the `MCPGameProject` template, pins EngineAssociation to 5.8, finds the installed UE 5.8 on disk even when it is not registered, wires in the **UnrealMCP** editor plugin, and generates the **Visual Studio 2026** solution — then hands you a project you open, build, and run. Once the editor is up, the UnrealMCP plugin auto-starts its TCP listener on `127.0.0.1:55557`, so the **Unrealer** agent can drive the live editor immediately (proven end-to-end: scaffold → green build on 5.8 → `get_actors_in_level`). Getting there meant teaching the template a handful of genuine UE-5.8 / VS-2026 truths, each caught by a real build rather than guessed: the build-settings version had to move to **V7 / `IncludeOrderVersion.Unreal5_8`** (V6 is a hard reject against 5.8's installed engine); a project-root **`Directory.Build.targets`** keeps VS 2026's new `SetEnv` step from stuffing Unreal's ~35,000-character include list into the `INCLUDE` environment variable and blowing past Windows' 32,767-character limit (the infamous *"The SetEnv task failed unexpectedly"*); the `FImageUtils` screenshot call moved to `PNGCompressImageArray`; and Microsoft's **Visual Studio Tools** plugin — which VS 2026 silently injects on first open and which no longer compiles on 5.8 because Epic deleted the `BlueprintGraphClasses.h` aggregate header — is now **bundled pre-fixed** in the template (a one-line swap to `K2Node_CallFunction.h`, Angela's own fix from `AngysLastChance`), since Visual Studio never overwrites a plugin that is already present. The prompt tells you to build the **project**, never the whole solution, so unrelated engine targets can't clutter the Error List. The Unrealer agent itself gained two correctness fixes verified against the plugin's C++: `assign_material` now sends the slot under the wire key the plugin actually reads (`slot_index`), and material content paths are `/Content`→`/Game` normalized. The public version is now **1.39.5** in every static surface that quotes it; as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and historical statements — the v1.39.4 version-line entry, the v1.38.x milestones — were left untouched. Forward-only.
 

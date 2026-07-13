@@ -18,6 +18,20 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-07-12 — Tlamatini-FlowPills companion-app discovery (v1.40.0) — keep these surfaces, do NOT revert
+
+**So the sister app `Tlamatini-FlowPills` can find Tlamatini's agent-template catalog at startup WITHOUT importing Python, running Tlamatini, or scanning drives, Tlamatini publishes three read-only, HKCU-only, fail-open surfaces. Engine: `agent/agent_manifest.py` + `agent/windows_app_registration.py`; wired into `apps.py`, `install.py`, `uninstall.py`, `build.py`. Contract: `docs/companion-app-discovery.md`. Codex reports: `Tlamatini-Moded-For-Flowpills.md` + `Tlamatini-Moded-For-FlowPills-2nd-Sprint.md`. Requirement source: `Tlamatini-FlowPills-Lookup.md` §15 + `Tlamatini-FlowPills-Lookup-2nd-Sprint.md`.**
+
+- **The three surfaces.** (1) Registry key `HKCU\Software\XAIHT\Tlamatini` with six `REG_SZ` values (`InstallLocation`, `AgentsRoot`, `SourceAgentsRoot`, `AgentManifestPath`, `Version`, `AgentCatalogVersion` = `<count>-<sha8>`). (2) `_tlamatini_agents_manifest.json` next to the agents (complete templates only — `<type>.py` + `config.yaml`; `pools`/`__pycache__` excluded — each with a per-file `sha256`). (3) `.tlamatini-preserved-agents.json` left by the uninstaller when it preserves `agents/` (carries `manifest_path` + `manifest_sha256`).
+- **Do NOT revert (second-sprint hardening):**
+  - **`apps.py`**: discovery is scheduled **FIRST** in `AgentConfig.ready()` via the module-level `_schedule_companion_discovery()` — BEFORE `global_state` / the two MCP servers / `models` / ACPX are imported — with a **dedicated** idempotency gate (`_DISCOVERY_GATE_LOCK` + `_discovery_thread_started`), separate from `mcp_server_running`. Do NOT move it below the heavy imports and do NOT gate it on the MCP flag (an import/startup failure there must never suppress publication).
+  - **`windows_app_registration.register_discovery_entry`** writes ALL SIX `REG_SZ` values on every call (empty when unknown) — never re-add the `if version:` / `if agent_catalog_version:` conditionals (they leave stale metadata behind). The agents-preserving uninstall KEEPS the key; only a full removal calls `unregister_discovery_entry()`.
+  - **`agent_manifest.read_manifest`** uses `utf-8-sig` (BOM-tolerant); `ensure_manifest` re-hashes every complete agent file on each check and rewrites only when content differs (the volatile `generated_at` alone never rewrites).
+  - **`install.py`**: companion registration is its OWN method `_register_companion_discovery`, called INDEPENDENTLY of `_register_programs_entry` (a missing `Uninstaller.exe` / an ARP failure must not skip it); the installer does its own `winreg` writes (it cannot import `agent.*`).
+  - **`uninstall.py`**: `_write_preserved_agents_marker` writes `manifest_sha256` (computed AFTER re-stamping the manifest kind to `preserved`).
+- **Filesystem is authoritative** — the manifest is diagnostic evidence only; keep it accurate but never let a stale/missing manifest gate a root pass/fail (FlowPills REQ-VAL-008).
+- **Tests**: `agent/test_agent_manifest.py` (17 tests) is a plain `unittest.TestCase` (Django-FREE) so it runs SECRET-SAFELY via `python -m unittest agent.test_agent_manifest` (verified 0 tracked config files changed; `manage.py test` also passes, content-hash-guarded over 86 config files). Keep it Django-free and keep the HKCU backup/restore in the live registry tests.
+
 ### 2026-07-12 — Unreal Engine 5.8 project scaffolder + Unrealer material fixes (VS 2026) — keep these UE-5.8 / VS-2026 build fixes, do NOT revert
 
 **Repos: the scaffolder + UE template live in the SEPARATE `XaihtUnrealEngineMCP` repo (`scaffold_unreal_project.py` + `MCPGameProject/`, git `XAIHT/XaihtUnrealEngineMCP`). The Tlamatini side is the Unrealer agent (`agent/agents/unrealer/{unrealer.py,config.yaml}`) + the Catalog-of-Prompts entry (`agent/migrations/0173_add_unreal_scaffold_demo_prompt.py` + `0174_unreal_scaffold_build_project_tip.py`, seeded `prompt-106`).**

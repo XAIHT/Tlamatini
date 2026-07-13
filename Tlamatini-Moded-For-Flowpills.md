@@ -5,7 +5,7 @@ was changed on the **Tlamatini** side to satisfy the companion-app discovery con
 **Tlamatini-FlowPills** app consumes.
 
 **Date:** 2026-07-12
-**Tlamatini version at time of change:** `1.39.5` (git tag `v1.39.5`)
+**Target release:** `1.40.0` (work verified on the `v1.39.5`-tagged line)
 **Source contract:** `C:\Users\angel\source\repos\Tlamatini-FlowPills\Tlamatini-FlowPills-Lookup.md`
 — specifically §4 (Source Evidence), §7 REQ-DISC-003, §8 REQ-VAL-007/008/009, and §15 PROP-001…004.
 
