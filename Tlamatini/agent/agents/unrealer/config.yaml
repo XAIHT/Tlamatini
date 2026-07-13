@@ -12,7 +12,8 @@
 #
 # Supported commands (53 across 9 categories — the agent forwards ANY command
 # the connected plugin build exposes; this catalog tracks the extended Unreal MCP
-# fork at C:\Development\unreal-mcp, base chongdashu surface marked [base]):
+# fork XaihtUnrealEngineMCP (https://github.com/XAIHT/XaihtUnrealEngineMCP.git,
+# locally C:\Development\XaihtUnrealEngineMCP), base chongdashu surface marked [base]):
 #   editor      : get_actors_in_level, find_actors_by_name, spawn_actor,
 #                 create_actor, delete_actor, set_actor_transform,
 #                 get_actor_properties, set_actor_property,
