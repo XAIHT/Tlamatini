@@ -561,6 +561,46 @@ def _run_post_update_migrate_if_flagged():
             pass
 
 
+def _resolve_config_path():
+    """Absolute path to config.json.
+
+    ``CONFIG_PATH`` env overrides; otherwise it sits next to the frozen
+    ``Tlamatini.exe`` and at ``agent/config.json`` in source mode. Stdlib-only
+    on purpose: this runs before Django is imported.
+    """
+    override = os.environ.get('CONFIG_PATH')
+    if override:
+        return override
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), 'config.json')
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent', 'config.json')
+
+
+def _resolve_django_port(default_port: int = 8000) -> int:
+    """Django/Daphne listen port, read from config.json's ``django_port``.
+
+    Lets a machine where Windows/Hyper-V has reserved port 8000 (``WinError
+    10013`` — "an attempt was made to access a socket in a way forbidden by
+    its access permissions") move the dev server WITHOUT a rebuild, just by
+    editing config.json. Fails open to *default_port* on any missing /
+    unreadable / out-of-range value so a bad config can never stop the server
+    from starting.
+    """
+    try:
+        import json
+        with open(_resolve_config_path(), 'r', encoding='utf-8-sig') as fh:
+            raw = json.load(fh).get('django_port', default_port)
+        port = int(raw)
+        if 1 <= port <= 65535:
+            return port
+        print(f"--- [PORT] config.json django_port={raw!r} out of range 1-65535; using {default_port}")
+    except FileNotFoundError:
+        pass
+    except Exception as exc:  # noqa: BLE001 - never let a bad config stop startup
+        print(f"--- [PORT] Could not read django_port from config.json ({exc}); using {default_port}")
+    return default_port
+
+
 def _schedule_browser_open(url: str, delay_seconds: float = 10.0) -> None:
     """Open the default browser at *url* after *delay_seconds*.
 
@@ -615,7 +655,7 @@ def main():
                 print("--- [FLW] Rewriting argv to start server...")
                 # Replace argv so Django starts the server instead of
                 # interpreting the .flw path as a management command
-                sys.argv = [sys.argv[0], 'runserver', '--noreload', '0.0.0.0:8000']
+                sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
             else:
                 # Argument is not a .flw file — clear any stale env var
                 os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
@@ -624,7 +664,7 @@ def main():
             # identically to the old Tlamatini.ps1 wrapper by injecting
             # `runserver --noreload` so the user gets a working server.
             os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
-            sys.argv = [sys.argv[0], 'runserver', '--noreload']
+            sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
         else:
             # No .flw argument provided — clear any stale env var
             os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
@@ -634,7 +674,7 @@ def main():
         # when the resolved command is `runserver`; covers both the bare
         # double-click and the .flw-association paths above.
         if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
-            _schedule_browser_open('http://localhost:8000/', delay_seconds=10.0)
+            _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
 
     # Post-update database migration: bring the user's just-restored DB to the
     # current schema BEFORE the server starts. Gated on the launch command so
