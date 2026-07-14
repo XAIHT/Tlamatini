@@ -214,9 +214,51 @@ def wait_idle(page, timeout=240) -> bool:
     return False
 
 
-def send(page, text: str) -> None:
-    page.fill(SEL["chat_input"], text)
-    page.click(SEL["chat_submit"])
+# The app REJECTS a message if the RAG chain is still (re)building — the reply is
+# "Agent is not ready. Please try again later." This happens on a slow boot (e.g. the
+# External MCPs connecting) or right after a chain rebuild. We must WAIT for real
+# readiness and RE-SEND, or every scenario waits forever for a prompt that never comes.
+NOT_READY_MARKERS = (
+    "agent is not ready",
+    "still loading",
+    "please wait a moment and try again",
+)
+READY_MARKER = "your agent is ready"
+
+
+def agent_not_ready(page) -> bool:
+    txts = bot_texts(page)
+    if not txts:
+        return False
+    last = txts[-1].lower()
+    return any(m in last for m in NOT_READY_MARKERS)
+
+
+def wait_agent_ready(page, timeout=300) -> bool:
+    """Idle button AND the last bot line is NOT a 'not ready' banner."""
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        if btn(page).lower() == "send" and not is_busy(page) and not agent_not_ready(page):
+            return True
+        time.sleep(0.5)
+    return False
+
+
+def send(page, text: str, retries: int = 4) -> None:
+    """Send a prompt, and RE-SEND if the app rejects it with 'Agent is not ready'."""
+    for _ in range(retries):
+        wait_agent_ready(page, timeout=300)
+        page.fill(SEL["chat_input"], text)
+        page.click(SEL["chat_submit"])
+        # Give the server a moment to either accept (button -> Cancel / busy) or
+        # reject (a 'not ready' banner appears while the button stays 'Send').
+        time.sleep(3)
+        if agent_not_ready(page):
+            log("   (agent was not ready — waiting for it to finish loading, then re-sending)")
+            wait_agent_ready(page, timeout=300)
+            continue
+        return
+    log("   !! agent stayed 'not ready' after several retries — sending anyway")
 
 
 def prompt_open(page) -> bool:
@@ -310,7 +352,9 @@ def clean_history(page) -> None:
         page.wait_for_selector(SEL["confirm_continue"], timeout=8000)
         page.click(SEL["confirm_continue"])
         time.sleep(2)
-        wait_idle(page, timeout=240)
+        # Clean-history triggers a chain REBUILD; wait for real readiness so the next
+        # scenario's send() isn't rejected with 'Agent is not ready'.
+        wait_agent_ready(page, timeout=300)
     except Exception as exc:
         log(f"(clean history skipped: {exc})")
 
@@ -591,8 +635,9 @@ def main() -> int:
         page.wait_for_load_state("domcontentloaded")
         page.goto(base + "/agent/agent/", wait_until="domcontentloaded")
         page.wait_for_selector(SEL["chat_input"], timeout=60_000)
-        log("Waiting for the agent to load …")
-        wait_idle(page, timeout=300)
+        log("Waiting for the agent to be READY (chain build + External MCPs) …")
+        if not wait_agent_ready(page, timeout=420):
+            log("   !! agent never reported ready within 7 min — proceeding, scenarios will retry")
 
         # The pinned configuration for EVERY Ask-Execs scenario.
         log("Toggles: Multi-Turn ON, Exec report ON, Ask Execs ON, ACPX/Internet OFF")
