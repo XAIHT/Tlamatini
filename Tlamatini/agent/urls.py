@@ -61,6 +61,7 @@ urlpatterns = [
     path('set_db/', secure_post(views.set_db_view), name='set_db'),
     path('pick_db_sqlite_file/', secure_get(views.pick_db_sqlite_file_view), name='pick_db_sqlite_file'),
     path('pick_context_directory/', secure_get(views.pick_context_directory_view), name='pick_context_directory'),
+    path('paste_image/', secure_post(views.paste_image_view), name='paste_image'),
     path('compile_flow/', secure_post(views.compile_flow_view), name='compile_flow'),
     path('flow_from_tool_calls/', secure_post(views.flow_from_tool_calls_view), name='flow_from_tool_calls'),
     path('redact_flow_snapshot/', secure_post(views.redact_flow_snapshot_view), name='redact_flow_snapshot'),

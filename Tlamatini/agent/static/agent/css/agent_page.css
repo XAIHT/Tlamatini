@@ -1999,3 +1999,144 @@ body.resizing-vertical {
     color: #ffffff;
     border: none;
 }
+
+/* ── Chat screenshot paste / drop (chat_image_paste.js) ─────────────────────
+   PrtScn → Alt+Tab → Ctrl+V (or drag an image onto the chat column): the file
+   lands in <app>/Temp, its path is spliced into the message at the caret, and
+   a thumbnail chip appears just above the input. */
+
+#main-chat-container {
+    position: relative;
+    /* containing block for #chat-drop-overlay */
+}
+
+#chat-image-chips {
+    display: none;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px 0 8px;
+    /* Capped so a fistful of screenshots can never eat the chat panel — the
+       divider logic in agent_page_layout.js measures this row's height and
+       shrinks #chat-log to match. */
+    max-height: 124px;
+    overflow-y: auto;
+}
+
+#chat-image-chips.has-content {
+    display: flex;
+}
+
+.chat-img-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.chat-img-chip-thumb {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #1b1b1b;
+    flex: 0 0 auto;
+}
+
+.chat-img-chip-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.chat-img-chip-name {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #f0f0f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-img-chip-dims {
+    font-size: 0.68rem;
+    color: #b9b9b9;
+}
+
+.chat-img-chip-close {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    line-height: 18px;
+    font-size: 0.95rem;
+    color: #e8e8e8;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.chat-img-chip-close:hover {
+    background: #c62828;
+    border-color: #c62828;
+    color: #ffffff;
+}
+
+.chat-img-chip-error {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #c62828 0%, #8e1d1d 100%);
+    border-color: #c62828;
+}
+
+#chat-drop-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(12, 20, 38, 0.78);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+    /* never swallow the drop event itself */
+}
+
+#chat-drop-overlay.show {
+    display: flex;
+}
+
+#chat-drop-overlay-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 22px 26px;
+    text-align: center;
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.35);
+    border: 2px dashed #22d3ee;
+    border-radius: 14px;
+}
+
+.chat-drop-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.chat-drop-text {
+    font-size: 0.85rem;
+    font-weight: 700;
+    max-width: 22rem;
+}

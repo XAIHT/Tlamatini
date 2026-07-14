@@ -373,6 +373,14 @@ The five checkboxes in the toolbar are **the** thing to learn. Each one is expla
 
 The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for the main model-name fields and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
 
+### Pasting a screenshot into the chat (2026-07-14)
+
+You can hand Tlamatini a picture without ever leaving the chat box. Take a screenshot (Print Screen, or a snip), Alt+Tab back to Tlamatini, click where you want it and press **Ctrl+V**. She saves the image into her own `Temp` folder as `image_<timestamp>.jpg`, shows a small **thumbnail chip** just above the input, and writes the image's **full path into your message at the cursor** — so you can keep typing around it: *"Look at C:\Tlamatini\Temp\image_20260714_005340_168.jpg and tell me why the button is cut off."* Then send.
+
+Dragging image files from Explorer onto the chat column does exactly the same thing. Each image gets its own chip; clicking a chip's **×** removes both the thumbnail and its path from your message, so a mis-paste costs nothing.
+
+The reason it hands you a *path* instead of an attachment is that a path is what her vision agent actually eats: **Image-Interpreter** reads the file from disk and answers in text. Tick **Multi-Turn** and she will do it herself — read the screenshot, then act on what she saw.
+
 ## 9. Asking your first question (no toggles)
 
 Leave every checkbox unticked. This is the **simplest** possible chat: one question in, one answer out.
@@ -2110,7 +2118,7 @@ A Multi-Turn message also carries `tool_calls_log` and `multi_turn_used`. The Cr
 
 ## 53. HTTP endpoints
 
-The backend currently exposes 103 routes. Highlights:
+The backend currently exposes 104 routes. Highlights:
 
 ### Pages
 
@@ -2200,6 +2208,14 @@ Plus the Parametrizer-specific pair:
 |---|---|
 | `/agent/detect_installed_apps/` | GET — returns which of File Explorer / VS Code / Antigravity are installed |
 | `/agent/open_in_app/` | POST — accepts `app_id` plus `directory` or `agent_name`; resolves the current session pool instance directory |
+
+---
+
+### Chat image ingest (screenshot paste / drag-and-drop)
+
+| Endpoint | Method |
+|---|---|
+| `/agent/paste_image/` | POST — multipart `image` field. Re-encodes the clipboard bitmap to JPEG (Pillow; alpha flattened onto white; 25 MB cap) and writes it to `<app>/Temp/image_<timestamp>.jpg`. Returns `{ success, path, filename, directory, width, height, bytes }`; the chat page splices `path` into the message at the caret. |
 
 ---
 
@@ -3105,6 +3121,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Screenshot → Chat: Paste (Ctrl+V) or Drop an Image Straight Into the Prompt — 2026-07-14** — Handing Tlamatini a picture used to mean leaving the conversation: save the screenshot somewhere, find its path, type the path. Now you just **paste it**. Print Screen (or a snip) → Alt+Tab back to Tlamatini → **Ctrl+V**, and the clipboard bitmap is uploaded to a new endpoint, `POST /agent/paste_image/`, which re-encodes it to JPEG with Pillow (transparency flattened onto white, 25 MB ceiling) and writes it into her **own `Temp` directory** as `image_<YYYYmmdd>_<HHMMSS>_<ms>.jpg` — obeying the 2026-06-02 Temp policy through `path_guard.resolve_temp_path()`, so nothing is ever scattered outside Tlamatini. The browser then splices the image's **absolute path into the chat box at the caret** — mid-sentence, exactly where you left the cursor — and shows a **thumbnail chip** above the input whose `×` removes both the chip and the path again. Dragging image files from Explorer onto the chat column does the same; the drop zone is deliberately scoped to `#main-chat-container` so it never fights the External-MCP dialog's document-level `.json` drop handler. The design choice that makes it *useful* rather than merely pretty is that she is handed a **path, not an attachment**: a path is precisely what **Image-Interpreter** eats, so the very next thing you type — *"…what's wrong in this screenshot?"* — is a complete, actionable Multi-Turn prompt, and `prompt.pmt` now teaches her to recognise an `image_<timestamp>.jpg` under Temp as *the* image the user means, interpret it immediately, and never ask them to re-attach something they already gave her. Two implementation truths were learned the hard way in the live visible test and are now pinned in the fix log: the **paste listener lives on `document`, not on the textarea** (after Alt+Tab the focus is on `<body>`, so a textarea-scoped listener would never fire — the caret is remembered separately), and **`agent_page_layout.js::computeFormMinHeight()` must count the new chips row**, because that function pins `#tools-chat-form-container` to an explicit pixel height and any uncounted row silently pushes the textarea and the Send button off the bottom of the screen. New surfaces: `agent/static/agent/js/chat_image_paste.js` (a self-contained IIFE that declares **no** cross-file globals — the const-poison contract is respected), `views.paste_image_view` + the `paste_image/` route, `#chat-image-chips` / `#chat-drop-overlay` in `agent_page.html`, and the `.chat-img-*` styling. Proven live 16/16 on Angela's real desktop with real keystrokes: a 2560×1600 clipboard bitmap landed in Temp as a 199 KB JPEG, its path inserted mid-sentence, thumbnail rendered, chip-removal clean, and the input bar still fully on screen.
 
 - **Release v1.40.1 — The Port Is Yours: Tlamatini's Web Port Becomes Configurable — 2026-07-13** — Until now Tlamatini's web port was **8000, and only 8000** — the number was baked into `manage.py`, so on a machine where Windows had *reserved* that port there was no escape from a frozen install short of rebuilding her from source. It is a real and nasty failure: when Hyper-V / WSL / Docker claims 8000 inside one of Windows' dynamic-port **exclusion ranges** (`netsh interface ipv4 show excludedportrange protocol=tcp`), Daphne cannot bind it and Tlamatini dies at startup with **`WinError 10013`** — *"an attempt was made to access a socket in a way forbidden by its access permissions"* — a message that tells a user nothing about what to do next. So the port moved out of the code and into her configuration: **`config.json` → `django_port`** (default `8000`). Change one line, restart, and she comes up wherever you asked — **no rebuild, no code edit**. Three stdlib-only helpers in `manage.py` do the work, deliberately written to run *before* Django is even imported: `_resolve_config_path()` (honours `CONFIG_PATH`, else the frozen exe's neighbour, else `agent/config.json`), `_resolve_django_port()` (reads and range-validates the key), and `_apply_configured_port()` (injects it into `sys.argv`). The completion pass on the same day closed the half that was still missing: the first cut had only taught the **frozen** launch paths to read the key, so `python manage.py runserver` and `manage.py startserver` were **still silently binding 8000 and ignoring it** — `main()` now applies the resolver once, outside the frozen branch, so all five paths finally agree (frozen double-click, `.flw` file association, the browser she auto-opens, source `runserver`, and `startserver`). Two invariants are load-bearing and pinned by **24 tests** (`agent/test_django_port_config.py`): the resolution is **fail-open** — a missing key, a missing file, unparseable JSON, a non-numeric value or one outside `1–65535` all fall back to 8000 and print a `--- [PORT] …` line, because a typo in a config file must never be able to stop her from starting — and an **explicit command-line port always wins** (`runserver 9100` is never second-guessed, and the injector never double-appends onto the frozen rewrite). What the key deliberately does *not* reach: a direct `daphne`/`uvicorn` launch bypasses `manage.py` entirely, her two MCP helper listeners (`:8765`, `:50051`) are a separate axis with their own keys, and the TeleTlamatini bridge keeps its own `tlamatini.base_url`. Documented everywhere it matters — `README.md` (a user-facing "port 8000 already taken?" recipe), `CLAUDE.md`, `docs/claude/architecture.md`, `docs/claude/gotchas.md`, the fix log, and `agent/Tlamatini.md`, where she is now told never to say *"Tlamatini runs on 8000"* as though it were fixed. The public version moves to **1.40.1** across every static surface that quotes it (README badge, `package.json`, `VERSIONING.md`, this book, `agent/Tlamatini.md`); as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and the historical v1.40.0 / v1.39.5 entries below were left untouched. Forward-only.
 

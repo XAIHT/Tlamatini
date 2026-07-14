@@ -18,6 +18,21 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-07-14 — Screenshot paste / drag-and-drop into the chat box (`chat_image_paste.js`)
+
+**PrtScn → Alt+Tab → Ctrl+V now attaches a screenshot to the chat: the image is saved to `<app>/Temp` as `image_<timestamp>.jpg` and its ABSOLUTE PATH is spliced into the chat box at the caret, with a thumbnail chip above the input.** Dropping image files onto the chat column does the same. The point is to hand Tlamatini an image path she can pass to Image-Interpreter / `launch_view_image` in the very next prompt.
+
+Surfaces: `agent/views.py::paste_image_view` (+ `_unique_chat_image_path`, Pillow → JPEG, alpha flattened onto white, 25 MB cap) · route `paste_image/` via `secure_post` in `urls.py` · `agent/static/agent/js/chat_image_paste.js` (self-contained IIFE, **no new cross-file globals** — respects the const-poison contract) · `#chat-image-chips` + `#chat-drop-overlay` in `agent_page.html` · `.chat-img-*` / `#chat-drop-overlay` CSS in `agent_page.css`.
+
+Two contracts, both learned the hard way in the live visible test:
+
+1. **`agent_page_layout.js` PINS `#tools-chat-form-container` to an explicit pixel height** (`toolsContainer.style.height = formPx + 'px'`, from `computeFormMinHeight()`). Anything you add INSIDE that container must be counted there, or it silently pushes the textarea + Send button off the bottom of the viewport. The chips row is measured (`chat-image-chips` offsetHeight) and the `ResizeObserver` now watches BOTH `tools-div` and `chat-image-chips`. **Do NOT add another row inside that container without extending `computeFormMinHeight()`.**
+2. **The paste listener is on `document`, not on the textarea** — after Alt+Tab the focus is on `<body>`, so a textarea-scoped listener misses the flow entirely. The caret is remembered separately (`lastCaret`, updated on click/keyup/select/input/blur) so the path lands where the user left the cursor. **Drag-and-drop is scoped to `#main-chat-container`** on purpose: the External-MCP dialog installs its own document-level `.json` drop handler, and a document-level image handler would fight it.
+
+Live-proven 16/16 (headed Chrome, real OS keystrokes, full-screen photos): real clipboard bitmap → `image_20260714_005340_168.jpg` (2560×1600, 199 KB) written to Temp, path inserted **mid-sentence at the caret**, thumbnail rendered, drop pipeline verified, chip `×` removes both the chip and its path, textarea + Send stay on screen.
+
+Machine note (not a bug in Tlamatini): on Angela's Windows 11, **PrtScn opens the Snipping Tool overlay** instead of copying the screen to the clipboard. The snip still reaches the clipboard once taken, so the feature works; the overlay just sits on top and swallows keystrokes, which makes automated tests flaky — kill `SnippingTool.exe` / `ScreenClippingHost.exe` before driving the keyboard, and NEVER trust a clipboard check without emptying the clipboard first (a stale bitmap from a previous run will happily fake a pass).
+
 ### 2026-07-13 — Configurable web port `django_port` (v1.40.1) — do NOT re-hardcode 8000
 
 **The web port is now `config.json` → `django_port` (default 8000), resolved in `Tlamatini/manage.py` and applied to EVERY launch path. Contract: `docs/claude/architecture.md` → *Configurable web port*. Coverage: `agent/test_django_port_config.py` (24 tests).**

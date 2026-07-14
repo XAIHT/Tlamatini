@@ -298,7 +298,7 @@ Tlamatini/                          # Git root
 │   │   │
 │   │   ├── templates/agent/        # HTML templates
 │   │   ├── static/agent/           # Frontend assets
-│   │   │   ├── js/                 # 26+ JS modules (8 chat + 14 ACP + 4 shared)
+│   │   │   ├── js/                 # 32 JS modules (9 chat incl. chat_image_paste.js + 13 ACP + 1 ACP entry + 9 shared)
 │   │   │   ├── css/                # Stylesheets
 │   │   │   └── sounds/             # Audio alerts
 │   │   └── migrations/             # Django migrations
@@ -685,8 +685,8 @@ metadata:
 
 Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 
-### Frontend Modules (26+ JS files):
-**Chat Interface (8)**:
+### Frontend Modules (32 JS files):
+**Chat Interface (9)**:
 - `agent_page_init.js` — WebSocket setup, app initialization
 - `agent_page_chat.js` — Chat message handling, Flow-Generator mapping
 - `agent_page_canvas.js` — Code canvas rendering
@@ -695,6 +695,7 @@ Visual drag-and-drop workflow designer at `/agentic_control_panel/`.
 - `agent_page_layout.js` — UI layout
 - `agent_page_state.js` — Client state (ACPX toggle state)
 - `agent_page_ui.js` — General UI utilities
+- `chat_image_paste.js` — **Screenshot → chat box** (2026-07-14). Ctrl+V paste / drag-and-drop of an image → `POST /agent/paste_image/` → saved as `<app>/Temp/image_<timestamp>.jpg` → its **absolute path spliced into the chat box at the caret** + a thumbnail chip (`#chat-image-chips`), so the LLM can hand the path to Image-Interpreter. Self-contained IIFE, no cross-file globals. **`agent_page_layout.js::computeFormMinHeight()` must keep counting the chips row** (the form container has an explicit pixel height).
 
 **ACP Workflow Designer (14)**:
 - `agentic_control_panel.js` — Entry point

@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Frontend Architecture
 
-## Chat Interface (8 modules)
+## Chat Interface (9 modules)
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling; handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)
 - `agent_page_canvas.js` - Code canvas rendering
@@ -17,6 +17,7 @@
 - `agent_page_layout.js` - UI layout
 - `agent_page_state.js` - Client state (incl. the Ask-Execs checkbox helpers `isAskExecsEnabled` / `applyStoredAskExecsState` / `syncAskExecsAvailability`, and `syncExecReportAvailability` which disables+greys the **Exec report** checkbox whenever Multi-Turn is off — mirrors Ask-Execs)
 - `agent_page_ui.js` - General UI utilities
+- `chat_image_paste.js` - **Screenshot → chat box** (2026-07-14). PrtScn → Alt+Tab → **Ctrl+V** (or drop image files onto the chat column) saves the image to `<app>/Temp` as `image_<timestamp>.jpg` via `POST /agent/paste_image/` and splices its **absolute path into the chat box at the caret**, with a thumbnail chip (`#chat-image-chips`) above the input — so the user can immediately ask Tlamatini to analyze that path. Self-contained IIFE (declares **no** cross-file globals). The `paste` listener is on `document` (after Alt+Tab the focus is on `<body>`, so a textarea-scoped listener would never fire) and the caret is remembered separately; drag-and-drop is scoped to `#main-chat-container` so it doesn't fight the External-MCP dialog's document-level `.json` drop handler. **`agent_page_layout.js::computeFormMinHeight()` must keep counting the chips row** — it pins `#tools-chat-form-container` to an explicit pixel height, so an uncounted row pushes the textarea + Send off-screen. Contract: `docs/claude/recent-fixes.md` (2026-07-14)
 
 ### Ask Execs — per-tool permission prompt (toolbar checkbox + modal dialog)
 
@@ -74,7 +75,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `access_keys_wizard.js` - **Config ▸ Access Keys Wizard** dialog — ONE guided place to set every provider secret (Anthropic, ProjectDiscovery/PDCP, Zavu, Meta WhatsApp, Telegram, …); each key is written into `config.json` and auto-injected into the matching agent runs (and redacted from `.flw` exports / by `regen_secrets.py`)
 - `contacts_dialog.js` - **Contacts book** dialog — manages `contacts.json` (user state, preserved across self-update) so the messaging agents (Telegrammer / Whatsapper / Zavuerer / Emailer) resolve a `contact_name` into the real address / phone / `@username`
 
-**Total: 31 JS modules** (8 chat + 13 ACP + 1 ACP entry-point + 9 shared/chat-runtime auxiliary).
+**Total: 32 JS modules** (9 chat + 13 ACP + 1 ACP entry-point + 9 shared/chat-runtime auxiliary).
 
 ### Cross-file mutable globals MUST stay `let` (const-poison contract — 2026-07-08, v1.38.1)
 

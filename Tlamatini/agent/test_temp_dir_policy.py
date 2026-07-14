@@ -310,11 +310,13 @@ class StaticContractTests(unittest.TestCase):
     def test_prompt_pmt_has_temp_rule_and_no_c_temp_example(self):
         src = _read(_AGENT_DIR, "prompt.pmt")
         self.assertIn("15) Temporary files location rule", src)
-        # Templates rule inserted at 16; the Talker female-voice rule was then
-        # inserted at 17, pushing Conflict resolution to 18.
+        # Templates rule inserted at 16; the Talker female-voice rule at 17; the
+        # self-healing narration rule (2026-07-06) at 18 — which pushed Conflict
+        # resolution to 19. Keep this list in step with prompt.pmt's numbering.
         self.assertIn("16) Template / project directory location rule", src)
         self.assertIn("17) Talker voice rule", src)
-        self.assertIn("18) Conflict resolution rule", src)
+        self.assertIn("18) Self-healing recovery narration rule", src)
+        self.assertIn("19) Conflict resolution rule", src)
         self.assertIn("{temp_directory}", src)
         self.assertIn("{templates_directory}", src)
         # The old harmful example that taught the LLM to use C:\\Temp is gone.

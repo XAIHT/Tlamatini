@@ -217,15 +217,20 @@
     const FALLBACK_FORM_FLOOR_PX = 115;
 
     // The form-container needs enough vertical room for: the toolbar
-    // (which wraps to 2 or 3 rows on narrow chat panels), plus the
-    // textarea area + the Send button (min-height 60) + form margins
-    // (~10px). When the toolbar is wrapped, this floor grows so the
-    // textarea/Send never get clipped by the bottom of the viewport.
+    // (which wraps to 2 or 3 rows on narrow chat panels), the pasted-image
+    // thumbnail chips row (chat_image_paste.js — zero height until a
+    // screenshot is pasted or dropped), plus the textarea area + the Send
+    // button (min-height 60) + form margins (~10px). This container is given
+    // an EXPLICIT pixel height below, so anything added inside it must be
+    // counted here or the textarea/Send get pushed off the bottom of the
+    // viewport.
     const computeFormMinHeight = () => {
         const toolsDivEl = document.getElementById('tools-div');
         const toolsDivH = (toolsDivEl ? toolsDivEl.offsetHeight : 25) || 25;
+        const chipsEl = document.getElementById('chat-image-chips');
+        const chipsH = chipsEl ? chipsEl.offsetHeight : 0;
         const formAreaPx = 90; // textarea + Send min-heights + form margins
-        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + formAreaPx);
+        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + formAreaPx);
     };
 
     const pctFromYToDivider = (clientY) => {
@@ -255,15 +260,16 @@
         applyVertical(90);
     })();
 
-    // Re-clamp whenever the toolbar's height changes (it grows when
-    // the user drags the horizontal divider narrow enough for the
-    // toggles to wrap onto a second / third row).
+    // Re-clamp whenever the toolbar's height changes (it grows when the user
+    // drags the horizontal divider narrow enough for the toggles to wrap onto
+    // a second / third row) — and whenever the pasted-image chips row appears
+    // or disappears, for exactly the same reason.
     if (typeof ResizeObserver !== 'undefined') {
-        const toolsDivEl = document.getElementById('tools-div');
-        if (toolsDivEl) {
-            const ro = new ResizeObserver(() => applyVertical(null));
-            ro.observe(toolsDivEl);
-        }
+        const ro = new ResizeObserver(() => applyVertical(null));
+        ['tools-div', 'chat-image-chips'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) ro.observe(el);
+        });
     }
 
     verticalDivider.addEventListener('mousedown', (e) => {

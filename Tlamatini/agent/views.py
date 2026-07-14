@@ -45,6 +45,7 @@ from .services.flow_compiler import (
     list_pool_agents_for_validation,
 )
 from .services.flow_spec import normalize_flow_payload, flow_spec_to_legacy_json
+from .path_guard import get_app_temp_root, resolve_temp_path
 
 
 def _normalize_agent_purpose_key(value: str) -> str:
@@ -12136,3 +12137,98 @@ def skills_diagnostics_view(request):
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=500)
+
+
+# ── Chat screenshot ingest (Ctrl+V paste / drag-and-drop) ────────────────────
+# The "IMPR PANT → Alt+Tab → Ctrl+V" flow: the browser hands the clipboard
+# bitmap to the chat page as a blob, the page POSTs it here, and we persist it
+# as a JPEG inside <app>/Temp (frozen: next to the .exe; source: the repo root
+# — resolved by path_guard, per the Temp policy) so the chat box can splice the
+# absolute path in at the caret and the LLM can hand that path to
+# Image-Interpreter / launch_view_image.
+
+_CHAT_IMAGE_MAX_BYTES = 25 * 1024 * 1024   # a 4K PNG screenshot is ~10 MB
+_CHAT_IMAGE_JPEG_QUALITY = 92
+
+
+def _unique_chat_image_path() -> str:
+    """Return a fresh, collision-proof ``<app>/Temp/image_<timestamp>.jpg``."""
+    for _ in range(1000):
+        now = time.time()
+        stamp = time.strftime('%Y%m%d_%H%M%S', time.localtime(now))
+        millis = int((now % 1) * 1000)
+        candidate = resolve_temp_path(f'image_{stamp}_{millis:03d}.jpg')
+        if candidate and not os.path.exists(candidate):
+            return candidate
+        time.sleep(0.002)
+    # Astronomically unlikely; fall back to a PID-tagged name rather than fail.
+    fallback = resolve_temp_path(f'image_{int(time.time())}_{os.getpid()}.jpg')
+    return fallback or os.path.join(get_app_temp_root(), f'image_{int(time.time())}.jpg')
+
+
+def paste_image_view(request):
+    """Persist a pasted/dropped screenshot into ``<app>/Temp`` and return its path.
+
+    Accepts a multipart upload under the ``image`` field (the browser's clipboard
+    blob is normally ``image/png``), re-encodes it to JPEG, and answers with the
+    absolute path the user can hand to Tlamatini in the very next prompt.
+    """
+    try:
+        upload = request.FILES.get('image')
+        if upload is None:
+            return JsonResponse({"success": False, "message": "No image was sent."}, status=400)
+        if upload.size and upload.size > _CHAT_IMAGE_MAX_BYTES:
+            return JsonResponse({
+                "success": False,
+                "message": f"Image is too large ({upload.size // (1024 * 1024)} MB); the limit is 25 MB.",
+            }, status=413)
+
+        raw = upload.read()
+        if not raw:
+            return JsonResponse({"success": False, "message": "The image was empty."}, status=400)
+
+        try:
+            import io
+            from PIL import Image
+        except Exception:
+            traceback.print_exc()
+            return JsonResponse({
+                "success": False,
+                "message": "Pillow is not available, so the screenshot could not be converted.",
+            }, status=500)
+
+        try:
+            with Image.open(io.BytesIO(raw)) as img:
+                img.load()
+                # JPEG carries no alpha channel — flatten transparency onto white.
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    flattened = Image.new('RGB', img.size, (255, 255, 255))
+                    converted = img.convert('RGBA')
+                    flattened.paste(converted, mask=converted.split()[-1])
+                    rgb = flattened
+                else:
+                    rgb = img.convert('RGB')
+                width, height = rgb.size
+                destination = _unique_chat_image_path()
+                rgb.save(destination, format='JPEG', quality=_CHAT_IMAGE_JPEG_QUALITY, optimize=True)
+        except Exception as e:
+            traceback.print_exc()
+            return JsonResponse({
+                "success": False,
+                "message": f"That file could not be read as an image: {e}",
+            }, status=400)
+
+        size_on_disk = os.path.getsize(destination) if os.path.exists(destination) else 0
+        print(f"--- [chat-image] saved {destination} ({width}x{height}, {size_on_disk} bytes)")
+        return JsonResponse({
+            "success": True,
+            "path": destination,
+            "filename": os.path.basename(destination),
+            "directory": os.path.dirname(destination),
+            "width": width,
+            "height": height,
+            "bytes": size_on_disk,
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"success": False, "message": str(e)}, status=500)

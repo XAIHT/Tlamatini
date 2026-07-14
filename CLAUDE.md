@@ -226,7 +226,7 @@ Tlamatini/                          # Git root
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 31 JS modules (8 chat + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 9 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js, external_mcps_dialog.js, contacts_dialog.js, access_keys_wizard.js)
+│   │   │   ├── js/                 # 32 JS modules (9 chat incl. chat_image_paste.js + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 9 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js, external_mcps_dialog.js, contacts_dialog.js, access_keys_wizard.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations (latest: 0174_unreal_scaffold_build_project_tip; 0173 seeds the Unreal-5.8-scaffold Catalog prompt; 0170/0171/0172 add the Nmapper agent + tool + demo prompts)
@@ -330,6 +330,8 @@ When adding a new tool that spawns a console child: either (a) add the tool name
 ## Temp & Templates Directory Policy (2026-06-02)
 
 Every **transient** file Tlamatini writes lives under ONE directory — `Temp` at the application root (`<exe-dir>/Temp` frozen, `<repo-root>/Temp` source) — and **never** outside Tlamatini (no `C:\Temp`, no `%TEMP%`, no system temp). `Tlamatini/manage.py::_enforce_app_temp_dir()` (before Django) and `tlamatini/settings.py::_pin_temp_directory()` (covers a direct `daphne`/`asgi` launch) pin `TMP`/`TEMP`/`TMPDIR` + Python's `tempfile.tempdir` to it and export `TLAMATINI_TEMP`, which every spawned pool agent inherits (`get_agent_env` does `os.environ.copy()`). The resolver is `agent/path_guard.py` (`get_app_temp_root` / `enforce_app_temp_dir` / `is_within_app_temp` / `resolve_temp_path`). The temp-creating agents (executer, de_compresser, esp32er, stm32er, arduiner, plus historical TelegramRX templates in older installs) also carry an explicit module-top `if (os.environ.get('TLAMATINI_TEMP')…)` guard (an `if`-block, never a top-level `def` — that trips ruff E402 before the imports).
+
+**Chat screenshots land in `Temp` too (2026-07-14).** An image pasted with **Ctrl+V** — or dropped onto the chat column — is persisted by `views.paste_image_view` through `path_guard.resolve_temp_path()` as `<app>/Temp/image_<YYYYmmdd>_<HHMMSS>_<ms>.jpg` (Pillow → JPEG), and its **absolute path is spliced into the chat box at the caret** so the user can immediately ask Tlamatini to analyze it (Image-Interpreter / `launch_view_image`). Frontend: `agent/static/agent/js/chat_image_paste.js` — see `docs/claude/frontend.md` and the 2026-07-14 entry in `docs/claude/recent-fixes.md`.
 
 Separately, the **default parent for the project trees the firmware/engine agents (STM32er / ESP32er / Arduiner / Unrealer) scaffold** is `Templates` at the application root (`TLAMATINI_TEMPLATES`; `path_guard.get_app_templates_root`), **unless the user names another path**. `Temp` = throwaway scratch; `Templates` = deliverable project trees (so it never touches `tempfile`).
 
