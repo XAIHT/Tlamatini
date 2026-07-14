@@ -261,15 +261,35 @@ function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-var
  * dialog's close handler fire a stale "deny" — marking the decision as already
  * sent makes that close-handler sendDecision('deny') a no-op.
  */
-function dismissExecPermissionDialogForRuntimeProceed() { // eslint-disable-line no-unused-vars
+function dismissExecPermissionDialogSilently(reason) {
+    // Close an open Proceed/Deny prompt WITHOUT emitting any decision, because the
+    // backend has ALREADY resolved it (a Cancel auto-denied it; a runtime relax
+    // auto-proceeded it; the broker closed on teardown).
+    //
+    // Setting _execPermDecisionSent FIRST is load-bearing: the dialog's `close`
+    // handler calls sendDecision('deny'), so closing without this guard would fire a
+    // stale 'deny' frame for a request the backend no longer has.
+    //
+    // WHY THIS EXISTS (Angela, 2026-07-14): she cancelled a run while the prompt was
+    // open. The backend denied + stopped correctly, the chat said "done" — but the
+    // MODAL STAYED ON SCREEN and she still had to click "Deny" on a question that had
+    // already been answered. The dialog is modal:true, closeOnEscape:false and its
+    // titlebar X is hidden, so a button was her ONLY way out. An orphan modal.
     _execPermDecisionSent = true;
     try {
         if ($('#exec-permission-dialog-message').hasClass('ui-dialog-content')) {
             $('#exec-permission-dialog-message').dialog('close');
         }
+        console.log('--- Exec-permission prompt dismissed silently (' + (reason || 'resolved') + ') — the backend already decided it.');
     } catch (e) {
         console.log('Exec-permission dialog dismiss ignored:', e);
     }
+}
+
+function dismissExecPermissionDialogForRuntimeProceed() { // eslint-disable-line no-unused-vars
+    // Kept as the original name so the Ask-Execs checkbox `change` handler keeps
+    // working byte-for-byte.
+    dismissExecPermissionDialogSilently('runtime-proceed');
 }
 
 // ----------------------------------------------------------------

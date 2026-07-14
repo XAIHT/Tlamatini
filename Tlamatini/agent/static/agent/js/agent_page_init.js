@@ -13,7 +13,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, isStepByStepEnabled, applyStoredStepByStepState, stepByStepCheckbox, persistStepByStepState, dismissExecPermissionDialogForRuntimeProceed, openAccessKeysWizardDialog */
+/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, isStepByStepEnabled, applyStoredStepByStepState, stepByStepCheckbox, persistStepByStepState, dismissExecPermissionDialogForRuntimeProceed, dismissExecPermissionDialogSilently, openAccessKeysWizardDialog */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -86,6 +86,7 @@ function Reconnect(e) { // eslint-disable-line no-unused-vars
 
     chatSubmitButton.textContent = 'Send';
     inLongOperation = false;
+    userCancelledRun = false;   // full UI reset — re-arm the normal busy behaviour
     actualContextDir = null;
     updateViewContextDirMenuState();
     console.log("--- actualContextDir reset to null on reconnect.");
@@ -421,6 +422,19 @@ document.getElementById('chat-form').onsubmit = function (e) {
             return;
         }
         console.log("--- cancel-current message sent to server successfully");
+        // The cancel is now in flight. From here on, ANY late self-healing "Tactic #…"
+        // status frame belongs to a run the user has already killed and must NOT be
+        // allowed to re-disable the controls. Set BEFORE the UI reset below so no late
+        // frame can race it. Cleared on the next submit.
+        userCancelledRun = true;
+        // Close any OPEN Ask-Execs Proceed/Deny prompt. The backend auto-denies it
+        // (the run is latched dead), so leaving it up would force the user to answer a
+        // question that has already been answered — and the dialog is modal with no
+        // Esc and no X, so a button is her only way out. (Angela hit this: "I had to
+        // push Deny, but the denial was already done.") No decision frame is sent.
+        if (typeof dismissExecPermissionDialogSilently === 'function') {
+            dismissExecPermissionDialogSilently('cancelled');
+        }
         const debouncedFunction = debounce(unsetContextButton);
         debouncedFunction();
         // Reset UI state after cancellation
@@ -481,6 +495,11 @@ document.getElementById('chat-form').onsubmit = function (e) {
         if (!messageSent) {
             return;
         }
+        // A NEW run owns the UI now — re-arm the normal busy behaviour. (A FAILED send
+        // deliberately leaves the latch as it was.) Forgetting this line would leave
+        // the busy UI permanently disabled after the first cancel: the button would
+        // never show "Cancel" again for any later request.
+        userCancelledRun = false;
         chatHistory.push(rawMessage);
         historyIndex = chatHistory.length;
         tempInput = '';

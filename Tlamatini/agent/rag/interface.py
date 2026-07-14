@@ -49,11 +49,22 @@ else:
     application_path = os.path.dirname(os.path.abspath(__file__))
     application_path = os.path.dirname(application_path)
 
-def request_cancel_generation():
-    global_state.set_state('cancel_generation', True)
-
-def clear_cancel_generation():
-    global_state.set_state('cancel_generation', False)
+# ── Cancellation (Angela, 2026-07-14) ──────────────────────────────────────
+# The cancel primitives now live in ``agent/cancellation.py`` as a PER-USER RUN
+# EPOCH LATCH, not a process-global boolean with a ~20 ms lifetime. Re-exported
+# here so every existing importer (consumers.py, rag/__init__.py) keeps working
+# unchanged. Read that module's docstring before touching any of this: the old
+# boolean was cleared by the cancel handler itself (consumers Step 8) and again
+# at the top of every ask_rag, which is exactly why a cancelled Multi-Turn run
+# came back to life and kept flipping the Send button back to "Cancel" forever.
+from ..cancellation import (  # noqa: E402,F401  (re-export — import order is deliberate)
+    begin_llm_run,
+    clear_cancel_generation,
+    current_run_epoch,
+    is_generation_cancelled,
+    is_run_cancelled,
+    request_cancel_generation,
+)
 
 def get_program_by_name(programName):
     """Retrieve a program by its name from the database."""
@@ -627,11 +638,20 @@ def _validate_accesses_in_prompt(question: str):
 def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     print(f"\n--- ask_rag: >>>>>>>>>>{question}<<<<<<<<<<")
     global_state.set_state('rag_chain_ready', False)
-    clear_cancel_generation()
     # Capture the request's user id up front (before `question` is reshaped below) so the
     # per-request metadata handoff to the consumer can be KEYED by it — two concurrent
     # requests must not race on one process-global slot. (re-audit [4])
     _conversation_user_id = question.get("conversation_user_id") if isinstance(question, dict) else None
+    # ── This run's CANCELLATION IDENTITY (Angela, 2026-07-14) ──
+    # The consumer normally mints the epoch (so the Ask-Execs broker, the
+    # self-healing status broadcaster and this run all share ONE identity) and
+    # passes it in. ``begin_llm_run`` here is the fail-open path for every other
+    # caller (TeleTlamatini, tests). It ALSO lowers the legacy boolean, which is
+    # what the old ``clear_cancel_generation()`` call on this line used to do —
+    # but it CANNOT resurrect an older cancelled run, because that run's epoch
+    # stays latched forever. That distinction is the whole fix.
+    _run_epoch = (question.get("cancel_run_epoch") if isinstance(question, dict) else None) \
+        or begin_llm_run(_conversation_user_id)
     if chat_history is None:
         chat_history = []
 
@@ -744,12 +764,17 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
     # this request's permission broker.
     payload["ask_execs_enabled"] = ask_execs_enabled
     payload["step_by_step_enabled"] = step_by_step_enabled
+    # This run's cancellation identity. It MUST survive UnifiedAgentChain.invoke's
+    # payload-rebuild whitelist and BOTH executor sub-payloads — drop it at any hop
+    # and the executor gets run_epoch=None, every cancel check silently becomes a
+    # no-op, and the never-ending "it starts again by itself" loop is back.
+    payload["cancel_run_epoch"] = _run_epoch
 
     # Import the exception type for catching cancel during streaming
     from .chains.base import GenerationCancelledException
 
     # Check if already cancelled before even starting
-    if global_state.get_state('cancel_generation'):
+    if is_generation_cancelled(_conversation_user_id, _run_epoch):
         print("--- [CANCEL] Generation cancelled before starting ---")
         if inet_future is not None:
             inet_future.cancel()
@@ -770,7 +795,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
             print(f"\n--- Internet may be required: {inet_required}")
 
             # Check for cancellation before web search
-            if global_state.get_state('cancel_generation'):
+            if is_generation_cancelled(_conversation_user_id, _run_epoch):
                 print("--- [CANCEL] Cancelled before web search ---")
                 global_state.set_state('rag_chain_ready', True)
                 return "Generation was cancelled."
@@ -787,7 +812,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
                     print("--- Web search component unavailable; proceeding without web context ---")
 
             # Check for cancellation before LLM invoke
-            if global_state.get_state('cancel_generation'):
+            if is_generation_cancelled(_conversation_user_id, _run_epoch):
                 print("--- [CANCEL] Cancelled before LLM invoke ---")
                 global_state.set_state('rag_chain_ready', True)
                 return "Generation was cancelled."
@@ -795,7 +820,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
             response = rag_chain.invoke(payload)
         else:
             # Check for cancellation before LLM invoke
-            if global_state.get_state('cancel_generation'):
+            if is_generation_cancelled(_conversation_user_id, _run_epoch):
                 print("--- [CANCEL] Cancelled before LLM invoke ---")
                 global_state.set_state('rag_chain_ready', True)
                 return "Generation was cancelled."
@@ -808,7 +833,7 @@ def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
         return "Generation was cancelled."
     except Exception as e:
         # Re-raise if not a cancellation-related error
-        if global_state.get_state('cancel_generation'):
+        if is_generation_cancelled(_conversation_user_id, _run_epoch):
             print(f"--- [CANCEL] Error during cancelled generation: {e} ---")
             global_state.set_state('rag_chain_ready', True)
             return "Generation was cancelled."

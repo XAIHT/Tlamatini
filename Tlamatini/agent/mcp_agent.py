@@ -393,6 +393,35 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     "chat_agent_mongoxer",      # Mongoxer   (MongoDB ops; local or remote DB)
     "decompile_java",           # J-Decompiler (runs jd-cli)
     "chat_agent_j_decompiler",  # J-Decompiler
+    # ══════════════════════════════════════════════════════════════════════
+    # Angela's decision, 2026-07-14 (after she found Ask-Execs was NOT gating
+    # what the toolbar/docs promised). The gate used to cover ONLY "things that
+    # run a command/script" — so DELETER could wipe a glob of files, and
+    # WHATSAPPER could message a real human, with NO prompt at all.
+    # She chose to gate tiers A + B + D and DELIBERATELY NOT C:
+    #   C (Keyboarder/Mouser/Windower/Playwrighter/firmware/Blender/Unreal) stays
+    #   UNGATED ON PURPOSE — "I need the AI to move fast and they are operations
+    #   of VISIBLE proceeding": you SEE the mouse move / the window shift / the
+    #   board flash, so a prompt buys nothing and only slows her down.
+    # ══════════════════════════════════════════════════════════════════════
+    # ----- Tier A: DESTROYS or OVERWRITES data — silent and irreversible ----
+    "chat_agent_deleter",       # Deleter       (deletes files/folders, GLOB patterns)
+    "chat_agent_move_file",     # Mover         (move/rename — can clobber the target)
+    "chat_agent_file_creator",  # File-Creator  (creates OR OVERWRITES any file)
+    "chat_agent_editor",        # Editor        (in-place edit of an existing file)
+    "chat_agent_de_compresser", # De-Compresser (unpacks archives over existing paths)
+    "unzip_file",               # Unzip         (direct @tool — same risk as above)
+    # ----- Tier B: REACHES REAL PEOPLE — you cannot unsend it ---------------
+    "chat_agent_send_email",    # Emailer       (SMTP, sends immediately)
+    "chat_agent_whatsapper",    # Whatsapper    (messages a real phone number)
+    "chat_agent_telegrammer",   # Telegrammer   (messages a real person/channel)
+    "chat_agent_zavuerer",      # Zavuerer      (SMS/WhatsApp/Telegram/voice — COSTS MONEY)
+    # ----- Tier D: TOUCHES REMOTE SYSTEMS / THE NETWORK ---------------------
+    "chat_agent_scper",         # SCPer         (uploads/downloads to remote hosts)
+    "chat_agent_apirer",        # Apirer        (any REST call — incl. POST / DELETE)
+    "chat_agent_nmapper",       # Nmapper       (local nmap scans — offensive recon)
+    "chat_agent_discoverer",    # Discoverer    (ProjectDiscovery active recon)
+    "chat_agent_crawler",       # Crawler       (fetches arbitrary URLs)
 })
 
 
@@ -722,13 +751,29 @@ class MultiTurnToolAgentExecutor:
         """True when a tool call should be confirmed by the user before it
         runs under Ask Execs.
 
-        This is a tight ALLOWLIST: the prompt fires ONLY for the Tier 1 +
-        Tier 2 execution agents enumerated in ``_ASK_EXECS_REQUIRED_TOOLS``
-        (the agents that execute a command / script / .bat / instruction,
-        locally or remotely). Every other tool — read-only tools, management /
-        polling helpers, file / notify / messaging agents, crypto, desktop-input
-        agents, Scper, Apirer, Playwrighter, ``invoke_skill``, etc. — runs
-        without a prompt."""
+        This is an ALLOWLIST — ``_ASK_EXECS_REQUIRED_TOOLS``. As of 2026-07-14 it
+        covers (Angela's explicit decision):
+
+          * command / script runners (Executer, Pythonxer, SSHer, Kalier, Dockerer,
+            Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler);
+          * A — things that DESTROY or OVERWRITE data, silently and irreversibly
+            (Deleter, Mover, File-Creator, Editor, De-Compresser, unzip_file);
+          * B — things that REACH REAL PEOPLE and cannot be unsent
+            (Emailer, Whatsapper, Telegrammer, Zavuerer);
+          * D — things that TOUCH REMOTE SYSTEMS / THE NETWORK
+            (SCPer, Apirer, Nmapper, Discoverer, Crawler).
+
+        DELIBERATELY NOT GATED (tier C — Angela, 2026-07-14): the desktop-UI and
+        hardware agents (Keyboarder, Mouser, Windower, Playwrighter, STM32er,
+        ESP32er, Arduiner, ESPHomer, Blenderer, Unrealer). Her reason: "I need the
+        AI to move fast and they are operations of VISIBLE proceeding" — you can SEE
+        the pointer move, the window shift, the board flash, so a prompt adds nothing
+        but latency. Also not gated: read-only tools, the management / polling
+        helpers, crypto, the observational media agents, and ``invoke_skill``.
+
+        If you add a NEW agent that deletes/overwrites data, contacts a human, or
+        reaches a remote system, ADD ITS TOOL NAME to ``_ASK_EXECS_REQUIRED_TOOLS``.
+        Pinned by ``agent.test_ask_execs_allowlist.AskExecsAllowlistTests``."""
         if not tool_name:
             return False
         return tool_name in _ASK_EXECS_REQUIRED_TOOLS
@@ -1013,7 +1058,40 @@ class MultiTurnToolAgentExecutor:
         ),
     }
 
-    def _degraded_answer_from_results(self, messages, step) -> str:
+    def _run_cancelled(self) -> bool:
+        """Did the USER cancel THIS run? (Angela, 2026-07-14)
+
+        The executor used to have NO cancellation awareness at all — a Cancel could
+        only ever be honoured at the next MODEL step (and after ``consumers`` Step 8
+        cleared the old boolean, not even there), so tools kept firing and the run
+        came back to life. This is now checked at the top of every tool-loop
+        iteration and immediately before every tool call.
+        """
+        from .cancellation import is_run_cancelled
+        try:
+            return is_run_cancelled(
+                getattr(self, "_run_user_id", None), getattr(self, "_run_epoch", None)
+            )
+        except Exception:  # noqa: BLE001 — a cancellation probe must never break the run
+            return False
+
+    def _cancelled_result(self, messages) -> Dict[str, Any]:
+        """Stop NOW, keeping every agent that already ran.
+
+        RETURNS (never raises): a raise would land in ``unified.py``'s fallback,
+        which fires ANOTHER uncancellable LLM call and prints a "transient network
+        error" notice — a lie after a user cancel. Returning through
+        ``_build_result_dict`` preserves the Exec report + the Create-Flow tool log.
+        """
+        print(
+            "--- MultiTurnToolAgentExecutor: USER CANCELLED — stopping the run now; "
+            f"keeping the {len(self._tool_calls_log)} tool call(s) already done ---"
+        )
+        return self._build_result_dict(
+            self._degraded_answer_from_results(messages, None, reason="user_cancelled")
+        )
+
+    def _degraded_answer_from_results(self, messages, step=None, *, reason: str = "") -> str:
         """Build a TRUTHFUL final answer from the tool results already collected,
         used when a model step could not be reached (the user cancelled, or every
         recovery tactic was exhausted) AFTER >=1 agent ran. It NEVER claims 'no
@@ -1030,7 +1108,18 @@ class MultiTurnToolAgentExecutor:
                 last_results.append(content)
                 if len(last_results) >= 5:
                     break
-        why = ("you cancelled" if getattr(step, "reason", "") == "user_cancelled"
+        # ``step`` is the ModelStepUnrecoverable when the STOP came from a model step;
+        # the tool-loop cancel guards have no such object and pass ``reason`` instead.
+        _reason = getattr(step, "reason", "") or reason
+        cancelled = _reason == "user_cancelled"
+        if cancelled and not ran:
+            # Truthful: the user cancelled before a single agent had run. Do NOT claim
+            # the model "became unreachable" — that was the old wording and it lied.
+            return (
+                "🛑 You cancelled this request. I stopped the run — nothing had been "
+                "executed yet, so nothing was left half-done."
+            )
+        why = ("you cancelled" if cancelled
                else "the model became unreachable and every recovery tactic was exhausted")
         lines = [
             f"⚠️ I stopped the model step because {why}, but your Multi-Turn run had "
@@ -1068,6 +1157,14 @@ class MultiTurnToolAgentExecutor:
         self._ask_execs_user_id = payload.get("ask_execs_user_id")
         self._exec_denied = None
         self._pending_denial_detail = None
+        # ── This run's CANCELLATION IDENTITY (Angela, 2026-07-14) ──
+        # MUST be reset on every invoke(): executor instances are CACHED and reused
+        # across requests (_get_executor_for_tools), so a stale epoch from a previous
+        # (cancelled) request would make a brand-new run think it was cancelled.
+        # ``ask_execs_user_id`` is the conversation user id (always forwarded, even
+        # when Ask-Execs is off) and is the key the epoch latch is stored under.
+        self._run_user_id = payload.get("ask_execs_user_id")
+        self._run_epoch = payload.get("cancel_run_epoch")
 
         # ── Self-healing model-step invoker (Angela, 2026-07-06 REDESIGN) ──
         # EVERY model call in this loop is routed through the healer so a
@@ -1077,6 +1174,10 @@ class MultiTurnToolAgentExecutor:
         # request because executor instances are cached and reused.
         self._healer = SelfHealingInvoker(
             user_id=self._ask_execs_user_id,
+            # The healer's tactic ladder is what used to run forever after a Cancel.
+            # Give it THIS run's cancellation identity so a Cancel latches it dead.
+            run_user_id=self._run_user_id,
+            run_epoch=self._run_epoch,
             plain_llm=self.llm,
             # She keeps trying distinct tactics up to her full turn budget and
             # never gives up on her own — only the USER (Cancel) stops her.
@@ -1146,6 +1247,8 @@ class MultiTurnToolAgentExecutor:
             try:
                 response = self._healer.invoke(self.llm, messages, label="answering")
             except ModelStepUnrecoverable as _step:
+                if _step.reason == "user_cancelled":
+                    return self._cancelled_result(messages)
                 return self._build_result_dict(
                     "⚠️ I could not reach the model for this request after trying every "
                     f"recovery tactic ({_step.reason}). No tools were selected for this "
@@ -1161,6 +1264,11 @@ class MultiTurnToolAgentExecutor:
         repeat_count: int = 0
 
         for iteration in range(self.max_iterations):
+            # ── Cancel guard: BETWEEN model steps ──
+            # Stop before spending another model call. Returns (never raises) so the
+            # Exec report + Create-Flow log survive. (Angela, 2026-07-14)
+            if self._run_cancelled():
+                return self._cancelled_result(messages)
             try:
                 response = self._healer.invoke(
                     self.bound_llm, messages, label=f"working on step {iteration + 1}"
@@ -1172,6 +1280,13 @@ class MultiTurnToolAgentExecutor:
                 # real work so the Create Flow button + Exec report survive and the
                 # answer is TRUTHFUL. Only when nothing ran yet do we surface it to
                 # the chain (a pure-Q&A with no work to preserve).
+                # A USER CANCEL always RETURNS — never `raise`, even with zero tool
+                # calls. A raise lands in unified.py's fallback, which fires ANOTHER
+                # uncancellable LLM call and tells the user "the tool-calling backend
+                # is currently unavailable (transient network error)" — a lie, and one
+                # more chance for the dead run to talk to the browser. (2026-07-14)
+                if _step.reason == "user_cancelled":
+                    return self._cancelled_result(messages)
                 if self._tool_calls_log or self._exec_report_entries:
                     print(
                         "--- MultiTurnToolAgentExecutor: model step unreachable "
@@ -1244,7 +1359,12 @@ class MultiTurnToolAgentExecutor:
                         retry_response = self._healer.invoke(
                             self.bound_llm, messages, label="summarizing the results"
                         )
-                    except ModelStepUnrecoverable:
+                    except ModelStepUnrecoverable as _step:
+                        # Do NOT swallow a user cancel here — the old code set
+                        # retry_response = None and carried on fabricating an answer
+                        # for a run the user had already stopped. (2026-07-14)
+                        if _step.reason == "user_cancelled" or self._run_cancelled():
+                            return self._cancelled_result(messages)
                         retry_response = None
                     if retry_response is not None:
                         answer = getattr(retry_response, "content", "") or ""
@@ -1322,7 +1442,11 @@ class MultiTurnToolAgentExecutor:
                     final_response = self._healer.invoke(
                         self.bound_llm, messages, label="wrapping up"
                     )
-                except ModelStepUnrecoverable:
+                except ModelStepUnrecoverable as _step:
+                    # Same as the nudge path above: a user cancel must STOP the run,
+                    # not be swallowed into a fabricated wrap-up. (2026-07-14)
+                    if _step.reason == "user_cancelled" or self._run_cancelled():
+                        return self._cancelled_result(messages)
                     final_response = None
                 if final_response is not None:
                     answer = getattr(final_response, "content", "") or ""
@@ -1351,6 +1475,11 @@ class MultiTurnToolAgentExecutor:
 
             # --- Normal tool execution ---
             for tool_call in tool_calls:
+                # ── Cancel guard: BEFORE each tool in this turn ──
+                # A turn can request several tools; a Cancel must stop the ones that
+                # have not started yet instead of grinding through all of them.
+                if self._run_cancelled():
+                    return self._cancelled_result(messages)
                 tool_name = tool_call.get("name", "")
                 # Mark that the model has attempted the requested completion
                 # notification so the notification-debt guard above stays quiet.
@@ -1441,6 +1570,14 @@ class MultiTurnToolAgentExecutor:
                 if self._ask_execs_enabled and self._requires_exec_permission(tool_name):
                     decision = self._request_exec_permission(tool_call)
                     if decision != "proceed":
+                        # A CANCEL also unblocks this prompt as "deny" (that is the
+                        # fail-safe). But the user CANCELLED — she did not DENY. Without
+                        # this check the run is reported (and PERSISTED to chat history)
+                        # as "⛔ Execution interrupted. You denied the Tool …", which is a
+                        # lie: it names a decision she never made. Truthful cancel answer
+                        # instead. (Angela, 2026-07-14 — she hit this live.)
+                        if self._run_cancelled():
+                            return self._cancelled_result(messages)
                         self._record_exec_denial(tool_call)
                         denied = self._exec_denied or {}
                         denied_kind = denied.get("kind", "Tool")
@@ -1454,6 +1591,14 @@ class MultiTurnToolAgentExecutor:
                             "further tools were executed."
                         )
                         return self._build_result_dict(answer)
+
+                # ── Cancel guard: the LAST gate before the tool actually runs ──
+                # NOT redundant with the one at the top of this loop: the Ask-Execs
+                # gate above BLOCKS on a browser round-trip, and the previous tool may
+                # have run for minutes (a firmware build), so the user may well have
+                # cancelled while we were parked between the two checks.
+                if self._run_cancelled():
+                    return self._cancelled_result(messages)
 
                 tool_result = self._invoke_tool(tool_call)
                 if soft_warn_hint:
@@ -2099,6 +2244,12 @@ class CapabilityAwareToolAgentExecutor:
             # self-healing invoker can push LIVE recovery status to THIS user's
             # chat (independent of Ask-Execs).
             executor_payload["ask_execs_user_id"] = ask_execs_user_id
+            # Always forward this run's cancellation epoch. The LAST of the three
+            # plumbing hops (ask_rag payload → UnifiedAgentChain's rebuild whitelist →
+            # the executor sub-payloads → here). Drop it and the executor's run_epoch
+            # is None, every cancel guard silently no-ops, and a cancelled Multi-Turn
+            # run comes back to life. (Angela, 2026-07-14)
+            executor_payload["cancel_run_epoch"] = payload.get("cancel_run_epoch")
             if exec_report_enabled:
                 executor_payload["exec_report_enabled"] = True
             if ask_execs_enabled:

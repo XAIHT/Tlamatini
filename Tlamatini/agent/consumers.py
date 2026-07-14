@@ -95,6 +95,18 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
     def __init__(self):
         self.rag_lock = asyncio.Lock()
+        # ── Cancellation bookkeeping (Angela, 2026-07-14) ──
+        # ``_active_run`` is (user_key, run_epoch) for the request currently in flight,
+        # so the cancel handler can latch EXACTLY that run dead. ``_status_emit`` is the
+        # live self-healing status emitter, kept here so the cancel handler can REVOKE
+        # it immediately — otherwise a dying executor keeps pushing "🔁 Tactic #…" lines
+        # into the chat, and each one puts the browser back into its busy state (the
+        # Send button flipping itself back to "Cancel", forever).
+        self._active_run = None
+        self._status_emit = None
+        # The live Ask-Execs broker, so disconnect() can free a worker that is BLOCKED
+        # on a Proceed/Deny prompt when the browser goes away.
+        self._active_broker = None
         self.inet_enabled = False
         self.omissions = ""
         self.mcps = []
@@ -625,6 +637,23 @@ class AgentConsumer(AsyncWebsocketConsumer):
             
     async def disconnect(self, close_code):   # type: ignore
         print("--- WebSocket disconnected.")
+        # ── Free a worker parked on an Ask-Execs prompt (Angela, 2026-07-14) ──
+        # If this tab closed / hard-reloaded while a Proceed/Deny prompt was BLOCKING,
+        # the executor thread is sitting inside request_permission() with no deadline —
+        # and the `finally` that would close the broker is downstream of the still-blocked
+        # ask_rag, so it can never run. The thread would park FOREVER. close() resolves
+        # every pending prompt to "deny" (fail-safe: an unconfirmed tool never runs).
+        # Identity-guarded, so a sibling tab of the same user keeps its own broker.
+        try:
+            broker = getattr(self, '_active_broker', None)
+            if broker is not None and getattr(self, '_active_run', None):
+                from .exec_permission import unregister_broker
+                print("--- [AskExecs] browser gone while a prompt was open — denying and freeing the worker ---")
+                broker.close()
+                unregister_broker(self._active_run[0], broker)
+                self._active_broker = None
+        except Exception as exc:  # noqa: BLE001 — teardown must never raise
+            print(f"--- [AskExecs] disconnect teardown skipped: {exc}")
         if self.heartbeat_task is not None:
             self.heartbeat_task.cancel()
             self.heartbeat_task = None
@@ -639,6 +668,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
         broker = None
         broker_key = conversation_user.id
         status_registered = False
+        # Mint THIS run's cancellation epoch up front, so the executor, the
+        # self-healing invoker and the Ask-Execs broker all share ONE identity that a
+        # Cancel can latch dead permanently. (Angela, 2026-07-14)
+        from .cancellation import begin_llm_run, current_run_epoch, is_generation_cancelled, is_run_cancelled
+        run_epoch = begin_llm_run(broker_key)
+        self._active_run = (broker_key, run_epoch)
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -682,6 +717,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
                 register_status_broadcaster(broker_key, _emit_status)
                 status_registered = True
+                # Keep the handle so `cancel-current` can revoke THIS emitter the
+                # instant the user cancels (identity-guarded, so a second tab of the
+                # same user keeps its own live emitter).
+                self._status_emit = _emit_status
 
             # ── Ask-Execs broker ──
             # The multi-turn tool executor runs in a worker thread and must be
@@ -707,8 +746,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     except Exception as emit_err:  # noqa: BLE001
                         print(f"--- [AskExecs] failed to emit permission request: {emit_err}")
 
-                broker = ExecPermissionBroker(_emit_permission_request)
+                broker = ExecPermissionBroker(
+                    _emit_permission_request,
+                    run_user_id=broker_key,
+                    run_epoch=run_epoch,
+                )
                 register_broker(broker_key, broker)
+                self._active_broker = broker
                 print(f"--- [AskExecs] broker registered for user {broker_key}")
 
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
@@ -718,6 +762,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {
                     "input": message,
                     "conversation_user_id": conversation_user.id,
+                    # This run's cancellation epoch — see agent/cancellation.py.
+                    "cancel_run_epoch": run_epoch,
                     "multi_turn_enabled": bool(multi_turn_enabled),
                     "exec_report_enabled": exec_report_enabled,
                     "acpx_enabled": bool(acpx_enabled),
@@ -749,6 +795,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
             global_state.set_state(_meta_slot, None)
             global_state.set_state(_orphan_slot, None)
 
+            # ── Stale-answer guard (Angela, 2026-07-14) ──
+            # This run was CANCELLED and a NEWER run is already in flight. Broadcasting
+            # this dead run's answer now would re-enable the controls in the middle of
+            # the new run and contaminate it with the old run's Exec report. Drop it.
+            # NOTE the second condition: when NO newer run has started we still deliver
+            # the cancelled run's graceful answer, so the Exec report + Create-Flow
+            # button for the agents that DID run are preserved.
+            if is_run_cancelled(broker_key, run_epoch) and current_run_epoch(broker_key) > run_epoch:
+                print(
+                    "--- [CANCEL] dropping the cancelled run's late answer — a NEWER "
+                    "run is already in flight ---"
+                )
+                return
+
             await process_llm_response(
                 llm_response,
                 self.rag_chain,
@@ -778,7 +838,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print(f"--- [Tier-2 reaper] sweep raised (non-fatal): {sweep_err}")
         except Exception as e:
             print(f"!!! ERROR in queue_llm_retrieval method: {e}")
-            if global_state.get_state('cancel_generation'):
+            # A cancel-induced exception must stay silent — not surface the scary
+            # "Your agent cannot process your requests" banner. This used to read the
+            # raw boolean, which the cancel handler had already cleared. (2026-07-14)
+            if is_generation_cancelled(broker_key, run_epoch):
                 return
             not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
             await self.channel_layer.group_send(   # type: ignore
@@ -802,6 +865,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if status_registered:
                 from .self_healing import unregister_status_broadcaster
                 unregister_status_broadcaster(broker_key, _emit_status)
+            self._status_emit = None
+            self._active_run = None
+            self._active_broker = None
 
     async def exec_permission_request(self, event):
         """Group handler: forward an Ask-Execs permission request to this
@@ -1088,9 +1154,31 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'cancel-current':
                 print("--- Received cancel-current message from client. AGGRESSIVELY cancelling LLM...")
                 try:
-                    # Step 1: Set cancellation flag FIRST (callbacks will check this)
-                    request_cancel_generation()
-                    print("--- [CANCEL] Cancellation flag set ---")
+                    # ── Step 1: LATCH this run dead, and SILENCE it (2026-07-14) ──
+                    # `request_cancel_generation(uid)` raises the legacy boolean AND
+                    # permanently latches the epoch of the run that is executing right
+                    # now, so Step 8's `clear_cancel_generation()` below (which the
+                    # chain rebuild needs) can no longer resurrect it. Prefer the key
+                    # of the ACTUAL in-flight run over `user.id`, so the latch always
+                    # lands on the run the user is looking at.
+                    _cancel_key = (
+                        self._active_run[0] if getattr(self, '_active_run', None)
+                        else (user.id if user and user.is_authenticated else 'anonymous')
+                    )
+                    request_cancel_generation(_cancel_key)
+                    print(f"--- [CANCEL] Run latched cancelled for {_cancel_key} ---")
+
+                    # Revoke the self-healing status emitter IMMEDIATELY. Even a single
+                    # late "🔁 Tactic #…" frame from the dying executor puts the browser
+                    # back into its busy state — that is what flipped the Send button
+                    # back to "Cancel" by itself, over and over. Pass the SPECIFIC emit
+                    # handle: unregister is identity-guarded on purpose so a second tab
+                    # of the same user keeps its own live emitter.
+                    if getattr(self, '_status_emit', None):
+                        from .self_healing import unregister_status_broadcaster
+                        unregister_status_broadcaster(_cancel_key, self._status_emit)
+                        self._status_emit = None
+                        print("--- [CANCEL] self-healing status emitter revoked ---")
                     
                     # Step 2: Broadcast cancellation message immediately
                     await self.channel_layer.group_send(   # type: ignore
@@ -1135,9 +1223,14 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     )
                     print("--- [CANCEL] Rebuilding notification sent ---")
                     
-                    # Step 8: Clear the cancellation flag BEFORE rebuilding
+                    # Step 8: Lower the legacy BOOLEAN before rebuilding.
+                    # This is required: setup_rag_chain() bails out while the boolean is
+                    # up and would leave self.rag_chain = None. It is now SAFE — it
+                    # clears only the boolean, NEVER the epoch latch set in Step 1, so
+                    # the cancelled run stays cancelled. Lowering the boolean here used
+                    # to be the whole bug. Do NOT "simplify" this into a full un-cancel.
                     clear_cancel_generation()
-                    print("--- [CANCEL] Cancellation flag cleared ---")
+                    print("--- [CANCEL] Legacy boolean cleared (epoch latch KEPT) ---")
                     
                     # Step 8.5: Clear session state and global_state cache to erase context
                     await self.clear_session_state(user)
@@ -1254,12 +1347,25 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'cancel-all':
                 print("--- Received cancel-all message from client. Attempting to cancel LLM...")
                 try:
-                    request_cancel_generation()
+                    _cancel_key = (
+                        self._active_run[0] if getattr(self, '_active_run', None)
+                        else (user.id if user and user.is_authenticated else 'anonymous')
+                    )
+                    request_cancel_generation(_cancel_key)
+                    if getattr(self, '_status_emit', None):
+                        from .self_healing import unregister_status_broadcaster
+                        unregister_status_broadcaster(_cancel_key, self._status_emit)
+                        self._status_emit = None
                     global_state.set_state('rag_chain_ready', True)
                     if hasattr(self, 'rag_chain') and self.rag_chain:
                         client = self.rag_chain.getHttpxClientInstance()
                         if client:
                             client.close()
+                    # Lower the legacy boolean (the epoch latch above carries the real
+                    # cancellation now). Leaving it up used to poison any later
+                    # setup_rag_chain(), which bails on it and leaves the user with NO
+                    # chain — a latent second cancel bug. (2026-07-14)
+                    clear_cancel_generation()
                     global_state.set_state('chat_hist_summarizer_counter', 0)
                     print("--- LLM cancelled.")
                 except Exception as e:

@@ -65,6 +65,11 @@ class FrontendMutableStateTests(unittest.TestCase):
             "contextButtonClicked",
             "canvasSettedAsContext",
             "confirmationByUser",
+            # Both drive the busy UI / the Send-vs-Cancel button and are reassigned
+            # from agent_page_init.js AND agent_page_chat.js. A `const` here lints
+            # green per-file and then throws at load, killing the chat page.
+            "inLongOperation",
+            "userCancelledRun",
             "canvasLoaded",
             "openEnabled",
             "reConnectEnabled",

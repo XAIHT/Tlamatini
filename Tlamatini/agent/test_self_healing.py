@@ -104,6 +104,87 @@ class SelfHealingInvokerTests(unittest.TestCase):
         self.assertEqual(ctx.exception.reason, "user_cancelled")
         self.assertLess(time.time() - t0, 5, "cancel must be honoured within a second, even mid-hang")
 
+    # ── THE 2026-07-14 BUG: a Cancel that the cancel handler itself un-does ──
+    # consumers.py's `cancel-current` sets the flag (Step 1) and CLEARS it again a few
+    # ms later (Step 8, so the chain rebuild is not aborted). Before the per-run epoch
+    # latch, the still-running healer then read False forever, never raised
+    # user_cancelled, and kept announcing "🔁 Tactic #N" — each of which put the
+    # browser back into its busy state, flipping the Send button back to "Cancel" by
+    # itself, over and over, until the end of time.
+
+    def _latch_cancel_then_clear_like_consumers_does(self, uid):
+        """Reproduce Step 1 → Step 8 VERBATIM."""
+        from .cancellation import clear_cancel_generation, request_cancel_generation
+        request_cancel_generation(uid)   # Step 1: latch this user's current run
+        clear_cancel_generation()        # Step 8: lower the boolean (rebuild needs it)
+
+    def test_cancel_survives_the_step8_clear_and_stops_the_ladder(self):
+        from .cancellation import begin_llm_run, reset_for_tests
+        uid = "cancel-user"
+        reset_for_tests(uid)
+        epoch = begin_llm_run(uid)
+        try:
+            llm = _ScriptedLLM([("hang", 30)])
+            inv = SelfHealingInvoker(
+                user_id="u1", run_user_id=uid, run_epoch=epoch,
+                attempt_timeout=5, max_attempts=5,
+            )
+            threading.Timer(
+                0.5, lambda: self._latch_cancel_then_clear_like_consumers_does(uid)
+            ).start()
+            t0 = time.time()
+            with self.assertRaises(ModelStepUnrecoverable) as ctx:
+                inv.invoke(llm, _msgs(), label="working")
+            self.assertEqual(ctx.exception.reason, "user_cancelled")
+            self.assertLess(time.time() - t0, 5,
+                            "cancel must be honoured within a second even though Step 8 "
+                            "already lowered the legacy boolean")
+        finally:
+            reset_for_tests(uid)
+
+    def test_watchdog_timeout_after_a_cancel_does_not_announce_another_tactic(self):
+        """The classification-free `timeout` branch was the real engine of the storm:
+        it announced a new tactic and continued WITHOUT ever consulting cancellation."""
+        from .cancellation import begin_llm_run, request_cancel_generation, reset_for_tests
+        uid = "cancel-user-2"
+        reset_for_tests(uid)
+        epoch = begin_llm_run(uid)
+        try:
+            llm = _ScriptedLLM([("hang", 30)])
+            inv = SelfHealingInvoker(
+                user_id="u1", run_user_id=uid, run_epoch=epoch,
+                attempt_timeout=2, max_attempts=8,
+            )
+            request_cancel_generation(uid)   # already cancelled before the step runs
+            with self.assertRaises(ModelStepUnrecoverable) as ctx:
+                inv.invoke(llm, _msgs(), label="working")
+            self.assertEqual(ctx.exception.reason, "user_cancelled")
+            self.assertFalse(
+                any("Tactic" in e for e in inv.recovery_events),
+                "a cancelled run must NEVER emit another 'Tactic' status frame — that "
+                "frame is what re-armed the Cancel button in the browser",
+            )
+        finally:
+            reset_for_tests(uid)
+
+    def test_transient_error_after_a_cancel_is_not_retried_as_a_network_blip(self):
+        from .cancellation import begin_llm_run, request_cancel_generation, reset_for_tests
+        uid = "cancel-user-3"
+        reset_for_tests(uid)
+        epoch = begin_llm_run(uid)
+        try:
+            llm = _ScriptedLLM([("raise", TimeoutError("Read timed out")), ("ok", "SHOULD-NOT-GET-HERE")])
+            inv = SelfHealingInvoker(
+                user_id="u1", run_user_id=uid, run_epoch=epoch,
+                attempt_timeout=2, max_attempts=8,
+            )
+            request_cancel_generation(uid)
+            with self.assertRaises(ModelStepUnrecoverable) as ctx:
+                inv.invoke(llm, _msgs(), label="working")
+            self.assertEqual(ctx.exception.reason, "user_cancelled")
+        finally:
+            reset_for_tests(uid)
+
     def test_nontransient_error_is_raised_immediately_not_masked(self):
         boom = ValueError("bad tool schema")
         llm = _ScriptedLLM([("raise", boom)])

@@ -236,6 +236,14 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
         // here or the user would be allowed to send a request before the
         // contextual RAG chain has finished rebuilding.
         console.log("--- Session-restored welcome message received while context is loading — leaving controls disabled.");
+    } else if (isSelfHealingStatusMessage(message) && userCancelledRun) {
+        // The user ALREADY cancelled this run. A late "Tactic #…" frame from the dying
+        // executor must NEVER re-arm the busy UI — that is precisely what made the Send
+        // button flip back to "Cancel" by itself, every few seconds, forever. Render the
+        // line (below) but touch NOTHING else: do NOT disable (the run is dead) and do
+        // NOT enable either (a NEWER run may already own the UI, and it cleared this
+        // latch on submit). A strict no-op. (Angela, 2026-07-14)
+        console.log("--- Late self-healing status line AFTER a user cancel — ignoring; controls untouched.");
     } else if (isSelfHealingStatusMessage(message)) {
         // A LIVE self-healing recovery status line (a "Tactic #..." retry, a
         // "switching to a different tactic" abandon/transient notice, or a

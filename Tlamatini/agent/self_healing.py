@@ -54,7 +54,6 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
-from .global_state import global_state
 
 
 # ── DEMO fault injection (env-controlled; OFF in normal operation) ──────────
@@ -95,11 +94,30 @@ def is_transient_error(exc: BaseException) -> bool:
     return any(m in text for m in _TRANSIENT_MARKERS)
 
 
-def _cancelled() -> bool:
+def _cancelled_for(user_id: Any = None, run_epoch: Optional[int] = None) -> bool:
+    """Was THIS run cancelled?
+
+    Delegates to ``agent/cancellation.py``'s PER-RUN EPOCH LATCH (2026-07-14). The
+    old code read a bare process-global boolean — which the cancel handler itself
+    lowered again a few milliseconds after raising it (consumers Step 8) — so this
+    predicate answered ``False`` for the whole life of a cancelled run, the
+    ``user_cancelled`` stop was never raised, and the tactic ladder ran forever
+    while re-arming the browser's busy UI. The latch cannot be lowered, so a
+    cancelled run now stays cancelled.
+
+    ``user_id``/``run_epoch`` of ``None`` falls back to the legacy boolean, so
+    callers (and unit tests) that never learned a run identity behave as before.
+    """
+    from .cancellation import is_generation_cancelled
     try:
-        return bool(global_state.get_state("cancel_generation"))
-    except Exception:
+        return bool(is_generation_cancelled(user_id, run_epoch))
+    except Exception:  # noqa: BLE001 — a cancellation probe must never crash a model step
         return False
+
+
+def _cancelled() -> bool:
+    """Legacy, identity-less cancellation probe (the raw boolean)."""
+    return _cancelled_for(None, None)
 
 
 # ── StatusBroadcaster: mid-run first-person notifications to the user ────────
@@ -144,7 +162,8 @@ def notify_user(user_id: Any, text: str) -> None:
 
 
 # ── Watchdog: run a blocking call WITHOUT ever hanging on it ─────────────────
-def _run_with_watchdog(fn: Callable[[], Any], timeout: float, poll: float = 0.25
+def _run_with_watchdog(fn: Callable[[], Any], timeout: float, poll: float = 0.25,
+                       cancelled: Callable[[], bool] = _cancelled,
                        ) -> Tuple[str, Any]:
     """Run ``fn()`` in a daemon thread and wait at most ``timeout`` seconds.
 
@@ -174,12 +193,21 @@ def _run_with_watchdog(fn: Callable[[], Any], timeout: float, poll: float = 0.25
 
     waited = 0.0
     while waited < timeout:
-        if _cancelled():
+        if cancelled():
             return ("cancelled", None)
         try:
-            return result_q.get(timeout=poll)
+            outcome = result_q.get(timeout=poll)
         except queue.Empty:
             waited += poll
+            continue
+        # The call came back (ok OR error) — but the user may have cancelled in that
+        # same instant. On this path ``result_q.get`` returns immediately, so the
+        # ``cancelled()`` probe at the top of the loop is SKIPPED entirely. Without
+        # this second probe a cancel-adjacent error is handed straight to the
+        # transient classifier and retried as if nothing had happened. (2026-07-14)
+        if cancelled():
+            return ("cancelled", None)
+        return outcome
     return ("timeout", None)
 
 
@@ -220,8 +248,15 @@ class SelfHealingInvoker:
     guards against a literal infinite loop)."""
 
     def __init__(self, *, user_id: Any = None, plain_llm: Any = None,
-                 max_attempts: int = 4096, attempt_timeout: float = 80.0):
+                 max_attempts: int = 4096, attempt_timeout: float = 80.0,
+                 run_user_id: Any = None, run_epoch: Optional[int] = None):
         self.user_id = user_id
+        # This run's CANCELLATION IDENTITY (2026-07-14). Both default to None, which
+        # falls back to the legacy boolean — so every existing construction (and the
+        # unit tests) keep working unchanged. When they ARE set, a Cancel latches
+        # this run's epoch permanently and the ladder below stops for good.
+        self.run_user_id = run_user_id
+        self.run_epoch = run_epoch
         self.plain_llm = plain_llm                 # tool-less LLM for the summary tactic
         self.max_attempts = max(1, int(max_attempts))
         # Env override (used by the visible self-healing demo to shorten the
@@ -237,6 +272,10 @@ class SelfHealingInvoker:
         self.attempt_timeout = max(2.0, float(attempt_timeout))
         self.recovery_events: List[str] = []       # transcript of what she went through
         self.recovered = False                     # True if any tactic beyond the first worked
+
+    def _is_cancelled(self) -> bool:
+        """Did the USER cancel THIS run? (per-run epoch latch, boolean fallback)"""
+        return _cancelled_for(self.run_user_id, self.run_epoch)
 
     def _announce(self, text: str) -> None:
         self.recovery_events.append(text)
@@ -307,7 +346,7 @@ class SelfHealingInvoker:
         last_exc: Optional[BaseException] = None
 
         for attempt in range(1, self.max_attempts + 1):
-            if _cancelled():
+            if self._is_cancelled():
                 self._announce("🛑 You cancelled — stopping here and keeping everything I already did.")
                 raise ModelStepUnrecoverable("user_cancelled", attempt, tactics_tried, last_exc)
 
@@ -328,7 +367,22 @@ class SelfHealingInvoker:
                     "I will NOT hang; only you can stop me (Cancel)."
                 )
 
-            status, payload = _run_with_watchdog(thunk, timeout)
+            status, payload = _run_with_watchdog(thunk, timeout, cancelled=self._is_cancelled)
+
+            # ── A CANCEL BEATS EVERY OTHER OUTCOME (Angela, 2026-07-14) ──
+            # Checked here — BEFORE the ok/timeout/error branches and BEFORE any
+            # _announce() — because that ordering is exactly what was broken:
+            #   * the "timeout" branch announced a new tactic and `continue`d WITHOUT
+            #     ever consulting cancellation. That classification-free path (not the
+            #     transient classifier) was the real engine of the endless post-cancel
+            #     tactic storm.
+            #   * an error landing just after a Cancel would otherwise go to
+            #     is_transient_error() and be retried as a "network blip".
+            #   * announcing first would leak one more "🔁 Tactic #…" frame to the
+            #     browser — the frame that re-armed the Cancel button by itself.
+            if self._is_cancelled():
+                self._announce("🛑 You cancelled — stopping here and keeping everything I already did.")
+                raise ModelStepUnrecoverable("user_cancelled", attempt, tactics_tried, last_exc)
 
             if status == "ok":
                 if attempt > 1:
@@ -368,7 +422,7 @@ class SelfHealingInvoker:
     def _interruptible_sleep(self, seconds: float) -> None:
         slept = 0.0
         while slept < seconds:
-            if _cancelled():
+            if self._is_cancelled():
                 return
             time.sleep(0.25)
             slept += 0.25

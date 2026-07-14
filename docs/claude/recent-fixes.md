@@ -18,6 +18,35 @@
 
 ## Recent Fixes / Gotchas (keep these in mind)
 
+### 2026-07-14 — Cancel did not cancel: the never-ending post-cancel run (`agent/cancellation.py`, the PER-RUN EPOCH LATCH)
+
+**The symptom (Angela).** Cancel a Multi-Turn run → a few seconds later Tlamatini starts working again **by herself**, the Send button flips back to **"Cancel"**, and it repeats **forever**. Cancelling again just feeds the loop.
+
+**The root cause — cancellation was a boolean with a ~20 ms lifetime.**
+
+1. `consumers.py::cancel-current` **Step 1** raised `cancel_generation`, and **Step 8** *cleared it again* a few milliseconds later — it HAD to, because `setup_rag_chain()` bails out on that boolean (`consumers.py` 316/327/334 and 441/484/491, the last one nulls `self.rag_chain`) and **Step 9** rebuilds the chain. `rag/interface.py::ask_rag` cleared it a **second** time at the top of every request, so the user merely typing again un-cancelled a still-running zombie.
+2. The **only** cancellation observer in Multi-Turn was `self_healing._cancelled()`, polling that same boolean every 0.25 s. After Step 8 it read `False` for the rest of the cancelled run → `ModelStepUnrecoverable("user_cancelled")` became **unreachable** → the 4096-tactic ladder ran on.
+3. `mcp_agent.py` had **ZERO** cancellation reads (`grep cancel_generation mcp_agent.py` → nothing), so tools kept firing between/inside turns regardless.
+4. The engine of the visible "🔁 Tactic #N" storm is the **classification-free `status == "timeout"` branch** in `self_healing.invoke` — it announced a tactic and `continue`d **without ever consulting `is_transient_error()` or cancellation**. (An earlier hypothesis — "abort_connection kills the executor's client → connection error → classified transient → retried" — is **WRONG**: `abort_connection()` closes the **OllamaLLM's** httpx client (`factory.py` 348-351 → `unified.py::abort_connection`), but the executor runs on a **separate `ChatOllama`** built by `_ensure_chat_tool_model` (`mcp_agent.py`:577) with its own client. **Do NOT "fix" this by touching `_TRANSIENT_MARKERS`.**)
+5. Every tactic line went through the status broadcaster that `cancel-current` **never unregistered**, and the browser's `isSelfHealingStatusMessage()` branch called `disableControlsDuringOperation()` → button back to **"Cancel"**. That is literally "it starts again by itself".
+6. Two more resurrection paths: `unified.py::_invoke_unified_agent_with_retry` **re-ran the ENTIRE executor** (re-executing tools, fresh healer, fresh 4096-tactic budget) up to 3× on its own transient list — which does **not** overlap `self_healing`'s, so errors the healer deliberately re-raises landed there — and the post-failure fallback fired **one more uncancellable LLM call** printing the (now lying) *"tool-calling backend is currently unavailable (transient network error)"* notice.
+
+**The fix — `agent/cancellation.py`: a PER-USER RUN-EPOCH LATCH.** `begin_llm_run(uid)` mints a monotonically increasing epoch per user; `request_cancel_generation(uid)` raises the legacy boolean **and permanently latches that user's current epoch**; `is_run_cancelled(uid, epoch)` = `latched >= epoch`. A cancelled run stays cancelled **forever**; the user's NEXT run gets a higher epoch and runs normally. `clear_cancel_generation()` clears **only the boolean** — so Step 8 keeps working and the rebuild is never blocked.
+
+**Contract — do NOT weaken any of these:**
+
+- **PER USER, never one process-global high-water mark.** `global_state` is one process-wide singleton and Tlamatini admits concurrent runs (TeleTlamatini + a browser; two tabs) — the codebase already keys `last_request_meta::<uid>` per user for exactly this reason. A global latch would let a browser Cancel permanently kill a Telegram user's healthy run.
+- **A MISSING epoch means NOT cancelled (fail-open).** `is_run_cancelled(uid, None)` is always `False`. If it meant "cancelled", a single dropped whitelist key would make **every** request after the first-ever cancel self-cancel on arrival.
+- **THREE plumbing hops, all mandatory:** `ask_rag` payload → `UnifiedAgentChain.invoke`'s **payload-rebuild whitelist** (`unified.py`) → **both** executor sub-payloads (`UnifiedAgentChain` + `UnifiedAgentRAGChain`) → `CapabilityAwareToolAgentExecutor.invoke`'s `executor_payload` (`mcp_agent.py`). Miss any one and `run_epoch` is `None`, every guard silently no-ops, and the loop is back (the `exec_report_enabled` drop-on-rebuild bug class). Pinned by `agent/test_cancellation.py::CancelEpochPlumbingContractTests`.
+- **Step 8's `clear_cancel_generation()` STAYS** — it must keep clearing only the boolean, or the chain rebuild aborts and leaves `self.rag_chain = None`.
+- **The executor RETURNS on cancel, never `raise`s** (`_cancelled_result` → `_build_result_dict`), so the Exec report + Create-Flow log for the agents that DID run survive — and a raise would reach `unified.py`'s fallback and fabricate the lying "transient network error" answer.
+- **`cancel-current` revokes the status emitter immediately** (identity-guarded with the SPECIFIC `_emit_status` handle stored on the consumer — `emit=None` would mute a second tab of the same user).
+- **Frontend `userCancelledRun`** (`agent_page_state.js`, **`let` — never `const`**): while true, a late "Tactic #…" frame is a strict **no-op** (do NOT re-disable, do NOT re-enable — a newer run may own the UI). Set after the cancel frame is sent, cleared on the next submit / Reconnect. Do **not** loosen `isSelfHealingStatusMessage()` — its anchored matcher is itself the 2026-07-07 fix.
+
+**Also fixed:** the Ask-Execs broker (`exec_permission.py`) now polls the run latch, so a Cancel raised while a Proceed/Deny modal is blocking resolves to **deny** instead of parking the worker forever (the button-stuck-on-Cancel mirror bug); `cancel-all` lowers the boolean too (a leftover `True` used to poison any later `setup_rag_chain()`); and a cancelled run's late answer is dropped **only** when a NEWER run is already in flight (otherwise it is still delivered, preserving the Exec report).
+
+**Coverage:** `agent/test_cancellation.py` (24 tests — incl. `test_step8_race__clearing_the_boolean_does_NOT_uncancel_the_run` and the cross-user no-collateral-damage pair) + 3 new `test_self_healing.py` tests that reproduce the Step-1→Step-8 sequence verbatim and assert **no** further "Tactic" frame is ever emitted after a cancel.
+
 ### 2026-07-14 — Screenshot paste / drag-and-drop into the chat box (`chat_image_paste.js`)
 
 **PrtScn → Alt+Tab → Ctrl+V now attaches a screenshot to the chat: the image is saved to `<app>/Temp` as `image_<timestamp>.jpg` and its ABSOLUTE PATH is spliced into the chat box at the caret, with a thumbnail chip above the input.** Dropping image files onto the chat column does the same. The point is to hand Tlamatini an image path she can pass to Image-Interpreter / `launch_view_image` in the very next prompt.

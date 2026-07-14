@@ -168,6 +168,15 @@ let contextButtonClicked = false;
 let canvasSettedAsContext = false;
 let confirmationByUser = false; // eslint-disable-line no-unused-vars
 let inLongOperation = false;
+// Set the moment the user CONFIRMS Cancel on a running request; cleared on the next
+// submit (and on Reconnect / Clean-History, which are full UI resets). While it is
+// true, a LATE self-healing "Tactic #…" frame from the dying executor must NOT put the
+// UI back into the busy state — that is exactly what flipped the Send button back to
+// "Cancel" by itself, over and over, forever. See agent_page_chat.js::appendChatMessage.
+// MUST stay `let` — it is reassigned from agent_page_init.js AND agent_page_chat.js. A
+// `const` lints green per-file and then throws "Assignment to constant variable" in the
+// browser, killing the chat page (the 2026-07-08 const-poison incident).
+let userCancelledRun = false;
 let canvasLoaded = false;
 let openEnabled = true;
 let reConnectEnabled = true;

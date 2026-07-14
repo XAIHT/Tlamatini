@@ -16,6 +16,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import SystemMessage
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from ...cancellation import is_run_cancelled
 from ...chat_history_loader import DBChatHistoryLoader
 from ...global_state import global_state
 from ...mcp_agent import create_unified_agent
@@ -87,8 +88,20 @@ def _invoke_unified_agent_with_retry(unified_agent, payload, *, max_attempts: in
     Returns ``(result, last_exception)`` — ``result`` is None if every attempt
     failed. Non-transient errors short-circuit immediately so real bugs surface.
     """
+    # THIS run's cancellation identity. Without these two lines the retry loop below
+    # is a SECOND way a cancelled run comes back to life: it re-invokes the ENTIRE
+    # executor (re-executing tools, with a brand-new self-healing invoker and a fresh
+    # 4096-tactic budget) for any error its own transient list matches — and that list
+    # does NOT overlap self_healing's, so errors the healer deliberately re-raises land
+    # right here. (Angela, 2026-07-14)
+    _uid = payload.get("ask_execs_user_id")
+    _epoch = payload.get("cancel_run_epoch")
+
     last_exception: Optional[Exception] = None
     for attempt in range(1, max_attempts + 1):
+        if is_run_cancelled(_uid, _epoch):
+            print("--- [UnifiedAgent] user cancelled — not starting another executor run ---")
+            return None, last_exception
         try:
             result = unified_agent.invoke(payload)
             if attempt > 1:
@@ -98,6 +111,10 @@ def _invoke_unified_agent_with_retry(unified_agent, payload, *, max_attempts: in
             return result, None
         except Exception as exc:
             last_exception = exc
+            if is_run_cancelled(_uid, _epoch):
+                # A cancel-adjacent error must NEVER trigger a full executor re-run.
+                print("--- [UnifiedAgent] user cancelled — abandoning retries ---")
+                return None, exc
             try:
                 from ...self_healing import ModelStepUnrecoverable as _MSU
             except Exception:  # noqa: BLE001
@@ -261,6 +278,12 @@ class UnifiedAgentChain:
             "ask_execs_enabled": bool(payload.get("ask_execs_enabled", False)),
             "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
             "conversation_user_id": payload.get("conversation_user_id"),
+            # This run's CANCELLATION EPOCH. It MUST stay in this whitelist — drop it
+            # and the executor gets run_epoch=None, every cancel guard silently
+            # becomes a no-op, and a cancelled Multi-Turn run resurrects itself and
+            # keeps flipping the Send button back to "Cancel" forever. Same
+            # drop-on-rebuild bug class that once broke exec_report_enabled.
+            "cancel_run_epoch": payload.get("cancel_run_epoch"),
             "global_execution_plan": payload.get("global_execution_plan"),
             "planner_summary": payload.get("planner_summary", ""),
         }
@@ -333,6 +356,8 @@ User Question: {enhanced_input}"""
                     "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
                     "chat_history": hist,
                     "ask_execs_user_id": payload.get("conversation_user_id"),
+                    # Cancellation identity — required by the executor's cancel guards.
+                    "cancel_run_epoch": payload.get("cancel_run_epoch"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 },
@@ -349,6 +374,18 @@ User Question: {enhanced_input}"""
                     exec_report_denied = result.get("exec_report_denied")
                 if not answer or not answer.strip():
                     print(f"--- UnifiedAgentChain: WARNING - Empty answer received! Full result: {result}")
+            elif is_run_cancelled(payload.get("conversation_user_id"), payload.get("cancel_run_epoch")):
+                # ── The USER cancelled (Angela, 2026-07-14) ──
+                # Do NOT run the fallback below: it fires ANOTHER, uncancellable LLM
+                # call and tells the user "the tool-calling backend is currently
+                # unavailable (transient network error)" — after a Cancel that is a
+                # LIE, and the fabricated answer is one more voice from a run that is
+                # supposed to be dead.
+                print("--- UnifiedAgentChain: user cancelled — no fallback answer ---")
+                answer = (
+                    "🛑 You cancelled this request. I stopped the run — no further "
+                    "tools were executed."
+                )
             else:
                 print(
                     f"--- UnifiedAgentChain: Agent invocation failed ({agent_exception}), "
@@ -818,6 +855,8 @@ User Question: {enhanced_input}"""
                     "step_by_step_enabled": bool(payload.get("step_by_step_enabled", False)),
                     "chat_history": hist,
                     "ask_execs_user_id": payload.get("conversation_user_id"),
+                    # Cancellation identity — required by the executor's cancel guards.
+                    "cancel_run_epoch": payload.get("cancel_run_epoch"),
                     "global_execution_plan": payload.get("global_execution_plan"),
                     "planner_summary": payload.get("planner_summary", ""),
                 },
@@ -828,6 +867,14 @@ User Question: {enhanced_input}"""
                 if isinstance(result, dict):
                     exec_report_entries = result.get("exec_report_entries", []) or []
                     exec_report_denied = result.get("exec_report_denied")
+            elif is_run_cancelled(payload.get("conversation_user_id"), payload.get("cancel_run_epoch")):
+                # Same contract as UnifiedAgentChain above: after a user Cancel, never
+                # fabricate a "transient network error" fallback answer. (2026-07-14)
+                print("--- UnifiedAgentRAGChain: user cancelled — no fallback answer ---")
+                answer = (
+                    "🛑 You cancelled this request. I stopped the run — no further "
+                    "tools were executed."
+                )
             else:
                 print(
                     f"--- UnifiedAgentRAGChain: Agent invocation failed ({agent_exception}), "

@@ -83,14 +83,33 @@ browser (`step_by_step_enabled`) → `consumers.py` → `rag/interface.py` → `
 
 ## Ask Execs — per-tool permission prompt (Multi-Turn-only modifier)
 
-The chat toolbar's fourth checkbox, **Ask Execs** (between **ACPX** and **Add internet context**), makes the Multi-Turn executor **BLOCK on a browser Proceed/Deny dialog before every state-changing Tool/MCP/Agent runs**. A **Deny halts the whole chain**. It is sent per-request as `ask_execs_enabled` and, like Exec report, is **only honoured while Multi-Turn is on** (the checkbox is disabled+greyed otherwise; every backend read re-gates it on `multi_turn_enabled`). Unchecked → byte-for-byte the legacy Multi-Turn flow.
+The chat toolbar's fourth checkbox, **Ask Execs** (between **ACPX** and **Add internet context**), makes the Multi-Turn executor **BLOCK on a browser Proceed/Deny dialog before each RISKY Tool/MCP/Agent runs** — "risky" meaning the explicit allowlist in the table below (command/script runners + destructive + human-contacting + remote/network), **not** literally every state-changing tool. A **Deny halts the whole chain**. It is sent per-request as `ask_execs_enabled` and, like Exec report, is **only honoured while Multi-Turn is on** (the checkbox is disabled+greyed otherwise; every backend read re-gates it on `multi_turn_enabled`). Unchecked → byte-for-byte the legacy Multi-Turn flow.
 
 ### The bridge (sync executor ↔ async consumer)
 
 The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask_rag, thread_sensitive=False)`), so it cannot `await`. `agent/exec_permission.py::ExecPermissionBroker` bridges it:
 
 1. `consumers.queue_llm_retrieval` registers one broker per request (keyed by `conversation_user.id`) when `ask_execs_enabled`, and unregisters it in a `finally`. Its emit callback schedules an `exec_permission_request` group frame onto the consumer's event loop via `asyncio.run_coroutine_threadsafe`.
-2. In `MultiTurnToolAgentExecutor.invoke`'s per-tool loop — **after** the dedup + quota checks, **before** `tool.invoke` — if `_requires_exec_permission(tool_name)` (i.e. not in `_MANAGEMENT_TOOLS` ∪ `_TOOL_QUOTA_EXEMPT`), it calls `broker.request_permission(detail)` which emits the frame and **blocks on a `threading.Event`**.
+2. In `MultiTurnToolAgentExecutor.invoke`'s per-tool loop — **after** the dedup + quota checks, **before** `tool.invoke` — if `_requires_exec_permission(tool_name)`, it calls `broker.request_permission(detail)` which emits the frame and **blocks on a `threading.Event`**.
+
+### ⚠️ WHICH tools prompt — an ALLOWLIST, not "everything" (corrected 2026-07-14)
+
+`_requires_exec_permission` consults an **ALLOWLIST**, `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS` — it does **NOT** prompt for every state-changing tool. (This doc used to claim it did; the claim was **wrong**, and the gap was real: **Deleter could wipe a glob of files, and Whatsapper could message a real human, with no prompt at all.** Angela found it live on 2026-07-14.)
+
+**Angela's policy — tiers A + B + D are gated, tier C deliberately is NOT:**
+
+| | Gated? | Tools |
+|---|---|---|
+| command / script runners | **ASK** | Executer, Pythonxer, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
+| **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file` |
+| **B** — reaches real people | **ASK** | Emailer, Whatsapper, Telegrammer, Zavuerer |
+| **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler |
+| **C** — desktop UI + hardware | **no-ask (ON PURPOSE)** | Keyboarder, Mouser, Windower, Playwrighter, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, Unrealer |
+| read-only / observational / management-polling / crypto / `invoke_skill` / ACPX | no-ask | Globber, Grepper, the interpreters, the media agents, `chat_agent_run_*`, … |
+
+**Tier C is not an oversight.** Angela: *"I need the AI moves fast and they are operations of visible proceding: so don't make C set ask"* — you SEE the pointer move, the window shift, the board flash, so a prompt buys no safety and only costs speed. **Do not "helpfully" gate tier C.**
+
+**When you add a new agent**: if it deletes/overwrites data, contacts a human, or reaches a remote system, **add its tool name to `_ASK_EXECS_REQUIRED_TOOLS`** — it is NOT automatic. Pinned in both directions by `agent/test_ask_execs_allowlist.py`.
 3. The browser shows the modal (`showExecPermissionDialog`) and replies with an `exec-permission-response` frame → `consumers.receive` → `resolve_permission(user_id, request_id, decision)` sets the event.
 4. **Proceed** → the tool runs. **Deny** → `self._exec_denied` is recorded and the executor returns immediately (no further tools, this turn or later).
 

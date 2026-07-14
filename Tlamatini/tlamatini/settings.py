@@ -340,6 +340,16 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        # Ask-Execs permission broker. Without this entry it inherits the ROOT level
+        # (WARNING), so "[ExecPermissionBroker] cancel detected; denying …" is dropped
+        # and it LOOKS like the broker never honoured the cancel — it did, we just
+        # could not see it. An observability gap that cost real debugging time.
+        # (Angela, 2026-07-14)
+        "agent.exec_permission": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "agent.global_execution_planner": {
             "handlers": ["console"],
             "level": "INFO",

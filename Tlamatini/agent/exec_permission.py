@@ -32,7 +32,7 @@ Flow:
 
 Safety contract (mirrors the orphan reaper's "never break the chat path"):
 
-- Blocking is cancel-aware: it polls ``global_state['cancel_generation']`` on
+- Blocking is cancel-aware: it polls this run's cancellation latch on
   a short tick so a mid-flight Cancel never deadlocks the worker thread.
 - If the emit itself fails (loop gone, socket closed), the request resolves to
   ``"deny"`` — when Ask Execs is on we must never run an unconfirmed
@@ -46,7 +46,7 @@ import threading
 import uuid
 from typing import Any, Callable, Dict, Optional
 
-from .global_state import global_state
+from .cancellation import is_generation_cancelled
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +74,18 @@ class ExecPermissionBroker:
     # the worker thread promptly without busy-waiting.
     _WAIT_TICK_SECONDS = 0.25
 
-    def __init__(self, emit: Callable[[Dict[str, Any]], None]):
+    def __init__(self, emit: Callable[[Dict[str, Any]], None],
+                 run_user_id: Any = None, run_epoch: Optional[int] = None):
         self._emit = emit
+        # This run's cancellation identity (Angela, 2026-07-14). Both default to None
+        # → legacy boolean-only behaviour, so existing constructions/tests are
+        # unaffected. Without them a Cancel raised WHILE a Proceed/Deny prompt is
+        # blocking could never resolve it (the old boolean was cleared milliseconds
+        # later by the cancel handler itself), so the executor thread parked forever
+        # and the Send button stayed stuck on "Cancel" — the mirror image of the bug
+        # this whole change set exists to kill.
+        self._run_user_id = run_user_id
+        self._run_epoch = run_epoch
         self._lock = threading.Lock()
         self._pending: Dict[str, _PendingPermission] = {}
         self._closed = False
@@ -120,7 +130,7 @@ class ExecPermissionBroker:
                 if pending.event.wait(self._WAIT_TICK_SECONDS):
                     break
                 # Wake periodically to honour a mid-flight Cancel or a close.
-                if global_state.get_state("cancel_generation"):
+                if is_generation_cancelled(self._run_user_id, self._run_epoch):
                     logger.info("[ExecPermissionBroker] cancel detected; denying %s", request_id)
                     return "deny"
                 with self._lock:
