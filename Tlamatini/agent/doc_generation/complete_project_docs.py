@@ -488,9 +488,15 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.39.5" in subject
         or "1.40.0" in subject
         or "1.40.1" in subject
+        or "1.41.0" in subject
+        or "1.41.2" in subject
+        or "1.41.3" in subject
         or "configurable" in subject
         or "django_port" in subject
         or "port of tlamatini" in subject
+        or "hard-cancel" in subject
+        or "drag and drop image" in subject
+        or "catalog of prompts" in subject
         or "nmapper" in subject
         or "nmap" in subject
         or "pentesting" in subject
@@ -507,10 +513,22 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window now lands on `v1.40.1`, tagged at the configurable-web-port commit `4dc1d546`, while README.md, BookOfTlamatini.md, Git history, source inspection, and generated inventory tables confirm the current workflow-agent, Multi-Turn-tool, skill, asset, and effective-line totals."
+            "The live Git window now lands on tagged `v1.41.3` at `08405a67`; Git history and source inspection extend the still-useful README.md and BookOfTlamatini.md narrative with the newest runtime/UI work before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: `v1.39.3` shipped Nmapper for authorized local recon, `v1.39.4` restored startup-dialog closeability, `v1.39.5` hardened long-running and concurrent work while adding the one-prompt Unreal Engine 5.8 scaffold path, `v1.40.0` publishes a hashed agent-template catalog for Tlamatini-FlowPills through a fail-open HKCU discovery contract, and `v1.40.1` moves the web port out of the code and into configuration."
+            "The current release wave is broader than a badge bump: `v1.41.0` adds screenshot paste/drop into chat, `v1.41.2` makes Cancel a per-user per-run latch instead of a short-lived global flag, and `v1.41.3` groups, deduplicates, and fuzzy-searches the Catalog of Prompts; the `v1.40.x` port and FlowPills contracts remain carried foundations."
+        )
+    if any("drag and drop image" in subject or "accept drag" in subject for subject in subjects):
+        highlights.append(
+            "The screenshot-to-chat path accepts clipboard bitmaps or dropped image files, re-encodes them safely into Tlamatini's Temp directory, inserts each absolute path at the remembered caret, and exposes removable thumbnail chips so Image-Interpreter can consume the same local path immediately."
+        )
+    if any("hard-cancel" in subject or "hard cancel" in subject for subject in subjects):
+        highlights.append(
+            "Hard Cancel now mints a monotonically increasing run epoch per user and permanently latches only the cancelled epoch; executor, retry, self-healing, Ask-Execs, status-emitter, and frontend guards stop the old run without poisoning the next request or another user's concurrent work."
+        )
+    if any("catalog of prompts" in subject or "prompt catalog" in subject for subject in subjects):
+        highlights.append(
+            "Catalog-of-Prompts migrations classify 106 historical rows into 13 operator categories and physically remove 13 duplicate ACPX demos without renumbering survivors; the primary endpoint is gap-tolerant, the fallback skips gaps, and the UI adds grouped sections plus ranked fuzzy search."
         )
     if any(
         "1.40.1" in subject
@@ -683,7 +701,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest documentation pass aligns the handbook and source with `v1.40.1`, including the configurable web port (`config.json` → `django_port`), FlowPills companion discovery, Unreal Engine 5.8 scaffolding, the `v1.39.5` smoothness wave, Nmapper, prompt/startup fixes, live line-count inventory, and the Agent-directory responsibility boundary instead of stale release prose."
+            "The latest dossier pass resolves the live product at tagged `v1.41.3`, combines README.md and BookOfTlamatini.md with source/Git truth for image ingestion, Hard Cancel, and prompt-catalog changes, and retains the configurable port, FlowPills, Unreal, Nmapper, line inventory, and Agent-directory responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -930,9 +948,15 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.39.5" in subject
         or "1.40.0" in subject
         or "1.40.1" in subject
+        or "1.41.0" in subject
+        or "1.41.2" in subject
+        or "1.41.3" in subject
         or "django_port" in subject
         or "port of tlamatini" in subject
         or "configurable" in subject
+        or "hard-cancel" in subject
+        or "drag and drop image" in subject
+        or "catalog of prompts" in subject
         or "flowpills" in subject
         or "unrealer" in subject
         or "scaffold" in subject
@@ -941,10 +965,22 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced through `v1.39.5`, `v1.40.0`, and `v1.40.1`: long-running/concurrent operations were hardened, the Unreal Engine 5.8 one-prompt scaffold path landed, Tlamatini began publishing a hashed, HKCU-discoverable agent-template catalog for FlowPills, and the web port moved out of the code into `config.json`'s `django_port`."
+            "Since the last committed PDF/PPTX refresh at `v1.40.1`, the repository advanced to tagged `v1.41.3`: screenshot paste/drop entered chat, Hard Cancel became a per-user run-epoch latch, and the Catalog of Prompts gained categories, duplicate removal, gap-tolerant loading, and ranked fuzzy search."
         )
         highlights.append(
-            "The current visual-doc delta covers `agent_manifest.py`, `test_agent_manifest.py`, the companion-discovery contract and lifecycle wiring, migrations `0173`-`0174`, Unrealer correctness updates, the configurable-web-port helpers in `manage.py` with `test_django_port_config.py`, and the smoothness changes across Nmapper, External MCPs, model/metrics I/O, subprocess decoding, request isolation, and `.flw` redaction."
+            "The exact delta spans 44 files and adds `chat_image_paste.js`, `cancellation.py`, two browser regression harnesses, four focused test surfaces, migrations `0175`-`0176`, and `freeingport8000.ps1`, alongside coordinated consumer, executor, RAG, self-healing, prompt-model, view, template, CSS, and JavaScript changes."
+        )
+    if any("drag and drop image" in subject or "accept drag" in subject for subject in subjects):
+        highlights.append(
+            "Image ingestion is path-native rather than attachment-native: Pillow flattens/re-encodes images under a 25 MB ceiling, the Temp path is inserted at the caret, chips can remove both preview and text, and layout observers account for the new row so the textarea and Send control remain visible."
+        )
+    if any("hard-cancel" in subject or "hard cancel" in subject for subject in subjects):
+        highlights.append(
+            "The cancellation delta closes every resurrection path: the per-user epoch survives legacy-flag clearing, propagates through payload rebuilds, stops executor/retry/self-healing loops, denies blocked Ask-Execs prompts, revokes late tactic emitters, and prevents stale frontend frames from putting the UI back into Cancel state."
+        )
+    if any("catalog of prompts" in subject or "prompt catalog" in subject for subject in subjects):
+        highlights.append(
+            "Prompt-catalog migrations group the historical catalog into 13 categories and delete 13 redundant ACPX variants while keeping surviving ids stable; the UI renders category sections, supports numeric/acronym/subsequence search, highlights matches, and restores grouped order when the query clears."
         )
     if any(
         "retrying behaviour" in subject
@@ -1024,9 +1060,9 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "The latest Markdown source now explicitly warns that the plain-Python workflow agents are under user jurisdiction: Tlamatini offers orchestration and guardrails, but user-run agents can touch files, shells, APIs, credentials, external MCPs, hardware, and networks selected by the operator, so resulting breaches or unsafe actions remain the operator's responsibility."
         )
-    if has_esphomer_assets():
+    if any("esphomer" in subject or "esphome" in subject for subject in subjects):
         highlights.append(
-            "The live workspace now includes the untagged ESPHomer wave: a new ESPHome firmware agent, wrapped `chat_agent_esphomer` tool, sample YAML project, migrations, tests, and handbook chapters that extend Tlamatini into smart-home device provisioning."
+            "Since the last dossier baseline, ESPHomer changed across its ESPHome firmware agent, wrapped `chat_agent_esphomer` tool, sample YAML project, migrations, tests, and handbook coverage for smart-home device provisioning."
         )
     if any("image about" in subject or "video" in subject or "kyber" in subject for subject in subjects):
         highlights.append(
@@ -1433,22 +1469,54 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The repository currently resolves to `v1.40.1`, tagged at the configurable-web-port commit `4dc1d546`, and the live source tree remains the authority for every generated count.",
-    "`v1.40.1` retires the hardcoded web port: `config.json`'s `django_port` (default 8000) now controls the web UI and chat WebSocket port through `manage.py`, while direct Daphne/Uvicorn, MCP helper listeners, and TeleTlamatini remain separate port axes.",
-    "The live completion pass applies the resolver to frozen and source launch paths, keeps explicit command-line ports authoritative, fails open to 8000, and adds the untracked 24-test `agent/test_django_port_config.py` suite.",
-    "`v1.40.0` makes Tlamatini discoverable to companion applications such as Tlamatini-FlowPills without importing Python, launching her runtime, or scanning whole drives.",
-    "The six-value HKCU contract and `_tlamatini_agents_manifest.json` publish exact agent-template discovery metadata with per-file SHA-256 values; filesystem validation stays authoritative and publication remains idempotent, no-admin, and fail-open.",
-    "Discovery runs first on launch, at install/build time, and across an agents-preserving uninstall, with 17 focused tests covering source, frozen, preserved, BOM, hashing, stale-value, registration, and failure paths.",
-    "The `v1.39.5` wave adds a two-marker Catalog-of-Prompts route that scaffolds a ready-to-build Unreal Engine 5.8 C++ project with UnrealMCP and Visual Studio 2026 guidance.",
-    "Unrealer now sends `assign_material` with the plugin's actual `slot_index` key and normalizes `/Content/...` material/content paths to Unreal's `/Game/...` virtual root.",
-    "The smoothness pass bounds image-model, system-metrics, subprocess, and scan I/O; improves background External MCP supervision; and prevents a stalled dependency from freezing a whole chat indefinitely.",
-    "Nmapper slow scans receive per-host budgets and collision-proof output names, preserve partial XML results, and distinguish a timeout from a legitimate zero-open-port result.",
-    "ACPX and command subprocesses decode UTF-8 with replacement, request-scoped orphan survivors cannot cross users, and deferred completion deliverables survive every terminal Multi-Turn exit path.",
-    "Agent contracts now redact URI userinfo as well as ordinary secret fields, preserving useful MongoDB host/database context in exported `.flw` files without retaining credentials.",
-    "The earlier `v1.39.3` Nmapper release and `v1.39.4` startup-dialog/prompt-catalog fixes remain carried product behavior, alongside the self-healing, Create Flow, robotic-loop, firmware, media, External MCP, and deterministic-file waves.",
-    "The live working tree also carries handbook/version alignment and the source-mode port completion; the dossier counts those files from disk, identifies them separately from tagged history, and never reproduces private `config.json` values.",
+    "The repository currently resolves to tagged `v1.41.3` at `08405a67`, and the live source tree remains the authority for every generated count and capability claim.",
+    "`v1.41.3` restructures the Catalog of Prompts into 13 operator categories, preserves stable surviving ids, and removes 13 duplicate ACPX demo rows instead of merely hiding them.",
+    "The catalog endpoint now returns category metadata in display order; the frontend renders grouped sections and adds live numeric, acronym, substring, word-start, and subsequence search with highlighted, best-first results.",
+    "`v1.41.2` replaces the fragile process-global cancel window with a permanent per-user run-epoch latch, so a cancelled Multi-Turn run cannot resume after the legacy flag is cleared.",
+    "The run epoch is carried through RAG payload rebuilds and executor sub-payloads; executor, unified retry, self-healing, and late-answer paths all honor it while the next run receives a higher healthy epoch.",
+    "Ask Execs now resolves to deny on cancellation, status emitters are revoked immediately, and the frontend ignores late tactic frames so an old run cannot flip the Send button back to Cancel.",
+    "`v1.41.0` adds screenshot paste/drop: clipboard bitmaps and dropped image files are re-encoded into Tlamatini's Temp directory, inserted at the remembered caret as absolute paths, and represented by removable thumbnail chips.",
+    "The image path is deliberately the chat payload because Image-Interpreter consumes local paths; document-level paste handling, scoped drop handling, and form-height observation keep the workflow usable after Alt+Tab and on constrained layouts.",
+    "The post-`v1.40.1` `freeingport8000.ps1` helper can reset Windows dynamic-port ranges, restart WinNAT, and verify a loopback bind for administrators, while routine users should prefer changing `django_port`.",
+    "`v1.40.1` remains carried behavior: `manage.py` applies fail-open `django_port` resolution to frozen and source launch paths, and explicit command-line ports remain authoritative.",
+    "README.md and BookOfTlamatini.md still provide the complete installation, Ollama, architecture, operator, agent, and responsibility narrative, but their static v1.40.1 release surfaces lag the tagged v1.41.3 source and are not treated as release authority.",
+    "The live working tree contains only modified local agent/config templates; the dossier counts their files and lines but never reproduces private values, credentials, endpoints, or machine-specific paths.",
+    "The `v1.40.0` FlowPills discovery contract, Unreal 5.8 scaffold, Nmapper, self-healing, Create Flow, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain carried product behavior.",
+    "The current release adds no workflow agent type, so agent/tool growth is derived from the live registry and tree rather than inferred from version numbers or handbook badges.",
     "README.md and BookOfTlamatini.md continue to present the MIT-licensed project, the Agent-directory responsibility disclaimer, the easy-start installation path, Ollama setup guidance, and the full operator story instead of a narrow changelog summary.",
-    "The resulting PDF/PPTX refresh treats `v1.40.1` as the current product snapshot while preserving the historical context for FlowPills companion discovery, Nmapper, the robotic-arm loop, frontend recovery, self-update, media agents, deterministic file tools, firmware agents, External MCPs, ACPX skills, Zavuerer, and Image-Interpreter.",
+    "The resulting PDF/PPTX refresh treats `v1.41.3` as the current product snapshot while preserving the complete historical and operational context rather than collapsing the dossier into recent release notes.",
+]
+
+PROMPT_CATALOG_1413_GUIDE = [
+    "Migration `0175_prompt_category_and_dedup.py` classifies the 106 historical prompt rows into 13 named operator categories, from Getting Started and Files/Search through ACPX, firmware, security, messaging, media, and a fail-safe More bucket.",
+    "Migration `0176_delete_duplicate_acpx_prompts.py` physically deletes ids 40-52: 13 banner/Gemini variants that duplicate the seven portable ACPX demos retained at ids 33-39; surviving ids are never renumbered.",
+    "Gaps are now valid. `/agent/list_prompts/` returns all visible rows regardless of id continuity, and the offline `prompt-N` fallback skips a missing id instead of terminating the catalog at the first gap.",
+    "`Prompt.category` and `Prompt.hidden` remain schema-level controls, while `PROMPT_CATEGORY_ORDER` gives every known category a stable display rank and routes unknown or future values into `other` rather than dropping them.",
+    "The modal renders explicit category headers and counts, then restores that grouped basic-to-advanced order whenever the search query clears.",
+    "Live search accepts a prompt number, title words, mode labels, acronym, contiguous text, or fuzzy subsequence; it requires every query token, ranks best-first, highlights matched characters, and exposes Enter-to-open plus Escape/clear behavior.",
+    "Prompt cards retain their One-Shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step mode badges and continue to set the matching toolbar toggles when selected.",
+    "The catalog stays viewport-pinned and bounded in CSS so its header and search bar remain reachable independently of the chat input height, with no JavaScript geometry coupling reintroduced.",
+]
+
+HARD_CANCEL_GUIDE = [
+    "`agent/cancellation.py` mints a monotonically increasing run epoch per user and permanently latches the highest cancelled epoch; clearing the legacy setup boolean can no longer resurrect that run.",
+    "Cancellation is isolated per user, so a browser tab cannot kill another user's TeleTlamatini or concurrent browser run; a missing epoch is deliberately fail-open so a dropped payload field cannot poison all future requests.",
+    "`ask_rag`, both unified-chain payload rebuilds, and `CapabilityAwareToolAgentExecutor` carry and check `run_epoch`, closing the prior gap where model retries or tool loops could continue after Cancel.",
+    "The executor returns a structured cancelled result instead of raising, preserving already-completed tool evidence, Exec Report data, and Create Flow inputs without triggering a fabricated transient-error fallback.",
+    "Self-healing consults the same latch before retries, after watchdog waits, and before tactic announcements, so no new recovery tactic can be emitted once the operator cancels.",
+    "Ask Execs polls the run latch and resolves a blocked Proceed/Deny request as deny; consumer teardown revokes the exact status emitter so a dying run cannot re-arm the UI.",
+    "Frontend `userCancelledRun` is mutable per-session state: late tactic frames become strict no-ops until the next submit/reconnect, preventing the Send button from flipping back to Cancel.",
+    "Coverage includes 24 cancellation contract tests, focused Ask-Execs/self-healing tests, and visible browser regression harnesses for long tool chains, model steps, repeated cancels, next-request recovery, and approval-modal cancellation.",
+]
+
+CHAT_IMAGE_1410_GUIDE = [
+    "The chat accepts clipboard bitmaps through document-level Ctrl+V handling and image files dropped only onto the main chat column, avoiding conflict with the External-MCP dialog's document-level JSON drop surface.",
+    "`POST /agent/paste_image/` validates the request, enforces a 25 MB ceiling, uses Pillow to flatten transparency onto white, re-encodes to JPEG, and writes a collision-safe `image_<timestamp>.jpg` under Tlamatini's guarded Temp directory.",
+    "The browser inserts the saved absolute path at the remembered caret, including after focus moves to the page body during Alt+Tab, then renders one removable thumbnail chip per image.",
+    "Removing a chip removes both its thumbnail and its exact path from the message, so an accidental paste can be reversed before submission.",
+    "The path is the integration contract: Image-Interpreter reads local files, and `prompt.pmt` teaches Tlamatini to treat a fresh Temp image path as the user's supplied screenshot instead of asking for another attachment.",
+    "`computeFormMinHeight()` measures the chips row and a ResizeObserver watches it, preventing the new row from pushing the textarea or Send button beyond the viewport.",
+    "Implementation assets include `chat_image_paste.js`, the paste view/URL, template chip/drop-overlay nodes, `.chat-img-*` CSS, layout integration, self-knowledge/prompt guidance, and Temp-policy regression coverage.",
 ]
 
 DJANGO_PORT_GUIDE = [
@@ -1459,6 +1527,7 @@ DJANGO_PORT_GUIDE = [
     "Resolution is fail-open to 8000 for missing, unreadable, malformed, non-numeric, or out-of-range values, while an explicit CLI port such as `runserver 9100` always wins and is never double-appended.",
     "The injected source-mode value is a bare port so Django keeps its loopback host; direct Daphne/Uvicorn bypasses `manage.py`, MCP listeners `8765`/`50051` use their own settings, and TeleTlamatini keeps its own base URL.",
     "The 24-test `agent/test_django_port_config.py` suite AST-lifts the pre-Django helpers and pins path resolution, validation, fail-open behavior, CLI precedence, frozen/source wiring, and `startserver` forwarding without importing side-effectful `manage.py`.",
+    "`freeingport8000.ps1` is a separate elevated Windows repair helper that resets dynamic TCP/UDP ranges, restarts WinNAT, reports excluded ranges, and performs a loopback bind test; changing `django_port` remains the safer normal remedy, and generated docs never reproduce the script's machine-specific log path.",
 ]
 
 NMAPPER_GUIDE = [
@@ -1472,8 +1541,8 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.40.1`.",
-    "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by `idPrompt`, while the legacy probe loop remains only as an offline fallback.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.41.3`.",
+    "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
 
@@ -1521,7 +1590,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: current public tag `v1.40.1` at `4dc1d546`, the configurable-web-port commit; the earlier FlowPills companion-discovery, Video-Analyzer, Nmapper, and startup-dialog waves remain part of this release lineage.",
+    "Release identity: current public tag `v1.41.3` at `08405a67`, the prompt-catalog improvement commit; v1.41.2 Hard Cancel, v1.41.0 image ingestion, and the earlier configurable-port, FlowPills, Video-Analyzer, Nmapper, and startup-dialog waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1539,8 +1608,8 @@ VIDEO_ANALYZER_GUIDE = [
 ]
 
 PROMPT_SEARCH_AND_FLOW_GUIDE = [
-    "Prompt search now behaves like an operator tool instead of a static dropdown: substring matches, word-start matches, fuzzy scoring, and mode badges make the full seeded prompt catalog navigable.",
-    "The prompt-card rendering work was validated against the seeded catalog so one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step prompt families remain distinguishable while searching.",
+    "Prompt search now behaves like an operator tool instead of a static dropdown: category grouping, numeric/acronym/substring/word-start/subsequence matching, best-first ranking, highlighted hits, and mode badges make the deduplicated catalog navigable.",
+    "The prompt-card rendering keeps One-Shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step families distinguishable while migrations `0175`-`0176` remove redundant ACPX variants without renumbering surviving prompt ids.",
     "Generated `.flw` workflows now use a serpentine canvas layout with row capacity and alternating direction, preserving the logical Starter -> Agent -> ... -> Ender order without pushing large chains into an unreadable line.",
     "This matters for documentation because the PDF and deck must describe not only new agents, but also the operator usability improvements that make the larger system actually usable.",
 ]
@@ -1680,17 +1749,17 @@ COMMAND_WATCHDOG_GUIDE = [
 ]
 
 NEW_ASSETS_GUIDE = [
-    "The `v1.40.0` companion-discovery wave adds `agent_manifest.py`, `test_agent_manifest.py`, `docs/companion-app-discovery.md`, launch wiring in `apps.py`, registry writers in `windows_app_registration.py`/`install.py`, build-time manifest creation, preserved-agent uninstall metadata, and two FlowPills design-sprint documents.",
-    "The `v1.39.5` Unreal scaffold wave adds migrations `0173`-`0174`, Unrealer path/slot correctness changes, prompt/config guidance, and a deterministic route into the external `XaihtUnrealEngineMCP` scaffold/template for UE 5.8 plus Visual Studio 2026.",
-    "The same smoothness window hardens `acpx/runtime.py`, Nmapper, `consumers.py`, `external_mcp_manager.py`, Image-Interpreter, `mcp_agent.py`, `mcp_system_client.py`, `agent_contracts.py`, and `tools.py` around bounded waits, UTF-8 output, request isolation, partial results, and secret-safe exports.",
-    "The Nmapper wave adds `agent/agents/nmapper/`, migrations `0170`-`0172`, `test_nmapper_agent.py`, `chat_agent_nmapper`, `update_nmapper_connection`, agent contracts/Parametrizer fields, ACP connector assets, FlowCreator/FlowHypervisor catalog entries, and docs across README, Book, `agents_descriptions.md`, and `docs/claude`.",
-    "The earlier flow-security assets add background External MCP supervision in `external_mcp_manager.py`, lossless `.flw` secret redaction through `redact_flow_snapshot()` plus `/agent/redact_flow_snapshot/`, browser Save redaction in `acp-file-io.js`, route/view wiring, and an IMAP timeout in `recmailer.py`; the smoothness wave extends that contract to URI-embedded credentials.",
-    "The newest committed reliability assets include `agent/self_healing.py`, `agent/test_self_healing.py`, `Tlamatini/tests_e2e/test_self_healing_visual.py`, `Tlamatini/tests_e2e/test_create_flow_visual.py`, and coordinated changes in `mcp_agent.py`, `consumers.py`, `response_parser.py`, and the chat frontend.",
+    "The `v1.41.0` image-ingestion wave adds `chat_image_paste.js`, paste view/URL wiring, chat chip/drop-overlay template nodes, image CSS, layout observation, Temp-policy coverage, and matching README/Book/self-knowledge guidance.",
+    "The `v1.41.2` cancellation wave adds `agent/cancellation.py`, `test_cancellation.py`, `test_ask_execs_allowlist.py`, expanded self-healing/frontend tests, and coordinated changes across consumers, executor, RAG, retry, permission, settings, and chat-state surfaces.",
+    "Two browser regression harnesses under `.claude/skills/tlamatini-daily-chat-test/harness/` exercise repeated cancels, next-request recovery, model/tool-chain cancellation, Ask-Execs cancellation, and the destructive/human-contacting/network allowlist contract.",
+    "The `v1.41.3` prompt-catalog wave adds migrations `0175`-`0176`, Prompt category/hidden fields, ordered category metadata in `views.py`, and grouped, gap-tolerant, fuzzy-searchable catalog behavior in `tools_dialog.js`/`.css`.",
+    "The same prompt wave physically removes 13 duplicate ACPX rows while retaining seven portable originals and stable surviving ids; the primary endpoint and offline fallback both tolerate the resulting gap.",
+    "`freeingport8000.ps1` is the new Windows repair asset for resetting dynamic ranges, restarting WinNAT, reporting exclusions, and bind-testing 8000; its machine-specific scratch path is deliberately excluded from generated prose.",
     "The committed Discoverer PDCP assets include `access_key_wizard.py` Security Recon fields, `tools.py` default seeding, `agent_contracts.py` `.flw` redaction, `regen_secrets.py` scrubbing, and migration `0169_add_discoverer_cvemap_latest_demo_prompt.py` for the latest-CVE prompt.",
     "Discoverer hardening assets now include `discoverer.py` changes for `cvemap` -> `vulnx`, `.gitignore` Go-deny patterns, tracked `git_deny_go.py` guard/pre-commit installer, `discoverer_1000.py`, and `test_discoverer_thousand.py` validation coverage.",
     "The project inventory is rebuilt from `git ls-files` plus `git ls-files --others --exclude-standard` on every run, so any git-unignored local assets are counted while ignored runtime caches such as `Go/` remain outside the dossier.",
     "The newest frontend assets include `agent_page_chat.js`, `agent_page_ui.js`, `eslint.config.mjs`, and the Claude frontend/Multi-Turn/recent-fixes notes that document self-healing status frames and Create Flow name resolution.",
-    "The `v1.40.1` port assets span committed `manage.py`/`config.json`, the live source/startserver completion, untracked `agent/test_django_port_config.py`, version surfaces in `package.json`/`VERSIONING.md`, and operator contracts across README, Book, self-knowledge, prompt guidance, and `docs/claude`.",
+    "The `v1.40.1` port assets span committed `manage.py`/`config.json`, source/startserver integration, the committed 24-test `agent/test_django_port_config.py` suite, version surfaces in `package.json`/`VERSIONING.md`, and operator contracts across README, Book, self-knowledge, prompt guidance, and `docs/claude`.",
     "The newest agent assets are concrete: `agent/agents/zavuerer/`, migrations `0159_add_zavuerer.py` through `0164_dedup_zavuerer_setup_wizards.py`, `test_zavuerer_agent.py`, Access Keys Wizard Zavu fields, planner capability hints, wrapped-tool registration, and ACP canvas styling/connection support.",
     "The latest cleanup/assets span also includes `GEMINI.md`, `FirstFinalPlanToSpeedUp.md`, `docs/claude/recent-fixes.md`, response-parser/runtime/settings/middleware touch-ups, and removal of the stale `Tlamatini/db.sqlite3.bak-prereseat` backup from the tracked surface.",
     "The same wave preserves evidence-oriented tests and build guards such as `test_private_data_guard.py`, performance/visual checks, About-window authorship tests, and public-release verification rules that distinguish sensitive PII from valid creator names.",
@@ -1704,7 +1773,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set, and the current `v1.40.1` release state keeps runtime surfaces, the configurable web port, self-knowledge wording, companion discovery, Unreal scaffolding, firmware/External-MCP demos, ACPX skills, Zavuerer messaging, Video-Analyzer, Robotic-Loop-Training, Nmapper recon, generated `.flw` layout, and operator handbook aligned.",
+    "Those readability rules remain in force in the current documentation set, and `v1.41.3` adds category grouping, physical duplicate removal, gap-tolerant loading, and ranked fuzzy search while preserving the configurable port, companion discovery, Unreal scaffolding, firmware/External-MCP demos, ACPX skills, messaging, robotic-loop, and generated-flow context.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2349,6 +2418,15 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.41.3 categorized and deduplicated prompt catalog", styles["h2"]))
+    for item in PROMPT_CATALOG_1413_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.41.2 per-user Hard Cancel", styles["h2"]))
+    for item in HARD_CANCEL_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("v1.41.0 screenshot paste and image drop", styles["h2"]))
+    for item in CHAT_IMAGE_1410_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.40.1 configurable web port", styles["h2"]))
     for item in DJANGO_PORT_GUIDE:
@@ -3189,7 +3267,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.40.1", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.41.3", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3203,7 +3281,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.40.1", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.41.3", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3212,12 +3290,12 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.40.1 — configurable web port plus the carried v1.40 platform", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.41.3 - prompt catalog, Hard Cancel, and image ingestion", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Context", "port completion, FlowPills discovery, Unreal 5.8, and hardening", THEME["jade"])
+    slide, audit = add_slide(prs, "Current Release Context", "image paths, port recovery, handbook truth, and carried foundations", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Flow and recovery", CURRENT_RELEASE_GUIDE[6:10], THEME["jade"], "rel-c", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[10:12], THEME["amber"], "rel-d", 11)
     audit_layout(audit, len(prs.slides))
@@ -3225,6 +3303,36 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[12:14], THEME["copper"], "rel-e", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[14:], THEME["jade"], "rel-f", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Prompt Catalog Reorganized", "v1.41.3 - 13 categories and duplicate removal", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Migration contract", PROMPT_CATALOG_1413_GUIDE[:4], THEME["jade"], "prompt-1413-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Stable identity", PROMPT_CATALOG_1413_GUIDE[4:5], THEME["amber"], "prompt-1413-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Prompt Catalog Search", "grouped at rest, ranked and flattened while searching", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Search behavior", PROMPT_CATALOG_1413_GUIDE[5:7], THEME["amber"], "prompt-1413-c", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Viewport contract", PROMPT_CATALOG_1413_GUIDE[7:], THEME["jade"], "prompt-1413-d", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Hard Cancel Run Latch", "v1.41.2 - cancelled runs stay cancelled", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Per-user epoch", HARD_CANCEL_GUIDE[:4], THEME["copper"], "hard-cancel-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Evidence preservation", HARD_CANCEL_GUIDE[4:5], THEME["jade"], "hard-cancel-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Hard Cancel Boundaries", "approval, recovery, frontend, and regression coverage", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "No resurrection", HARD_CANCEL_GUIDE[5:7], THEME["jade"], "hard-cancel-c", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Coverage", HARD_CANCEL_GUIDE[7:], THEME["amber"], "hard-cancel-d", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Screenshot To Chat", "v1.41.0 - paste or drop an image path into the prompt", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Ingestion path", CHAT_IMAGE_1410_GUIDE[:4], THEME["amber"], "image-chat-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reversible input", CHAT_IMAGE_1410_GUIDE[4:5], THEME["jade"], "image-chat-b", 12)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Image Ingestion Boundaries", "vision handoff, layout safety, and implementation assets", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Vision and layout", CHAT_IMAGE_1410_GUIDE[5:6], THEME["copper"], "image-chat-c", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Concrete assets", CHAT_IMAGE_1410_GUIDE[6:], THEME["jade"], "image-chat-d", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Configurable Web Port", "v1.40.1 — escape reserved port 8000 without rebuilding", THEME["amber"])
@@ -3677,32 +3785,48 @@ def build_ppt(context: dict) -> None:
 
     baseline = context["visual_doc_baseline"]
     if baseline is not None:
+        visual_highlights = context["visual_doc_highlights"]
         slide, audit = add_slide(prs, "Since Last Dossier Refresh", "all important changes since the last committed PDF/PPTX update", THEME["copper"])
         add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Baseline", [
             f"{baseline.short_hash} on {iso_date(baseline.committed_at)}",
             baseline.subject,
             f"Commits since then: {len(context['visual_doc_commits'])}",
         ], THEME["copper"], "since-a", 13)
-        add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", context["visual_doc_highlights"], THEME["jade"], "since-b", 13)
+        add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Key changes", visual_highlights[:3], THEME["jade"], "since-b", 10)
         audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "through the v1.40.1 release and live completion pass", THEME["jade"])
+        remaining_highlights = visual_highlights[3:]
+        for offset in range(0, len(remaining_highlights), 6):
+            group = remaining_highlights[offset:offset + 6]
+            slide, audit = add_slide(
+                prs,
+                "Dossier Delta Continued",
+                f"verified implementation changes {offset + 4}-{offset + 3 + len(group)}",
+                THEME["jade"],
+            )
+            if len(group) == 1:
+                add_panel(slide, audit, 0.78, 1.6, 11.72, 4.95, "Additional verified change", group, THEME["jade"], f"since-more-{offset}", 12)
+            else:
+                split_at = (len(group) + 1) // 2
+                add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Runtime and UI", group[:split_at], THEME["jade"], f"since-more-a-{offset}", 10)
+                add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
+            audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Recent Platform Additions", "through tagged v1.41.3", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
+        "Prompt catalog (v1.41.3): 13 categories, 13 duplicate ACPX rows removed, stable surviving ids, gap-tolerant loading, and ranked fuzzy search.",
+        "Hard Cancel (v1.41.2): per-user run epochs stop executor/retry/self-healing resurrection while preserving completed tool evidence and the next request.",
+        "Screenshot to chat (v1.41.0): paste/drop to guarded Temp, caret-path insertion, removable chips, Image-Interpreter handoff, and layout-aware observation.",
         "Configurable web port (v1.40.1): `django_port`, fail-open validation, CLI precedence, all `manage.py` launch paths, and 24 focused tests.",
-        "FlowPills discovery (v1.40.0): HKCU lookup plus a hashed agent manifest, launch/install/build publication, and preserved-agent metadata.",
-        "Unreal scaffold (v1.39.5): two prompt markers create a ready-to-build UE 5.8 C++ project with UnrealMCP and VS 2026 guidance.",
-        "Runtime hardening: bounded I/O, partial Nmapper results, UTF-8 subprocess output, request-isolated orphan evidence, and URI-safe `.flw` redaction.",
-        "Image-Interpreter: triple-model still-image analysis with independent interpreters and a merger model.",
-        "Prompt search and generated `.flw` files: fuzzy prompt cards plus serpentine successful-only flow downloads.",
-        "Media/voice and firmware lanes remain active: Talker, Whisperer, Camcorder, Recorder, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, and Unrealer.",
+        "FlowPills discovery (v1.40.0) and the Unreal 5.8 scaffold remain carried companion and engine-development foundations.",
+        "No new workflow agent type landed in this delta; live agent/tool totals are re-derived from source rather than inferred from release numbers.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: local and remote both point to tagged `v1.40.1` at `4dc1d546`; the source-mode completion and handbook/version alignment remain live worktree changes.",
-        "Create Flow now follows successful tool calls instead of the removed `answer_success` classifier.",
-        "Frontend recovery controls keep live self-healing status frames in Cancel/busy state until the true final answer.",
+        "Resolved identity: local and remote both point to tagged `v1.41.3` at `08405a67`; the README badge and some Book release prose still stop at v1.40.1, so Git/source are authoritative.",
+        "The new cancellation latch integrates with Ask Execs, status emitters, late answers, and frontend state while remaining isolated per user.",
+        "The post-v1.40.1 Windows repair helper can free port 8000, but normal operators should prefer the configurable `django_port` path.",
         "Trust baseline: private-data discipline, public-release checks, creator stamping, and the Agent-directory responsibility disclaimer remain documented.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",
-        "Delegation baseline: ACPX, Skills, External MCPs, MCP Doctor, `tlamatini_acpx.py`, and `tlamatini_mcp_server.py` remain first-class surfaces.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
     ], THEME["jade"], "monday-b", 10)
     audit_layout(audit, len(prs.slides))
