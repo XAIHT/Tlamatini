@@ -90,6 +90,62 @@ _SUPERVISOR_TOOL_NAMES = frozenset({
 })
 
 
+def _format_mcp_tool_result(result: Any, max_chars: int = 24000) -> str:
+    """Turn an MCP ``tools/call`` result into text for the LLM.
+
+    CRITICALLY, this surfaces the ``structuredContent`` field. Modern MCP servers
+    (octocode, and any server using the MCP structured-output contract) return their
+    real data in ``structuredContent`` and put only a SHORT POINTER in the
+    human-readable ``content`` blocks — e.g. octocode's
+    ``"structuredContent available · results=1. Read structuredContent for full data."``.
+    The old code read ONLY ``content``, so it handed the LLM the pointer but NOT the
+    data; the model then re-called the same tool over and over until the
+    repetition-breaker force-stopped the run (Angela hit this live on 2026-07-15 with
+    ``ext__octocode__ghSearchRepos``).
+
+    So: extract the text blocks AND, when present, append the ``structuredContent``
+    (unwrapping a sole ``{"result": ...}`` envelope, the same pattern
+    ``stm32er.py`` already uses), JSON-serialized and size-capped so a huge payload
+    can't blow the model's context window.
+    """
+    if not isinstance(result, dict):
+        return str(result)
+
+    parts: List[str] = []
+    for block in result.get("content", []) or []:
+        if isinstance(block, dict):
+            if block.get("type") == "text":
+                parts.append(block.get("text", ""))
+            else:
+                parts.append(json.dumps(block, ensure_ascii=False))
+        elif block:
+            parts.append(str(block))
+    text = "\n".join(p for p in parts if p)
+
+    sc = result.get("structuredContent")
+    if isinstance(sc, dict) and set(sc.keys()) == {"result"}:
+        sc = sc["result"]   # unwrap the common single-"result" envelope
+    sc_json = ""
+    if sc not in (None, {}, [], ""):
+        try:
+            sc_json = json.dumps(sc, ensure_ascii=False)
+        except Exception:  # noqa: BLE001 — never let a serialization quirk break a tool call
+            sc_json = str(sc)
+        if len(sc_json) > max_chars:
+            sc_json = sc_json[:max_chars] + f"… [truncated — {len(sc_json)} chars of structuredContent total]"
+
+    if result.get("isError"):
+        return "Error: " + (text or sc_json or "tool reported an error")
+
+    pieces: List[str] = []
+    if text:
+        pieces.append(text)
+    if sc_json:
+        pieces.append("structuredContent:\n" + sc_json)
+    combined = "\n\n".join(pieces)
+    return combined or json.dumps(result, ensure_ascii=False)
+
+
 def _connect_timeout() -> float:
     """Timeout for the initialize + tools/list handshake. Generous by default —
     Docker / cold-start / npx MCP servers can take far longer than a few seconds
@@ -656,17 +712,8 @@ class _StdioMcpClient:
         result = self._request("tools/call",
                                {"name": name, "arguments": arguments or {}},
                                timeout=_CALL_TIMEOUT)
-        parts = []
-        for block in result.get("content", []) or []:
-            if isinstance(block, dict):
-                if block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-                else:
-                    parts.append(json.dumps(block, ensure_ascii=False))
-        text = "\n".join(p for p in parts if p)
-        if result.get("isError"):
-            return "Error: " + (text or "tool reported an error")
-        return text or json.dumps(result, ensure_ascii=False)
+        # Surface content AND structuredContent — see _format_mcp_tool_result.
+        return _format_mcp_tool_result(result)
 
     def refresh_tools(self) -> int:
         """Re-run tools/list. A server may expose tools only AFTER its backend
@@ -817,17 +864,8 @@ class _NetworkMcpClientBase:
         result = self._rpc("tools/call",
                             {"name": name, "arguments": arguments or {}},
                             timeout=_CALL_TIMEOUT)
-        parts: List[str] = []
-        for block in result.get("content", []) or []:
-            if isinstance(block, dict):
-                if block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-                else:
-                    parts.append(json.dumps(block, ensure_ascii=False))
-        text = "\n".join(p for p in parts if p)
-        if result.get("isError"):
-            return "Error: " + (text or "tool reported an error")
-        return text or json.dumps(result, ensure_ascii=False)
+        # Surface content AND structuredContent — see _format_mcp_tool_result.
+        return _format_mcp_tool_result(result)
 
     def refresh_tools(self) -> int:
         if not self.alive():

@@ -422,3 +422,60 @@ def _add_static_test(idx: int, path: str, required: tuple[str, ...], forbidden: 
 
 for _idx, (_path, _required, _forbidden) in enumerate(STATIC_EXPECTATIONS, 1):
     _add_static_test(_idx, _path, _required, _forbidden)
+
+
+class ExternalMcpToolResultFormatTests(SimpleTestCase):
+    """`_format_mcp_tool_result` must surface `structuredContent` (Angela, 2026-07-15).
+
+    THE BUG: octocode (and any structured-output MCP server) returns its real data
+    in `structuredContent` and puts only a short POINTER in the text `content`.
+    The old reader took only the text pointer, so the LLM never got the data and
+    re-called the tool until the repetition-breaker force-stopped the run. These
+    tests pin that the formatter now includes the structured data.
+    """
+
+    def test_octocode_pointer_plus_structuredContent_is_surfaced(self):
+        # Exactly the shape octocode returned in Angela's live run.
+        result = {
+            "content": [{"type": "text",
+                         "text": "structuredContent available · results=1. "
+                                 "Read structuredContent for full data."}],
+            "structuredContent": {"repos": [
+                {"owner_repo": "openbci/OpenBCI_GUI", "stars": 4200, "description": "BCI GUI"},
+            ]},
+        }
+        out = em._format_mcp_tool_result(result)
+        # The ACTUAL data must be present now (this was missing before the fix).
+        self.assertIn("OpenBCI_GUI", out)
+        self.assertIn("4200", out)
+        self.assertIn("structuredContent", out)
+
+    def test_plain_text_result_unchanged(self):
+        result = {"content": [{"type": "text", "text": "just a plain answer"}]}
+        self.assertEqual(em._format_mcp_tool_result(result), "just a plain answer")
+
+    def test_single_result_envelope_is_unwrapped(self):
+        result = {"content": [], "structuredContent": {"result": {"ok": True, "n": 3}}}
+        out = em._format_mcp_tool_result(result)
+        self.assertIn('"ok": true', out)
+        self.assertIn('"n": 3', out)
+        self.assertNotIn('"result"', out)  # the sole {"result": ...} wrapper is stripped
+
+    def test_isError_still_reported_as_error(self):
+        result = {"isError": True, "content": [{"type": "text", "text": "boom"}]}
+        self.assertEqual(em._format_mcp_tool_result(result), "Error: boom")
+
+    def test_error_with_only_structuredContent_still_surfaces_it(self):
+        result = {"isError": True, "content": [], "structuredContent": {"reason": "rate_limited"}}
+        out = em._format_mcp_tool_result(result)
+        self.assertTrue(out.startswith("Error:"))
+        self.assertIn("rate_limited", out)
+
+    def test_huge_structuredContent_is_capped(self):
+        big = {"blob": "x" * 100000}
+        out = em._format_mcp_tool_result({"content": [], "structuredContent": big}, max_chars=5000)
+        self.assertIn("truncated", out)
+        self.assertLess(len(out), 6000)
+
+    def test_non_dict_result_is_stringified_safely(self):
+        self.assertEqual(em._format_mcp_tool_result("raw string"), "raw string")
