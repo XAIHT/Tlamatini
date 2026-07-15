@@ -189,11 +189,13 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 
 Embeddings and chat run on your local [Ollama](https://ollama.com) install. Cloud models (Claude API, Ollama Pro/Max) and delegation to cloud CLIs are **opt-in, per request, never the default.** Your code and firmware never leave the box unless you route them out yourself.
 
-## ⚠️ Agent-directory disclaimer: user jurisdiction and responsibility
+## ⚠️ CLEAR DISCLAIMER — USER CONTROL, JURISDICTION, AND RESPONSIBILITY FOR AGENTS
 
-The workflow agents in `Tlamatini/agent/agents/` are plain-Python programs on purpose: they are readable, editable, auditable operating code under the user's control. When you enable, configure, modify, chain, or run those agents, their actions fall under **your jurisdiction**. The prompts, config files, secrets, credentials, files, folders, network targets, browsers, shells, APIs, external MCP servers, hardware devices, and downstream systems they touch are selected and authorized by you.
+Every agent in `Tlamatini/agent/agents/` is intentionally provided as a **plain-Python program** so its operating code can be read, audited, edited, restricted, or disabled by the user. This transparency is a user-control mechanism, **not a warranty that an agent is secure or suitable for a particular environment**. The agents do not have independent authority or jurisdiction: the user alone decides whether, where, how, and with which permissions they run.
 
-Tlamatini provides orchestration, documentation, and guardrails, but it cannot guarantee that every user-edited agent, workflow, external service, credential scope, target machine, or local environment is safe. **Any security breach, data exposure, unauthorized action, credential leak, unsafe automation, policy violation, device damage, or other harm caused by running agents or agent workflows is the responsibility of the user who runs them.** Audit agents before use, restrict credentials and permissions, and operate them only on systems where you have explicit authorization.
+When you enable, configure, modify, chain, or execute an agent, **that agent and its execution are under your control and your jurisdiction**. You are solely responsible for reviewing its code and configuration; protecting and limiting its secrets, credentials, and permissions; selecting and authorizing every file, folder, network target, browser, shell, API, external MCP server, machine, hardware device, and downstream system it can access; supervising its output; and complying with every law, policy, license, contract, and authorization that applies to your use.
+
+**BY RUNNING AN AGENT, YOU ACCEPT RESPONSIBILITY FOR ITS ACTIONS AND CONSEQUENCES. TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, ANY SECURITY BREACH, DATA EXPOSURE OR LOSS, UNAUTHORIZED ACTION, CREDENTIAL LEAK, UNSAFE AUTOMATION, POLICY OR LEGAL VIOLATION, SYSTEM COMPROMISE, DEVICE DAMAGE, FINANCIAL LOSS, OR OTHER HARM ARISING FROM YOUR USE, CONFIGURATION, MODIFICATION, OR EXECUTION OF AN AGENT OR AGENT WORKFLOW IS THE RESPONSIBILITY OF THE USER WHO RUNS IT.** Tlamatini's orchestration, documentation, examples, and guardrails do not authorize access to third-party systems and cannot replace the user's own security review, permission controls, monitoring, or legal compliance.
 
 ---
 
