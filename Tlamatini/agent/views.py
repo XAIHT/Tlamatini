@@ -240,17 +240,68 @@ def load_prompt_view(request, prompt_name):
     except Prompt.DoesNotExist:
         return HttpResponse("Prompt not found in database", status=404)
 
+# Catalog-of-Prompts category grouping (Angela, 2026-07-14). Display order of the
+# sections in the #prompts-catalog modal, beginner -> advanced -> specialized. The
+# trailing "other" bucket catches any prompt whose `category` is empty/unknown (e.g.
+# a brand-new prompt added by a later migration before it is tagged), so nothing is
+# ever silently dropped from the catalog.
+PROMPT_CATEGORY_ORDER = [
+    ('getting_started', 'Getting Started'),
+    ('files_search', 'Files & Search'),
+    ('run_execute', 'Run & Execute'),
+    ('code_gen', 'Code & Project Generation'),
+    ('images', 'Images & Vision'),
+    ('agents_flows', 'Agents & Flows'),
+    ('acpx_skills', 'ACPX, Skills & MCPs'),
+    ('desktop_ui', 'Desktop Automation'),
+    ('games_3d', 'Games & 3D'),
+    ('firmware_iot', 'Firmware & IoT'),
+    ('security_recon', 'Security & Recon'),
+    ('messaging', 'Messaging & Contacts'),
+    ('media_voice', 'Media & Voice'),
+    ('other', 'More'),
+]
+_PROMPT_CATEGORY_RANK = {key: i for i, (key, _label) in enumerate(PROMPT_CATEGORY_ORDER)}
+_PROMPT_CATEGORY_LABEL = dict(PROMPT_CATEGORY_ORDER)
+
+
 def list_prompts_view(request):
-    prompts = Prompt.objects.order_by('idPrompt').values('idPrompt', 'promptName', 'promptContent')
+    # HIDDEN prompts (the deduplicated ACPX demos) are dropped from the catalog.
+    # Ordered by (category display-rank, idPrompt) so the frontend can render the
+    # cards already grouped, basic->advanced within each section. idPrompt is
+    # NEVER renumbered — a hidden row keeps its id, so the offline fallback probe
+    # in tools_dialog.js still sees a contiguous 1..N.
+    prompts = list(
+        Prompt.objects.filter(hidden=False)
+        .values('idPrompt', 'promptName', 'promptContent', 'category')
+    )
+
+    def _cat(p):
+        c = (p.get('category') or '').strip()
+        return c if c in _PROMPT_CATEGORY_RANK else 'other'
+
+    prompts.sort(key=lambda p: (_PROMPT_CATEGORY_RANK[_cat(p)], p['idPrompt']))
+
+    present = []
+    seen = set()
+    for p in prompts:
+        c = _cat(p)
+        if c not in seen:
+            seen.add(c)
+            present.append({'key': c, 'label': _PROMPT_CATEGORY_LABEL[c]})
+
     return JsonResponse({
         'prompts': [
             {
                 'index': prompt['idPrompt'],
                 'name': prompt['promptName'],
                 'content': prompt['promptContent'],
+                'category': _cat(prompt),
             }
             for prompt in prompts
-        ]
+        ],
+        # Sections in display order — only those that actually have visible prompts.
+        'categories': present,
     })
 
 def load_omissions_view(request, omission_name):

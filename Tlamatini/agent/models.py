@@ -43,6 +43,12 @@ class Prompt(models.Model):
     idPrompt = models.IntegerField(primary_key=True)
     promptName = models.CharField(max_length=200)
     promptContent = models.TextField()
+    # Catalog grouping (2026-07-14). `category` groups the card into a section of
+    # the #prompts-catalog modal; `hidden` drops it from the catalog WITHOUT
+    # deleting the row (keeps idPrompt contiguous so the offline fallback probe
+    # never breaks). See migration 0175 and docs/claude/multi-turn.md.
+    category = models.CharField(max_length=64, blank=True, default='')
+    hidden = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.promptName}'

@@ -190,6 +190,54 @@
     border-color: rgba(157,59,255,0.55);
 }
 
+/* ── Category section headers (Angela, 2026-07-14 grouped catalog) ──────────
+   The Catalog of Prompts is grouped into sections; each header is STICKY so the
+   category name stays on screen while you scroll through its cards. Hidden during
+   an active search (the catalog flattens to rank matches best-first). */
+.prompt-category-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 16px 0 9px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(109, 40, 217, 0.94) 0%, rgba(37, 99, 235, 0.94) 100%);
+    box-shadow: 0 2px 9px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.prompt-category-header:first-child {
+    margin-top: 2px;
+}
+
+.prompt-category-header-hidden {
+    display: none !important;
+}
+
+.prompt-category-label {
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.prompt-category-count {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.30);
+    padding: 2px 8px;
+    border-radius: 999px;
+    min-width: 22px;
+    text-align: center;
+}
+
 .prompt-card-header {
     display: flex;
     align-items: center;

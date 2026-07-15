@@ -399,8 +399,70 @@ $(function () {
             content: (content || '').toLowerCase()
         };
 
-        const toolsBodyElement = document.getElementById('tools-body');
-        toolsBodyElement.appendChild(card);
+        return card;
+    }
+
+    // The catalog is rendered GROUPED into category sections (Angela, 2026-07-14).
+    // catalogGroups holds the section headers + their cards so search can flatten
+    // during a query and restoreGrouped() can rebuild the sections on clear.
+    let catalogGroups = [];
+
+    function buildCatalog(prompts, categories) {
+        const toolsBody = document.getElementById('tools-body');
+        toolsBody.innerHTML = '';
+        catalogGroups = [];
+        const byCat = {};
+        (prompts || []).forEach((p, idx) => {
+            const card = renderPromptCard(
+                p.name || ('prompt-' + String(idx + 1)),
+                Number(p.index) || idx + 1,
+                p.content || ''
+            );
+            const key = p.category || 'other';
+            card._category = key;
+            (byCat[key] = byCat[key] || []).push(card);
+        });
+        // Backend order (already basic->advanced within each section). If the
+        // backend gave no categories, fall back to whatever keys we saw.
+        const order = (categories && categories.length)
+            ? categories
+            : Object.keys(byCat).map((k) => ({ key: k, label: k }));
+        order.forEach((cat) => {
+            const cards = byCat[cat.key] || [];
+            if (!cards.length) return;
+            const header = document.createElement('div');
+            header.className = 'prompt-category-header';
+            header.dataset.category = cat.key;
+            const label = document.createElement('span');
+            label.className = 'prompt-category-label';
+            label.textContent = cat.label;
+            const count = document.createElement('span');
+            count.className = 'prompt-category-count';
+            count.textContent = String(cards.length);
+            header.appendChild(label);
+            header.appendChild(count);
+            toolsBody.appendChild(header);
+            cards.forEach((c) => toolsBody.appendChild(c));
+            catalogGroups.push({ key: cat.key, label: cat.label, header: header, cards: cards });
+        });
+    }
+
+    // Rebuild the grouped section layout (used on initial load and when a search
+    // is cleared). Restores every card to its section, unhidden and unhighlighted.
+    function restoreGrouped() {
+        const toolsBody = document.getElementById('tools-body');
+        const empty = toolsBody.querySelector('.prompt-search-empty');
+        if (empty) empty.remove();
+        catalogGroups.forEach((g) => {
+            g.header.classList.remove('prompt-category-header-hidden');
+            toolsBody.appendChild(g.header);
+            g.cards.forEach((c) => {
+                c.classList.remove('prompt-card-hidden', 'prompt-card-top');
+                if (c._titleEl) c._titleEl.textContent = c._titleText;
+                if (c._previewEl) c._previewEl.textContent = c._previewText;
+                toolsBody.appendChild(c);
+            });
+        });
     }
 
     async function loadPrompt(promptName, index) {
@@ -408,23 +470,26 @@ $(function () {
             const response = await fetch(`/agent/load_prompt/${promptName}/`);
 
             if (response.status === 404) {
-                return true;
+                return 'missing';
             }
             if (!response.ok) {
                 console.error('HTTP Error: ' + response.status + ' - ' + response.statusText);
-                return true;
+                return 'error';
             }
 
             const content = await response.text();
             if (content === 'Prompt not found in database') {
-                return true;
+                return 'missing';
             }
 
-            renderPromptCard(promptName, index, content);
-            return false;
+            // Offline fallback path: no category info, so append the card flat
+            // (ungrouped). This only runs when /agent/list_prompts/ is unreachable.
+            const card = renderPromptCard(promptName, index, content);
+            if (card) document.getElementById('tools-body').appendChild(card);
+            return 'ok';
         } catch (error) {
             console.error('Error loading prompt:', error);
-            return true;
+            return 'error';
         }
     }
 
@@ -436,20 +501,26 @@ $(function () {
             const response = await fetch('/agent/list_prompts/', { credentials: 'same-origin' });
             if (response.ok) {
                 const payload = await response.json();
-                (payload.prompts || []).forEach((prompt, idx) => {
-                    renderPromptCard(
-                        prompt.name || ('prompt-' + String(idx + 1)),
-                        Number(prompt.index) || idx + 1,
-                        prompt.content || ''
-                    );
-                });
+                buildCatalog(payload.prompts || [], payload.categories || []);
             } else {
+                // Gap-tolerant probe: a deleted id (e.g. the removed duplicate
+                // ACPX demos 40-52) returns 'missing' — SKIP it and keep going,
+                // but stop after a long run of misses (clearly past the last
+                // prompt) or on a real 'error'. Only runs when list_prompts fails.
+                let consecutiveMisses = 0;
                 for (let i = 1; i <= MAX_PROMPTS; i++) {
-                    const promptNameIterator = "prompt-" + i.toString();
-                    const errorDetected = await loadPrompt(promptNameIterator, i);
-                    if (errorDetected === true) {
+                    const status = await loadPrompt("prompt-" + i.toString(), i);
+                    if (status === 'error') {
                         break;
                     }
+                    if (status === 'missing') {
+                        consecutiveMisses += 1;
+                        if (consecutiveMisses >= 40) {
+                            break;
+                        }
+                        continue;
+                    }
+                    consecutiveMisses = 0;
                 }
             }
         } catch (error) {
@@ -481,16 +552,9 @@ $(function () {
         if (priorEmpty) priorEmpty.remove();
         cards.forEach((card) => card.classList.remove('prompt-card-top'));
 
-        // Empty query → restore the original order, show everything, no marks.
+        // Empty query → rebuild the grouped section layout, show everything.
         if (!query) {
-            cards
-                .sort((a, b) => a._promptIndex - b._promptIndex)
-                .forEach((card) => {
-                    card.classList.remove('prompt-card-hidden');
-                    if (card._titleEl) card._titleEl.textContent = card._titleText;
-                    if (card._previewEl) card._previewEl.textContent = card._previewText;
-                    toolsBodyElement.appendChild(card);
-                });
+            restoreGrouped();
             if (searchClear) searchClear.classList.remove('is-visible');
             if (searchCount) {
                 searchCount.classList.remove('is-zero');
@@ -501,6 +565,9 @@ $(function () {
         }
 
         if (searchClear) searchClear.classList.add('is-visible');
+        // A search FLATTENS the catalog: hide the section headers so matches from
+        // any category can rank to the top without their headers getting in the way.
+        catalogGroups.forEach((g) => g.header.classList.add('prompt-category-header-hidden'));
 
         const matched = [];
         cards.forEach((card) => {

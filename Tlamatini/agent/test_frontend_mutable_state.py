@@ -193,24 +193,73 @@ class FrontendMutableStateTests(unittest.TestCase):
 
 
 class PromptCatalogEndpointTests(TestCase):
-    def test_list_prompts_returns_ordered_catalog_without_404_probe(self):
+    def test_list_prompts_groups_by_category_hides_dups_and_stays_contiguous(self):
+        """Catalog grouping + dedup (Angela, 2026-07-14).
+
+        The endpoint must: drop `hidden` prompts, tag each with its `category`,
+        order by (category display-rank, idPrompt), and return the ordered
+        `categories` sections. Ids are never renumbered.
+        """
         user = get_user_model().objects.create_user(username="catalog-test", password="pw")
         Prompt.objects.all().delete()
-        Prompt.objects.create(idPrompt=2, promptName="prompt-2", promptContent="second")
-        Prompt.objects.create(idPrompt=1, promptName="prompt-1", promptContent="first")
+        # Out of id order, mixed categories, one hidden, one untagged (-> "More").
+        Prompt.objects.create(idPrompt=3, promptName="prompt-3", promptContent="msg one",
+                              category="messaging", hidden=False)
+        Prompt.objects.create(idPrompt=1, promptName="prompt-1", promptContent="basic one",
+                              category="getting_started", hidden=False)
+        Prompt.objects.create(idPrompt=2, promptName="prompt-2", promptContent="basic two",
+                              category="getting_started", hidden=False)
+        Prompt.objects.create(idPrompt=4, promptName="prompt-4", promptContent="a duplicate",
+                              category="acpx_skills", hidden=True)  # must NOT appear
+        Prompt.objects.create(idPrompt=5, promptName="prompt-5", promptContent="untagged",
+                              category="", hidden=False)  # -> "More" bucket, last
 
         self.client.force_login(user)
         response = self.client.get(reverse("list_prompts"))
-
         self.assertEqual(response.status_code, 200)
         payload = response.json()
+
+        # Hidden prompt (id 4) is gone; the rest are grouped: Getting Started
+        # (1,2) -> Messaging (3) -> More (5).
         self.assertEqual(
-            payload["prompts"],
+            [(p["index"], p["category"]) for p in payload["prompts"]],
+            [(1, "getting_started"), (2, "getting_started"), (3, "messaging"), (5, "other")],
+        )
+        # Every prompt still carries index/name/content (shape kept additive).
+        self.assertEqual(payload["prompts"][0]["name"], "prompt-1")
+        self.assertEqual(payload["prompts"][0]["content"], "basic one")
+        # The sections come back in display order with labels.
+        self.assertEqual(
+            payload["categories"],
             [
-                {"index": 1, "name": "prompt-1", "content": "first"},
-                {"index": 2, "name": "prompt-2", "content": "second"},
+                {"key": "getting_started", "label": "Getting Started"},
+                {"key": "messaging", "label": "Messaging & Contacts"},
+                {"key": "other", "label": "More"},
             ],
         )
+
+    def test_seeded_catalog_is_deduped_and_fully_tagged(self):
+        """Against the REAL seeded catalog (migrations 0002..0176): the 13 duplicate
+        ACPX demos (ids 40-52) are PHYSICALLY DELETED (Angela: "get rid completely
+        of the duplicates"), every remaining prompt is tagged, and the surrounding
+        ids are untouched. The gap at 40-52 is intentional — ids are never
+        renumbered and the offline fallback probe is gap-tolerant."""
+        all_ids = set(Prompt.objects.values_list("idPrompt", flat=True))
+        if not all_ids:
+            self.skipTest("no seeded prompts in this test DB")
+        # The 13 duplicates are GONE — not hidden, deleted.
+        self.assertEqual(
+            [i for i in range(40, 53) if i in all_ids], [],
+            "duplicate ACPX prompts 40-52 must be deleted from the DB",
+        )
+        self.assertEqual(Prompt.objects.filter(hidden=True).count(), 0,
+                         "no hidden rows should remain — the dups were deleted, not hidden")
+        # We deleted the MIDDLE, not the ends: 39 and 53 (and the kept 33-39) survive.
+        for kept in (33, 34, 35, 36, 37, 38, 39, 53, 106):
+            self.assertIn(kept, all_ids, f"prompt {kept} must NOT have been deleted")
+        # Every remaining prompt has a category (nothing lands in a silent bucket).
+        untagged = list(Prompt.objects.filter(category="").values_list("idPrompt", flat=True))
+        self.assertEqual(untagged, [], f"prompts missing a category: {untagged}")
 
 
 if __name__ == "__main__":
