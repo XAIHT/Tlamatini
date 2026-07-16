@@ -2099,6 +2099,45 @@ body.resizing-vertical {
     border-color: #c62828;
 }
 
+/* ── Double-click chip preview — covers HALF the screen AREA
+      (70.7vw × 70.7vh; 0.707² ≈ 0.50), centered; reuses the
+      About→Version overlay + close-button styling. ─────────────────── */
+.chat-img-chip {
+    user-select: none;
+}
+
+.chat-img-chip-thumb,
+.chat-img-chip-meta {
+    cursor: zoom-in;
+}
+
+.about-window.chat-img-preview-window {
+    width: 70.7vw;
+    height: 70.7vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-img-preview-full {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    object-fit: contain;
+    background: #000000;
+}
+
+.chat-img-preview-name {
+    flex: 0 0 auto;
+    padding: 8px 44px 10px 16px;
+    color: #e0e0e0;
+    font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 #chat-drop-overlay {
     display: none;
     position: absolute;

@@ -98,6 +98,82 @@
 
     /* ── thumbnail chips ────────────────────────────────────────────── */
 
+    /* ── double-click preview (About-dialog style, half the screen) ──── */
+
+    // Built lazily on the first double-click; reused for every image after.
+    let previewOverlay = null;
+    let previewImg = null;
+    let previewCaption = null;
+
+    function ensurePreviewOverlay() {
+        if (previewOverlay) return previewOverlay;
+
+        previewOverlay = document.createElement('div');
+        previewOverlay.id = 'chat-img-preview-overlay';
+        // Same dim backdrop / centering / z-index as the About→Version dialog.
+        previewOverlay.className = 'about-overlay';
+        previewOverlay.style.display = 'none';
+        previewOverlay.addEventListener('click', closeImagePreview);
+
+        const win = document.createElement('div');
+        win.className = 'about-window chat-img-preview-window';
+        win.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'about-close-btn';
+        close.title = 'Close preview';
+        close.innerHTML = '&times;';
+        close.addEventListener('click', closeImagePreview);
+
+        previewImg = document.createElement('img');
+        previewImg.className = 'chat-img-preview-full';
+        previewImg.alt = 'image preview';
+
+        previewCaption = document.createElement('div');
+        previewCaption.className = 'chat-img-preview-name';
+
+        win.appendChild(close);
+        win.appendChild(previewImg);
+        win.appendChild(previewCaption);
+        previewOverlay.appendChild(win);
+        document.body.appendChild(previewOverlay);
+
+        // Esc closes, exactly like the About dialog.
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && previewOverlay.style.display !== 'none') {
+                closeImagePreview();
+            }
+        });
+        return previewOverlay;
+    }
+
+    function openImagePreview(objectUrl, info) {
+        const overlay = ensurePreviewOverlay();
+        previewImg.src = objectUrl;
+        previewCaption.textContent = info.filename || info.path || '';
+        previewCaption.title = info.path || '';
+        overlay.style.display = 'flex';
+    }
+
+    function closeImagePreview(event) {
+        if (event && event.preventDefault) event.preventDefault();
+        if (previewOverlay) previewOverlay.style.display = 'none';
+        // The blob URL belongs to the chip — it is revoked when the chip goes.
+    }
+
+    // A chip being removed revokes its blob URL; if the preview is showing
+    // that very image, close it first so it never renders a dead URL.
+    function closePreviewIfShowing(objectUrl) {
+        if (!previewOverlay || !previewImg) return;
+        if (previewOverlay.style.display === 'none') return;
+        if (previewImg.src !== objectUrl) return;
+        closeImagePreview();
+        previewImg.removeAttribute('src');
+    }
+
     function syncChipsVisibility() {
         const host = chipsHost();
         if (!host) return;
@@ -111,6 +187,16 @@
         const chip = document.createElement('div');
         chip.className = 'chat-img-chip';
         chip.title = info.path;
+        // Remembered so clearStaleChips() can match this chip against the
+        // draft text after the prompt is sent.
+        chip.dataset.path = info.path;
+        // Double-click anywhere on the chip → half-screen centered preview
+        // (About-dialog style). The × button removes the chip on its FIRST
+        // click, so it can never receive a double-click.
+        chip.addEventListener('dblclick', function (event) {
+            event.preventDefault();
+            openImagePreview(objectUrl, info);
+        });
 
         const thumb = document.createElement('img');
         thumb.className = 'chat-img-chip-thumb';
@@ -138,6 +224,7 @@
         remove.title = 'Remove this image and its path from the message';
         remove.textContent = '×';
         remove.addEventListener('click', function () {
+            closePreviewIfShowing(objectUrl);
             removePathFromInput(info.path);
             try {
                 URL.revokeObjectURL(objectUrl);
@@ -167,6 +254,34 @@
             chip.remove();
             syncChipsVisibility();
         }, 6000);
+    }
+
+    // Drop every chip whose path is no longer in the chat box. Called one
+    // tick after the form's submit handler runs: a SUCCESSFUL send empties
+    // the textarea (agent_page_init.js), so the previews are stale and go
+    // away; a Cancel-confirm or a failed send leaves the path in the draft
+    // and the chip correctly stays.
+    function clearStaleChips() {
+        const host = chipsHost();
+        if (!host) return;
+        const input = chatInput();
+        const value = input ? input.value : '';
+        host.querySelectorAll('.chat-img-chip').forEach(function (chip) {
+            const path = (chip.dataset && chip.dataset.path) ? chip.dataset.path : '';
+            if (!path) return; // error chips self-expire on their own timer
+            if (value.indexOf(path) !== -1) return; // still referenced — keep
+            const thumb = chip.querySelector('.chat-img-chip-thumb');
+            if (thumb && thumb.src) {
+                closePreviewIfShowing(thumb.src);
+                try {
+                    URL.revokeObjectURL(thumb.src);
+                } catch (e) {
+                    /* already revoked — harmless */
+                }
+            }
+            chip.remove();
+        });
+        syncChipsVisibility();
     }
 
     /* ── upload ─────────────────────────────────────────────────────── */
@@ -253,6 +368,19 @@
             event.preventDefault();
             images.forEach(uploadImage);
         });
+
+        // Once the prompt is SENT the previews are stale — clear them. Both
+        // send paths funnel through #chat-form's submit (the Send button
+        // natively; Enter via the dispatched 'submit' in agent_page_chat.js),
+        // and the main handler empties the textarea only on a REAL send, so
+        // the deferred stale-check leaves the chips alone on a Cancel-confirm
+        // or a failed send.
+        const form = document.getElementById('chat-form');
+        if (form) {
+            form.addEventListener('submit', function () {
+                setTimeout(clearStaleChips, 0);
+            });
+        }
 
         // Drag-and-drop is scoped to the chat column on purpose: the External-MCP
         // dialog installs its own document-level .json drop handler, and the ACP
