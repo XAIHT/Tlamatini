@@ -492,6 +492,8 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.41.2" in subject
         or "1.41.3" in subject
         or "1.41.4" in subject
+        or "1.42.0" in subject
+        or "stm32er" in subject
         or "structuredcontent" in subject
         or "configurable" in subject
         or "django_port" in subject
@@ -515,10 +517,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The live Git window resolves to `v1.41.4`: the tag is commit `cec16594`, local `main` is one disclaimer commit ahead at `a1e13ab3`, and `origin/main` remains on the tag. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
+            "The live Git window resolves cleanly to `v1.42.0`: tag, local `main`, and `origin/main` all point to commit `c58b01ad`. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current release wave is broader than a badge bump: `v1.41.4` surfaces External-MCP `structuredContent`, `v1.41.3` groups and deduplicates the prompt catalog, `v1.41.2` hard-latches cancellation per run, and `v1.41.0` adds screenshot paste/drop; the `v1.40.x` port and FlowPills contracts remain carried foundations."
+            "The current release wave is broader than a badge bump: `v1.42.0` releases STM32er PlatformIO coverage, stepwise camera-verification demos, and the contiguous prompt-catalog migration; `v1.41.4` External-MCP `structuredContent`, `v1.41.3` catalog grouping, `v1.41.2` Hard Cancel, and `v1.41.0` screenshot paste/drop remain carried foundations."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -707,7 +709,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at `v1.41.4` plus one local disclaimer commit, combines README.md and BookOfTlamatini.md with source/Git truth for External-MCP structured output and the live STM32er PlatformIO expansion, and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the product at tagged `v1.42.0`, combines README.md and BookOfTlamatini.md with source/Git truth for the released STM32er PlatformIO expansion and carried External-MCP structured output, and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -958,6 +960,8 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.41.2" in subject
         or "1.41.3" in subject
         or "1.41.4" in subject
+        or "1.42.0" in subject
+        or "stm32er" in subject
         or "structuredcontent" in subject
         or "django_port" in subject
         or "port of tlamatini" in subject
@@ -973,10 +977,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "Since the last committed PDF/PPTX refresh at `c7c3fa10`, tagged `v1.41.4` added External-MCP `structuredContent` delivery and local commit `a1e13ab3` strengthened the plain-Python agent responsibility disclaimer; local `main` is therefore one commit ahead of `origin/main`."
+            "The `v1.42.0` release at `c58b01ad` promotes the STM32er PlatformIO expansion, camera-verified stepwise demos, and contiguous prompt-catalog migration into the tagged release; local `main` and `origin/main` are aligned on that commit."
         )
         highlights.append(
-            "The committed delta changes `external_mcp_manager.py`, adds seven formatter regression tests, and revises the disclaimer in both handbooks; the separate dirty worktree adds the STM32er PlatformIO backend, its demo migration, proposal, registry/contracts/config updates, and focused tests."
+            "The release delta expands `stm32er.py`, config, registry, contracts, tools, tests, descriptions, migrations, and proposal assets together; the existing local configuration-only worktree changes remain private and are neither reproduced nor modified by dossier generation."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -1368,7 +1372,7 @@ WHAT_IT_DOES = [
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can run local authorized nmap reconnaissance through Nmapper, a use-only bridge that resolves a user-installed nmap, defaults to unprivileged TCP connect scanning, refuses unsafe/missing prerequisites gracefully, and never bundles or redistributes nmap.",
     "Can diagnose an external MCP before the first live connection through the MCP Doctor agent and wrapped `chat_agent_mcp_doctor` tool, checking transport, runtime requirements, PATH availability, placeholder secrets, and the next operator step.",
-    "Can scaffold, author, build, flash, reset, and observe STM32 firmware through STM32er: the released template-MCP path remains for STM32F407, while the live worktree adds a PlatformIO path for supported boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families, with fail-safe preflight before hardware mutation.",
+    "Can scaffold, author, build, flash, reset, and observe STM32 firmware through STM32er: the template-MCP path remains for STM32F407, while released `v1.42.0` adds a PlatformIO path for supported boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families, with fail-safe preflight before hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
     "Can author YAML-based smart-home firmware through ESPHomer and ESPHome, including zero-config bootstrap, device-config generation, validation, compile, USB/OTA upload, and bounded log observation for ESP32 / ESP8266 / RP2040 / BK72xx devices.",
     "Can play media on the operator's machine: an audio file to the speakers through AudioPlayer (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), or a video file with audio on a chosen display through VideoPlayer (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen); both are observational/output and ship on the canvas and as wrapped chat tools.",
@@ -1481,22 +1485,22 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "Git resolves the product to `v1.41.4`: tag commit `cec16594` is also `origin/main`, while local `main` is one committed disclaimer revision ahead at `a1e13ab3`; the live source tree remains authoritative for generated counts and capability claims.",
+    "Git resolves the product to `v1.42.0`: tag, local `main`, and `origin/main` all point to commit `c58b01ad`; the live source tree remains authoritative for generated counts and capability claims.",
+    "`v1.42.0` releases STM32er's PlatformIO backend and device-aware routing for supported boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families.",
     "`v1.41.4` fixes External-MCP structured-output consumption: stdio and network clients now provide both text `content` blocks and `structuredContent` to the LLM instead of handing it only a short pointer.",
     "The shared formatter unwraps a sole `result` envelope, preserves errors and plain text, safely serializes structured data, caps oversized payloads, and is pinned by seven focused tests.",
     "`v1.41.3` keeps the Catalog of Prompts grouped into 13 categories with stable surviving ids, physical duplicate removal, gap-tolerant loading, and ranked fuzzy search.",
     "`v1.41.2` keeps Cancel latched to a per-user run epoch across RAG rebuilds, executor, retry, self-healing, Ask Execs, late answers, and frontend state without poisoning the next request.",
     "`v1.41.0` keeps screenshot paste/drop path-native: validated images are re-encoded in guarded Temp storage, inserted at the remembered caret, and handed to Image-Interpreter through removable chips.",
-    "A separate uncommitted worktree wave expands STM32er with a PlatformIO backend and device-aware routing; it is documented as live source, not mislabeled as part of tagged `v1.41.4`.",
     "That Phase 1 path covers supported PlatformIO `ststm32` boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families, shares zero-config PlatformIO bootstrap with ESP32er, and adds ST-LINK-aware upload safeguards.",
-    "The existing STM32F407 Template-MCP route remains the automatic default for blank/STM32F4 requests, while C0/H5/WBA/N6 stay explicitly unsupported until the planned ST-native CubeCLT backend exists; accompanying worktree migrations add camera-verified stepwise demos and a one-time contiguous catalog renumber.",
+    "The existing STM32F407 Template-MCP route remains the automatic default for blank/STM32F4 requests, while C0/H5/WBA/N6 stay explicitly unsupported until the planned ST-native CubeCLT backend exists; released migrations add camera-verified stepwise demos and a one-time contiguous catalog renumber.",
     "README.md and BookOfTlamatini.md now carry a clearer plain-Python agent disclaimer: transparency enables user control but is not a security warranty, and execution remains under the user's jurisdiction and responsibility.",
     "The README static badge and some Book release prose lag Git, so version identity comes from the live tag/commit graph rather than those historical text surfaces.",
     "The dirty worktree is counted without reproducing private values, credentials, endpoints, or machine-specific paths; this dossier does not stage, commit, or push it.",
     "The `v1.40.x` configurable-port and FlowPills work, Unreal 5.8 scaffold, Nmapper, self-healing, Create Flow, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain carried product behavior.",
     "No new workflow agent type landed in this delta; live agent/tool totals are derived from the registry and repository rather than inferred from release numbers.",
     "README.md and BookOfTlamatini.md still supply the complete MIT-licensed project, easy-start installation, Ollama setup, architecture, usage, agent, and responsibility narrative rather than a narrow changelog.",
-    "The regenerated PDF/PPTX treats tagged behavior and worktree-only behavior separately while preserving the full system, history, file tree, and effective-line inventory.",
+    "The regenerated PDF/PPTX treats tagged behavior and local configuration-only changes separately while preserving the full system, history, file tree, and effective-line inventory.",
 ]
 
 STRUCTURED_CONTENT_1414_GUIDE = [
@@ -1511,7 +1515,7 @@ STRUCTURED_CONTENT_1414_GUIDE = [
 ]
 
 STM32ER_PLATFORMIO_WORKTREE_GUIDE = [
-    "Live worktree status: Phase 1 is implemented locally but is not part of tagged `v1.41.4`; the dossier labels it separately so operators can distinguish current files from the published release.",
+    "Release status: STM32er PlatformIO Phase 1 is published in tagged `v1.42.0` at `c58b01ad`, with local `main` and `origin/main` aligned on the release commit.",
     "`stm32_backend=auto` keeps the legacy Template-MCP path for blank/STM32F4 requests, but a board, a non-F4 device, or a PlatformIO-only action routes to the new direct PlatformIO backend.",
     "Friendly board aliases and device-to-board mappings include the STM32F103 Blue Pill, while raw PlatformIO board ids remain accepted for broader `ststm32` coverage.",
     "The backend mirrors ESP32er's zero-config bootstrap and shared per-user PlatformIO core, then supports environment, board, project, source, package, build, upload, monitor, QA, and artifact actions.",
@@ -1533,7 +1537,7 @@ STM32ER_STEPWISE_DEMOS_GUIDE = [
 ]
 
 PROMPT_CATALOG_WORKTREE_GUIDE = [
-    "Migration `0179_regroup_resort_prompts_no_gaps.py` is a live-worktree, one-time deliberate override of the earlier no-renumber convention; it runs after the two new STM32 walkthroughs are appended.",
+    "Released migration `0179_regroup_resort_prompts_no_gaps.py` is a one-time deliberate override of the earlier no-renumber convention; it runs after the two new STM32 walkthroughs are appended.",
     "Every Prompt is sorted by the same category-display rank used by the UI and then by its prior id, so each category becomes one contiguous block from beginner workflows through specialized surfaces and the `other` fallback.",
     "Because `idPrompt` is the primary key, the migration first parks rows above 1,000,000 and then assigns final ids 1..N, avoiding collisions while rewriting `promptName` to `prompt-<id>`.",
     "The migration is intentionally one-way: reverse is a no-op because original ids are not stored; the source documents that no runtime foreign key references fixed prompt numbers.",
@@ -1595,7 +1599,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.41.4`.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.42.0`.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1644,7 +1648,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: current public tag `v1.41.4` at `cec16594`, the External-MCP structured-output fix; v1.41.3 prompt-catalog organization, v1.41.2 Hard Cancel, v1.41.0 image ingestion, and the earlier configurable-port, FlowPills, Video-Analyzer, Nmapper, and startup-dialog waves remain part of this release lineage.",
+    "Release identity: current public tag `v1.42.0` at `c58b01ad`, the STM32er PlatformIO expansion; v1.41.4 External-MCP structured output, v1.41.3 prompt-catalog organization, v1.41.2 Hard Cancel, v1.41.0 image ingestion, and earlier waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1804,8 +1808,8 @@ COMMAND_WATCHDOG_GUIDE = [
 
 NEW_ASSETS_GUIDE = [
     "The tagged `v1.41.4` wave adds the shared `_format_mcp_tool_result` path in `external_mcp_manager.py` plus seven focused cases in `test_external_mcp_universal.py` for machine-readable MCP results.",
-    "The live STM32er/prompt worktree adds over one thousand lines to `stm32er.py`, expands config/registry/contracts/tools/tests/docs, and now contains five git-unignored assets: the all-families proposal, migrations `0177`-`0179`, and `test_prompt_catalog_contiguous.py`.",
-    "The disclaimer-only local commit updates README.md and BookOfTlamatini.md after the `v1.41.4` tag; current README working-copy formatting changes are preserved and counted without modifying either handbook in this generation pass.",
+    "The tagged `v1.42.0` STM32er/prompt wave adds over one thousand lines to `stm32er.py`, expands config/registry/contracts/tools/tests/docs, and tracks the all-families proposal, migrations `0177`-`0179`, and `test_prompt_catalog_contiguous.py`.",
+    "The clearer disclaimer commit for README.md and BookOfTlamatini.md is included in the `v1.42.0` ancestry; neither handbook is modified by this generation pass.",
     "The `v1.41.0` image-ingestion wave adds `chat_image_paste.js`, paste view/URL wiring, chat chip/drop-overlay template nodes, image CSS, layout observation, Temp-policy coverage, and matching README/Book/self-knowledge guidance.",
     "The `v1.41.2` cancellation wave adds `agent/cancellation.py`, `test_cancellation.py`, `test_ask_execs_allowlist.py`, expanded self-healing/frontend tests, and coordinated changes across consumers, executor, RAG, retry, permission, settings, and chat-state surfaces.",
     "Two browser regression harnesses under `.claude/skills/tlamatini-daily-chat-test/harness/` exercise repeated cancels, next-request recovery, model/tool-chain cancellation, Ask-Execs cancellation, and the destructive/human-contacting/network allowlist contract.",
@@ -1830,7 +1834,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set; `v1.41.4` adds faithful External-MCP structured-output delivery on top of v1.41.3 category grouping, physical duplicate removal, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
+    "Those readability rules remain in force in the current documentation set; `v1.42.0` carries faithful External-MCP structured-output delivery on top of v1.41.3 category grouping, physical duplicate removal, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -1943,7 +1947,7 @@ KALIER_SURFACES_GUIDE = [
 ]
 
 STM32ER_GUIDE = [
-    "STM32er is Tlamatini's critical-mission STM32 bridge. The released route talks to the `STM32 Template Project MCP` for STM32F407, while the live worktree adds a direct PlatformIO route for supported mainstream STM32 boards without removing the established flow.",
+    "STM32er is Tlamatini's critical-mission STM32 bridge. The established route talks to the `STM32 Template Project MCP` for STM32F407, while released `v1.42.0` adds a direct PlatformIO route for supported mainstream STM32 boards without removing that flow.",
     "Both backends keep zero-config intent: the template route bootstraps its MCP dependencies, and the new route resolves or installs PlatformIO Core in the same shared per-user location used by ESP32er.",
     "Backend-specific preflight preserves target safety: compile-only work may proceed without attached hardware, but upload, reset, serial, and live operations are refused when the required toolchain, project, board mapping, programmer, or ST-LINK evidence is missing.",
 ]
@@ -2479,13 +2483,13 @@ def build_pdf(context: dict) -> None:
     story.append(p("v1.41.4 External-MCP structured output", styles["h2"]))
     for item in STRUCTURED_CONTENT_1414_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Live worktree: STM32er PlatformIO expansion", styles["h2"]))
+    story.append(p("v1.42.0 STM32er PlatformIO expansion", styles["h2"]))
     for item in STM32ER_PLATFORMIO_WORKTREE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Live worktree: stepwise STM32 camera-verification demos", styles["h2"]))
+    story.append(p("v1.42.0 stepwise STM32 camera-verification demos", styles["h2"]))
     for item in STM32ER_STEPWISE_DEMOS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Live worktree: category-grouped prompt catalog with no gaps", styles["h2"]))
+    story.append(p("v1.42.0 category-grouped prompt catalog with no gaps", styles["h2"]))
     for item in PROMPT_CATALOG_WORKTREE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.41.3 categorized and deduplicated prompt catalog", styles["h2"]))
@@ -3234,7 +3238,7 @@ def build_ppt(context: dict) -> None:
         0.9,
         2.76,
         6.3,
-        1.0,
+        1.2,
         f"Self-hosted AI developer assistant (cloud LLMs by default) with RAG, Multi-Turn orchestration, {context['workflow_agent_count']} agents, ACPX delegation, visual workflows, self-knowledge, and Windows packaging.",
         17,
         THEME["muted"],
@@ -3289,7 +3293,7 @@ def build_ppt(context: dict) -> None:
         ("Knowledge", THEME["jade"], WHAT_IT_DOES[:6]),
         ("Action", THEME["copper"], WHAT_IT_DOES[6:12]),
         ("Delivery", THEME["amber"], WHAT_IT_DOES[12:]),
-    ], per_column=5)
+    ], per_column=3)
 
     slide, audit = add_slide(prs, "How It Works", "execution pipeline", THEME["jade"])
     add_flow_boxes(slide, audit, 0.95, 2.6, ["Browser", "Channels", "RAG", "Planner", "Tools", "Answer"], THEME["jade"])
@@ -3336,7 +3340,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.41.4", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.42.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3350,7 +3354,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.41.4", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.42.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3359,7 +3363,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.41.4 - structured MCP results plus carried reliability", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.42.0 - STM32er expansion plus carried reliability", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3384,7 +3388,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Coverage and release", STRUCTURED_CONTENT_1414_GUIDE[6:], THEME["jade"], "mcp-1414-d", 11)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "STM32er PlatformIO Worktree", "implemented locally, separate from tagged v1.41.4", THEME["amber"])
+    slide, audit = add_slide(prs, "STM32er PlatformIO Release", "published in tagged v1.42.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Routing and coverage", STM32ER_PLATFORMIO_WORKTREE_GUIDE[:4], THEME["amber"], "stm32-pio-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Preflight and safe composite", STM32ER_PLATFORMIO_WORKTREE_GUIDE[4:6], THEME["jade"], "stm32-pio-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3399,7 +3403,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Hardware and evidence", STM32ER_STEPWISE_DEMOS_GUIDE[3:], THEME["amber"], "stm32-step-b", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Prompt Catalog No-Gap Renumber", "live worktree - deliberate one-time primary-key migration", THEME["copper"])
+    slide, audit = add_slide(prs, "Prompt Catalog No-Gap Renumber", "v1.42.0 - deliberate one-time primary-key migration", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Migration mechanics", PROMPT_CATALOG_WORKTREE_GUIDE[:3], THEME["copper"], "prompt-live-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Boundaries and proof", PROMPT_CATALOG_WORKTREE_GUIDE[3:], THEME["jade"], "prompt-live-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3911,19 +3915,19 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "tagged v1.41.4 plus live worktree", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "tagged v1.42.0 release lineage", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "External MCP results (v1.41.4): stdio and network clients surface text plus structuredContent, unwrap common envelopes, cap payloads, and preserve errors.",
-        "STM32er live worktree: device-aware PlatformIO routing adds Blue Pill/mainstream-family build and safe flash; new stepwise Blue Pill/F407 demos finish with camera evidence.",
-        "Prompt-catalog live worktree: migration 0179 deliberately regroups and renumbers every row to contiguous 1..N category blocks, backed by four database invariants tests.",
+        "STM32er (v1.42.0): device-aware PlatformIO routing adds Blue Pill/mainstream-family build and safe flash; new stepwise Blue Pill/F407 demos finish with camera evidence.",
+        "Prompt catalog (v1.42.0): migration 0179 deliberately regroups and renumbers every row to contiguous 1..N category blocks, backed by four database invariants tests.",
         "Prompt catalog (v1.41.3): 13 categories, 13 duplicate ACPX rows removed, stable surviving ids, gap-tolerant loading, and ranked fuzzy search.",
         "Hard Cancel (v1.41.2): per-user run epochs stop executor/retry/self-healing resurrection while preserving completed tool evidence and the next request.",
         "Screenshot chat, configurable port, FlowPills discovery, and Unreal 5.8 scaffolding remain carried foundations; no new workflow-agent type landed.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: `origin/main` and tag v1.41.4 point to `cec16594`; local main is one committed disclaimer revision ahead at `a1e13ab3` and also contains uncommitted worktree changes.",
+        "Resolved identity: `origin/main`, local `main`, and tag v1.42.0 all point to `c58b01ad`; only local configuration values remain modified and are not reproduced here.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
-        "The dossier distinguishes tagged, committed-local, and uncommitted behavior, preserves private-data discipline, and does not stage, commit, or push.",
+        "The dossier distinguishes tagged behavior from local configuration-only changes, preserves private-data discipline, and does not stage, commit, or push.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",
         f"Catalog now stands at {context['workflow_agent_count']} workflow agents and {context['total_multi_turn_tools']} Multi-Turn tools ({context['wrapped_chat_agent_count']} wrapped chat-agent + {context['acpx_tool_count']} ACPX/Skill + {context['core_python_tool_count']} core), with {context['skills_count']} skills.",
     ], THEME["jade"], "monday-b", 10)
@@ -3940,9 +3944,16 @@ def build_ppt(context: dict) -> None:
     add_text(slide, audit, 0.85, 1.72, 11.7, 4.85, file_table_text(context["file_rows"]), 8, THEME["white"], False, name="largest-table", font="Cascadia Mono")
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, RECENT_GIT_WINDOW_TITLE, "recent changes according to git history", THEME["amber"])
-    add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, RECENT_GIT_HIGHLIGHT_TITLE, context["weekly_highlights"], THEME["amber"], "latest", 15)
-    audit_layout(audit, len(prs.slides))
+    recent_highlight_chunks = split_items(context["weekly_highlights"], 5)
+    for idx, chunk in enumerate(recent_highlight_chunks, 1):
+        slide_title = (
+            RECENT_GIT_WINDOW_TITLE
+            if len(recent_highlight_chunks) == 1
+            else f"{RECENT_GIT_WINDOW_TITLE} ({idx}/{len(recent_highlight_chunks)})"
+        )
+        slide, audit = add_slide(prs, slide_title, "recent changes according to git history", THEME["amber"])
+        add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, RECENT_GIT_HIGHLIGHT_TITLE, chunk, THEME["amber"], f"latest-{idx}", 15)
+        audit_layout(audit, len(prs.slides))
 
     visual_chunks = split_items(context["visual_doc_commits"], 6)
     for idx, chunk in enumerate(visual_chunks, 1):
