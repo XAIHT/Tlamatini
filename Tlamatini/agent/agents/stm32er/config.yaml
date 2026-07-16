@@ -1,14 +1,26 @@
 # STM32er Agent Configuration
 #
-# STM32er is Tlamatini's bridge to the **STM32 Template Project MCP server**
-# (https://github.com/XAIHT/STM32TemplateProjectMCP). That project ships a
-# FastMCP **stdio** server (mcp/stm32_mcp_server.py) exposing 23 tools that
-# scaffold -> author -> build -> flash -> observe STM32F4 firmware using the
-# toolchain bundled inside STM32CubeIDE (no IDE GUI). STM32er spawns that server
-# as a child process, performs the MCP initialize handshake over stdin/stdout,
-# calls ONE capability (selected by `action`) via JSON-RPC `tools/call`, captures
-# the result into an INI_SECTION_STM32ER block, then shuts the server down and
-# ALWAYS triggers downstream agents (success OR failure).
+# STM32er programs the STM32 32-bit MCU line through TWO backends, selected by
+# `stm32_backend` (default 'auto'):
+#
+#   • PlatformIO backend  — drives PlatformIO Core's `ststm32` platform DIRECTLY
+#     (the pattern ESP32er uses; no MCP server). Spans the mainstream ST line from
+#     the **Blue Pill (STM32F103)** through F7 / G0 / G4 / L0..L5 / H7 / U5 / WB.
+#     Pick a `board` (e.g. "bluepill_f103c8") — pio knows every board's memory map
+#     / linker / startup, so ONE backend builds & flashes ~1000 STM32 boards. Zero-
+#     config: auto-installs PlatformIO Core (SHARED with ESP32er) on first use.
+#
+#   • Template-MCP backend — Tlamatini's bridge to the **STM32 Template Project MCP
+#     server** (https://github.com/XAIHT/STM32TemplateProjectMCP): a FastMCP stdio
+#     server (mcp/stm32_mcp_server.py) exposing 23 tools that scaffold -> author ->
+#     build -> flash -> observe **STM32F407VG** firmware with the STM32CubeIDE
+#     toolchain (no IDE GUI) + serial/SWD HIL. STM32er spawns it, does the MCP
+#     handshake over stdin/stdout, and calls ONE `action` via JSON-RPC `tools/call`.
+#
+# Both backends capture the result into an INI_SECTION_STM32ER block and ALWAYS
+# trigger downstream agents (success OR failure). The newest silicon (STM32C0 / H5 /
+# U0 / WBA / N6) awaits the ST-native STM32CubeCLT backend (Phase 2/3); the pio
+# backend REFUSES those cleanly (fail-safe) rather than mis-building.
 #
 # It is fully self-contained (stdlib only: subprocess + json + threading) exactly
 # like Kalier / ACPXer, so it runs identically in source and frozen builds and
@@ -54,6 +66,41 @@
 #     serial_session          : serial_connect -> serial_send|serial_read -> serial_disconnect
 #     live_monitor            : live_memory_start -> stream `monitor_seconds` -> read -> live_memory_stop
 action: "get_config"
+
+# ── Backend selection (Phase 0/1 — Blue Pill → whole ST line) ─────────────
+# stm32_backend — which build/flash backend runs:
+#   auto         : (default) route by target — the PlatformIO backend for the Blue
+#                  Pill and every non-F407 part (a `board`, or a non-STM32F4 `device`,
+#                  or a PlatformIO-only action forces it); the template-MCP backend
+#                  for F407 / blank (today's exact flow, unchanged).
+#   platformio   : force the PlatformIO `ststm32` backend (F0..F7, G0/G4, L0/L1/L4/L5,
+#                  H7, U5, WB, WL — ~1000 boards).
+#   template_mcp : force the STM32 Template Project MCP backend (STM32F407VG only).
+stm32_backend: "auto"
+
+# board — PlatformIO board id (or a friendly alias like "blue pill") for the
+# PlatformIO backend, e.g. "bluepill_f103c8", "blackpill_f411ce", "nucleo_h743zi",
+# "disco_f407vg". Setting a board selects the PlatformIO backend under 'auto'. Run
+# action='list_boards' to search; blank = derive from `device` (best-effort — but the
+# board fixes the memory map/linker, so pass it for anything off the beaten path).
+board: ""
+
+# framework — PlatformIO framework for create_project / scaffold: "arduino" (default;
+# stm32duino — a board-agnostic blink works across the whole line), "stm32cube" (bare
+# ST HAL), "cmsis", "mbed", "libopencm3", "zephyr". Ignored by the template-MCP backend.
+framework: "arduino"
+
+# environment — PlatformIO [env:NAME] to build (blank = the project's default env).
+environment: ""
+
+# ── PlatformIO actions (in ADDITION to the 23 template-MCP tools below) ────
+#   Meta / info  : bootstrap · validate · system_info · list_boards (search) · device_list
+#   Project      : create_project (needs `board`) · write_source · read_source · list_sources
+#   Build/flash  : build · clean · flash (= upload) · build_and_flash · list_artifacts
+#   HIL          : monitor · monitor_session (upload → monitor)
+#   Packages/QA  : pkg_install (pkg_spec) · pkg_list · pkg_update · check · test
+#   One-call     : scaffold_build_upload / scaffold_build_flash
+#                  (create → write_source → build → flash-if-ST-LINK → optional monitor)
 
 # ── MCP server connection ────────────────────────────────────────────────
 # server_script — absolute path to the STM32 MCP server (mcp/stm32_mcp_server.py).
@@ -101,6 +148,28 @@ preflight: true
 # (e.g. asking for an STM32F0 part on an STM32F4 template) so a wrong linker
 # script / startup file can never silently mis-target the firmware.
 device: ""
+
+# ── PlatformIO backend settings (used when stm32_backend routes to PlatformIO) ──
+# pio_executable — explicit `pio` path. Blank = auto-resolve (bootstrapped penv pio →
+# PATH → `python -m platformio`). Auto-injected from config.json `pio_executable` on
+# the chat path (SHARED with ESP32er — one PlatformIO install serves both agents).
+pio_executable: ""
+# pio_core_dir — PlatformIO core dir (penv + toolchains). Blank = the shared per-user
+# %LOCALAPPDATA%/Tlamatini/platformio. Auto-injected from config.json `pio_core_dir`.
+pio_core_dir: ""
+# pio_install_method — "script" (official get-platformio.py, default) | "pip".
+pio_install_method: "script"
+# command_timeout — seconds per `pio` subcommand. The FIRST build downloads the board
+# toolchain (can be minutes), so keep this generous.
+command_timeout: 900
+# boards_query — action='list_boards' filter (blank = "stm32").
+boards_query: ""
+# pkg_spec — library spec for action='pkg_install' (e.g. "bblanchon/ArduinoJson").
+pkg_spec: ""
+# programmer_cli — explicit STM32_Programmer_CLI path (blank = auto-discover). Used by
+# the PlatformIO backend's ST-LINK probe so the fail-safe upload gate can confirm a
+# connected probe (a bare ST-LINK v2 dongle has no VCP to enumerate).
+programmer_cli: ""
 
 # mcp_python — Python executable used to RUN the MCP server. Empty = reuse the
 # agent's own Python. Set this when the agent's Python lacks the `mcp`/`pyserial`

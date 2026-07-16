@@ -1236,57 +1236,65 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_description="Chat-Agent-STM32er",
         display_name="STM32er",
         purpose=(
-            "Scaffold, author, build, flash, and OBSERVE STM32F4 firmware programmatically "
-            "through the STM32 Template Project MCP server "
-            "(https://github.com/XAIHT/STM32TemplateProjectMCP) — no STM32CubeIDE GUI. This is "
-            "the canonical tool for ANY embedded / microcontroller / STM32 / Cortex-M firmware "
-            "task: creating a firmware project, writing main.c / HAL peripheral code, compiling "
-            "with the bundled arm-none-eabi-gcc (make or cmake+ninja), uploading over ST-LINK/SWD, "
-            "and hardware-in-the-loop (HIL) verification via the serial VCP and live SWD memory. "
-            "Pick ONE capability per call with `action` (the 23 MCP tools): "
-            "get_config / discover_toolchain_tool (environment); create_project / write_source / "
-            "read_source / list_sources / clean (project lifecycle); build / list_artifacts / flash / "
-            "build_and_flash / erase / reset (build & flash); serial_list_ports / serial_connect / "
-            "serial_send / serial_read / serial_disconnect (serial VCP HIL); read_memory / "
-            "write_memory / live_memory_start / live_memory_read / live_memory_stop (live SWD memory). "
-            "PLUS two composite actions that make the stateful tools usable in ONE call: "
-            "action='serial_session' (connect -> send|read -> disconnect) and action='live_monitor' "
-            "(start -> stream `monitor_seconds` -> read -> stop). ZERO-CONFIG: STM32er AUTO-BOOTSTRAPS "
-            "the MCP server on first use — it downloads the STM32 Template Project MCP from its git "
-            "repo, pip-installs its deps (mcp, pyserial) and validates, with NO manual server startup; "
-            "the end user only installs STM32CubeIDE. Use action='bootstrap' to (re)install/validate "
-            "the MCP environment explicitly and report what happened. CHAIN calls across iterations for a "
-            "full firmware cycle: create_project (capture project_dir from the result) -> write_source "
-            "(rel_path='Core/Src/main.c', content='<the C code>') -> build (project_dir=...) -> flash -> "
-            "live_monitor / serial_session to prove it runs. The server path is injected automatically "
-            "from the Tlamatini-configured `stm32_mcp_server_script` on every run, so you NEVER repeat "
-            "it — only pass server_script to override for a one-off. RESULT — the wrapped tool's JSON "
-            "return and the INI_SECTION_STM32ER block both carry: action, tool, ok, returncode, success, "
-            "project_dir, session_id, stage, and the tool's stdout/stderr (or JSON) as the body — so a "
-            "downstream step or a canvas Forker can branch on {success} / {returncode}. A flash that "
-            "errors 'No STLink detected' or a build that fails to compile is routable evidence, NOT a "
-            "Tlamatini crash. AUTHORIZED hardware only — flash/erase/reset/write_memory mutate a real MCU. "
-            "PROJECT LOCATION: unless the user names another path, default create_project's `dest_parent` "
-            "to Tlamatini's Templates directory (the new project becomes <Templates>/<name>) — see the "
-            "system-prompt 'Template / project directory location rule'; do NOT scatter projects across "
-            "the disk or default to C:/."
+            "Scaffold, author, build, flash, and OBSERVE STM32 firmware programmatically — the "
+            "canonical tool for ANY embedded / microcontroller / STM32 / Cortex-M task. STM32er now "
+            "programs the WHOLE ST 32-bit line, from the **Blue Pill (STM32F103)** up through F7 / G0 / "
+            "G4 / L0..L5 / H7 / U5 / WB, via TWO backends chosen by `stm32_backend` (default 'auto'):\n"
+            "  • PlatformIO backend (the broad, zero-config path) — drives PlatformIO Core's `ststm32` "
+            "platform directly (no MCP server). PICK A `board` (e.g. board='bluepill_f103c8', "
+            "'blackpill_f411ce', 'nucleo_h743zi', 'disco_f407vg') — setting a board (or any non-STM32F4 "
+            "`device`) routes here automatically. Actions: list_boards (search ~1000 boards) / "
+            "create_project (needs `board`) / write_source / read_source / list_sources / build / clean / "
+            "flash (=upload) / build_and_flash / list_artifacts / monitor / monitor_session / pkg_install "
+            "/ pkg_list / check / test, PLUS the one-call composite action='scaffold_build_flash' "
+            "(create -> write_source -> build -> flash over ST-LINK -> optional monitor) that turns a "
+            "blink into a SINGLE call. `framework` defaults to 'arduino' (stm32duino — a board-agnostic "
+            "blink works everywhere); use framework='stm32cube' for bare HAL. Zero-config: it "
+            "auto-installs PlatformIO Core (SHARED with ESP32er) on first use.\n"
+            "  • Template-MCP backend (F407 + rich HIL) — the STM32 Template Project MCP server "
+            "(https://github.com/XAIHT/STM32TemplateProjectMCP); used for STM32F407VG / blank device. Its "
+            "23 actions add serial VCP HIL (serial_session) and LIVE SWD memory (live_monitor / "
+            "read_memory / write_memory) that PlatformIO does not: get_config / discover_toolchain_tool; "
+            "create_project / write_source / read_source / list_sources / clean; build / list_artifacts / "
+            "flash / build_and_flash / erase / reset; the serial_* + live_memory_* families; and the "
+            "composites serial_session / live_monitor. Auto-bootstraps the MCP (git clone + pip mcp,"
+            "pyserial) on first use.\n"
+            "The newest silicon (STM32C0 / H5 / U0 / WBA / N6) awaits the ST-native STM32CubeCLT backend "
+            "(Phase 2/3, not yet implemented) — the PlatformIO backend REFUSES those cleanly (fail-safe) "
+            "and says so, rather than mis-building. Use action='validate' to preflight or "
+            "action='bootstrap' to (re)install/validate a backend. Fail-safe preflight: it never "
+            "mis-targets firmware and refuses a flash only when an ST-LINK is CONFIDENTLY absent. "
+            "CHAIN for a full cycle, or use scaffold_build_flash for one-shot. RESULT — the wrapped "
+            "tool's JSON return and the INI_SECTION_STM32ER block both carry: action, tool, ok, "
+            "returncode, success, backend, project_dir, board, port, session_id, stage, and the tool's "
+            "stdout/stderr (or JSON) as the body — so a downstream step or a canvas Forker can branch on "
+            "{success} / {returncode}. A build that fails or a flash that errors 'No ST-LINK detected' is "
+            "routable evidence, NOT a Tlamatini crash. AUTHORIZED hardware only. PROJECT LOCATION: unless "
+            "the user names another path, default create_project's `project_dir` (pio) / `dest_parent` "
+            "(MCP) to Tlamatini's Templates directory — see the system-prompt 'Template / project "
+            "directory location rule'; do NOT scatter projects across the disk or default to C:/."
         ),
         example_request=(
-            "Run STM32er with action='create_project' and name='leg_ctrl' and "
-            "dest_parent='<your Templates directory>' "
-            "(default dest_parent to your Templates directory unless the user named another path; the "
-            "MCP server path is injected automatically from config, so omit server_script unless "
-            "overriding. CHAIN write_source, build_and_flash and live_monitor as separate calls next — "
-            "see purpose)."
+            "Run STM32er with action='scaffold_build_flash', board='bluepill_f103c8', "
+            "project_dir='<your Templates directory>/bluepill_blink', framework='arduino', and "
+            "content='<an Arduino LED_BUILTIN blink sketch>' (setting a `board` routes to the PlatformIO "
+            "backend automatically; it builds, and flashes over the ST-LINK when one is connected, else "
+            "reports 'built OK — connect the ST-LINK and run action=flash'). For an STM32F407 with serial/"
+            "SWD HIL, omit `board` and use the template-MCP actions (create_project -> write_source -> "
+            "build_and_flash -> live_monitor) instead."
         ),
         aliases=(
-            "stm32er", "stm32", "stm32f4", "stm32f407", "firmware", "microcontroller",
-            "cortex-m", "embedded", "blinky", "st-link", "stlink", "cubeprogrammer",
+            "stm32er", "stm32", "stm32f4", "stm32f407", "stm32f103", "blue pill", "bluepill",
+            "black pill", "blackpill", "nucleo", "discovery board", "platformio stm32",
+            "firmware", "microcontroller", "cortex-m", "embedded", "blinky", "st-link", "stlink",
+            "cubeprogrammer",
         ),
         security_hints=(
-            "stm32", "stm32er", "stm32f4", "stm32f407", "stm32cubeide", "firmware",
-            "microcontroller", "micro controller", "mcu", "cortex-m", "cortex m4",
-            "embedded", "embedded firmware", "blinky", "led chase", "hal", "cmsis",
+            "stm32", "stm32er", "stm32f4", "stm32f407", "stm32f103", "stm32f0", "stm32g0", "stm32g4",
+            "stm32h7", "stm32l4", "stm32u5", "blue pill", "bluepill", "black pill", "blackpill",
+            "nucleo", "discovery board", "stm32cubeide", "platformio", "ststm32", "board", "firmware",
+            "microcontroller", "micro controller", "mcu", "cortex-m", "cortex m4", "cortex m0",
+            "embedded", "embedded firmware", "blinky", "led chase", "hal", "cmsis", "stm32duino",
             "st-link", "stlink", "swd", "cubeprogrammer", "arm-none-eabi", "flash the mcu",
             "flash firmware", "build firmware", "scaffold a firmware project", "create firmware",
             "live memory", "read memory over swd", "serial vcp", "uart", "openocd",

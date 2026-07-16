@@ -445,12 +445,48 @@ _HARDWARE_ACTIONS = {
 # hardware. ``build_and_flash`` is in BOTH sets (it builds AND flashes).
 _BUILD_ACTIONS = {"build", "build_and_flash", "clean", "list_artifacts"}
 
-# STM32F sub-families STM32er recognises. The MCP template is configured for ONE
-# family/device; the preflight validates the REQUESTED device against it and
-# REFUSES a cross-family mismatch (fail-safe) rather than letting a wrong linker
-# script / startup file silently produce mis-targeted firmware that could brick a
-# mission-critical board.
+# ── ST 32-bit MCU family map (Phase 0 — Blue Pill → STM32N6) ─────────────────
+# The FULL family prefix list, ordered MOST-SPECIFIC FIRST so 'STM32WBA' matches
+# before 'STM32WB'. `_device_family` maps a part (e.g. 'STM32F407VG') to its family
+# ('STM32F4'). This de-welds the old STM32F-only gate: STM32er now RECOGNISES every
+# ST family, and the backend dispatcher ROUTES each to a backend that can build it
+# (the template MCP is F407-only; the PlatformIO backend covers the mainstream line;
+# the newest silicon awaits the ST-native CubeCLT backend — Phase 2/3).
+_STM32_FAMILY_PREFIXES = (
+    "STM32C0",
+    "STM32F0", "STM32F1", "STM32F2", "STM32F3", "STM32F4", "STM32F7",
+    "STM32G0", "STM32G4",
+    "STM32H5", "STM32H7",
+    "STM32L0", "STM32L1", "STM32L4", "STM32L5",
+    "STM32U0", "STM32U5",
+    "STM32WBA", "STM32WB", "STM32WL",
+    "STM32N6",
+)
+
+# Legacy alias kept for back-compat with the template-MCP preflight (which is
+# genuinely F407-only) and any existing references / tests.
 _STM32F_FAMILIES = ("STM32F0", "STM32F1", "STM32F2", "STM32F3", "STM32F4", "STM32F7")
+
+# Families the PlatformIO `ststm32` backend builds today (Phase 1) — the mainstream
+# ST line, incl. the Blue Pill (F1) and the current F407.
+_PIO_SUPPORTED_FAMILIES = frozenset({
+    "STM32F0", "STM32F1", "STM32F2", "STM32F3", "STM32F4", "STM32F7",
+    "STM32G0", "STM32G4", "STM32H7",
+    "STM32L0", "STM32L1", "STM32L4", "STM32WB",
+})
+# Families PlatformIO ststm32 supports only PARTIALLY — attempt, but WARN so a build
+# failure is understood (the ST-native CubeCLT backend, Phase 2/3, is the sure path).
+_PIO_CAVEAT_FAMILIES = frozenset({"STM32L5", "STM32U5", "STM32WL"})
+# Families NOT in the maintained ststm32 platform yet — the pio backend REFUSES them
+# cleanly (fail-safe) and points at the future ST-native CubeCLT backend (Phase 2/3),
+# rather than mis-building. STM32N6 additionally needs external-flash boot + signing.
+_PIO_UNSUPPORTED_FAMILIES = frozenset({
+    "STM32C0", "STM32H5", "STM32U0", "STM32WBA", "STM32N6",
+})
+
+# STMicroelectronics ST-LINK USB Vendor ID — how STM32 boards enumerate their debug
+# probe / VCP (Nucleo & Discovery expose an ST-LINK VCP with this VID).
+_STLINK_USB_VID = "0483"
 
 
 def _build_arguments(action: str, config: dict) -> dict:
@@ -1318,14 +1354,16 @@ def _bootstrap_note(report: dict, bootstrap_ok: bool) -> str:
 
 
 def _device_family(device: str) -> str:
-    """Map an STM32 part (e.g. 'STM32F407VG') to its sub-family ('STM32F4'). Empty
-    string when it is not a recognised STM32F part."""
+    """Map an STM32 part (e.g. 'STM32F407VG' → 'STM32F4', 'STM32H750VB' → 'STM32H7',
+    'STM32N657X0' → 'STM32N6') to its family. Spans the WHOLE ST 32-bit line; empty
+    string when it is not a recognised STM32 part."""
     d = (device or "").strip().upper()
-    for fam in _STM32F_FAMILIES:
+    for fam in _STM32_FAMILY_PREFIXES:
         if d.startswith(fam):
             return fam
-    m = re.match(r"STM32F(\d)", d)
-    return ("STM32F" + m.group(1)) if m else ""
+    # Fallback: any STM32<letter><digit> token (covers future value-line parts).
+    m = re.match(r"STM32([A-Z]\d)", d)
+    return ("STM32" + m.group(1)) if m else ""
 
 
 def _probe_stlink(programmer_cli: str, env: dict) -> dict:
@@ -1442,9 +1480,12 @@ def _preflight(client: "_McpStdioClient", action: str, config: dict, env: dict) 
                 f"'{system}' build tool NOT found in the STM32CubeIDE install — cannot compile.")
         if not family_supported:
             fatals.append(
-                f"Target device {requested_device} (family {requested_family}) is NOT supported by this "
-                f"MCP template, which is configured for {template_device} ({template_family}). REFUSING "
-                f"to build mis-targeted firmware — use a device-matched MCP build for {requested_family}.")
+                f"Target device {requested_device} (family {requested_family}) is NOT supported by the "
+                f"template-MCP backend, which is configured for {template_device} ({template_family}). "
+                f"REFUSING to build mis-targeted firmware. Use the PlatformIO backend instead — set "
+                f"stm32_backend='platformio' (or pass a `board`, e.g. board='bluepill_f103c8'); under the "
+                f"default stm32_backend='auto' a non-STM32F4 device already routes to PlatformIO "
+                f"automatically. (STM32C0/H5/U0/WBA/N6 await the ST-native CubeCLT backend — Phase 2/3.)")
     if needs_hardware:
         if not checks["programmer_cli"]:
             fatals.append(
@@ -1498,6 +1539,992 @@ def _format_preflight_report(report: dict) -> str:
 
 
 # ========================================
+# PLATFORMIO BACKEND  (Phase 1 — Blue Pill → STM32F7 / G / L / H7 / U5 …)
+#
+# The template-MCP backend above is welded to ONE device (STM32F407VG). To span the
+# WHOLE ST 32-bit line, STM32er ALSO drives PlatformIO Core's `ststm32` platform
+# DIRECTLY — the exact pattern ESP32er uses for espressif32. `pio` is a complete CLI
+# (build / upload / monitor / board db / package manager), so there is NO second MCP
+# server, and `pio` already knows every board's memory map / linker / startup, so one
+# backend builds & flashes ~1000 STM32 boards. Self-contained: it reuses this file's
+# stdlib boilerplate (_cfg / _as_* / get_python_command / get_agent_env / _probe_stlink)
+# and NEVER imports agent.*.
+#
+# Zero-config: with no on-disk `pio_executable` and auto_bootstrap true, it installs
+# PlatformIO Core into the SHARED per-user core dir (Tlamatini/platformio — the SAME
+# one ESP32er uses, so a single PlatformIO install serves both firmware agents).
+#
+# Fail-safe preflight (mission-critical): it REFUSES a family PlatformIO cannot build
+# (routing it to the future ST-native CubeCLT backend) and never mis-targets firmware.
+# STM32 boards flash over the ST-LINK/SWD probe (NOT a USB-serial bootloader like the
+# ESP32), so the upload gate probes the ST-LINK — and, because a bare ST-LINK v2 dongle
+# has no enumerable VCP, it only WARNS on an inconclusive miss (never a false refusal),
+# hard-refusing only when the ST-LINK CLI confidently reports no probe.
+# ========================================
+
+_STM32_BACKENDS = ("auto", "template_mcp", "platformio")
+
+# Actions ONLY the PlatformIO backend implements — under `auto` these force the pio
+# backend even with no board/device set. They are purely additive (the MCP path has
+# no such actions), so routing them to pio never changes existing behavior.
+_PIO_ONLY_ACTIONS = {
+    "list_boards", "boards", "device_list", "system_info",
+    "scaffold_build_upload", "scaffold_build_flash", "monitor_session",
+    "pkg_install", "pkg_list", "pkg_update", "check", "test",
+}
+
+# ── PlatformIO action contract (each → one `pio` subcommand or a stdlib op) ──
+_PIO_META = {"bootstrap", "validate"}
+_PIO_INFO = {"system_info", "boards", "list_boards", "device_list", "pkg_list", "list_artifacts"}
+_PIO_FILE = {"write_source", "read_source", "list_sources"}
+_PIO_BUILD = {"build", "clean", "check", "test", "create_project", "pkg_install",
+              "pkg_update", "scaffold_build_upload", "scaffold_build_flash"}
+# STM32-native verbs `flash` / `build_and_flash` are accepted as aliases of pio's
+# upload verbs so the LLM/user can speak either vocabulary.
+_PIO_UPLOAD = {"upload", "build_and_upload", "flash", "build_and_flash"}
+_PIO_MONITOR = {"monitor", "monitor_session"}
+_PIO_HARDWARE = _PIO_UPLOAD | _PIO_MONITOR
+_PIO_ALL = _PIO_META | _PIO_INFO | _PIO_FILE | _PIO_BUILD | _PIO_UPLOAD | _PIO_MONITOR
+
+# Friendly board aliases → PlatformIO `ststm32` board ids. A raw pio board id passed
+# in `board` is used as-is; this table just lets the user say "blue pill".
+_STM32_BOARD_ALIASES = {
+    "bluepill": "bluepill_f103c8", "blue pill": "bluepill_f103c8",
+    "bluepill_f103c8": "bluepill_f103c8", "bluepill_f103c8_128k": "bluepill_f103c8_128k",
+    "blackpill": "blackpill_f411ce", "black pill": "blackpill_f411ce",
+    "blackpill_f411ce": "blackpill_f411ce", "blackpill_f401cc": "blackpill_f401cc",
+    "disco_f407vg": "disco_f407vg", "discovery_f407": "disco_f407vg",
+    "stm32f4discovery": "disco_f407vg", "f4discovery": "disco_f407vg",
+    "nucleo_f401re": "nucleo_f401re", "nucleo_f411re": "nucleo_f411re",
+    "nucleo_f446re": "nucleo_f446re", "nucleo_f103rb": "nucleo_f103rb",
+    "nucleo_g071rb": "nucleo_g071rb", "nucleo_g474re": "nucleo_g474re",
+    "nucleo_l476rg": "nucleo_l476rg", "nucleo_l432kc": "nucleo_l432kc",
+    "nucleo_h743zi": "nucleo_h743zi", "nucleo_h723zg": "nucleo_h723zg",
+    "nucleo_f746zg": "nucleo_f746zg", "nucleo_f767zi": "nucleo_f767zi",
+    "nucleo_wb55rg_p": "nucleo_wb55rg_p",
+}
+
+# Best-effort STM32 part → representative pio board id (used when `board` is blank but
+# `device` names a part). Not exhaustive — pass `board` for anything not here.
+_STM32_DEVICE_TO_BOARD = {
+    "STM32F103C8": "bluepill_f103c8", "STM32F103C8T6": "bluepill_f103c8",
+    "STM32F103CB": "bluepill_f103c8_128k", "STM32F103RB": "nucleo_f103rb",
+    "STM32F401CC": "blackpill_f401cc", "STM32F401RE": "nucleo_f401re",
+    "STM32F411CE": "blackpill_f411ce", "STM32F411RE": "nucleo_f411re",
+    "STM32F407VG": "disco_f407vg", "STM32F446RE": "nucleo_f446re",
+    "STM32F746ZG": "nucleo_f746zg", "STM32F767ZI": "nucleo_f767zi",
+    "STM32G071RB": "nucleo_g071rb", "STM32G474RE": "nucleo_g474re",
+    "STM32L432KC": "nucleo_l432kc", "STM32L476RG": "nucleo_l476rg",
+    "STM32H743ZI": "nucleo_h743zi", "STM32H723ZG": "nucleo_h723zg",
+    "STM32WB55RG": "nucleo_wb55rg_p",
+}
+
+
+def _resolve_board_id(config: dict) -> str:
+    """Resolve the PlatformIO board id from `board` (alias or raw id) or, failing
+    that, from `device` via the best-effort part→board table. '' when unknown."""
+    raw = str(_cfg(config, "board")).strip()
+    if raw:
+        return _STM32_BOARD_ALIASES.get(raw.lower(), raw)
+    device = str(_cfg(config, "device")).strip().upper()
+    if device:
+        return _STM32_DEVICE_TO_BOARD.get(device, "")
+    return ""
+
+
+def _family_from_board(board: str) -> str:
+    """Best-effort STM32 family from a pio board id (e.g. 'bluepill_f103c8' → STM32F1,
+    'nucleo_h743zi' → STM32H7). '' when it cannot be derived — the caller then does
+    not gate on family (pio still uses the board's own linker, so a wrong guess never
+    mis-targets)."""
+    b = (board or "").upper()
+    for fam in _STM32_FAMILY_PREFIXES:  # ordered specific-first (WBA before WB)
+        code = fam[len("STM32"):]       # e.g. 'F1', 'H7', 'WBA', 'N6'
+        if re.search(rf"(?:^|[_-]){code}[0-9A-Z]", b):
+            return fam
+    return ""
+
+
+def _resolve_stm32_backend(config: dict, action: str) -> str:
+    """Decide which build backend runs this call. An explicit `stm32_backend` wins;
+    'auto' (the default) routes to PlatformIO whenever a `board` is given, the action
+    is PlatformIO-only, OR a `device` of a NON-STM32F4 family is requested — so the
+    Blue Pill and every modern part reach the pio backend — else the legacy template
+    MCP (blank / STM32F4, no board → today's EXACT flow, zero regression)."""
+    chosen = str(_cfg(config, "stm32_backend", "auto") or "auto").strip().lower()
+    if chosen in ("platformio", "pio"):
+        return "platformio"
+    if chosen in ("template_mcp", "mcp", "template"):
+        return "template_mcp"
+    # auto:
+    if action in _PIO_ONLY_ACTIONS:
+        return "platformio"
+    if str(_cfg(config, "board")).strip():
+        return "platformio"
+    device = str(_cfg(config, "device")).strip()
+    fam = _device_family(device)
+    if device and fam and fam != "STM32F4":
+        return "platformio"
+    return "template_mcp"
+
+
+# ── PlatformIO resolution + zero-config bootstrap (shared install with ESP32er) ──
+
+def _pio_default_core_dir() -> str:
+    """The SHARED per-user PlatformIO core dir (penv + toolchains). Identical to
+    ESP32er's so one PlatformIO install serves both firmware agents."""
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.path.join(
+            os.path.expanduser("~"), "AppData", "Local")
+    else:
+        base = os.environ.get("XDG_DATA_HOME") or os.path.join(
+            os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, "Tlamatini", "platformio")
+
+
+def _pio_run_cmd(cmd: list, env: dict = None, cwd: str = None, timeout: float = 900.0):
+    """Run a subprocess, capturing (returncode, stdout, stderr); captures PARTIAL
+    output on a timeout (a long first `pio run` downloads the toolchain). Never
+    raises; maps a missing exe to rc 127 and a timeout to rc 124."""
+    try:
+        proc = subprocess.run(
+            cmd, env=env, cwd=cwd, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=timeout,
+        )
+        return proc.returncode, proc.stdout or "", proc.stderr or ""
+    except FileNotFoundError as e:
+        return 127, "", str(e)
+    except subprocess.TimeoutExpired as e:
+        partial = ""
+        try:
+            partial = (e.stdout or "") + (e.stderr or "")
+            if isinstance(partial, bytes):
+                partial = partial.decode("utf-8", "replace")
+        except Exception:
+            partial = ""
+        return 124, partial, f"timed out after {timeout:.0f}s"
+    except Exception as e:  # pragma: no cover - defensive
+        return 1, "", str(e)
+
+
+def _pio_penv_path(core_dir: str) -> str:
+    if os.name == "nt":
+        return os.path.join(core_dir, "penv", "Scripts", "pio.exe")
+    return os.path.join(core_dir, "penv", "bin", "pio")
+
+
+def _pio_version(pio_cmd: list, env: dict) -> tuple:
+    rc, out, err = _pio_run_cmd(list(pio_cmd) + ["--version"], env=env, timeout=60)
+    return rc == 0, (out or err or "").strip()
+
+
+def _pio_resolve_cmd(config: dict, env: dict, core_dir: str, python_cmd: list) -> list:
+    """First invocable `pio` among: explicit `pio_executable`, the bootstrapped penv
+    pio, bare `pio`/`platformio` on PATH, or `<python> -m platformio`. [] if none."""
+    candidates = []
+    explicit = str(_cfg(config, "pio_executable")).strip()
+    if explicit:
+        candidates.append([explicit])
+    penv = _pio_penv_path(core_dir)
+    if os.path.exists(penv):
+        candidates.append([penv])
+    candidates.append(["pio"])
+    candidates.append(["platformio"])
+    candidates.append(list(python_cmd) + ["-m", "platformio"])
+    for cand in candidates:
+        ok, _ver = _pio_version(cand, env)
+        if ok:
+            return cand
+    return []
+
+
+def _pio_download_installer(env: dict) -> tuple:
+    import urllib.request
+    import tempfile
+    url = "https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py"
+    try:
+        logging.info(f"⬇️  Downloading PlatformIO installer: {url}")
+        request = urllib.request.Request(url, headers={"User-Agent": "Tlamatini-STM32er"})
+        with urllib.request.urlopen(request, timeout=120) as resp:
+            data = resp.read()
+        fd, path = tempfile.mkstemp(suffix="_get-platformio.py")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        return path, ""
+    except Exception as e:
+        return "", str(e)
+
+
+def _pio_bootstrap(config: dict, env: dict, core_dir: str, python_cmd: list) -> tuple:
+    """Ensure an invocable `pio` exists, installing PlatformIO Core if needed.
+    Returns (pio_cmd, report, ok). Never raises into main()."""
+    report = {"steps": [], "core_dir": core_dir}
+    try:
+        method = str(_cfg(config, "pio_install_method", "script") or "script").strip().lower()
+        do_update = _as_bool(_cfg(config, "auto_update", False), False)
+        do_pip = _as_bool(_cfg(config, "pip_install", True), True)
+
+        existing = _pio_resolve_cmd(config, env, core_dir, python_cmd)
+        if existing and not do_update:
+            ok, ver = _pio_version(existing, env)
+            report["steps"].append(("resolve", {"ok": ok, "action": "present", "pio": existing, "version": ver}))
+            report["ok"] = ok
+            return existing, report, ok
+
+        if method == "script":
+            installer, dl_err = _pio_download_installer(env)
+            if installer:
+                inst_env = dict(env)
+                inst_env["PLATFORMIO_CORE_DIR"] = core_dir
+                rc, out, err = _pio_run_cmd(list(python_cmd) + [installer], env=inst_env, timeout=900)
+                try:
+                    os.remove(installer)
+                except Exception:
+                    pass
+                report["steps"].append(("installer-script",
+                                        {"ok": rc == 0, "action": "get-platformio.py",
+                                         "returncode": rc, "stderr": (err or "")[-800:]}))
+            else:
+                report["steps"].append(("installer-script",
+                                        {"ok": False, "action": "download-failed", "error": dl_err}))
+
+        resolved = _pio_resolve_cmd(config, env, core_dir, python_cmd)
+        if not resolved and do_pip:
+            pip_cmd = list(python_cmd) + ["-m", "pip", "install", "--disable-pip-version-check"]
+            pip_cmd += (["-U", "platformio"] if do_update else ["platformio"])
+            logging.info(f"📦 Installing PlatformIO via pip: {pip_cmd}")
+            rc, out, err = _pio_run_cmd(pip_cmd, env=env, timeout=900)
+            report["steps"].append(("pip-install",
+                                    {"ok": rc == 0, "action": "pip", "returncode": rc,
+                                     "stderr": (err or "")[-800:]}))
+            resolved = _pio_resolve_cmd(config, env, core_dir, python_cmd)
+
+        if resolved and do_update and method != "pip":
+            _pio_run_cmd(list(resolved) + ["upgrade"], env=env, timeout=600)
+
+        ok, ver = (_pio_version(resolved, env) if resolved else (False, ""))
+        report["steps"].append(("validate", {"ok": ok, "version": ver, "pio": resolved}))
+        report["ok"] = ok
+        return resolved, report, ok
+    except Exception as e:  # pragma: no cover - bootstrap must NEVER raise into main()
+        logging.error(f"❌ pio bootstrap crashed: {e}")
+        report["ok"] = False
+        report["error"] = str(e)
+        return [], report, False
+
+
+def _pio_format_bootstrap_report(report: dict) -> str:
+    if not report:
+        return "No bootstrap was performed."
+    lines = [f"core_dir : {report.get('core_dir', '')}",
+             f"overall  : {'OK' if report.get('ok') else 'FAILED'}", ""]
+    for name, res in report.get("steps", []):
+        head = f"[{'OK' if res.get('ok') else 'XX'}] {name}: action={res.get('action', '')}"
+        if "returncode" in res:
+            head += f" rc={res.get('returncode')}"
+        if res.get("version"):
+            head += f" ({res['version']})"
+        lines.append(head)
+        if not res.get("ok") and res.get("error"):
+            lines.append(f"        error: {res['error']}")
+        if not res.get("ok") and res.get("stderr"):
+            lines.append(f"        stderr: {res['stderr'][-400:]}")
+    if report.get("error"):
+        lines.append(f"\nbootstrap error: {report['error']}")
+    return "\n".join(lines)
+
+
+def _pio_bootstrap_note(report: dict, ok: bool) -> str:
+    if not report:
+        return ""
+    last = next((res for name, res in report.get("steps", [])
+                 if name in ("installer-script", "pip-install")), {})
+    return f"[bootstrap: {last.get('action', 'present')} · pio ready={'yes' if ok else 'NO'}]\n\n"
+
+
+# ── PlatformIO safety preflight (fail-safe environment gate) ──
+
+def _pio_platformio_ini(project_dir: str) -> str:
+    return os.path.join(project_dir, "platformio.ini") if project_dir else ""
+
+
+def _pio_ini_platform(project_dir: str) -> str:
+    ini = _pio_platformio_ini(project_dir)
+    if not ini or not os.path.exists(ini):
+        return ""
+    try:
+        with open(ini, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                m = re.match(r"\s*platform\s*=\s*(\S+)", line)
+                if m:
+                    return m.group(1).strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def _pio_resolve_programmer_cli(config: dict) -> str:
+    """Best-effort resolution of STM32_Programmer_CLI (the strongest ST-LINK probe
+    signal). Empty when not installed — the preflight then falls back to `pio device
+    list` and only WARNS, so a missing CubeProgrammer never false-refuses."""
+    import shutil
+    import glob
+    explicit = str(_cfg(config, "programmer_cli")).strip()
+    if explicit and os.path.exists(explicit):
+        return explicit
+    for name in ("STM32_Programmer_CLI", "STM32_Programmer_CLI.exe"):
+        hit = shutil.which(name)
+        if hit:
+            return hit
+    for pattern in (
+        r"C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe",
+        r"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe",
+    ):
+        for hit in glob.glob(pattern):
+            if os.path.exists(hit):
+                return hit
+    return ""
+
+
+def _pio_probe_stlink(config: dict, env: dict, pio_cmd: list) -> dict:
+    """Probe for a connected ST-LINK (how STM32 boards flash — SWD, not a USB-serial
+    bootloader). Two signals: STM32_Programmer_CLI --list (strongest; a positive line
+    → present, an explicit 'no ST-LINK' → CONFIDENT absence), then `pio device list`
+    for an ST-LINK VCP (VID 0483 — present on Nucleo/Disco; a bare ST-LINK v2 dongle
+    has no VCP, so a miss there is inconclusive). Only a confident absence lets the
+    upload gate refuse; otherwise it WARNS, never a false refusal."""
+    result = {"present": False, "confident_absent": False, "method": "", "detail": ""}
+    prog = _pio_resolve_programmer_cli(config)
+    if prog:
+        st = _probe_stlink(prog, env)
+        result["method"] = "STM32_Programmer_CLI"
+        result["detail"] = st.get("detail", "")
+        if st.get("present"):
+            result["present"] = True
+            return result
+        detail = st.get("detail", "") or ""
+        if re.search(r"no\s+(st-?link|debug\s+probe).*(detect|found)", detail, re.I) \
+                or re.search(r"no\s+stlink", detail, re.I):
+            result["confident_absent"] = True
+            return result
+    if pio_cmd:
+        rc, out, _err = _pio_run_cmd(list(pio_cmd) + ["device", "list", "--json-output"], env=env, timeout=60)
+        if rc == 0:
+            try:
+                devices = json.loads(out or "[]")
+            except (json.JSONDecodeError, TypeError):
+                devices = []
+            for dev in devices if isinstance(devices, list) else []:
+                hwid = (dev.get("hwid") or "") if isinstance(dev, dict) else ""
+                m = re.search(r"VID:PID=([0-9A-Fa-f]{4})", hwid)
+                if m and m.group(1).upper() == _STLINK_USB_VID:
+                    result["present"] = True
+                    result["method"] = result["method"] or "pio device list"
+                    result["detail"] = (result["detail"] + f" | pio: ST-LINK VCP {hwid}").strip(" |")
+                    return result
+    return result
+
+
+def _pio_probe_serial(pio_cmd: list, env: dict) -> dict:
+    """Enumerate serial ports via `pio device list --json-output` (a Nucleo/Disco VCP
+    for `monitor`). A Blue Pill has no built-in VCP — monitor needs a USB-UART adapter."""
+    result = {"present": False, "cli_ok": False, "ports": [], "detail": ""}
+    if not pio_cmd:
+        result["detail"] = "pio not resolvable — cannot enumerate serial ports."
+        return result
+    rc, out, err = _pio_run_cmd(list(pio_cmd) + ["device", "list", "--json-output"], env=env, timeout=60)
+    result["cli_ok"] = rc == 0
+    if rc != 0:
+        result["detail"] = (err or out)[-400:]
+        return result
+    try:
+        devices = json.loads(out or "[]")
+    except (json.JSONDecodeError, TypeError):
+        devices = []
+    ports = [dev.get("port") for dev in (devices if isinstance(devices, list) else [])
+             if isinstance(dev, dict) and dev.get("port")]
+    result["ports"] = ports
+    result["present"] = bool(ports)
+    result["detail"] = f"{len(ports)} port(s): {', '.join(ports)}" if ports else "no serial ports enumerated"
+    return result
+
+
+def _pio_preflight(action: str, config: dict, pio_cmd: list, env: dict) -> dict:
+    """Validate the PlatformIO environment for ``action`` and REFUSE (fail-safe)
+    rather than mis-build. report['ok'] is False on any FATAL."""
+    report = {"action": action, "checks": {}, "warnings": [], "fatals": [], "ok": True}
+    checks = report["checks"]
+
+    pio_ok = bool(pio_cmd)
+    checks["pio_resolvable"] = pio_ok
+
+    board = _resolve_board_id(config)
+    fam = _device_family(str(_cfg(config, "device")).strip()) or _family_from_board(board)
+    report["board"] = board
+    report["family"] = fam
+
+    # ── Family support gate — the Phase-0 routing made real (fail-safe) ──
+    if fam in _PIO_UNSUPPORTED_FAMILIES:
+        report["fatals"].append(
+            f"{fam} is not in the PlatformIO ststm32 platform yet — it needs the ST-native STM32CubeCLT "
+            f"backend (Phase 2/3, not yet implemented). Refusing rather than mis-building. "
+            f"{'(STM32N6 also boots from external flash and needs a signed FSBL.)' if fam == 'STM32N6' else ''}".strip())
+    elif fam in _PIO_CAVEAT_FAMILIES:
+        report["warnings"].append(
+            f"{fam} has only PARTIAL PlatformIO ststm32 support — the build may fail; if it does, the "
+            f"ST-native CubeCLT backend (Phase 2/3) is the intended path for this family.")
+    checks["family_supported"] = fam not in _PIO_UNSUPPORTED_FAMILIES
+
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    needs_project = action in {"build", "clean", "check", "test", "list_artifacts",
+                               "pkg_list", "pkg_install", "pkg_update"} | _PIO_HARDWARE
+    has_ini = bool(project_dir) and os.path.exists(_pio_platformio_ini(project_dir))
+    if needs_project:
+        checks["platformio_ini"] = has_ini
+
+    needs_board = action in {"create_project", "scaffold_build_upload", "scaffold_build_flash"}
+    if needs_board:
+        checks["board_resolved"] = bool(board)
+
+    needs_hardware = action in _PIO_HARDWARE
+    report["requires_hardware"] = needs_hardware
+    if needs_hardware or action == "validate":
+        if action in _PIO_UPLOAD or action == "validate":
+            stlink = _pio_probe_stlink(config, env, pio_cmd)
+            report["stlink"] = stlink
+            checks["stlink_present"] = stlink["present"]
+        if action in _PIO_MONITOR or action == "validate":
+            serial = _pio_probe_serial(pio_cmd, env)
+            report["serial"] = serial
+            checks["serial_port_present"] = serial["present"]
+
+    # ── FATAL gating ──
+    fatals = report["fatals"]
+    if action != "bootstrap" and not pio_ok:
+        fatals.append(
+            "PlatformIO Core (`pio`) is NOT resolvable. Leave pio_executable blank with auto_bootstrap: "
+            "true so STM32er installs it, or set pio_executable to an existing pio.")
+    if needs_project and not has_ini:
+        if not project_dir:
+            fatals.append(
+                f"action '{action}' needs a project — set project_dir to a folder containing "
+                f"platformio.ini (use action='create_project' or 'scaffold_build_upload' first).")
+        else:
+            fatals.append(
+                f"No platformio.ini in {project_dir!r} — not a PlatformIO project. "
+                f"Run action='create_project' there first.")
+    if needs_board and not board:
+        fatals.append(
+            "No board resolved — pass `board` (e.g. board='bluepill_f103c8'; run action='list_boards' to "
+            "find one) or a known `device`. The board fixes the memory map / linker, so it is required.")
+    if action in _PIO_UPLOAD and pio_ok:
+        st = report.get("stlink", {})
+        if st.get("confident_absent"):
+            fatals.append(
+                "No ST-LINK detected (STM32_Programmer_CLI reported none) — connect the board's ST-LINK "
+                "(check the USB cable / driver) before a flash. (Compile-only actions do NOT need a board.)")
+        elif not st.get("present"):
+            report["warnings"].append(
+                "No ST-LINK positively detected — a flash will FAIL if none is connected. (A bare ST-LINK "
+                "v2 dongle has no VCP to enumerate, so this may be a false alarm; the upload will confirm.)")
+    if action in _PIO_MONITOR and pio_ok:
+        serial = report.get("serial", {})
+        if not serial.get("present"):
+            fatals.append(
+                "No serial port detected — connect a VCP/USB-UART (a Nucleo/Disco has an ST-LINK VCP; a "
+                "bare Blue Pill needs a USB-UART adapter) before monitoring.")
+
+    report["ok"] = not fatals
+    return report
+
+
+def _pio_format_preflight_report(report: dict) -> str:
+    if not report:
+        return "No preflight was performed."
+    lines = [
+        f"action            : {report.get('action', '')}",
+        f"board             : {report.get('board', '') or '(unresolved)'}",
+        f"family            : {report.get('family', '') or '(unknown)'}",
+        f"requires_hardware : {report.get('requires_hardware', False)}",
+        f"overall           : {'READY' if report.get('ok') else 'REFUSED (fail-safe)'}",
+        "",
+        "checks:",
+    ]
+    for name, value in report.get("checks", {}).items():
+        lines.append(f"  [{'OK' if value else 'XX'}] {name}: {value}")
+    if report.get("stlink"):
+        s = report["stlink"]
+        lines.append(f"  st-link probe   : present={s.get('present')} confident_absent={s.get('confident_absent')} "
+                     f"via={s.get('method') or '-'}")
+    if report.get("serial"):
+        s = report["serial"]
+        lines.append(f"  serial          : present={s.get('present')} ({s.get('detail', '')})")
+    for warning in report.get("warnings", []):
+        lines.append(f"  [!] WARNING: {warning}")
+    for fatal in report.get("fatals", []):
+        lines.append(f"  [X] FATAL  : {fatal}")
+    return "\n".join(lines)
+
+
+# ── PlatformIO action execution ──
+
+def _pio_env_args(config: dict) -> list:
+    environment = str(_cfg(config, "environment")).strip()
+    return ["-e", environment] if environment else []
+
+
+def _pio_project_args(config: dict) -> list:
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    return ["-d", project_dir] if project_dir else []
+
+
+def _pio_terminate_proc(proc) -> None:
+    if proc is None:
+        return
+    try:
+        import psutil
+        try:
+            parent = psutil.Process(proc.pid)
+            for child in parent.children(recursive=True):
+                try:
+                    child.terminate()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    except Exception:
+        pass
+    try:
+        proc.terminate()
+        proc.wait(timeout=3)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+
+def _pio_bounded_monitor(pio_cmd: list, config: dict, env: dict) -> dict:
+    """Run `pio device monitor` for monitor_seconds, draining stdout, then terminate
+    — making an interactive stream usable in one run (Nucleo/Disco VCP HIL)."""
+    seconds = max(1, _as_int(_cfg(config, "monitor_seconds", 10), 10))
+    port = str(_cfg(config, "port")).strip()
+    baud = _as_int(_cfg(config, "baud", 115200), 115200) or 115200
+    args = list(pio_cmd) + ["device", "monitor", "-b", str(baud)]
+    if port:
+        args += ["-p", port]
+    args += _pio_project_args(config) + ["--quiet"]
+    logging.info(f"📟 Monitoring for {seconds}s: {args}")
+    collected: list = []
+    try:
+        proc = subprocess.Popen(
+            args, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", bufsize=1,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"could not start monitor: {e}", "returncode": 127}
+
+    def _drain():
+        try:
+            for line in proc.stdout:
+                if line:
+                    collected.append(line.rstrip("\n"))
+                    if len(collected) > 5000:
+                        del collected[:2500]
+        except Exception:
+            pass
+
+    reader = threading.Thread(target=_drain, daemon=True, name="stm32-pio-monitor")
+    reader.start()
+    time.sleep(seconds)
+    _pio_terminate_proc(proc)
+    reader.join(timeout=2)
+    return {"ok": True, "returncode": 0, "port": port or "(auto)", "monitor_seconds": seconds,
+            "stdout": "\n".join(collected) or "(no serial output captured during the window)"}
+
+
+def _pio_write_source(config: dict) -> dict:
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    rel_path = str(_cfg(config, "rel_path")).strip()
+    content = str(_cfg(config, "content"))
+    if not project_dir or not rel_path:
+        return {"ok": False, "error": "write_source needs project_dir and rel_path."}
+    target = os.path.normpath(os.path.join(project_dir, rel_path))
+    root = os.path.normpath(project_dir)
+    if not target.startswith(root + os.sep) and target != root:
+        return {"ok": False, "error": f"rel_path escapes project_dir: {rel_path!r}"}
+    try:
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(content)
+        return {"ok": True, "returncode": 0, "path": target,
+                "stdout": f"Wrote {len(content)} chars to {target}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "path": target}
+
+
+def _pio_read_source(config: dict) -> dict:
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    rel_path = str(_cfg(config, "rel_path")).strip()
+    if not project_dir or not rel_path:
+        return {"ok": False, "error": "read_source needs project_dir and rel_path."}
+    target = os.path.normpath(os.path.join(project_dir, rel_path))
+    try:
+        with open(target, "r", encoding="utf-8", errors="replace") as f:
+            return {"ok": True, "returncode": 0, "path": target, "stdout": f.read()}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "path": target}
+
+
+def _pio_list_sources(config: dict) -> dict:
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    if not project_dir or not os.path.isdir(project_dir):
+        return {"ok": False, "error": "list_sources needs an existing project_dir."}
+    found = []
+    for sub in ("src", "include", "lib", "test", "Core"):
+        root = os.path.join(project_dir, sub)
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                found.append(os.path.relpath(os.path.join(dirpath, name), project_dir).replace(os.sep, "/"))
+    if os.path.exists(_pio_platformio_ini(project_dir)):
+        found.insert(0, "platformio.ini")
+    return {"ok": True, "returncode": 0, "stdout": "\n".join(found) or "(no source files found)"}
+
+
+def _pio_ensure_framework(ini_path: str, framework: str) -> None:
+    """Set/insert `framework = <framework>` under each [env:...] section."""
+    if not os.path.exists(ini_path):
+        return
+    with open(ini_path, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()
+    out, in_env, wrote = [], False, False
+    for line in lines:
+        if re.match(r"\s*\[env:", line):
+            if in_env and not wrote:
+                out.append(f"framework = {framework}\n")
+            in_env, wrote = True, False
+            out.append(line)
+            continue
+        if in_env and re.match(r"\s*framework\s*=", line):
+            out.append(f"framework = {framework}\n")
+            wrote = True
+            continue
+        out.append(line)
+    if in_env and not wrote:
+        out.append(f"framework = {framework}\n")
+    with open(ini_path, "w", encoding="utf-8") as f:
+        f.writelines(out)
+
+
+def _pio_create_project(config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
+    """`pio project init -b <board>` (pio generates the linker/startup/HAL for the
+    board). Framework defaults to `arduino` (stm32duino — a board-agnostic blink works
+    across the whole line); override with `framework: stm32cube|cmsis|mbed|libopencm3`."""
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    board = _resolve_board_id(config)
+    framework = str(_cfg(config, "framework")).strip() or "arduino"
+    if not project_dir or not board:
+        return {"ok": False, "error": "create_project needs project_dir and a resolvable board "
+                                       "(board='bluepill_f103c8' or a known device)."}
+    os.makedirs(project_dir, exist_ok=True)
+    rc, out, err = _pio_run_cmd(list(pio_cmd) + ["project", "init", "-d", project_dir, "-b", board],
+                                env=env, timeout=timeout)
+    result = {"ok": rc == 0, "returncode": rc, "project_dir": project_dir, "board": board,
+              "stdout": out, "stderr": err}
+    if rc == 0 and framework:
+        try:
+            _pio_ensure_framework(_pio_platformio_ini(project_dir), framework)
+            result["stdout"] = (out + f"\n[stm32er] framework='{framework}' set in platformio.ini").strip()
+        except Exception as e:
+            result["stderr"] = (err + f"\n[stm32er] could not set framework: {e}").strip()
+    return result
+
+
+def _pio_list_artifacts(config: dict) -> dict:
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    build_root = os.path.join(project_dir, ".pio", "build")
+    if not os.path.isdir(build_root):
+        return {"ok": False, "error": f"No build output at {build_root} — run action='build' first."}
+    artifacts = []
+    for dirpath, _dirs, files in os.walk(build_root):
+        for name in files:
+            if name.startswith("firmware.") or name.endswith((".elf", ".bin", ".hex")):
+                artifacts.append(os.path.join(dirpath, name))
+    return {"ok": bool(artifacts), "returncode": 0 if artifacts else 1, "project_dir": project_dir,
+            "stdout": "\n".join(artifacts) or "(no firmware artifacts found)"}
+
+
+def _pio_cmd(args: list, pio_cmd: list, env: dict, timeout: float) -> dict:
+    rc, out, err = _pio_run_cmd(list(pio_cmd) + list(args), env=env, timeout=timeout)
+    return {"ok": rc == 0, "returncode": rc, "stdout": out, "stderr": err}
+
+
+def _pio_run(extra: list, config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
+    """`pio run` with -d/-e and any extra target args, plus optional --upload-port."""
+    args = ["run"] + _pio_project_args(config) + _pio_env_args(config) + list(extra)
+    upload_port = str(_cfg(config, "port")).strip()
+    if "-t" in extra and "upload" in extra and upload_port:
+        args += ["--upload-port", upload_port]
+    return _pio_cmd(args, pio_cmd, env, timeout)
+
+
+def _pio_ok(result: dict) -> bool:
+    if not isinstance(result, dict):
+        return False
+    if "ok" in result:
+        return bool(result["ok"])
+    return "error" not in result
+
+
+def _pio_wrap(tool: str, result: dict) -> dict:
+    return {"ok": _pio_ok(result), "tool": tool, "result": result}
+
+
+def _pio_scaffold(config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
+    """One-call lifecycle: create_project (if needed) → write_source (if `content`) →
+    build → flash over ST-LINK (attempted unless the ST-LINK is CONFIDENTLY absent) →
+    optional monitor. Collapses a 4-round-trip Multi-Turn chain into one run; fail-safe
+    — a confidently-missing board still leaves a compiled project ('built OK')."""
+    project_dir = str(_cfg(config, "project_dir")).strip()
+    board = _resolve_board_id(config)
+    stage_logs: list = []
+
+    def _section(title: str, res: dict) -> None:
+        out = (res.get("stdout") or "") if isinstance(res, dict) else ""
+        err = (res.get("stderr") or "") if isinstance(res, dict) else ""
+        joined = "\n".join(p for p in (out, err) if p).strip()
+        stage_logs.append(f"===== {title} =====\n{joined or '(no output)'}")
+
+    def _envelope(tool: str, ok: bool, stage: str, rc, extra: dict = None) -> dict:
+        result = {"ok": ok, "returncode": rc, "stage": stage, "project_dir": project_dir,
+                  "board": board, "stdout": "\n\n".join(stage_logs)}
+        if extra:
+            result.update(extra)
+        return {"ok": ok, "tool": tool, "result": result}
+
+    if not (project_dir and os.path.exists(_pio_platformio_ini(project_dir))):
+        cp = _pio_create_project(config, pio_cmd, env, timeout)
+        _section("create_project", cp)
+        if not _pio_ok(cp):
+            return _envelope("scaffold_build_flash", False, "create_project", cp.get("returncode", 1))
+    else:
+        stage_logs.append(f"===== create_project =====\n(skipped — platformio.ini already in {project_dir})")
+
+    if str(_cfg(config, "content")).strip():
+        if not str(_cfg(config, "rel_path")).strip():
+            config["rel_path"] = "src/main.cpp"
+        ws = _pio_write_source(config)
+        _section("write_source", ws)
+        if not _pio_ok(ws):
+            return _envelope("scaffold_build_flash", False, "write_source", ws.get("returncode", 1))
+
+    st = _pio_probe_stlink(config, env, pio_cmd)
+    if st.get("confident_absent"):
+        bd = _pio_run([], config, pio_cmd, env, timeout)
+        _section("build", bd)
+        if not _pio_ok(bd):
+            return _envelope("scaffold_build_flash", False, "build", bd.get("returncode", 1))
+        stage_logs.append("===== flash =====\nSKIPPED — no ST-LINK detected. The project compiled "
+                          "successfully; connect the board's ST-LINK and run action='flash' to upload it.")
+        return _envelope("scaffold_build_flash (flash skipped: no ST-LINK)", True, "flash_skipped", 0)
+
+    up = _pio_run(["-t", "upload"], config, pio_cmd, env, timeout)
+    _section("build+flash", up)
+    if not _pio_ok(up):
+        return _envelope("scaffold_build_flash", False, "flash", up.get("returncode", 1))
+    if _as_int(_cfg(config, "monitor_seconds", 0), 0) > 0:
+        _section("monitor", _pio_bounded_monitor(pio_cmd, config, env))
+    return _envelope("scaffold→build→flash", True, "flash", up.get("returncode", 0))
+
+
+def _pio_run_action(action: str, config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
+    """Execute one PlatformIO action (STM32-native `flash`/`build_and_flash` verbs are
+    accepted as aliases of pio's upload verbs). Returns {ok, tool, result}."""
+    if action in ("scaffold_build_upload", "scaffold_build_flash"):
+        return _pio_scaffold(config, pio_cmd, env, timeout)
+    if action == "write_source":
+        return _pio_wrap("write_source", _pio_write_source(config))
+    if action == "read_source":
+        return _pio_wrap("read_source", _pio_read_source(config))
+    if action == "list_sources":
+        return _pio_wrap("list_sources", _pio_list_sources(config))
+    if action == "list_artifacts":
+        return _pio_wrap("list_artifacts", _pio_list_artifacts(config))
+    if action == "create_project":
+        return _pio_wrap("project init", _pio_create_project(config, pio_cmd, env, timeout))
+    if action == "monitor":
+        return _pio_wrap("device monitor", _pio_bounded_monitor(pio_cmd, config, env))
+    if action == "monitor_session":
+        up = _pio_run(["-t", "upload"], config, pio_cmd, env, timeout)
+        if not _pio_ok(up):
+            return _pio_wrap("upload", up)
+        mon = _pio_bounded_monitor(pio_cmd, config, env)
+        mon["upload_returncode"] = up.get("returncode")
+        return _pio_wrap("upload+monitor", mon)
+    if action == "system_info":
+        return _pio_wrap("system info", _pio_cmd(["system", "info"], pio_cmd, env, timeout))
+    if action in ("boards", "list_boards"):
+        query = str(_cfg(config, "boards_query") or _cfg(config, "board")).strip()
+        args = ["boards", "--json-output"] + ([query] if query else ["stm32"])
+        return _pio_wrap("boards", _pio_cmd(args, pio_cmd, env, 120))
+    if action == "device_list":
+        return _pio_wrap("device list", _pio_cmd(["device", "list", "--json-output"], pio_cmd, env, 60))
+    if action == "build":
+        return _pio_wrap("run", _pio_run([], config, pio_cmd, env, timeout))
+    if action == "clean":
+        return _pio_wrap("run -t clean", _pio_run(["-t", "clean"], config, pio_cmd, env, timeout))
+    if action in ("upload", "build_and_upload", "flash", "build_and_flash"):
+        return _pio_wrap("run -t upload", _pio_run(["-t", "upload"], config, pio_cmd, env, timeout))
+    if action == "check":
+        return _pio_wrap("check", _pio_cmd(["check"] + _pio_project_args(config) + _pio_env_args(config), pio_cmd, env, timeout))
+    if action == "test":
+        return _pio_wrap("test", _pio_cmd(["test"] + _pio_project_args(config) + _pio_env_args(config), pio_cmd, env, timeout))
+    if action == "pkg_list":
+        return _pio_wrap("pkg list", _pio_cmd(["pkg", "list"] + _pio_project_args(config), pio_cmd, env, 120))
+    if action == "pkg_update":
+        return _pio_wrap("pkg update", _pio_cmd(["pkg", "update"] + _pio_project_args(config), pio_cmd, env, 300))
+    if action == "pkg_install":
+        spec = str(_cfg(config, "pkg_spec")).strip()
+        if not spec:
+            return _pio_wrap("pkg install", {"ok": False, "error": "pkg_install needs pkg_spec (a library spec)."})
+        return _pio_wrap("pkg install", _pio_cmd(["pkg", "install"] + _pio_project_args(config) + ["-l", spec], pio_cmd, env, 300))
+    valid = ", ".join(sorted(_PIO_ALL))
+    return _pio_wrap(action, {"ok": False, "error": f"Unknown PlatformIO action {action!r}. Valid: {valid}."})
+
+
+def _pio_result_body(result: dict) -> str:
+    if not isinstance(result, dict):
+        return str(result)
+    parts = []
+    if result.get("error"):
+        parts.append(f"[error] {result['error']}")
+    if result.get("stdout"):
+        parts.append(str(result["stdout"]))
+    if result.get("stderr"):
+        parts.append(f"[stderr]\n{result['stderr']}")
+    if parts:
+        return "\n".join(parts)[:60000]
+    try:
+        return json.dumps(result, indent=2, default=str)[:60000]
+    except Exception:
+        return str(result)[:60000]
+
+
+def _run_platformio_backend(action: str, config: dict) -> tuple:
+    """Run the PlatformIO backend end-to-end and return (envelope, body). Mirrors the
+    template-MCP path's shape so main() can hand off to the shared emit+trigger tail."""
+    python_cmd = get_python_command()
+    env = get_agent_env()
+    core_dir = str(_cfg(config, "pio_core_dir")).strip() or _pio_default_core_dir()
+    env["PLATFORMIO_CORE_DIR"] = core_dir
+    timeout = float(_as_int(_cfg(config, "command_timeout", 900), 900))
+    auto_bootstrap = _as_bool(_cfg(config, "auto_bootstrap", True), True)
+
+    bootstrap_report = None
+    boot_ok = True
+    if action == "bootstrap":
+        pio_cmd, bootstrap_report, boot_ok = _pio_bootstrap(config, env, core_dir, python_cmd)
+    else:
+        pio_cmd = _pio_resolve_cmd(config, env, core_dir, python_cmd)
+        if not pio_cmd and auto_bootstrap:
+            logging.info("🧰 Auto-bootstrap: PlatformIO Core not found — installing (shared with ESP32er)...")
+            pio_cmd, bootstrap_report, boot_ok = _pio_bootstrap(config, env, core_dir, python_cmd)
+
+    if action == "bootstrap":
+        body = _pio_format_bootstrap_report(bootstrap_report)
+        return ({"ok": bool(boot_ok), "tool": "bootstrap",
+                 "result": {"ok": bool(boot_ok), "stage": "bootstrap",
+                            "returncode": 0 if boot_ok else 1, "board": _resolve_board_id(config)}}, body)
+
+    if action not in _PIO_ALL:
+        valid = ", ".join(sorted(_PIO_ALL))
+        body = f"Unknown PlatformIO action {action!r}. Valid actions: {valid}."
+        logging.error(f"❌ {body}")
+        return ({"ok": False, "tool": action, "result": {"ok": False, "error": body}}, body)
+
+    if action == "validate":
+        pf = _pio_preflight("validate", config, pio_cmd, env)
+        body = _pio_format_preflight_report(pf)
+        if bootstrap_report is not None:
+            body = _pio_format_bootstrap_report(bootstrap_report) + "\n\n" + body
+        return ({"ok": bool(pf["ok"]), "tool": "validate",
+                 "result": {"ok": bool(pf["ok"]), "stage": "validate", "returncode": 0 if pf["ok"] else 1,
+                            "board": pf.get("board", "")}}, body)
+
+    preflight = None
+    if _as_bool(_cfg(config, "preflight", True), True) and action not in _PIO_FILE:
+        preflight = _pio_preflight(action, config, pio_cmd, env)
+    if preflight is not None and not preflight["ok"]:
+        body = ("PREFLIGHT REFUSED this operation (fail-safe — the environment could not be guaranteed "
+                "correct):\n\n" + _pio_format_preflight_report(preflight))
+        logging.error(f"❌ PlatformIO preflight refused {action}: {preflight['fatals']}")
+        envelope = {"ok": False, "tool": action,
+                    "result": {"ok": False, "error": "preflight refused", "stage": "preflight",
+                               "board": preflight.get("board", "")}}
+    else:
+        logging.info(f"🔧 PlatformIO {action} board={_resolve_board_id(config) or '(none)'}")
+        envelope = _pio_run_action(action, config, pio_cmd, env, timeout)
+        body = _pio_result_body(envelope.get("result", {}))
+        if preflight is not None and preflight.get("warnings"):
+            body = ("[preflight OK — warnings: " + " | ".join(preflight["warnings"]) + "]\n\n") + body
+
+    if bootstrap_report is not None:
+        body = _pio_bootstrap_note(bootstrap_report, boot_ok) + body
+    return (envelope, body)
+
+
+# ========================================
+# SHARED EMIT + DOWNSTREAM TRIGGER (both backends)
+# ========================================
+
+def _emit_and_trigger(action: str, envelope: dict, body: str, resolved_server: str,
+                      config: dict, target_agents: list, backend: str) -> None:
+    """Shared tail for BOTH backends: build the FIXED-schema KV header (keep aligned
+    with agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['stm32er']), emit the
+    INI_SECTION_STM32ER block, then ALWAYS trigger downstream agents (success OR
+    failure) so a Forker/Raiser can branch on {success}/{returncode}."""
+    result = envelope.get("result", {}) if isinstance(envelope.get("result"), dict) else {}
+    project_dir = str(result.get("project_dir", "")) or str(_cfg(config, "project_dir", ""))
+    session_id = (
+        str(envelope.get("session_id", "")) or str(result.get("session_id", ""))
+        or str(_cfg(config, "session_id", ""))
+    )
+    board = str(result.get("board", "")) or _resolve_board_id(config) or str(_cfg(config, "device", ""))
+    port = str(result.get("port", "")) or str(_cfg(config, "port", ""))
+    outcome = {
+        "action": action,
+        "tool": envelope.get("tool", action),
+        "ok": "true" if envelope.get("ok") else "false",
+        "returncode": result.get("returncode", ""),
+        "success": "true" if envelope.get("ok") else "false",
+        "backend": backend,
+        "project_dir": project_dir,
+        "board": board,
+        "port": port,
+        "session_id": session_id,
+        "stage": result.get("stage", ""),
+        "server_script": resolved_server,
+    }
+    _emit_section(outcome, body or "(no output)")
+
+    if envelope.get("ok"):
+        logging.info(f"🏁 STM32er {action} complete (backend={backend}): success=true")
+    else:
+        logging.warning(f"⚠️ STM32er {action} did not succeed (backend={backend}). {result.get('error', '')}")
+
+    total_triggered = 0
+    if target_agents:
+        wait_for_agents_to_stop(target_agents)
+        logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
+        for target in target_agents:
+            if start_agent(target):
+                total_triggered += 1
+    logging.info(f"🏁 STM32er agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
+
+
+# ========================================
 # MAIN
 # ========================================
 
@@ -1517,9 +2544,22 @@ def main():
         explicit_server = str(_cfg(config, 'server_script')).strip()
         auto_bootstrap = _as_bool(_cfg(config, 'auto_bootstrap', True), True)
 
-        logging.info("⚡ STM32er AGENT STARTED (STM32 Template Project MCP bridge)")
+        logging.info("⚡ STM32er AGENT STARTED (dual backend: template MCP + PlatformIO)")
         logging.info(f"Action: {action}")
         logging.info(f"Targets: {target_agents}")
+
+        # ── Backend dispatch (Phase 0/1) ──────────────────────────────────────
+        # Route to the PlatformIO backend for the Blue Pill and every non-F407 part
+        # (spanning the mainstream ST line); the legacy template-MCP path below
+        # handles F407 / blank EXACTLY as before (zero regression). The PlatformIO
+        # backend is fully self-contained and shares the emit + downstream-trigger
+        # tail via _emit_and_trigger, so it needs none of the MCP resolution below.
+        backend = _resolve_stm32_backend(config, action)
+        logging.info(f"Backend: {backend}")
+        if backend == "platformio":
+            pio_envelope, pio_body = _run_platformio_backend(action, config)
+            _emit_and_trigger(action, pio_envelope, pio_body, "", config, target_agents, "platformio")
+            return
 
         # ── Build the server launch command + environment up front: BOTH the
         #    bootstrap installer (git/pip) and the MCP client need them. ──
@@ -1638,47 +2678,8 @@ def main():
             if bootstrap_report is not None:
                 body = _bootstrap_note(bootstrap_report, boot_ok) + body
 
-        # ── Build the KV header (FIXED schema — keep aligned with _PARAMETRIZER_OUTPUT_FIELDS) ──
-        result = envelope.get("result", {}) if isinstance(envelope.get("result"), dict) else {}
-        project_dir = (
-            str(result.get("project_dir", "")) or str(_cfg(config, "project_dir", ""))
-        )
-        session_id = (
-            str(envelope.get("session_id", "")) or str(result.get("session_id", ""))
-            or str(_cfg(config, "session_id", ""))
-        )
-        outcome = {
-            "action": action,
-            "tool": envelope.get("tool", action),
-            "ok": "true" if envelope.get("ok") else "false",
-            "returncode": result.get("returncode", ""),
-            "success": "true" if envelope.get("ok") else "false",
-            "project_dir": project_dir,
-            "session_id": session_id,
-            "stage": result.get("stage", ""),
-            "server_script": resolved_server,
-        }
-        _emit_section(outcome, body or "(no output)")
-
-        if envelope.get("ok"):
-            logging.info(f"🏁 STM32er {action} complete: success=true")
-        else:
-            err = result.get("error", "")
-            logging.warning(f"⚠️ STM32er {action} did not succeed. {err}")
-
-        # Always trigger downstream agents regardless of success or failure, so a
-        # downstream Forker / Raiser can branch on {success} / {returncode}.
-        total_triggered = 0
-        if target_agents:
-            wait_for_agents_to_stop(target_agents)
-            logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
-            for target in target_agents:
-                if start_agent(target):
-                    total_triggered += 1
-
-        logging.info(
-            f"🏁 STM32er agent finished. Triggered {total_triggered}/{len(target_agents)} agents."
-        )
+        # ── Emit the section + ALWAYS trigger downstream (shared with the pio path) ──
+        _emit_and_trigger(action, envelope, body, resolved_server, config, target_agents, "template_mcp")
     finally:
         if client is not None:
             client.close()

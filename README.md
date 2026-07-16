@@ -211,7 +211,7 @@ Everything Tlamatini can do, grouped:
 - **ACPX** — spawn external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, and more) as tools and relay between them.
 
 **📟 Firmware & hardware**
-- **STM32er** — zero-config STM32 build/flash/observe with a critical-mission safety preflight.
+- **STM32er** — zero-config STM32 build/flash/observe across the whole ST 32-bit line (Blue Pill → F7/G/L/H7/U5/WB) via a dual backend (PlatformIO `ststm32` + the STM32F407VG template MCP), with a critical-mission safety preflight.
 - **ESP32er** — direct PlatformIO build/flash/monitor, zero-config bootstrap.
 - **Arduiner** — direct `arduino-cli`, auto-installs binary + core, build/upload.
 - **ESPHomer** — ESPHome smart-home device configs (YAML, no C++), zero-config.

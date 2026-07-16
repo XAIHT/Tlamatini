@@ -2012,6 +2012,10 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
             ("stm32_ide_root", "ide_root"),
             ("stm32_mcp_repo_url", "mcp_repo_url"),
             ("stm32_mcp_install_dir", "mcp_install_dir"),
+            # Phase 1 PlatformIO backend — SHARE the same `pio` globals as ESP32er so
+            # one PlatformIO install serves both firmware agents (Config -> URLs).
+            ("pio_executable", "pio_executable"),
+            ("pio_core_dir", "pio_core_dir"),
         ):
             try:
                 configured = get_config_value(cfg_key, "")
@@ -2304,11 +2308,13 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
     # --- embedded firmware ----------------------------------------------
     'stm32er':        {'title': 'STM32ER FIRMWARE ACTION TO RUN',
                        'body': ('content', 'source content (write_source)'),
-                       'params': ('action', 'device', 'project_dir', 'name',
+                       'params': ('action', 'stm32_backend', 'board', 'framework',
+                                  'environment', 'device', 'project_dir', 'name',
                                   'dest_parent', 'rel_path', 'system',
                                   'binary', 'port', 'baud', 'data',
                                   'address', 'symbol', 'value', 'variables',
-                                  'monitor_seconds', 'server_script',
+                                  'monitor_seconds', 'boards_query', 'pkg_spec',
+                                  'server_script', 'pio_executable',
                                   'mcp_python', 'auto_bootstrap', 'preflight')},
     'esp32er':        {'title': 'ESP32ER FIRMWARE ACTION TO RUN',
                        'body': ('content', 'source content (write_source)'),

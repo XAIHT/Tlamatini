@@ -122,11 +122,21 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._handler.setLevel(logging.DEBUG)
+        root = logging.getLogger()
+        # Ensure INFO records (the INI_SECTION_STM32ER blocks) actually reach the
+        # handler: under `manage.py test`, Django's logging config can leave the root
+        # logger at WARNING, which drops logging.info(...) BEFORE any handler sees it.
+        # Force DEBUG for the capture window and restore the prior level on exit.
+        self._prev_level = root.level
+        root.setLevel(logging.DEBUG)
+        root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        root = logging.getLogger()
+        root.removeHandler(self._handler)
+        root.setLevel(self._prev_level)
         return False
 
 
@@ -1504,6 +1514,49 @@ class PreflightEngineTests(SimpleTestCase):
         self.assertEqual(self.s._device_family('STM32F103C8'), 'STM32F1')
         self.assertEqual(self.s._device_family('not-a-chip'), '')
 
+    def test_device_family_spans_full_st_line(self):
+        # Phase 0: _device_family recognises the WHOLE ST 32-bit line (Blue Pill → N6).
+        self.assertEqual(self.s._device_family('STM32H750VB'), 'STM32H7')
+        self.assertEqual(self.s._device_family('STM32H563ZI'), 'STM32H5')
+        self.assertEqual(self.s._device_family('STM32G071RB'), 'STM32G0')
+        self.assertEqual(self.s._device_family('STM32G474RE'), 'STM32G4')
+        self.assertEqual(self.s._device_family('STM32L476RG'), 'STM32L4')
+        self.assertEqual(self.s._device_family('STM32U575ZI'), 'STM32U5')
+        self.assertEqual(self.s._device_family('STM32C031G6'), 'STM32C0')
+        self.assertEqual(self.s._device_family('STM32N657X0'), 'STM32N6')
+        # 'WBA' must win over 'WB' (ordering: most-specific prefix first).
+        self.assertEqual(self.s._device_family('STM32WBA52'), 'STM32WBA')
+        self.assertEqual(self.s._device_family('STM32WB55RG'), 'STM32WB')
+
+    def test_resolve_board_id_alias_and_device(self):
+        self.assertEqual(self.s._resolve_board_id({'board': 'blue pill'}), 'bluepill_f103c8')
+        self.assertEqual(self.s._resolve_board_id({'board': 'nucleo_h743zi'}), 'nucleo_h743zi')
+        self.assertEqual(self.s._resolve_board_id({'device': 'STM32F103C8'}), 'bluepill_f103c8')
+        self.assertEqual(self.s._resolve_board_id({}), '')
+
+    def test_backend_routing(self):
+        r = self.s._resolve_stm32_backend
+        # explicit choice wins
+        self.assertEqual(r({'stm32_backend': 'platformio'}, 'get_config'), 'platformio')
+        self.assertEqual(r({'stm32_backend': 'template_mcp', 'board': 'bluepill_f103c8'}, 'build'),
+                         'template_mcp')
+        # auto: blank / STM32F4 (no board) stay on the template MCP (zero regression)
+        self.assertEqual(r({}, 'get_config'), 'template_mcp')
+        self.assertEqual(r({'device': 'STM32F407VG'}, 'build'), 'template_mcp')
+        # auto: a board, a non-F4 device, or a PlatformIO-only action route to PlatformIO
+        self.assertEqual(r({'board': 'bluepill_f103c8'}, 'build'), 'platformio')
+        self.assertEqual(r({'device': 'STM32H743ZI'}, 'build'), 'platformio')
+        self.assertEqual(r({'device': 'STM32F103C8'}, 'build'), 'platformio')  # Blue Pill (F1)
+        self.assertEqual(r({}, 'list_boards'), 'platformio')
+
+    def test_pio_preflight_refuses_newest_silicon(self):
+        # STM32N6 (and C0/H5/U0/WBA) await the ST-native CubeCLT backend (Phase 2/3);
+        # the PlatformIO backend refuses them cleanly rather than mis-building.
+        rep = self.s._pio_preflight('build', {'device': 'STM32N657X0'}, [], {})
+        self.assertFalse(rep['ok'])
+        self.assertFalse(rep['checks'].get('family_supported', True))
+        self.assertTrue(any('ststm32' in f or 'CubeCLT' in f for f in rep['fatals']))
+
     def test_probe_stlink_present(self):
         out = '------ Connected ST-LINK Probes List ------\nST-Link Probe 0 :\n   ST-LINK SN  : 0667FF\n'
         with patch.object(self.s, '_run_cmd', return_value=(0, out, '')), \
@@ -1673,9 +1726,12 @@ class MainPreflightTests(SimpleTestCase):
         self.assertIn('No ST-LINK probe detected', block)
 
     def test_cross_family_build_refused(self):
+        # The template-MCP backend (forced here) is F407-only, so a cross-family device
+        # is REFUSED there. Under stm32_backend='auto' a non-F4 device instead ROUTES to
+        # the PlatformIO backend (Phase 0) — see BackendRoutingTests.
         code, started, records = self._run_main(
             {'action': 'build', 'project_dir': 'C:/p', 'device': 'STM32F091RC',
-             'target_agents': ['ds_1']})
+             'stm32_backend': 'template_mcp', 'target_agents': ['ds_1']})
         self.assertEqual(code, 0)
         self.assertEqual(started, ['ds_1'])
         block = next(r for r in records if 'INI_SECTION_STM32ER' in r)

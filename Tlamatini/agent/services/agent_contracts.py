@@ -126,7 +126,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "analyzer": ("target_path", "tools_run", "tools_skipped", "total_findings", "status", "response_body"),
     "playwrighter": ("start_url", "final_url", "status", "steps_run", "assert_result", "response_body"),
     "kalier": ("action", "endpoint", "method", "subject", "return_code", "success", "timed_out", "server_url", "response_body"),
-    "stm32er": ("action", "tool", "ok", "returncode", "success", "project_dir", "session_id", "stage", "server_script", "response_body"),
+    "stm32er": ("action", "tool", "ok", "returncode", "success", "backend", "project_dir", "board", "port", "session_id", "stage", "server_script", "response_body"),
     "esp32er": ("action", "tool", "ok", "returncode", "success", "project_dir", "port", "environment", "stage", "response_body"),
     "esphomer": ("action", "tool", "ok", "returncode", "success", "config_path", "name", "port", "stage", "response_body"),
     "arduiner": ("action", "tool", "ok", "returncode", "success", "fqbn", "port", "sketch_path", "stage", "response_body"),

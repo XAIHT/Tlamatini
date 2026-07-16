@@ -239,25 +239,28 @@ class PromptCatalogEndpointTests(TestCase):
         )
 
     def test_seeded_catalog_is_deduped_and_fully_tagged(self):
-        """Against the REAL seeded catalog (migrations 0002..0176): the 13 duplicate
-        ACPX demos (ids 40-52) are PHYSICALLY DELETED (Angela: "get rid completely
-        of the duplicates"), every remaining prompt is tagged, and the surrounding
-        ids are untouched. The gap at 40-52 is intentional — ids are never
-        renumbered and the offline fallback probe is gap-tolerant."""
-        all_ids = set(Prompt.objects.values_list("idPrompt", flat=True))
+        """Against the REAL seeded catalog AFTER migration 0179 (Angela's explicit
+        re-group / re-sort / NO-GAPS renumber, 2026-07-15): the duplicate ACPX demos
+        are gone, no rows are hidden, every prompt is tagged with a category, and
+        idPrompt is now a CONTIGUOUS 1..N (the 40-52 gap left by 0176 is filled). The
+        old "ids are never renumbered / the gap is intentional" contract was
+        deliberately superseded by 0179 — see test_prompt_catalog_contiguous.py."""
+        all_ids = sorted(Prompt.objects.values_list("idPrompt", flat=True))
         if not all_ids:
             self.skipTest("no seeded prompts in this test DB")
-        # The 13 duplicates are GONE — not hidden, deleted.
+        # 0179: contiguous 1..N, NO gaps.
         self.assertEqual(
-            [i for i in range(40, 53) if i in all_ids], [],
-            "duplicate ACPX prompts 40-52 must be deleted from the DB",
+            all_ids, list(range(1, len(all_ids) + 1)),
+            "idPrompt must be contiguous 1..N after the 0179 renumber (no gaps)",
         )
+        # No hidden rows remain (the dups were physically deleted, not hidden).
         self.assertEqual(Prompt.objects.filter(hidden=True).count(), 0,
-                         "no hidden rows should remain — the dups were deleted, not hidden")
-        # We deleted the MIDDLE, not the ends: 39 and 53 (and the kept 33-39) survive.
-        for kept in (33, 34, 35, 36, 37, 38, 39, 53, 106):
-            self.assertIn(kept, all_ids, f"prompt {kept} must NOT have been deleted")
-        # Every remaining prompt has a category (nothing lands in a silent bucket).
+                         "no hidden rows should remain")
+        # Deduped: no two prompts share identical content.
+        contents = list(Prompt.objects.values_list("promptContent", flat=True))
+        self.assertEqual(len(contents), len(set(contents)),
+                         "the catalog must contain no duplicate prompt content")
+        # Every prompt has a category (nothing lands in a silent bucket).
         untagged = list(Prompt.objects.filter(category="").values_list("idPrompt", flat=True))
         self.assertEqual(untagged, [], f"prompts missing a category: {untagged}")
 

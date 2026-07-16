@@ -16,6 +16,45 @@
 
 ---
 
+## 2026-07-15 — Catalog of Prompts: two STM32 step-by-step blink demos + a one-time RE-GROUP/RE-SORT/NO-GAPS renumber (do NOT revert)
+
+**What Angela asked:** two new Blue Pill / STM32F407G-DISC1 "classic LED blink" catalog prompts (Multi-Turn + Exec-report + Step-by-Step, from driver install through per-step verification to confirming the blink with the default camera), AND *"RE-GROUP THE PROMPTS, RE-SORT, WITH NO-GAPS THE Catalog of Prompts in the DB."*
+
+**Migrations added:**
+- **0178** — two firmware_iot prompts: a Blue Pill (STM32F103, external ST-LINK V2) and an STM32F407G-DISC1 (embedded ST-Link) step-by-step blink, each driving `chat_agent_stm32er` (PlatformIO backend) + `chat_agent_camcorder`. Badge inference (`tools_dialog.js::classifyPromptModes`): driving a `chat_agent_*` → Multi-turn (+ Exec-report auto); the UNFORMATTED phrase **"Step-by-Step mode"** (hyphenated + keyword) → the Step-by-Step badge. (There is also 0177, a simpler one-call Blue-Pill blink.)
+- **0179** — **RE-NUMBERED the whole catalog to a contiguous 1..N**, ordered by (`views.PROMPT_CATEGORY_ORDER` rank, current idPrompt), rewriting `promptName='prompt-<n>'`. This **deliberately overrides the standing "NEVER renumber idPrompt" contract** — Angela authorised it directly, and it is safe because NOTHING binds a prompt by a fixed number at runtime (`list_prompts_view` groups by `category`; the `tools_dialog.js` fallback is gap-tolerant; `idPrompt` is not an FK). `idPrompt` is the PRIMARY KEY, so the renumber is **two-phase** (park every row at a +1,000,000 offset in target order, then bring them down to 1..N) to avoid PK collisions. Reverse is a documented no-op (originals not stored).
+
+**Forward rule UNCHANGED:** the 0179 renumber was a ONE-TIME reorganization. New prompts still **append at max(idPrompt)+1** (which keeps the catalog contiguous). Do NOT write another renumber for a routine addition.
+
+**Test updates required (do NOT revert):** the renumber invalidated id-specific assertions. `test_frontend_mutable_state.py::test_seeded_catalog_is_deduped_and_fully_tagged` was rewritten to assert **contiguity + no-dup-content + fully-tagged** instead of "ids 40-52 gone / 106 kept". `test_kalier_agent.py::test_prompt_catalog_is_contiguous` and the `test_blenderer_agent` promptName↔id lock-step now PASS (contiguity restored). New `agent/test_prompt_catalog_contiguous.py` pins the invariants (contiguous 1..N, promptName matches id, category-grouped blocks, the new firmware prompts present). All green; `createsuperuser` wizard stays at idPrompt 1 (getting_started, lowest id → renumbers to 1).
+
+**Docs:** the CONTIGUITY contract in `CLAUDE.md` (and mirrored guidance) updated to "contiguous again after the one-time renumber; append-only going forward".
+
+**NOT live:** source migrations only — a rebuild + post-update migrate is needed for the frozen `:8000` app.
+
+**Do NOT:** re-introduce the old id-specific catalog assertions; write a renumber for a routine new prompt (append at max+1 instead); or drop the two-phase offset from 0179 (a naive in-place PK renumber collides).
+
+---
+
+## 2026-07-15 — STM32er widened to the WHOLE ST 32-bit line (Blue Pill → mainstream families): Phase 0 family gate + Phase 1 PlatformIO backend (do NOT revert)
+
+**What:** STM32er was welded to ONE device (STM32F407VG) — its `_device_family` only recognised `STM32F0..F7` and its preflight REFUSED cross-family, so it wouldn't even flash a Blue Pill. It is now **dual-backend**, spanning F0..F7 / G0 / G4 / L0..L5 / H7 / U5 / WB. This is Phase 0 + 1 of the plan in `docs/stm32er_all_families_proposal.md` (Phase 2/3 = the ST-native STM32CubeCLT backend for STM32C0/H5/U0/WBA/**N6** — the N6 also needs external-flash boot + a signed FSBL — is NOT yet implemented).
+
+**How (all in `agent/agents/stm32er/stm32er.py`, self-contained, stdlib-only):**
+- **Phase 0 — de-welded the gate:** `_STM32_FAMILY_PREFIXES` (full family map, WBA before WB), `_device_family` broadened to every ST family. The cross-family REFUSE was NOT weakened — instead `_resolve_stm32_backend(config, action)` **ROUTES** by target: under `stm32_backend='auto'`, a `board`, a non-STM32F4 `device`, or a PlatformIO-only action goes to the pio backend; blank/F407 stays on the **template MCP unchanged (zero regression)**. Explicit `stm32_backend='platformio'|'template_mcp'` overrides.
+- **Phase 1 — PlatformIO backend (`_pio_*` helpers + `_run_platformio_backend`):** clones ESP32er's proven `pio` machinery — drives PlatformIO Core's `ststm32` platform directly (no MCP server), zero-config bootstrap into the **SHARED** core dir `%LOCALAPPDATA%/Tlamatini/platformio` (the SAME one ESP32er uses — one PlatformIO install serves both), board catalog (`bluepill_f103c8`, …), `framework` default `arduino`, actions incl. `list_boards` / `scaffold_build_flash` and STM32-native `flash`/`build_and_flash` aliases.
+- **Shared tail `_emit_and_trigger`:** BOTH backends emit ONE `INI_SECTION_STM32ER` and trigger downstream. KV header GAINED `backend` / `board` / `port` — registered in `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['stm32er']` (keep aligned).
+
+**Fail-safe contract (do NOT weaken):** STM32 boards flash over ST-LINK/SWD, NOT a USB-serial bootloader — so `_pio_probe_stlink` probes the ST-LINK (`STM32_Programmer_CLI --list` via the existing `_probe_stlink`, then a `pio device list` VID-`0483` VCP fallback) and hard-refuses an upload ONLY on a **confident** absence; an inconclusive miss (a bare ST-LINK v2 dongle has no VCP to enumerate) only WARNS, so a legit Blue-Pill+dongle rig is never false-refused. The pio backend refuses `STM32C0/H5/U0/WBA/N6` cleanly (→ future CubeCLT).
+
+**Wiring touched:** `config.yaml` (new `stm32_backend`/`board`/`framework`/`environment`/`pio_executable`/`pio_core_dir`/`pio_install_method`/`command_timeout`/`boards_query`/`pkg_spec`/`programmer_cli`); `services/agent_contracts.py` (KV fields); `tools.py` (`_seed_global_agent_defaults` SHARES `pio_executable`/`pio_core_dir` with ESP32er; param-hints map); `chat_agent_registry.py` (STM32er spec purpose/example/aliases teach the `board`+backend surface); docs (`agents.md`, `agents_descriptions.md` — the live tooltip, `agentic_skill.md` #67, `CLAUDE.md`, `README.md`, `architecture.md`); demo prompt migration (Blue-Pill blink).
+
+**Verified LIVE (source agent, via `mcp__tlamatini__stm32er`):** (1) `validate` + `stm32_backend='platformio'` + `board='bluepill_f103c8'` → `backend: platformio`, `pio_resolvable`, family STM32F1, `READY`, ST-LINK `confident_absent=True` (correct — no board attached). (2) `validate` + `device='STM32H743ZI'` (auto) → routed to platformio, board auto-mapped `nucleo_h743zi`, family STM32H7, `READY`. (3) `get_config` (blank/auto) → `backend: template_mcp`, MCP handshake OK, full F407 config — zero regression. `ruff` + `py_compile` clean.
+
+**Do NOT:** re-narrow `_device_family` to STM32F-only; drop `backend`/`board`/`port` from the KV or the agent_contracts registration; hard-refuse a pio upload on an inconclusive ST-LINK miss; give the pio backend its own core dir (it MUST stay shared with ESP32er); or route blank/F407 to anything but the template MCP.
+
+---
+
 ## Recent Fixes / Gotchas (keep these in mind)
 
 ### 2026-07-14 — Cancel did not cancel: the never-ending post-cancel run (`agent/cancellation.py`, the PER-RUN EPOCH LATCH)
