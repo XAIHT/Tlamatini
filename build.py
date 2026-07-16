@@ -615,6 +615,40 @@ def ensure_local_build_python():
     return str(local_exe)
 
 
+def _active_playwright_revisions():
+    """Directory-name tokens for the Chromium builds the INSTALLED Playwright
+    actually pins — read from ``playwright/driver/package/browsers.json``.
+
+    Used to drop STALE chromium revisions that earlier Playwright upgrades leave
+    behind in the ``%LOCALAPPDATA%/ms-playwright`` cache (e.g. a ``chromium-1228``
+    sitting next to the ``chromium-1169`` the current Playwright pins). Copying
+    them verbatim bloats the release by ~0.7 GB and pushed the zip past GitHub's
+    2 GiB asset limit. Returns a set like
+    ``{'chromium-1169', 'chromium_headless_shell-1169', 'ffmpeg-1011'}``; an
+    EMPTY set on ANY failure so the caller fails OPEN (keeps all chromium)."""
+    keep: set[str] = set()
+    try:
+        import json as _json
+        import playwright as _pw
+        bj = Path(_pw.__file__).parent / "driver" / "package" / "browsers.json"
+        data = _json.loads(bj.read_text(encoding="utf-8"))
+        for b in data.get("browsers", []):
+            if not b.get("installByDefault"):
+                continue
+            name, rev = b.get("name", ""), str(b.get("revision", ""))
+            if not rev:
+                continue
+            if name == "chromium":
+                keep.add(f"chromium-{rev}")
+            elif name == "chromium-headless-shell":
+                keep.add(f"chromium_headless_shell-{rev}")  # cache dir uses underscores
+            elif name == "ffmpeg":
+                keep.add(f"ffmpeg-{rev}")
+    except Exception as exc:  # pragma: no cover - fail-open to keep-all
+        print(f"  (could not read active Playwright revisions, keeping all chromium: {exc})")
+    return keep
+
+
 def bundle_playwright_browsers(dist_manage):
     """Carry the Playwright browser binaries into ``<dist>/ms-playwright``.
 
@@ -660,12 +694,25 @@ def bundle_playwright_browsers(dist_manage):
     # the top-level cache entry name (e.g. ``firefox-1482``, ``webkit-2158``).
     _UNUSED_ENGINE_PREFIXES = ("firefox", "webkit")
 
+    # Keep ONLY the chromium / headless-shell revisions the installed Playwright
+    # pins (see _active_playwright_revisions); every stale revision left in the
+    # cache by an earlier upgrade is skipped. Empty set (unreadable) → keep all.
+    active_revs = set() if bundle_all else _active_playwright_revisions()
+    if active_revs:
+        print(f"  Size lock: keeping only active Playwright revisions "
+              f"{', '.join(sorted(active_revs))} (stale chromium builds skipped).")
+
     def _ignore(directory, names):
         skipped = {n for n in names if n == "__pycache__"}
         if not bundle_all and os.path.normpath(directory) == os.path.normpath(src):
             for n in names:
-                if n.lower().startswith(_UNUSED_ENGINE_PREFIXES):
+                ln = n.lower()
+                if ln.startswith(_UNUSED_ENGINE_PREFIXES):
                     skipped.add(n)
+                elif active_revs and (ln.startswith("chromium-")
+                                      or ln.startswith("chromium_headless_shell-")):
+                    if n not in active_revs:
+                        skipped.add(n)
         return list(skipped)
 
     print(f"\n--- Bundling Playwright browsers: {src} -> {dst} ---")
@@ -725,7 +772,13 @@ def bundle_java_runtime(dist_manage):
     if dst.exists():
         shutil.rmtree(dst)
     print(f"\n--- Bundling Java runtime: {src} -> {dst} ---")
-    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+    # SIZE LOCK (2026-07-15): jd-cli only needs bin/ (java + runtime DLLs) and
+    # lib/ (the modules image). ``jmods/`` (~80 MB, jlink source modules),
+    # ``lib/src.zip`` (~43 MB, JDK source), and demo/sample/man are NEVER used at
+    # runtime — dropping them trims ~125 MB from the release with zero functional
+    # impact on the J-Decompiler.
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns(
+        "__pycache__", "jmods", "src.zip", "demo", "sample", "man"))
     size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
     print(f"  Java bundled ({size_mb:.0f} MB). Runtime: JAVA_HOME=<install_dir>/jre.")
 
