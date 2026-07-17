@@ -229,7 +229,7 @@
         const toolsDivH = (toolsDivEl ? toolsDivEl.offsetHeight : 25) || 25;
         const chipsEl = document.getElementById('chat-image-chips');
         const chipsH = chipsEl ? chipsEl.offsetHeight : 0;
-        const formAreaPx = 90; // textarea + Send min-heights + form margins
+        const formAreaPx = Math.max(170, Math.round(0.3 * ((subchatContainer && subchatContainer.clientHeight) || 700))); // textarea + Send min-heights + form margins
         return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + formAreaPx);
     };
 
