@@ -949,15 +949,11 @@ class MultiTurnToolAgentExecutor:
 
         # Determine success: check for error/failure indicators in the result.
         result_str = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
-        call_success = True
-        try:
-            parsed = json.loads(result_str)
-            if isinstance(parsed, dict):
-                status = str(parsed.get("status", "")).lower()
-                if status in ("error", "failed"):
-                    call_success = False
-        except (json.JSONDecodeError, TypeError):
-            pass
+        # Central failure classifier - catches EVERY result shape (JSON envelope,
+        # ok/success/isError flags, or an anchored plain-text error like the
+        # Roblox MCP's "false | Unable to cast double to Vector3"). (2026-07-17)
+        failed, _fail_err = self._result_is_failure(result_str)
+        call_success = not failed
 
         display_name = _tool_name_to_agent_display(tool_name)
         if display_name is not None:
@@ -1017,6 +1013,63 @@ class MultiTurnToolAgentExecutor:
             args = call.get("args") or {}
             parts.append(f"{name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}")
         return "|".join(parts)
+
+    # ------------------------------------------------------------------
+    # Tool-result failure classification + self-correction (2026-07-17)
+    # ------------------------------------------------------------------
+    # ONE place decides "did this tool call fail?" for EVERY surface - wrapped
+    # chat-agents, built-in MCPs, External MCPs (ext__*), ACPX (acp_*) and raw
+    # @tools - because they ALL return through _invoke_tool. The old check only
+    # caught a JSON {status: error/failed} envelope, so a PLAIN-TEXT tool error
+    # (e.g. the Roblox MCP's "false | Unable to cast double to Vector3") was
+    # scored SUCCESS; the model then retried the identical failing call and the
+    # run looped until the repetition-breaker dumped the raw error. (Angela)
+    _FAILURE_TEXT_PREFIXES = (
+        "error:", "false |", "false|", "traceback (most recent",
+        "exception:", "unable to ", "cannot ", "could not ",
+        "permission denied", "unauthorized", "forbidden",
+    )
+
+    # Identical (tool + args) failures allowed before the call is BLOCKED so no
+    # surface can loop forever on a failing tool. Corrective feedback is injected
+    # from the 2nd identical failure - one guided chance before the block.
+    _FAIL_BLOCK_LIMIT = 3
+
+    @classmethod
+    def _result_is_failure(cls, result_str):
+        """Return (failed: bool, short_error: str) for ANY tool-result shape.
+
+        Conservative on purpose: prefers unambiguous STRUCTURED signals, and only
+        treats plain text as a failure when it STARTS with a clear error marker,
+        so a normal result that merely mentions an error is never misflagged.
+        """
+        s = (result_str or "").strip()
+        if not s:
+            return (False, "")
+        parsed = None
+        try:
+            parsed = json.loads(s)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            parsed = None
+        if isinstance(parsed, dict):
+            status = str(parsed.get("status", "")).lower()
+            if status in ("error", "failed", "failure"):
+                return (True, str(parsed.get("message") or parsed.get("reason") or status)[:300])
+            if (parsed.get("ok") is False or parsed.get("success") is False
+                    or parsed.get("isError") is True or parsed.get("is_error") is True):
+                return (True, str(parsed.get("message") or parsed.get("reason")
+                                  or parsed.get("error") or "tool reported failure")[:300])
+            err = parsed.get("error") or parsed.get("errors")
+            if err:
+                return (True, str(err)[:300])
+            return (False, "")
+        low = s.lower().lstrip(" \t\r\n-*>#\"'[]()")
+        for p in cls._FAILURE_TEXT_PREFIXES:
+            if low.startswith(p):
+                return (True, s[:300])
+        if "failed with return code" in low:
+            return (True, s[:300])
+        return (False, "")
 
     # Maximum consecutive identical tool-call rounds before the loop is
     # broken.  Keeping this small prevents runaway iteration while still
@@ -1152,6 +1205,12 @@ class MultiTurnToolAgentExecutor:
         self._exec_report_entries = []
         # Reset per-tool call counters for this request.
         self._tool_call_counts = {}
+        # Per (tool+args) FAILURE memory (2026-07-17): escalate corrective
+        # feedback from the 2nd identical failure, then BLOCK the call after
+        # _FAIL_BLOCK_LIMIT so no surface (agent/MCP/ext-MCP/ACPX) loops forever.
+        self._tool_fail_counts = {}
+        self._blocked_call_sigs = set()
+        self._last_failure_error = ""
         # Reset Ask-Execs permission state for this request.
         self._ask_execs_enabled = bool(payload.get("ask_execs_enabled", False))
         self._ask_execs_user_id = payload.get("ask_execs_user_id")
@@ -1465,12 +1524,23 @@ class MultiTurnToolAgentExecutor:
                                 last_real_results.append(msg.content)
                                 if len(last_real_results) >= 3:
                                     break
-                        answer = (
-                            "The tool-calling loop was stopped because the model kept "
-                            "repeating the same tool call. Here are the last tool results "
-                            "before the loop was broken:\n\n"
-                            + "\n---\n".join(reversed(last_real_results))
-                        )
+                        _last_err = (self._last_failure_error or "").strip()
+                        if _last_err:
+                            answer = (
+                                "I could not finish this request. A tool kept failing with the "
+                                "same error and repeating it would not help, so I stopped instead "
+                                "of looping. The error was:\n\n" + _last_err + "\n\n"
+                                "What you can try: rephrase the request, adjust the values "
+                                "involved, or check the target tool/app is set up correctly. "
+                                "The last raw tool results, for reference:\n\n"
+                                + "\n---\n".join(reversed(last_real_results))
+                            )
+                        else:
+                            answer = (
+                                "I stopped because the model kept repeating the same tool call "
+                                "without making progress. Here are the last tool results:\n\n"
+                                + "\n---\n".join(reversed(last_real_results))
+                            )
                 return self._build_result_dict(str(answer))
 
             # --- Normal tool execution ---
@@ -1600,7 +1670,48 @@ class MultiTurnToolAgentExecutor:
                 if self._run_cancelled():
                     return self._cancelled_result(messages)
 
+                # -- Self-correction gate: a call that already failed identically
+                # too many times is BLOCKED so no surface can loop forever --
+                _fail_sig = tool_name + ":" + json.dumps(
+                    tool_call.get("args", {}) or {}, sort_keys=True, ensure_ascii=False)
+                if _fail_sig in self._blocked_call_sigs:
+                    messages.append(ToolMessage(
+                        tool_call_id=tool_call.get("id", ""),
+                        name=tool_name,
+                        content=(
+                            "[BLOCKED] '" + tool_name + "' with these exact arguments has "
+                            "already FAILED " + str(self._tool_fail_counts.get(_fail_sig, 0))
+                            + " times (last error: " + (self._last_failure_error or "see above")
+                            + "). It is now blocked. Do NOT call it again with the same "
+                            "arguments - CHANGE the arguments to fix the error, use a DIFFERENT "
+                            "tool, or STOP and tell the user plainly what failed and what to try."
+                        ),
+                    ))
+                    continue
+
                 tool_result = self._invoke_tool(tool_call)
+
+                # -- Classify the result + escalate on a REPEATED failure --
+                _failed, _err = self._result_is_failure(tool_result)
+                if _failed:
+                    self._tool_fail_counts[_fail_sig] = self._tool_fail_counts.get(_fail_sig, 0) + 1
+                    _n = self._tool_fail_counts[_fail_sig]
+                    self._last_failure_error = (_err or "").strip()[:300]
+                    if _n >= self._FAIL_BLOCK_LIMIT:
+                        self._blocked_call_sigs.add(_fail_sig)
+                    if _n >= 2:
+                        tool_result = (
+                            "[REPEATED FAILURE - attempt " + str(_n) + "] This exact '"
+                            + tool_name + "' call has now FAILED " + str(_n) + " times with the "
+                            "same error. Repeating identical arguments will keep failing. You MUST "
+                            "change your approach: (1) FIX the arguments (read the error carefully "
+                            "- a type/cast/shape mismatch means the value you passed is the wrong "
+                            "type or form), (2) or use a DIFFERENT tool, (3) or STOP and tell the "
+                            "user plainly what failed and suggest a next step. "
+                            + ("This call is now BLOCKED. " if _n >= self._FAIL_BLOCK_LIMIT else "")
+                            + "\n\n--- tool error ---\n" + tool_result
+                        )
+
                 if soft_warn_hint:
                     tool_result = (
                         tool_result
