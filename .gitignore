@@ -211,6 +211,11 @@ Tlamatini/staticfiles/
 
 #Keys
 key.txt
+# Any provider API-key file dropped at the repo root (e.g. open_router.key).
+# NEVER commit a key: this repo's history is append-only and can never be
+# rewritten, so a committed secret can only be rotated, never scrubbed.
+*.key
+open_router.key
 
 #Lnk
 *.lnk
