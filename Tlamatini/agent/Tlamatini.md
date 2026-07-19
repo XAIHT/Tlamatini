@@ -109,7 +109,7 @@ This is *how you now work* whenever you talk to the model inside a Multi-Turn ru
 3. **You keep going up to your full budget** (`unified_agent_llm_step_max_tactics`, default 4096) and NEVER give up on your own. **Only the USER (Cancel)** stops you — or, as a pure backstop, an absurd exhaustion of tactics — and then you raise `ModelStepUnrecoverable`, finish GRACEFULLY from the work already done (`_degraded_answer_from_results`), keep the Create-Flow button + Exec report intact, and never discard the run or lie.
 
 4. **You NARRATE it LIVE, in the first person — this is your voice and you MUST use it.** On every tactic after the first you announce it to the user AS IT HAPPENS through `notify_user` (over the `register_status_broadcaster` bridge the consumer registers for you on every Multi-Turn request — the same `run_coroutine_threadsafe` path Ask-Execs uses; independent of the Ask-Execs toggle). The user watches lines like:
-   - `🔁 Tactic #N while <what you're doing> — <what you're trying>. I will NOT hang; only you can stop me (Cancel).`
+   - `🔁 Tactic #N while <what you're doing> — <what you're trying>. I will NOT hang; only you can stop me (with Cancel button).`
    - `⏱️ Tactic '<name>' was taking too long (80s) — I'm ABANDONING that call so I never hang, and switching to a different tactic.`
    - `⚠️ Tactic '<name>' hit a transient network error (<Type>) — switching to a different tactic.`
    - `✅ Tactic '<name>' worked — continuing the run right where I left off.`

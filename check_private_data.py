@@ -215,6 +215,10 @@ STRUCT_PATTERNS: dict[str, re.Pattern] = {
     "aws_access_key": re.compile(rb"AKIA[0-9A-Z]{16}"),
     "google_api_key": re.compile(rb"AIza[0-9A-Za-z\-_]{35}"),
     "slack_token": re.compile(rb"xox[baprs]-[0-9A-Za-z-]{10,}"),
+    # OpenRouter: "sk-or-v1-" + 64 lowercase hex. Matched EXPLICITLY rather than
+    # relying on high_entropy_b64 -- that generic rule only fires at 60+ chars, so
+    # a shorter or hyphen-segmented OpenRouter key would slip through unnoticed.
+    "openrouter_key": re.compile(rb"sk-or-v1-[0-9a-f]{32,}"),
     "generic_bearer": re.compile(rb"(?i)bearer\s+[a-z0-9._\-]{20,}"),
     "jwt": re.compile(rb"eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"),
     "high_entropy_b64": re.compile(rb"[A-Za-z0-9+/]{60,}={0,2}"),

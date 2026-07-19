@@ -364,7 +364,7 @@ class SelfHealingInvoker:
             if attempt > 1:
                 self._announce(
                     f"🔁 Tactic #{attempt} while {label} — {how}. "
-                    "I will NOT hang; only you can stop me (Cancel)."
+                    "I will NOT hang; only you can stop me (with Cancel button)."
                 )
 
             status, payload = _run_with_watchdog(thunk, timeout, cancelled=self._is_cancelled)

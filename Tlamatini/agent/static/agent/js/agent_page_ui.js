@@ -228,7 +228,7 @@ function isSessionRestoredInfoMessage(message) {
 
 // Matches the LIVE self-healing recovery status lines that SelfHealingInvoker
 // (agent/self_healing.py) streams to the chat WHILE a multi-turn run is still
-// executing (the "Tactic #2 ... only you can stop me (Cancel)." retry line,
+// executing (the "Tactic #2 ... only you can stop me (with Cancel button)." retry line,
 // the "Tactic '...' hit a transient network error - switching to a different
 // tactic." notice, and the "Tactic '...' worked - continuing the run right
 // where I left off." success line). They arrive as ordinary agent_message
