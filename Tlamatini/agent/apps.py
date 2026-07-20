@@ -381,9 +381,52 @@ class AgentConfig(AppConfig):
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
 
+            def namu_kill_recon_gods():
+                """NAMU — the God of Gods (Angela, 2026-07-19). When Tlamatini herself is
+                shutting down, the OOB_shift_reaper free-run window is VOID: every running
+                Kalier / Nmapper / Discoverer pool process AND its scan children (nmap.exe,
+                nuclei.exe, subfinder.exe, naabu.exe, go.exe, ...) is tree-killed IMMEDIATELY,
+                no matter how long it has run. These three are gods within a run — but the
+                gods die the instant NAMU dies. Runs FIRST, before the generic sweeps.
+                Never raises into the shutdown path."""
+                try:
+                    import os as _os
+                    import sys as _sys
+                    if getattr(_sys, "frozen", False):
+                        _pool = _os.path.join(_os.path.dirname(_sys.executable), 'agents', 'pools')
+                    else:
+                        _pool = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'agents', 'pools')
+                    _pool = _pool.lower()
+                    _gods = ('nmapper', 'discoverer', 'kalier')
+                    try:
+                        _procs = list(psutil.process_iter(['pid', 'cmdline'], ad_value=None))
+                    except Exception:
+                        _procs = []
+                    _hit = 0
+                    for _p in _procs:
+                        try:
+                            _s = ' '.join(_p.info.get('cmdline') or []).lower()
+                            if _pool in _s and any(g in _s for g in _gods):
+                                _hit += 1
+                                recursive_kill(_p.info['pid'])
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError, KeyError):
+                            continue
+                        except Exception:
+                            continue
+                    if _hit:
+                        _bar = "=" * 70
+                        print("\n" + _bar
+                              + "\n--- NAMU — GOD OF GODS: Tlamatini is shutting down. Killed "
+                              + "%d running Kalier / Nmapper / Discoverer scan(s) and their " % _hit
+                              + "children NOW, regardless of the OOB_shift_reaper window.\n" + _bar)
+                except Exception as _namu_err:
+                    print(f"--- [NAMU] shutdown hunt failed (non-fatal): {_namu_err}")
+
             def cleanup_pool_on_shutdown():
                 """Clear pool directory contents on application shutdown."""
                 print("\n--- [SHUTDOWN] Initiating aggressive cleanup protocols...")
+                # NAMU — God of Gods: reap the three recon gods FIRST, unconditionally.
+                namu_kill_recon_gods()
                 try:
                     import os
                     import shutil

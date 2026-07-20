@@ -334,6 +334,181 @@ def _as_bool(raw, default: bool) -> bool:
     return default
 
 
+# ── OOB_shift_reaper: run FREE, watched, reaped ONLY if doing nothing past the window ──
+# Angela's design (2026-07-19): Kalier / Nmapper / Discoverer are gods. A scan that keeps
+# PRODUCING OUTPUT is NEVER killed (at any elapsed time). A hang (no output for
+# `hang_detect_idle_seconds`) INSIDE the OOB_shift_reaper window only LOGS A BANNER and
+# keeps running. A hang that is STILL doing nothing PAST the window (second 3601+) is the
+# only thing that gets killed effectively.
+_OOB_CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
+
+def _oob_banner(msg: str, level: str = "warning"):
+    """Log a prominent, un-missable banner to the app log. Never raises."""
+    try:
+        bar = "=" * 70
+        getattr(logging, level, logging.warning)("\n" + bar + "\n" + msg + "\n" + bar)
+    except Exception:
+        pass
+
+
+def _oob_kill_tree(proc):
+    """Kill proc + descendants. psutil optional (guarded); taskkill /T backstop. Never raises."""
+    try:
+        import psutil
+        try:
+            for c in psutil.Process(proc.pid).children(recursive=True):
+                try:
+                    c.kill()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    except Exception:
+        pass
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           creationflags=_OOB_CREATE_NO_WINDOW, timeout=10)
+        else:
+            proc.kill()
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+
+def _run_cmd_oob(cmd: list, env: dict = None, cwd: str = None, *,
+                 oob_shift_reaper: float = 3600.0, hang_detect_idle_seconds: float = 120.0,
+                 startup_grace: float = 20.0, tick: float = 0.5,
+                 rehang_log_every: float = 60.0, label: str = "scan"):
+    """OOB_shift_reaper streaming runner. Returns (rc, stdout, stderr, reason) where reason
+    is 'exited' | 'hang_killed' | 'spawn_error'. Behaviour (Angela's 3 rules):
+      1. WORKING (emitting output): runs FREE, NEVER killed, at ANY elapsed time.
+      2. HANGED (no output for hang_detect_idle_seconds) but elapsed <= oob_shift_reaper:
+         LOG A BANNER, keep running.
+      3. HANGED and elapsed > oob_shift_reaper (second 3601+): KILL effectively.
+    Partial output is always returned. argv LIST + shell=False (stays off the watchdog)."""
+    import queue
+    import threading
+    try:
+        proc = subprocess.Popen(
+            cmd, env=env, cwd=cwd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+            text=True, encoding="utf-8", errors="replace", bufsize=1,
+            shell=False, creationflags=_OOB_CREATE_NO_WINDOW,
+        )
+    except FileNotFoundError as e:
+        return 127, "", str(e), "spawn_error"
+    except Exception as e:
+        return 1, "", str(e), "spawn_error"
+
+    q = queue.Queue()
+    out_buf, err_buf = [], []
+    _OUT, _ERR = "o", "e"
+
+    def _pump(stream, tag):
+        try:
+            for line in iter(stream.readline, ""):
+                if line == "":
+                    break
+                q.put((tag, line))
+        except Exception:
+            pass
+        finally:
+            q.put((None, tag))
+
+    for _stream, _tag in ((proc.stdout, _OUT), (proc.stderr, _ERR)):
+        threading.Thread(target=_pump, args=(_stream, _tag), daemon=True).start()
+
+    start = last_output = time.monotonic()
+    eofs = 0
+    reason = "exited"
+    in_hang = False
+    last_hang_log = 0.0
+    try:
+        while True:
+            now = time.monotonic()
+            elapsed = now - start
+            idle = now - last_output
+            # A process that has already EXITED is never "hanged" — it is done; let the
+            # loop drain the EOF sentinels and return 'exited'. Only a LIVE process that
+            # has gone silent counts as a hang.
+            hanged = (proc.poll() is None) and (elapsed >= startup_grace) \
+                and (idle >= hang_detect_idle_seconds)
+
+            # RULE 3: doing nothing AND past the free-run window -> KILL effectively.
+            if hanged and elapsed > oob_shift_reaper:
+                _oob_banner(
+                    "OOB REAPER: %s is doing nothing (no output for %.0fs) and is PAST the "
+                    "%.0fs OOB_shift_reaper free-run window -> KILLING at %.0fs. "
+                    "Partial output preserved." % (label, idle, oob_shift_reaper, elapsed),
+                    "error")
+                reason = "hang_killed"
+                _oob_kill_tree(proc)
+                break
+            # RULE 2: doing nothing but INSIDE the window -> banner, keep running.
+            if hanged:
+                if (not in_hang) or (now - last_hang_log >= rehang_log_every):
+                    _oob_banner(
+                        "POSSIBLE HANG: %s has produced no output for %.0fs (elapsed %.0fs). "
+                        "LETTING IT RUN FREE inside the %.0fs OOB_shift_reaper window; will "
+                        "only kill if still doing nothing past %.0fs."
+                        % (label, idle, elapsed, oob_shift_reaper, oob_shift_reaper),
+                        "warning")
+                    last_hang_log = now
+                in_hang = True
+
+            try:
+                tag, line = q.get(timeout=tick)
+            except queue.Empty:
+                # Process gone and the queue is momentarily empty -> we are done, even if
+                # an EOF sentinel was lost. Do NOT require eofs>=2 here or a missing
+                # sentinel would spin this loop forever after a clean exit.
+                if proc.poll() is not None:
+                    break
+                continue
+            if line is None:
+                eofs += 1
+                if eofs >= 2 and proc.poll() is not None:
+                    break
+                continue
+            # RULE 1: output arrived -> the process is WORKING; reset the idle clock.
+            (out_buf if tag == _OUT else err_buf).append(line)
+            last_output = time.monotonic()
+            if in_hang:
+                _oob_banner("RECOVERED: %s resumed output after a quiet spell; continuing "
+                            "free run." % label, "info")
+                in_hang = False
+    except Exception as e:
+        _oob_kill_tree(proc)
+        return 1, "".join(out_buf), "".join(err_buf) + ("\n[oob runner error: %s]" % e), "exited"
+
+    # Drain any queued-but-unconsumed lines (final output, or a lost EOF sentinel).
+    _deadline = time.monotonic() + (2.0 if reason == "hang_killed" else 0.4)
+    while time.monotonic() < _deadline:
+        try:
+            tag, line = q.get(timeout=0.05)
+        except queue.Empty:
+            break
+        if line is not None:
+            (out_buf if tag == _OUT else err_buf).append(line)
+
+    try:
+        rc = proc.wait(timeout=5)
+    except Exception:
+        rc = proc.returncode if proc.returncode is not None else 1
+
+    stdout, stderr = "".join(out_buf), "".join(err_buf)
+    if reason == "hang_killed":
+        rc = 137
+        stderr += ("\n[OOB_shift_reaper: reaped as HANGED (no output) past %.0fs]"
+                   % oob_shift_reaper)
+    return rc, stdout, stderr, reason
+
+
 def _run_cmd(cmd: list, env: dict = None, cwd: str = None, timeout: float = 1800.0):
     """Run a subprocess and capture (returncode, stdout, stderr). Never raises;
     maps a missing executable to rc 127 and a timeout to rc 124."""
@@ -978,7 +1153,13 @@ def _run_scan(tool: str, tool_exe: str, config: dict, env: dict, timeout: float)
     out_path = _output_path(tool, config)
     argv = _build_argv(tool, tool_exe, config, out_path)
     logging.info(f"🔎 {tool}: {' '.join(argv)}")
-    rc, out, err = _run_cmd(argv, env=env, timeout=timeout)
+    # OOB_shift_reaper: the scan runs FREE + watched; reaped only if doing nothing past
+    # the window (rule 3). NAMU (process shutdown) can still kill it regardless.
+    oob_reaper = float(_as_int(_cfg(config, "OOB_shift_reaper", 3600), 3600))
+    hang_idle = float(_as_int(_cfg(config, "hang_detect_idle_seconds", 120), 120))
+    rc, out, err, _oob_reason = _run_cmd_oob(
+        argv, env=env, oob_shift_reaper=oob_reaper,
+        hang_detect_idle_seconds=hang_idle, label=tool)
     body_parts = []
     if out.strip():
         body_parts.append(out.strip())

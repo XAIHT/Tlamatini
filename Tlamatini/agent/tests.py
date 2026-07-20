@@ -7164,3 +7164,67 @@ class WrappedAgentVisibilityGatingTests(TestCase):
         finally:
             for k, v in saved.items():
                 global_state.set_state(k, v)
+
+
+class EmptyCodeBlockShredderTests(TestCase):
+    """REGRESSION (2026-07-19, reported by Angela): a chat answer came back
+    SHREDDED - one "---Load in canvas: NAME---" link inserted between EVERY
+    SINGLE CHARACTER of the reply - and the very same file was saved 101 times,
+    spamming 101 "File ... saved!" notifications into the chat.
+
+    ROOT CAUSE: process_llm_response did
+
+        llm_response = llm_response.replace(programContent, <canvas link>)
+
+    and when the model emitted an EMPTY code block (BEGIN-CODE<<<x.sh>>>END-CODE)
+    programContent was '' - and Python's str.replace('', x) inserts x between
+    every character. "Ping succeeded" rendered as
+    "P---Load in canvas: x---i---Load in canvas: x---n---...".
+
+    Both guards are pinned here: an empty block is skipped entirely, and the
+    same block repeated N times is saved exactly ONCE."""
+
+    def _process(self, raw):
+        from agent.services.response_parser import process_llm_response
+        return async_to_sync(process_llm_response)(
+            raw,
+            None,
+            None,
+            None,
+            conversation_user=None,
+            tool_calls_log=None,
+            multi_turn_used=False,
+            exec_report_enabled=False,
+            exec_report_entries=None,
+        )
+
+    def test_empty_code_block_never_shreds_the_answer(self):
+        raw = (
+            "BEGIN-CODE<<<install_prereqs.sh>>>END-CODE\n"
+            "Ping succeeded and the Kali box is reachable.\n"
+            "END-RESPONSE"
+        )
+        final = self._process(raw)
+        # The prose survives CONTIGUOUSLY - not one canvas link per letter.
+        self.assertIn("Ping succeeded and the Kali box is reachable.", final)
+        # An empty block has nothing to load, so no anchor is injected at all.
+        self.assertNotIn("Load in canvas", final)
+        # The shredder signature: a link glued directly after a single letter.
+        self.assertNotRegex(final, r"\w---Load in canvas:")
+
+    def test_same_code_block_repeated_is_saved_only_once(self):
+        from unittest import mock
+        block = (
+            "BEGIN-CODE<<<install_prereqs.sh>>>\n"
+            "#!/bin/sh\n"
+            "apt-get update\n"
+            "END-CODE\n"
+        )
+        raw = (block * 5) + "END-RESPONSE"
+        with mock.patch("agent.services.response_parser.save_program",
+                        new_callable=mock.AsyncMock) as saver:
+            self._process(raw)
+        self.assertEqual(
+            saver.await_count, 1,
+            "the identical block must be written ONCE, not once per repetition "
+            "(this is what produced 101 'File ... saved!' messages)")

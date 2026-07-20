@@ -16,6 +16,30 @@
 
 ---
 
+## 2026-07-19 — EMPTY code block SHREDDED the whole answer (`str.replace('', x)`) + saved the same file 101 times
+
+**Symptom (Angela, dev instance):** a Kali-wizard reply came back as one `---Load in canvas: 20260719180442_install_prereqs.sh---` link **per character** — the sentence "Ping succeeded…" rendered as `P---Load in canvas: …---i---Load in canvas: …---n---…` — and the chat was flooded with **101 identical** `File: … saved!` notifications for ONE file.
+
+**Root cause** — `agent/services/response_parser.py`, the named-code-block loop:
+
+```python
+llm_response = llm_response.replace(programContent, "<a …>---Load in canvas: NAME---</a><br>")
+```
+
+When the model emitted an **empty** block (`BEGIN-CODE<<<install_prereqs.sh>>>END-CODE`), `REGEX_NAMED_CODE_BLOCK` group 3 is `''`, so this became `llm_response.replace('', link)` — and **Python's `str.replace` with an empty needle inserts the replacement between EVERY character** (and at both ends). The same block being matched repeatedly also called `save_program()` once per match, producing the 101 writes + 101 WebSocket notifications.
+
+**Fix (do NOT remove either guard):**
+1. **Skip empty / whitespace-only blocks** at the top of the loop (`if not (programContent or '').strip(): continue`) — there is nothing to save and nothing to link, and this is what keeps an empty needle from ever reaching `.replace()`. It logs `--- Skipped an EMPTY code block named '<name>'`.
+2. **De-duplicate identical blocks** (`_seen_code_blocks` keyed on `(programName, programContent)`) so a block repeated N times is written **once**, not N times.
+3. The `.replace(programContent, …)` call is additionally wrapped in `if programContent:` as a belt-and-braces second line of defence.
+4. The same two guards were applied to the **unnamed**-block loop (`_seen_unnamed_blocks`).
+
+**Coverage:** `agent/tests.py::EmptyCodeBlockShredderTests` — `test_empty_code_block_never_shreds_the_answer` (prose stays contiguous, no anchor injected, and the `\w---Load in canvas:` shredder signature must never appear) and `test_same_code_block_repeated_is_saved_only_once` (patches `save_program`, asserts `await_count == 1`). `DiagramRenderingTests` (12) still green.
+
+**Rule of thumb this encodes:** never call `str.replace(needle, …)` on model output without proving `needle` is non-empty — an empty needle does not "do nothing", it detonates the whole string.
+
+---
+
 ## 2026-07-15 — Catalog of Prompts: two STM32 step-by-step blink demos + a one-time RE-GROUP/RE-SORT/NO-GAPS renumber (do NOT revert)
 
 **What Angela asked:** two new Blue Pill / STM32F407G-DISC1 "classic LED blink" catalog prompts (Multi-Turn + Exec-report + Step-by-Step, from driver install through per-step verification to confirming the blink with the default camera), AND *"RE-GROUP THE PROMPTS, RE-SORT, WITH NO-GAPS THE Catalog of Prompts in the DB."*

@@ -69,6 +69,20 @@ host_timeout: ""       # per-host budget, nmap syntax ("15m" / "900s" / "1h"). "
                        #   command_timeout is auto-raised to stay above it. Fast actions unaffected.
 output_dir: ""         # results dir; empty = <app>/Temp/Nmapper
 
+# -- OOB_shift_reaper (Angela's design, 2026-07-19) --------------------------
+# Nmapper, Discoverer and Kalier are the THREE GODS: a long, legitimate scan is NEVER
+# killed merely for being slow. The scan runs FREE and WATCHED, under three rules:
+#   1. WORKING (still producing output)  -> runs FREE. Never killed at any elapsed time.
+#   2. HANGED (no output for `hang_detect_idle_seconds`) but still INSIDE the
+#      `OOB_shift_reaper` window -> only LOGS A BANNER to the log, and KEEPS RUNNING.
+#   3. HANGED *and* PAST the window (second 3601+ by default) -> KILLED effectively
+#      (whole process tree), with whatever partial output it produced preserved.
+# NAMU (Tier-3, the god of gods) OVERRIDES all of the above: when the Tlamatini process
+# shuts down (Ctrl+C / SIGINT / SIGBREAK / exit), every Nmapper / Discoverer / Kalier
+# child is hunted down and killed IMMEDIATELY -- no matter how long it has run.
+OOB_shift_reaper: 3600        # seconds of FREE run before a HANGED scan may be reaped
+hang_detect_idle_seconds: 120 # no output for this long = "possibly hanged" (banner only inside the window)
+
 # -- Connection fields ----------------------------------------------------
 source_agents: []      # upstream agents (canvas connection tracking)
 target_agents: []      # downstream agents to start after the run (ALWAYS triggered)

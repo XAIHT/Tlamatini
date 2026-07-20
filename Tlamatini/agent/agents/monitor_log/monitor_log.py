@@ -152,6 +152,13 @@ def build_keyword_pattern(keywords_str: str) -> re.Pattern:
     # Escape regex special characters and join with OR
     escaped = [re.escape(kw) for kw in keywords]
     pattern_str = '|'.join(escaped)
+    if not pattern_str:
+        # FAIL CLOSED (2026-07-19). With no usable keywords the join yields '',
+        # and re.compile('') matches EVERY line - silently inverting this
+        # pre-filter into a pass-everything no-op that then reports
+        # matched_count == total_lines, i.e. claims success while shipping the
+        # WHOLE log to the LLM. `(?!)` is the never-matching pattern.
+        return re.compile(r'(?!)')
     return re.compile(pattern_str, re.IGNORECASE)
 
 

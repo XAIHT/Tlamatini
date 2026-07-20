@@ -42,10 +42,24 @@ action: "nmap"
 # default still applies to .flw / canvas runs; set it in the node's dialog there.
 server_url: "http://127.0.0.1:5000"
 
-# timeout — seconds to wait for the API HTTP response. The server itself caps each
-# individual tool run at ~180s and returns partial results on timeout, so this is
-# the outer envelope around that.
+# timeout — legacy seconds-to-wait for the API HTTP response. SUPERSEDED by
+# OOB_shift_reaper below (Kalier now waits up to OOB_shift_reaper for the Kali box to
+# answer); kept only for backward compatibility with old .flw files.
 timeout: 300
+
+# ── OOB_shift_reaper (Angela's design, 2026-07-19) ──────────────────────────
+# Nmapper, Discoverer and Kalier are the THREE GODS. Kalier's tool actually runs on the
+# REMOTE Kali box (via MCP-Kali-Server), so Kalier cannot stream/kill it — instead the
+# HTTP wait for the box to answer runs FREE up to `OOB_shift_reaper` seconds before
+# giving up, so a long, legitimate remote scan is NEVER cut off merely for being slow.
+#   1. WORKING (box still answering)     -> waits FREE up to the OOB_shift_reaper window.
+#   2/3. If the box never answers within the window, the HTTP wait finally gives up
+#        (the remote tool itself is bounded server-side and returns partial results).
+# NAMU (Tier-3, the god of gods) OVERRIDES this: when the Tlamatini process shuts down
+# (Ctrl+C / SIGINT / SIGBREAK / exit), every Nmapper / Discoverer / Kalier child is
+# hunted down and killed IMMEDIATELY -- no matter how long it has run.
+OOB_shift_reaper: 3600        # seconds Kalier waits FREE for the remote Kali box to answer
+hang_detect_idle_seconds: 120 # reserved for parity with Nmapper/Discoverer (remote runs can't be streamed)
 
 # ── Shared params (used by several actions) ──────────────────────────────
 # target          — IP / hostname  (nmap, nikto, hydra, enum4linux)

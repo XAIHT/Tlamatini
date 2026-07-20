@@ -346,9 +346,24 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
 
     # Extract and save programs
     programs = re.findall(constants.REGEX_NAMED_CODE_BLOCK, llm_response, flags=re.IGNORECASE)
+    _seen_code_blocks = set()
     for program in programs:
         programName = program[1]
         programContent = program[2]
+        # GUARD (2026-07-19) - do NOT let an EMPTY / whitespace-only block reach
+        # the str.replace() below: replacing an EMPTY needle makes Python insert
+        # the canvas link between EVERY SINGLE CHARACTER of the answer, which
+        # shreds the whole reply into one link per letter.
+        if not (programContent or '').strip():
+            print("--- Skipped an EMPTY code block named '%s' (nothing to save)" % programName)
+            continue
+        # GUARD - the model sometimes emits the SAME block many times over. Save
+        # and link it ONCE instead of writing N identical files and spamming N
+        # "File ... saved!" notifications into the chat.
+        _block_key = (programName, programContent)
+        if _block_key in _seen_code_blocks:
+            continue
+        _seen_code_blocks.add(_block_key)
         programCodeInAposLang = re.match(constants.REGEX_SNIPPET_WITH_LANG, programContent, flags=re.IGNORECASE)
         
         program2Save = ""
@@ -384,11 +399,22 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             if rag_chain:
                 rag_chain.setLastProgramName(finalProgramName)
             print("\n--- Saved program: "+finalProgramName)
-            llm_response = llm_response.replace(programContent, "<a href='#' style='font-weight: 600; color: white !important;' onclick='loadCanvas(" + '"' + finalProgramName + '"' + ");'>---Load in canvas: "+finalProgramName+"---</a><br>")
+            # NEVER replace an empty needle (see the GUARD above) - str.replace('', x)
+            # would splice the link between every character of the answer.
+            if programContent:
+                llm_response = llm_response.replace(programContent, "<a href='#' style='font-weight: 600; color: white !important;' onclick='loadCanvas(" + '"' + finalProgramName + '"' + ");'>---Load in canvas: "+finalProgramName+"---</a><br>")
 
     # Handle unnamed code blocks
+    _seen_unnamed_blocks = set()
     for m in re.finditer(constants.REGEX_UNNAMED_CODE_BLOCK, llm_response, flags=re.IGNORECASE):
         programContent = m.group(1)
+        # Same two guards as the named blocks above: never save/link an empty
+        # block, and never write the identical block twice.
+        if not (programContent or '').strip():
+            continue
+        if programContent in _seen_unnamed_blocks:
+            continue
+        _seen_unnamed_blocks.add(programContent)
         baseName = 'Without_Name'
         programName = get_time_stamp() + "_" + baseName
         programCodeInAposLang = re.match(constants.REGEX_SNIPPET_WITH_LANG, programContent, flags=re.IGNORECASE)

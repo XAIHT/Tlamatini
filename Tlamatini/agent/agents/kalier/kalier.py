@@ -485,10 +485,14 @@ def call_kali_api(action: str, config: dict) -> dict:
 
     method, endpoint = _ACTION_ROUTES[action]
     server_url = str(_cfg(config, "server_url", "http://127.0.0.1:5000")).rstrip("/")
+    # OOB_shift_reaper (Angela, 2026-07-19): Kalier's scan runs on the REMOTE Kali box, so
+    # we cannot stream it — but our HTTP wait runs FREE up to OOB_shift_reaper before giving
+    # up (default 3600 s, was 300). The box's own COMMAND_TIMEOUT is external; raise it there
+    # for the remote scan itself to use the full window. NAMU (shutdown) still kills this run.
     try:
-        timeout = int(_cfg(config, "timeout", 300) or 300)
+        timeout = int(_cfg(config, "OOB_shift_reaper", 3600) or 3600)
     except (TypeError, ValueError):
-        timeout = 300
+        timeout = 3600
 
     url = f"{server_url}/{endpoint}"
     payload = _build_payload(action, config)
