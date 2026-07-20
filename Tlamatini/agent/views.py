@@ -267,20 +267,31 @@ _PROMPT_CATEGORY_LABEL = dict(PROMPT_CATEGORY_ORDER)
 
 def list_prompts_view(request):
     # HIDDEN prompts (the deduplicated ACPX demos) are dropped from the catalog.
-    # Ordered by (category display-rank, idPrompt) so the frontend can render the
-    # cards already grouped, basic->advanced within each section. idPrompt is
-    # NEVER renumbered — a hidden row keeps its id, so the offline fallback probe
-    # in tools_dialog.js still sees a contiguous 1..N.
+    # Ordered by (category display-rank, sort_rank, idPrompt) so the frontend can
+    # render the cards already grouped, basic->advanced within each section.
+    # idPrompt is NEVER renumbered — a hidden row keeps its id, so the offline
+    # fallback probe in tools_dialog.js still sees a contiguous 1..N.
     prompts = list(
         Prompt.objects.filter(hidden=False)
-        .values('idPrompt', 'promptName', 'promptContent', 'category')
+        .values('idPrompt', 'promptName', 'promptContent', 'category', 'sort_rank')
     )
 
     def _cat(p):
         c = (p.get('category') or '').strip()
         return c if c in _PROMPT_CATEGORY_RANK else 'other'
 
-    prompts.sort(key=lambda p: (_PROMPT_CATEGORY_RANK[_cat(p)], p['idPrompt']))
+    # Display order INSIDE a section is `sort_rank` (migration 0181), NOT idPrompt
+    # any more: a new prompt is still APPENDED at the next free idPrompt, but its
+    # rank decides where the card actually shows up, so the section keeps reading
+    # simple -> advanced without ever renumbering a primary key. An unranked row
+    # (sort_rank 0 — a brand-new prompt whose migration forgot to set one) sorts
+    # LAST in its section rather than first, then idPrompt breaks any tie.
+    _UNRANKED = 10 ** 6
+    prompts.sort(key=lambda p: (
+        _PROMPT_CATEGORY_RANK[_cat(p)],
+        p.get('sort_rank') or _UNRANKED,
+        p['idPrompt'],
+    ))
 
     present = []
     seen = set()

@@ -49,6 +49,15 @@ class Prompt(models.Model):
     # never breaks). See migration 0175 and docs/claude/multi-turn.md.
     category = models.CharField(max_length=64, blank=True, default='')
     hidden = models.BooleanField(default=False)
+    # Catalog DISPLAY ORDER inside a section (2026-07-20, Angela). Decouples the
+    # order a card is shown in from its primary key, so a NEW prompt can be
+    # APPENDED at the next free idPrompt (the standing append-only rule) and
+    # STILL slot anywhere in its section - no renumber, ever. Seeded in steps of
+    # 10 by migration 0181 (gaps on purpose: a later prompt fits between two
+    # neighbours). 0 means "unranked" and sorts LAST in its section, never first,
+    # so an untagged newcomer can never hijack the section opener. Read by
+    # views.list_prompts_view; see docs/claude/multi-turn.md.
+    sort_rank = models.IntegerField(default=0)
 
     def __str__(self):
         return f'{self.promptName}'

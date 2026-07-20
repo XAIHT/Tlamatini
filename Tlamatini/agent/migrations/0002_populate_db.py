@@ -526,7 +526,7 @@ def populate_initial_values(apps, schema_editor):
         idOmission=1,
         defaults={
             'omissionName': 'omission-1',
-            'omissionContent': '*.jpg, *.bmp, *.svg, *.ico, *.tiff, *.png, *.webp, *.war, *.jar, *.class, *.exe, *.pdf, *.docx, *.xlsx, *.pptx, *.log, *.db, *.tlog, *.obj, *.res, *.idb, *.pdb, .gitignore, .vscode, .idea, .git, .gitmodules, .gitattributes, .gitignore, .gitkeep'
+            'omissionContent': '*.dll, *.exe, *.pyc, *.pyd, *.bin, *.woff, *.woff2, *.o, *.obj, *.lib, *.a, *.jpg, *.bmp, *.svg, *.ico, *.tiff, *.png, *.webp, *.war, *.jar, *.class, *.pdf, *.docx, *.xlsx, *.pptx, *.log, *.db, *.tlog, *.obj, *.res, *.idb, *.pdb, .gitignore, .vscode, .idea, .git, .gitmodules, .gitattributes, .gitignore, .gitkeep'
         }
     )
 

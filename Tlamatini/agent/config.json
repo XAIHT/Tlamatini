@@ -16,6 +16,7 @@
   "unified_agent_base_url": "http://127.0.0.1:11434",
   "unified_agent_temperature": 0.0,
   "unified_agent_max_iterations": 4096,
+  "unified_agent_llm_step_timeout_seconds": 180,
   "_section_image_interpreter": "Image Interpreter Configuration - TRIPLE-MODEL pipeline: image_interpreter_model (interpreter 1, forensic OCR) + image_interpreter_model_2 (interpreter 2, holistic) run in PARALLEL, then image_merging_model fuses both. Seeded into the Image-Interpreter agent as interpreter_model_1/2 + merging_model defaults (Config -> Models dialog).",
   "image_interpreter_base_url": "http://127.0.0.1:11434",
   "image_interpreter_model": "qwen3.5:cloud",
