@@ -161,12 +161,6 @@ Add any cloud-CLI keys here too — plus the messaging keys, the Kali server URL
 
 Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
----
-
-> **📹 [ Drop a 15-second GIF here ]** — flashing a board from a prompt, or wiring agent types on the canvas and hitting Start. One real GIF up top sells this faster than anything written below.
-
----
-
 ## 💎 The jewels — what nothing else can do
 
 Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that **and** reaches into the physical and creative world, then lets you *wire it all together visually*:
