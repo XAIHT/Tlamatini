@@ -305,7 +305,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.42.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.42.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.44.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.44.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1986,14 +1986,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.42.0 -m "Release 1.42.0: <one-liner>"   # annotated tag
-git push origin v1.42.0
+git tag -a v1.44.0 -m "Release 1.44.0: <one-liner>"   # annotated tag
+git push origin v1.44.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.42.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.44.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -2001,8 +2001,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.42.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.42.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.42.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.44.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.44.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.44.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3123,6 +3123,10 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.44.0 — One Grammar for the Catalog of Prompts: `[[ ]]` You Fill, `{{ }}` Runtime Fills, `< >` Is Report-Only — 2026-07-21** — The **Catalog of Prompts** (the `#prompts-catalog` modal) had grown to hundreds of example prompts written in as many little dialects — some told you to type a value inline, some hid a machine placeholder that looked identical, and a couple even hard-coded a throwaway path like `C:/Temp` that broke Tlamatini's own Temp policy. This release gives every card **one parameter grammar**, so a human and the machine can never confuse whose job a blank is: **`[[ ... ]]`** marks a value **you** fill in — always collected in a fill-in block at the **top** of the prompt, followed by an unfilled-guard line so a one-click demo still runs on the stated defaults; **`{{ ... }}`** marks a value Tlamatini fills at **runtime**; and **`< ... >`** is reserved for **report slots only** (a place the answer prints into), never an input. The standardization shipped as four migrations that touch **only `promptContent`** — `idPrompt`, `promptName`, `category`, `sort_rank`, and `hidden` are all left alone, so catalog ordering and contiguity are preserved byte-for-byte: **0181** adds the `sort_rank` column and switches in-section ordering from `idPrompt` to `sort_rank` (you still *append* a new prompt at `max(id)+1`, but its rank decides where the card actually appears, so no renumber is ever needed again — **rank 10 is reserved in every section for that section's Step-by-Step opener**, and an unranked `sort_rank = 0` sorts *last*, never first); **0182** seeds a guided **Step-by-Step section opener** at the head of each category so every section now opens with a wizard; and **0183 / 0184 / 0185** rewrite the existing prompts across all thirteen categories onto the shared `[[ ]]`/`{{ }}`/`< >` contract in batches (0183 also fixed the `C:/Temp` policy break in the Nmapper prompt #75). Pinned by `agent/test_prompt_catalog_contiguous.py`, which asserts the section-rank ordering and the reserved rank-10 opener. The public version moves to **1.44.0** across every static surface that quotes it (README badge, `package.json`, `VERSIONING.md`, this book, `agent/Tlamatini.md`, and the dossier generator); as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and the historical entries below were left untouched. Forward-only.
+
+- **The Three Recon Gods Run Free: OOB_shift_reaper + NAMU — 2026-07-19** — Kalier (remote Kali), Nmapper (local nmap), and Discoverer (the ProjectDiscovery suite) do work that legitimately takes *minutes* — a full-port nmap sweep, a subdomain enumeration, a nuclei run — but Tlamatini's idle-child watchdog was tuned for chat-latency shell calls and would reap them mid-scan, so a long recon read as a "hung" child and got killed. The fix is a deliberate **free-run window**: each of those three agents may run **uninterrupted up to `OOB_shift_reaper` seconds (default 3600)** before the watchdog is even allowed to consider it idle, because a scan that is silently grinding on a remote box is *working*, not stuck. Guarding that permissiveness is **NAMU — the "God of Gods"**: when Tlamatini herself is shutting down, the free-run window is **VOID** — NAMU runs *first*, before the generic sweeps, and tree-kills every recon child **immediately**, regardless of how much of its window remained, so nothing survives her exit. Authorized targets only, and this is a developer-tuned knob. Forward-only.
 
 - **Screenshot → Chat: Paste (Ctrl+V) or Drop an Image Straight Into the Prompt — 2026-07-14** — Handing Tlamatini a picture used to mean leaving the conversation: save the screenshot somewhere, find its path, type the path. Now you just **paste it**. Print Screen (or a snip) → Alt+Tab back to Tlamatini → **Ctrl+V**, and the clipboard bitmap is uploaded to a new endpoint, `POST /agent/paste_image/`, which re-encodes it to JPEG with Pillow (transparency flattened onto white, 25 MB ceiling) and writes it into her **own `Temp` directory** as `image_<YYYYmmdd>_<HHMMSS>_<ms>.jpg` — obeying the 2026-06-02 Temp policy through `path_guard.resolve_temp_path()`, so nothing is ever scattered outside Tlamatini. The browser then splices the image's **absolute path into the chat box at the caret** — mid-sentence, exactly where you left the cursor — and shows a **thumbnail chip** above the input whose `×` removes both the chip and the path again. Dragging image files from Explorer onto the chat column does the same; the drop zone is deliberately scoped to `#main-chat-container` so it never fights the External-MCP dialog's document-level `.json` drop handler. The design choice that makes it *useful* rather than merely pretty is that she is handed a **path, not an attachment**: a path is precisely what **Image-Interpreter** eats, so the very next thing you type — *"…what's wrong in this screenshot?"* — is a complete, actionable Multi-Turn prompt, and `prompt.pmt` now teaches her to recognise an `image_<timestamp>.jpg` under Temp as *the* image the user means, interpret it immediately, and never ask them to re-attach something they already gave her. Two implementation truths were learned the hard way in the live visible test and are now pinned in the fix log: the **paste listener lives on `document`, not on the textarea** (after Alt+Tab the focus is on `<body>`, so a textarea-scoped listener would never fire — the caret is remembered separately), and **`agent_page_layout.js::computeFormMinHeight()` must count the new chips row**, because that function pins `#tools-chat-form-container` to an explicit pixel height and any uncounted row silently pushes the textarea and the Send button off the bottom of the screen. New surfaces: `agent/static/agent/js/chat_image_paste.js` (a self-contained IIFE that declares **no** cross-file globals — the const-poison contract is respected), `views.paste_image_view` + the `paste_image/` route, `#chat-image-chips` / `#chat-drop-overlay` in `agent_page.html`, and the `.chat-img-*` styling. Proven live 16/16 on Angela's real desktop with real keystrokes: a 2560×1600 clipboard bitmap landed in Temp as a 199 KB JPEG, its path inserted mid-sentence, thumbnail rendered, chip-removal clean, and the input bar still fully on screen.
 

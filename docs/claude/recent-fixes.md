@@ -16,6 +16,29 @@
 
 ---
 
+## 2026-07-21 — Catalog of Prompts standardized onto ONE parameter grammar (`[[ ]]` / `{{ }}` / `< >`) + `sort_rank` ordering (v1.44.0)
+
+**What changed.** Every prompt in the `#prompts-catalog` modal now uses a single parameter grammar so the user and the runtime can never confuse whose blank is whose:
+- **`[[ ... ]]`** — a value the **USER** fills in. Always collected in a fill-in block at the **TOP** of the prompt, with an unfilled-guard sentence beneath ("for any OPTIONAL field I leave as a marker or blank, use the stated default") so a one-click demo still runs on defaults.
+- **`{{ ... }}`** — a value **Tlamatini fills at RUNTIME**.
+- **`< ... >`** — a **REPORT slot only** (where the answer prints), never an input.
+
+**Migrations (touch ONLY `promptContent`).** `0181` adds the `sort_rank` column and changes in-section ordering to `(category rank, sort_rank, idPrompt)`; `0182` seeds a **Step-by-Step section opener** at the reserved rank-10 slot of every category; `0183`/`0184`/`0185` rewrite the existing prompts across all 13 categories onto the grammar in batches. `idPrompt` / `promptName` / `category` / `sort_rank` / `hidden` are NEVER touched, so catalog ordering + contiguity hold byte-for-byte. `0183` also fixed a `C:/Temp` hardcode (Temp-policy break) in the Nmapper prompt #75.
+
+**Do NOT** renumber existing `idPrompt`s, or hardcode a scratch path in a prompt. Append at `max(id)+1` and set `sort_rank` to place the card; obey the Temp/Templates policy. Pinned by `agent/test_prompt_catalog_contiguous.py`. Full contract: `CLAUDE.md` → the "Catalog-of-Prompts Example" section + `create_new_agent.md` Step 7.8.
+
+---
+
+## 2026-07-19 — Recon agents run FREE up to `OOB_shift_reaper`; NAMU voids it on shutdown
+
+**Symptom.** A long real scan (a full-port nmap, a subfinder/nuclei run, a remote Kali job) was reaped mid-flight by the idle-child watchdog — the child was *working*, not hung, but the silence read as "stuck", so the scan died before it finished.
+
+**Fix — a deliberate free-run window.** The three recon agents — **Kalier** (remote Kali), **Nmapper** (local nmap), **Discoverer** (ProjectDiscovery) — may now run uninterrupted up to **`OOB_shift_reaper` seconds (default 3600)** before the watchdog is even allowed to treat them as idle. `agent/agents/{kalier,nmapper,discoverer}/*.py` read the knob; `agent/apps.py` honours the window in the reaper path.
+
+**Guard — NAMU, "God of Gods".** When Tlamatini herself is shutting down, the free-run window is **VOID**: NAMU runs FIRST (before the generic sweeps) and tree-kills every recon child immediately, regardless of how much of its window remained, so nothing survives her exit. **Do NOT** weaken the free-run for these three agents (long scans are normal work), and **do NOT** teach NAMU to respect the window (a shutdown must kill everything NOW). Developer-tuned; authorized targets only.
+
+---
+
 ## 2026-07-19 — EMPTY code block SHREDDED the whole answer (`str.replace('', x)`) + saved the same file 101 times
 
 **Symptom (Angela, dev instance):** a Kali-wizard reply came back as one `---Load in canvas: 20260719180442_install_prereqs.sh---` link **per character** — the sentence "Ping succeeded…" rendered as `P---Load in canvas: …---i---Load in canvas: …---n---…` — and the chat was flooded with **101 identical** `File: … saved!` notifications for ONE file.
