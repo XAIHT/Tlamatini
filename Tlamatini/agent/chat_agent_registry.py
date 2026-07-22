@@ -1591,6 +1591,37 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=3,
     ),
     ChatWrappedAgentSpec(
+        key="flowcreator",
+        template_dir="flowcreator",
+        tool_name="chat_agent_flowcreator",
+        tool_description="Chat-Agent-FlowCreator",
+        display_name="FlowCreator",
+        purpose=(
+            "Turn a plain-language OBJECTIVE into a real, canvas-loadable .flw WORKFLOW FILE. "
+            "Pass prompt='<what the flow should do>' and flow_filename='<name>.flw'. An LLM designs "
+            "the flow from the full agent catalog (which agents, their config, how they are wired), "
+            "and the agent writes the .flw to disk - by default into the application's own Temp "
+            "directory, or set output_dir='<folder>' to choose where. "
+            "USE THIS whenever the user asks to CREATE / DESIGN / BUILD a FLOW or a .flw from a "
+            "description, e.g. 'create a flow that watches a log and sends me a Telegram when it "
+            "sees an error'. Describe the WHOLE objective in prompt - include the concrete paths, "
+            "patterns, recipients and thresholds the user gave you, because the designer only sees "
+            "that text. Emits INI_SECTION_FLOWCREATOR whose header carries flw_path (the file to "
+            "give the user), status, agent_count and connection_count. The user opens the .flw from "
+            "the Agentic Control Panel. It does NOT run the flow - it only creates the file."
+        ),
+        example_request=(
+            "Run FlowCreator with prompt='Monitor the GlassFish server log at "
+            "C:/glassfish/domains/domain1/logs/server.log for ERROR lines, summarize the error and "
+            "send it to me on Telegram', flow_filename='glassfish_error_alert.flw'"
+        ),
+        aliases=("flowcreator", "flow creator", "flow-creator", "create flow", "design flow",
+                 "make flow", "build flow", "flw"),
+        security_hints=("flowcreator", "flow creator", "create a flow", "design a flow",
+                        "generate a flow", "make a flow", ".flw"),
+        poll_window_seconds=8,
+    ),
+    ChatWrappedAgentSpec(
         key="discoverer",
         template_dir="discoverer",
         tool_name="chat_agent_discoverer",

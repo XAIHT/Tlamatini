@@ -24,6 +24,10 @@ import traceback
 # Provide a fallback global just in case path parsing fails completely
 CURRENT_DIR_NAME = "flowcreator_unknown"
 LOG_FILE_PATH = "flowcreator.log"
+
+# Latched by _write_error_result() / _write_flw_file(); drives the exit code so a
+# failed run is reported as FAILED (not "completed") to the wrapped chat-agent.
+_FAILED = False
 _IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
 
 try:
@@ -573,14 +577,11 @@ def main() -> None:
             _write_error_result(f"LLM query failed: {e}")
             return
 
-        # Log the response
-        logging.info(
-            f"INI_SECTION_FLOWCREATOR<<<\n"
-            f"model: {model}\n"
-            f"\n"
-            f"{response_text}\n"
-            f">>>END_SECTION_FLOWCREATOR"
-        )
+        # Log the raw response for debugging. Deliberately NOT an
+        # INI_SECTION_FLOWCREATOR block: the single authoritative section is
+        # emitted at the end of main() once the .flw actually exists, so
+        # Parametrizer / the chat LLM never see two competing sections.
+        logging.info(f"--- RAW LLM RESPONSE ---\n{response_text}\n--- END RAW LLM RESPONSE ---")
         logging.info(f"LLM response received ({len(response_text)} chars)")
 
         # Write the raw intermediate script
@@ -615,6 +616,28 @@ def main() -> None:
             json.dump(flow_result, f, indent=2, ensure_ascii=False)
         logging.info(f"Written flow_result.json with {len(flow_result['nodes'])} nodes and {len(flow_result['connections'])} connections")
 
+        # ---- Write the actual .flw file (prompt in -> .flw out) ----------------
+        # The canvas path only needs flow_result.json, but a CHAT caller
+        # (chat_agent_flowcreator) needs a real, canvas-loadable .flw on disk.
+        # This is additive: the canvas ignores it.
+        flw_path = _write_flw_file(flow_result, flow_filename, config)
+
+        # Emit the section AFTER the .flw exists so the KV header can carry its
+        # path (Parametrizer + the chat LLM read this).
+        logging.info(
+            f"INI_SECTION_FLOWCREATOR<<<\n"
+            f"model: {model}\n"
+            f"status: success\n"
+            f"flw_path: {flw_path or ''}\n"
+            f"flow_filename: {flow_filename}\n"
+            f"agent_count: {len(agents)}\n"
+            f"connection_count: {len(flow_result['connections'])}\n"
+            f"\n"
+            f"Flow '{flow_filename}' created with {len(agents)} agents "
+            f"and {len(flow_result['connections'])} connections.\n"
+            f">>>END_SECTION_FLOWCREATOR"
+        )
+
         logging.info("FlowCreator agent finished successfully.")
 
     except Exception as e:
@@ -624,11 +647,74 @@ def main() -> None:
         time.sleep(0.4)
         remove_pid_file()
 
-    sys.exit(0)
+    # Exit code MUST reflect reality: the wrapped chat-agent runtime maps
+    # exit 0 -> "completed", so exiting 0 after a failure would report a flow
+    # that was never created as a SUCCESS. The canvas path is unaffected (it
+    # keys off flow_result.json + the PID file, never the exit code).
+    sys.exit(1 if _FAILED else 0)
+
+
+def _resolve_output_dir(config) -> str:
+    """Where the .flw is written. Honours an explicit output_dir, else the
+    application's own Temp directory (Rule 15 - never the system temp)."""
+    explicit = str(config.get('output_dir', '') or '').strip()
+    if explicit:
+        return explicit
+    app_temp = (os.environ.get('TLAMATINI_TEMP') or '').strip()
+    if app_temp:
+        return app_temp
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _write_flw_file(flow_result, flow_filename, config):
+    """Convert flow_result.json into a real, canvas-loadable .flw on disk.
+    Never raises - a conversion failure degrades to 'no .flw' and is logged."""
+    global _FAILED
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from result_to_flw import convert  # vendored next to this script
+    except Exception as e:
+        logging.error(f"Could not import the .flw converter: {e}")
+        _FAILED = True
+        return ""
+    try:
+        name = (flow_filename or '').strip() or 'untitled.flw'
+        if not name.lower().endswith('.flw'):
+            name += '.flw'
+        out_dir = _resolve_output_dir(config)
+        os.makedirs(out_dir, exist_ok=True)
+        flw_path = os.path.join(out_dir, name)
+        with open(flw_path, 'w', encoding='utf-8') as f:
+            json.dump(convert(flow_result), f, indent=2, ensure_ascii=False)
+        logging.info(f"Written .flw file: {flw_path}")
+        return flw_path
+    except Exception as e:
+        logging.error(f"Failed to write the .flw file: {e}")
+        _FAILED = True
+        return ""
+
+
+# NOTE: FlowCreator is a no_input/no_output system agent - it has no
+# target_agents to trigger, so there is deliberately no downstream-launch
+# helper here (the canvas never wires it, and a chat run has no successors).
 
 
 def _write_error_result(message: str) -> None:
-    """Write an error flow_result.json so the frontend knows the agent failed."""
+    """Write an error flow_result.json so the frontend knows the agent failed.
+    Also latches _FAILED so main() can exit NON-ZERO - the wrapped chat-agent
+    runtime derives completed/failed from the exit code, so a silent exit 0
+    here would report a flow that was never created as a SUCCESS."""
+    global _FAILED
+    _FAILED = True
+    logging.info(
+        f"INI_SECTION_FLOWCREATOR<<<\n"
+        f"status: error\n"
+        f"flw_path: \n"
+        f"agent_count: 0\n"
+        f"\n"
+        f"{message}\n"
+        f">>>END_SECTION_FLOWCREATOR"
+    )
     result_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flow_result.json")
     try:
         with open(result_path, "w", encoding="utf-8") as f:

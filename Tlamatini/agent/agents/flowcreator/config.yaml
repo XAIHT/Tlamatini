@@ -21,6 +21,11 @@ flow_filename: ""
 # Example: "Create a flow that monitors a log file for errors and sends an email alert"
 prompt: ""
 
+# Where to write the generated .flw file.
+# Empty = the application's own Temp directory (Rule 15). The canvas path
+# ignores this; it is what a CHAT caller (chat_agent_flowcreator) gets back.
+output_dir: ""
+
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
