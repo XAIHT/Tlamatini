@@ -51,6 +51,17 @@ metadata:
 
 # Flow-Making
 
+> **Related (2026-07-22):** FlowCreator is now ALSO a plain **wrapped chat-agent**,
+> `chat_agent_flowcreator` — a Multi-Turn tool (no ACPX needed) that takes
+> `prompt=` + `flow_filename=` and writes the `.flw` itself. This skill is the
+> heavier, ACPX/`invoke_skill`-surface path that shells out to `scripts/make_flow.py`;
+> the wrapped tool is the lighter one-call path. **Both convert `flow_result.json`
+> → `.flw` with the SAME `result_to_flw.py` logic** — this skill's
+> `scripts/result_to_flw.py` and the copy vendored at
+> `agent/agents/flowcreator/result_to_flw.py` (so the pool subprocess can carry it)
+> must be kept in sync. For a simple "make me a .flw from this sentence" ask, prefer
+> `chat_agent_flowcreator`; use this skill when you need the scripted pipeline.
+
 Produce a canvas-loadable `.flw` from `${input.objective}` by wrapping the
 **FlowCreator** engine — which already encodes the full 83-agent catalog,
 connection contracts, and design rules in `agentic_skill.md`. Do NOT hand-author

@@ -192,7 +192,7 @@ The `agentDescription` from DB is the single source of truth. It transforms diff
 ### Utility Agents
 - **Parametrizer** - Maps structured output from one agent into another's config.yaml (strict single-lane queue)
 - **FlowBacker** - Backs up session logs/configs
-- **FlowCreator** - LLM-powered flow designer (system agent, singleton, no canvas connections); reads `agentic_skill.md` and emits a `.flw` JSON
+- **FlowCreator** - LLM-powered flow designer (system agent, singleton, no canvas connections); reads `agentic_skill.md` and emits a `.flw` JSON. **Also chat-callable (2026-07-22) via the wrapped `chat_agent_flowcreator` tool**: pass `prompt='<objective>'` + `flow_filename='<name>.flw'` and it WRITES a real, canvas-loadable `.flw` to disk (default `<app>/Temp`, or `output_dir=`) instead of rendering onto the canvas — the from-chat "prompt in → .flw out" path. It ships a vendored `result_to_flw.py` (pool agents can't import `agent.*`) to convert `flow_result.json` → `.flw`, and now exits NON-ZERO on failure so a failed generation is reported as FAILURE, not a phantom success (the exit code drives the wrapped-runtime completed/failed verdict; the canvas path is unaffected — it keys off `flow_result.json` + the PID file). Emits `INI_SECTION_FLOWCREATOR` whose header carries `status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count` (registered as Parametrizer source fields in `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['flowcreator']`)
 - **Gatewayer** - HTTP webhook ingress + folder-drop watcher
 - **Gateway-Relayer** - Bridges GitHub/GitLab webhooks into Gatewayer
 - **Node-Manager** - Infrastructure registry and node supervision

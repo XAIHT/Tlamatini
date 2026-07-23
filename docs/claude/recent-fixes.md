@@ -16,6 +16,22 @@
 
 ---
 
+## 2026-07-22 — FlowCreator is now chat-callable as `chat_agent_flowcreator` (prompt in → real `.flw` file out), and it no longer reports failures as successes
+
+**What changed.** FlowCreator used to be **canvas-only** — the node's Save button POSTed to `execute_flowcreator/` and the browser JS rendered `flow_result.json` onto the canvas. There was no way to say *"create me a flow that does X"* in chat and get a file back. It is now also a **wrapped chat-agent**: `chat_agent_flowcreator(prompt='<objective>', flow_filename='<name>.flw'[, output_dir=…])` writes a real, canvas-loadable **`.flw` file** to disk (default `<app>/Temp`).
+
+**Four code changes (all in `agent/agents/flowcreator/` + the registry):**
+1. `flowcreator.py` now **writes the `.flw` itself** — it already produced `flow_result.json`; a new `_write_flw_file()` runs it through the converter and writes the file, and emits ONE authoritative `INI_SECTION_FLOWCREATOR` whose header carries `status` / `flw_path` / `flow_filename` / `agent_count` / `connection_count` (the raw LLM response is logged as a plain `--- RAW LLM RESPONSE ---` block, NOT a second section, so Parametrizer/the LLM never see two competing sections).
+2. **Vendored `agent/agents/flowcreator/result_to_flw.py`** (a copy of the `flow_making` skill's converter) — a pool subprocess can never `import agent.*`, so the `flow_result.json → .flw` converter must ship **inside** the template dir. Keep it in sync with `agent/skills_pkg/flow_making/scripts/result_to_flw.py`.
+3. **Exit code now reflects reality.** `flowcreator.py` used to `sys.exit(0)` on **every** path — no prompt, Ollama unreachable, unparseable response, any crash. The wrapped runtime maps exit 0 → `"completed"`, so a run that created **nothing** would have been reported to the user as a **SUCCESS** (green Exec-Report row, Create-Flow armed). A module-level `_FAILED` flag is now latched by `_write_error_result()` / a failed `_write_flw_file()`, and `main()` ends with `sys.exit(1 if _FAILED else 0)`. **The canvas path is UNAFFECTED** — `check_flowcreator_result_view` keys off the PID file + `flow_result.json`, never the exit code. **Do NOT revert the exit-code change**: it is the one thing that stops the tool lying about a flow it never built.
+4. `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['flowcreator']` expanded from `("model", "response_body")` to also expose `status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count`, so a downstream Parametrizer can address the new header fields.
+
+**Wiring:** `ChatWrappedAgentSpec(key="flowcreator", …)` in `chat_agent_registry.py`; migration `0186` seeds the `Chat-Agent-FlowCreator` Tool row (the Agent row already existed from `0031`) + the mandatory Catalog-of-Prompts demo (appended at the next free `idPrompt`, `sort_rank=85` in *Agents & Flows*). Exec-Report capture is automatic via the generic `_resolve_exec_report_spec` fallback — no `_EXEC_REPORT_TOOLS` entry needed. `config.yaml` gained an `output_dir` key.
+
+**Verified LIVE** with Angela's own example (`glassfish_error_alert.flw`, 7 agents / 6 connections): `Starter → Monitor-Log → Raiser → Summarizer → Parametrizer → Telegrammer → Ender`. Ruff clean; `0186` applied; `test_ask_execs_allowlist` (FlowCreator is not in the gated allowlist — it neither destroys data, contacts a human, nor reaches a remote system; it only writes a local file) still 8/8.
+
+---
+
 ## 2026-07-21 — Catalog of Prompts standardized onto ONE parameter grammar (`[[ ]]` / `{{ }}` / `< >`) + `sort_rank` ordering (v1.44.0)
 
 **What changed.** Every prompt in the `#prompts-catalog` modal now uses a single parameter grammar so the user and the runtime can never confuse whose blank is whose:

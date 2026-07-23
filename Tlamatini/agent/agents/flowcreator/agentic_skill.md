@@ -1863,7 +1863,7 @@ system_prompt: |
 
 ### 76. FlowCreator
 - **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
-- **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint or the FlowCreator sidebar icon, not as a placeable canvas node.
+- **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint (the FlowCreator sidebar icon) OR, since 2026-07-22, from Multi-Turn chat via the wrapped `chat_agent_flowcreator` tool (`prompt=` + `flow_filename=` → a real `.flw` file on disk); it is not a placeable canvas node either way.
 - **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
 - **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
 - **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)

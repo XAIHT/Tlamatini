@@ -88,6 +88,10 @@ _ALIAS = {
 # Local modules / build-time-provided names that are NOT PyPI deps.
 _NOT_THIRD_PARTY = {
     "agent", "tlamatini", "__future__", "pyi_splash",
+    # Vendored LOCAL sibling module inside agents/flowcreator/ (a pool subprocess
+    # can't import agent.*, so the flow_result.json -> .flw converter ships next
+    # to flowcreator.py). Not a pip package — do not require it in requirements.txt.
+    "result_to_flw",
 }
 
 
@@ -254,8 +258,11 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
     def test_every_runnable_agent_has_its_config(self):
         # Each agent dir that ships a <name>.py runtime must also ship its
         # config.yaml (the pair the pool launcher needs). System agents that have
-        # neither a <name>.py nor config.yaml (e.g. flowcreator/flowhypervisor that
-        # ship .md only) are exempt.
+        # neither a <name>.py nor config.yaml (e.g. flowhypervisor, which ships
+        # .md only) are exempt. (FlowCreator is NOT such a case any more — since
+        # it became the wrapped chat_agent_flowcreator it ships flowcreator.py +
+        # config.yaml + a vendored result_to_flw.py, so the loop checks it and it
+        # passes.)
         incomplete = []
         for d in self.agent_dirs:
             run_py = d / f"{d.name}.py"

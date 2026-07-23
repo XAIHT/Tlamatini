@@ -161,7 +161,7 @@ Contract (do NOT weaken): HKCU only, never admin, every writer fail-open, read-o
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 60 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`; the newest are `chat_agent_audioplayer` and `chat_agent_videoplayer`, the media-playback pair after `chat_agent_camcorder` / `chat_agent_recorder`)
+- Includes: execute_command, agent_parametrizer, agent_starter, agent_stopper, agent_stat_getter, launch_view_image, unzip_file, decompile_java, googler, + 63 wrapped chat-agent launchers (see `chat_agent_registry.CHAT_AGENT_TOOLS`; the newest is `chat_agent_flowcreator` — turns a plain-language objective into a real, canvas-loadable `.flw` file, after the media-playback pair `chat_agent_audioplayer` / `chat_agent_videoplayer`)
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---

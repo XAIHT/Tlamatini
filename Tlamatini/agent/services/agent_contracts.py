@@ -99,7 +99,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     ),
     "file_extractor": ("file_path", "response_body"),
     "prompter": ("model", "response_body"),
-    "flowcreator": ("model", "response_body"),
+    "flowcreator": ("model", "status", "flw_path", "flow_filename", "agent_count", "connection_count", "response_body"),
     "kyber_keygen": ("public_key", "private_key"),
     "kyber_cipher": ("encapsulation", "initialization_vector", "cipher_text"),
     "kyber_decipher": ("deciphered_buffer",),

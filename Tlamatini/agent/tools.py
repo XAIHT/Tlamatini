@@ -2401,6 +2401,10 @@ _PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES = frozenset({
     'image_interpreter', 'shoter', 'monitor_log', 'monitor_netstat',
     'recmailer', 'sleeper', 'pser',
     'camcorder', 'recorder', 'whisperer', 'audioplayer', 'videoplayer', 'talker',
+    # FlowCreator only DESIGNS a flow and writes a .flw file (no destructive
+    # side effects worth surfacing before the spawn) — a generation agent like
+    # prompter/summarizer, so it belongs in the observational set.
+    'flowcreator',
 })
 
 
