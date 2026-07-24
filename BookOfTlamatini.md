@@ -305,7 +305,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.44.0](https://github.com/XAIHT/Tlamatini/releases/tag/v1.44.0)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.45.1](https://github.com/XAIHT/Tlamatini/releases/tag/v1.45.1)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1988,14 +1988,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.44.0 -m "Release 1.44.0: <one-liner>"   # annotated tag
-git push origin v1.44.0
+git tag -a v1.45.1 -m "Release 1.45.1: <one-liner>"   # annotated tag
+git push origin v1.45.1
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.44.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.45.1/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -2003,8 +2003,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.44.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.44.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.44.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.45.1/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.45.1` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.45.1","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3125,6 +3125,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.45.1 — FlowCreator, Now Callable From Chat End-to-End (and a Guided Opener to Prove It) — 2026-07-23** — This release makes official, and tags, the work described in the entry just below. **v1.45.0** turned **FlowCreator** — the AI that *designs* whole agent workflows — into a **wrapped chat-agent** (`chat_agent_flowcreator`), so you can now simply *ask* for a flow in plain language and get a real, canvas-loadable **`.flw`** file back, instead of only reaching FlowCreator as a node on the visual canvas. **v1.45.1** then adds its **Step-by-Step section opener** to the Catalog of Prompts (migration **0187**, the reserved rank-10 slot at the head of the *Agents & Flows* section), so a newcomer is walked through building their very first flow one concrete action at a time. The public version moves to **1.45.1** across every static surface that quotes it (the README badge, `package.json`, `VERSIONING.md`, this book, `agent/Tlamatini.md`, `KIMI.md`, and the dossier generator); as always it stays git-tag-derived and never hardcoded (`agent/version.py`), and every historical entry below was left untouched. Forward-only.
 
 - **A Flow From a Sentence: FlowCreator Becomes Chat-Callable — 2026-07-22** — FlowCreator, the AI that *designs* whole agent workflows, had always lived behind glass: you could only reach it as a node on the visual canvas, click **Save**, and watch the browser paint the result. There was no way to simply *ask* — *"build me a flow that watches the GlassFish server log at `C:/glassfish/domains/domain1/logs/server.log`, and when it sees an ERROR line, summarize it and send me the summary on Telegram"* — and get a file back. Now there is. FlowCreator is a **wrapped chat-agent**, `chat_agent_flowcreator`: give it a plain-language `prompt` and a `flow_filename`, and it writes a real, canvas-loadable **`.flw` file** to disk (by default into Tlamatini's own `Temp` folder, or wherever you point `output_dir`), which you then open in the Agentic Control Panel. Angela's exact example produced, on the first try, a seven-agent flow — `Starter → Monitor-Log → Raiser → Summarizer → Parametrizer → Telegrammer → Ender` — the shape she described, in one call. Making it honest took more than wiring: FlowCreator's script used to end with `sys.exit(0)` on *every* path, including "no prompt given", "Ollama unreachable", and "unparseable answer" — and because the wrapped runtime reads success from the exit code, a run that built **nothing** would have been reported to you as a triumphant success, green row and all. That lie is now fixed: a `_FAILED` flag is latched on every failure path and `main()` exits non-zero when a flow was not actually created, so a failure reads as a failure — while the canvas path, which keys off `flow_result.json` and the PID file rather than the exit code, is left completely untouched. The converter that turns FlowCreator's internal `flow_result.json` into a proper `.flw` (mapping index-keyed connections to id-keyed ones, minting node ids, honouring the singleton and display-casing rules) is **vendored into the agent's own folder** as `result_to_flw.py`, because a pool subprocess can never import the main app — it must carry its tools with it. The new tool is registered in `chat_agent_registry.py`, seeded by migration **0186** (its Tool row plus the mandatory Catalog-of-Prompts demo, in *Agents & Flows*), captured automatically in the Exec Report, and its expanded `INI_SECTION_FLOWCREATOR` header (`status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count`) is now addressable by a downstream Parametrizer. It writes the file; it does **not** run the flow — that stays your decision. Forward-only.
 

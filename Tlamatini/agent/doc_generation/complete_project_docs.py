@@ -495,6 +495,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.42.0" in subject
         or "1.43.5" in subject
         or "1.44.0" in subject
+        or "1.45.0" in subject
+        or "1.45.1" in subject
+        or "flowcreator" in subject
+        or "flow-creator" in subject
         or "parametrization" in subject
         or "sort_rank" in subject
         or "oob_shift" in subject
@@ -522,10 +526,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The published release resolves to `v1.44.0` at `cbc03342`; local `main` and `origin/main` are aligned one commit ahead at `3b9839de` (a FlowPills image alignment), while the version resolver correctly remains on the latest tag. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
+            "The published release resolves to `v1.45.1` at `d5963784`; local `main` and `origin/main` are aligned at `7acb55a2` (the FlowCreator Step-by-Step catalog prompt), while the version resolver correctly remains on the latest tag. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current published version is `v1.44.0`, which standardizes the Catalog of Prompts onto one parameter grammar (`[[ ]]` user-fill / `{{ }}` runtime / `< >` report-slot; migrations 0181 `sort_rank`, 0182 Step-by-Step section openers, 0183-0185 batch rewrite). The `v1.43.5` recon free-run (`OOB_shift_reaper` + NAMU) for Kalier/Nmapper/Discoverer, `v1.42.0` STM32er PlatformIO expansion, `v1.41.4` External-MCP `structuredContent`, `v1.41.3` catalog grouping, `v1.41.2` Hard Cancel, and `v1.41.0` screenshot paste/drop remain carried foundations."
+            "The current published version is `v1.45.1`, which makes **FlowCreator** chat-callable as the wrapped `chat_agent_flowcreator` tool (v1.45.0 — a plain-language objective in, a canvas-loadable `.flw` out) and adds its Step-by-Step section opener to the Catalog of Prompts (v1.45.1, migration 0187). The `v1.44.0` Catalog-of-Prompts parameter grammar (`[[ ]]` user-fill / `{{ }}` runtime / `< >` report-slot; migrations 0181-0185), the `v1.43.5` recon free-run (`OOB_shift_reaper` + NAMU) for Kalier/Nmapper/Discoverer, `v1.42.0` STM32er PlatformIO expansion, `v1.41.4` External-MCP `structuredContent`, and `v1.41.0` screenshot paste/drop remain carried foundations."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -714,7 +718,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at `v1.44.0` with one aligned post-tag FlowPills-alignment commit, combines README.md and BookOfTlamatini.md with source/Git truth, and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the product at `v1.45.1` with `main` and `origin/main` in sync at `7acb55a2`, combines README.md and BookOfTlamatini.md with source/Git truth, and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -968,6 +972,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.42.0" in subject
         or "1.43.5" in subject
         or "1.44.0" in subject
+        or "1.45.0" in subject
+        or "1.45.1" in subject
+        or "flowcreator" in subject
+        or "flow-creator" in subject
         or "parametrization" in subject
         or "sort_rank" in subject
         or "oob_shift" in subject
@@ -987,10 +995,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The published release is `v1.44.0` at `cbc03342`; local `main` and `origin/main` are aligned one commit ahead at `3b9839de` (a FlowPills image alignment), and the git-derived version correctly remains `1.44.0`."
+            "The published release is `v1.45.1` at `d5963784`; local `main` and `origin/main` are aligned at `7acb55a2` (the FlowCreator Step-by-Step catalog prompt), and the git-derived version correctly remains `1.45.1`."
         )
         highlights.append(
-            "The release delta expands `stm32er.py`, config, registry, contracts, tools, tests, descriptions, migrations, and proposal assets together; the existing local configuration-only worktree changes remain private and are neither reproduced nor modified by dossier generation."
+            "The release delta adds the wrapped `chat_agent_flowcreator` tool to the registry, vendors `result_to_flw.py` into the FlowCreator agent folder, latches a non-zero failure exit on the FlowCreator script, and ships migrations 0186/0187 (the Catalog demo plus the Step-by-Step opener); the existing local configuration-only worktree changes remain private and are neither reproduced nor modified by dossier generation."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -1495,7 +1503,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "Git resolves the published product to `v1.44.0` at `cbc03342`; local `main` and `origin/main` are aligned one commit ahead at `3b9839de` (a FlowPills image alignment), while the live source tree remains authoritative for generated counts and capability claims.",
+    "Git resolves the published product to `v1.45.1` at `d5963784`; local `main` and `origin/main` are aligned at `7acb55a2` (the FlowCreator Step-by-Step catalog prompt), while the live source tree remains authoritative for generated counts and capability claims.",
     "`v1.42.0` releases STM32er's PlatformIO backend and device-aware routing for supported boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families.",
     "`v1.41.4` fixes External-MCP structured-output consumption: stdio and network clients now provide both text `content` blocks and `structuredContent` to the LLM instead of handing it only a short pointer.",
     "The shared formatter unwraps a sole `result` envelope, preserves errors and plain text, safely serializes structured data, caps oversized payloads, and is pinned by seven focused tests.",
@@ -1609,7 +1617,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.44.0`.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.45.1`.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1658,7 +1666,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: current public tag `v1.44.0` at `cbc03342`, with local and remote main one commit ahead at `3b9839de` (a FlowPills image alignment); the v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
+    "Release identity: current public tag `v1.45.1` at `d5963784`, with local and remote main aligned at `7acb55a2` (the FlowCreator Step-by-Step catalog prompt); the v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1844,7 +1852,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set; `v1.44.0` carries faithful External-MCP structured-output delivery on top of v1.41.3 category grouping, physical duplicate removal, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
+    "Those readability rules remain in force in the current documentation set; `v1.45.1` carries the chat-callable FlowCreator on top of v1.44.0 Catalog-of-Prompts standardization, v1.41.4 External-MCP structured-output delivery, v1.41.3 category grouping, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -3350,7 +3358,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.44.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.45.1", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3364,7 +3372,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.44.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.45.1", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3373,7 +3381,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.44.0 - published tag plus one aligned FlowPills-alignment commit", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.45.1 - FlowCreator now chat-callable; main and origin in sync at 7acb55a2", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3925,7 +3933,7 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.44.0 release lineage", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.45.1 release lineage", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "External MCP results (v1.41.4): stdio and network clients surface text plus structuredContent, unwrap common envelopes, cap payloads, and preserve errors.",
         "STM32er (v1.42.0): device-aware PlatformIO routing adds Blue Pill/mainstream-family build and safe flash; new stepwise Blue Pill/F407 demos finish with camera evidence.",
@@ -3935,7 +3943,7 @@ def build_ppt(context: dict) -> None:
         "Screenshot chat, configurable port, FlowPills discovery, and Unreal 5.8 scaffolding remain carried foundations; no new workflow-agent type landed.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: tag v1.44.0 points to `cbc03342`; `origin/main` and local `main` align one commit ahead at `3b9839de` (a FlowPills image alignment); local configuration values are not reproduced here.",
+        "Resolved identity: tag v1.45.1 points to `d5963784`; `origin/main` and local `main` align at `7acb55a2` (the FlowCreator Step-by-Step catalog prompt); local configuration values are not reproduced here.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
         "The dossier distinguishes tagged behavior from local configuration-only changes, preserves private-data discipline, and does not stage, commit, or push.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",

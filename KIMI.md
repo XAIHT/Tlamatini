@@ -71,7 +71,7 @@ Every count in this file was **verified against source on 2026-07-22** (not copi
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-- **Version**: **v1.44.0** (SemVer, single source of truth = annotated git tags; see §16)
+- **Version**: **v1.45.1** (SemVer, single source of truth = annotated git tags; see §16)
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-07-22, counted from source):**
@@ -253,7 +253,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── test_author_banner.py           # Author-banner presence guard
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
-├── package.json                    # version 1.44.0; npm run lint / lint:fix
+├── package.json                    # version 1.45.1; npm run lint / lint:fix
 ├── tlamatini_mcp_server.py         # Root stdio MCP server: 85 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe
@@ -920,6 +920,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — regenerated 2026-07-22 against source ground truth at v1.44.0 (85 agents / ~103 chat tools / 102 MCP tools / 28 skills / 17 models / 186 migrations / 33 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and the live MCP server; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — regenerated 2026-07-23 against source ground truth at v1.45.1 (85 agents / ~103 chat tools / 102 MCP tools / 28 skills / 17 models / 186 migrations / 33 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and the live MCP server; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*
