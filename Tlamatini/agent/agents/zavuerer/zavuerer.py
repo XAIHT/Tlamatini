@@ -335,7 +335,10 @@ def remove_pid_file():
 # action -> (HTTP method, endpoint path) relative to zavu_base_url.
 _ACTION_ROUTES = {
     "send":   ("POST", "messages"),
-    "health": ("GET",  "health"),
+    # Zavu has NO /health route (it 404s "Route not found"). /senders is the
+    # cheapest authenticated GET that proves BOTH the key is accepted AND a
+    # sending identity exists, so it is the real readiness probe.
+    "health": ("GET",  "senders"),
 }
 
 # Channels Zavu accepts. "auto" lets Zavu's ML pick the best/cheapest channel.
@@ -361,13 +364,152 @@ def _coerce_bool(val, default: bool = True) -> bool:
     return default
 
 
+_TERMINAL_STATUSES = ("delivered", "read", "failed", "undelivered", "rejected")
+
+
+def _await_delivery(message_id: str, config: dict, max_seconds: int = 45) -> str:
+    """Poll GET /messages/<id> until the status is TERMINAL, and return it.
+
+    Zavu answers a send with 202 + "queued"; the carrier verdict lands a few
+    seconds later. Without this the agent reports "queued" (or worse, "ok") for
+    a message the network went on to REJECT -- which is precisely how a whole
+    evening was lost believing WhatsApp was delivering when it was not.
+    Returns "" if no terminal state is reached in time (caller keeps "queued").
+    """
+    import urllib.request                       # local, like call_zavu_api does
+
+    base_url = str(_cfg(config, "zavu_base_url", "https://api.zavu.dev/v1")).rstrip("/")
+    api_key = str(_cfg(config, "zavu_api_key")).strip()
+    if not api_key or not message_id:
+        return ""
+    url = f"{base_url}/messages/{message_id}"
+    deadline = time.time() + max_seconds
+    latest = ""
+    while time.time() < deadline:
+        request = urllib.request.Request(url, method="GET")
+        request.add_header("Authorization", f"Bearer {api_key}")
+        request.add_header("Accept", "application/json")
+        # Cloudflare 403s a User-Agent-less request ("browser_signature_banned").
+        request.add_header(
+            "User-Agent", "Tlamatini-Zavuerer/1.0 (+https://github.com/XAIHT/Tlamatini)")
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                payload = json.loads(response.read().decode("utf-8", "replace"))
+            envelope = payload.get("message") if isinstance(payload.get("message"), dict) else payload
+            latest = str(envelope.get("status", "")).strip().lower()
+            if latest in _TERMINAL_STATUSES:
+                return latest
+        except Exception as exc:                                # noqa: BLE001
+            logging.warning(f"Delivery poll failed ({exc}); keeping '{latest or 'queued'}'.")
+            return latest
+        time.sleep(3)
+    logging.warning(f"Delivery did not settle within {max_seconds}s "
+                    f"(last seen '{latest or 'queued'}').")
+    return latest
+
+
+def _find_contacts_file() -> str:
+    """Locate contacts.json exactly the way Telegrammer does: next to the frozen
+    exe in an install, or <repo>/Tlamatini/agent/contacts.json in a checkout."""
+    candidate = (os.environ.get("TLAMATINI_CONTACTS") or "").strip()
+    if candidate and os.path.isfile(candidate):
+        return candidate
+    cur = os.path.dirname(os.path.abspath(__file__))
+    seen = []
+    for _ in range(10):
+        seen.append(os.path.join(cur, "contacts.json"))
+        seen.append(os.path.join(cur, "agent", "contacts.json"))
+        seen.append(os.path.join(cur, "Tlamatini", "agent", "contacts.json"))
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    if getattr(sys, "frozen", False):
+        seen.append(os.path.join(os.path.dirname(sys.executable), "contacts.json"))
+    for path in seen:
+        if os.path.isfile(path):
+            return path
+    return ""
+
+
+def _normalize_msisdn(value: str) -> str:
+    """Mexican mobiles need the '1' after the country code on WhatsApp (+521...).
+
+    Stored as +52 55 ... the API ACCEPTS the send and the carrier then silently
+    fails it -- a failure with no error text anywhere. Normalise it here.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    only = "".join(ch for ch in raw if ch.isdigit())
+    if only.startswith("52") and not only.startswith("521") and len(only) == 12:
+        only = "521" + only[2:]
+    return ("+" + only) if only else ""
+
+
+def _resolve_contact(query: str, channel: str) -> str:
+    """Resolve a contacts.json name/alias to an address for this channel.
+
+    Matching is case- AND accent-insensitive, so 'angela', 'Angela' and
+    'Ángela López Mendoza' all resolve. Without this, a perfectly ordinary
+    request like "send a WhatsApp to Angela with Zavuerer" produced NO message
+    at all, because Zavuerer only ever understood a raw number.
+    """
+    import unicodedata
+
+    def _n(value):
+        text = " ".join(str(value or "").strip().lower().split())
+        return "".join(c for c in unicodedata.normalize("NFKD", text)
+                       if not unicodedata.combining(c))
+
+    needle = _n(query)
+    if not needle:
+        return ""
+    path = _find_contacts_file()
+    if not path:
+        logging.error("contact_name '%s' given but no contacts.json was found." % query)
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8-sig") as handle:
+            data = json.load(handle)
+    except Exception as exc:                                    # noqa: BLE001
+        logging.warning("Could not read contacts.json (%s): %s" % (path, exc))
+        return ""
+    contacts = data.get("contacts", []) if isinstance(data, dict) else data
+    field = "email" if str(channel).strip().lower() == "email" else "whatsapp"
+    for entry in contacts or []:
+        if not isinstance(entry, dict):
+            continue
+        names = [entry.get("name", "")] + list(entry.get("aliases", []) or [])
+        if any(_n(name) == needle for name in names if name):
+            value = str(entry.get(field) or "").strip()
+            if not value:
+                logging.error("Contact '%s' has no '%s' entry in %s"
+                              % (query, field, path))
+                return ""
+            resolved = value if field == "email" else _normalize_msisdn(value)
+            logging.info("Resolved contact '%s' -> %s '%s' (%s)"
+                         % (query, field, resolved, path))
+            return resolved
+    logging.error("Contact '%s' not found in %s" % (query, path))
+    return ""
+
+
 def _build_payload(action: str, config: dict) -> dict:
     """Build the JSON body for the chosen action, mirroring Zavu's documented
     `messages.send({ to, text, channel, fallbackEnabled })` shape."""
     if action == "send":
         channel = str(_cfg(config, "channel", "auto")).strip().lower() or "auto"
+        # `to` wins; otherwise resolve `contact_name` through contacts.json so
+        # "send a WhatsApp to Angela" works without anyone typing a number.
+        to_value = str(_cfg(config, "to")).strip()
+        if to_value:
+            if channel != "email":
+                to_value = _normalize_msisdn(to_value)
+        else:
+            to_value = _resolve_contact(str(_cfg(config, "contact_name")).strip(), channel)
         body = {
-            "to": str(_cfg(config, "to")).strip(),
+            "to": to_value,
             "text": str(_cfg(config, "text")),
             "channel": channel,
             "fallbackEnabled": _coerce_bool(_cfg(config, "fallback", True), True),
@@ -484,9 +626,14 @@ def call_zavu_api(action: str, config: dict) -> dict:
 
     http_ok = 200 <= http_status < 300
     # send -> {id|messageId, channel, status:"queued"|"sent"|...}; health -> {status:"operational"|...}
-    msg_status = str(parsed.get("status", "")).strip()
-    channel_used = str(parsed.get("channel", "")).strip()
-    message_id = str(parsed.get("id", parsed.get("messageId", ""))).strip()
+    # Zavu wraps a send response as {"message": {...}} — read THAT envelope, not
+    # the top level. Reading the top level made status/message_id come back empty
+    # and turned a REJECTED send into success=True (a message that never arrived
+    # was reported as sent). Do NOT revert to parsed.get("status").
+    envelope = parsed.get("message") if isinstance(parsed.get("message"), dict) else parsed
+    msg_status = str(envelope.get("status", "")).strip()
+    channel_used = str(envelope.get("channel", "")).strip()
+    message_id = str(envelope.get("id", envelope.get("messageId", ""))).strip()
     success = http_ok and msg_status.lower() not in ("failed", "error", "rejected", "undelivered")
     body = json.dumps(parsed, indent=2) if parsed else (raw_text or "(no response body)")
 
@@ -539,6 +686,23 @@ def main():
         logging.info(f"Base URL: {base_url}")
         logging.info(f"Targets: {target_agents}")
 
+        # Resolve `contact_name` -> `to` BEFORE the preflight, otherwise a
+        # perfectly valid "send to Angela" is refused for "no recipient" even
+        # though the contacts book has her. Also normalises MX +52 -> +521.
+        if not to:
+            resolved_contact = _resolve_contact(
+                str(_cfg(config, "contact_name")).strip(), channel)
+            if resolved_contact:
+                to = resolved_contact
+                config["to"] = resolved_contact
+                logging.info(f"Recipient resolved from contacts.json -> {to}")
+        elif channel != "email":
+            normalized = _normalize_msisdn(to)
+            if normalized and normalized != to:
+                logging.info(f"Recipient normalised {to} -> {normalized}")
+                to = normalized
+                config["to"] = normalized
+
         # ── Fail-safe preflight (refuse rather than mis-send) ──────────────
         preflight_error = None
         if action not in _ACTION_ROUTES:
@@ -568,6 +732,21 @@ def main():
         else:
             logging.info(f"Channel: {channel!r}  To: {to!r}")
             result = call_zavu_api(action, config)
+
+            # A send returns 202 + status "queued". QUEUED IS NOT DELIVERED --
+            # Meta can still reject it seconds later (closed 24h window, bad
+            # number, throttling) and Zavu flips it to "failed". Reporting the
+            # first answer is how this agent used to claim success for messages
+            # that never arrived. Poll to a TERMINAL state and report THAT.
+            if (action == "send" and result.get("ok") and result.get("message_id")
+                    and str(result.get("status", "")).lower() in ("queued", "accepted", "")):
+                final = _await_delivery(result["message_id"], config)
+                if final:
+                    if final != result["status"]:
+                        logging.info(f"Delivery status settled: "
+                                     f"{result['status']} -> {final}")
+                    result["status"] = final
+                    result["success"] = final in ("delivered", "read", "sent")
 
             outcome = {
                 "action": action,

@@ -33,6 +33,14 @@ zavu_base_url: "https://api.zavu.dev/v1"
 #   * an email address for the Email channel (e.g. "you@example.com")
 to: ""
 
+# contact_name — OPTIONAL: a name or alias from contacts.json, used ONLY when
+# `to` is empty. Zavuerer resolves it (case- and accent-insensitively) to that
+# person's `whatsapp` number — or `email` when channel is "email" — so a prompt
+# can just say "send a WhatsApp to Angela" without anyone typing a number.
+# Mexican mobiles are normalised to +521... automatically (WhatsApp rejects
+# +52 55 ... silently, with no error text anywhere).
+contact_name: ""
+
 # channel — which channel to send on:
 #   auto      : let Zavu's ML pick the best/cheapest channel (recommended)
 #   sms | whatsapp | telegram | voice | email

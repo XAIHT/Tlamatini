@@ -455,6 +455,10 @@ def _find_contacts_file() -> str:
     for _ in range(10):
         seen.append(os.path.join(cur, 'contacts.json'))
         seen.append(os.path.join(cur, 'agent', 'contacts.json'))
+        # Source-checkout layout: <repo>/Tlamatini/agent/contacts.json. Without
+        # it the walk-up from a pool runtime dir never finds the real file in
+        # dev, so every contact_name send failed with "Contact not found".
+        seen.append(os.path.join(cur, 'Tlamatini', 'agent', 'contacts.json'))
         parent = os.path.dirname(cur)
         if parent == cur:
             break
@@ -515,6 +519,13 @@ def _resolve_recipient(config: Dict, wa_cfg: Dict) -> str:
             logging.info(f"📇 Resolved contact '{contact_name}' → WhatsApp '{resolved}'")
             return resolved
         logging.error(f"❌ Contact '{contact_name}' not found (or has no 'whatsapp') in contacts.json")
+        # DO NOT return '' here: a failed lookup used to DISCARD an explicit
+        # number the caller had already supplied, turning a perfectly valid send
+        # into "no recipient". Fall through to `to` instead.
+        explicit = str(config.get('to') or wa_cfg.get('to') or '').strip()
+        if explicit:
+            logging.info(f"↳ falling back to the explicit recipient '{explicit}'")
+            return explicit
         return ''
     return str(config.get('to') or wa_cfg.get('to') or '').strip()
 

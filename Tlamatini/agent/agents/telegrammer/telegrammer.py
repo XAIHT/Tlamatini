@@ -424,6 +424,11 @@ def _find_contacts_file() -> str:
     for _ in range(10):
         seen.append(os.path.join(cur, 'contacts.json'))
         seen.append(os.path.join(cur, 'agent', 'contacts.json'))
+        # Source-checkout layout: <repo>/Tlamatini/agent/contacts.json. Without
+        # this candidate the walk-up from a pool runtime dir never reaches the
+        # real file in dev, and every contact_name send failed with
+        # "Contact '<name>' not found" while the install worked fine.
+        seen.append(os.path.join(cur, 'Tlamatini', 'agent', 'contacts.json'))
         parent = os.path.dirname(cur)
         if parent == cur:
             break

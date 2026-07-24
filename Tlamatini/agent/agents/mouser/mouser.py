@@ -737,15 +737,34 @@ def main():
                 outcome_body = f"Localized movement failed: {e}"
 
         elif movement_type == 'click':
+            # actual_position=False means the caller supplied end_posx/end_posy
+            # and expects the click THERE. This branch used to always click
+            # wherever the cursor happened to sit, silently discarding the
+            # coordinates - which fires clicks at random screen locations.
+            use_actual_position = config.get('actual_position', True)
             try:
-                end_x, end_y, clicked = click_at_current_position(button_click)
-                located_via = "current_position"
-                outcome_body = (
-                    f"Clicked at current position ({end_x}, {end_y}); "
-                    f"click={normalized_click}; clicked={clicked}."
-                )
+                if not use_actual_position:
+                    end_posx = int(config.get('end_posx', 0))
+                    end_posy = int(config.get('end_posy', 0))
+                    logging.info(f"Click at explicit position ({end_posx}, {end_posy})...")
+                    clicked = move_mouse_localized(
+                        0, 0, end_posx, end_posy, True, button_click
+                    )
+                    end_x, end_y = end_posx, end_posy
+                    located_via = "manual"
+                    outcome_body = (
+                        f"Moved to ({end_x}, {end_y}) and clicked; "
+                        f"click={normalized_click}; clicked={clicked}."
+                    )
+                else:
+                    end_x, end_y, clicked = click_at_current_position(button_click)
+                    located_via = "current_position"
+                    outcome_body = (
+                        f"Clicked at current position ({end_x}, {end_y}); "
+                        f"click={normalized_click}; clicked={clicked}."
+                    )
             except Exception as e:
-                logging.warning(f"Click at current position failed: {e}")
+                logging.warning(f"Click failed: {e}")
                 outcome_body = f"Click failed: {e}"
 
         elif movement_type == 'drag':
