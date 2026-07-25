@@ -641,22 +641,47 @@ class WhatsAppCloudClient:
                 break
         return ok_all, last_info, last_id
 
+    # Meta answers 132001 / "template name does not exist in the translation"
+    # when the template EXISTS but not in the language code we asked for. A
+    # WABA commonly registers custom templates as `en` while this agent's
+    # default is `en_US`, so a perfectly correct template name used to fail
+    # and the operator was told the template was missing. Walk a short ladder
+    # of near-certain alternatives instead of giving up on the first miss.
+    _LANGUAGE_FALLBACKS = ("en", "en_US", "es_MX", "es")
+
+    @staticmethod
+    def _is_language_mismatch(info: str) -> bool:
+        blob = (info or "").lower()
+        return "132001" in blob or "does not exist in" in blob or "translation" in blob
+
     def send_template(self, to: str, template_name: str, language: str, body_params) -> Tuple[bool, str, str]:
         recipient = _normalize_msisdn(to)
         if not recipient:
             return False, "no recipient (empty WhatsApp number)", ""
-        template = {"name": template_name, "language": {"code": (language or "en_US").strip()}}
-        if body_params:
-            template["components"] = [{"type": "body",
-                                       "parameters": [{"type": "text", "text": str(p)} for p in body_params]}]
-        ok, info, mid = self._post({
-            "messaging_product": "whatsapp", "recipient_type": "individual",
-            "to": recipient, "type": "template", "template": template,
-        })
-        if ok:
-            logging.info(f"✅ WhatsApp(Cloud) template '{template_name}' → {recipient}: OK")
-        else:
-            logging.error(f"❌ WhatsApp(Cloud) template '{template_name}' → {recipient}: FAIL — {info}")
+        wanted = (language or "en_US").strip()
+        ladder = [wanted]
+        for candidate in self._LANGUAGE_FALLBACKS:
+            if candidate not in ladder:
+                ladder.append(candidate)
+        ok, info, mid = False, "no attempt made", ""
+        for index, lang in enumerate(ladder):
+            template = {"name": template_name, "language": {"code": lang}}
+            if body_params:
+                template["components"] = [{"type": "body",
+                                           "parameters": [{"type": "text", "text": str(p)} for p in body_params]}]
+            ok, info, mid = self._post({
+                "messaging_product": "whatsapp", "recipient_type": "individual",
+                "to": recipient, "type": "template", "template": template,
+            })
+            if ok:
+                if index:
+                    logging.warning(f"⚠️ template '{template_name}' is not registered as '{wanted}' — auto-resolved to '{lang}'.")
+                logging.info(f"✅ WhatsApp(Cloud) template '{template_name}' [{lang}] → {recipient}: OK")
+                return ok, info, mid
+            if not self._is_language_mismatch(info):
+                break
+            logging.warning(f"   ↳ '{template_name}' not registered in '{lang}' — retrying with the next language…")
+        logging.error(f"❌ WhatsApp(Cloud) template '{template_name}' → {recipient}: FAIL — {info}")
         return ok, info, mid
 
 

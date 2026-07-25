@@ -302,13 +302,25 @@ def _read_json_file(path: str) -> Dict[str, Any]:
     try:
         with open(path, "r", encoding="utf-8") as handle:
             data = json.load(handle)
-        return data if isinstance(data, dict) else {}
+        if isinstance(data, dict):
+            return data
+        if isinstance(data, list):
+            # contacts.json ships as a BARE JSON ARRAY of contact objects.
+            # Discarding it here made EVERY contact_name resolve to
+            # "not found" (contact_status: missing) even though Whatsapper
+            # and Zavuerer resolve the very same file correctly. Keep the
+            # array under the canonical "contacts" key.
+            return {"contacts": data}
+        return {}
     except Exception as exc:
         logging.warning("Could not read JSON file %s: %s", path, exc)
         return {}
 
 
-def _contacts_list(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _contacts_list(raw: Any) -> List[Dict[str, Any]]:
+    if isinstance(raw, list):
+        # Accept a bare contacts array straight from json.load().
+        return [item for item in raw if isinstance(item, dict)]
     items = raw.get("contacts") if isinstance(raw, dict) else []
     if isinstance(items, dict):
         return [dict({"name": key}, **(value if isinstance(value, dict) else {})) for key, value in items.items()]
