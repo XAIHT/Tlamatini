@@ -626,6 +626,42 @@ def _ensure_chat_tool_model(llm):
     return llm
 
 
+def _cap_tool_message_content(text, cap=None):
+    """Bound a SINGLE tool result before it is fed BACK to the model.
+
+    A huge observation (a directory dump, a whole-file read, a long build log) fed
+    verbatim into the next model request is how the accumulated Multi-Turn context
+    balloons until the model server rejects the WHOLE body with
+    'request body too large (status code: 400)' — which used to be mislabeled a
+    'transient network error' and silently demoted the run to a tool-less refusal
+    (the 2026-07-25 HackRF-migration incident). Capping the copy the MODEL re-reads
+    keeps every observation bounded; the FULL result is still captured for the Exec
+    Report / tool_calls_log (that capture happens inside _invoke_tool, BEFORE this
+    trim). Head + tail are kept so the model still sees how the output began and
+    ended. (Angela, 2026-07-26)
+    """
+    if not isinstance(text, str):
+        return text
+    if cap is None:
+        try:
+            cap = get_int_config_value(
+                "unified_agent_tool_output_char_cap", 24000, minimum=2000)
+        except Exception:  # noqa: BLE001 — a cap lookup must never break tool handling
+            cap = 24000
+    if len(text) <= cap:
+        return text
+    head = cap * 2 // 3
+    tail = cap - head
+    dropped = len(text) - head - tail
+    return (
+        text[:head]
+        + "\n\n…[TRUNCATED " + str(dropped) + " characters so the request stays within "
+        "the model's size limit — the FULL output was captured for the Exec Report; "
+        "ask for a specific part if you need more of it]…\n\n"
+        + text[-tail:]
+    )
+
+
 class MultiTurnToolAgentExecutor:
     """
     Explicit multi-turn tool-calling executor.
@@ -1722,7 +1758,7 @@ class MultiTurnToolAgentExecutor:
                     ToolMessage(
                         tool_call_id=tool_call.get("id", ""),
                         name=tool_name,
-                        content=tool_result,
+                        content=_cap_tool_message_content(tool_result),
                     )
                 )
 

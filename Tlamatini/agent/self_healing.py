@@ -91,7 +91,33 @@ _TRANSIENT_MARKERS = (
 
 def is_transient_error(exc: BaseException) -> bool:
     text = f"{type(exc).__name__}: {exc}".lower()
-    return any(m in text for m in _TRANSIENT_MARKERS)
+    if any(m in text for m in _TRANSIENT_MARKERS):
+        return True
+    # An oversized-context rejection is RECOVERABLE by trimming (below), so the
+    # ladder treats it as transient rather than a fatal bug. (Angela, 2026-07-26)
+    return is_oversized_context_error(exc)
+
+
+# ── Oversized-context (request-body-too-large) classification ────────────────
+# The model SERVER rejects the WHOLE request body as too big — HTTP 400/413
+# "request body too large", or a token/context-length overflow. This is NOT a
+# code bug: it is recoverable by TRIMMING the accumulated context, so it must
+# NOT be re-raised as fatal. Doing so was the root of the 2026-07-25 incident —
+# "Agent invocation failed () → 'transient network error' → tool-less refusal" —
+# where a big multi-step job (the HackRF migration) died mid-run and Tlamatini
+# handed the user a script instead of doing the work. Pairs with the per-tool
+# output cap in mcp_agent.py that keeps single observations bounded.
+_OVERSIZED_CONTEXT_MARKERS = (
+    "request body too large", "body too large", "request entity too large",
+    "payload too large", "status code: 413", "413:", "context length",
+    "context_length", "maximum context", "too many tokens",
+    "reduce the length", "string too long",
+)
+
+
+def is_oversized_context_error(exc: BaseException) -> bool:
+    text = f"{type(exc).__name__}: {exc}".lower()
+    return any(m in text for m in _OVERSIZED_CONTEXT_MARKERS)
 
 
 def _cancelled_for(user_id: Any = None, run_epoch: Optional[int] = None) -> bool:
@@ -272,6 +298,7 @@ class SelfHealingInvoker:
         self.attempt_timeout = max(2.0, float(attempt_timeout))
         self.recovery_events: List[str] = []       # transcript of what she went through
         self.recovered = False                     # True if any tactic beyond the first worked
+        self._saw_oversized = False                # a body-too-large THIS step → trim hard
 
     def _is_cancelled(self) -> bool:
         """Did the USER cancel THIS run? (per-run epoch latch, boolean fallback)"""
@@ -308,6 +335,26 @@ class SelfHealingInvoker:
         resort does she drop the tools to summarize. Cycles so she never gives
         up."""
         t = self.attempt_timeout
+        # If the model SERVER rejected the body as too large, ordinary retries just
+        # re-send the SAME oversized request. Go straight to progressively harder
+        # TRIMMING so the run RECOVERS (tools stay bound) instead of looping on the
+        # same 400. (Angela, 2026-07-26)
+        if self._saw_oversized and attempt > 1:
+            step = (attempt - 2) % 3
+            if step == 0:
+                lean = trim_messages(messages, keep_tail=12)
+                return ("trim-context",
+                        "the request got too large — trimming to the essentials and retrying with tools",
+                        lambda: bound_llm.invoke(lean), t)
+            if step == 1:
+                tiny = trim_messages(messages, keep_tail=6)
+                return ("minimal",
+                        "still too large — stripping to a MINIMAL request, tools still available",
+                        lambda: bound_llm.invoke(tiny), t)
+            tinier = trim_messages(messages, keep_tail=3)
+            return ("minimal-hard",
+                    "shrinking to the SMALLEST possible request, tools still available",
+                    lambda: bound_llm.invoke(tinier), t)
         cycle = (attempt - 1) % 6
         if cycle == 0:
             return ("normal", "trying the full request again",
@@ -344,6 +391,10 @@ class SelfHealingInvoker:
     def invoke(self, bound_llm: Any, messages: List[BaseMessage], *, label: str) -> Any:
         tactics_tried: List[str] = []
         last_exc: Optional[BaseException] = None
+        # Per-step: did the model reject this request as oversized? (biases the
+        # ladder to trim). Reset each step so one big step doesn't over-trim later
+        # ones. (Angela, 2026-07-26)
+        self._saw_oversized = False
 
         for attempt in range(1, self.max_attempts + 1):
             if self._is_cancelled():
@@ -410,10 +461,19 @@ class SelfHealingInvoker:
                 # A real bug, not a network blip — surface it so it gets fixed,
                 # do not loop forever on a deterministic failure.
                 raise exc
-            self._announce(
-                f"⚠️ Tactic '{name}' hit a transient network error ({type(exc).__name__}) — "
-                "switching to a different tactic."
-            )
+            if is_oversized_context_error(exc):
+                # TRUTHFUL: this is NOT a network error — the request grew too big.
+                # Flag it so the ladder above trims hard on the next attempt.
+                self._saw_oversized = True
+                self._announce(
+                    "📉 My request got too large for the model in one step — I'm "
+                    "trimming the running context down and continuing WITH my tools."
+                )
+            else:
+                self._announce(
+                    f"⚠️ Tactic '{name}' hit a transient network error ({type(exc).__name__}) — "
+                    "switching to a different tactic."
+                )
             self._interruptible_sleep(min(2 ** (attempt % 4), 8))
 
         # Backstop only — realistically the user cancels long before this.

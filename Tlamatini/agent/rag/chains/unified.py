@@ -82,6 +82,63 @@ def _is_transient_agent_error(exc: Exception) -> bool:
     return False
 
 
+def _log_fallback_exception(where: str, exc) -> None:
+    """Print the FULL real exception + traceback for a tool-less fallback.
+
+    The 'Agent invocation failed ()' incident (2026-07-25) swallowed the true
+    cause behind an empty message, so nobody could see WHY tools stopped. This
+    makes the real cause impossible to hide again. Never raises. (Angela)
+    """
+    import traceback as _tb
+    try:
+        etype = type(exc).__name__ if exc is not None else "None"
+        emsg = str(exc or "").strip() or "<empty message>"
+        print(f"--- [{where}] REAL fallback cause: {etype}: {emsg}")
+        if exc is not None and getattr(exc, "__traceback__", None) is not None:
+            print("".join(_tb.format_exception(type(exc), exc, exc.__traceback__)))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _fallback_notice_for(agent_exception, user_request: str, *, with_context: bool = False) -> str:
+    """Build a TRUTHFUL system notice for the tool-less fallback.
+
+    NEVER claims a 'transient network error' unless the error actually IS one — it
+    names what really happened (network blip / oversized request / internal error)
+    so the user is not lied to, and it tells them RESEND works. (Angela, 2026-07-26,
+    replacing the fabricated 'the tool-calling backend is unavailable' message.)
+    """
+    etype = type(agent_exception).__name__ if agent_exception is not None else "InternalError"
+    emsg = str(agent_exception or "").strip()
+    low = f"{etype} {emsg}".lower()
+    oversized = any(m in low for m in (
+        "request body too large", "body too large", "request entity too large",
+        "payload too large", "413", "context length", "maximum context",
+        "too many tokens", "string too long"))
+    transient = any(m in low for m in (
+        "timed out", "timeout", "connection", "reset", "502", "503", "504",
+        "overloaded", "rate limit", "429", "temporarily", "remotedisconnected",
+        "bad gateway", "service unavailable"))
+    if oversized:
+        reason = ("the request grew too large for the model in a single step. I now trim "
+                  "my running context automatically, so please RESEND and I will shrink "
+                  "the context and carry the task through WITH my tools")
+    elif transient:
+        reason = ("the model backend had a transient network problem. Please RESEND and I "
+                  "will run the tools")
+    else:
+        detail = (": " + emsg[:200]) if emsg else ""
+        reason = ("an internal error interrupted my tool run (" + etype + detail + "). No "
+                  "tools were executed — please RESEND so I can try again WITH my tools")
+    ctx = " and the provided context" if with_context else ""
+    return (
+        "SYSTEM NOTICE: Multi-Turn tool execution was requested but " + reason + ". "
+        "Answer the following request using only the model's own knowledge" + ctx +
+        ", and clearly state at the END that TOOLS WERE NOT EXECUTED (reason: " + etype +
+        ") so the user can retry.\n\nUser request: " + user_request
+    )
+
+
 def _invoke_unified_agent_with_retry(unified_agent, payload, *, max_attempts: int = 3):
     """Invoke the unified agent with bounded retry on transient 5xx / socket errors.
 
@@ -388,22 +445,18 @@ User Question: {enhanced_input}"""
                 )
             else:
                 print(
-                    f"--- UnifiedAgentChain: Agent invocation failed ({agent_exception}), "
+                    f"--- UnifiedAgentChain: Agent invocation failed ({agent_exception!r}), "
                     "falling back to basic LLM ---"
                 )
+                _log_fallback_exception("UnifiedAgentChain", agent_exception)
                 # Fallback to basic LLM call. When the user enabled Multi-Turn,
-                # prepend a short visible notice so the answer isn't silently
-                # demoted to a tool-less response.
+                # prepend a TRUTHFUL notice (never a fabricated "network error")
+                # so the answer isn't silently demoted to a tool-less response.
                 multi_turn_was_requested = bool(payload.get("multi_turn_enabled", False))
                 fallback_input = original_input
                 if multi_turn_was_requested:
-                    fallback_input = (
-                        "SYSTEM NOTICE: Multi-Turn tool execution was requested but the "
-                        "tool-calling backend is currently unavailable (transient network "
-                        "error). Answer the following request using only the model's "
-                        "own knowledge, and clearly mention at the end of your response "
-                        "that tools were not executed so the user can retry if needed.\n\n"
-                        f"User request: {original_input}"
+                    fallback_input = _fallback_notice_for(
+                        agent_exception, original_input, with_context=False
                     )
                 answer_payload = {
                     "input": fallback_input,
@@ -877,23 +930,18 @@ User Question: {enhanced_input}"""
                 )
             else:
                 print(
-                    f"--- UnifiedAgentRAGChain: Agent invocation failed ({agent_exception}), "
+                    f"--- UnifiedAgentRAGChain: Agent invocation failed ({agent_exception!r}), "
                     "falling back to basic LLM ---"
                 )
+                _log_fallback_exception("UnifiedAgentRAGChain", agent_exception)
                 # Fallback to basic LLM call with context. When Multi-Turn was
-                # requested, surface that fact so the answer isn't silently
-                # demoted to a tool-less response.
+                # requested, prepend a TRUTHFUL notice (never a fabricated
+                # "network error") so the answer isn't silently demoted.
                 multi_turn_was_requested = bool(payload.get("multi_turn_enabled", False))
                 fallback_input = q_rewritten
                 if multi_turn_was_requested:
-                    fallback_input = (
-                        "SYSTEM NOTICE: Multi-Turn tool execution was requested but the "
-                        "tool-calling backend is currently unavailable (transient network "
-                        "error). Answer the following request using only the model's "
-                        "own knowledge and the provided context, and clearly mention at "
-                        "the end of your response that tools were not executed so the "
-                        "user can retry if needed.\n\n"
-                        f"User request: {q_rewritten}"
+                    fallback_input = _fallback_notice_for(
+                        agent_exception, q_rewritten, with_context=True
                     )
                 qa_prompt = ChatPromptTemplate.from_messages([
                     ("system", _non_tool_system_prompt(self.prompt_template_string)),

@@ -26,11 +26,13 @@ from agent.global_state import global_state
 from agent.self_healing import (
     ModelStepUnrecoverable,
     SelfHealingInvoker,
+    is_oversized_context_error,
     is_transient_error,
     recovery_preamble,
     register_status_broadcaster,
     unregister_status_broadcaster,
 )
+from langchain_core.messages import AIMessage, ToolMessage  # noqa: E402
 
 
 class _ScriptedLLM:
@@ -216,6 +218,41 @@ class SelfHealingInvokerTests(unittest.TestCase):
         self.assertTrue(is_transient_error(Exception("Connection reset by peer")))
         self.assertFalse(is_transient_error(ValueError("bad key")))
         self.assertFalse(is_transient_error(KeyError("missing")))
+
+    # ── Oversized-context recovery (Angela, 2026-07-26) ──────────────────────
+    # Regression guard for the 2026-07-25 incident: a big multi-step job hit
+    # 'request body too large (status code: 400)', which was treated as a fatal
+    # bug, dropped the run to a tool-less fallback, and LIED ('transient network
+    # error'). The fix classifies it as RECOVERABLE and trims the context to
+    # continue WITH tools.
+    def test_oversized_context_is_classified_recoverable(self):
+        real = RuntimeError("http: request body too large (status code: 400)")
+        self.assertTrue(is_oversized_context_error(real))
+        self.assertTrue(is_transient_error(real))   # recoverable, not fatal
+        self.assertFalse(is_oversized_context_error(RuntimeError("Connection reset")))
+
+    def test_recovers_from_request_body_too_large_by_trimming(self):
+        # A model that rejects a large body but succeeds once the context is
+        # trimmed — the exact failure mode of the HackRF migration.
+        class _SizeLimitedLLM:
+            def invoke(self, messages):
+                if len(messages) > 15:
+                    raise RuntimeError("http: request body too large (status code: 400)")
+                return AIMessage(content="RECOVERED")
+
+        msgs = [SystemMessage(content="sys")]
+        for i in range(40):
+            msgs.append(AIMessage(content="", tool_calls=[{"id": str(i), "name": "t", "args": {}}]))
+            msgs.append(ToolMessage(tool_call_id=str(i), name="t", content="x" * 200))
+
+        inv = SelfHealingInvoker(user_id="u1", attempt_timeout=2, max_attempts=20)
+        out = inv.invoke(_SizeLimitedLLM(), msgs, label="doing the migration")
+        self.assertEqual(getattr(out, "content", None), "RECOVERED")
+        self.assertTrue(inv.recovered)
+        self.assertTrue(inv._saw_oversized)
+        # She told the user the TRUTH (too large), not a network lie.
+        self.assertTrue(any("too large" in e.lower() for e in self.events))
+        self.assertFalse(any("transient network" in e.lower() for e in self.events))
 
 
 if __name__ == "__main__":
