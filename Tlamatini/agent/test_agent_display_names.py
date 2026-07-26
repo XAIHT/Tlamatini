@@ -206,3 +206,44 @@ class AgentDisplayNameContractTests(SimpleTestCase):
                     "chat_agent_registry says %r but the canvas/DB name is %r"
                     % (registry[folder],
                        _canonical_agent_display_name(folder, registry[folder])))
+
+    def _live_display_names(self):
+        return {_canonical_agent_display_name(f, f) for f in _agent_folders()}
+
+    def test_css_data_content_selectors_match_live_display_names(self):
+        """The sidebar CSS keys some rules on the EXACT display name.
+
+        `.agent-tool-item[data-content="X"]` is a CSS attribute selector and its
+        value is CASE-SENSITIVE, so a renamed agent silently stops matching. (The
+        icon colour itself comes from `.canvas-item.<x>-agent` via
+        getAgentToolIconStyle(), which is casing-proof — but these rules must not
+        be left pointing at names that no longer exist.)
+        """
+        css_path = os.path.join(_AGENT_APP_DIR, 'static', 'agent', 'css',
+                                'agentic_control_panel.css')
+        with open(css_path, encoding='utf-8') as fh:
+            css = fh.read()
+        live = self._live_display_names()
+        stale = sorted({v for v in re.findall(
+            r'\.agent-tool-item\[data-content="([^"]+)"\]', css) if v not in live})
+        self.assertEqual(
+            [], stale,
+            "these data-content selectors name agents that no longer exist: %s" % stale)
+
+    def test_agent_purpose_map_keys_match_live_display_names(self):
+        """agent_page_chat.js::_agentPurpose is keyed by the canonical name.
+
+        A stale key means the generated .flw node gets no agentPurpose text.
+        """
+        js_path = os.path.join(_JS_DIR, 'agent_page_chat.js')
+        with open(js_path, encoding='utf-8') as fh:
+            js = fh.read()
+        start = js.find('function _agentPurpose')
+        self.assertGreater(start, 0, '_agentPurpose not found')
+        block = js[start:js.find('\n}', start)]
+        live = self._live_display_names()
+        stale = sorted({k for k in re.findall(r"^\s*'([^']+)':\s*'", block, re.M)
+                        if k not in live})
+        self.assertEqual(
+            [], stale,
+            "these _agentPurpose keys name agents that no longer exist: %s" % stale)

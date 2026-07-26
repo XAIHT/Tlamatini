@@ -29,8 +29,8 @@ Starter → Agent A → Agent B → Agent C → ...
 
 **Prefer sequential chains over parallel fan-out.** When designing a flow:
 - Chain active agents one after another: Agent A's `target_agents` contains only Agent B, Agent B's `target_agents` contains only Agent C, and so on.
-- Only use parallel fan-out (one agent starting multiple agents) when the objective genuinely requires concurrent execution paths (e.g., Starter must launch both a Monitor Log and a Raiser simultaneously because they run in parallel by design).
-- **Terminal/Monitoring agents** (Monitor Log, Emailer, Notifier, etc.) do NOT start downstream agents. To react to their output, pair them with a **Raiser** agent that polls their logs and starts the next agent in the chain when a pattern is detected.
+- Only use parallel fan-out (one agent starting multiple agents) when the objective genuinely requires concurrent execution paths (e.g., Starter must launch both a Monitor-Log and a Raiser simultaneously because they run in parallel by design).
+- **Terminal/Monitoring agents** (Monitor-Log, Emailer, Notifier, etc.) do NOT start downstream agents. To react to their output, pair them with a **Raiser** agent that polls their logs and starts the next agent in the chain when a pattern is detected.
 
 **Example of correct sequential thinking:**
 - WRONG: Starter starts 5 agents in parallel → chaotic, hard to reason about
@@ -40,7 +40,7 @@ Starter → Agent A → Agent B → Agent C → ...
 ### Agent Naming Convention
 When agents are deployed on the canvas, each instance gets a **cardinal number** suffix. For example:
 - First Starter instance: `starter_1`
-- Second Monitor Log instance: `monitor_log_2`
+- Second Monitor-Log instance: `monitor_log_2`
 - First Raiser instance: `raiser_1`
 
 **Important**: In `target_agents`, `output_agents`, and `source_agents` lists, always use the full pool name with cardinal (e.g., `starter_1`, `monitor_log_1`, `raiser_1`).
@@ -59,7 +59,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 **Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer.
 
-**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
+**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor-Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
 ### Key Concepts
 
@@ -87,7 +87,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 4. **Terminal agents belong at the END of a reaction chain.** Never start Notifier or Emailer from Starter. They should be triggered only after the condition they are supposed to report has been detected (e.g., after a Raiser detects the alert pattern).
 
-5. **Starter should be lean.** The Starter should only start the first agent(s) in the chain. Avoid fan-out from Starter unless genuinely concurrent paths are needed (e.g., a Monitor Log and its paired Raiser). Launching 4+ agents from Starter is almost always wrong.
+5. **Starter should be lean.** The Starter should only start the first agent(s) in the chain. Avoid fan-out from Starter unless genuinely concurrent paths are needed (e.g., a Monitor-Log and its paired Raiser). Launching 4+ agents from Starter is almost always wrong.
 
 6. **Concurrency guard on target startup.** Every active agent enforces a mandatory wait before starting downstream agents: it checks whether ALL agents in its `target_agents` (or `target_agents_a`/`target_agents_b`/`target_agents_l`/`target_agents_g`/`output_agents`) are stopped. If any are still running, the caller blocks and logs `❌ WAITING FOR AGENTS TO STOP: [...]` every 10 seconds until all have exited. This prevents duplicate processes in looping flows (e.g., Starter → Mouser → Sleeper → Mouser cycles) where a fast upstream agent could re-trigger a target before its previous invocation has finished.
 
@@ -277,7 +277,7 @@ Pressing **Start** while the flow is PAUSED acts as **Resume** (identical to pre
 ### Rules for Flow Designers
 
 - **All agents have reanimation detection built in.** You do not need to add any special configuration for pause/resume support.
-- **Long-running agents with file offset tracking** (Monitor Log, Raiser, Forker, Gateway Relayer, etc.) use `reanim.pos` to resume reading from the exact byte position where they were paused.
+- **Long-running agents with file offset tracking** (Monitor-Log, Raiser, Forker, Gateway Relayer, etc.) use `reanim.pos` to resume reading from the exact byte position where they were paused.
 - **Counter agent** uses `reanim.counter` to preserve its count across pauses so loop iterations are not lost.
 - **Gatewayer** preserves pending ingress state through `reanim_queue.json` and `reanim_dedup.json`.
 - **NodeManager** preserves registry state through `reanim_registry.json`.
@@ -416,7 +416,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
 - **Purpose**: Entry point of a flow. Starts all connected downstream agents.
 - **Used for**: Initiating workflow execution. Every flow must begin with at least one Starter agent. It is the first agent that runs when the user presses the Start button on the canvas.
 - **Aimed at**: Providing a single, clean entry point that launches the first agent(s) in a sequential chain. It should remain lean — avoid fanning out to many agents from a Starter.
-- **Application example**: In a CI/CD pipeline flow, the Starter launches an Executer that pulls the latest code. In a monitoring flow, the Starter launches a Monitor Log and its paired Raiser concurrently.
+- **Application example**: In a CI/CD pipeline flow, the Starter launches an Executer that pulls the latest code. In a monitoring flow, the Starter launches a Monitor-Log and its paired Raiser concurrently.
 - **Pool name pattern**: `starter_<n>`
 - **Starts other agents**: YES (all in target_agents)
 - **Config parameters**:
@@ -440,7 +440,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
 - **Purpose**: Monitors source agent logs for a pattern and starts target agents when detected. This is the primary "bridge" agent that connects monitoring agents to action agents.
 - **Used for**: Bridging the gap between passive monitoring agents (which do not start downstream agents) and active action agents. Raiser continuously polls upstream log files and fires when a specific text pattern appears.
 - **Aimed at**: Enabling event-driven reactions within a flow. It is the standard mechanism to detect an exception or alert condition in a monitoring agent's log and trigger a response chain (notifications, commands, escalations).
-- **Application example**: A Raiser watches a Monitor Log agent's log for the pattern "EVENT DETECTED". When the Monitor Log detects a critical error in a server log file, the Raiser picks up the outcome word and starts a Notifier to alert the user and an Executer to restart the failed service.
+- **Application example**: A Raiser watches a Monitor-Log agent's log for the pattern "EVENT DETECTED". When the Monitor-Log detects a critical error in a server log file, the Raiser picks up the outcome word and starts a Notifier to alert the user and an Executer to restart the failed service.
 - **Pool name pattern**: `raiser_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -449,7 +449,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
   - `target_agents`: [] (downstream agents to start when pattern is found)
   - `poll_interval`: 5 (seconds between log checks)
 
-### 4. Monitor Log
+### 4. Monitor-Log
 - **Purpose**: LLM-powered log file monitor. Watches a log file for keywords and writes `outcome_word` to its own log when detected. Does NOT start downstream agents. Pair with a Raiser to trigger downstream actions.
 - **Used for**: Continuously watching any log file on the local system for specific keywords or semantically equivalent phrases. It uses an LLM to perform intelligent, case-insensitive, synonym-aware keyword matching that goes beyond simple string search.
 - **Aimed at**: Detecting meaningful events (errors, warnings, state changes, deployment confirmations) in application or system log files and signaling them via an outcome word that downstream Raiser agents can act upon.
@@ -553,7 +553,7 @@ system_prompt: |
 - **Purpose**: Monitors source agent logs for a pattern and sends email notifications. Does NOT start downstream agents.
 - **Used for**: Sending email alerts via SMTP when a specific pattern is detected in an upstream agent's log. It supports TLS/SSL, multiple recipients (to/cc/bcc), customizable subjects and body templates, and optional log attachment.
 - **Aimed at**: Providing email-based notifications for critical events detected in a flow, such as deployment failures, security alerts, or service outages, ensuring that responsible personnel are informed even when not actively watching the dashboard.
-- **Application example**: An Emailer watches a Monitor Log agent's log for "CRITICAL ERROR" and sends an email to the DevOps team with the error details and the attached server log, enabling rapid incident response.
+- **Application example**: An Emailer watches a Monitor-Log agent's log for "CRITICAL ERROR" and sends an email to the DevOps team with the error details and the attached server log, enabling rapid incident response.
 - **Pool name pattern**: `emailer_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -619,7 +619,7 @@ system_prompt: |
 - **Purpose**: Copies or moves files matching a pattern to a destination folder, then triggers downstream agents.
 - **Used for**: Performing file copy or move operations using glob patterns. It supports recursive subdirectory scanning, file type exclusions, and can operate in immediate mode or wait for an event trigger from a source agent before executing.
 - **Aimed at**: Automating file distribution tasks within deployment, backup, or data processing pipelines — such as copying build artifacts to deployment directories, moving processed files to archive folders, or distributing configuration files across environments.
-- **Application example**: After an Executer restarts an application server, a Mover copies a freshly built WAR file from the project's build output directory to the server's autodeploy folder, then triggers a Monitor Log to watch for the successful deployment confirmation.
+- **Application example**: After an Executer restarts an application server, a Mover copies a freshly built WAR file from the project's build output directory to the server's autodeploy folder, then triggers a Monitor-Log to watch for the successful deployment confirmation.
 - **Pool name pattern**: `mover_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -667,7 +667,7 @@ system_prompt: |
 - **Purpose**: LLM-powered notification agent. Monitors source logs for patterns and shows desktop notifications. Can play sounds. Does NOT start downstream agents.
 - **Used for**: Providing real-time visual and audible alerts to the user through the Tlamatini frontend. It monitors upstream agent logs for configurable string patterns and triggers browser-based notification dialogs with optional sound, custom detail captions, and the ability to shut down after the first match.
 - **Aimed at**: Delivering immediate, human-readable notifications when critical events occur in a flow — such as deployment completions, error detections, or threshold breaches — so the operator can take informed action without constantly watching logs.
-- **Application example**: After a Monitor Log detects "NormasDRM was successfully deployed" in a server log, a Notifier displays a browser notification with the detail "The NormasDRM application WAR file has been successfully deployed" and plays an alert sound to catch the operator's attention.
+- **Application example**: After a Monitor-Log detects "NormasDRM was successfully deployed" in a server log, a Notifier displays a browser notification with the detail "The NormasDRM application WAR file has been successfully deployed" and plays an alert sound to catch the operator's attention.
 - **Pool name pattern**: `notifier_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -725,7 +725,7 @@ system_prompt: |
 - **Purpose**: Logical OR gate. Monitors two source agents for their respective patterns. Triggers target agents if EITHER Pattern 1 is found in Source 1 OR Pattern 2 is found in Source 2.
 - **Used for**: Implementing inclusive logic in workflows where an action should be triggered when any one of two independent conditions is met. It continuously monitors two separate source agent logs for their respective patterns.
 - **Aimed at**: Building decision flows that react to the first of multiple possible events — for example, triggering an alert when either a network failure or a disk space warning is detected, whichever comes first.
-- **Application example**: An OR gate monitors a Monitor Log agent for "DISK FULL" and a Monitor Netstat agent for "CONNECTION REFUSED". If either condition is detected, the OR triggers an Emailer to alert the sysadmin about the infrastructure issue.
+- **Application example**: An OR gate monitors a Monitor-Log agent for "DISK FULL" and a Monitor Netstat agent for "CONNECTION REFUSED". If either condition is detected, the OR triggers an Emailer to alert the sysadmin about the infrastructure issue.
 - **Pool name pattern**: `or_<n>`
 - **Starts other agents**: YES
 - **Has TWO inputs**: source_agent_1 and source_agent_2
@@ -2428,8 +2428,8 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 ]
 ```
 
-**Flow lifecycle**: Starter → Executer (stops domain) → sequence of 5 Deleters (clean up logs and applications) → Executer (starts domain) → Mover (copies new WAR to autodeploy) → Mover triggers downstream polling log agents (Monitor Log and Notifier).
-- **Monitoring/Alert path**: Monitor Log watches `server.log` for the success keyword "NormasDRM was successfully deployed". Notifier polls the Monitor Log's output log directly. Upon seeing the success keyword, Notifier displays a GUI alert and launches Telegrammer (mode=`send`, official Telegram Bot API) and Whatsapper (mode=`send`, official Meta WhatsApp Cloud API), which each deliver a deployment-status message.
+**Flow lifecycle**: Starter → Executer (stops domain) → sequence of 5 Deleters (clean up logs and applications) → Executer (starts domain) → Mover (copies new WAR to autodeploy) → Mover triggers downstream polling log agents (Monitor-Log and Notifier).
+- **Monitoring/Alert path**: Monitor-Log watches `server.log` for the success keyword "NormasDRM was successfully deployed". Notifier polls the Monitor-Log's output log directly. Upon seeing the success keyword, Notifier displays a GUI alert and launches Telegrammer (mode=`send`, official Telegram Bot API) and Whatsapper (mode=`send`, official Meta WhatsApp Cloud API), which each deliver a deployment-status message.
 - **Termination**: Ender is wired with `target_agents` containing all active and monitoring agents (the kill list). When stopped, it terminates them and launches Cleaner to clean up logs and PIDs. The `source_agents` are only the graphical connections to Ender's input.
 
 **Key design decisions in this example**:
@@ -2498,7 +2498,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 2. **If you need to make loops make sure the the last agent within the loop must be with capability of starting agents.** For example, if you need to make a loop that checks a file every 10 seconds, the last agent in the loop must be an agent that can start other agents, such as Telegrammer, Pythonxer, Scper, etc. and connect its output to the first agent in the loop.
 
 3. **Always prefer to use the capability of the agents to start other agents instead of using Raiser agent** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
-    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+    Starter (1) -->Monitor-Log (1)->Notifier (1)->...Ender (1).
               |
               -->Emailer (1)->X.
 
@@ -2508,7 +2508,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 
 6. **Cleaner agent must be connected from exactly one shutdown trigger path.** Use either `Ender -> Cleaner` or `Ender -> FlowBacker -> Cleaner`. Never connect the same shutdown branch so that Ender and FlowBacker can both trigger Cleaner, because Cleaner can delete logs before FlowBacker finishes backing them up.
 
-7. **Preffer to use Summarizer agent to summarize logs instead of using Pythonxer agent to parse logs or Monitor Log agent to monitor logs if you need the flow to be less complex and more efficient respect to the avoidance of to many agents: DUE TO ITS CAPABILITY OF STARTING OTHER AGENTS.** Summarizer agent is more adequate for keeping the flow simple and efficient when after the log summary there is needed to start other agents.
+7. **Preffer to use Summarizer agent to summarize logs instead of using Pythonxer agent to parse logs or Monitor-Log agent to monitor logs if you need the flow to be less complex and more efficient respect to the avoidance of to many agents: DUE TO ITS CAPABILITY OF STARTING OTHER AGENTS.** Summarizer agent is more adequate for keeping the flow simple and efficient when after the log summary there is needed to start other agents.
 
 ## Anti-Patterns (DO NOT DO)
 
@@ -2533,12 +2533,12 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
    - Right: Pythonxer with `target_agents: ["sleeper_1", "raiser_1"]`
 
 6. **❌ Using Raiser agent to start other agents when according to the flow there is only the need to start agents in a linear chain.** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
-    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+    Starter (1) -->Monitor-Log (1)->Notifier (1)->...Ender (1).
               |
               -->Emailer (1)->X.
 
 7. **❌ Connecting agents to Ender's source_agents only to not leave its output unconnected is incorrect and should be avoided.** Ender agent is used to terminate the flow and clean up the logs and PIDs of the agents. If there is no need to do something additional to its output, don't connect it to any other agent, for example: 
-    Starter (1) -->Monitor Log (1)->Notifier (1)->...Ender (1).
+    Starter (1) -->Monitor-Log (1)->Notifier (1)->...Ender (1).
               |
               -->Emailer (1)->X.
 

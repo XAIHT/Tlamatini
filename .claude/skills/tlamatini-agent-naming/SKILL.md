@@ -13,8 +13,44 @@ description: The authoritative Tlamatini agent NAMING CONVENTION — invoke befo
 
 # Tlamatini Agent Naming Convention
 
-The **single source of truth** for an agent's name is the **`agentDescription`** field on its
-`Agent` DB row (seeded by the agent's migration, e.g. `0101_add_stm32er`). The canvas
+> ### ⛔ CORRECTED 2026-07-26 — the migration is NOT the source of truth
+>
+> `agent/apps.py::AgentConfig.ready()` runs **`Agent.objects.all().delete()` on EVERY server
+> start** and re-seeds the table from the `agents/` folder listing. A migration's
+> `agentDescription` — and any manual DB edit — is **overwritten on the next launch**.
+> The boot resolver `_canonical_agent_display_name()` reads
+> **`agent/services/agent_paths.py::display_name_from_agent_type`**, so **THAT `overrides` map
+> is the real single source of truth.** Add every new/renamed agent there or `str.title()`
+> names it and it ships mangled — this is precisely how PDFer shipped as **"Pdfer"**
+> (plus Sqler / Ssher / Pser / Scper / Acpxer / Esp32Er / Esphomer / Videoplayer /
+> Audioplayer / Flowcreator / Teletlamatini …, 22 of 86 agents).
+>
+> **HYPHEN vs SPACE IS FUNCTIONAL.** `acp-canvas-core.js` compares
+> `targetAgentName.toLowerCase()` **without collapsing whitespace**, and for eleven agents it
+> tests ONLY the hyphenated literal: `Kyber-KeyGen`, `Kyber-Cipher`, `Kyber-DeCipher`,
+> `J-Decompiler`, `Video-Analyzer`, `De-Compresser`, `File-Creator`, `File-Extractor`,
+> `File-Interpreter`, `Image-Interpreter`, `Monitor-Log`. A spaced name matches nothing and
+> the canvas connection is **silently never saved**. (`Node Manager` / `Monitor Netstat` /
+> `MCP Doctor` stay SPACED — the JS accepts both forms for those.)
+>
+> **CHANGE BOTH SIDES IN ONE PASS.** `chat_agent_registry.display_name` keys the per-agent
+> enable gate `agent_<display>_status`, which **fails open** — so renaming only `agent_paths`
+> silently breaks the *Configure Agents* checkbox instead of erroring.
+>
+> **TWO MORE SURFACES carry the display name verbatim** (found by the post-rename
+> sweep, both now pinned by tests): `agentic_control_panel.css`
+> `.agent-tool-item[data-content="<Display>"]` (CSS attribute values are
+> CASE-SENSITIVE) and `agent_page_chat.js::_agentPurpose`'s `{'<Display>': …}` map.
+> After editing either, run `collectstatic` — the collected `staticfiles/` copies are
+> what actually get served.
+>
+> Verify with `python manage.py test agent.test_agent_display_names`. Full story:
+> `docs/claude/recent-fixes.md` (2026-07-26).
+
+The **display name** an agent shows is resolved at boot from
+`agent_paths.display_name_from_agent_type` into the **`agentDescription`** field of its
+`Agent` DB row (a migration such as `0101_add_stm32er` should seed the same exact string —
+it is what a fresh DB shows before the first boot). The canvas
 `agentic_control_panel.html` renders that string **verbatim** as the sidebar/canvas label
 (via `consumers.AgentConsumer.agent_establishment(agentName, agentDescription, agentContent)`
 → the JS palette). So the display name must carry the exact intended casing.
@@ -34,7 +70,7 @@ The **single source of truth** for an agent's name is the **`agentDescription`**
 1. **Display name = exact case.** For STM32er that is precisely `S` `T` `M` `3` `2` `e` `r` → **`STM32er`**. NEVER write `STM32Er`, `STM32ER`, `Stm32Er`, or `Stm32er` as the display / `agentDescription` (the user is emphatic — they program mission-critical robots and have corrected this repeatedly).
 2. **Lowercase everything else** by `name.toLowerCase().replace(/\s+/g,'-')` for CSS/classMap, `name.toLowerCase()` for connection checks, and the bare lowercased token for the directory / pool name.
 3. **Do NOT "fix" the ALL-CAPS protocol tokens** (`INI_SECTION_*` / `END_SECTION_*`) or the FlowHypervisor `* SPECIAL NOTES:` headers to mixed case — those are an intentional, separate convention shared by every agent.
-4. When **adding or renaming** an agent: set `agentDescription` to the exact display casing in the migration, then derive every other surface by lowercasing. Follow `Tlamatini/.agents/workflows/create_new_agent.md` and update `agents_descriptions.md`, `agentic_skill.md`, `README.md` in the same pass. **Sibling convention:** the same pass must honor the **Temp/Templates directory policy** — an agent that writes temp files routes them under `<app>/Temp` (`TLAMATINI_TEMP`); a firmware/engine agent that scaffolds projects defaults to `<app>/Templates` (`TLAMATINI_TEMPLATES`). See `prompt.pmt` Rules 15/16, `agent/path_guard.py`, and `docs/claude/recent-fixes.md` (2026-06-02).
+4. When **adding or renaming** an agent: **FIRST** add `"<agent_dir>": "<Exact Display Name>"` to the `overrides` map in `agent/services/agent_paths.py::display_name_from_agent_type` (the boot repopulate reads it and overwrites the DB), **then** set the same exact string as `agentDescription` in the migration and as `chat_agent_registry.display_name`, then derive every other surface by lowercasing. Follow `Tlamatini/.agents/workflows/create_new_agent.md` and update `agents_descriptions.md`, `agentic_skill.md`, `README.md` in the same pass. **Sibling convention:** the same pass must honor the **Temp/Templates directory policy** — an agent that writes temp files routes them under `<app>/Temp` (`TLAMATINI_TEMP`); a firmware/engine agent that scaffolds projects defaults to `<app>/Templates` (`TLAMATINI_TEMPLATES`). See `prompt.pmt` Rules 15/16, `agent/path_guard.py`, and `docs/claude/recent-fixes.md` (2026-06-02).
 5. When **auditing** casing: the ONLY surfaces allowed to differ from the display name are the lowercase identifiers (rule 2) and the ALL-CAPS protocol tokens (rule 3). Anything else showing a different casing of the name is a bug — fix it.
 
 ## Quick check command

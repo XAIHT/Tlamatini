@@ -613,7 +613,7 @@ Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yam
 | **Whatsapper** | WhatsApp via official Cloud API (`cloud`) or unofficial Web automation (`web`) |
 | **Telegrammer** | Telegram via official Bot API or user session; contact-name resolution |
 | **Zavuerer** | Zavu unified SMS/WhatsApp/Telegram/Email/Voice REST API (smart routing + fallback) |
-| **Monitor Log** | Log-file watcher + LLM event detection (canonical Raiser upstream) |
+| **Monitor-Log** | Log-file watcher + LLM event detection (canonical Raiser upstream) |
 | **Monitor Netstat** | Network-connection watcher + LLM matching |
 | **FlowHypervisor** | System watchdog over all agent logs; surfaces ATTENTION alerts |
 

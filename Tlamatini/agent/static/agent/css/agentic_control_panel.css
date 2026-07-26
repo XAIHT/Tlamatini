@@ -966,8 +966,10 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(56, 189, 248, 0.5);
 }
 
-/* Recmailer agent icon in sidebar */
-.agent-tool-item[data-content="Recmailer"] .agent-tool-icon,
+/* RecMailer agent icon in sidebar. The lower-cased "Recmailer" twin that used to
+   sit here was DEAD: data-content carries the exact display name and the boot
+   resolver produces "RecMailer" (agent_paths.display_name_from_agent_type), so
+   the old value could never match. Pinned by test_agent_display_names.py. */
 .agent-tool-item[data-content="RecMailer"] .agent-tool-icon {
     background: linear-gradient(135deg, #38BDF8 0%, #0284C7 100%);
 }
@@ -1003,7 +1005,7 @@ body.resizing-vertical {
 }
 
 /* Sqler agent icon in sidebar */
-.agent-tool-item[data-content="Sqler"] .agent-tool-icon {
+.agent-tool-item[data-content="SQLer"] .agent-tool-icon {
     background: linear-gradient(135deg, #f97316 0%, #10b981 100%);
 }
 
@@ -2224,7 +2226,7 @@ body.resizing-vertical {
 }
 
 /* FlowCreator agent icon in sidebar */
-.agent-tool-item[data-content="Flowcreator"] .agent-tool-icon {
+.agent-tool-item[data-content="FlowCreator"] .agent-tool-icon {
     background: linear-gradient(135deg, #1565C0 0%, #C62828 50%, #2E7D32 100%);
 }
 
@@ -2367,7 +2369,7 @@ body.resizing-vertical {
 }
 
 /* Monitor Log agent icon in sidebar */
-.agent-tool-item[data-content="Monitor Log"] .agent-tool-icon {
+.agent-tool-item[data-content="Monitor-Log"] .agent-tool-icon {
     background: linear-gradient(135deg, #FF6F00 0%, #E65100 100%);
 }
 
@@ -2580,17 +2582,17 @@ body.resizing-vertical {
 }
 
 /* Pser agent icon in sidebar */
-.agent-tool-item[data-content="Pser"] .agent-tool-icon {
+.agent-tool-item[data-content="PSer"] .agent-tool-icon {
     background: linear-gradient(135deg, #E91E63 0%, #4CAF50 100%);
 }
 
 /* Ssher agent icon in sidebar */
-.agent-tool-item[data-content="Ssher"] .agent-tool-icon {
+.agent-tool-item[data-content="SSHer"] .agent-tool-icon {
     background: linear-gradient(135deg, #1a237e 0%, #e53935 100%);
 }
 
 /* Scper agent icon in sidebar */
-.agent-tool-item[data-content="Scper"] .agent-tool-icon {
+.agent-tool-item[data-content="SCPer"] .agent-tool-icon {
     background: linear-gradient(135deg, #424242 0%, #e53935 100%);
 }
 

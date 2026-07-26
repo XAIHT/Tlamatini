@@ -529,7 +529,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The published release resolves to `v1.46.0` at `6207181f`; local `main` and `origin/main` are aligned exactly at that tagged PDFer release, while the version resolver correctly remains on the latest tag. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
+            "The published release resolves to `v1.46.0` at `6207181f`, where the tag and `origin/main` align; the version resolver correctly remains on that latest tag while the generated repository facts report the current local HEAD separately. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
         )
         highlights.append(
             "The current published version is `v1.46.0`, which adds **PDFer** as the visual and wrapped document-composer agent, with zero-new-dependency Markdown/HTML/text/image/mixed/merge rendering and migrations 0188-0190. The `v1.45.3` oversized-context recovery, `v1.45.1` FlowCreator Step-by-Step opener, `v1.45.0` wrapped FlowCreator, `v1.44.0` prompt grammar, `v1.43.5` recon free-run, `v1.42.0` STM32er PlatformIO expansion, and `v1.41.4` External-MCP structured output remain carried foundations."
@@ -721,7 +721,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at `v1.46.0` with `main` and `origin/main` in sync at tagged commit `6207181f`, combines README.md and BookOfTlamatini.md with source/Git truth, and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the product at `v1.46.0`, with the public tag and `origin/main` at `6207181f` and the current local HEAD reported separately; it combines README.md and BookOfTlamatini.md with source/Git truth and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -1001,7 +1001,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The published release is `v1.46.0` at `6207181f`; local `main` and `origin/main` are aligned exactly at that tagged PDFer release, and the git-derived version correctly remains `1.46.0`."
+            "The published release is `v1.46.0` at `6207181f`, where the tag and `origin/main` align; the current local HEAD is reported independently, and the git-derived version correctly remains `1.46.0`."
         )
         highlights.append(
             "The release delta adds PDFer to the visual-agent and wrapped-tool registries, ships migrations 0188-0190 plus real-renderer coverage, and carries the wrapped FlowCreator and its 0186/0187 guided catalog path; existing local configuration-only worktree changes remain private and are neither reproduced nor modified by dossier generation."
@@ -1509,7 +1509,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "Git resolves the published product to `v1.46.0` at `6207181f`; local `main` and `origin/main` are aligned exactly at that tagged PDFer release, while the live source tree remains authoritative for generated counts and capability claims.",
+    "Git resolves the published product to `v1.46.0` at `6207181f`, where the tag and `origin/main` align; the current local HEAD is reported separately, while the live source tree remains authoritative for generated counts and capability claims.",
     "`v1.46.0` adds PDFer as the document-composer agent and wrapped `chat_agent_pdfer` tool: it authors styled PDFs from Markdown, HTML, text, images, mixed content, or existing PDFs, with preflight refusal and Ask-Execs coverage for free-form destinations.",
     "`v1.41.4` fixes External-MCP structured-output consumption: stdio and network clients now provide both text `content` blocks and `structuredContent` to the LLM instead of handing it only a short pointer.",
     "The shared formatter unwraps a sole `result` envelope, preserves errors and plain text, safely serializes structured data, caps oversized payloads, and is pinned by seven focused tests.",
@@ -1672,7 +1672,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: current public tag `v1.46.0` at `6207181f`, with local and remote main aligned exactly at that commit; PDFer, v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
+    "Release identity: current public tag `v1.46.0` and `origin/main` align at `6207181f`, while the generated repository facts report the current local HEAD separately; PDFer, v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -2910,7 +2910,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("8. Effective Line Inventory by Language", styles["h1"]))
     story.append(
         p(
-            "Methodology: tracked text files only. Blank lines and comment-only lines are excluded. Python counts also remove module, class, and function docstrings detected through AST parsing.",
+            "Methodology: git-tracked text files plus git-unignored working-tree additions. Blank lines and comment-only lines are excluded. Python counts also remove module, class, and function docstrings detected through AST parsing.",
             styles["body"],
         )
     )
@@ -3387,7 +3387,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.46.0 - PDFer document composer; tag, main, and origin align at 6207181f", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.46.0 - PDFer; public tag + origin/main at 6207181f, local HEAD reported separately", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3949,7 +3949,7 @@ def build_ppt(context: dict) -> None:
         "Screenshot chat, configurable port, FlowPills discovery, and Unreal 5.8 scaffolding remain carried foundations; no new workflow-agent type landed.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: tag v1.46.0, `origin/main`, and local `main` all align at `6207181f`; local configuration values are not reproduced here.",
+        "Resolved identity: tag v1.46.0 and `origin/main` align at `6207181f`; the current local HEAD is reported separately, and local configuration values are not reproduced here.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
         "The dossier distinguishes tagged behavior from local configuration-only changes, preserves private-data discipline, and does not stage, commit, or push.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",

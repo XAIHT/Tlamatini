@@ -70,11 +70,20 @@ def _emit_and_capture(result):
 
     handler = _Cap()
     root = logging.getLogger()
+    # ORDER-INDEPENDENCE (2026-07-26): _emit_section logs at INFO, and the root
+    # logger defaults to WARNING -- so the record is dropped BEFORE it reaches
+    # our handler and nothing is captured. This passed only when some earlier
+    # test in the same process had already lowered the level; run the module
+    # alone and all four round-trip tests failed. Set the level here and
+    # restore it, so the capture never depends on test order.
+    previous_level = root.level
+    root.setLevel(logging.INFO)
     root.addHandler(handler)
     try:
         MCP_DOCTOR._emit_section(result)
     finally:
         root.removeHandler(handler)
+        root.setLevel(previous_level)
     for message in captured:
         if "INI_SECTION_MCP_DOCTOR" in message:
             return message

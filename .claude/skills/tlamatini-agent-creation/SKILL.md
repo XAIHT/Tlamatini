@@ -238,7 +238,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 144. Guard against duplicates: `if Agent.objects.filter(agentDescription='<Display>').exists(): return`.
 145. Compute `next_id = (max idAgent or 0) + 1`.
 146. Create the row: `Agent.objects.create(idAgent=next_id, agentName=f'agent-{next_id}', agentDescription='<Display>', agentContent='true')`.
-147. Use the EXACT `<Display>` casing in `agentDescription` (this is THE source of truth).
+147. Use the EXACT `<Display>` casing in `agentDescription`. **⛔ 2026-07-26 — the migration is NOT the source of truth:** `apps.py::ready()` DELETES every `Agent` row on each server start and re-derives the name from `agent/services/agent_paths.py::display_name_from_agent_type`, so you **MUST** also add `"<lower>": "<Display>"` to that `overrides` map or your agent ships `str.title()`-mangled ("Pdfer", "Sqler", "Esp32Er"). Use the **HYPHENATED** display form if `acp-canvas-core.js` only tests a hyphenated literal for it (`file-creator`, `video-analyzer`, `kyber-keygen`, `monitor-log`, …) — a spaced name matches nothing there and the canvas connection is silently never saved. Keep `chat_agent_registry.display_name` byte-identical in the same pass (it keys the fail-open `agent_<display>_status` enable gate). Verify: `python manage.py test agent.test_agent_display_names`.
 148. Implement `remove_<lower>_agent` reverse that deletes the row by `agentDescription`.
 149. Set `dependencies = [('agent', '<previous_migration_name>')]`.
 150. Add `operations = [migrations.RunPython(add_<lower>_agent, remove_<lower>_agent)]`.
@@ -706,7 +706,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # Pitfalls index (the silent-failure traps — re-read before declaring done)
 
-510. **Naming drift** — `agentDescription` is the only source of truth; CSS classMap (HYPHEN), connection handlers (SPACED), connector symbol (PascalCase), INI token (CAPS) each transform it differently. Fix it in the migration FIRST.
+510. **Naming drift** — the real source of truth is `agent_paths.display_name_from_agent_type` (the boot repopulate wipes + re-derives `agentDescription` every start; keep the migration and `chat_agent_registry.display_name` byte-identical to it); CSS classMap (HYPHEN), connection handlers (SPACED), connector symbol (PascalCase), INI token (CAPS) each transform it differently. Fix it in the migration FIRST.
 511. **Empty-string overwrites** — writing `config.field=''` (view, flow-generator, dialog) destroys the template default via the deep-merge. Always omit-if-empty / use the `set()` helper.
 512. **Pool-name cardinal mismatch** — emit `<lower>_N` (underscore + cardinal), never bare `<lower>` or `<lower>-N`, into connection lists, or the Starter fails on the first hop.
 513. **Forgetting `_IS_REANIMATED`** — without the marker before `basicConfig`, the log truncates on every resume.

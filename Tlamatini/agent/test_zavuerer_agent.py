@@ -107,7 +107,11 @@ class ZavuererRoutesAndPayloadTests(SimpleTestCase):
 
     def test_action_routes(self):
         self.assertEqual(self.z._ACTION_ROUTES['send'], ('POST', 'messages'))
-        self.assertEqual(self.z._ACTION_ROUTES['health'], ('GET', 'health'))
+        # Zavu has NO /health endpoint - it 404s 'Route not found'. The agent
+        # deliberately probes /senders as the cheapest authenticated GET
+        # (see the comment on _ACTION_ROUTES). Asserting 'health' pinned an
+        # endpoint that never existed.
+        self.assertEqual(self.z._ACTION_ROUTES['health'], ('GET', 'senders'))
 
     def test_valid_channels(self):
         for ch in ('auto', 'sms', 'whatsapp', 'telegram', 'voice', 'email'):
@@ -213,6 +217,12 @@ class ZavuererEmitSectionTests(SimpleTestCase):
         handler = logging.Handler()
         handler.emit = lambda r: records.append(r.getMessage())
         root = logging.getLogger()
+        # ORDER-INDEPENDENCE (2026-07-26): _emit_section logs at INFO and the
+        # root logger defaults to WARNING, so the record is dropped before it
+        # reaches this handler. Without setting the level the test only passed
+        # when an earlier test in the same process had lowered it.
+        previous_level = root.level
+        root.setLevel(logging.INFO)
         root.addHandler(handler)
         try:
             self.z._emit_section({
@@ -221,6 +231,7 @@ class ZavuererEmitSectionTests(SimpleTestCase):
             }, 'body here')
         finally:
             root.removeHandler(handler)
+            root.setLevel(previous_level)
         blocks = [r for r in records if 'INI_SECTION_ZAVUERER' in r]
         self.assertEqual(len(blocks), 1)
         block = blocks[0]
@@ -335,8 +346,24 @@ class ZavuererFileWiringTests(SimpleTestCase):
                     'text', 'fallback', 'timeout', 'source_agents', 'target_agents'):
             self.assertIn(key, cfg)
         self.assertEqual(cfg['action'], 'send')
-        # NEVER hardcode a credential — the key default must be an empty string.
-        self.assertEqual(cfg['zavu_api_key'], '')
+        # NEVER hardcode a credential. Two NON-SECRET states are legitimate,
+        # because regen_secrets.py toggles the repo between them:
+        #   ''                        - pristine / never configured
+        #   '<ZAVU_API_KEY goes here>'- push-able mode (the scrubbed placeholder)
+        # Demanding exactly '' failed the moment the repo was scrubbed for a
+        # push, which is the ONE state where the file is provably clean. What
+        # must never appear is a REAL key -- and that is what this now catches
+        # (it caught a live `zv_live_...` key committed here on 2026-07-26).
+        key = str(cfg['zavu_api_key'] or '')
+        self.assertTrue(
+            key == '' or (key.startswith('<') and key.endswith('goes here>')),
+            f"zavu_api_key must be empty or a placeholder, got {key[:12]!r}...")
+        for secret_prefix in ('zv_live_', 'zv_test_', 'sk-', 'ghp_'):
+            self.assertFalse(
+                key.startswith(secret_prefix),
+                f"A REAL credential is committed in zavuerer/config.yaml "
+                f"(starts with {secret_prefix!r}) — run "
+                f"`python regen_secrets.py --mode push-able` before committing.")
 
     def test_docs(self):
         descs = self._read_root('agents_descriptions.md')
@@ -383,7 +410,10 @@ class ZavuererKeyWizardTests(TestCase):
 
     def test_catalog_has_setup_and_two_samples(self):
         from agent.models import Prompt
-        self.assertTrue(Prompt.objects.filter(promptContent__contains='set up **Zavuerer** with me ONE step').exists())
+        # Match the STABLE part of the wizard's opening line; the tail was
+        # reworded ('...with me from zero so I can text / WhatsApp / email...').
+        self.assertTrue(Prompt.objects.filter(
+            promptContent__contains='set up **Zavuerer** with me').exists())
         self.assertTrue(Prompt.objects.filter(promptContent__contains='send a quick **SMS**').exists())
         self.assertTrue(Prompt.objects.filter(promptContent__contains='reach me the smart way with **Zavuerer**').exists())
 

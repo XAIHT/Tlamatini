@@ -106,13 +106,48 @@ class ContactsResolverTests(unittest.TestCase):
 
 
 class ShippedContactsFileTests(unittest.TestCase):
-    """The example contacts.json shipped next to config.json must be valid JSON
-    and resolvable end-to-end (proves the data file + resolver work together)."""
+    """The contacts.json next to config.json must be valid JSON and resolvable
+    end-to-end (proves the data file + resolver work together).
+
+    ⚠️ DATA-INDEPENDENT ON PURPOSE (Angela, 2026-07-26). This file is her LIVE
+    contacts book, not a shipped sample: it holds real people's real handles and
+    phone numbers, and it changes whenever she adds a contact. The test used to
+    assert `resolve_contact("Ana Ricardo Lazcano", "telegram") == "@ana_lazcano"`,
+    which (a) failed the moment the real entry differed and (b) hardcoded a
+    person's identifier into the test suite. Assert the CONTRACT against
+    whatever the file actually contains instead — never a specific person.
+    """
 
     def test_shipped_file_loads_and_resolves_example(self):
         path = contacts.get_contacts_path()
         if not os.path.isfile(path):
             self.skipTest("contacts.json not present in this layout")
-        self.assertTrue(contacts.load_contacts(), "shipped contacts.json should hold the example contact")
-        self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "telegram"), "@ana_lazcano")
-        self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "whatsapp"), "+5215555555555")
+        entries = contacts.load_contacts()
+        self.assertTrue(entries, "contacts.json should hold at least one contact")
+
+        for entry in entries:
+            self.assertIn("name", entry, f"every contact needs a name: {entry!r}")
+            self.assertTrue(str(entry["name"]).strip(), "a contact name must not be blank")
+
+        # Round-trip the resolver against the file's OWN data: for every channel
+        # a contact declares, resolve_contact(name, channel) must return exactly
+        # the stored value. No real handle is written into this test.
+        checked = 0
+        for entry in entries:
+            name = entry["name"]
+            for channel in ("telegram", "whatsapp", "email", "sms"):
+                stored = entry.get(channel)
+                if not stored:
+                    continue
+                self.assertEqual(
+                    contacts.resolve_contact(name, channel), stored,
+                    f"resolver disagreed with contacts.json for channel {channel!r}")
+                checked += 1
+        self.assertGreater(
+            checked, 0,
+            "no contact declares a telegram/whatsapp/email/sms channel, so the "
+            "resolver was never exercised")
+
+        # An unknown name must fail closed (None), not return someone else.
+        self.assertIsNone(
+            contacts.resolve_contact("Definitely Not In The Book 9f3a", "telegram"))

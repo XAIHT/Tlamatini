@@ -226,7 +226,7 @@ The frontend reaches this layer over three new endpoints: `POST /agent/compile_f
 ## Database Models (13 models in agent/models.py)
 
 Key models:
-- `Agent` - Agent type registry (idAgent, agentName, agentDescription, agentContent)
+- `Agent` - Agent type registry (idAgent, agentName, agentDescription, agentContent). **⚠️ This table is DELETED and rebuilt from the `agents/` folder listing on EVERY startup** by `apps.py::AgentConfig.ready()`, so `agentDescription` is derived, not authored: the boot resolver `_canonical_agent_display_name()` reads `services/agent_paths.py::display_name_from_agent_type`, which is the real source of truth for a display name (a migration's value survives only until the next launch). See `docs/claude/recent-fixes.md` (2026-07-26).
 - `Mcp` - MCP UI toggle rows (enable/disable context providers)
 - `Tool` - Tool UI toggle rows (enable/disable unified-agent tools)
 - `Skill` - SKILL.md registry mirror (name, description, runtime, acpx_agent, **enabled**, frontmatter_json, body_sha256, last_loaded_at). Created in migration `0071_acpx_skills.py`; auto-seeded from `agent/skills_pkg/*/SKILL.md` by `agent/acpx/service.py::boot_skills()` (called on a background thread from `apps.AgentConfig.ready()`). The **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — added 2026-05-17) is the only user-facing edit surface and only ever touches the `enabled` boolean; all other fields are owned by `boot_skills()` and refreshed from disk on every reload. The disk-derived cache fields are NOT used by the admin UI (it reads fresh from `skill_registry`); they exist so historical revisions could surface frontmatter snapshots without an extra disk read.

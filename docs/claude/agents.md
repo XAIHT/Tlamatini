@@ -77,7 +77,9 @@ The registry is exposed to the frontend via `GET /agent/agent_contracts/` (retur
 
 ### Critical Naming Convention
 
-The `agentDescription` from DB is the single source of truth. It transforms differently per context:
+**⚠️ CORRECTED 2026-07-26.** The DB `agentDescription` is **NOT** the source of truth — `agent/apps.py::AgentConfig.ready()` **deletes every Agent row on each startup** and rebuilds it from the `agents/` folder listing via `_canonical_agent_display_name()` → **`services/agent_paths.py::display_name_from_agent_type`**. That override map is where the name is really decided; a migration alone is overwritten on the next launch (this is what rendered PDFer as "Pdfer"). Two rules follow: **(a)** add every new agent to that map, and **(b)** if the agent's canvas connection handler in `acp-canvas-core.js` only tests a **hyphenated** literal (`video-analyzer`, `kyber-keygen`, `file-creator`, `monitor-log`, …), the display name MUST be hyphenated too — the JS lowercases without collapsing spaces, so a spaced name matches nothing and the connection is silently never saved. Change `chat_agent_registry.display_name` in the SAME pass (it keys the `agent_<display>_status` enable gate). Pinned by `agent/test_agent_display_names.py`; full story in `docs/claude/recent-fixes.md` (2026-07-26).
+
+The display name transforms differently per context:
 
 | Context | Transform | "Node Manager" | "Shoter" |
 |---|---|---|---|

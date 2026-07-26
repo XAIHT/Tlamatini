@@ -16,6 +16,133 @@
 
 ---
 
+## 2026-07-26 — Full-suite repair: 26 of 28 failures fixed, and what they taught
+
+The suite ran **3462 tests → 26 failures + 2 errors**. Almost none were product bugs; they cluster into four causes worth knowing.
+
+### A. The secret scrubber silently broke its own tests
+
+`regen_secrets.py` (and the public-release scrubber) rewrite `"password": "..."`-shaped literals. They had rewritten **the test fixtures** to `<REDACTED>` while leaving the assertions expecting the old values — 8 failures in `test_password_quoting.py` plus `test_secret_008_env_secret_real_value`. Two second-order bites:
+
+- `<REDACTED>` has **no spaces**, and the entire point of `test_password_quoting` is proving a *space-bearing* password stays double-quoted in YAML. The scrub did not just break the test, it made it meaningless. Fixtures now use the obviously-fake, space-bearing `fake app pass 0000`.
+- `<REDACTED>` contains `<` and `>`, which **are** markers in `_looks_like_placeholder`. The "a REAL value must NOT be flagged" case therefore asserted the exact opposite of its intent. (My first replacement failed too — it contained the word "placeholder". The value must be opaque gibberish.)
+
+A real Gmail-shaped app password was also removed from the repo in the process.
+
+### B. Order-dependent logging tests (a whole class)
+
+`test_parametrizer_mcp_doctor` (3 tests) and `test_zavuerer_agent::test_emit_section_atomic` attach a handler to the ROOT logger to capture an agent's `logging.info(...)` — but never set the level. The root logger defaults to WARNING, so the record is dropped **before** reaching the handler. They passed only when an earlier test in the same process had lowered the level, and failed the moment the module ran alone. **If a test captures `logging.info`, it must set `root.setLevel(logging.INFO)` and restore it.**
+
+### C. Tests pinning prose or an old shape instead of the contract
+
+- `test_step_by_step_prompt_includes_mcp_doctor` pinned the sentence `"wait for the user's READY"`; the prompt was reworded to the same promise. Now asserts the contract.
+- `test_wizard_is_catalog_slot_one` still expected `----<set name here>----` / `<USERNAME>`; the catalog moved to the `[[ user types ]]` / `{{ runtime }}` grammar.
+- `test_material_value_list_survives` asserted `out['material']`, but the code deliberately remaps `material` → `material_path` (the plugin's wire key).
+- `test_action_routes` demanded `/health` from Zavu — **an endpoint that never existed** (it 404s); the agent probes `/senders` on purpose.
+- `test_agent_libs_*`: `build.py` now writes `_agent_libs = list(_AGENT_RUNTIME_IMPORTS)`, and the literal-only AST reader returned `[]` — so the "list is substantial / includes mcp, serial, fitz" guards were asserting about an EMPTY list. The reader now follows one alias hop.
+- `test_explicit_migration_display_names_all_resolve` demanded descriptions for **retired** agents (Telegramer / Telegramrx / WhatsTlamatini). Migrations are immutable history, so their names live on in old `*_add_*.py` files; the check is now scoped to agents that still exist on disk.
+- `test_every_registry_example_resolves_against_its_template`: whatsapper's `example_request` said `use to='+52…'` in prose, and the arg-parser read the words before `=` as a parameter named `use to`. **Prose inside an `example_request` must never contain `word=value`** unless `word` is a real config key.
+
+### D. Two REAL findings the tests were right about
+
+1. **A live `zv_live_…` Zavu API key was committed** in `agent/agents/zavuerer/config.yaml`. Fixed by `python regen_secrets.py --mode push-able` (all 8 secret files → placeholders; `data.keys` holds the real values). The test now accepts `''` **or** a `<NAME goes here>` placeholder and **fails loudly on a real key prefix** (`zv_live_`, `sk-`, `ghp_`) — because demanding exactly `''` failed in push-able mode, the one state where the file is provably clean.
+2. **`docs/external_mcp_bulletproof_architecture.md` did not exist** although CLAUDE.md and 5 other files reference it. Written from the verified code.
+
+### Left failing on purpose
+
+The **5 `TalkerFemaleVoiceAudibleTests`** are true integration tests: they need Ollama + Orpheus + SNAC actually producing audio (`samples.size == 6` where ≥12000 is required). No code change fixes that — they pass only with the TTS stack live.
+
+### Also: `contacts.json` is Angela's LIVE contacts book
+
+`ShippedContactsFileTests` hardcoded a real person's Telegram handle. It now round-trips the resolver against whatever the file contains and checks an unknown name fails closed — **no real handle in the suite**, and it cannot break when she adds a contact.
+
+### Skill bodies have an 8 KiB cap
+
+`roblox_studio` (+1435 B) and `setup_new_acpx_key` (+419 B) exceeded it, so `skills_pkg/_meta/lint.py` exited 1. Both were trimmed for redundancy with every technical fact kept.
+
+---
+
+## 2026-07-26 — GHOST dist-info metadata: pip was reporting conflicts that did not exist
+
+**Trigger.** `pip: pyhackrf 0.2.0 requires numpy<2.0.0, but you have numpy 2.2.6`. Auditing it properly turned up something much bigger.
+
+### The ghost class (this is the reusable lesson)
+
+`site-packages` held **duplicate `*.dist-info` directories for ~30 packages** — a stale one plus a real one, because an install overwrote a package's files but pip never removed the old metadata directory (common with `+cpu` local versions, `--user` vs system site, and interrupted installs). Consequences:
+
+- **`torch`** had `2.10.0` AND `2.12.1+cpu` dist-infos; the real code (`torch/version.py`) is **2.10.0+cpu**. The GHOST 2.12.1 is what declared `setuptools<82` — so the "torch requires setuptools<82" conflict was **entirely phantom**. Real torch 2.10.0 declares plain `setuptools`, no upper bound, and imports fine without `pkg_resources` (which setuptools 82 removed).
+- **`starlette`** had `0.41.3` AND `1.3.1`; the real code is **1.3.1**. `pip check` read the ghost and claimed fastapi 0.140.0 was unsatisfied. It is satisfied.
+- **`packaging`** was worse — a **split brain**: metadata said 25.0 while the imported module was 26.2, because the first `pip install` wrote the dist-info to a different site than the code that wins on `sys.path`. Fixed with `pip install --user --force-reinstall`; **always verify a version by IMPORTING it, not by reading metadata.**
+
+### What was actually fixed
+
+| Item | Before | After |
+|---|---|---|
+| `numpy` pin | `numpy<2.3.0` — **no floor** | `numpy>=2.0,<2.3.0` (opencv-python 4.13 needs `>=2`; without a floor a resolver could install 1.x and silently break Camcorder/VideoPlayer/Video-Analyzer/Recorder/Whisperer) |
+| `fastapi` | `==0.115.6` (wants starlette<0.42) | `==0.140.0` (wants `starlette>=0.46`) — matches the REAL starlette 1.3.1 |
+| `packaging` | unpinned → 26.2 installed | `packaging<26.0.0` pinned, 25.0 installed (langchain-core needs `<26`; all 16 active consumers accept 25) |
+| `hf-xet` | 1.5.0 | 1.5.1 (huggingface-hub 1.20.1 needs `>=1.5.1` — only visible once the hub ghost was gone) |
+| 9 drifted pins | pinned older than installed | pinned to the installed, working versions (certifi, httpx, mcp, pillow, pydantic, python-dotenv, pywin32, typing-extensions, uvicorn) |
+
+**Result: `pip check` went from 4 conflicts + 9 drifts to ONE line** — `pyhackrf`, which is provably benign (see the numpy comment block in `requirements.txt`).
+
+### ⚠️ Ghost cleanup is DANGEROUS — the lesson from getting it wrong
+
+The sweep that renames a stale dist-info aside compares it to the version in the package's `__init__.py`. For packages that expose **no** `__version__` (or a placeholder like `"unknown"`), that comparison matches NOTHING and the naive loop renames **every** dist-info, leaving the package with **zero metadata** — it happened here to `certifi`, `svglib` and `eval-type-backport` and had to be repaired by restoring the highest version. **Any such sweep MUST assert that at least one dist-info survives per package before it moves anything.** Backups are kept in place as `<name>-<ver>.dist-info.GHOST-BACKUP-2026-07-26` — rename one back to restore it.
+
+### Tooling
+
+`audit_dependencies.py` (repo root, read-only) prints who constrains a package, which requirements are **active** on this interpreter, whole-environment breakage, and requirements.txt drift. It **evaluates PEP 508 markers** — without that it reports 3 numpy conflicts on Python 3.12 when only 1 is real (`opencv-python: numpy<2.0 ; python_version < "3.9"` and `pandas: numpy>=2.3.3 ; python_version >= "3.14"` are both inactive). Run it on any interpreter: `python audit_dependencies.py requirements.txt`.
+
+---
+
+## 2026-07-26 — The Agent table is WIPED and re-seeded on EVERY boot (the "Pdfer" bug) + 11 dead canvas connections
+
+**Symptom Angela hit.** Her freshly-built `C:\Tlamatini` showed **"Pdfer"** on the ACP canvas — but the Catalog of Prompts showed only **"108 prompts"** with **no Documents & PDF section**. Two different bugs wearing one costume.
+
+### Cause 1 — the frozen DB was stuck at migration 0187 (why the prompts were missing)
+
+The live `_internal/db.sqlite3` had `django_migrations` topping out at **0187**: PDFer's **0188 / 0189 / 0190 never ran**, so there were 108 prompts (max id 108), no `documents` category, and no `Chat-Agent-PDFer` Tool row. `DB/Older/2026-07-26_152818/` proved the post-update DB swap HAD happened — the user's older DB was restored and the **post-update `migrate` did not follow**. The migration FILES shipped correctly (verified present in `_internal/agent/migrations/`); only the apply step was missing. **When diagnosing "my new build doesn't have X", read `django_migrations` first** — a shipped-but-unapplied migration looks exactly like a broken feature.
+
+### Cause 2 — `AgentConfig.ready()` DELETES every Agent row on every startup
+
+`agent/apps.py::ready()` runs `Agent.objects.all().delete()` and rebuilds the table from the `agents/` folder listing on **every single server start**. So **the boot code — not the migration — is the effective source of truth for every display name**; migration 0188's carefully cased `PDFer` was overwritten with `str.title()` → `Pdfer` on the next launch. (This also explains a fresh `migrate` writing mis-cased rows: the historical `NNNN_repopulate_all_agents` migrations use the same old `.title()` logic. Never edit those — history is immutable — the first boot corrects them.)
+
+The old logic was `.title()` + five ad-hoc overrides, and it shipped **22 of 86 names wrong**: Pdfer, Sqler, Ssher, Pser, Scper, Acpxer, Esp32Er, Esphomer, Audioplayer, Videoplayer, Flowcreator, Flowhypervisor, Flowbacker, Teletlamatini, Mcp Doctor, …
+
+### Cause 3 (found while fixing 2) — a spaced display name can NEVER match a hyphen-only canvas handler
+
+`acp-canvas-core.js` compares `targetAgentName.toLowerCase()` **without collapsing whitespace**, and for eleven agents it only ever tests the **HYPHENATED** literal. A DB row saying `"Video Analyzer"` matches nothing, so **the connection was silently never persisted** — no error, no log line, just wiring that vanishes. Affected: Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, J-Decompiler, Video-Analyzer, De-Compresser, File-Creator, File-Extractor, File-Interpreter, Image-Interpreter, Monitor-Log.
+
+### The fix
+
+- **`agent/apps.py::_canonical_agent_display_name(folder, fallback)`** — the boot repopulate now resolves names through **`services/agent_paths.py::display_name_from_agent_type`**, the same map the Flow Compiler and Agent Contracts already use. **FAIL-OPEN**: any import/lookup problem returns the caller's legacy value, so a naming refinement can never stop the app booting. The legacy `.title()` chain is left in place purely as that fallback.
+- **`agent/services/agent_paths.py`** — added `audioplayer`/`videoplayer`/`flowcreator`/`flowhypervisor`/`flowbacker`/`mcp_doctor` (case) and `video_analyzer`/`de_compresser`/`file_creator`/`file_extractor`/`file_interpreter`/`image_interpreter`/`monitor_log` (hyphen). Also **pinned `apirer` to `Apirer`** (was `APIrer`) so the sidebar label Angela already knows does not churn — `agents.md` and `chat_agent_registry` both say `Apirer`.
+- **`agent/chat_agent_registry.py`** — `File Creator`→`File-Creator`, `File Extractor`→`File-Extractor`, `File Interpreter`→`File-Interpreter`, `Image Interpreter`→`Image-Interpreter`, `Monitor Log`→`Monitor-Log`.
+- **`agent/mcp_agent.py`** — `_TOOL_TO_AGENT_DISPLAY_NAME` (`Image-Interpreter` ×3) and the `_EXEC_REPORT_TOOLS` caption for `chat_agent_file_creator` (`agent_key` stays `filecreator`, so the CSS gradient rule still matches).
+
+### Two MORE surfaces keyed on the display name (found by the post-rename sweep)
+
+Renaming an agent is not done when `agent_paths` + the registry agree. A repo-wide sweep caught two more places that carry the display name **verbatim**:
+
+- **`agentic_control_panel.css`** — `.agent-tool-item[data-content="<Display>"] .agent-tool-icon`. CSS attribute values are **case-sensitive**, so `[data-content="Sqler"]` stopped matching the moment the agent became `SQLer`. Fixed 6: `Flowcreator`→`FlowCreator`, `Monitor Log`→`Monitor-Log`, `Pser`→`PSer`, `Scper`→`SCPer`, `Sqler`→`SQLer`, `Ssher`→`SSHer`, and deleted the dead `Recmailer` twin (the file already carried BOTH `Recmailer` and `RecMailer` — someone had hit this before and papered over it).
+  **Impact was cosmetic-only, and smaller than it looks:** the sidebar icon's real colour comes from `getAgentToolIconStyle()`, which probes a `.canvas-item.<x>-agent` class built by `getAgentTypeClass()` (lowercase+hyphen, casing-proof) and then writes an **inline** style — which beats these stylesheet rules anyway. 36 live agents have no `data-content` rule at all and colour correctly. They were still fixed so the file stops naming agents that do not exist.
+- **`agent_page_chat.js::_agentPurpose`** — a `{'<Display>': 'purpose'}` map read when building a `.flw` node. 11 stale keys (`File Creator`, `File Interpreter`, `File Extractor`, `Image Interpreter`, `Monitor Log`, `Ssher`, `Scper`, `Pser`, `Sqler`, `Recmailer`, `Flowbacker`) would have produced nodes with an empty `agentPurpose`.
+
+Both are now pinned: `test_css_data_content_selectors_match_live_display_names` and `test_agent_purpose_map_keys_match_live_display_names` fail if any key/selector names an agent that no longer exists. **After editing either file, run `collectstatic`** — the collected copies under `staticfiles/` are what get served, and they were stale until it ran (2 files copied).
+
+### ⚠️ DO NOT change ONE side of a display name
+
+The DB row and `chat_agent_registry.display_name` drive **two different things** — the canvas connection handler (DB row) and the per-agent enable gate **`agent_<display>_status`** (registry). Hyphenating only `agent_paths` would leave the gate looking up a key that no longer exists; it **fails open**, so unchecking that agent in *Configure Agents* would silently stop hiding it from the LLM. That is exactly why the five file/monitor agents were done as a **single coordinated pass across both files**, and why `video_analyzer` / `de_compresser` were safe from the start (their registry names were already hyphenated).
+
+### Coverage
+
+`agent/test_agent_display_names.py` (7 tests) — locks the exact name for 31 agents, forbids `.title()` digit-mangling (`Stm32Er`), **parses the JS connection literals and fails if any display name cannot match its handler**, pins the `apps.py` source contract, proves fail-open, and asserts registry ↔ canvas agreement. Plus `tests_e2e/test_prompts_catalog_visual.py` — a HEADED-Chrome walk of the whole catalog (11/11 checks, 21 full-desktop screenshots, all 14 sections, `Documents & PDF` = 5 prompts, click-to-insert proven).
+
+**Live-verified in dev after the fix:** 86 agent rows, `PDFer` (single row, correct casing), **0 mis-cased**, 113 prompts, catalog counter reads `113 prompts`.
+
+---
+
 ## 2026-07-26 — Ask Execs: MESSAGING IS UNGATED (tier B reversed) — do NOT re-add it
 
 **Angela's decision, verbatim:** *"Messages must be able to be sent without asking, it depends only on AI desisicion."*

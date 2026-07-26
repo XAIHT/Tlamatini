@@ -55,20 +55,18 @@ metadata:
 
 # Set Up a New ACPX Agent Key
 
-Configures the credential for ONE `agent_id` from the ACPX registry so
-that `acp_spawn(agent_id=...)` launches the child CLI authenticated. The
-ACPX runtime never asks the LLM for a key — each child reads its own
-canonical env var, which Tlamatini injects via
+Configures the credential for ONE ACPX `agent_id` so `acp_spawn(agent_id=...)`
+launches the child CLI authenticated. The runtime never asks the LLM for a key:
+each child reads its canonical env var, injected via
 `subprocess.Popen(env={**os.environ, **spec.env})` in
-`agent/acpx/runtime.py::AcpSession.spawn_child()` (and the mirrored
-`_oneshot_send_turn` path).
+`agent/acpx/runtime.py::AcpSession.spawn_child()` (and `_oneshot_send_turn`).
 
-## Canonical env-var map (single source of truth)
+## Canonical env-var map
 
 | `agent_id` | Env var the CLI reads | Top-level config.json key? |
 |------------|-----------------------|----------------------------|
-| `claude`   | `ANTHROPIC_API_KEY`   | **YES** — also read by `agent/imaging/image_interpreter.py:153` and `agent/opus_client/claude_opus_client.py:349`. |
-| `gemini`   | `GEMINI_API_KEY` (+ `GOOGLE_API_KEY` alias) | **YES** — per the `_section_gemini` comment in config.json. |
+| `claude`   | `ANTHROPIC_API_KEY`   | **YES** — also read by `imaging/image_interpreter.py` + `opus_client/claude_opus_client.py`. |
+| `gemini`   | `GEMINI_API_KEY` (+ `GOOGLE_API_KEY` alias) | **YES** — see `_section_gemini` in config.json. |
 | `codex`    | `OPENAI_API_KEY`      | NO. |
 | `qwen`     | `DASHSCOPE_API_KEY`   | NO. |
 | `cursor`   | none (uses own login) | NO. |
@@ -76,7 +74,7 @@ canonical env var, which Tlamatini injects via
 | `pi`, `droid`, `iflow`, `kilocode`, `kimi`, `kiro`, `opencode` | per upstream — check each CLI's docs | NO. |
 | `tlamatini`| n/a (self-host)       | NO. |
 
-If unsure, check `Tlamatini/agent/acpx/agent_registry.py::DEFAULT_ACP_AGENTS`.
+If unsure: `agent/acpx/agent_registry.py::DEFAULT_ACP_AGENTS`.
 
 ## Procedure
 

@@ -124,19 +124,46 @@ def _agent_third_party_imports() -> dict:
 
 
 @lru_cache(maxsize=1)
-def _build_py_local_assign(name: str) -> list:
-    """Extract a list-of-strings local variable (e.g. `_agent_libs`) from build.py
-    via AST, wherever it is assigned (including inside main())."""
+def _build_py_local_assign(name: str, _depth: int = 0) -> list:
+    """Extract a list-of-strings variable (e.g. `_agent_libs`) from build.py via
+    AST, wherever it is assigned (including inside main()).
+
+    FOLLOWS ONE ALIAS HOP (2026-07-26). build.py now writes
+    ``_agent_libs = list(_AGENT_RUNTIME_IMPORTS)`` instead of an inline literal.
+    A literal-only reader returns ``[]`` for that, which silently turned the
+    "is the verification list substantial / does it include mcp, serial, fitz…"
+    guards into assertions about an EMPTY list — they failed instead of
+    checking anything. So resolve ``NAME``, ``list(NAME)`` and ``tuple(NAME)``
+    back to the constant they point at.
+    """
     tree = ast.parse(_read(BUILD_PY))
     for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == name:
-                    if isinstance(node.value, (ast.List, ast.Tuple)):
-                        return [
-                            el.value for el in node.value.elts
-                            if isinstance(el, ast.Constant) and isinstance(el.value, str)
-                        ]
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if not (isinstance(target, ast.Name) and target.id == name):
+                continue
+            value = node.value
+            if isinstance(value, (ast.List, ast.Tuple)):
+                return [
+                    el.value for el in value.elts
+                    if isinstance(el, ast.Constant) and isinstance(el.value, str)
+                ]
+            if _depth < 3:
+                # `_agent_libs = _OTHER`  /  `= list(_OTHER)`  /  `= tuple(_OTHER)`
+                alias = None
+                if isinstance(value, ast.Name):
+                    alias = value.id
+                elif (isinstance(value, ast.Call)
+                      and isinstance(value.func, ast.Name)
+                      and value.func.id in ("list", "tuple", "sorted")
+                      and value.args
+                      and isinstance(value.args[0], ast.Name)):
+                    alias = value.args[0].id
+                if alias:
+                    resolved = _build_py_local_assign(alias, _depth + 1)
+                    if resolved:
+                        return resolved
     return []
 
 

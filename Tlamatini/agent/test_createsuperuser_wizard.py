@@ -30,8 +30,14 @@ class CreateSuperuserWizardPromptTests(TestCase):
         self.assertEqual(p.promptName, 'prompt-1')
         self.assertIn('createsuperuser', p.promptContent)
         # Angela's opening phrasing + the placeholder the user edits before sending.
-        self.assertIn('----<set name here>----', p.promptContent)
-        self.assertIn('treat that reply as <USERNAME> and continue to Step 1', p.promptContent)
+        # The catalog moved to the standardized parameter grammar (migrations
+        # 0182-0185): `[[ ... ]]` marks a value the USER types. The old
+        # `----<set name here>----` marker no longer exists anywhere.
+        self.assertIn('[[ TYPE THE USERNAME HERE', p.promptContent)
+        # `{{ ... }}` marks a value TLAMATINI fills at runtime (the standardized
+        # grammar); the old `<USERNAME>` angle form is now a REPORT slot only.
+        self.assertIn('treat that reply as {{ the username }} and continue to Step 1',
+                      p.promptContent)
 
     def test_catalog_is_contiguous_and_wizard_first(self):
         ids = sorted(Prompt.objects.values_list('idPrompt', flat=True))

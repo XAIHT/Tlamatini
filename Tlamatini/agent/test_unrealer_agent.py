@@ -244,11 +244,21 @@ class PrepareParamsPipelineTests(SimpleTestCase):
         self.assertEqual(self.u._prepare_params_for_unreal('spawn_actor', None), None)
 
     def test_material_value_list_survives(self):
+        """A list-valued parameter survives the prepare pass untouched.
+
+        The key is ALSO renamed: `set_material_parameter`'s alias map remaps
+        ``material`` -> ``material_path`` (the plugin's wire key -- without it
+        HandleSetMaterialParameter answers "Missing 'material_path'"), and the
+        /Content -> /Game normalisation then runs on the renamed key. Assert the
+        post-remap name; asserting ``out['material']`` encodes the pre-2026-07-12
+        behaviour and raises KeyError.
+        """
         out = self.u._prepare_params_for_unreal(
             'set_material_parameter',
             {'material': '/Content/Materials/MI', 'parameter': 'BaseColor', 'value': [1, 0, 0]},
         )
-        self.assertEqual(out['material'], '/Game/Materials/MI')
+        self.assertNotIn('material', out)
+        self.assertEqual(out['material_path'], '/Game/Materials/MI')
         self.assertEqual(out['value'], [1, 0, 0])
 
 

@@ -23,6 +23,15 @@ the password embraced by double quotes. The four paths exercised here:
 The tests also confirm the round-trip property: yaml.safe_load on the written
 file returns the original unquoted password string, so wrapping the value with
 `_QuotedStr` only changes the on-disk presentation, not the parsed value.
+
+
+SAMPLE SECRETS (2026-07-26): every password literal here is the obviously
+fake ``fake app pass 0000``. It MUST keep its spaces - the entire point of this
+module is proving a space-bearing password stays DOUBLE-QUOTED in config.yaml,
+so a value without spaces would silently test nothing. Do not let a secret
+scrubber flatten these to ``<REDACTED>``: that is exactly what broke all 8
+assertions here (fixtures said <REDACTED>, assertions still expected the old
+literal), and it also removed the spaces the contract depends on.
 """
 
 from __future__ import annotations
@@ -87,7 +96,7 @@ class WrapPasswordValuesTests(SimpleTestCase):
     """The pre-dump walk that swaps in `_QuotedStr` markers."""
 
     def test_wraps_emailer_password_in_quoted_str(self):
-        config = {"smtp": {"username": "u", "password": "<REDACTED>"}}
+        config = {"smtp": {"username": "u", "password": "fake app pass 0000"}}
         wrapped = _wrap_password_values(config, ("smtp.password",))
         self.assertIsInstance(wrapped["smtp"]["password"], _QuotedStr)
         # Plain str fields are untouched.
@@ -111,7 +120,7 @@ class WrapPasswordValuesTests(SimpleTestCase):
         self.assertNotIn("password", wrapped["smtp"])
 
     def test_empty_password_paths_returns_input_untouched(self):
-        config = {"smtp": {"password": "<REDACTED>"}}
+        config = {"smtp": {"password": "fake app pass 0000"}}
         wrapped = _wrap_password_values(config, ())
         # Same identity — no copy was made.
         self.assertIs(wrapped, config)
@@ -138,17 +147,17 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
                 "host": "smtp.gmail.com",
                 "port": 587,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": "fake app pass 0000",
                 "use_tls": True,
             },
         }
         text = self._dump_and_read(config, "emailer")
-        self.assertIn('password: "wvqt jved ymfm kexc"', text)
+        self.assertIn('password: "fake app pass 0000"', text)
         # username is NOT force-quoted.
         self.assertIn("username: alice", text)
         # Round-trip: yaml.safe_load returns the original unquoted value.
         loaded = yaml.safe_load(text)
-        self.assertEqual(loaded["smtp"]["password"], "wvqt jved ymfm kexc")
+        self.assertEqual(loaded["smtp"]["password"], "fake app pass 0000")
 
     def test_recmailer_password_is_double_quoted(self):
         config = {
@@ -157,14 +166,14 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
                 "host": "imap.gmail.com",
                 "port": 993,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": "fake app pass 0000",
                 "use_ssl": True,
             },
         }
         text = self._dump_and_read(config, "recmailer")
-        self.assertIn('password: "abcd efgh ijkl mnop"', text)
+        self.assertIn('password: "fake app pass 0000"', text)
         loaded = yaml.safe_load(text)
-        self.assertEqual(loaded["imap"]["password"], "abcd efgh ijkl mnop")
+        self.assertEqual(loaded["imap"]["password"], "fake app pass 0000")
 
     def test_empty_password_is_emitted_as_double_quoted_empty_string(self):
         config = {"smtp": {"password": ""}}
@@ -185,11 +194,13 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
         # When agent_type doesn't declare password_paths, the dump path falls
         # back to PyYAML defaults — the test pins that we did NOT accidentally
         # apply the password layer to unrelated agents.
-        config = {"smtp": {"password": "<REDACTED>"}}
+        config = {"smtp": {"password": "fake app pass 0000"}}
         text = self._dump_and_read(config, "starter")
-        # Bare scalar (no surrounding quotes).
-        self.assertIn("password: secret", text)
-        self.assertNotIn('password: "secret"', text)
+        # Bare scalar (no surrounding quotes) — PyYAML emits a space-bearing
+        # plain scalar unquoted, which is exactly what "we did not apply the
+        # password layer" looks like for an agent with no password_paths.
+        self.assertIn("password: fake app pass 0000", text)
+        self.assertNotIn('password: "fake app pass 0000"', text)
 
     def test_multiline_string_still_uses_block_literal_style(self):
         # Existing behavior: multi-line strings get the `|` block style. The
@@ -218,7 +229,7 @@ class FlowCompilerWritePathTests(SimpleTestCase):
                             "host": "smtp.gmail.com",
                             "port": 587,
                             "username": "alice",
-                            "password": "<REDACTED>",
+                            "password": "fake app pass 0000",
                             "use_tls": True,
                             "use_ssl": False,
                         },
@@ -237,9 +248,9 @@ class FlowCompilerWritePathTests(SimpleTestCase):
                 compile_flow_spec(spec, write=True)
 
             written = _read(pool_path / "emailer_1" / "config.yaml")
-            self.assertIn('password: "wvqt jved ymfm kexc"', written)
+            self.assertIn('password: "fake app pass 0000"', written)
             loaded = yaml.safe_load(written)
-            self.assertEqual(loaded["smtp"]["password"], "wvqt jved ymfm kexc")
+            self.assertEqual(loaded["smtp"]["password"], "fake app pass 0000")
 
     def test_compile_writes_recmailer_config_with_quoted_password(self):
         spec = FlowSpec(
@@ -253,7 +264,7 @@ class FlowCompilerWritePathTests(SimpleTestCase):
                             "host": "imap.gmail.com",
                             "port": 993,
                             "username": "alice",
-                            "password": "<REDACTED>",
+                            "password": "fake app pass 0000",
                             "use_ssl": True,
                         },
                     },
@@ -271,9 +282,9 @@ class FlowCompilerWritePathTests(SimpleTestCase):
                 compile_flow_spec(spec, write=True)
 
             written = _read(pool_path / "recmailer_1" / "config.yaml")
-            self.assertIn('password: "abcd efgh ijkl mnop"', written)
+            self.assertIn('password: "fake app pass 0000"', written)
             loaded = yaml.safe_load(written)
-            self.assertEqual(loaded["imap"]["password"], "abcd efgh ijkl mnop")
+            self.assertEqual(loaded["imap"]["password"], "fake app pass 0000")
 
     def test_compile_does_not_force_quote_other_agents(self):
         # Sanity guard: a non-credential field on an unrelated agent stays
@@ -342,7 +353,7 @@ class ConnectionUpdateViewTests(SimpleTestCase):
                 "host": "smtp.gmail.com",
                 "port": 587,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": "fake app pass 0000",
                 "use_tls": True,
             },
         }
@@ -360,9 +371,9 @@ class ConnectionUpdateViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
 
         written = _read(pool_root / "emailer_1" / "config.yaml")
-        self.assertIn('password: "wvqt jved ymfm kexc"', written)
+        self.assertIn('password: "fake app pass 0000"', written)
         loaded = yaml.safe_load(written)
-        self.assertEqual(loaded["smtp"]["password"], "wvqt jved ymfm kexc")
+        self.assertEqual(loaded["smtp"]["password"], "fake app pass 0000")
         self.assertEqual(loaded["source_agents"], ["monitor_log_1"])
 
     def test_update_recmailer_connection_keeps_password_quoted(self):
@@ -375,7 +386,7 @@ class ConnectionUpdateViewTests(SimpleTestCase):
                 "host": "imap.gmail.com",
                 "port": 993,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": "fake app pass 0000",
                 "use_ssl": True,
             },
         }
@@ -393,9 +404,9 @@ class ConnectionUpdateViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
 
         written = _read(pool_root / "recmailer_1" / "config.yaml")
-        self.assertIn('password: "abcd efgh ijkl mnop"', written)
+        self.assertIn('password: "fake app pass 0000"', written)
         loaded = yaml.safe_load(written)
-        self.assertEqual(loaded["imap"]["password"], "abcd efgh ijkl mnop")
+        self.assertEqual(loaded["imap"]["password"], "fake app pass 0000")
 
 
 class SaveAgentConfigViewTests(SimpleTestCase):
@@ -428,7 +439,7 @@ class SaveAgentConfigViewTests(SimpleTestCase):
                 "host": "smtp.gmail.com",
                 "port": 587,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": "fake app pass 0000",
                 "use_tls": True,
                 "use_ssl": False,
             },
@@ -438,9 +449,9 @@ class SaveAgentConfigViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
 
         written = _read(pool_root / "emailer_1" / "config.yaml")
-        self.assertIn('password: "wvqt jved ymfm kexc"', written)
+        self.assertIn('password: "fake app pass 0000"', written)
         loaded = yaml.safe_load(written)
-        self.assertEqual(loaded["smtp"]["password"], "wvqt jved ymfm kexc")
+        self.assertEqual(loaded["smtp"]["password"], "fake app pass 0000")
 
     def test_save_recmailer_config_quotes_password(self):
         pool_root = Path(self.tmp.name)
@@ -450,7 +461,7 @@ class SaveAgentConfigViewTests(SimpleTestCase):
                 "host": "imap.gmail.com",
                 "port": 993,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": "fake app pass 0000",
                 "use_ssl": True,
                 "folder": "INBOX",
             },
@@ -459,9 +470,9 @@ class SaveAgentConfigViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
 
         written = _read(pool_root / "recmailer_1" / "config.yaml")
-        self.assertIn('password: "abcd efgh ijkl mnop"', written)
+        self.assertIn('password: "fake app pass 0000"', written)
         loaded = yaml.safe_load(written)
-        self.assertEqual(loaded["imap"]["password"], "abcd efgh ijkl mnop")
+        self.assertEqual(loaded["imap"]["password"], "fake app pass 0000")
 
 
 class RegenSecretsPasswordQuotingTests(SimpleTestCase):
@@ -472,7 +483,7 @@ class RegenSecretsPasswordQuotingTests(SimpleTestCase):
         original = (
             "smtp:\n"
             "  username: alice\n"
-            "  password: wvqt jved ymfm kexc\n"
+            "  password: fake app pass 0000\n"
         )
         new_text, _ = regen_secrets._patch_yaml_text(
             original,
@@ -496,14 +507,14 @@ class RegenSecretsPasswordQuotingTests(SimpleTestCase):
             mode="keyed",
             keys={
                 "EMAILER_USERNAME": "alice",
-                "EMAILER_PASSWORD": "wvqt jved ymfm kexc",
+                "EMAILER_PASSWORD": "fake app pass 0000",
             },
             file_label="emailer/config.yaml",
             force_quote_passwords=True,
         )
-        self.assertIn('password: "wvqt jved ymfm kexc"', new_text)
+        self.assertIn('password: "fake app pass 0000"', new_text)
         loaded = yaml.safe_load(new_text)
-        self.assertEqual(loaded["smtp"]["password"], "wvqt jved ymfm kexc")
+        self.assertEqual(loaded["smtp"]["password"], "fake app pass 0000")
 
     def test_recmailer_keyed_mode_double_quotes_real_password(self):
         original = (
@@ -517,14 +528,14 @@ class RegenSecretsPasswordQuotingTests(SimpleTestCase):
             mode="keyed",
             keys={
                 "RECMAILER_USERNAME": "alice",
-                "RECMAILER_PASSWORD": "abcd efgh ijkl mnop",
+                "RECMAILER_PASSWORD": "fake app pass 0000",
             },
             file_label="recmailer/config.yaml",
             force_quote_passwords=True,
         )
-        self.assertIn('password: "abcd efgh ijkl mnop"', new_text)
+        self.assertIn('password: "fake app pass 0000"', new_text)
         loaded = yaml.safe_load(new_text)
-        self.assertEqual(loaded["imap"]["password"], "abcd efgh ijkl mnop")
+        self.assertEqual(loaded["imap"]["password"], "fake app pass 0000")
 
     def test_empty_password_in_keyed_mode_renders_as_quoted_empty_string(self):
         original = (

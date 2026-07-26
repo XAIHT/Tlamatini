@@ -53,6 +53,7 @@ from agent.rag.interface import ask_rag
 from agent.rag.factory import _apply_context_prefetch, _build_loaded_documents_fallback_context
 from agent.rag.chains.basic import BasicPromptOnlyChain
 from agent.rag.chains.unified import UnifiedAgentChain
+from agent.services.agent_paths import display_name_from_agent_type
 from agent.services.filesystem import generate_tree_view_content
 from agent import tools as agent_tools
 from tlamatini.asgi import application
@@ -5481,9 +5482,26 @@ class AgentDescriptionsCoverageTests(TestCase):
                 # values written by .create(). Both look identical in this
                 # regex so we just dedup by display name.
                 seen.add(match.group(1))
+        # RETIRED agents must not be demanded (2026-07-26). Migrations are
+        # immutable history, so a name added years ago and later retired --
+        # Telegramer / Telegramrx / WhatsTlamatini, removed by
+        # 0151_retire_old_messaging_add_telegrammer -- is still literally
+        # present in an old *_add_*.py file. Its agents/ folder is gone, so
+        # agents_descriptions.md correctly has no row for it. Only agents that
+        # STILL EXIST on disk are required to carry a description.
+        agents_dir = Path(__file__).resolve().parent / 'agents'
+        live_keys = set()
+        if agents_dir.is_dir():
+            for folder in agents_dir.iterdir():
+                if not folder.is_dir() or folder.name.lower() in ('pools', '__pycache__'):
+                    continue
+                live_keys.add(views._normalize_agent_purpose_key(folder.name))
+                live_keys.add(views._normalize_agent_purpose_key(
+                    display_name_from_agent_type(folder.name)))
         unresolved = sorted(
             name for name in seen
-            if not purpose_map.get(views._normalize_agent_purpose_key(name), '').strip()
+            if views._normalize_agent_purpose_key(name) in live_keys
+            and not purpose_map.get(views._normalize_agent_purpose_key(name), '').strip()
         )
         self.assertEqual(
             unresolved, [],

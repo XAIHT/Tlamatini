@@ -1,7 +1,7 @@
 anthropic==0.74.1
 beautifulsoup4==4.15.0
 asgiref==3.8.1
-certifi==2024.7.4
+certifi==2026.7.22
 channels==4.1.0
 daphne==4.1.2
 Django==5.2.15
@@ -10,11 +10,11 @@ defusedxml==0.7.1
 duckduckgo-search==8.1.1
 chardet==5.2.0
 faiss-cpu==1.9.0.post1
-fastapi==0.115.6
+fastapi==0.140.0
 flask==3.1.2
 grpcio==1.76.0
 grpcio-tools==1.76.0
-httpx==0.28.0
+httpx==0.28.1
 javalang==0.13.0
 langchain==0.3.30
 langchain-community==0.3.31
@@ -24,14 +24,35 @@ langchain-text-splitters==0.3.11
 langgraph==0.2.74
 langsmith==0.4.60
 markdown==3.7
-mcp==1.25.0
+mcp==1.28.1
 nltk==3.9.4
-numpy<2.3.0
+# numpy — the FLOOR is as load-bearing as the ceiling (2026-07-26 dependency audit).
+#   >=2.0  : opencv-python 4.13.0.92 declares `numpy>=2 ; python_version >= "3.9"`.
+#            Without a floor a resolver is free to install numpy 1.x and silently
+#            break Camcorder / VideoPlayer / Video-Analyzer / Recorder / Whisperer.
+#   <2.3.0 : Tlamatini's own ceiling. (numba wants <2.5 and scipy <2.7, so this is
+#            the binding one.)
+# ⛔ DO NOT downgrade numpy below 2.0 to silence pip's `pyhackrf 0.2.0 requires
+#    numpy<2.0.0` warning. That pin is STALE METADATA, proven by audit: the module
+#    it ships (`hackrf/__init__.py`) touches only np.array / complex128 / float64 /
+#    int8 — every one unchanged in numpy 2.x — and it uses ZERO of the APIs numpy
+#    2.0 removed. On Windows it cannot load at all regardless of numpy, because it
+#    hardcodes the Linux `CDLL('libhackrf.so.0')`. pyhackrf is not a Tlamatini
+#    dependency and nothing requires it; the warning is cosmetic, the downgrade
+#    would be real damage.
+numpy>=2.0,<2.3.0
 ollama==0.5.3
 openpyxl==3.1.5
 openai-whisper==20250625
 torch
-pillow==12.2.0
+pillow==12.3.0
+# packaging - PINNED 2026-07-26. langchain-core 0.3.86 declares
+# `packaging<26.0.0,>=23.2.0`; leaving it unpinned let pip install 26.2 and
+# break that requirement. The audit (audit_dependencies.py) checked all 16
+# active consumers - Incremental, huggingface_hub, ipykernel, jupyter_server,
+# jupyterlab(_server), langsmith, marshmallow, matplotlib, pyinstaller(-hooks-
+# contrib), spacy, thinc, weasel, wheel - and NONE needs >=26.
+packaging<26.0.0
 # Camcorder agent (agent/agents/camcorder/camcorder.py) uses OpenCV's
 # cv2.VideoCapture / cv2.VideoWriter to take a webcam photo or record a video
 # segment. Imported inside the agent so a missing install degrades to a clear
@@ -90,20 +111,20 @@ ctranslate2==4.8.0
 playwright==1.52.0
 protobuf>=6.31.1,<7.0.0
 psutil==7.2.2
-pydantic==2.11.0
+pydantic==2.13.4
 pyinstaller==6.18.0
 pymongo==4.16.0
 pymupdf==1.26.5
 pyodbc==5.3.0
 pyserial==3.5  # STM32er: STM32 MCP server serial_* tools (ST-LINK VCP / UART)
 python-docx==1.2.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 python-pptx==1.0.2
 pytest==8.3.3
 pytest-asyncio==0.24.0
 pytest-django==4.9.0
 py7zr==0.22.0
-pywin32==311
+pywin32==312
 pyyaml==6.0.3
 rank-bm25==0.2.2
 requests==2.34.2
@@ -113,11 +134,16 @@ requests==2.34.2
 # and aborts the build if it does not. Do NOT remove or unpin — the gate would silently
 # fail open (degrade to the compile() syntax floor only).
 ruff==0.14.5
+# setuptools stays at 82.0.1. pip may report `torch 2.12.1+cpu requires
+# setuptools<82` - that is a GHOST: site-packages carries a stale
+# torch-2.12.1+cpu.dist-info while the REAL installed torch is 2.10.0+cpu
+# (torch/version.py), and 2.10.0 declares plain `setuptools` with no upper
+# bound. Verified: torch imports fine and never touches pkg_resources.
 setuptools==82.0.1
 telethon==1.42.0
-typing-extensions==4.15.0
+typing-extensions==4.16.0
 unstructured==0.22.31
-uvicorn==0.38.0
+uvicorn==0.51.0
 websockets==15.0.1
 wheel==0.47.0
 whitenoise==6.8.2

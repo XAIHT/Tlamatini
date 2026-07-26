@@ -254,7 +254,19 @@ Run `python Tlamatini/manage.py migrate`.
 
 ## CRITICAL: Agent Naming Convention
 
-`agentDescription` (e.g. `"Shoter"`, `"Monitor Log"`, `"Node Manager"`, `"Gateway Relayer"`) gets transformed three different ways in three contexts. Mixing them breaks colors, connections, or sidebar icons.
+> ### ⛔ READ THIS FIRST (corrected 2026-07-26) — the migration does NOT decide the name
+>
+> `agent/apps.py::AgentConfig.ready()` runs **`Agent.objects.all().delete()` on EVERY server start** and re-seeds the table from the `agents/` folder listing. Your migration's `agentDescription` is therefore **overwritten on the next launch**. The boot resolver `_canonical_agent_display_name()` reads **`agent/services/agent_paths.py::display_name_from_agent_type`** — so:
+>
+> **YOU MUST add `"<agent_dir>": "<Exact Display Name>"` to that `overrides` map**, or your agent is named by `str.title()` and ships mangled (this is exactly how PDFer became "Pdfer", plus Sqler / Ssher / Esp32Er / Videoplayer / Flowcreator …). Seed the migration with the same exact string anyway — it is what a fresh DB shows before the first boot.
+>
+> **HYPHEN vs SPACE IS FUNCTIONAL.** `acp-canvas-core.js` compares `targetAgentName.toLowerCase()` **without collapsing spaces**. If your agent's connection handler only tests a hyphenated literal (`file-creator`, `video-analyzer`, `kyber-keygen`, `monitor-log`, …), a SPACED display name matches nothing and **the canvas connection is silently never saved** — no error anywhere. Match the literal your JS actually tests (Step 5b).
+>
+> **CHANGE BOTH SIDES AT ONCE.** `chat_agent_registry.display_name` keys the per-agent enable gate `agent_<display>_status`. It fails open, so renaming only one side quietly breaks the *Configure Agents* checkbox instead of erroring. Both are pinned by `agent/test_agent_display_names.py` — run it after any naming change.
+>
+> **TWO FRONTEND SURFACES ALSO CARRY THE NAME VERBATIM:** `agentic_control_panel.css` → `.agent-tool-item[data-content="<Display>"]` (CSS attribute values are **case-sensitive**) and `agent_page_chat.js::_agentPurpose` → `{'<Display>': 'purpose'}` (a stale key gives the generated `.flw` node an empty `agentPurpose`). Both are pinned by the same test file. **After editing either, run `python manage.py collectstatic --noinput`** — the collected `staticfiles/` copies are what actually get served.
+
+`agentDescription` (e.g. `"Shoter"`, `"Monitor-Log"`, `"Node Manager"`, `"Gateway Relayer"`) gets transformed three different ways in three contexts. Mixing them breaks colors, connections, or sidebar icons.
 
 | Context | Transform | `"Node Manager"` | `"Shoter"` |
 |---|---|---|---|
@@ -603,6 +615,14 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
 [ ] 2. update_<agent_name>_connection_view in views.py + URL in urls.py
 [ ] 3. Migration → `python manage.py migrate`
     [ ] Decide single-word vs multi-word display name (drives all name forms)
+    [ ] ⛔ MANDATORY: add `"<agent_dir>": "<Exact Display Name>"` to the `overrides`
+        map in `agent/services/agent_paths.py::display_name_from_agent_type` — the
+        boot repopulate WIPES the Agent table and re-derives the name from there,
+        so the migration alone ships a `str.title()`-mangled label ("Pdfer")
+    [ ] Use the HYPHENATED form if `acp-canvas-core.js` only tests a hyphenated
+        literal for this agent, else the connection is silently never saved
+    [ ] Keep `chat_agent_registry.display_name` byte-identical (enable gate)
+    [ ] `python manage.py test agent.test_agent_display_names` stays green
 [ ] 4. agentic_control_panel.css: UNIQUE 4-color gradient + .canvas-item.<class>-agent
        normal + hover (no per-agent gradient in JS — sidebar inherits)
 [ ] 5. JS (CORRECT NAME FORM PER CONTEXT):

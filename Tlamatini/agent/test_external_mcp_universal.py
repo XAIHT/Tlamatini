@@ -165,7 +165,12 @@ SECRET_CASES: list[tuple[str, dict[str, Any], list[str]]] = [
     ("env_auth_replace_me", {"env": {"AUTH_HEADER": "replace_me"}}, ["AUTH_HEADER"]),
     ("env_bearer_dollar", {"env": {"BEARER": "<REDACTED>"}}, ["BEARER"]),
     ("env_non_secret_ignored", {"env": {"PORT": "6379"}}, []),
-    ("env_secret_real_value", {"env": {"TOKEN": "<REDACTED>"}}, []),
+    # A REAL-SHAPED value must NOT be flagged. It must avoid every marker in
+    # _looks_like_placeholder (your_/changeme/placeholder/</>/${/%/xxx/todo...),
+    # which is why this is opaque gibberish and not something self-describing.
+    # (The secret scrubber had flattened this to "<REDACTED>" -- and "<" ">" ARE
+    # markers, so the case asserted the exact opposite of its own intent.)
+    ("env_secret_real_value", {"env": {"TOKEN": "ghp_A1b2C3d4E5f6G7h8I9j0"}}, []),
     ("arg_api_key", {"args": ["--api_key=TOKEN_HERE"]}, ["args[0]"]),
     ("arg_apikey", {"args": ["--apikey=api_key_here"]}, ["args[0]"]),
     ("arg_token", {"args": ["--token=xxx"]}, ["args[0]"]),
@@ -280,7 +285,13 @@ class ExternalMcpCatalogTests(SimpleTestCase):
         prompt = _build_system_prompt("base", [], step_by_step_enabled=True)
         self.assertIn("STEP-BY-STEP MODE", prompt)
         self.assertIn("external_mcp_doctor", prompt)
-        self.assertIn("wait for the user's READY", prompt)
+        # Assert the CONTRACT (one step, then hand control back and wait for the
+        # user's READY), not one exact sentence. The prose was reworded to
+        # "wait for the user's requested short reply, READY, screenshot, log, or
+        # command output", which is the same promise -- pinning the old literal
+        # only made the test brittle, it never protected the behaviour.
+        self.assertIn("wait for the user", prompt)
+        self.assertIn("READY", prompt)
 
     def test_wrapped_agent_registry_exposes_mcp_doctor(self):
         spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME["chat_agent_mcp_doctor"]
