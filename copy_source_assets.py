@@ -157,6 +157,24 @@ EXCLUDED_FILE_NAMES = {
 # Glob patterns (matched against the file name) skipped everywhere.
 EXCLUDED_FILE_GLOBS = ("*.version.txt", "*_log.txt", "*_log.log")
 
+# ── KEEP carve-outs (path-based) ─────────────────────────────────────────────
+# Snapshot-relative POSIX path globs whose files are KEPT even when
+# EXCLUDED_EXTENSIONS / EXCLUDED_FILE_GLOBS would drop them. Same rationale as
+# the global .ico / .wav / .svg keeps: these are SMALL, SHIPPED assets the app
+# and its shipped docs reference BY NAME, so a rebuild without them produces a
+# visibly broken Tlamatini — they are source, not media.
+#   * static/agent/img/**       -> the chat-avatar frames referenced from
+#                                  agent_page.html via {% static %} (~152 KB).
+#   * agents/*/guide_assets/**  -> the setup screenshots embedded in the shipped
+#                                  HOW_TO_GET_YOUR_*_ASSETS.md guides (~1.2 MB).
+# Deliberately NOT covered: static/agent/video/** (large, restore-mapped) and
+# agent/images/** (the ~70 MB gallery — optional, degrades gracefully).
+# EXCLUDED_FILE_NAMES (secrets / PII / local state) is NEVER overridden here.
+KEEP_PATH_GLOBS = (
+    "Tlamatini/agent/static/agent/img/**",
+    "Tlamatini/agent/agents/*/guide_assets/**",
+)
+
 # ── Completeness guarantee ───────────────────────────────────────────────────
 # The walk is generic (any new .py/.yaml/.js/... ships automatically), but a
 # careless future exclusion rule could silently drop a build- or run-critical
@@ -183,9 +201,23 @@ REQUIRED_SNAPSHOT_FILES = (
     # STATE (absent in a fresh checkout, redacted if present) — it is NOT a
     # required source file; requiring it wrongly aborted snapshot generation.
     "Tlamatini/agent/external_mcp_manager.py",
-    # Newest agent (ESPHomer) — both the script and its template config
-    "Tlamatini/agent/agents/esphomer/esphomer.py",
-    "Tlamatini/agent/agents/esphomer/config.yaml",
+    # Always-present capabilities added since the ESPHomer era. Each is the
+    # canonical file of a whole subsystem, so a careless future exclusion fails
+    # loudly instead of shipping a Tlamatini that cannot rebuild them.
+    "Tlamatini/agent/self_healing.py",              # self-healing model steps
+    "Tlamatini/agent/cancellation.py",              # per-user run-epoch hard cancel
+    "Tlamatini/agent/path_guard.py",                # Temp / Templates directory policy
+    "Tlamatini/agent/agent_manifest.py",            # companion-app (FlowPills) discovery
+    "Tlamatini/agent/windows_app_registration.py",  # HKCU discovery-key writer
+    # Newest agent (Nmapper) — both the script and its template config
+    "Tlamatini/agent/agents/nmapper/nmapper.py",
+    "Tlamatini/agent/agents/nmapper/config.yaml",
+    # KEEP_PATH_GLOBS canaries — shipped binary assets referenced BY NAME that
+    # the extension rules would otherwise drop. Without the avatar frame the
+    # chat portrait renders broken; without the guide screenshot the shipped
+    # HOW_TO_GET_YOUR_*_ASSETS.md walkthroughs lose their images.
+    "Tlamatini/agent/static/agent/img/avatar/eo_mc.jpg",
+    "Tlamatini/agent/agents/whatsapper/guide_assets/whatsapp_01_meta_create_app.jpg",
 )
 
 # ── Restore manifest — binaries the REBUILD needs but the snapshot omits ─────
@@ -316,9 +348,20 @@ def _wants_redaction(rel_posix: str) -> str:
 
 # ── Walk + copy ──────────────────────────────────────────────────────────────
 
-def _skip_file(name: str) -> bool:
+def _is_kept_by_path(rel_posix: str) -> bool:
+    """True when a snapshot-relative POSIX path is explicitly KEPT (see
+    KEEP_PATH_GLOBS) despite an extension/glob drop rule."""
+    return any(fnmatch.fnmatch(rel_posix, pat) for pat in KEEP_PATH_GLOBS)
+
+
+def _skip_file(name: str, rel_posix: str = "") -> bool:
+    # Secrets / PII / local state are NEVER resurrected by a KEEP carve-out.
     if name in EXCLUDED_FILE_NAMES:
         return True
+    # A path-based KEEP wins over the extension / name-glob drops, so shipped UI
+    # assets (avatar frames) and shipped-doc screenshots (guide_assets) survive.
+    if rel_posix and _is_kept_by_path(rel_posix):
+        return False
     if Path(name).suffix.lower() in EXCLUDED_EXTENSIONS:
         return True
     return any(fnmatch.fnmatch(name, pat) for pat in EXCLUDED_FILE_GLOBS)
@@ -365,7 +408,7 @@ def copy_source_assets(repo_root: Path | str = REPO_ROOT,
             src = cur / fname
             rel = src.relative_to(repo_root)
             rel_posix = rel.as_posix()
-            if _skip_file(fname):
+            if _skip_file(fname, rel_posix):
                 files_skipped += 1
                 continue
             dst = dest / rel

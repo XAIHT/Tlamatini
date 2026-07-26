@@ -1,10 +1,27 @@
 $ErrorActionPreference = 'Continue'
-$out = 'C:\Users\angel\AppData\Local\Temp\claude\C--Development-Tlamatini\9eac967b-9b4e-4a5e-9a2f-af89acb43f84\scratchpad\portfix_result.txt'
+
+# Result log — <install>\Temp when this ships next to Tlamatini.exe (the Temp
+# directory policy), else the user's %TEMP%. Never a developer-specific path.
+$appTemp = Join-Path $PSScriptRoot 'Temp'
+if (Test-Path $appTemp) { $out = Join-Path $appTemp 'portfix_result.txt' }
+else { $out = Join-Path $env:TEMP 'Tlamatini_portfix_result.txt' }
 if (Test-Path $out) { Remove-Item $out -Force }
+
+# Port to test — config.json's django_port when present (config.json ships next
+# to the exe), else Tlamatini's default 8000. Fail-open: anything odd keeps 8000.
+$port = 8000
+try {
+    $cfg = Join-Path $PSScriptRoot 'config.json'
+    if (Test-Path $cfg) {
+        $v = (Get-Content $cfg -Raw -Encoding UTF8 | ConvertFrom-Json).django_port
+        if ($null -ne $v -and [int]$v -ge 1 -and [int]$v -le 65535) { $port = [int]$v }
+    }
+} catch { $port = 8000 }
 
 function Log($m) { $m | Tee-Object -FilePath $out -Append | Out-Null; Write-Host $m }
 
-Log "=== Tlamatini port-8000 fix @ $(Get-Date) ==="
+Log "=== Tlamatini port-$port fix @ $(Get-Date) ==="
+Log "Log file: $out"
 Log "Admin: $([bool](([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)))"
 
 Log ""
@@ -25,21 +42,22 @@ foreach ($d in $deps) { try { Start-Service $d -ErrorAction Stop; Log "  restart
 Log "WinNAT status: $((Get-Service winnat).Status)"
 
 Log ""
-Log "--- STEP 3: verify excluded ranges no longer cover 8000 ---"
+Log "--- STEP 3: verify excluded ranges no longer cover $port ---"
 Log (netsh interface ipv4 show excludedportrange protocol=tcp 2>&1 | Out-String)
 Log "--- dynamic port range now ---"
 Log (netsh int ipv4 show dynamicport tcp 2>&1 | Out-String)
 
 Log ""
-Log "--- STEP 4: bind test on 127.0.0.1:8000 (pure PowerShell, no python) ---"
+Log "--- STEP 4: bind test on 127.0.0.1:$port (pure PowerShell, no python) ---"
 try {
-    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 8000)
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
     $listener.Start()
     $listener.Stop()
-    Log "BIND OK - port 8000 is FREE"
+    Log "BIND OK - port $port is FREE"
 } catch {
     $msg = if ($_.Exception.InnerException) { $_.Exception.InnerException.Message } else { $_.Exception.Message }
     Log ("BIND STILL FAILS -> " + $msg)
+    Log "TIP: you can also move Tlamatini to another port - set 'django_port' in config.json (next to Tlamatini.exe) and restart."
 }
 
 Log "=== DONE - you can close this window ==="

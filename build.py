@@ -341,6 +341,7 @@ _AGENT_RUNTIME_IMPORTS = (
     "PyPDF2", "pypdf", "fitz", "odf",       # PDF / ODF file backends
     "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
     "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
+    "psutil",                               # process/PID liveness in the SHARED pool-agent boilerplate (77 agents) + OOB kill-tree
     "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
     "pymongo", "pyodbc", "win32gui", "win32con",  # db / windows agents (pywin32)
     "sounddevice",                          # microphone capture (Recorder) — native PortAudio
@@ -1490,6 +1491,12 @@ def main():
                 # next to Tlamatini.exe so agent/self_update.py can copy it out
                 # to %LOCALAPPDATA%\\Tlamatini\\updater and run the file swap.
                 "apply_update.ps1",
+                # Port-unblock helper. When Windows/Hyper-V has RESERVED the
+                # configured web port, Daphne dies with WinError 10013 and the
+                # app never starts — so this recovery tool must sit next to
+                # Tlamatini.exe (it reads django_port from the config.json
+                # beside it and logs into the install's Temp).
+                "freeingport8000.ps1",
                 "Tlamatini/cat_art.py"
             ]
             for fname in support_files:
