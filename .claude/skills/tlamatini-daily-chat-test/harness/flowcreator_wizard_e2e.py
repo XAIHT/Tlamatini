@@ -24,7 +24,6 @@ import os
 import re
 import sys
 import time
-import json
 import html
 import datetime as _dt
 
@@ -33,9 +32,7 @@ sys.path.insert(0, HERE)
 
 import config as C          # noqa: E402
 import run_test as R        # noqa: E402
-from step_by_step_catalog import send_and_wait, set_toggles, grab   # noqa: E402
-
-from PIL import ImageGrab   # noqa: E402  (kept for parity; grab() uses it)
+from step_by_step_catalog import send_and_wait, grab   # noqa: E402
 from playwright.sync_api import sync_playwright   # noqa: E402
 
 RUN_TAG = _dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
