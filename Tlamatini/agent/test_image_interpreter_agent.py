@@ -389,7 +389,7 @@ class RegistryIntegrationTests(SimpleTestCase):
     def test_wrapped_spec_advertises_prompt_user(self):
         from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
         spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_image_interpreter']
-        self.assertEqual(spec.display_name, 'Image Interpreter')
+        self.assertEqual(spec.display_name, 'Image-Interpreter')
         self.assertIn('prompt_user', spec.example_request)
         self.assertNotIn('llm.prompt', spec.example_request)
         self.assertIn('TRIPLE-MODEL', spec.purpose)

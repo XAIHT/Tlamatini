@@ -111,7 +111,10 @@ def display_name_from_agent_type(agent_type: str) -> str:
         "scper": "SCPer",
         "sqler": "SQLer",
         "pser": "PSer",
-        "apirer": "APIrer",
+        # "Apirer" (not "APIrer"): agents.md AND chat_agent_registry.display_name
+        # both say "Apirer", and that is the label already on the sidebar. This map
+        # now drives the sidebar label directly (apps.py), so it must not churn it.
+        "apirer": "Apirer",
         "pythonxer": "Pythonxer",
         "teletlamatini": "TeleTlamatini",
         "telegrammer": "Telegrammer",
@@ -129,6 +132,28 @@ def display_name_from_agent_type(agent_type: str) -> str:
         # convention: the display name is EXACTLY what the DB agentDescription says,
         # and that is "PDFer" (P-D-F-er), never "Pdfer" / "PDFEr" / "PDFER".
         "pdfer": "PDFer",
+        # --- case-only fixes: .title() lower-cases the second capital ---
+        "audioplayer": "AudioPlayer",
+        "videoplayer": "VideoPlayer",
+        "flowcreator": "FlowCreator",
+        "flowhypervisor": "FlowHypervisor",
+        "flowbacker": "FlowBacker",
+        "mcp_doctor": "MCP Doctor",
+        # --- hyphen fixes: acp-canvas-core.js compares the DISPLAY name lowercased
+        # WITHOUT collapsing spaces, and for these it only ever tests the HYPHENATED
+        # literal ('video-analyzer' / 'de-compresser'). A spaced "Video Analyzer"
+        # therefore matches NOTHING and the connection is silently never persisted.
+        "video_analyzer": "Video-Analyzer",
+        "de_compresser": "De-Compresser",
+        # These five ALSO carry hyphen-only canvas handlers. Fixed together
+        # with chat_agent_registry.display_name on 2026-07-26 so the DB row,
+        # the canvas handler and the agent_<display>_status enable gate all
+        # agree; changing only one side would silently fail-open the gate.
+        "file_creator": "File-Creator",
+        "file_extractor": "File-Extractor",
+        "file_interpreter": "File-Interpreter",
+        "image_interpreter": "Image-Interpreter",
+        "monitor_log": "Monitor-Log",
     }
     if normalized in overrides:
         return overrides[normalized]

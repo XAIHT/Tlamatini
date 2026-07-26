@@ -21,6 +21,36 @@ _DISCOVERY_GATE_LOCK = _threading.Lock()
 _discovery_thread_started = False
 
 
+def _canonical_agent_display_name(folder_name, fallback):
+    """Canonical sidebar/canvas display name for an ``agents/<folder>`` template.
+
+    THE naming bug this fixes (Angela, 2026-07-26): ``AgentConfig.ready()`` WIPES the
+    ``Agent`` table on every single startup and rebuilds it from the folder listing,
+    so whatever this function returns IS the display name — a migration's carefully
+    cased ``agentDescription`` is overwritten on the very next launch. The old logic
+    was ``str.title()`` plus five ad-hoc overrides, which mangled 22 of 86 agents
+    ("Pdfer", "Sqler", "Esp32Er", "Videoplayer", ...) and, worse, produced SPACED
+    names for six agents whose canvas connection handlers only ever test the
+    HYPHENATED literal ('kyber-keygen', 'j-decompiler', 'video-analyzer',
+    'de-compresser', 'kyber-cipher', 'kyber-decipher') — so those connections were
+    silently never persisted.
+
+    ``services.agent_paths.display_name_from_agent_type`` is the single source of
+    truth (the same map the Flow Compiler and Agent Contracts use), so the DB row,
+    the sidebar label, the canvas connection handlers and the wrapped-agent enable
+    gate (``agent_<display>_status``) all agree by construction.
+
+    FAIL-OPEN: any import/lookup problem falls back to the caller's legacy value —
+    a naming refinement must never stop the app from booting.
+    """
+    try:
+        from .services.agent_paths import display_name_from_agent_type
+        resolved = (display_name_from_agent_type(folder_name) or '').strip()
+        return resolved or fallback
+    except Exception:                                    # noqa: BLE001 - fail-open
+        return fallback
+
+
 def _discovery_publish_eligible(argv_str, run_main):
     """Pure predicate: is this an eligible application-server launch that should
     publish companion discovery? ``argv_str`` = ``' '.join(sys.argv).lower()`` and
@@ -254,7 +284,7 @@ class AgentConfig(AppConfig):
                         elif display_name.lower() == 'or':
                             display_name = 'OR'
                         elif display_name.lower() == 'monitor log':
-                            display_name = 'Monitor Log'
+                            display_name = 'Monitor-Log'
                         elif display_name.lower() == 'monitor netstat':
                             display_name = 'Monitor Netstat'
                         elif display_name.lower() == 'recmailer':
@@ -267,6 +297,14 @@ class AgentConfig(AppConfig):
                             # source the canvas sidebar renders verbatim, so it MUST
                             # be exact — never STM32Er / Stm32Er / STM32ER.
                             display_name = 'STM32er'
+
+                        # CANONICAL NAME WINS (2026-07-26). Everything above is now
+                        # only a fail-open fallback: the display name comes from the
+                        # single source of truth, services.agent_paths. Do NOT revert
+                        # to str.title() — it renders "Pdfer"/"Sqler"/"Esp32Er" and
+                        # breaks the hyphenated canvas connection handlers.
+                        display_name = _canonical_agent_display_name(
+                            folder_name, display_name)
 
                         agent_name = f"agent-{index}"
                         
