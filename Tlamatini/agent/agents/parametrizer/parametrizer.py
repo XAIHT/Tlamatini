@@ -147,6 +147,7 @@ SECTION_AGENT_TYPES = [
     'zavuerer',
     'telegrammer',
     'whatsapper',
+    'pdfer',
 ]
 
 

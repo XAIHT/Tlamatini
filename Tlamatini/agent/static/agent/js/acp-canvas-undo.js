@@ -402,6 +402,9 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'nmapper') {
                 await updateNmapperConnection(sourceId, targetId, 'remove');
             }
+            if (sourceAgentName.toLowerCase() === 'pdfer') {
+                await updatePdferConnection(sourceId, targetId, 'remove');
+            }
             if (sourceAgentName.toLowerCase() === 'kalier') {
                 await updateKalierConnection(sourceId, targetId, 'remove');
             }
@@ -814,6 +817,9 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'nmapper') {
         await updateNmapperConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'pdfer') {
+        await updatePdferConnection(sourceId, targetId, 'add');
     }
     if (sourceAgentName === 'kalier') {
         await updateKalierConnection(sourceId, targetId, 'add');

@@ -6748,29 +6748,48 @@ class AskExecsHelperTests(TestCase):
         self.assertTrue(exe._requires_exec_permission('chat_agent_mongoxer'))
         self.assertTrue(exe._requires_exec_permission('decompile_java'))
         self.assertTrue(exe._requires_exec_permission('chat_agent_j_decompiler'))
-        # Explicitly omitted from the gate per request: De-Compresser,
-        # Unrealer, STM32er, and ACPXer (the acp_* family).
-        self.assertFalse(exe._requires_exec_permission('chat_agent_de_compresser'))
-        self.assertFalse(exe._requires_exec_permission('unzip_file'))
+        # ── Tier A: destroys / overwrites data (added 2026-07-14) ──────────
+        # This block used to assert the OPPOSITE. It was written before Angela's
+        # 2026-07-14 decision and went stale the moment tiers A/B/D landed — it
+        # had been failing on `chat_agent_de_compresser` ever since, contradicting
+        # the authoritative pin in `test_ask_execs_allowlist.py`. Realigned
+        # 2026-07-26.
+        self.assertTrue(exe._requires_exec_permission('chat_agent_de_compresser'))
+        self.assertTrue(exe._requires_exec_permission('unzip_file'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_file_creator'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_deleter'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_editor'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_pdfer'))
+        # ── Tier D: remote systems / the network ───────────────────────────
+        self.assertTrue(exe._requires_exec_permission('chat_agent_scper'))
+        self.assertTrue(exe._requires_exec_permission('chat_agent_apirer'))
+        # ── Tier C: desktop UI + hardware — UNGATED ON PURPOSE (speed; the
+        #    operation is visible while it happens) ──────────────────────────
         self.assertFalse(exe._requires_exec_permission('chat_agent_unrealer'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_stm32er'))
+        # ── ACPX / Skills are not gated ────────────────────────────────────
         self.assertFalse(exe._requires_exec_permission('acp_spawn'))
         self.assertFalse(exe._requires_exec_permission('acp_send'))
         self.assertFalse(exe._requires_exec_permission('acp_send_and_wait'))
         self.assertFalse(exe._requires_exec_permission('acp_kill'))
         self.assertFalse(exe._requires_exec_permission('acp_relay'))
-        # NOT in Tier 1/2 → no prompt, even though several are state-changing.
         self.assertFalse(exe._requires_exec_permission('invoke_skill'))
-        self.assertFalse(exe._requires_exec_permission('chat_agent_scper'))
-        self.assertFalse(exe._requires_exec_permission('chat_agent_file_creator'))
-        self.assertFalse(exe._requires_exec_permission('chat_agent_deleter'))
-        self.assertFalse(exe._requires_exec_permission('chat_agent_apirer'))
+        # ── Tier B: MESSAGING — UNGATED ON PURPOSE (Angela, 2026-07-26:
+        #    "Messages must be able to be sent without asking, it depends only
+        #    on AI desisicion."). Sending is the LLM's own judgement call. ────
         self.assertFalse(exe._requires_exec_permission('chat_agent_send_email'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_whatsapper'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_telegrammer'))
+        self.assertFalse(exe._requires_exec_permission('chat_agent_zavuerer'))
+        self.assertFalse(
+            exe._requires_exec_permission('chat_agent_instant_messaging_doctor'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_keyboarder'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_mouser'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_playwrighter'))
+        # Crawler fetches ARBITRARY URLs, so it joined tier D on 2026-07-14 —
+        # another assertion this stale block had inverted.
+        self.assertTrue(exe._requires_exec_permission('chat_agent_crawler'))
         # Read-only / inspection tools were never executions to approve.
-        self.assertFalse(exe._requires_exec_permission('chat_agent_crawler'))
         self.assertFalse(exe._requires_exec_permission('googler'))
         # Management / polling tools are inspection, not execution → exempt.
         self.assertFalse(exe._requires_exec_permission('chat_agent_run_status'))

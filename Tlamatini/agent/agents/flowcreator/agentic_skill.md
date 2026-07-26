@@ -294,6 +294,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 
 | Agent | What It Does | Starts Others | Category |
 |-------|-------------|:---:|----------|
+| **pdfer** | Authors a PDF from text / Markdown / HTML / images / other PDFs — the document deliverable at the end of a reporting flow | YES | Action |
 | **starter** | Entry point — launches the first agent(s) in the flow | YES | Control |
 | **ender** | Terminates all listed agents and optionally launches FlowBacker/Cleaner | KILL+LAUNCH | Control |
 | **stopper** | Stops specific agents without ending the entire flow | NO | Control |
@@ -2036,6 +2037,30 @@ system_prompt: |
   - `nmap_executable`: "" (auto-resolve) / `auto_install`: false / `nmap_install_url`: "" / `nmap_version`: "7.99" / `preflight`: true / `command_timeout`: 900 / `output_dir`: ""
   - `source_agents`: [] (upstream agents — canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the scan)
+
+### 86. PDFer
+- **Purpose**: AUTHOR a PDF document. PDFer is the DOCUMENT COMPOSER — the WRITE side of the document family (File-Extractor / File-Interpreter READ documents; PDFer CREATES them).
+- **Used for**: Turning text a previous agent produced — a Summarizer digest, a File-Interpreter reading, a Crawler result, Tlamatini's own answer — plus optional images into ONE styled, shareable PDF. It needs NO installation: markdown + xhtml2pdf + PyMuPDF + reportlab + Pillow + pypdf already ship with Tlamatini.
+- **Aimed at**: The LAST hop of a reporting flow — the agent that produces the human-readable deliverable. Prefer it over File-Creator whenever the output should be a real document rather than a text file, and NEVER hand-roll a PDF through Executer/Pythonxer.
+- **Application example**: Starter → File-Interpreter (read a repo) → Parametrizer (map `{response_body}` into PDFer's `input_text`) → PDFer (`mode: markdown`, `title: Project Review`) → Parametrizer (map `{output_path}` into Emailer's attachment) → Emailer → Ender. A second common shape is Starter → Shoter → Parametrizer (map `{output_path}` into PDFer's `images`) → PDFer (`mode: mixed`) → Ender.
+- **Pool name pattern**: `pdfer_<n>`
+- **Parametrizer source**: emits `INI_SECTION_PDFER` with fields `mode`, `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `images_used`, `engine`, `status`, and body=`response_body`.
+- **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{page_count}`)
+- **Config parameters**:
+  - `mode`: "auto" (auto | markdown | html | text | images | mixed | merge | info | validate). `auto` sniffs the content: HTML-looking text → html, images only → images, text+images → mixed, otherwise markdown.
+  - `input_text`: "" (the Markdown / HTML / plain text to render — this is the field a Parametrizer usually writes into)
+  - `input_file`: "" (OR a path to a .md / .txt / .html file; a .pdf when `mode: info`)
+  - `images`: [] (image paths for `images` / `mixed`; a comma-separated string is accepted)
+  - `input_pdfs`: [] (existing PDFs to append when `mode: merge`)
+  - `title`: "" (a cover page is added when set) / `subtitle`: "" / `author`: ""
+  - `page_size`: "A4" (A4 | Letter | Legal) / `orientation`: "portrait" (portrait | landscape) / `margins_mm`: 18
+  - `css`: "" (empty = the built-in stylesheet) / `toc`: false / `page_numbers`: true
+  - `image_layout`: "one-per-page" (one-per-page | fit | grid) / `image_caption`: true / `grid_columns`: 2 / `max_image_px`: 1600
+  - `ollama_polish`: false (true = let an Ollama model restructure the text into clean Markdown first; a failed polish keeps the raw content) / `ollama_url`: "http://localhost:11434" / `ollama_model`: "glm-5.2:cloud" / `ollama_token`: "" / `ollama_prompt`: "" / `ollama_timeout`: 180
+  - `output_dir`: "" (empty = Documents/TlamatiniPDF) / `filename`: "" (empty = a timestamped name) / `overwrite`: false
+  - `preflight`: true (fail-safe: REFUSE rather than write an empty or wrong PDF) / `command_timeout`: 300
+  - `source_agents`: [] (upstream agents — canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the render)
 
 ---
 

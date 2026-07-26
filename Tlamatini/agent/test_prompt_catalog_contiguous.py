@@ -129,6 +129,7 @@ class PromptSortRankTests(TestCase):
             'files_search': 98,      # Files & Search guided tour        (0182)
             'run_execute': 99,       # Run & Execute wizard              (0182)
             'code_gen': 100,         # scaffold a small project          (0182)
+            'documents': 109,        # PDFer Step-by-Step wizard         (0190)
             'images': 101,           # Images & Vision wizard            (0182)
             'agents_flows': 102,     # Guided First Agents               (0182)
             'acpx_skills': 103,      # ACPX & Skills first contact       (0182)

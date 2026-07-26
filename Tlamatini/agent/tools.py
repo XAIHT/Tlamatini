@@ -1396,6 +1396,13 @@ def _find_missing_required_config_paths(config, config_path, agent_script_path):
 # of having to grep the log_excerpt for a saved-file path.
 _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
     "shoter": ("output_path", "output_dir", "filename"),
+    # PDFer: the LLM must be able to quote the exact file it just wrote back to the
+    # user without re-parsing the INI_SECTION body, and `status` is what tells it a
+    # fail-safe preflight REFUSED instead of a document being produced.
+    "pdfer": (
+        "output_path", "output_dir", "filename",
+        "mode", "source_type", "page_count", "bytes", "images_used", "engine", "status",
+    ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
     "video_analyzer": ("verdict", "verdict_token", "confidence", "motion_score", "status", "video_path"),
     "recorder": (
@@ -2380,6 +2387,57 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
     'de_compresser':  {'title': 'DE-COMPRESSER ARCHIVE OPERATION TO PERFORM',
                        'params': ('input', 'output', 'passwordless')},
 
+    # --- surgical file edit ---------------------------------------------
+    # Editor REWRITES an existing file in place (editor.py writes file_path with
+    # mode 'w'), so the user must see WHICH file and WHAT replacement before the
+    # spawn. It is Ask-Execs tier A for the same reason.
+    'editor':         {'title': 'EDITOR IN-PLACE FILE EDIT TO PERFORM',
+                       'body': ('new_string', 'replacement text'),
+                       'params': ('file_path', 'old_string', 'replace_all',
+                                  'old_string_b64', 'new_string_b64')},
+
+    # --- offensive / network recon --------------------------------------
+    # Nmapper and Discoverer FIRE PACKETS at a target from this machine and write
+    # scan artifacts to disk (nmap -oX/-oN; the tool's JSON). Surfacing the TARGET
+    # before the spawn is the whole point: it is the last chance to notice an
+    # out-of-scope host. AUTHORIZED TARGETS ONLY.
+    'nmapper':        {'title': 'NMAPPER SCAN TO RUN (authorized targets only)',
+                       'params': ('action', 'target', 'targets_file', 'ports',
+                                  'top_ports', 'timing', 'scan_technique',
+                                  'nse_scripts', 'custom_args', 'auto_install',
+                                  'output_dir')},
+    'discoverer':     {'title': 'DISCOVERER RECON TO RUN (authorized targets only)',
+                       'params': ('tool', 'target', 'targets_file',
+                                  'naabu_scan_type', 'naabu_ports',
+                                  'extra_args', 'output_dir')},
+
+    # --- messaging a REAL human -----------------------------------------
+    # Zavuerer POSTs to the Zavu REST API (/v1/messages) — a real SMS / WhatsApp /
+    # Telegram / Email / Voice message that CANNOT be unsent and COSTS MONEY.
+    'zavuerer':       {'title': 'ZAVUERER MESSAGE TO SEND (real recipient, costs money)',
+                       'body': ('text', 'message body'),
+                       'params': ('action', 'to', 'contact_name', 'channel',
+                                  'subject', 'from_sender', 'fallback')},
+    # Instant Messaging Doctor is NON-MUTATING by default, but with
+    # retry_send=true it really POSTs to the WhatsApp Cloud API /messages and
+    # Telegram sendMessage — i.e. it reaches a real person. Surface retry_send so
+    # a diagnose-only run is visibly distinguishable from a resend.
+    'instant_messaging_doctor':
+                      {'title': 'INSTANT-MESSAGING DOCTOR CHECK TO RUN',
+                       'body': ('message', 'message that may be re-sent'),
+                       'params': ('mode', 'platform', 'contact_name', 'retry_send')},
+
+    # --- documents ------------------------------------------------------
+    # PDFer WRITES a file to a free-form output_dir + filename (that is also
+    # why it is on the Ask-Execs tier-A allowlist), so surface WHERE it is
+    # about to write and WHAT shape the document will take before the spawn.
+    'pdfer':          {'title': 'PDFER DOCUMENT TO WRITE',
+                       'body': ('input_text', 'document content to render'),
+                       'params': ('mode', 'output_dir', 'filename', 'overwrite',
+                                  'title', 'page_size', 'orientation',
+                                  'images', 'input_file', 'input_pdfs',
+                                  'ollama_polish')},
+
     # --- decompilation --------------------------------------------------
     'j_decompiler':   {'title': 'J-DECOMPILER DECOMPILATION TO PERFORM',
                        'params': ('directory', 'recursive')},
@@ -2405,6 +2463,16 @@ _PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES = frozenset({
     # side effects worth surfacing before the spawn) — a generation agent like
     # prompter/summarizer, so it belongs in the observational set.
     'flowcreator',
+    # Audited in the dev tree 2026-07-26: each of these four writes NOTHING but its
+    # own log + PID file (the shared boilerplate) — verified line-by-line, not
+    # inferred from config keys:
+    #   globber / grepper  — enumerate paths / read file contents; never mutate.
+    #   mcp_doctor         — STATIC triage of the External-MCP catalog; it does NOT
+    #                        connect (its only Popen is the boilerplate start_agent
+    #                        that launches target_agents), unlike the live
+    #                        external_mcp_doctor tool.
+    #   video_analyzer     — reads a recorded video + asks Ollama for a verdict.
+    'globber', 'grepper', 'mcp_doctor', 'video_analyzer',
 })
 
 

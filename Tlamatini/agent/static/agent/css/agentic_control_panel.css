@@ -2279,6 +2279,24 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(249, 115, 22, 0.5);
 }
 
+/* PDFer Agent Styles - Document composer (4-color "Crimson Parchment" gradient:
+   Ink-Black -> PDF-Crimson -> Parchment-Gold -> Paper-White). Chosen to read as
+   "a printed page": the dark ink edge burns through the classic PDF red into the
+   warm parchment cream of the paper itself. Unique in this file - no other agent
+   uses #C1272D / #E8A33D / #FDF6E3. The sidebar icon inherits this automatically
+   through applyAgentToolIconStyle(); never re-type the gradient in JS. */
+.canvas-item.pdfer-agent {
+    background-color: #2B0A0A;
+    background: linear-gradient(135deg, #2B0A0A 0%, #C1272D 33%, #E8A33D 66%, #FDF6E3 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.pdfer-agent:hover {
+    background: linear-gradient(135deg, #4A1212 0%, #D9433F 33%, #F5BE63 66%, #FFFDF5 100%);
+    box-shadow: 0 6px 15px rgba(193, 39, 45, 0.5);
+}
+
 .canvas-item.mcpdoctor-agent {
     background-color: #0F3D3E;
     color: white;

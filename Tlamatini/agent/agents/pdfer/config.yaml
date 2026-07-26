@@ -1,0 +1,77 @@
+# PDFer Agent Configuration
+#
+# PDFer is Tlamatini's DOCUMENT COMPOSER: it turns Tlamatini's own answer, a
+# markdown/HTML string, a .md/.txt/.html file, and/or a set of images into ONE
+# styled PDF. It is the WRITE side of the document family — File-Extractor and
+# File-Interpreter READ documents, PDFer AUTHORS them.
+#
+# ZERO new dependencies: every backend it uses already ships with Tlamatini —
+#   markdown  -> Markdown to HTML (fenced_code, tables, toc)
+#   xhtml2pdf -> HTML to PDF (the same pisa.CreatePDF call doc_generation trusts)
+#   pymupdf   -> image composition + page counting  (fitz)
+#   reportlab -> fallback programmatic composition
+#   pillow    -> image orient/convert/resize before embedding
+# It is fully self-contained (it NEVER imports agent.*) so it runs identically in
+# source and frozen builds, and the markdown->PDF pipeline is ported INLINE from
+# agent/doc_generation/mardown_to_pdf.py.
+
+# -- mode -- what kind of document to build ----------------------------------
+#   auto     : sniff the content (looks like HTML -> html; only images -> images;
+#              text AND images -> mixed; otherwise -> markdown).  DEFAULT.
+#   markdown : input_text / input_file is Markdown  -> styled PDF (tables, code, TOC)
+#   html     : input_text / input_file is HTML      -> PDF rendered from the HTML
+#   text     : input_text is PLAIN text             -> escaped, monospace-safe PDF
+#   images   : `images` only                        -> one image per page (or fit/grid)
+#   mixed    : input_text + images + title          -> cover + sections + figures
+#   merge    : merge `input_pdfs` (and any rendered content) into ONE PDF
+#   info     : read an existing PDF (input_file) and report pages/size/metadata
+#   validate : report which PDF backends are importable (no file written)
+mode: "auto"
+
+# -- Content sources ---------------------------------------------------------
+input_text: ""         # Tlamatini's answer / Markdown / HTML / plain text
+input_file: ""         # OR a path to a .md / .txt / .html / .pdf (mode=info) file
+images: []             # image paths (images / mixed mode); a comma-separated string is accepted
+input_pdfs: []         # existing PDFs to append (mode=merge); comma-separated string accepted
+
+# -- Document appearance -----------------------------------------------------
+title: ""              # cover / document title ("" = no cover page)
+subtitle: ""           # optional line under the title on the cover
+author: ""             # PDF metadata author ("" = Tlamatini)
+page_size: "A4"        # A4 | Letter | Legal
+orientation: "portrait"  # portrait | landscape
+margins_mm: 18         # page margin in millimetres
+css: ""                # "" = the built-in DEFAULT_CSS (ported from mardown_to_pdf.py)
+toc: false             # prepend a generated table of contents (markdown mode)
+page_numbers: true     # render "page N" in the footer
+
+# -- Image layout (images / mixed) -------------------------------------------
+image_layout: "one-per-page"  # one-per-page | fit | grid
+image_caption: true    # print each image's file name under it
+grid_columns: 2        # columns when image_layout = grid
+max_image_px: 1600     # downscale the longest edge to this before embedding (0 = off)
+
+# -- Optional Ollama polish (OFF by default = deterministic passthrough) ------
+# When true, PDFer asks an Ollama model to restructure the raw content into clean
+# Markdown (headings, lists, a title) BEFORE rendering. It talks to Ollama over the
+# stdlib urllib (the Talker / Whisperer / Reviewer pattern — no agent.* import).
+# A failed polish NEVER loses the document: it falls back to the raw content.
+ollama_polish: false
+ollama_url: "http://localhost:11434"
+ollama_model: "glm-5.2:cloud"
+ollama_token: ""
+ollama_prompt: ""      # "" = the built-in "structure this into clean Markdown" prompt
+ollama_timeout: 180
+
+# -- Output ------------------------------------------------------------------
+output_dir: ""         # "" = Documents/TlamatiniPDF (Windows known-folder aware)
+filename: ""           # "" = pdfer_<YYYYmmdd>_<HHMMSS>_<ms>.pdf  (collision-proof)
+overwrite: false       # false = never clobber; a colliding name gets _2, _3, ...
+
+# -- Execution controls ------------------------------------------------------
+preflight: true        # fail-safe checks; REFUSE (never crash) rather than misfire
+command_timeout: 300   # hard cap (seconds) for the whole render
+
+# -- Connection fields -------------------------------------------------------
+source_agents: []      # upstream agents (canvas connection tracking)
+target_agents: []      # downstream agents to start after the render (ALWAYS triggered)

@@ -1451,6 +1451,37 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
                 if (!Number.isNaN(n)) config[k] = n;
             }
         });
+    } else if (lower === 'pdfer') {
+        set('mode', pairs.mode);
+        set('input_text', pairs.input_text);
+        set('input_file', pairs.input_file);
+        set('images', pairs.images);
+        set('input_pdfs', pairs.input_pdfs);
+        set('title', pairs.title);
+        set('subtitle', pairs.subtitle);
+        set('author', pairs.author);
+        set('page_size', pairs.page_size);
+        set('orientation', pairs.orientation);
+        set('css', pairs.css);
+        set('image_layout', pairs.image_layout);
+        set('ollama_url', pairs.ollama_url);
+        set('ollama_model', pairs.ollama_model);
+        set('ollama_prompt', pairs.ollama_prompt);
+        set('output_dir', pairs.output_dir);
+        set('filename', pairs.filename);
+        ['toc', 'page_numbers', 'image_caption', 'ollama_polish', 'overwrite',
+         'preflight'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = (String(pairs[k]).toLowerCase() === 'true');
+            }
+        });
+        ['margins_mm', 'grid_columns', 'max_image_px', 'ollama_timeout',
+         'command_timeout'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
     } else if (lower === 'nmapper') {
         set('action', pairs.action);
         set('target', pairs.target);

@@ -339,6 +339,7 @@ _AGENT_RUNTIME_IMPORTS = (
     "numpy", "cv2",                         # numeric core (all media agents) + OpenCV (Camcorder / VideoPlayer)
     "mcp", "serial",                        # STM32 MCP server (STM32er)
     "PyPDF2", "pypdf", "fitz", "odf",       # PDF / ODF file backends
+    "markdown", "xhtml2pdf", "reportlab", "PIL",  # PDFer document composer (md->html->pdf + images)
     "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
     "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
     "psutil",                               # process/PID liveness in the SHARED pool-agent boilerplate (77 agents) + OOB kill-tree

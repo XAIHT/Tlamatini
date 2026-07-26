@@ -16,6 +16,61 @@
 
 ---
 
+## 2026-07-26 — Ask Execs: MESSAGING IS UNGATED (tier B reversed) — do NOT re-add it
+
+**Angela's decision, verbatim:** *"Messages must be able to be sent without asking, it depends only on AI desisicion."*
+
+Tier B was added to the Ask-Execs allowlist on **2026-07-14** on the "you cannot unsend it" argument. On **2026-07-26 she reversed it**. Sending a message is now **the LLM's own judgement call** — no Proceed/Deny prompt stands between Tlamatini and a real human. Removed from `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS`:
+
+`chat_agent_send_email` · `chat_agent_whatsapper` · `chat_agent_telegrammer` · `chat_agent_zavuerer` (and `chat_agent_instant_messaging_doctor` was never added, including when `retry_send=true` makes it re-send).
+
+**The gate is now RUNNERS + tier A + tier D only.** Tiers B and C are both deliberately ungated — B because messaging is the AI's call, C because desktop/hardware operations are visible while they happen.
+
+**What still protects a send** (state it honestly — it is not nothing, and it is not a prompt): the LLM's own judgement, the **Exec Report row** every send still produces, and the user's **Cancel**. ⚠️ **Zavuerer costs money per message** (pay-as-you-go) — that cost is accepted, not overlooked.
+
+**DO NOT re-gate messaging "for safety."** `agent/test_ask_execs_allowlist.py::test_messaging_agents_are_NOT_gated` is an **inverse guard**: `MESSAGING_UNGATED` is an ANTI-list and the test asserts those names are ABSENT from the allowlist, so a well-meaning re-add fails loudly instead of silently restoring a prompt she removed on purpose.
+
+**Two stale assertions fixed at the same time.** `agent/tests.py::AskExecsHelperTests.test_requires_exec_permission_gate` still encoded the **pre-2026-07-14** "tier 1/2 only" policy and had been failing ever since — it asserted that De-Compresser, unzip_file, File-Creator, Deleter, SCPer, Apirer and Crawler were all UNGATED, directly contradicting the authoritative pin in `test_ask_execs_allowlist.py`. It is now realigned to the real policy (A + D gated; B + C + ACPX/Skills not). Lesson: when a policy changes, grep for EVERY test that encodes it — the authoritative pin passing does not mean an older duplicate is not lying.
+
+---
+
+## 2026-07-26 — PDFer (the document composer) + a new "Documents & PDF" catalog section
+
+**What landed.** Agent #86, **PDFer** — the WRITE side of the document family (File-Extractor / File-Interpreter READ documents; PDFer AUTHORS them). `agent/agents/pdfer/` renders Tlamatini's own answer, Markdown, HTML, plain text, images and/or existing PDFs into ONE styled PDF. Wrapped as `chat_agent_pdfer`; migrations `0188` (Agent row) / `0189` (Tool row) / `0190` (the new catalog section).
+
+**Three contracts that must NOT be reverted:**
+
+1. **ZERO new dependencies — and the pipeline is ported INLINE, not imported.** `markdown` + `xhtml2pdf` + `pymupdf` + `reportlab` + `pillow` + `pypdf` were already pinned in `requirements.txt` and already used by `agent/doc_generation`. `pdfer.py` carries its own copy of `markdown_text_to_pdf` + `DEFAULT_CSS` from `agent/doc_generation/mardown_to_pdf.py` because **a pool subprocess can never `import agent.*`** (the acpxer.py precedent). Every backend is imported LAZILY inside the function that needs it, so a machine missing one reports `status: engine_unavailable` instead of crashing at import. **`build.py::_AGENT_RUNTIME_IMPORTS` gained `markdown` / `xhtml2pdf` / `reportlab` / `PIL`** so a carried Python that loses one FAILS THE BUILD LOUDLY (the numpy/cv2 lesson) rather than shipping a pool agent that dies at runtime.
+
+2. **PDFer is on the Ask-Execs tier-A allowlist — and that is deliberate.** It only ever *writes* a new file, which superficially looks like the media agents (Shoter/Camcorder/Recorder) that are NOT gated. The difference is decisive: the media agents write a collision-proof name into ONE fixed known-folder, whereas PDFer takes a free-form `output_dir` + `filename` and can therefore clobber a file the user cares about, exactly like File-Creator. **Do not "simplify" it out of `_ASK_EXECS_REQUIRED_TOOLS`** — `agent/test_ask_execs_allowlist.py` pins it in both directions. Same reasoning put it in `tools.py::_PRE_LAUNCH_PREVIEW_BY_TEMPLATE` (so the user sees WHERE it is about to write) rather than the observational set.
+
+3. **`agent_paths.display_name_from_agent_type` needs the `"pdfer": "PDFer"` override.** Without it `.title()` renders **"Pdfer"**, which violates the naming convention (the display name is exactly the DB `agentDescription`). This was a REAL bug caught by the new test suite, not a hypothetical — the same class as STM32er/ACPXer/SSHer. Any new agent whose display name is not plain Title-Case needs the same override.
+
+**Also fixed while building it:** the `fit` image layout originally opened each raster with `fitz.open()` and read `[0].rect`, which silently produced A4-shaped pages for every picture; it now sizes the page from the image's real pixel dimensions via `_image_size` (Pillow, with an A4 fallback). And `_as_int` now rejects non-scalars — an arbitrary object fell through to `str(raw)`, whose repr hex address yielded a digit run, so junk became `0` (e.g. a 0 mm margin) instead of the default.
+
+**New catalog section.** `views.PROMPT_CATEGORY_ORDER` gained `('documents', 'Documents & PDF')` between `code_gen` and `images` — the first new section since categories were introduced. Migration `0190` appends ids **109-113** (never renumbering) with `sort_rank` 10/20/30/40/50; **rank 10 is the reserved Step-by-Step opener slot** Angela requires in every section. `agent/test_prompt_catalog_contiguous.py::expected_first` gained `'documents': 109` — a new section without an opener now FAILS that test rather than slipping through.
+
+**Pre-launch preview backlog cleared at the same time (Angela asked for it explicitly).** `test_every_wrapped_chat_agent_is_in_preview_or_observational_set` had been failing on **9 older agents** that were never categorized after they shipped. Each was audited IN THE DEV TREE line-by-line — not inferred from its `config.yaml` keys — by asking one question: *does it mutate anything beyond its own log + PID file (the shared boilerplate)?*
+
+| Agent | Evidence | Set |
+|---|---|---|
+| `editor` | `editor.py:378` opens `file_path` with mode `'w'` — rewrites the target | **preview** |
+| `nmapper` | `-oX`/`-oN` scan artifacts + fires packets at `target` | **preview** |
+| `discoverer` | writes `json_path` results + runs an active recon tool at `target` | **preview** |
+| `zavuerer` | POSTs `/v1/messages` — a real message, cannot be unsent, costs money | **preview** |
+| `instant_messaging_doctor` | non-mutating by default, but `retry_send=true` really POSTs WhatsApp `/messages` + Telegram `sendMessage` | **preview** |
+| `globber`, `grepper` | enumerate paths / read contents; only log + PID written | observational |
+| `mcp_doctor` | STATIC catalog triage — its only `Popen` is the boilerplate `start_agent`; it never connects (unlike the live `external_mcp_doctor` tool) | observational |
+| `video_analyzer` | reads a recorded video + asks Ollama for a verdict | observational |
+
+The five preview entries list only keys that **actually exist** in each template `config.yaml` — verified by rendering every preview against its real template and asserting no line contains the `<MISSING>` sentinel. Coverage is now **64 wrapped agents, 0 uncategorized, 0 in both sets**, and the full suite went 28 → 27 failures (the remaining 27 + 2 errors are unrelated pre-existing ones, proven by a `git stash` baseline).
+
+**Note for Angela (policy, not code):** `instant_messaging_doctor` can reach a real human when `retry_send=true`, yet it is **NOT** on the Ask-Execs tier-B allowlist. That is arguably a gap of the same class as the 2026-07-14 Deleter/Whatsapper one — but adding it is a policy decision, so it was left alone.
+
+**Coverage:** `agent/test_pdfer_agent.py` (74 tests). They drive the **REAL** renderers, not fakes — faking them would hide the one failure that actually matters (a backend missing from the carried Python), so every render test writes a genuine PDF to a temp dir and re-reads it with pypdf. Only the network is stubbed (`_ollama_polish` against an unreachable port, to prove the "never lose the document" fallback).
+
+---
+
 ## 2026-07-22 — FlowCreator is now chat-callable as `chat_agent_flowcreator` (prompt in → real `.flw` file out), and it no longer reports failures as successes
 
 **What changed.** FlowCreator used to be **canvas-only** — the node's Save button POSTed to `execute_flowcreator/` and the browser JS rendered `flow_result.json` onto the canvas. There was no way to say *"create me a flow that does X"* in chat and get a file back. It is now also a **wrapped chat-agent**: `chat_agent_flowcreator(prompt='<objective>', flow_filename='<name>.flw'[, output_dir=…])` writes a real, canvas-loadable **`.flw` file** to disk (default `<app>/Temp`).

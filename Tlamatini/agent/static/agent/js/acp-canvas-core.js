@@ -235,6 +235,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'gitter': 'gitter-agent',
     'discoverer': 'discoverer-agent',
     'nmapper': 'nmapper-agent',
+    'pdfer': 'pdfer-agent',
     'dockerer': 'dockerer-agent',
     'mcp-doctor': 'mcpdoctor-agent',
     'instant-messaging-doctor': 'instantmessagingdoctor-agent',
@@ -973,6 +974,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'discoverer') updateDiscovererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'nmapper') updateNmapperConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'zavuerer') updateZavuererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'remove');
@@ -1117,6 +1119,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'windower' && !sourceBeingDeleted) updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'discoverer' && !sourceBeingDeleted) updateDiscovererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'nmapper' && !sourceBeingDeleted) updateNmapperConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'pdfer' && !sourceBeingDeleted) updatePdferConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier' && !sourceBeingDeleted) updateKalierConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'zavuerer' && !sourceBeingDeleted) updateZavuererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er' && !sourceBeingDeleted) updateStm32erConnection(sourceId, targetId, 'remove');
@@ -1617,6 +1620,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'discoverer') updateDiscovererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'nmapper') updateNmapperConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'zavuerer') updateZavuererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'add');

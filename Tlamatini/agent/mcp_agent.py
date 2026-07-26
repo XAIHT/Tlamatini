@@ -277,6 +277,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # ``kalier`` agent_key so a mixed flow renders as one "List of Kalier
     # Operations" table.
     "chat_agent_kalier":         ("kalier",         "Kalier"),
+    # PDFer is state-changing (it WRITES a PDF). The generic wrapped-agent fallback
+    # would already capture it; this entry exists only so the table gets the native
+    # "Crimson Parchment" caption gradient defined in agent_page.css.
+    "chat_agent_pdfer":          ("pdfer",          "PDFer"),
     # Zavuerer is state-changing: it SENDS messages (SMS / WhatsApp / Telegram /
     # Email / Voice) through the Zavu unified-messaging REST API. The read-only
     # ``health`` probe shares the same ``zavuerer`` agent_key so a mixed flow renders
@@ -411,11 +415,20 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     "chat_agent_editor",        # Editor        (in-place edit of an existing file)
     "chat_agent_de_compresser", # De-Compresser (unpacks archives over existing paths)
     "unzip_file",               # Unzip         (direct @tool — same risk as above)
-    # ----- Tier B: REACHES REAL PEOPLE — you cannot unsend it ---------------
-    "chat_agent_send_email",    # Emailer       (SMTP, sends immediately)
-    "chat_agent_whatsapper",    # Whatsapper    (messages a real phone number)
-    "chat_agent_telegrammer",   # Telegrammer   (messages a real person/channel)
-    "chat_agent_zavuerer",      # Zavuerer      (SMS/WhatsApp/Telegram/voice — COSTS MONEY)
+    "chat_agent_pdfer",         # PDFer         (writes a PDF to ANY output_dir/filename)
+    # ----- Tier B: MESSAGING — DELIBERATELY *NOT* GATED (Angela, 2026-07-26) --
+    # Emailer / Whatsapper / Telegrammer / Zavuerer used to be gated here on the
+    # "you cannot unsend it" argument. Angela REVERSED that:
+    #     "Messages must be able to be sent without asking,
+    #      it depends only on AI decision."
+    # Sending is now the LLM's own judgement call — no Proceed/Deny prompt stands
+    # between Tlamatini and a message. The remaining safeguards are the LLM's
+    # judgement, the Exec Report (every send is still captured as a row), and the
+    # user's Cancel. Instant Messaging Doctor stays ungated for the same reason,
+    # including when `retry_send=true` makes it re-send.
+    # ⚠️ Zavuerer additionally COSTS MONEY per message (pay-as-you-go) — that is
+    #    accepted, not overlooked. Do NOT re-add these four "for safety": it is a
+    #    deliberate, owner-level decision, pinned by test_ask_execs_allowlist.py.
     # ----- Tier D: TOUCHES REMOTE SYSTEMS / THE NETWORK ---------------------
     "chat_agent_scper",         # SCPer         (uploads/downloads to remote hosts)
     "chat_agent_apirer",        # Apirer        (any REST call — incl. POST / DELETE)
@@ -793,9 +806,7 @@ class MultiTurnToolAgentExecutor:
           * command / script runners (Executer, Pythonxer, SSHer, Kalier, Dockerer,
             Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler);
           * A — things that DESTROY or OVERWRITE data, silently and irreversibly
-            (Deleter, Mover, File-Creator, Editor, De-Compresser, unzip_file);
-          * B — things that REACH REAL PEOPLE and cannot be unsent
-            (Emailer, Whatsapper, Telegrammer, Zavuerer);
+            (Deleter, Mover, File-Creator, Editor, De-Compresser, unzip_file, PDFer);
           * D — things that TOUCH REMOTE SYSTEMS / THE NETWORK
             (SCPer, Apirer, Nmapper, Discoverer, Crawler).
 

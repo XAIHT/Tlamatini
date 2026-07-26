@@ -77,7 +77,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Instant Messaging Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -357,6 +357,29 @@ NMAPPER SPECIAL NOTES:
     making progress, a run up to command_timeout (default 900s) is NOT stuck.
   - DO flag a genuine failure: nmap could not be downloaded from nmap.org, or the run
     exceeded command_timeout with no output.
+
+PDFER SPECIAL NOTES:
+  - PDFer is SHORT-LIVED and ACTIVE: it renders ONE document (or runs a read-only meta
+    action) then ALWAYS triggers `target_agents` — on success, on failure, AND on a
+    fail-safe refusal.
+  - Its `INI_SECTION_PDFER<<<` block is NORMAL routable output (carries `mode`,
+    `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`,
+    `images_used`, `engine`, `status`) — NEVER flag it as an error, even when
+    `status: error` or `page_count: 0`; a downstream Forker branches on `{status}`.
+  - A `status: refused` section is PDFer working AS DESIGNED (empty content, an unknown
+    mode, no images for `mode=images`, a missing input_file, or an unwritable
+    output_dir) — it REFUSES rather than write an empty or wrong PDF. NOT a flow error.
+  - A `status: validated` / `inspected` section (the `validate` and `info` meta actions)
+    writes NO file on purpose — do NOT flag "no output produced".
+  - A line saying the Ollama polish failed and the RAW content was kept is the documented
+    graceful degradation (`ollama_polish` is optional and never loses the document) — do
+    NOT flag it; the PDF is still produced.
+  - Rendering is fast (seconds). A run is only genuinely slow when `ollama_polish: true`
+    (an extra model round-trip, up to `ollama_timeout`, default 180s) or when embedding
+    many large images — while it keeps logging, that is NOT stuck.
+  - DO flag a genuine failure: a PDF backend reported as MISSING in a `validate` run
+    (`status: engine_unavailable` means the carried Python lost markdown / xhtml2pdf /
+    pymupdf / reportlab / pillow / pypdf), or the run exceeded command_timeout.
 
 STM32ER SPECIAL NOTES:
   - STM32er is SHORT-LIVED and ACTIVE: it spawns the STM32 Template Project MCP

@@ -96,13 +96,13 @@ The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask
 
 `_requires_exec_permission` consults an **ALLOWLIST**, `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS` — it does **NOT** prompt for every state-changing tool. (This doc used to claim it did; the claim was **wrong**, and the gap was real: **Deleter could wipe a glob of files, and Whatsapper could message a real human, with no prompt at all.** Angela found it live on 2026-07-14.)
 
-**Angela's policy — tiers A + B + D are gated, tier C deliberately is NOT:**
+**Angela's policy — tiers A + D are gated; tiers B and C deliberately are NOT.** *(Tier B was gated on 2026-07-14 and **REVERSED on 2026-07-26**: "Messages must be able to be sent without asking, it depends only on AI desisicion." Sending is the LLM's own judgement call — no prompt stands between Tlamatini and a message. What still protects a send: the LLM's judgement, the Exec Report row it always produces, and the user's Cancel. Zavuerer also costs money per send; that is accepted, not overlooked. Do NOT re-gate messaging "for safety" — `agent/test_ask_execs_allowlist.py::test_messaging_agents_are_NOT_gated` fails if you do.)*
 
 | | Gated? | Tools |
 |---|---|---|
 | command / script runners | **ASK** | Executer, Pythonxer, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
-| **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file` |
-| **B** — reaches real people | **ASK** | Emailer, Whatsapper, Telegrammer, Zavuerer |
+| **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file`, PDFer |
+| **B** — messaging / reaches real people | **no-ask (ON PURPOSE, 2026-07-26)** | Emailer, Whatsapper, Telegrammer, Zavuerer, Instant Messaging Doctor |
 | **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler |
 | **C** — desktop UI + hardware | **no-ask (ON PURPOSE)** | Keyboarder, Mouser, Windower, Playwrighter, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, Unrealer |
 | read-only / observational / management-polling / crypto / `invoke_skill` / ACPX | no-ask | Globber, Grepper, the interpreters, the media agents, `chat_agent_run_*`, … |
@@ -193,4 +193,4 @@ Registration (3 places):
 
 The generic parser (`_parse_section_content` + `_section_regex`) in `parametrizer.py` handles all agents with ~90 lines. No per-agent parser code needed.
 
-Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, discoverer, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer.
+Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, discoverer, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer, pdfer.

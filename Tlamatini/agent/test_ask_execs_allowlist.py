@@ -20,9 +20,21 @@ Her decision, verbatim:
      and they are operations of visible proceding: so don't make C set ask"
 
     A = destroys/overwrites data      (Deleter, Mover, File-Creator, Editor,
-                                       De-Compresser, unzip_file)
+                                       De-Compresser, unzip_file, PDFer)
     B = reaches real people           (Emailer, Whatsapper, Telegrammer, Zavuerer)
     D = touches remote systems / net  (SCPer, Apirer, Nmapper, Discoverer, Crawler)
+
+⚠️ SUPERSEDED — TIER B WAS REVERSED (Angela, 2026-07-26). Her words:
+
+    "Messages must be able to be sent without asking,
+     it depends only on AI desisicion."
+
+Messaging is now the LLM's OWN judgement call: Emailer / Whatsapper / Telegrammer /
+Zavuerer (and Instant Messaging Doctor, incl. retry_send) do NOT prompt. The gate is
+therefore RUNNERS + A + D only. ``MESSAGING_UNGATED`` below is an ANTI-list — the test
+asserts those names are ABSENT from the allowlist, so re-adding one "for safety" fails
+loudly. Remaining safeguards on a send: the LLM's judgement, the Exec Report row, and
+the user's Cancel. (Zavuerer also costs money per send — accepted, not overlooked.)
     C = desktop UI + hardware         (Keyboarder, Mouser, Windower, Playwrighter,
                                        STM32er, ESP32er, Arduiner, ESPHomer,
                                        Blenderer, Unrealer)  ← DELIBERATELY UNGATED
@@ -47,14 +59,27 @@ TIER_A = [
     "chat_agent_editor",
     "chat_agent_de_compresser",
     "unzip_file",
+    # PDFer writes a PDF to an arbitrary output_dir + filename, so it can clobber an
+    # existing file exactly like File-Creator does. It is NOT a "media agent" (those
+    # only ever write collision-proof names into ONE fixed known-folder) — Angela's
+    # tier-A rule applies. (2026-07-26)
+    "chat_agent_pdfer",
 ]
 
-# ── Tier B — you cannot unsend a message to a human ──────────────────────────
-TIER_B = [
-    "chat_agent_send_email",
-    "chat_agent_whatsapper",
-    "chat_agent_telegrammer",
-    "chat_agent_zavuerer",
+# ── Tier B — MESSAGING: deliberately NOT gated (Angela reversed it 2026-07-26) ──
+# Her decision, verbatim: "Messages must be able to be sent without asking, it
+# depends only on AI desisicion." Sending is the LLM's own judgement call.
+# This list is now an ANTI-list: the test below asserts these are NOT gated, so a
+# well-meaning future edit that re-adds them "for safety" FAILS instead of silently
+# reintroducing a prompt Angela removed on purpose.
+MESSAGING_UNGATED = [
+    "chat_agent_send_email",     # Emailer
+    "chat_agent_whatsapper",     # Whatsapper
+    "chat_agent_telegrammer",    # Telegrammer
+    "chat_agent_zavuerer",       # Zavuerer — note: also COSTS MONEY per send
+    # Non-mutating by default, but retry_send=true really re-sends. Ungated for
+    # the same reason: messaging is the AI's call.
+    "chat_agent_instant_messaging_doctor",
 ]
 
 # ── Tier D — remote systems / the network ───────────────────────────────────
@@ -124,11 +149,19 @@ class AskExecsAllowlistTests(SimpleTestCase):
             f"Not gated: {missing}",
         )
 
-    def test_tier_B_human_contacting_agents_are_gated(self):
-        missing = [t for t in TIER_B if not self._gated(t)]
+    def test_messaging_agents_are_NOT_gated(self):
+        """Angela, 2026-07-26: 'Messages must be able to be sent without asking,
+        it depends only on AI desisicion.' She REVERSED the original tier-B gate.
+
+        This is the inverse guard: if someone re-adds a messaging agent to the
+        allowlist 'for safety', this fails loudly rather than quietly restoring a
+        prompt she removed on purpose. The remaining safeguards are the LLM's own
+        judgement, the Exec Report row, and the user's Cancel."""
+        wrongly_gated = [t for t in MESSAGING_UNGATED if self._gated(t)]
         self.assertEqual(
-            missing, [],
-            f"These reach REAL PEOPLE and cannot be unsent. Not gated: {missing}",
+            wrongly_gated, [],
+            "Angela decided messaging is the AI's call and must NOT prompt. "
+            f"These were re-gated: {wrongly_gated}",
         )
 
     def test_tier_D_remote_and_network_agents_are_gated(self):
@@ -167,7 +200,7 @@ class AskExecsAllowlistTests(SimpleTestCase):
 
     # ── the whole set, so a silent addition/removal is caught ───────────────
     def test_the_allowlist_is_exactly_the_agreed_set(self):
-        expected = set(RUNNERS) | set(TIER_A) | set(TIER_B) | set(TIER_D)
+        expected = set(RUNNERS) | set(TIER_A) | set(TIER_D)
         actual = set(_ASK_EXECS_REQUIRED_TOOLS)
         self.assertEqual(
             actual, expected,

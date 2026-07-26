@@ -1738,6 +1738,63 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         long_running=True,
     ),
     ChatWrappedAgentSpec(
+        key="pdfer",
+        template_dir="pdfer",
+        tool_name="chat_agent_pdfer",
+        tool_description="Chat-Agent-PDFer",
+        display_name="PDFer",
+        purpose=(
+            "AUTHOR a PDF document. PDFer is Tlamatini's DOCUMENT COMPOSER — the WRITE side "
+            "of the document family (File-Extractor and File-Interpreter READ documents; "
+            "PDFer CREATES them). Use it whenever the user asks to 'make a PDF', 'export "
+            "this as a PDF', 'turn your answer into a report', 'save this as a document', "
+            "'build a PDF from these images', or 'merge these PDFs'. The single most common "
+            "call is turning YOUR OWN ANSWER into a document: pass the answer text verbatim "
+            "as input_text and leave mode='auto' — PDFer sniffs Markdown vs HTML itself (your "
+            "answers emit HTML tables, and those render as real tables in the PDF).\n\n"
+            "Set mode to one shape plus its params:\n"
+            "  - auto     -> input_text='...'           (DEFAULT; sniffs markdown / html / images / mixed)\n"
+            "  - markdown -> input_text='# Title...'    (Markdown: tables, fenced code, optional toc)\n"
+            "  - html     -> input_text='<h1>..</h1>'   (HTML straight to PDF)\n"
+            "  - text     -> input_text='...'           (plain text, escaped, preserved verbatim)\n"
+            "  - images   -> images='a.png, b.jpg'      (one image per page / fit / grid)\n"
+            "  - mixed    -> input_text='...', images='a.png', title='...'  (cover + prose + figures)\n"
+            "  - merge    -> input_pdfs='one.pdf, two.pdf'  (append into a single PDF)\n"
+            "  - info     -> input_file='report.pdf'    (READ-ONLY: pages / size / metadata)\n"
+            "  - validate -> report which PDF backends are importable (writes nothing)\n"
+            "Common knobs: title, subtitle, author, page_size (A4|Letter|Legal), orientation "
+            "(portrait|landscape), margins_mm, toc, page_numbers, css, image_layout "
+            "(one-per-page|fit|grid), grid_columns, image_caption, max_image_px, output_dir, "
+            "filename, overwrite. Set ollama_polish=true ONLY when the user asks you to tidy / "
+            "restructure the content first — it costs an extra model round-trip and the "
+            "default (false) renders the text verbatim.\n\n"
+            "It needs NO installation: markdown + xhtml2pdf + PyMuPDF + reportlab + Pillow + "
+            "pypdf all ship with Tlamatini. PDFs are saved to Documents/TlamatiniPDF unless "
+            "output_dir says otherwise, with a collision-proof timestamped name. RESULT — the "
+            "wrapped tool's JSON and the INI_SECTION_PDFER block carry mode, source_type, "
+            "output_path (the file you should quote back to the user), output_dir, filename, "
+            "page_count, bytes, images_used, engine and status "
+            "(created | refused | inspected | validated | engine_unavailable | error). "
+            "A fail-safe preflight REFUSES (status='refused') rather than write an empty or "
+            "wrong document — report the blocker instead of pretending a PDF was made."
+        ),
+        example_request=(
+            "Run PDFer with mode='markdown', input_text='# Weekly Report\\n\\nAll systems "
+            "nominal.', title='Weekly Report', page_size='A4'"
+        ),
+        aliases=(
+            "pdfer", "pdf", "make a pdf", "create a pdf", "export to pdf", "save as pdf",
+            "pdf report", "generate a document", "document composer",
+        ),
+        security_hints=(
+            "pdfer", "pdf", "make a pdf", "create a pdf", "export pdf", "export to pdf",
+            "save as pdf", "save to pdf", "convert to pdf", "pdf report", "build a report",
+            "generate a report", "write a document", "document", "merge pdf", "merge pdfs",
+            "images to pdf", "markdown to pdf", "printable",
+        ),
+        poll_window_seconds=20,
+    ),
+    ChatWrappedAgentSpec(
         key="zavuerer",
         template_dir="zavuerer",
         tool_name="chat_agent_zavuerer",

@@ -125,6 +125,10 @@ def display_name_from_agent_type(agent_type: str) -> str:
         "esp32er": "ESP32er",
         "esphomer": "ESPHomer",
         "arduiner": "Arduiner",
+        # Without this override .title() renders "Pdfer", which violates the naming
+        # convention: the display name is EXACTLY what the DB agentDescription says,
+        # and that is "PDFer" (P-D-F-er), never "Pdfer" / "PDFEr" / "PDFER".
+        "pdfer": "PDFer",
     }
     if normalized in overrides:
         return overrides[normalized]

@@ -137,6 +137,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "telegrammer": ("chat_id", "status", "message_id", "response_body"),
     "whatsapper": ("recipient", "status", "message_id", "response_body"),
     "zavuerer": ("action", "channel", "to", "status", "message_id", "success", "base_url", "response_body"),
+    "pdfer": ("mode", "source_type", "output_path", "output_dir", "filename", "page_count", "bytes", "images_used", "engine", "status", "response_body"),
 }
 
 
