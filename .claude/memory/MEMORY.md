@@ -88,7 +88,7 @@
 - [Create-Flow button name-fix](project_create_flow_button_name_resolution_fix.md) — display(space) vs DB(hyphen) mismatch; normalized resolver + drop-don't-block.
 - [Flow Compiler dialog wins](project_flow_compiler_dialog_wins.md) — dialog edits survive Start.
 - [Living Canvas dropped](project_living_canvas_dropped.md) — force-reverted; don't re-attempt without live proof.
-- [v1.38.1 release + doc-sync](project_release_v1381_sync.md) — v1.38.1 latest; /agent/list_prompts/ makes idPrompt contiguity fallback-only; PARAMETRIZER fields derived from agent_contracts.
+- [v1.38.1 release + doc-sync](project_release_v1381_sync.md) — shipped in v1.38.1; /agent/list_prompts/ makes idPrompt contiguity fallback-only; PARAMETRIZER fields derived from agent_contracts.
 - [Desktop-UI lifecycle](project_desktop_ui_lifecycle.md) — open→focus→interact→close→save-dialog→verify (Keyboarder/Mouser/Shoter wrapped: [kbd](project_keyboarder_wrapped_2026_05_07.md)/[mouse](project_mouser_wrapped_2026_05_07.md); [8 misc fixes](project_eight_fixes_2026_05_07.md)).
 - [ACPXer](project_acpxer_added.md) — canvas counterpart of the 12 ACPX tools.
 - [ACPX oneshot-prompt](project_acpx_oneshot_prompt.md) — claude/gemini/cursor/qwen/codex use oneshot-prompt transport.
