@@ -774,6 +774,10 @@ Skills are intentionally lightweight: they have no `Tool` row, no `Mcp` row, no 
 
 Skills are read-once at registration; the body is what the LLM follows. If the underlying tools the skill calls change shape (renamed `acp_*` tool, new required arg on `chat_agent_*`, removed MCP), update the skill body. The `tlamatini_csrf_exempt_audit` / `tlamatini_planner_trace_replay` / `tlamatini_flw_doctor` skills are particularly sensitive to this — they are runbooks against the Tlamatini codebase itself and will silently misfire if a referenced file path moves.
 
+## Note: the RAG context loader now screens binary content
+
+Independent of everything above, files entering the **RAG context chain** are screened by `agent/rag/binary_guard.py` and dropped when their **bytes** are binary — separate from, and complementary to, the name-based **Context ▸ Set file type omissions** list. If you add a new **MCP-backed context provider** whose payload is derived from files on disk, remember that the loader has already excluded binary files and logged each omission with the `--- [BINARY-GUARD]` prefix in `tlamatini.log`; do not re-implement a private binary check — import `agent.rag.binary_guard` (`classify_file` / `looks_binary`, both fail-open and stdlib-only) so every surface uses the same verdict. Full contract: `docs/claude/architecture.md` → *Binary-content guard for context loading*.
+
 ## Final Rule
 
 Answer this question explicitly before coding:

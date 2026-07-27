@@ -390,6 +390,34 @@ Chains (`agent/rag/chains/`):
 
 ---
 
+## 7.5 Binary-Content Guard on the Context Loader
+
+**Module:** `agent/rag/binary_guard.py` (stdlib-only, never imports `agent.*`, so source == frozen behaviour).
+
+Screens every file entering the RAG chain by **content** and drops binary files before they are chunked and embedded. Complementary to — not a replacement for — the name-based **Context ▸ Set file type omissions** list.
+
+**Cascade** (short-circuiting, cheapest first, at most **one** `read()` of one 8 KiB block per file):
+
+| # | Stage | Verdict |
+|---|---|---|
+| 1 | extension denylist (192 ext., **zero I/O**) | BINARY |
+| 2 | sample (1 open, 1 read) | — |
+| 3 | empty | TEXT |
+| 4 | **BOM** (UTF-8/16/32) | **TEXT** |
+| 5 | 45 magic signatures (PE/ELF/ZIP/PNG/PDF/SQLite/GGUF/WASM/OLE2…) | BINARY |
+| 6 | NUL byte | BINARY |
+| 7 | control-byte ratio (`bytes.translate`, one pass) | BINARY |
+| 8 | UTF-8 undecodable **and** control-dirty | BINARY |
+| — | default | TEXT |
+
+**Wiring:** `CustomTextLoader.__init__` records the verdict and raises `ValueError`; `DirectoryLoader(silent_errors=True)` swallows it — the same mechanism the name-based omissions already used. All **three** `DirectoryLoader` call sites in `factory.py` pass `binary_guard_settings` (context dir, single context file, `application/`).
+
+**Logging:** `--- [BINARY-GUARD]` prefix in `tlamatini.log`; each drop names the path, stage and reason. Works in frozen and source mode because `manage.py` tees stdout before Django boots. A lock-protected `BinaryOmissionRecorder` collects drops across DirectoryLoader's 12 threads and prints one coherent block after `load()`.
+
+**Config:** `binary_context_detection` (default `true`), `binary_detection_sample_bytes` (8192), `binary_detection_control_ratio` (0.30), `binary_detection_log_each_file` (true), `binary_detection_extra_binary_extensions` ([]), `binary_detection_force_text_extensions` ([], always wins).
+
+**Invariants — do NOT weaken:** (1) **FAIL-OPEN** — every error path resolves to TEXT, `classify_file()` never raises; a wrongly-dropped file silently deletes the user's context. (2) **BOM before NUL** — UTF-16 text is legitimately full of `0x00`. (3) High bytes 0x80-0xFF count as text, so accented/legacy-encoded sources survive. (4) The two extension tables must stay disjoint (`.ts` was once in both — it would have dropped every TypeScript file). Coverage: `agent/test_binary_guard.py` (45 tests).
+
 ## 8. Multi-Turn Orchestration
 
 When the **Multi-Turn** toolbar checkbox is on, Tlamatini shifts from a text box to a **stateful runtime operator**:

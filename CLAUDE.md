@@ -37,7 +37,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 **Tlamatini** is a locally-deployed AI developer assistant built with Django, featuring:
 
-- An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode)
+- An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode) — with a **binary-content guard** (`agent/rag/binary_guard.py`) that screens every candidate file by its bytes and drops binary content from the embedding chain, logging each omission as `--- [BINARY-GUARD]` in `tlamatini.log`
 - A request-scoped **Multi-Turn orchestration layer** with dynamic tool binding and global execution planning — when Multi-Turn is on it binds the **FULL enabled tool surface** (every tool/agent/skill, ACPX still filtered by its checkbox), never a narrowed planner subset, so the operator loop is never starved of a needed tool; a **Step-by-Step** toolbar mode paces hands-on setup one concrete action at a time (it waits for the user's READY/output before the next)
 - A **Visual Agentic Workflow Designer** (ACP) with 85 drag-and-drop agent types
 - A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
@@ -330,6 +330,17 @@ Safety contract: **the reaper must never raise into the caller** — every exter
 When adding a new tool that spawns a console child: either (a) add the tool name to `_PROCESS_SPAWNING_TOOL_NAMES` in `mcp_agent.py` so Tier 1 runs after it, or (b) just rely on Tier 2 catching it (the pool-cmdline scan is wide enough that most cases are covered). Tier 3 is the backstop for either way.
 
 ---
+
+## Binary-Content Guard on Context Loading (2026-07-26)
+
+Every file entering the RAG context/embedding chain is screened for **binary content** by `agent/rag/binary_guard.py` before it is read as text. Binary files are dropped through the *same* mechanism as the user's **Context ▸ Set file type omissions** list (a `ValueError` swallowed by `DirectoryLoader(silent_errors=True)`), and **every drop is named in `tlamatini.log`** with the grep-able `--- [BINARY-GUARD]` prefix — in frozen and source mode alike, since `manage.py` tees stdout into the log before Django boots.
+
+The two filters are **complementary**: the omissions list decides on the **name** (what the user chooses to ignore), the guard decides on the **bytes** (what is binary no matter what it is called — the `.pyc`, the vendored `.so`, the `.faiss` index, the screenshot dropped into a project folder).
+
+Detection is a short-circuiting cascade, cheapest test first, with **at most ONE `read()` of ONE 8 KiB block** per file: extension denylist (zero I/O) → sample → empty → **BOM** → magic signatures → NUL byte → control-byte ratio → UTF-8 decodability. Wired at **all three** `DirectoryLoader` call sites in `agent/rag/factory.py`.
+
+**Two contracts that must NOT be weakened:** (a) **FAIL-OPEN** — any error, any uncertainty, any malformed config value resolves to "load it as text", because a guard that wrongly drops a file silently deletes the user's real context; (b) **the BOM stage must stay ahead of the NUL stage**, or every UTF-16 document (legitimately full of `0x00`) silently vanishes. Toggle with `binary_context_detection` in `config.json`. Coverage: `agent/test_binary_guard.py` (45 tests). Full contract: `docs/claude/architecture.md` and `docs/claude/recent-fixes.md` (2026-07-26).
+
 
 ## Temp & Templates Directory Policy (2026-06-02)
 

@@ -23,9 +23,105 @@ Key settings:
 - `unified_agent_max_iterations`: Max tool-call turns (default 4096)
 - `unified_agent_llm_step_max_tactics` / `unified_agent_llm_step_timeout_seconds`: Self-healing model-step invoker budgets (default **4096** distinct recovery tactics / **80 s** per-attempt watchdog). Govern `agent/self_healing.py::SelfHealingInvoker`, which wraps every model `.invoke()` in the Multi-Turn executor so a transient model failure never hangs, never discards work already done, and never produces a silent/untruthful answer. See `docs/claude/multi-turn.md` → *Self-healing model steps*.
 - `chat_agent_limit_runs`: Wrapped-run listing limit
+- `binary_context_detection`: **Master switch for the binary-content guard on the context loader** (default `true`). See *Binary-content guard* below.
+- `binary_detection_sample_bytes` / `binary_detection_control_ratio` / `binary_detection_log_each_file` / `binary_detection_extra_binary_extensions` / `binary_detection_force_text_extensions`: Binary-guard tuning knobs (8192 / 0.30 / true / [] / []).
 - `stm32_mcp_server_script` / `stm32_mcp_repo_url` / `stm32_mcp_install_dir`: STM32er template-MCP globals (seeded by `tools._seed_global_agent_defaults`). `stm32_mcp_server_script` now defaults to `""` — empty means the STM32er agent **self-provisions** the STM32 Template Project MCP on first use (zero-config auto-bootstrap: shallow `git clone`, GitHub-zip fallback when git is absent, into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`), so the user installs only STM32CubeIDE + Tlamatini. **Since Phase 1, STM32er is DUAL-backend (Blue Pill → F7/G/L/H7/U5/WB): `stm32_backend`=`auto` also routes to a PlatformIO `ststm32` backend that SHARES ESP32er's `pio_executable` / `pio_core_dir` globals (one PlatformIO install for both firmware agents).** See `docs/claude/agents.md` (STM32er entry).
 
 Frozen builds resolve config from the install directory next to the executable. Source mode resolves from `Tlamatini/agent/config.json`. `CONFIG_PATH` env var overrides both.
+
+---
+
+## Binary-content guard for context loading (`agent/rag/binary_guard.py`)
+
+Every file that enters the RAG chain is now screened for **binary content** before it is read as text, split, embedded and indexed. Binary files are dropped exactly the way a user-configured omission is dropped — and **every drop is named in `tlamatini.log`**.
+
+### Why it exists
+
+Until this landed, the only way to keep a file out of the embedding chain was to name it (or its extension) in **Context ▸ Set file type omissions**. That list is manual and name-based, so it structurally cannot know about the `.bin` blob, the stray `.pyc`, the vendored `.so`, the `.faiss` index, or the screenshot someone dropped into a project folder. Those files were read as "text", decoded into mojibake, chunked and embedded — poisoning FAISS/BM25 with megabytes of noise, burning embedding VRAM and wall-clock, and diluting every real retrieval hit.
+
+The guard is the **content-based** counterpart of that name-based list. Both survive; they are complementary:
+
+| | Decides on | Configured in | Catches |
+|---|---|---|---|
+| **File type omissions** (pre-existing) | the NAME (`*.doc`, `package-lock.json`) | Context ▸ Set file type omissions | what the user chooses to ignore |
+| **Binary guard** (this) | the BYTES | `config.json` (on by default) | what is binary regardless of its name |
+
+### The cascade — cheapest test first, at most ONE read
+
+A directory load can sweep tens of thousands of files across 12 worker threads, so per-file cost is the whole game. Every stage that can answer without I/O runs before any stage that touches the disk, and **at most one `read()` of one block (8 KiB) ever happens** — sampling a 4 GB video costs exactly what sampling a README costs.
+
+| # | Stage | I/O | Verdict |
+|---|---|---|---|
+| 1 | **EXTENSION** — O(1) frozenset lookup against 192 known-binary extensions | **none** | BINARY (short-circuit; a `.exe` is never opened) |
+| 2 | **SAMPLE** — one `open()`, one `read(sample_bytes)` | 1 read | — (every later stage reuses this buffer) |
+| 3 | **EMPTY** — zero bytes | — | TEXT (nothing to embed, no evidence of binary) |
+| 4 | **BOM** — UTF-8 / UTF-16 / UTF-32 byte-order mark | — | **TEXT** |
+| 5 | **SIGNATURE** — 45 magic numbers (PE, ELF, Mach-O, ZIP, PNG, JPEG, PDF, SQLite, gzip, GGUF, WASM, OLE2, …) | — | BINARY (beats a lying extension) |
+| 6 | **NUL** — a `0x00` in the sample | — | BINARY (the classic git / `file(1)` heuristic) |
+| 7 | **CONTROL RATIO** — share of non-text control bytes via `bytes.translate` (single C-speed pass) | — | BINARY above `binary_detection_control_ratio` |
+| 8 | **UTF-8 DECODE** — undecodable **and** control-dirty | — | BINARY |
+| — | default | — | TEXT |
+
+**⚠️ STAGE 4 MUST PRECEDE STAGE 6 — do NOT reorder.** UTF-16/UTF-32 text is legitimately full of `0x00` bytes. If the NUL test ran first, every UTF-16 document on the user's disk would silently vanish from the context. `test_utf16_bom_beats_the_nul_test` pins this, and `test_bom_table_is_ordered_longest_prefix_first` pins that the UTF-32-LE BOM is tested before its UTF-16-LE prefix `\xff\xfe`.
+
+Two deliberate non-decisions keep false positives near zero: **all high bytes (0x80-0xFF) count as text** (so accented UTF-8 and legacy cp1252/latin-1 files pass — Angela's Spanish sources must never be stripped), and a sample below `MIN_RATIO_SAMPLE` (32 B) skips the ratio stage entirely (one stray byte cannot condemn a tiny file).
+
+### FAIL-OPEN CONTRACT (do NOT weaken)
+
+A detector that crashes — or that guesses "binary" when unsure — is **worse than no detector**, because it silently deletes the user's real context. Therefore:
+
+- Every failure path resolves to **TEXT** (load it): unreadable file, permission error, a race with a deleted file, a directory passed as a path, a `None` argument. `classify_file()` **never raises**.
+- The module is **stdlib-only** and imports nothing from `agent.*`, so it behaves identically in source and frozen mode.
+- `binary_detection_force_text_extensions` always **beats** the built-in denylist, so the user can rescue any file the tables get wrong.
+- A malformed value in `config.json` falls back to the default rather than disabling the loader.
+
+### Logging — visible in `tlamatini.log`, frozen AND source
+
+`manage.py` tees `stdout`/`stderr` into `tlamatini.log` before Django initializes, so the guard simply `print()`s and the lines land in the log in **both** modes. Every line carries the grep-able prefix `--- [BINARY-GUARD]`, sitting right beside the existing `--- Excluded filenames:` / `--- Excluded extensions:` banner:
+
+```
+--- [BINARY-GUARD] ENABLED - sampling 8192 bytes/file, control-byte limit 0.3
+--- Loading all files with exclusions:
+--- Excluded filenames: ['package-lock.json', 'yarn.lock', ...]
+--- [BINARY-GUARD] ══════════════════════════════════════════════
+--- [BINARY-GUARD] 3 binary file(s) OMITTED from the context / embedding chain
+--- [BINARY-GUARD] Detected by: extension=2, signature=1
+--- [BINARY-GUARD]   ✗ OMITTED C:\proj\assets\logo.png  [extension: known binary extension .png]
+--- [BINARY-GUARD]   ✗ OMITTED C:\proj\build\core.pyc   [extension: known binary extension .pyc]
+--- [BINARY-GUARD]   ✗ OMITTED C:\proj\notes.md         [signature: PNG image]
+--- [BINARY-GUARD] ══════════════════════════════════════════════
+```
+
+A clean load prints `--- [BINARY-GUARD] No binary content detected (…) - nothing omitted`, so the log always proves the guard ran. The listing is capped at 200 entries but **the total is always truthful** (`… and N more`).
+
+Because `DirectoryLoader` fans out over 12 threads, drops are accumulated in a lock-protected `BinaryOmissionRecorder` and printed as one coherent block after `loader.load()` returns — never interleaved mid-line.
+
+### Wiring
+
+`agent/rag/factory.py` resolves the settings once per load (`binary_guard.resolve_settings(config)`), passes them into `loader_kwargs` at **all three** `DirectoryLoader` call sites, and the hook lives in `CustomTextLoader.__init__`: on a binary verdict it records the drop and `raise`s `ValueError`, which `DirectoryLoader(silent_errors=True)` swallows — **the exact mechanism the name-based omissions already used**, so a binary drop is indistinguishable downstream from a user omission.
+
+| Entry point | Path | Guarded |
+|---|---|---|
+| `setup_llm_with_context` | a chosen directory (Context ▸ Set directory as context) | ✅ |
+| `setup_llm_with_context` | a single chosen file | ✅ |
+| `setup_llm` | the `application/` directory | ✅ |
+
+**Miss one call site and that context path silently loads binaries again** — `test_all_three_directory_loaders_receive_the_settings` asserts the count is exactly 3.
+
+### Configuration
+
+```jsonc
+"binary_context_detection": true,            // master switch
+"binary_detection_sample_bytes": 8192,       // head bytes sampled per file
+"binary_detection_control_ratio": 0.3,       // non-text byte share that condemns a file
+"binary_detection_log_each_file": true,      // false = count-only summary
+"binary_detection_extra_binary_extensions": [],  // e.g. [".myblob"]
+"binary_detection_force_text_extensions": []     // e.g. [".dat"] - always wins
+```
+
+Setting `binary_context_detection: false` restores the exact pre-guard behaviour (the log then says `DISABLED`).
+
+Coverage: `agent/test_binary_guard.py` (45 tests — the cascade, every signature, fail-open, the recorder under 12 threads, the one-read efficiency contract, the factory wiring, table sanity, and a documentation check).
 
 ---
 

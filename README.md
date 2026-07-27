@@ -258,6 +258,25 @@ Everything Tlamatini can do, grouped:
 
 ---
 
+## 🧹 Your context stays clean — automatic binary detection
+
+When you point Tlamatini at a folder (**Context ▸ Set directory as context**), real projects are full of files that are not text: compiled binaries, images, archives, model weights, databases, build artefacts. Feeding those into an embedding index is pure damage — it wastes VRAM and time, and it buries your real code under noise.
+
+Tlamatini screens **every** file by its actual bytes before loading it, and silently skips the binary ones. It is on by default and needs no setup.
+
+- **Fast by design** — at most one 8 KiB read per file, and known binary extensions are never opened at all. Screening a 4 GB video costs the same as screening a README.
+- **Content-based, not name-based** — a PNG renamed `notes.md` is still caught. This works *alongside* **Context ▸ Set file type omissions**, which stays exactly as it was for the files *you* choose to ignore.
+- **Never silent** — every skipped file is listed in `tlamatini.log` with the reason it was skipped, so you always know why something is not in your context:
+
+```
+--- [BINARY-GUARD] 3 binary file(s) OMITTED from the context / embedding chain
+--- [BINARY-GUARD]   ✗ OMITTED C:\proj\assets\logo.png  [extension: known binary extension .png]
+```
+
+- **Safe by default** — if anything is uncertain or unreadable, the file is loaded as text rather than dropped. Your context is never removed on a guess. Accented and legacy-encoded text files (Spanish, French, cp1252 …) are always kept.
+
+Turn it off with `"binary_context_detection": false` in `config.json`; tune it with `binary_detection_control_ratio`, or rescue a specific extension with `binary_detection_force_text_extensions`.
+
 ## See it work
 
 - ▶️ **[One-minute teaser](https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s)** · 🎬 more demos on **[xaiht.org](https://xaiht.org)**.

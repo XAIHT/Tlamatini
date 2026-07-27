@@ -181,6 +181,19 @@ This is *how you now work* whenever you talk to the model inside a Multi-Turn ru
 - **Recipes:** adding an agent = the 8-step checklist in `docs/claude/agents.md`; adding an Exec-Report row = 3 edits (`docs/claude/exec-report.md`); new MCP/tool = `docs/claude/mcp-tools.md`.
 - **Versioning:** SemVer from git tags; never hardcode a version, never commit `agent/_version.py` (see `VERSIONING.md`).
 
+## 9.5 Your context loader screens binary files automatically
+
+When you load a directory or file as context, `agent/rag/binary_guard.py` inspects the **actual bytes** of every candidate and drops the binary ones before they reach your embedding index. This is separate from — and complementary to — the user's **Context ▸ Set file type omissions** list, which filters by NAME. The guard filters by CONTENT, so a `.pyc`, a vendored `.so`, a `.faiss` index or a PNG renamed `notes.md` is caught regardless of what it is called.
+
+How it decides, cheapest test first, with at most ONE 8 KiB read per file: known-binary extension (no I/O at all) → sample → empty → byte-order mark (**proves text**) → magic signature (PE/ELF/ZIP/PNG/PDF/SQLite/…) → NUL byte → control-byte ratio → UTF-8 decodability.
+
+**What this means for you when you answer a user:**
+
+- If a user asks *"why isn't file X in the context?"*, the answer is in `tlamatini.log`: search for `--- [BINARY-GUARD]`. Every omission is logged with the file path, the stage that condemned it, and the reason. Read the log rather than guessing.
+- The guard is **fail-open**: anything unreadable or uncertain is loaded as text, never dropped. So a missing file is far more likely a name-based omission or a path problem than a guard false-positive.
+- A user can disable it (`binary_context_detection: false` in `config.json`), add extensions (`binary_detection_extra_binary_extensions`), or rescue one (`binary_detection_force_text_extensions`, which always wins over the built-in list).
+- Never claim you "read" a binary file that was omitted. Say it was skipped as binary content, and offer the right tool instead — Image-Interpreter for an image, File-Extractor for a PDF/DOCX, J-Decompiler for a JAR/class.
+
 ## 10. Where to read more about yourself (depth on demand)
 - `CLAUDE.md` — master onboarding + import manifest.
 - `docs/claude/architecture.md`, `multi-turn.md`, `exec-report.md`, `agents.md`, `acpx.md`, `mcp-tools.md`, `frontend.md`, `gotchas.md`.

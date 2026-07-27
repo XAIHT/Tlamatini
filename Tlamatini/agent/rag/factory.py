@@ -19,6 +19,7 @@ from ..llm_timing import llm_timing_callbacks
 from agent.rag_enhancements import enrich_documents_with_metadata, get_project_summary
 from .config import load_config_and_prompt, apply_conditional_rule_blocks
 from .loaders import report_oversized_docs
+from . import binary_guard
 from .splitters import get_text_splitter
 from .prompts import get_contextualize_q_prompt
 from .chains.basic import BasicPromptOnlyChain
@@ -633,8 +634,53 @@ def build_retrieval_chain(documents, config, prompt_template_string):
         print(f"Error: {e}")
         return None
 
+def _announce_binary_guard_settings(settings):
+    """Log the binary-guard configuration at the head of a context load.
+
+    Mirrors the existing "--- Excluded filenames/extensions" banner so the log
+    reads as one coherent story, and lands in tlamatini.log in BOTH frozen and
+    source mode (manage.py tees stdout/stderr into the log before Django boots).
+    """
+    if not settings.get('enabled', False):
+        print("--- [BINARY-GUARD] DISABLED (binary_context_detection=false) - "
+              "binary files will be loaded as text")
+        return
+    print(f"--- [BINARY-GUARD] ENABLED - sampling {settings.get('sample_bytes')} bytes/file, "
+          f"control-byte limit {settings.get('control_ratio')}")
+    extra = settings.get('extra_binary_extensions') or ()
+    forced = settings.get('force_text_extensions') or ()
+    if extra:
+        print(f"--- [BINARY-GUARD] Extra binary extensions: {sorted(extra)}")
+    if forced:
+        print(f"--- [BINARY-GUARD] Forced-text extensions: {sorted(forced)}")
+
+
+def _announce_binary_omissions(settings, scope):
+    """Print the per-load omission block, then reset the recorder.
+
+    Every dropped file is named with the stage and reason that condemned it, so
+    a user who wonders "why is my file not in the context?" gets a direct answer
+    from tlamatini.log instead of silence.
+    """
+    if not settings.get('enabled', False):
+        return
+    recorder = binary_guard.omission_recorder
+    dropped = len(recorder)
+    if dropped:
+        if settings.get('log_each_file', True):
+            print(recorder.format_report())
+        else:
+            print(f"--- [BINARY-GUARD] {dropped} binary file(s) OMITTED from the "
+                  f"context / embedding chain ({scope}) - per-file listing disabled")
+    else:
+        print(f"--- [BINARY-GUARD] No binary content detected ({scope}) - "
+              "nothing omitted")
+    recorder.reset()
+
+
 class CustomTextLoader(TextLoader):
-    def __init__(self, file_path, encoding=None, autodetect_encoding=False, exclusions=None):
+    def __init__(self, file_path, encoding=None, autodetect_encoding=False, exclusions=None,
+                 binary_guard_settings=None):
         if exclusions:
             base_name = os.path.basename(file_path)
             # Check for exact filename matches
@@ -644,7 +690,29 @@ class CustomTextLoader(TextLoader):
             for ext in exclusions.get('extensions', []):
                 if base_name.endswith(ext):
                     raise ValueError(f"File {base_name} is excluded by extension {ext}.")
-        
+
+        # ── Binary-content guard ──────────────────────────────────────────
+        # The exclusions above are NAME-based (what the user typed into
+        # Context > Set file type omissions). This is CONTENT-based: it drops a
+        # file whose bytes are binary no matter what it is called, using the
+        # same mechanism (raise -> DirectoryLoader silent_errors swallows it),
+        # so a binary drop is indistinguishable downstream from a user omission.
+        settings = binary_guard_settings or {}
+        if settings.get('enabled', False):
+            verdict = binary_guard.classify_file(
+                file_path,
+                sample_bytes=settings.get('sample_bytes', binary_guard.DEFAULT_SAMPLE_BYTES),
+                control_ratio=settings.get('control_ratio', binary_guard.DEFAULT_CONTROL_RATIO),
+                extra_binary_extensions=settings.get('extra_binary_extensions', ()),
+                force_text_extensions=settings.get('force_text_extensions', ()),
+            )
+            if verdict.is_binary:
+                binary_guard.omission_recorder.record(verdict)
+                raise ValueError(
+                    f"File {os.path.basename(file_path)} is excluded as binary content "
+                    f"[{verdict.stage}: {verdict.reason}]."
+                )
+
         super().__init__(file_path, encoding=encoding, autodetect_encoding=autodetect_encoding)
 
 def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissions=None, filename=None):
@@ -702,6 +770,9 @@ def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissi
         print(f"--- Excluded extensions: {['*' + ext for ext in excluded_extensions]}")
 
     config, prompt_template, _ = load_config_and_prompt(application_path)
+    binary_settings = binary_guard.resolve_settings(config)
+    binary_guard.omission_recorder.reset()
+    _announce_binary_guard_settings(binary_settings)
     oversizedDocs = False
 
     if os.path.exists(path_only):
@@ -719,11 +790,13 @@ def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissi
                 loader_cls=CustomTextLoader,
                 loader_kwargs={
                     "autodetect_encoding": True,
-                    "exclusions": exclusions
+                    "exclusions": exclusions,
+                    "binary_guard_settings": binary_settings
                 },
                 silent_errors=True
             )
             documents = loader.load() if loader else None
+            _announce_binary_omissions(binary_settings, f"directory {path_only}")
             if documents:
                 oversizedDocs = report_oversized_docs(documents, int(config.get("max_doc_chars", 8000)))
         elif filename is not None and os.path.isfile(os.path.join(path_only, filename)):
@@ -739,11 +812,13 @@ def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissi
                 loader_cls=CustomTextLoader,
                 loader_kwargs={
                     "autodetect_encoding": True,
-                    "exclusions": exclusions
+                    "exclusions": exclusions,
+                    "binary_guard_settings": binary_settings
                 },
                 silent_errors=True
             )
             documents = loader.load() if loader else None
+            _announce_binary_omissions(binary_settings, f"file {filename}")
             if documents:
                 oversizedDocs = report_oversized_docs(documents, int(config.get("max_doc_chars", 8000)))
         else:
@@ -846,6 +921,9 @@ def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
         print(f"--- Excluded extensions: {['*' + ext for ext in excluded_extensions]}")
 
     config, prompt_template, _ = load_config_and_prompt(application_path)
+    binary_settings = binary_guard.resolve_settings(config)
+    binary_guard.omission_recorder.reset()
+    _announce_binary_guard_settings(binary_settings)
     application_context_path = os.path.join(application_path, 'application')
     oversizedDocs = False
 
@@ -862,11 +940,13 @@ def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
             loader_cls=CustomTextLoader,
             loader_kwargs={
                 "autodetect_encoding": True,
-                "exclusions": exclusions
+                "exclusions": exclusions,
+                "binary_guard_settings": binary_settings
             },
             silent_errors=True
         )
         documents = loader.load() if loader else None
+        _announce_binary_omissions(binary_settings, f"directory {application_context_path}")
         if documents:
             oversizedDocs = report_oversized_docs(documents, int(config.get("max_doc_chars", 8000)))
             for doc in documents:

@@ -422,6 +422,40 @@ The bot will quote real files, reference real classes, and stay grounded. If it 
 
 One subtle but important reliability fix landed here: when a browser refresh restores a saved context, the chat input is now disabled immediately and remains disabled until the contextual RAG chain has really finished rebuilding. In older builds, the user could briefly type into a half-restored session because the welcome-back banner arrived before the context-loading lifecycle had finished.
 
+## 10.5. Binary files are skipped automatically (and the log tells you which)
+
+Section 10 showed you how to point Tlamatini at a folder. Real folders are messy: alongside your source code there are compiled binaries, images, ZIPs, PDFs, model weights, databases and build leftovers. None of that is readable text, and feeding it into the embedding index actively hurts you — it wastes GPU memory and time, and it buries your actual code under noise so the answers get worse.
+
+Since 2026-07-26 Tlamatini handles this for you. **Every file is screened by its real content before it is loaded**, and the binary ones are quietly left out. You do not have to configure anything.
+
+**This is not the same thing as "Set file type omissions".** Both exist and both run:
+
+| | What it looks at | Who decides | Example it catches |
+|---|---|---|---|
+| **Set file type omissions** (Context menu) | the file's **name** | you | `*.doc`, `package-lock.json` |
+| **Binary guard** (automatic) | the file's **bytes** | Tlamatini | a `.pyc`, a `.so`, a PNG someone renamed `notes.md` |
+
+**It is fast.** Known binary types (`.png`, `.exe`, `.zip`, …) are recognised from the extension and never even opened. Everything else is judged from a single 8 KiB peek at the start of the file — so checking a 4 GB video costs the same as checking a README.
+
+**It tells you what it did.** Open `tlamatini.log` and search for `BINARY-GUARD`:
+
+```
+--- [BINARY-GUARD] 3 binary file(s) OMITTED from the context / embedding chain
+--- [BINARY-GUARD] Detected by: extension=2, signature=1
+--- [BINARY-GUARD]   ✗ OMITTED C:\proj\assets\logo.png  [extension: known binary extension .png]
+--- [BINARY-GUARD]   ✗ OMITTED C:\proj\notes.md         [signature: PNG image]
+```
+
+So if you ever wonder *"why isn't that file in my context?"*, the log answers it directly — file by file, with the reason.
+
+**It errs on the side of keeping your files.** If a file cannot be read, or the evidence is ambiguous, Tlamatini loads it as text rather than dropping it. Text in Spanish, French or any legacy encoding is always kept. The guard only removes what it is confident about.
+
+**If you want to change it**, in `config.json`:
+
+- `"binary_context_detection": false` — turn the whole thing off (back to the old behaviour).
+- `"binary_detection_force_text_extensions": [".dat"]` — force an extension to be treated as text; this always wins.
+- `"binary_detection_extra_binary_extensions": [".myblob"]` — add your own binary types.
+
 ## 11. The "Add internet context" toggle
 
 Tick **Add internet context** when the question genuinely needs information from the web. Examples:

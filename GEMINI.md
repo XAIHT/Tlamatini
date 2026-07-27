@@ -123,6 +123,17 @@ Tlamatini consists of seven distinct layers spanning from the database up to the
 
 ---
 
+## 3.5 Binary-Content Guard on the Context Loader
+
+`agent/rag/binary_guard.py` screens every file entering the RAG chain by its **bytes** and drops binary content before it is embedded. It complements — does not replace — the name-based **Context ▸ Set file type omissions** list; both run.
+
+- **Cascade (cheapest first, at most ONE 8 KiB read/file):** extension denylist (zero I/O, 192 extensions) → sample → empty → **BOM** → 45 magic signatures → NUL byte → control-byte ratio (`bytes.translate`) → UTF-8 decodability.
+- **Hook:** `CustomTextLoader.__init__` raises `ValueError`, swallowed by `DirectoryLoader(silent_errors=True)` — identical to the existing omission path. Wired at **all three** `DirectoryLoader` call sites in `agent/rag/factory.py`.
+- **Logging:** `--- [BINARY-GUARD]` lines in `tlamatini.log` name every dropped file + stage + reason, in frozen and source mode alike. Drops are accumulated in a lock-protected recorder (DirectoryLoader runs 12 threads) and printed as one block.
+- **Config:** `binary_context_detection` (default `true`), `binary_detection_sample_bytes` / `_control_ratio` / `_log_each_file` / `_extra_binary_extensions` / `_force_text_extensions`.
+
+**Two invariants you must not break:** the guard is **FAIL-OPEN** (any error/uncertainty → load as text; `classify_file()` never raises), and the **BOM stage must precede the NUL stage** (UTF-16 text is full of `0x00`). Coverage: `agent/test_binary_guard.py` (45 tests).
+
 ## 4. Multi-Turn Orchestration & the Operator Loop
 
 When **Multi-Turn** is checked in the toolbar, Tlamatini shifts from a "text answering box" to a **stateful runtime operator**:

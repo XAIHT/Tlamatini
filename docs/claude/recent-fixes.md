@@ -16,6 +16,32 @@
 
 ---
 
+## 2026-07-26 — Binary-content guard on the RAG context loader (`binary_guard.py`)
+
+**What was wrong.** The ONLY filter on the context/embedding chain was the name-based **Context ▸ Set file type omissions** list plus a 4-entry default denylist (`package-lock.json`, `yarn.lock`, …). Anything else — a `.png`, a `.pyc`, a vendored `.so`, a `.faiss` index, a 200 MB `.safetensors`, a `.mp4` — was opened by `CustomTextLoader` with `autodetect_encoding=True`, decoded into mojibake, chunked and **embedded**. That poisoned FAISS/BM25 with noise, burned embedding VRAM and wall-clock, and diluted real retrieval hits. A name-based list structurally cannot fix this: you cannot enumerate every binary extension a user's project will contain.
+
+**The fix.** A new stdlib-only engine `agent/rag/binary_guard.py` classifies files by **content** and drops the binary ones through the *same* mechanism the user omissions already use, so nothing downstream changes shape.
+
+- **Short-circuiting cascade, cheapest first, at most ONE `read()`**: extension denylist (zero I/O, 192 extensions) → one 8 KiB sample → empty → **BOM** → 45 magic signatures → NUL byte → control-byte ratio (`bytes.translate`, one C-speed pass) → UTF-8 decodability. Sampling a 4 GB video costs what a README costs. `test_only_the_sample_is_read_not_the_whole_file` and `test_at_most_one_read_per_file` pin this.
+- **Hook**: `CustomTextLoader.__init__` records the verdict and `raise`s `ValueError`; `DirectoryLoader(silent_errors=True)` swallows it — byte-identical to how a name-based omission is dropped.
+- **All THREE `DirectoryLoader` call sites** in `factory.py` are wired (context directory, single context file, `application/`). `test_all_three_directory_loaders_receive_the_settings` asserts exactly 3 — miss one and that path silently loads binaries again.
+- **Logging**: `--- [BINARY-GUARD]` lines name every dropped file with the stage and reason that condemned it. `manage.py` tees stdout into `tlamatini.log` before Django boots, so this works in **frozen and source** mode identically. Drops are collected in a lock-protected `BinaryOmissionRecorder` because `DirectoryLoader` runs 12 threads, then printed as one block after `load()` — never interleaved.
+- **Config**: `binary_context_detection` (default `true`) + `binary_detection_sample_bytes` / `_control_ratio` / `_log_each_file` / `_extra_binary_extensions` / `_force_text_extensions`.
+
+**DO NOT weaken these — each prevents a specific, silent data-loss failure:**
+
+1. **FAIL-OPEN, always.** Unreadable file, permission error, deleted-mid-scan, a directory path, `None`, garbage config → verdict is **TEXT**. `classify_file()` never raises. A guard that wrongly drops a file silently deletes the user's real context; that is strictly worse than embedding some noise.
+2. **The BOM stage MUST stay ahead of the NUL stage.** UTF-16/UTF-32 text is legitimately full of `0x00`. Reorder them and every UTF-16 document on disk silently vanishes from the context. Pinned by `test_utf16_bom_beats_the_nul_test`. Likewise the BOM table is ordered longest-prefix-first (`\xff\xfe\x00\x00` before `\xff\xfe`), pinned by `test_bom_table_is_ordered_longest_prefix_first`.
+3. **High bytes (0x80-0xFF) count as TEXT.** Counting them as binary evidence would strip every accented UTF-8 and legacy cp1252/latin-1 source file. Pinned by `test_accented_utf8_without_bom_is_text` and `test_latin1_legacy_text_is_kept`.
+4. **`force_text_extensions` beats the built-in denylist**, so a user can always rescue a file the tables get wrong.
+5. **Keep the two extension tables disjoint.** `test_tables_do_not_overlap` exists because the first draft listed `.ts` as BOTH TypeScript (text) and MPEG transport stream (binary) — which would have dropped every TypeScript file in a project. It now lives in TEXT only; a genuine MPEG-TS is still caught by the NUL stage. The same review moved `.hex` (Intel HEX is ASCII — and mission-critical for STM32er/Arduiner/ESP32er) and `.eps` (PostScript is text) out of the denylist.
+
+**Relationship to the existing omissions list**: complementary, not a replacement. Name-based omissions = "what the user chooses to ignore"; the guard = "what is binary regardless of its name". Both still run, the user list first.
+
+Coverage: `agent/test_binary_guard.py` (45 tests). Full design: `docs/claude/architecture.md` → *Binary-content guard for context loading*.
+
+---
+
 ## 2026-07-26 — Full-suite repair: 26 of 28 failures fixed, and what they taught
 
 The suite ran **3462 tests → 26 failures + 2 errors**. Almost none were product bugs; they cluster into four causes worth knowing.
